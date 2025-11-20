@@ -77,6 +77,10 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const generateUrl = (): string => {
     if (!application || !quayConfig?.config) return '';
 
+    // Generate and store state parameter for CSRF protection (RFC 6749 Section 10.12)
+    const state = crypto.randomUUID();
+    sessionStorage.setItem('oauth_state', state);
+
     const scopesString = getSelectedScopesList().join(' ');
 
     if (selectedUser !== null) {
@@ -89,6 +93,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
           quayConfig.config.LOCAL_OAUTH_HANDLER || '/oauth/localapp',
         ),
         format: 'json',
+        state: state,
       });
       return getUrl(`/oauth/authorize/assignuser?${params.toString()}`);
     } else {
@@ -100,6 +105,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
         redirect_uri: getUrl(
           quayConfig.config.LOCAL_OAUTH_HANDLER || '/oauth/localapp',
         ),
+        state: state,
       });
       return getUrl(`/oauth/authorizeapp?${params.toString()}`);
     }
@@ -141,6 +147,25 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
       }
 
       if (event.data.type === 'OAUTH_TOKEN_GENERATED') {
+        // Validate state parameter for CSRF protection (RFC 6749 Section 10.12)
+        const expectedState = sessionStorage.getItem('oauth_state');
+        if (!event.data.state || event.data.state !== expectedState) {
+          console.error('Invalid OAuth state parameter - possible CSRF attack');
+          addAlert({
+            variant: AlertVariant.Failure,
+            title: 'Security Error: Invalid OAuth state parameter',
+          });
+          // Clean up popup
+          if (oauthPopup && !oauthPopup.closed) {
+            oauthPopup.close();
+          }
+          setOauthPopup(null);
+          return;
+        }
+
+        // Clear state after successful validation (one-time use)
+        sessionStorage.removeItem('oauth_state');
+
         setGeneratedToken(event.data.token);
         setGeneratedScopes(event.data.scope?.split(' ') || []);
         setIsTokenDisplayModalOpen(true);
@@ -153,7 +178,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
         setOauthPopup(null);
       }
     },
-    [oauthPopup],
+    [oauthPopup, addAlert],
   );
 
   useEffect(() => {
