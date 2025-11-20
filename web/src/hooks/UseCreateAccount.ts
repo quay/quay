@@ -1,18 +1,20 @@
 import {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {AxiosError} from 'axios';
-import {createUser} from 'src/resources/UserResource';
+import {createUser, fetchUser} from 'src/resources/UserResource';
 import {
   loginUser,
   GlobalAuthState,
   getCsrfToken,
 } from 'src/resources/AuthResource';
 import {addDisplayError} from 'src/resources/ErrorHandling';
+import {useQueryClient} from '@tanstack/react-query';
 
 export function useCreateAccount() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const createAccountWithAutoLogin = async (
     username: string,
@@ -40,9 +42,32 @@ export function useCreateAccount() {
         const loginResponse = await loginUser(username, password);
 
         if (loginResponse.success === true) {
-          // Login successful, set auth state and redirect
+          // Login successful, set auth state
           await getCsrfToken();
           GlobalAuthState.isLoggedIn = true;
+
+          // Fetch fresh user data to check for prompts
+          let user;
+          try {
+            user = await queryClient.fetchQuery(['user'], fetchUser);
+          } catch (fetchErr) {
+            // If fetching user fails, show error
+            setError(
+              addDisplayError(
+                'Account created but failed to load user data. Please sign in.',
+                fetchErr,
+              ),
+            );
+            return {success: false};
+          }
+
+          // If user has prompts (e.g., confirm_username, enter_name, enter_company), redirect to updateuser
+          if (user.prompts && user.prompts.length > 0) {
+            navigate('/updateuser');
+            return {success: true};
+          }
+
+          // Otherwise, redirect to organizations page
           navigate('/organization');
           return {success: true};
         }
