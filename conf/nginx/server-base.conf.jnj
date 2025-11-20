@@ -47,7 +47,7 @@ location / {
     # Show new UI if cookie or default is set to react
     if ($user_requested_ui ~* "^react$") {
         # catch new static paths and direct to /index.html
-        rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth-error|/oauth/localapp|/oauth2/[^/]+/callback(/attach|/cli)?|/updateuser|/user/(.*)|/service-keys|/change-log|/usage-logs|/messages|/build-logs) /index.html break;
+        rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth-error|/oauth/localapp|/oauth2/[^/]+/callback(/attach|/cli)?|/updateuser|/user/(.*)|/service-keys|/change-log|/usage-logs|/messages|/build-logs|/about|/security) /index.html break;
     }
 
     # Show old UI if cookie is set to angular
@@ -57,7 +57,7 @@ location / {
 }
 
 # Capture traffic that needs to go to web_app, see /web.py
-location ~* ^(/config|/csrf_token|/oauth/authorize|/oauth/authorizeapp|/oauth/authorize/assignuser|/oauth/denyapp|/oauth1|/oauth2|/webhooks|/keys|/.well-known|/customtrigger|/authrepoemail|/confirm|/userfiles/(.*)|/health/(.*)|/status|/_internal_ping) {
+location ~* ^(/config|/csrf_token|/oauth/authorize|/oauth/authorizeapp|/oauth/authorize/assignuser|/oauth/denyapp|/oauth1|/oauth2|/webhooks|/keys|/.well-known|/customtrigger|/authrepoemail|/confirm|/recovery|/userfiles/(.*)|/health/(.*)|/status|/_internal_ping) {
     proxy_pass   http://web_app_server;
 }
 
