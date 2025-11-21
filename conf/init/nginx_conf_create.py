@@ -104,6 +104,12 @@ def generate_server_config(config):
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
     manifests_endpoint_read_timeout = config.get("MANIFESTS_ENDPOINT_READ_TIMEOUT", None)
 
+    # Get default UI setting from config
+    default_ui = config.get("DEFAULT_UI", "react").lower()
+    # Validate against allowed values
+    if default_ui not in ["angular", "react"]:
+        default_ui = "react"
+
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/server-base.conf"),
         tuf_server=tuf_server,
@@ -113,6 +119,7 @@ def generate_server_config(config):
         enable_rate_limits=enable_rate_limits,
         static_dir=STATIC_DIR,
         manifests_endpoint_read_timeout=manifests_endpoint_read_timeout,
+        default_ui=default_ui,
     )
 
 

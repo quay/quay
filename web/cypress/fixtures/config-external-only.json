@@ -1,0 +1,29 @@
+{
+  "features": {
+    "DIRECT_LOGIN": false,
+    "GITHUB_LOGIN": true,
+    "GOOGLE_LOGIN": true,
+    "MAILING": false,
+    "USER_CREATION": false
+  },
+  "config": {
+    "AUTHENTICATION_TYPE": "External"
+  },
+  "external_login": [
+    {
+      "id": "github",
+      "title": "GitHub",
+      "icon": "github"
+    },
+    {
+      "id": "google",
+      "title": "Google",
+      "icon": "google"
+    }
+  ],
+  "registry_state": "normal",
+  "quay_io": {
+    "enabled": true,
+    "url": "https://quay.io"
+  }
+}

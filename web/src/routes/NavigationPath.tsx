@@ -48,6 +48,8 @@ export enum NavigationPath {
   // Organization detail
   organizationDetail = '/organization/:organizationName',
 
+  userDetail = '/user/:organizationName',
+
   // Repository detail
   repositoryDetail = '/repository/:organizationName/*',
 

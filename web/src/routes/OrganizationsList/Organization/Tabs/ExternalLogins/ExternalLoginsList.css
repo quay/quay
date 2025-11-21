@@ -1,0 +1,35 @@
+/* External login provider icons */
+.provider-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.provider-icon.icon-image,
+.external-login-icon.icon-image {
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Ensure PatternFly SVG icons are sized correctly */
+.provider-icon.icon-image svg,
+.external-login-icon.icon-image svg {
+  width: 24px;
+  height: 24px;
+}
+
+.external-login-button .external-login-icon.icon-image {
+  margin-right: 8px;
+}
+
+/* Account status styling */
+.account-status-attached {
+  color: var(--pf-v5-global--success-color--100);
+}
+
+.account-status-unattached {
+  color: var(--pf-v5-global--Color--200);
+}

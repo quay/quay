@@ -8,6 +8,7 @@ dist
 dest
 node_modules
 static/build
+static/patternfly
 stack_local
 test/data/registry/
 GIT_HEAD

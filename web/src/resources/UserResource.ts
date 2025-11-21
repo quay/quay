@@ -114,6 +114,26 @@ export async function fetchEntities(
   return results;
 }
 
+export interface CreateUserRequest {
+  username: string;
+  password: string;
+  email: string;
+}
+
+export async function createUser(
+  username: string,
+  password: string,
+  email: string,
+) {
+  const response = await axios.post('/api/v1/user/', {
+    username,
+    password,
+    email,
+  });
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
 export interface UpdateUserRequest {
   username?: string;
   invoice_email?: boolean;

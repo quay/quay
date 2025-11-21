@@ -43,6 +43,10 @@ const NavigationRoutes = [
     Component: <Organization />,
   },
   {
+    path: NavigationPath.userDetail,
+    Component: <Organization />,
+  },
+  {
     path: NavigationPath.repositoriesList,
     Component: <RepositoriesList organizationName={null} />,
   },

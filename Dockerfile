@@ -105,12 +105,13 @@ RUN set -ex\
 
 # Build-static downloads the static javascript.
 FROM registry.access.redhat.com/ubi8/nodejs-22 AS build-static
+ARG BUILD_ANGULAR=true
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 package.json package-lock.json  ./
 RUN npm clean-install
 COPY --chown=1001:0 static/  ./static/
 COPY --chown=1001:0 *.json *.js  ./
-RUN npm run --quiet build
+RUN if [ "$BUILD_ANGULAR" = "true" ]; then npm run --quiet build; fi
 
 # Build React UI
 FROM registry.access.redhat.com/ubi8/nodejs-22:latest as build-ui
