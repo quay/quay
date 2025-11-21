@@ -358,14 +358,14 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
                 "Security scanner endpoint responded with 400 HTTP status code: %s"
                 % resp.content.decode("ascii")
             )
-            logger.exception(msg)
+            logger.error(msg)
             raise BadRequestResponseException(resp)
         elif resp.status_code // 100 != 2:
             msg = (
                 "Security scanner endpoint responded with non-200 HTTP status code: %s"
                 % resp.status_code
             )
-            logger.exception(msg)
+            logger.error(msg)
             raise Non200ResponseException(resp)
 
         if not is_valid_response(action, resp):
