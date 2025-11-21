@@ -206,6 +206,7 @@ local-dev-up: local-dev-clean node_modules | build-image-quay
 	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) stop quay  # we need to restart quay after local-dev-clean
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d repomirror
 	# Waiting until the frontend is built...
 	# Use '$(DOCKER_COMPOSE) logs -f local-dev-frontend' to see the progress
 	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
