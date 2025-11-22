@@ -7,7 +7,7 @@ services:
   quay-db:
     user: postgres
     container_name: quay-db
-    image: docker.io/library/postgres:12.1
+    image: docker.io/library/postgres:16.1
     environment:
       POSTGRES_USER: "quay"
       POSTGRES_PASSWORD: "quay"
@@ -27,7 +27,7 @@ services:
   clair-db:
     user: postgres
     container_name: clair-db
-    image: docker.io/library/postgres:12.1
+    image: docker.io/library/postgres:16.1
     environment:
       POSTGRES_USER: "clair"
       POSTGRES_DB: "clair"
