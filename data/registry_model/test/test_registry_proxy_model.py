@@ -133,6 +133,7 @@ def test_registry_proxy_model_init_only_query_db_once(initialized_db):
         )
 
 
+@pytest.mark.xdist_group("registry_proxy_serial")
 class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
     orgname = "quayio-cache"
     upstream_repository = "library/nginx"
@@ -176,6 +177,7 @@ class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
             assert repo_ref.is_public is True
 
 
+@pytest.mark.xdist_group("registry_proxy_serial")
 class TestRegistryProxyModelGetSchema1ParsedManifest:
     upstream_registry = "quay.io"
     upstream_repository = "app-sre/ubi8-ubi"
@@ -266,6 +268,7 @@ class TestRegistryProxyModelGetSchema1ParsedManifest:
             )
 
 
+@pytest.mark.xdist_group("registry_proxy_serial")
 class TestRegistryProxyModelCreateManifestAndRetargetTag:
     upstream_registry = "quay.io"
     upstream_repository = "app-sre/ubi8-ubi"
@@ -624,6 +627,7 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         assert conn_count == 1
 
 
+@pytest.mark.xdist_group("registry_proxy_serial")
 class TestRegistryProxyModelLookupManifestByDigest:
     upstream_registry = "quay.io"
     upstream_repository = "app-sre/ubi8-ubi"
@@ -1145,6 +1149,7 @@ class TestRegistryProxyModelLookupManifestByDigest:
         assert tag.lifetime_end_ms == first_tag.lifetime_end_ms
 
 
+@pytest.mark.xdist_group("registry_proxy_serial")
 class TestRegistryProxyModelGetRepoTag:
     upstream_registry = "quay.io"  # alternatively, use quay.io/someorg
     upstream_repository = "app-sre/ubi8-ubi"
