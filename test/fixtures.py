@@ -70,18 +70,27 @@ def init_db_path(tmpdir_factory):
 
 def _init_db_path(tmpdir_factory):
     if os.environ.get("TEST_DATABASE_URI"):
-        return _init_db_path_real_db(os.environ.get("TEST_DATABASE_URI"))
+        return _init_db_path_real_db(os.environ.get("TEST_DATABASE_URI"), tmpdir_factory)
 
     return _init_db_path_sqlite(tmpdir_factory)
 
 
-def _init_db_path_real_db(db_uri):
+def _init_db_path_real_db(db_uri, tmpdir_factory):
     """
     Initializes a real database for testing by populating it from scratch. Note that this does.
 
     *not* add the tables (merely data). Callers must have migrated the database before calling
     the test suite.
+
+    For SQLite databases, uses worker-specific temp directory to avoid file contention when
+    running with pytest-xdist (-n auto).
     """
+    # For SQLite, use worker-specific tmpdir to avoid database locking issues
+    # tmpdir_factory.getbasetemp() returns different paths per worker automatically
+    if db_uri.startswith("sqlite:///"):
+        worker_db = tmpdir_factory.getbasetemp().join("test.db")
+        db_uri = f"sqlite:///{worker_db}"
+
     configure(
         {
             "DB_URI": db_uri,
