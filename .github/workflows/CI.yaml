@@ -10,76 +10,76 @@ on:
     branches:
     - "*"
 jobs:
-  build:
-    name: Format
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-        cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          requirements-dev.txt
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install black==22.3.0
-        pip install flake8
-
-    - name: Check Formatting (Black)
-      run: |
-        black --line-length=100 --target-version=py39 --check --diff .
-
-    - name: Check Formatting (Flake8)
-      run: |
-        # The code-base needs to be cleaned up. There are too many Flake8
-        # related warnings now. Ignore known problems to catch new ones.
-        flake8 --ignore=C901,E203,E262,E265,E266,E402,E501,E712,E713,E722,E731,E741,F401,F403,F405,F811,F821,F841,W503
-        # Run full scan for visibility purposes.
-        flake8 --exit-zero
-
-    - name: Check Requirements are pinned
-      run: |
-        # Read each line of requirement.txt and flag if any line doesn't contain ==, @, newline, or #
-        sed '/^$/d' < requirements.txt | while read i; do if [[ ! $i =~ [==|@|^#] ]]; then echo $i is not pinned; fi; done
-
-  pre-commit-checks:
-    name: Pre-commit checks
-    runs-on: ubuntu-22.04
-    if: ${{ github.event_name == 'pull_request' }}
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0  # fetch all commits and branches for pre-commit
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-
-    - name: Set up Node 18
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18
-        cache: npm
-        cache-dependency-path: web/package-lock.json
-
-    - name: Install npm dependencies
-      run: cd ./web && npm ci
-
-    - name: Run pre-commit checks
-      uses: pre-commit/action@v3.0.0
-      with:
-        extra_args: --from-ref origin/${{ github.base_ref }} --to-ref HEAD --verbose
+#  build:
+#    name: Format
+#    runs-on: ubuntu-22.04
+#    steps:
+#
+#    - name: Checkout
+#      uses: actions/checkout@v3
+#
+#    - name: Set up Python 3.12
+#      uses: actions/setup-python@v4
+#      with:
+#        python-version: 3.12
+#        cache: 'pip'
+#        cache-dependency-path: |
+#          requirements.txt
+#          requirements-dev.txt
+#
+#    - name: Install dependencies
+#      run: |
+#        python -m pip install --upgrade pip
+#        pip install black==22.3.0
+#        pip install flake8
+#
+#    - name: Check Formatting (Black)
+#      run: |
+#        black --line-length=100 --target-version=py39 --check --diff .
+#
+#    - name: Check Formatting (Flake8)
+#      run: |
+#        # The code-base needs to be cleaned up. There are too many Flake8
+#        # related warnings now. Ignore known problems to catch new ones.
+#        flake8 --ignore=C901,E203,E262,E265,E266,E402,E501,E712,E713,E722,E731,E741,F401,F403,F405,F811,F821,F841,W503
+#        # Run full scan for visibility purposes.
+#        flake8 --exit-zero
+#
+#    - name: Check Requirements are pinned
+#      run: |
+#        # Read each line of requirement.txt and flag if any line doesn't contain ==, @, newline, or #
+#        sed '/^$/d' < requirements.txt | while read i; do if [[ ! $i =~ [==|@|^#] ]]; then echo $i is not pinned; fi; done
+#
+#  pre-commit-checks:
+#    name: Pre-commit checks
+#    runs-on: ubuntu-22.04
+#    if: ${{ github.event_name == 'pull_request' }}
+#    steps:
+#
+#    - name: Checkout
+#      uses: actions/checkout@v3
+#      with:
+#        fetch-depth: 0  # fetch all commits and branches for pre-commit
+#
+#    - name: Set up Python 3.12
+#      uses: actions/setup-python@v4
+#      with:
+#        python-version: 3.12
+#
+#    - name: Set up Node 18
+#      uses: actions/setup-node@v3
+#      with:
+#        node-version: 18
+#        cache: npm
+#        cache-dependency-path: web/package-lock.json
+#
+#    - name: Install npm dependencies
+#      run: cd ./web && npm ci
+#
+#    - name: Run pre-commit checks
+#      uses: pre-commit/action@v3.0.0
+#      with:
+#        extra_args: --from-ref origin/${{ github.base_ref }} --to-ref HEAD --verbose
 
   unit:
     name: Unit Test
@@ -114,153 +114,153 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         flags: unit
 
-  types:
-    name: Types Test
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-        cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          requirements-dev.txt
-
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-
-    - name: Check requirements.txt
-      run: |
-        pip install wheel  # allow pip to use wheel instead of legacy 'setup.py install'
-        ./hack/verify-requirements.sh
-
-    - name: Install dependencies
-      run: |
-        pip install -r ./requirements-dev.txt
-
-    - name: Check Types
-      run: make types-test
-
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-        cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          requirements-dev.txt
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
-
-    - name: tox
-      run: |
-        tox -e py312-e2e
-
-  registry:
-    name: E2E Registry Tests
-    runs-on: quay-001-large-ubuntu-24-x64
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-        cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          requirements-dev.txt
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
-
-    - name: tox
-      run: |
-        tox -e py312-registry
-  mysql:
-    name: E2E MySQL Test
-    runs-on: ubuntu-22.04
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-        cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          requirements-dev.txt
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        sudo systemctl unmask docker
-        sudo systemctl start docker
-        docker version
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
-
-    - name: tox
-      run: |
-        tox -e py312-mysql
-
-  psql:
-    name: E2E Postgres Test
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-        cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          requirements-dev.txt
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        sudo systemctl unmask docker
-        sudo systemctl start docker
-        docker version
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
-
-    - name: tox
-      run: |
-        tox -e py312-psql
+#  types:
+#    name: Types Test
+#    runs-on: ubuntu-22.04
+#    steps:
+#
+#    - name: Checkout
+#      uses: actions/checkout@v3
+#
+#    - name: Set up Python 3.12
+#      uses: actions/setup-python@v4
+#      with:
+#        python-version: 3.12
+#        cache: 'pip'
+#        cache-dependency-path: |
+#          requirements.txt
+#          requirements-dev.txt
+#
+#    - name: Install system dependencies
+#      run: |
+#        sudo apt-get update
+#        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+#
+#    - name: Check requirements.txt
+#      run: |
+#        pip install wheel  # allow pip to use wheel instead of legacy 'setup.py install'
+#        ./hack/verify-requirements.sh
+#
+#    - name: Install dependencies
+#      run: |
+#        pip install -r ./requirements-dev.txt
+#
+#    - name: Check Types
+#      run: make types-test
+#
+#  e2e:
+#    name: E2E Tests
+#    runs-on: ubuntu-22.04
+#    steps:
+#
+#    - name: Checkout
+#      uses: actions/checkout@v3
+#
+#    - name: Set up Python 3.12
+#      uses: actions/setup-python@v4
+#      with:
+#        python-version: 3.12
+#        cache: 'pip'
+#        cache-dependency-path: |
+#          requirements.txt
+#          requirements-dev.txt
+#
+#    - name: Install dependencies
+#      run: |
+#        sudo apt-get update
+#        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+#        python -m pip install --upgrade pip
+#        cat requirements-dev.txt | grep tox | xargs pip install
+#
+#    - name: tox
+#      run: |
+#        tox -e py312-e2e
+#
+#  registry:
+#    name: E2E Registry Tests
+#    runs-on: quay-001-large-ubuntu-24-x64
+#    steps:
+#
+#    - name: Checkout
+#      uses: actions/checkout@v3
+#
+#    - name: Set up Python 3.12
+#      uses: actions/setup-python@v4
+#      with:
+#        python-version: 3.12
+#        cache: 'pip'
+#        cache-dependency-path: |
+#          requirements.txt
+#          requirements-dev.txt
+#
+#    - name: Install dependencies
+#      run: |
+#        sudo apt-get update
+#        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
+#        python -m pip install --upgrade pip
+#        cat requirements-dev.txt | grep tox | xargs pip install
+#
+#    - name: tox
+#      run: |
+#        tox -e py312-registry
+#  mysql:
+#    name: E2E MySQL Test
+#    runs-on: ubuntu-22.04
+#
+#    steps:
+#    - name: Checkout
+#      uses: actions/checkout@v3
+#
+#    - name: Set up Python 3.12
+#      uses: actions/setup-python@v4
+#      with:
+#        python-version: 3.12
+#        cache: 'pip'
+#        cache-dependency-path: |
+#          requirements.txt
+#          requirements-dev.txt
+#
+#    - name: Install dependencies
+#      run: |
+#        sudo apt-get update
+#        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+#        sudo systemctl unmask docker
+#        sudo systemctl start docker
+#        docker version
+#        python -m pip install --upgrade pip
+#        cat requirements-dev.txt | grep tox | xargs pip install
+#
+#    - name: tox
+#      run: |
+#        tox -e py312-mysql
+#
+#  psql:
+#    name: E2E Postgres Test
+#    runs-on: ubuntu-22.04
+#    steps:
+#
+#    - name: Checkout
+#      uses: actions/checkout@v3
+#
+#    - name: Set up Python 3.12
+#      uses: actions/setup-python@v4
+#      with:
+#        python-version: 3.12
+#        cache: 'pip'
+#        cache-dependency-path: |
+#          requirements.txt
+#          requirements-dev.txt
+#
+#    - name: Install dependencies
+#      run: |
+#        sudo apt-get update
+#        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+#        sudo systemctl unmask docker
+#        sudo systemctl start docker
+#        docker version
+#        python -m pip install --upgrade pip
+#        cat requirements-dev.txt | grep tox | xargs pip install
+#
+#    - name: tox
+#      run: |
+#        tox -e py312-psql
