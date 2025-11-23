@@ -108,7 +108,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   ) => {
     switch (itemId) {
       case 'account-settings':
-        window.location.href = `/organization/${user?.username}?tab=Settings`;
+        navigate(`/organization/${user?.username}?tab=Settings`);
         setIsDropdownOpen(false);
         break;
       case 'logout':
