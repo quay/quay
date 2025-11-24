@@ -266,6 +266,10 @@ local-dev-up-with-clair: local-dev-up
 	$(DOCKER) exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d clair
 
+.PHONY: local-dev-up-with-repomirror
+local-dev-up-with-repomirror: local-dev-up
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d repomirror
+
 .PHONY: local-dev-up-static
 local-dev-up-static: local-dev-clean
 	$(DOCKER_COMPOSE) -f docker-compose.static up -d redis quay-db
