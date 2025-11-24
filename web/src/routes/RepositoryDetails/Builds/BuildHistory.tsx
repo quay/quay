@@ -96,7 +96,7 @@ export default function BuildHistory(props: BuildHistoryProps) {
         1: (item: RepositoryBuild) => item.phase, // Status
         2: (item: RepositoryBuild) =>
           item.manual_user || item.trigger?.service || '', // Triggered by
-        3: (item: RepositoryBuild) => item.started, // Date started
+        3: (item: RepositoryBuild) => new Date(item.started).getTime(), // Date started (sort by timestamp)
         4: (item: RepositoryBuild) => item.tags?.join(', ') || '', // Tags
       },
       initialPerPage: 50, // Show more builds by default
