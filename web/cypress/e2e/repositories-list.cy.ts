@@ -101,7 +101,10 @@ describe('Repositories List Page', () => {
 
   it('create repository under organization', () => {
     cy.visit('/organization/testorg');
-    cy.contains('Create Repository').click();
+    // Wait for page to load and button to be available
+    cy.contains('Create Repository', {timeout: 10000})
+      .should('be.visible')
+      .click();
     cy.contains('Create Repository').should('exist');
     cy.get('button:contains("testorg")').should('exist');
     cy.get('input[id="repository-name-input"]').type('new-repo');

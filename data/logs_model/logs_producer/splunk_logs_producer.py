@@ -3,7 +3,7 @@ import logging
 import ssl
 
 from splunklib import client
-from splunklib.binding import AuthenticationError  # type: ignore[import]
+from splunklib.binding import AuthenticationError  # type: ignore[import-untyped]
 
 from data.logs_model.logs_producer import LogSendException
 from data.logs_model.logs_producer.interface import LogProducerInterface

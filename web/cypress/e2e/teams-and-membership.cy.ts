@@ -115,7 +115,7 @@ describe('Teams and membership page', () => {
   it('Can update team role in Team View', () => {
     const teamToBeUpdated = 'arsenal';
     cy.visit('/organization/testorg?tab=Teamsandmembership');
-    cy.get('#Teams').click();
+    cy.get('#Teams', {timeout: 10000}).should('be.visible').click();
 
     // Search for a single team
     cy.get('#teams-view-search').type(`${teamToBeUpdated}`);

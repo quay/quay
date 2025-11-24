@@ -53,7 +53,7 @@ from data.text import prefix_search
 from util.itertoolrecipes import take
 
 logger = logging.getLogger(__name__)
-SEARCH_FIELDS = Enum("SearchFields", ["name", "description"])
+SEARCH_FIELDS = Enum("SEARCH_FIELDS", ["name", "description"])
 
 
 class RepoStateConfigException(Exception):

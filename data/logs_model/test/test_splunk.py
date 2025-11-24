@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, call
 import pytest
 from dateutil.parser import parse
 from mock import Mock, patch
-from splunklib.binding import AuthenticationError  # type: ignore[import]
+from splunklib.binding import AuthenticationError  # type: ignore[import-untyped]
 
 from ..logs_producer.splunk_logs_producer import SplunkLogsProducer
 from .test_elasticsearch import logs_model, mock_db_model

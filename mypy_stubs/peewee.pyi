@@ -1126,7 +1126,7 @@ class Field(ColumnBase):
 
 class IntegerField(Field):
     @overload
-    def adapt(self, value: Union[str, float, bool]) -> int: ...  # type: ignore
+    def adapt(self, value: Union[str, float, bool]) -> int: ...
     @overload
     def adapt(self, value: _T) -> _T: ...
 
@@ -1145,7 +1145,7 @@ class PrimaryKeyField(AutoField): ...
 
 class FloatField(Field):
     @overload
-    def adapt(self, value: Union[str, float, bool]) -> float: ...  # type: ignore
+    def adapt(self, value: Union[str, float, bool]) -> float: ...
     @overload
     def adapt(self, value: _T) -> _T: ...
 

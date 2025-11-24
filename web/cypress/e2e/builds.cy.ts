@@ -1054,9 +1054,7 @@ describe('Repository Builds - Create Custom Git Build Triggers', () => {
     }).as('getBuilds');
     cy.visit('/repository/testorg/testrepo?tab=builds');
     cy.contains('Create Build Trigger').click();
-    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
-      cy.on('uncaught:exception', (e) => false),
-    );
+    cy.on('uncaught:exception', () => false);
     cy.contains('Custom Git Repository Push').click();
     cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
     cy.url().should(
@@ -1171,9 +1169,7 @@ describe('Repository Builds - Create Custom Git Build Triggers', () => {
     ).as('analyzeTrigger');
     cy.visit('/repository/testorg/testrepo?tab=builds');
 
-    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
-      cy.on('uncaught:exception', (e) => false),
-    );
+    cy.on('uncaught:exception', () => false);
     cy.contains('Create Build Trigger').click();
     cy.contains('Custom Git Repository Push').click();
     cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
@@ -1214,9 +1210,7 @@ describe('Repository Builds - Create Custom Git Build Triggers', () => {
     cy.visit('/repository/testorg/testrepo?tab=builds');
 
     cy.contains('Create Build Trigger').click();
-    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
-      cy.on('uncaught:exception', (e) => false),
-    );
+    cy.on('uncaught:exception', () => false);
     cy.contains('Custom Git Repository Push').click();
     cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
     cy.url().then((url) => {
@@ -1256,9 +1250,7 @@ describe('Repository Builds - Create Custom Git Build Triggers', () => {
     cy.visit('/repository/testorg/testrepo?tab=builds');
 
     cy.contains('Create Build Trigger').click();
-    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
-      cy.on('uncaught:exception', (e) => false),
-    );
+    cy.on('uncaught:exception', () => false);
     cy.contains('Custom Git Repository Push').click();
     cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
     cy.url().then((url) => {

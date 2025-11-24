@@ -118,7 +118,7 @@ def test_validate_label_key(key, is_valid):
         (b"kenny", "kenny"),
         (b"c" * 256, "c" * 255),
         # \uXXXX are only interpreted in unicode strings
-        (b"\u0d2e\u0d32\u0d2e\u0d32", "u0d2e_u0d32_u0d2e_u0d32"),
+        (rb"\u0d2e\u0d32\u0d2e\u0d32", "u0d2e_u0d32_u0d2e_u0d32"),
     ],
 )
 def test_generate_valid_usernames(input_username, expected_output):
