@@ -8,6 +8,7 @@ import {
   TextInput,
   Text,
 } from '@patternfly/react-core';
+import './FreshLoginModal.css';
 
 interface FreshLoginModalProps {
   isOpen: boolean;
@@ -48,6 +49,7 @@ export function FreshLoginModal({
       title="Please Verify"
       isOpen={isOpen}
       onClose={handleCancel}
+      className="fresh-login-modal"
       actions={[
         <Button
           key="verify"

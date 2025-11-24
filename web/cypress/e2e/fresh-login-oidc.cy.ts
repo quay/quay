@@ -123,5 +123,61 @@ describe('Fresh Login - OIDC Authentication', () => {
       cy.url().should('include', '/usage-logs');
       cy.url().should('not.include', '/signin');
     });
+
+    it('fresh login modal should appear on top of other modals (PROJQUAY-9844)', () => {
+      // Mock superuser organizations API for delete operation
+      cy.intercept('DELETE', '/api/v1/superuser/organizations/*', {
+        statusCode: 401,
+        body: {
+          title: 'fresh_login_required',
+          error_type: 'fresh_login_required',
+          detail: 'The action requires a fresh login to succeed.',
+        },
+      }).as('deleteFreshLoginRequired');
+
+      cy.visit('/organization');
+      cy.wait('@getConfigDatabase');
+      cy.wait('@getSuperUser');
+
+      // Select an organization for deletion to open delete modal
+      cy.get('input[type="checkbox"]').first().check();
+      cy.contains('Actions').click();
+      cy.contains('Delete').click();
+
+      // Delete modal should be visible
+      cy.contains('Permanently delete selected items?').should('be.visible');
+
+      // Type "confirm" to enable the delete button
+      cy.get('input[id="delete-confirmation-input"]').type('confirm');
+
+      // Click delete button, which should trigger fresh login requirement
+      cy.get('[id="bulk-delete-modal"]').within(() => {
+        cy.get('button:contains("Delete")').click();
+      });
+
+      cy.wait('@deleteFreshLoginRequired');
+
+      // Fresh login modal SHOULD appear and be on top
+      cy.contains('Please Verify').should('be.visible');
+      cy.contains('Current Password').should('be.visible');
+
+      // Verify the fresh login modal has higher z-index than delete modal
+      // by checking that it has the 'fresh-login-modal' class
+      cy.get('.fresh-login-modal').should('be.visible');
+
+      // Verify we can interact with the fresh login modal (it's not behind other modals)
+      cy.get('input[placeholder="Current Password"]')
+        .should('be.visible')
+        .and('be.enabled');
+
+      // Verify the delete modal is still in the DOM (in the background)
+      cy.contains('Permanently delete selected items?').should('exist');
+
+      // Test that we can type in the password field (proves it's interactive and on top)
+      cy.get('input[placeholder="Current Password"]').type('test');
+
+      // Verify the Verify button becomes enabled
+      cy.contains('button', 'Verify').should('be.enabled');
+    });
   });
 });
