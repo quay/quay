@@ -89,8 +89,7 @@ objects:
   kind: Service
   metadata:
     name: ${NAME}-https-lb
-    annotations:
-      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+    annotations: ${{HTTPS_SVC_ANNOTATIONS}}
   spec:
     ports:
     - name: https
@@ -496,6 +495,15 @@ parameters:
       }
     displayName: HTTPS service annotations.
     description: HTTPS Service annotations.
+  - name: HTTPS_SVC_ANNOTATIONS
+    value: |-
+      {
+        "alb.ingress.kubernetes.io/healthcheck-protocol": "HTTPS",
+        "alb.ingress.kubernetes.io/healthcheck-path": "/"
+      }
+    displayName: HTTPS service annotations.
+    description: HTTPS Service annotations.
+
   - name: SERVICE_ACCOUNT_ANNOTATIONS
     value: "{}"
     description: Optional annotations to add the service account like for IRSA/ROSA (JSON format)
