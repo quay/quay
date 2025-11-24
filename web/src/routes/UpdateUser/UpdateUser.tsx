@@ -52,6 +52,12 @@ export default function UpdateUser() {
         localStorage.removeItem('quay.redirectAfterLoad');
 
         if (redirectUrl) {
+          // Don't redirect back to signin page - that's where OAuth started
+          if (redirectUrl.includes('/signin')) {
+            navigate('/');
+            return;
+          }
+
           // Validate redirect URL to prevent open redirect vulnerability
           try {
             // Allow relative paths (starting with /)
