@@ -85,6 +85,21 @@ objects:
     type: LoadBalancer
     selector:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: ${NAME}-https-lb
+    annotations:
+      alb.ingress.kubernetes.io/healthcheck-protocol: {HTTPS}
+  spec:
+    ports:
+    - name: https
+      protocol: TCP
+      port: ${{HTTPS_LB_SERVICE_PORT}}
+      targetPort: ${{HTTPS_LB_SERVICE_TARGET_PORT}}
+    type: NodePort
+    selector:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
