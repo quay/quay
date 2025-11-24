@@ -767,8 +767,8 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
               </Card>
             ))}
 
-            {/* Add new limit card */}
-            {
+            {/* Add new limit card - only show in editable mode */}
+            {!isReadOnly && (
               <Card
                 isCompact
                 isPlain
@@ -893,7 +893,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                   </Flex>
                 </CardBody>
               </Card>
-            }
+            )}
 
             {/* Note message when no limits exist - placed after Add Limit form */}
             {limits.length === 0 && (
