@@ -1,6 +1,10 @@
 /// <reference types="cypress" />
 
 describe('Quota Management', () => {
+  before(() => {
+    cy.exec('npm run quay:seed');
+  });
+
   beforeEach(() => {
     // Handle pre-existing CanceledError from organization page navigation
     cy.on('uncaught:exception', (err) => {
@@ -12,9 +16,6 @@ describe('Quota Management', () => {
       }
       return true;
     });
-
-    // Seed database
-    cy.exec('npm run quay:seed');
 
     // Get CSRF token and login
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
