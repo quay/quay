@@ -1,6 +1,10 @@
 /// <reference types="cypress" />
 
 describe('Quota Management', () => {
+  before(() => {
+    cy.exec('npm run quay:seed');
+  });
+
   beforeEach(() => {
     // Handle pre-existing CanceledError from organization page navigation
     cy.on('uncaught:exception', (err) => {
@@ -12,9 +16,6 @@ describe('Quota Management', () => {
       }
       return true;
     });
-
-    // Seed database
-    cy.exec('npm run quay:seed');
 
     // Get CSRF token and login
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
@@ -461,6 +462,43 @@ describe('Quota Management', () => {
 
       // Should see error message
       cy.contains('quota creation error').should('exist');
+    });
+
+    it('should validate quota value is numeric', () => {
+      cy.intercept('GET', '**/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [],
+      }).as('getQuotaEmpty');
+
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
+
+      // Open Configure Quota modal
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+      cy.contains('Configure Quota').click();
+
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
+      cy.wait('@getQuotaEmpty');
+
+      // Try to enter non-numeric value (input type="number" should prevent this)
+      cy.get('[data-testid="quota-value-input"]').clear().type('300xxxx');
+
+      // Input should only contain the numeric part due to type="number"
+      cy.get('[data-testid="quota-value-input"]').should('have.value', '300');
+
+      // Try to enter only letters (should be completely rejected)
+      cy.get('[data-testid="quota-value-input"]').clear().type('abcd');
+
+      // Input should be empty as no numeric characters were entered
+      cy.get('[data-testid="quota-value-input"]').should('have.value', '');
+
+      // Enter valid numeric value
+      cy.get('[data-testid="quota-value-input"]').clear().type('100');
+      cy.get('[data-testid="quota-value-input"]').should('have.value', '100');
     });
   });
 
