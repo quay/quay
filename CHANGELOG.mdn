@@ -4,7 +4,7 @@
 
 
 <a name="v3.16.0"></a>
-## [v3.16.0] - 2025-11-17
+## [v3.16.0] - 2025-11-24
 ### Alembic
 - [54554080](https://github.com/quay/quay/commit/54554080eea5eba2f6301af19bfdb9b5fba4fc7c): Install certs during alembic migrations (PROJQUAY-9135) ([#4125](https://github.com/quay/quay/issues/4125))
 ### Api
@@ -176,16 +176,40 @@
 ### Workers(Quotaregistrysize)
 - [01908d64](https://github.com/quay/quay/commit/01908d64db5443f750ca78deff06f25f6bc7ee83): fixed wrong condition to run quotasizeworker from PROJQUAY-8086 (PROJQUAY-9460) ([#4313](https://github.com/quay/quay/issues/4313))
 - [456470fb](https://github.com/quay/quay/commit/456470fb8bfb39bed2149a457d8b7a04133693ae): added to run quotasizeworker when SUPERUSERS are retrieved from LDAP (PROJQUAY-8086) ([#3322](https://github.com/quay/quay/issues/3322))
+### [Redhat-3.16] Api
+- [344e0654](https://github.com/quay/quay/commit/344e0654fc36475418351df503e8303fb7625e0e): fixing recovery endpoint routing (PROJQUAY-9807) ([#4589](https://github.com/quay/quay/issues/4589))
+### [Redhat-3.16] Bug
+- [9aa32d50](https://github.com/quay/quay/commit/9aa32d506fbd27f219f51f56bba4f245fe6dbef9): removing console warnings from repository page and usagelogs (PROJQUAY-9648) ([#4543](https://github.com/quay/quay/issues/4543))
 ### [Redhat-3.16] Chore
+- [116b9829](https://github.com/quay/quay/commit/116b9829da67cf0e12033ff3a66fd373939869c0): fix account settings navigation ([#4609](https://github.com/quay/quay/issues/4609))
+- [723f6e23](https://github.com/quay/quay/commit/723f6e23f034297b3f87e43f43c55f965264f03b): CI improvements ([#4590](https://github.com/quay/quay/issues/4590))
+- [8c826be0](https://github.com/quay/quay/commit/8c826be0af4fa9845d1e56bed1e24231fadedba3): add /about and /security static pages to new UI ([#4595](https://github.com/quay/quay/issues/4595))
+- [e57b688f](https://github.com/quay/quay/commit/e57b688f79e905f5084925ac3a2211a6bbe2c9de): extract logo selection logic into reusable hook ([#4575](https://github.com/quay/quay/issues/4575))
+- [4466135e](https://github.com/quay/quay/commit/4466135ebaa0863cab011a33bc17757b75c2335b): don't show status code to users ([#4560](https://github.com/quay/quay/issues/4560))
 - [1c7917e4](https://github.com/quay/quay/commit/1c7917e4c9262d76a9ab83ebcfd0e1a8f94d108c): remove prop-types dependency usage in favor of TypeScript types ([#4528](https://github.com/quay/quay/issues/4528))
 - [41eed9a2](https://github.com/quay/quay/commit/41eed9a2f5e8d6c7cb86289f3c0326da23db49ea): enable FEATURE_UI_V2 as default ([#4513](https://github.com/quay/quay/issues/4513))
 - [6e34f1ff](https://github.com/quay/quay/commit/6e34f1ff338d6aa3f591e66b4002d0c73e7086fc): bump mypy python_version to 3.12 ([#4491](https://github.com/quay/quay/issues/4491))
 - [d980b67d](https://github.com/quay/quay/commit/d980b67d16bc588eec866e230c6e5bf83aea4096): add web/AGENTS.md ([#4479](https://github.com/quay/quay/issues/4479))
 - [32602f5c](https://github.com/quay/quay/commit/32602f5c32ff183e615ba65c968f39ea8df09344): migrate SidebarState and AlertState from Recoil to React Context ([#4481](https://github.com/quay/quay/issues/4481))
 - [5fd4808d](https://github.com/quay/quay/commit/5fd4808d510c3946dea9c7e793df7ccd8ccf0b7d): implement lazy loading for route components ([#4441](https://github.com/quay/quay/issues/4441))
+### [Redhat-3.16] Deps
+- [6ada6312](https://github.com/quay/quay/commit/6ada631200cf62ded93a8d70dc4e2d3814549aa9): updated axios version to 1.12.0 (PROJQUAY-9782) ([#4517](https://github.com/quay/quay/issues/4517))
+### [Redhat-3.16] Fix
+- [46b62049](https://github.com/quay/quay/commit/46b62049c6ea825d6d8f11b4467f38c6c7007590): Fix race conditions in pull metrics tracking and flushing (PROJQUAY-9776) ([#4598](https://github.com/quay/quay/issues/4598))
+- [5f6cbae2](https://github.com/quay/quay/commit/5f6cbae224e6660b4eab85d456f9817280f6286d): Added lazy initialization for redis to retry the connection after pod restart automatically connect when available (PROJQUAY-9791) ([#4551](https://github.com/quay/quay/issues/4551))
+- [a1ea4845](https://github.com/quay/quay/commit/a1ea48453029c32ea47f393a012c784f245837e8): allow global readonly superusers to access quota limit endpoints (PROJQUAY-9804) ([#4574](https://github.com/quay/quay/issues/4574))
+- [1f99757b](https://github.com/quay/quay/commit/1f99757b5ef5d552f6a80584ecab4f2c4bcfeadf): allow global readonly superusers to access all organization data without FULL_ACCESS (PROJQUAY-9798) ([#4557](https://github.com/quay/quay/issues/4557))
 ### [Redhat-3.16] Fix(Api)
 - [57895ec0](https://github.com/quay/quay/commit/57895ec0819562e0c64fa10fd12c95ca40a20671): superuser panel access without SUPERUSERS_FULL_ACCESS (PROJQUAY-9693) ([#4512](https://github.com/quay/quay/issues/4512))
+### [Redhat-3.16] Fix(Test)
+- [ba1698a0](https://github.com/quay/quay/commit/ba1698a058b1e14451c4ec8ecec4a9a5e5a62f94): prevent MySQL deadlocks in parallel proxy model tests (PROJQUAY-0000) ([#4610](https://github.com/quay/quay/issues/4610))
 ### [Redhat-3.16] Fix(Ui)
+- [0f71b4bb](https://github.com/quay/quay/commit/0f71b4bb2d6bae68397110d0feaab6cee97ab0a5): preserve mirroring credentials when updating tag pattern (PROJQUAY-9608) ([#4602](https://github.com/quay/quay/issues/4602))
+- [980a3bf2](https://github.com/quay/quay/commit/980a3bf23c24b21540cff8aa2790d7a0e7c653a7): Add OAuth state parameter for CSRF protection (PROJQUAY-9805) ([#4593](https://github.com/quay/quay/issues/4593))
+- [4ddab2b6](https://github.com/quay/quay/commit/4ddab2b6bea50819de16ba9b2299d72b6a5d1b29): Enable organization/user visibility for read-only superusers (PROJQUAY-6882) ([#4584](https://github.com/quay/quay/issues/4584))
+- [07622ee0](https://github.com/quay/quay/commit/07622ee03e0339285f2df4610a58850a859f2354): Add missing superuser routes to nginx to prevent 404 (PROJQUAY-9741) ([#4554](https://github.com/quay/quay/issues/4554))
+- [efbd14fd](https://github.com/quay/quay/commit/efbd14fd0954415d11a190b29dcf32ddc3c5a067): Add "Requires fresh login" checks for superuser operations (PROJQUAY-9658) ([#4548](https://github.com/quay/quay/issues/4548))
+- [91920431](https://github.com/quay/quay/commit/919204313a8f331949b12a98a3ed19552879d065): Add infinite scroll and load more button to usage logs (PROJQUAY-9717) ([#4533](https://github.com/quay/quay/issues/4533))
 - [511425f4](https://github.com/quay/quay/commit/511425f418af7ab019d92176df929557f1b10203): Add missing operation types to usage logs chart (PROJQUAY-6881) ([#4532](https://github.com/quay/quay/issues/4532))
 - [51ba541e](https://github.com/quay/quay/commit/51ba541e5d7a4eca49d586c7073d4ab99ff2ad7d): Remove local dev test configs (PROJQUAY-9753) ([#4522](https://github.com/quay/quay/issues/4522))
 - [f1ff178e](https://github.com/quay/quay/commit/f1ff178e3bf85dffdb1008447bbab6953bc58314): consolidate credential modals and fix state management issues (PROJQUAY-9630) ([#4477](https://github.com/quay/quay/issues/4477))
@@ -198,6 +222,13 @@
 - [5c4702e7](https://github.com/quay/quay/commit/5c4702e7402e4aa0093409868c1465d30cb16513): remove team creation from robot user dropdown (PROJQUAY-9662) ([#4435](https://github.com/quay/quay/issues/4435))
 - [d51de1ec](https://github.com/quay/quay/commit/d51de1ec36ba3a3f66c3be1e448440cf90c7d97b): Add OAuth token authorization flow for assigned users (PROJQUAY-9632) ([#4433](https://github.com/quay/quay/issues/4433))
 ### [Redhat-3.16] Fix(Web)
+- [e8b4e0bf](https://github.com/quay/quay/commit/e8b4e0bf7dd642336dc4b5d94db6a39d76709756): fetch build logs from separate endpoint in superuser panel (PROJQUAY-9714) ([#4581](https://github.com/quay/quay/issues/4581))
+- [4e08ce57](https://github.com/quay/quay/commit/4e08ce572e7d8973764a25e3c7668d5a6cbd3b14): fix inline markdown code rendering (PROJQUAY-9809) ([#4572](https://github.com/quay/quay/issues/4572))
+- [6eeb06db](https://github.com/quay/quay/commit/6eeb06dbfefd1b5a66d8edacd57cadf51d6cc185): handle user deletion via Actions dropdown (PROJQUAY-9788) ([#4544](https://github.com/quay/quay/issues/4544))
+- [ccda9899](https://github.com/quay/quay/commit/ccda9899805beba616f757f1ab4247de3e421cf3): hide user tabs when superuser views other users (PROJQUAY-9753) ([#4559](https://github.com/quay/quay/issues/4559))
+- [04985a63](https://github.com/quay/quay/commit/04985a63cc7e946e8b542b9c1f046d63222101fd): use correct API endpoint for user quota (PROJQUAY-9785) ([#4553](https://github.com/quay/quay/issues/4553))
+- [bdb5a20e](https://github.com/quay/quay/commit/bdb5a20e81c515df67cbaf91a3a6262d587fb9ce): hide 'Last Updated' for OIDC team sync (PROJQUAY-9773) ([#4555](https://github.com/quay/quay/issues/4555))
+- [8b78a59b](https://github.com/quay/quay/commit/8b78a59b78bfa1f4f8b70793778e92bd1c4515e6): display backend-generated password in user creation (PROJQUAY-9780) ([#4552](https://github.com/quay/quay/issues/4552))
 - [0d586f06](https://github.com/quay/quay/commit/0d586f069a5285c0ec2dfa0b472e6f0deb944b67): display relative time for application token dates with tooltip (PROJQUAY-9631) ([#4452](https://github.com/quay/quay/issues/4452))
 - [ad02fc0c](https://github.com/quay/quay/commit/ad02fc0c1a17581e79d5728d5541104ea6b8d5dd): hide Create User button for external authentication in superuser panel (PROJQUAY-9736) ([#4505](https://github.com/quay/quay/issues/4505))
 - [0c3ffd70](https://github.com/quay/quay/commit/0c3ffd70dc2701f2c793a11e27ff5436f5e39bab): hide change email/password for external auth in superuser panel (PROJQUAY-9747) ([#4504](https://github.com/quay/quay/issues/4504))
@@ -209,8 +240,19 @@
 - [e697b594](https://github.com/quay/quay/commit/e697b594753fb2aa714defb30405ec903da7b6e0): support shorthand organization and repository URLs with redirect (PROJQUAY-9580) ([#4459](https://github.com/quay/quay/issues/4459))
 ### [Redhat-3.16] Proxy
 - [60602436](https://github.com/quay/quay/commit/60602436163cd5916cdb402a1dc6863e4140a344): Drop error 403 token requests for anonymous pulls (PROJQUAY-9012) ([#4448](https://github.com/quay/quay/issues/4448))
+### [Redhat-3.16] Pullstats
+- [0841a122](https://github.com/quay/quay/commit/0841a122707e87c0a03890d510228044e2e18fb3): updated bulk upsert function to track correct pull count and timestamp in case of race condition (PROJQUAY-9684) ([#4527](https://github.com/quay/quay/issues/4527))
 ### [Redhat-3.16] Ui
+- [c057b752](https://github.com/quay/quay/commit/c057b752373f1b1aea0f13ee035b93c6b86ff33e): normalize user settings tabs (PROJQUAY-9814) ([#4599](https://github.com/quay/quay/issues/4599))
+- [60ed21cc](https://github.com/quay/quay/commit/60ed21cc098999bf678f193b0daf327179932b93): redirect new UI super user for fresh login when authentication type is OIDC (PROJQUAY-9748) ([#4596](https://github.com/quay/quay/issues/4596))
+- [9639a6b8](https://github.com/quay/quay/commit/9639a6b843128b08d93ec9a451dc215136218864): adding redirect to update info page (PROJQUAY-9744) ([#4594](https://github.com/quay/quay/issues/4594))
+- [794e624f](https://github.com/quay/quay/commit/794e624fe1d8fa67e7ca4b5145c2dcc261e3cd8a): removing feedback banner (PROJQUAY-9811) ([#4588](https://github.com/quay/quay/issues/4588))
+- [9da9093d](https://github.com/quay/quay/commit/9da9093de07cbf758265ecebeb3490fc76d30580): allow for team creation while creating notification (PROJQUAY-9727) ([#4573](https://github.com/quay/quay/issues/4573))
+- [1b896db9](https://github.com/quay/quay/commit/1b896db94e3acb97ee90bda4921dc78b72cb75f2): paginating application tokens (PROJQUAY-9778) ([#4563](https://github.com/quay/quay/issues/4563))
+- [886999e1](https://github.com/quay/quay/commit/886999e1c5c900c8a001f92166a654602cbbb122): rendering error for splunk logs (PROJQUAY-6934) ([#4564](https://github.com/quay/quay/issues/4564))
 - [dbb7232b](https://github.com/quay/quay/commit/dbb7232b002d78c90eafdbec73472c5a15edddb8): fixing redirect on org deletion (PROJQUAY-9742) ([#4519](https://github.com/quay/quay/issues/4519))
+### [Redhat-3.16] Uibug
+- [ef66ec69](https://github.com/quay/quay/commit/ef66ec6920da8ebbb772a87124556f8ff466136a): updated new UI to ask user to verify the mail when creating new account with email enabled (PROJQUAY-9655) ([#4450](https://github.com/quay/quay/issues/4450))
 ### BREAKING CHANGE
 
 LDAP lookup of robot accounts in the UI for granting permission has been dropped in context of permissions granting. This impacts Users from LDAP if they have not logged in to Quay already (pre provisioning) as a Federation User will only be available after logging in or being part of a Team.
