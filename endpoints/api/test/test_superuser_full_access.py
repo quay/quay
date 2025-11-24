@@ -9,6 +9,12 @@ work with just FEATURE_SUPER_USERS enabled.
 import pytest
 
 from endpoints.api.globalmessages import GlobalUserMessages
+from endpoints.api.namespacequota import (
+    OrganizationQuota,
+    OrganizationQuotaLimit,
+    OrganizationQuotaLimitList,
+    OrganizationQuotaList,
+)
 from endpoints.api.organization import Organization
 from endpoints.api.repository import RepositoryList
 from endpoints.api.superuser import (
@@ -143,6 +149,8 @@ class TestSuperuserFullAccessRequired:
             {
                 "FEATURE_SUPER_USERS": True,
                 "FEATURE_SUPERUSERS_FULL_ACCESS": False,
+                "FEATURE_QUOTA_MANAGEMENT": True,
+                "FEATURE_EDIT_QUOTA": True,
             }
         )
 
@@ -195,6 +203,62 @@ class TestSuperuserFullAccessRequired:
             # Should be blocked without FULL_ACCESS
             conduct_api_call(cl, OrganizationTeam, "PUT", params, body, 403)
 
+    def test_superuser_cannot_create_quota_in_other_org_without_full_access(self, app):
+        """
+        Test that superusers CANNOT create quotas in other orgs without FULL_ACCESS.
+
+        This reproduces the bug reported in PROJQUAY-9833.
+        """
+        with client_with_identity("devtable", app) as cl:
+            # Try to create a quota for testorg (owned by randomuser, not devtable)
+            params = {"orgname": "testorg"}
+            body = {"limit_bytes": 1073741824}  # 1GB
+            # Should be blocked without FULL_ACCESS
+            conduct_api_call(cl, OrganizationQuotaList, "POST", params, body, 403)
+
+    def test_superuser_cannot_update_quota_in_other_org_without_full_access(self, app):
+        """
+        Test that superusers CANNOT update quotas in other orgs without FULL_ACCESS.
+
+        This reproduces the bug reported in PROJQUAY-9833.
+        """
+        from data import model
+
+        # Create a quota directly via the data model (only superusers can create quotas via API)
+        org = model.organization.get_organization("testorg")
+        quota = model.namespacequota.create_namespace_quota(org, 1073741824)  # 1GB
+        quota_id = quota.id
+
+        # Try to update it as superuser without FULL_ACCESS
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "testorg", "quota_id": quota_id}
+            body = {"limit_bytes": 5368709120}  # 5GB
+            # Should be blocked without FULL_ACCESS
+            conduct_api_call(cl, OrganizationQuota, "PUT", params, body, 403)
+
+    def test_superuser_cannot_delete_quota_in_other_org_without_full_access(self, app):
+        """
+        Test that superusers CANNOT delete quotas in other orgs without FULL_ACCESS.
+
+        This reproduces the bug reported in PROJQUAY-9833.
+        """
+        from data import model
+
+        # Create a quota directly via the data model
+        org = model.organization.get_organization("testorg")
+        quotas = model.namespacequota.get_namespace_quota_list("testorg")
+        if not quotas:
+            quota = model.namespacequota.create_namespace_quota(org, 1073741824)  # 1GB
+            quota_id = quota.id
+        else:
+            quota_id = quotas[0].id
+
+        # Try to delete it as superuser without FULL_ACCESS
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "testorg", "quota_id": quota_id}
+            # Should be blocked without FULL_ACCESS
+            conduct_api_call(cl, OrganizationQuota, "DELETE", params, None, 403)
+
 
 class TestSuperuserFullAccessEnabled:
     """
@@ -207,13 +271,24 @@ class TestSuperuserFullAccessEnabled:
     def setup(self, app):
         """Enable SUPERUSERS_FULL_ACCESS for these tests."""
         import features
+        from data import model
 
         features.import_features(
             {
                 "FEATURE_SUPER_USERS": True,
                 "FEATURE_SUPERUSERS_FULL_ACCESS": True,
+                "FEATURE_QUOTA_MANAGEMENT": True,
+                "FEATURE_EDIT_QUOTA": True,
             }
         )
+
+        # Create a test organization owned by randomuser if it doesn't exist
+        randomuser = model.user.get_user("randomuser")
+        try:
+            model.organization.get_organization("testorg2")
+        except model.InvalidOrganizationException:
+            model.organization.create_organization("testorg2", "testorg2@test.com", randomuser)
+
         yield
 
     def test_superuser_can_view_other_org_details_with_full_access(self, app):
@@ -252,3 +327,68 @@ class TestSuperuserFullAccessEnabled:
             }
             result = conduct_api_call(cl, RepositoryList, "POST", None, body, 201)
             assert result.json is not None
+
+    def test_superuser_can_create_quota_in_other_org_with_full_access(self, app):
+        """
+        Test that superusers CAN create quotas in other orgs with FULL_ACCESS.
+        """
+        with client_with_identity("devtable", app) as cl:
+            # Can create quota in org that devtable doesn't own
+            params = {"orgname": "testorg2"}
+            body = {"limit_bytes": 1073741824}  # 1GB
+            result = conduct_api_call(cl, OrganizationQuotaList, "POST", params, body, 201)
+            assert result.status_code == 201
+
+    def test_superuser_can_update_quota_in_other_org_with_full_access(self, app):
+        """
+        Test that superusers CAN update quotas in other orgs with FULL_ACCESS.
+        """
+        from data import model
+
+        # Get or create a quota
+        quotas = model.namespacequota.get_namespace_quota_list("testorg2")
+        if not quotas:
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "testorg2"}
+                body = {"limit_bytes": 1073741824}
+                conduct_api_call(cl, OrganizationQuotaList, "POST", params, body, 201)
+            quotas = model.namespacequota.get_namespace_quota_list("testorg2")
+
+        quota_id = quotas[0].id
+
+        # Update the quota as superuser with FULL_ACCESS
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "testorg2", "quota_id": quota_id}
+            body = {"limit_bytes": 5368709120}  # 5GB
+            result = conduct_api_call(cl, OrganizationQuota, "PUT", params, body, 200)
+            assert result.json is not None
+            assert result.json["limit_bytes"] == 5368709120
+
+    def test_superuser_can_delete_quota_in_other_org_with_full_access(self, app):
+        """
+        Test that superusers CAN delete quotas in other orgs with FULL_ACCESS.
+        """
+        from data import model
+
+        # Create a quota to delete
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "testorg2"}
+            body = {"limit_bytes": 2147483648}  # 2GB
+            result = conduct_api_call(cl, OrganizationQuotaList, "POST", params, body, 201)
+
+        # Get the quota ID
+        quotas = model.namespacequota.get_namespace_quota_list("testorg2")
+        # Find the quota we just created (2GB)
+        quota_id = None
+        for q in quotas:
+            if q.limit_bytes == 2147483648:
+                quota_id = q.id
+                break
+
+        assert quota_id is not None
+
+        # Delete the quota as superuser with FULL_ACCESS
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "testorg2", "quota_id": quota_id}
+            result = conduct_api_call(cl, OrganizationQuota, "DELETE", params, None, 204)
+            assert result.status_code == 204
