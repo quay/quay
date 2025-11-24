@@ -563,6 +563,8 @@ export default function OrganizationsList() {
                   userSuperuser={org.userSuperuser}
                   userEmail={org.isUser ? userEmailMap[org.name] : undefined}
                   quota_report={org.quota_report}
+                  selectedOrganization={selectedOrganization}
+                  setSelectedOrganization={setSelectedOrganization}
                 ></OrgTableData>
               </Tr>
             ))}

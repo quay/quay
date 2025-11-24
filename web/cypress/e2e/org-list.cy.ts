@@ -614,4 +614,73 @@ describe('Org List Page', () => {
         cy.get('input[type="checkbox"]').should('not.exist');
       });
   });
+
+  it('Deleting org via gear icon clears it from selection state (PROJQUAY-9843)', () => {
+    // Bug: When an org is deleted via gear icon, it remains in selectedOrganization state
+    // causing bulk delete to attempt deleting already-deleted orgs
+    cy.visit('/organization');
+
+    // Create two test organizations
+    cy.get('#create-organization-button').click();
+    cy.get('#create-org-name-input').type('testorg_delete1');
+    cy.get('#create-org-email-input').type('testorg_delete1@redhat.com');
+    cy.get('#create-org-confirm').click({timeout: 10000});
+    cy.contains('Successfully created organization testorg_delete1', {
+      timeout: 10000,
+    });
+
+    cy.get('#create-organization-button').click();
+    cy.get('#create-org-name-input').type('testorg_delete2');
+    cy.get('#create-org-email-input').type('testorg_delete2@redhat.com');
+    cy.get('#create-org-confirm').click({timeout: 10000});
+    cy.contains('Successfully created organization testorg_delete2', {
+      timeout: 10000,
+    });
+
+    // Filter to show only our test orgs (they may be on page 2 due to alphabetical sorting)
+    cy.get('#orgslist-search-input').type('testorg_delete');
+    cy.contains('1 - 2 of 2');
+
+    // Step 1: Select testorg_delete1 via checkbox
+    cy.contains('a', 'testorg_delete1')
+      .parents('tr')
+      .within(() => {
+        cy.get('input[type="checkbox"]').check();
+      });
+
+    // Step 2: Delete testorg_delete1 via gear icon (NOT bulk delete)
+    cy.get('[data-testid="testorg_delete1-options-toggle"]').click();
+    cy.contains('Delete Organization').click();
+    cy.get('[role="dialog"]').within(() => {
+      cy.get('button:contains("OK")').click();
+    });
+    cy.contains('Successfully deleted organization testorg_delete1', {
+      timeout: 10000,
+    });
+
+    // Step 3: Select testorg_delete2 via checkbox for bulk delete
+    cy.contains('a', 'testorg_delete2')
+      .parents('tr')
+      .within(() => {
+        cy.get('input[type="checkbox"]').check();
+      });
+
+    // Step 4: Open bulk delete modal
+    cy.contains('button', 'Actions').click();
+    cy.contains('Delete').click();
+
+    // Critical verification: bulk delete modal should show ONLY testorg_delete2
+    cy.get('[id="bulk-delete-modal"]').within(() => {
+      cy.contains('td', 'testorg_delete2').should('exist');
+      // Bug fix verification: testorg_delete1 should NOT be in the deletion list
+      cy.contains('td', 'testorg_delete1').should('not.exist');
+
+      // Clean up: complete the deletion
+      cy.get('input[id="delete-confirmation-input"]').type('confirm');
+      cy.get('button:contains("Delete")').click();
+    });
+
+    cy.contains('Successfully deleted', {timeout: 10000});
+    cy.contains('a', 'testorg_delete2').should('not.exist');
+  });
 });
