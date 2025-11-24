@@ -87,6 +87,12 @@ export default function UpdateUser() {
 
   useEffect(() => {
     if (!userLoading && user) {
+      // Skip navigation while updating to prevent race condition
+      // where user query invalidation triggers redirect to /signin
+      if (isUpdating) {
+        return;
+      }
+
       if (user.anonymous) {
         navigate('/signin');
         return;
@@ -105,7 +111,7 @@ export default function UpdateUser() {
         validateUsername(initialUsername);
       }
     }
-  }, [user, userLoading, navigate]);
+  }, [user, userLoading, navigate, isUpdating]);
 
   const hasPrompt = (promptName: string) => {
     return user?.prompts?.includes(promptName) || false;

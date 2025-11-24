@@ -178,4 +178,68 @@ describe('Update User Component', () => {
 
     cy.url().should('not.include', '/updateuser');
   });
+
+  it('does not redirect to signin during username confirmation update', () => {
+    // Regression test for PROJQUAY-9835
+    // Tests that after confirming username via OIDC flow, user is not
+    // redirected back to login page due to race condition during user query invalidation
+
+    let getUserCallCount = 0;
+
+    cy.intercept('GET', '/api/v1/user/', (req) => {
+      getUserCallCount++;
+
+      if (getUserCallCount === 1) {
+        // Initial user with confirm_username prompt
+        req.reply({
+          statusCode: 200,
+          body: {
+            username: 'oidc_auto_generated_user',
+            anonymous: false,
+            prompts: ['confirm_username'],
+          },
+        });
+      } else {
+        // After update - user without prompts
+        req.reply({
+          statusCode: 200,
+          body: {
+            username: 'oidc_confirmed_user',
+            anonymous: false,
+            prompts: [],
+          },
+        });
+      }
+    }).as('getUser');
+
+    cy.intercept('GET', '/api/v1/users/*', {
+      statusCode: 404,
+    }).as('validateUsername');
+
+    cy.intercept('GET', '/api/v1/organization/oidc_confirmed_user', {
+      statusCode: 404,
+    }).as('validateOrg');
+
+    cy.intercept('PUT', '/api/v1/user/', {
+      statusCode: 200,
+      body: {
+        username: 'oidc_confirmed_user',
+        anonymous: false,
+        prompts: [],
+      },
+    }).as('updateUser');
+
+    cy.visit('/updateuser');
+    cy.wait('@getUser');
+
+    // Confirm the auto-generated username or change it
+    cy.get('#username').clear().type('oidc_confirmed_user');
+    cy.wait(['@validateUsername', '@validateOrg']);
+    cy.get('button[type="submit"]').click();
+    cy.wait('@updateUser');
+
+    // Ensure we're redirected to home, not signin
+    cy.url().should('not.include', '/signin');
+    cy.url().should('not.include', '/updateuser');
+  });
 });
