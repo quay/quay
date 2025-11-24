@@ -1204,6 +1204,21 @@ class AssignOauthAppTestCase(EndpointTestCase):
             .get()
         )
 
+    def test_assign_user_nocsrf(self):
+        self.login("devtable", "password")
+        org = get_organization("buynlarge")
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        self.postResponse(
+            "web.assign_user_to_app",
+            with_csrf=False,
+            expected_code=403,
+            client_id=app.client_id,
+            redirect_uri=app.redirect_uri,
+            scope="user:admin",
+            username="randomuser",
+            response_type="token",
+        )
+
     def test_assign_user_unauthenticated(self):
         org = get_organization("buynlarge")
         app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")

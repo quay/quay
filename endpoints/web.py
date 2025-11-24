@@ -990,6 +990,7 @@ def request_authorization_code():
 @tracer.start_as_current_span(
     "quay.endpoints.web.assign_user_to_app", record_exception=True, set_status_on_exception=True
 )
+@csrf_protect()
 def assign_user_to_app():
     response_type = request.args.get("response_type", "code")
     client_id = request.args.get("client_id", None)
