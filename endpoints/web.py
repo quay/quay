@@ -841,6 +841,7 @@ def request_authorization_code():
 @param_required("scope")
 @param_required("username")
 @process_auth_or_cookie
+@csrf_protect()
 def assign_user_to_app():
     response_type = request.args.get("response_type", "code")
     client_id = request.args.get("client_id", None)
