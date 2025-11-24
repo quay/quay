@@ -178,4 +178,95 @@ describe('Update User Component', () => {
 
     cy.url().should('not.include', '/updateuser');
   });
+
+  it('redirects to home page instead of signin after OAuth username confirmation', () => {
+    // Simulate OAuth flow: localStorage contains signin page as redirect URL
+    cy.window().then((win) => {
+      win.localStorage.setItem(
+        'quay.redirectAfterLoad',
+        'http://localhost:9000/signin',
+      );
+    });
+
+    let updateCalled = false;
+
+    // Intercept user fetches - return different responses before and after update
+    cy.intercept('GET', '/api/v1/user/', (req) => {
+      if (updateCalled) {
+        // After update: user has no prompts
+        req.reply({
+          statusCode: 200,
+          body: {
+            username: 'oauth_user_123',
+            anonymous: false,
+            prompts: [],
+          },
+        });
+      } else {
+        // Before update: user has confirm_username prompt
+        req.reply({
+          statusCode: 200,
+          body: {
+            username: 'oauth_user_123',
+            anonymous: false,
+            prompts: ['confirm_username'],
+          },
+        });
+      }
+    }).as('getUser');
+
+    // Mock API calls that home page makes (to prevent 401 redirects)
+    cy.intercept('GET', '/api/v1/user/notifications', {
+      statusCode: 200,
+      body: {notifications: []},
+    }).as('getNotifications');
+
+    cy.intercept('GET', '/api/v1/user/robots*', {
+      statusCode: 200,
+      body: {robots: []},
+    }).as('getRobots');
+
+    cy.intercept('GET', '/api/v1/repository*', {
+      statusCode: 200,
+      body: {repositories: []},
+    }).as('getRepositories');
+
+    cy.intercept('GET', '/api/v1/users/*', {
+      statusCode: 404,
+      body: {username: 'oauth_user_123'},
+    }).as('validateUsername');
+    cy.intercept('GET', '/api/v1/organization/oauth_user_123', {
+      statusCode: 404,
+    }).as('validateOrg');
+
+    cy.intercept('PUT', '/api/v1/user/', (req) => {
+      updateCalled = true;
+      req.reply({
+        statusCode: 200,
+        body: {
+          username: 'oauth_user_123',
+          anonymous: false,
+          prompts: [],
+        },
+      });
+    }).as('updateUser');
+
+    cy.visit('/updateuser');
+    cy.wait('@getUser');
+
+    cy.get('button[type="submit"]').click();
+    cy.wait('@updateUser');
+
+    // Should NOT redirect back to signin (the bug we're fixing)
+    cy.url().should('not.include', '/signin');
+    // Should NOT be on updateuser page anymore
+    cy.url().should('not.include', '/updateuser');
+    // Should be on an authenticated page (home or organization page)
+    cy.url().should('match', /\/(organization)?$/);
+
+    // Verify localStorage was cleaned up
+    cy.window().then((win) => {
+      expect(win.localStorage.getItem('quay.redirectAfterLoad')).to.be.null;
+    });
+  });
 });
