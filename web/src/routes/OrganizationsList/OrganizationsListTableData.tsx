@@ -44,6 +44,8 @@ function RepoLastModifiedDate(props: RepoLastModifiedDateProps) {
 interface OrgTableDataProps extends OrganizationsTableItem {
   userEmail?: string;
   quota_report?: import('src/libs/quotaUtils').IQuotaReport;
+  selectedOrganization?: OrganizationsTableItem[];
+  setSelectedOrganization?: (orgs: OrganizationsTableItem[]) => void;
 }
 
 // Get and assemble data from multiple endpoints to show in Org table
@@ -224,6 +226,8 @@ export default function OrgTableData(props: OrgTableDataProps) {
             isUser={props.isUser}
             userEnabled={props.userEnabled}
             userSuperuser={props.userSuperuser}
+            selectedOrganization={props.selectedOrganization}
+            setSelectedOrganization={props.setSelectedOrganization}
           />
         </Td>
       )}
