@@ -90,7 +90,7 @@ objects:
   metadata:
     name: ${NAME}-https-lb
     annotations:
-      alb.ingress.kubernetes.io/healthcheck-protocol: {HTTPS}
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
   spec:
     ports:
     - name: https
