@@ -3,11 +3,14 @@ import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useDeleteUser} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {isFreshLoginError} from 'src/utils/freshLoginErrors';
+import {OrganizationsTableItem} from '../OrganizationsList';
 
 interface DeleteUserModalProps {
   isOpen: boolean;
   onClose: () => void;
   username: string;
+  selectedOrganization?: OrganizationsTableItem[];
+  setSelectedOrganization?: (orgs: OrganizationsTableItem[]) => void;
 }
 
 export default function DeleteUserModal(props: DeleteUserModalProps) {
@@ -20,6 +23,14 @@ export default function DeleteUserModal(props: DeleteUserModalProps) {
         variant: AlertVariant.Success,
         title: `Successfully deleted user ${props.username}`,
       });
+      // Remove the deleted user from selectedOrganization state
+      if (props.setSelectedOrganization && props.selectedOrganization) {
+        props.setSelectedOrganization(
+          props.selectedOrganization.filter(
+            (org) => org.name !== props.username,
+          ),
+        );
+      }
       handleClose();
     },
     onError: (err) => {

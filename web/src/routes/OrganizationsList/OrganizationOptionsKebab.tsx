@@ -279,6 +279,8 @@ export default function OrganizationOptionsKebab(
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         organizationName={props.name}
+        selectedOrganization={props.selectedOrganization}
+        setSelectedOrganization={props.setSelectedOrganization}
       />
       <TakeOwnershipModal
         isOpen={isTakeOwnershipModalOpen}
@@ -307,6 +309,8 @@ export default function OrganizationOptionsKebab(
         isOpen={isDeleteUserModalOpen}
         onClose={() => setIsDeleteUserModalOpen(false)}
         username={props.name}
+        selectedOrganization={props.selectedOrganization}
+        setSelectedOrganization={props.setSelectedOrganization}
       />
       <ToggleUserStatusModal
         isOpen={isToggleUserStatusModalOpen}
@@ -334,4 +338,8 @@ interface OrganizationOptionsKebabProps {
   isUser: boolean;
   userEnabled?: boolean; // Only used when isUser is true
   userSuperuser?: boolean; // Only used when isUser is true
+  selectedOrganization?: import('./OrganizationsList').OrganizationsTableItem[];
+  setSelectedOrganization?: (
+    orgs: import('./OrganizationsList').OrganizationsTableItem[],
+  ) => void;
 }
