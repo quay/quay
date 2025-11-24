@@ -107,13 +107,15 @@ class TestPullStatistics:
         rows_affected = bulk_upsert_tag_statistics(tag_updates)
         assert rows_affected == 1
 
-        # Verify record was updated (count should be incremented)
+        # Verify record was updated (count should be incremented atomically)
         updated_stats = TagPullStatistics.get(
             TagPullStatistics.repository == self.repo_id, TagPullStatistics.tag_name == "latest"
         )
-        assert updated_stats.tag_pull_count == 5  # max(5, 3) = 5
+        assert updated_stats.tag_pull_count == 8  # 5 + 3 = 8 (atomic SQL addition, not max)
         assert updated_stats.current_manifest_digest == "sha256:new456"
-        assert updated_stats.last_tag_pull_date == datetime(2024, 1, 3, 12, 0, 0)
+        assert updated_stats.last_tag_pull_date == datetime(
+            2024, 1, 3, 12, 0, 0
+        )  # SQL CASE keeps latest
 
     def test_bulk_upsert_manifest_statistics_new_records(self, initialized_db):
         """Test inserting new manifest pull statistics records."""
@@ -173,13 +175,15 @@ class TestPullStatistics:
         rows_affected = bulk_upsert_manifest_statistics(manifest_updates)
         assert rows_affected == 1
 
-        # Verify record was updated (count should be incremented)
+        # Verify record was updated (count should be incremented atomically)
         updated_stats = ManifestPullStatistics.get(
             ManifestPullStatistics.repository == self.repo_id,
             ManifestPullStatistics.manifest_digest == "sha256:abc123",
         )
-        assert updated_stats.manifest_pull_count == 10  # max(10, 5) = 10
-        assert updated_stats.last_manifest_pull_date == datetime(2024, 1, 3, 12, 0, 0)
+        assert updated_stats.manifest_pull_count == 15  # 10 + 5 = 15 (atomic SQL addition, not max)
+        assert updated_stats.last_manifest_pull_date == datetime(
+            2024, 1, 3, 12, 0, 0
+        )  # SQL CASE keeps latest
 
     def test_get_tag_pull_statistics_existing(self, initialized_db):
         """Test retrieving existing tag pull statistics."""
@@ -236,7 +240,7 @@ class TestPullStatistics:
         assert rows_affected == 0
 
     def test_concurrent_updates_tag_statistics(self, initialized_db):
-        """Test concurrent updates to same tag statistics."""
+        """Test sequential updates to same tag statistics - atomic SQL ensures correct accumulation."""
         # Create initial record
         TagPullStatistics.create(
             repository=self.repo,
@@ -271,13 +275,15 @@ class TestPullStatistics:
         bulk_upsert_tag_statistics(updates1)
         bulk_upsert_tag_statistics(updates2)
 
-        # Verify final state
+        # Verify final state - atomic SQL updates ensure correct accumulation
         final_stats = TagPullStatistics.get(
             TagPullStatistics.repository == self.repo_id, TagPullStatistics.tag_name == "concurrent"
         )
-        assert final_stats.tag_pull_count == 10  # max(max(10, 5), 3) = 10
+        assert final_stats.tag_pull_count == 18  # 10 + 5 + 3 = 18 (atomic SQL addition)
         assert final_stats.current_manifest_digest == "sha256:update2"  # Latest update
-        assert final_stats.last_tag_pull_date == datetime(2024, 1, 3, 12, 0, 0)  # Latest timestamp
+        assert final_stats.last_tag_pull_date == datetime(
+            2024, 1, 3, 12, 0, 0
+        )  # SQL CASE keeps latest timestamp
 
     def test_unique_constraints_tag_statistics(self, initialized_db):
         """Test that unique constraints are enforced for tag statistics."""
@@ -420,20 +426,24 @@ class TestPullStatistics:
         rows_affected = bulk_upsert_tag_statistics(tag_updates)
         assert rows_affected == 3
 
-        # Verify updated existing records
+        # Verify updated existing records - atomic SQL updates ensure correct values
         existing1 = TagPullStatistics.get(
             TagPullStatistics.repository == self.repo_id, TagPullStatistics.tag_name == "existing1"
         )
-        assert existing1.tag_pull_count == 10  # max(10, 5) = 10
+        assert existing1.tag_pull_count == 15  # 10 + 5 = 15 (atomic SQL addition)
         assert existing1.current_manifest_digest == "sha256:new1"
-        assert existing1.last_tag_pull_date == datetime(2024, 1, 5, 12, 0, 0)
+        assert existing1.last_tag_pull_date == datetime(
+            2024, 1, 5, 12, 0, 0
+        )  # SQL CASE keeps latest (Jan 5 > Jan 1)
 
         existing2 = TagPullStatistics.get(
             TagPullStatistics.repository == self.repo_id, TagPullStatistics.tag_name == "existing2"
         )
-        assert existing2.tag_pull_count == 20  # max(20, 7) = 20
+        assert existing2.tag_pull_count == 27  # 20 + 7 = 27 (atomic SQL addition)
         assert existing2.current_manifest_digest == "sha256:new2"
-        assert existing2.last_tag_pull_date == datetime(2024, 1, 4, 12, 0, 0)
+        assert existing2.last_tag_pull_date == datetime(
+            2024, 1, 4, 12, 0, 0
+        )  # SQL CASE keeps latest (Jan 4 > Jan 2)
 
         # Verify new record was created
         new_record = TagPullStatistics.get(
@@ -510,7 +520,7 @@ class TestPullStatistics:
         assert "Invalid tag update data" in str(exc_info.value)
 
     def test_bulk_upsert_maintains_last_pull_date_logic(self, initialized_db):
-        """Test that bulk upsert properly handles last_pull_date max logic."""
+        """Test that bulk upsert properly handles last_pull_date using atomic SQL CASE to keep latest timestamp."""
         # Create existing record with later timestamp
         TagPullStatistics.create(
             repository=self.repo,
@@ -533,13 +543,13 @@ class TestPullStatistics:
 
         bulk_upsert_tag_statistics(tag_updates)
 
-        # Verify the later timestamp is preserved (max logic)
+        # Verify the later timestamp is preserved using atomic SQL CASE (max for timestamp, addition for count)
         updated = TagPullStatistics.get(
             TagPullStatistics.repository == self.repo_id,
             TagPullStatistics.tag_name == "timestamp_test",
         )
-        assert updated.tag_pull_count == 10  # max(10, 5) = 10
+        assert updated.tag_pull_count == 15  # 10 + 5 = 15 (atomic SQL addition for count)
         assert updated.last_tag_pull_date == datetime(
             2024, 1, 10, 12, 0, 0
-        )  # Should keep later date
+        )  # SQL CASE keeps later date atomically (max for timestamp)
         assert updated.current_manifest_digest == "sha256:new"  # But update manifest
