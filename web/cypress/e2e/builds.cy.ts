@@ -1029,6 +1029,47 @@ describe('Repository Builds', () => {
     });
     cy.contains('Build started with ID build001');
   });
+
+  it('Sorts builds by date started correctly', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      builds: [
+        {
+          id: 'build1',
+          phase: 'complete',
+          started: 'Mon, 04 Nov 2024 14:21:00 -0000',
+          tags: [],
+        },
+        {
+          id: 'build2',
+          phase: 'complete',
+          started: 'Tue, 17 Sep 2024 10:15:00 -0000',
+          tags: [],
+        },
+        {
+          id: 'build3',
+          phase: 'complete',
+          started: 'Tue, 17 Sep 2024 16:30:00 -0000',
+          tags: [],
+        },
+      ],
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      triggers: [],
+    }).as('getBuildTriggers');
+
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    // Default sort should be descending (newest first)
+    cy.get('tbody tr').eq(0).should('contain', 'build1');
+    cy.get('tbody tr').eq(1).should('contain', 'build3');
+    cy.get('tbody tr').eq(2).should('contain', 'build2');
+
+    // Click to sort ascending (oldest first)
+    cy.get('th').contains('Date started').click();
+    cy.get('tbody tr').eq(0).should('contain', 'build2');
+    cy.get('tbody tr').eq(1).should('contain', 'build3');
+    cy.get('tbody tr').eq(2).should('contain', 'build1');
+  });
 });
 
 describe('Repository Builds - Create Custom Git Build Triggers', () => {
