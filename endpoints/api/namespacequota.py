@@ -6,7 +6,7 @@ from flask import request
 import features
 from auth import scopes
 from auth.auth_context import get_authenticated_user
-from auth.permissions import OrganizationMemberPermission, SuperUserPermission
+from auth.permissions import OrganizationMemberPermission
 from data import model
 from data.model import config
 from endpoints.api import (
@@ -131,7 +131,7 @@ class OrganizationQuotaList(ApiResource):
         """
         Create a new organization quota.
         """
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota_data = request.get_json()
@@ -223,7 +223,7 @@ class OrganizationQuota(ApiResource):
     @require_scope(scopes.SUPERUSER)
     @validate_json_request("UpdateOrgQuota")
     def put(self, orgname, quota_id):
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota_data = request.get_json()
@@ -252,7 +252,7 @@ class OrganizationQuota(ApiResource):
     @nickname("deleteOrganizationQuota")
     @require_scope(scopes.SUPERUSER)
     def delete(self, orgname, quota_id):
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
@@ -305,7 +305,7 @@ class OrganizationQuotaLimitList(ApiResource):
     @validate_json_request("NewOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def post(self, orgname, quota_id):
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -380,7 +380,7 @@ class OrganizationQuotaLimit(ApiResource):
     @validate_json_request("UpdateOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def put(self, orgname, quota_id, limit_id):
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -402,7 +402,7 @@ class OrganizationQuotaLimit(ApiResource):
     @nickname("deleteOrganizationQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def delete(self, orgname, quota_id, limit_id):
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
