@@ -40,6 +40,7 @@ import SystemStatusBanner from 'src/components/SystemStatusBanner';
 import {GlobalMessages} from 'src/components/GlobalMessages';
 import {LoadingPage} from 'src/components/LoadingPage';
 import {useUI} from 'src/contexts/UIContext';
+import {useExternalScripts} from 'src/hooks/UseExternalScripts';
 
 // Lazy load route components for better performance
 const OrganizationsList = lazy(
@@ -226,6 +227,9 @@ export function StandaloneMain() {
   const {loading, error} = useCurrentUser();
   const location = useLocation();
   const {clearAllAlerts} = useUI();
+
+  // Load external scripts (Stripe, StatusPage) only when BILLING feature is enabled (PROJQUAY-9803)
+  useExternalScripts();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
