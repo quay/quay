@@ -3,11 +3,14 @@ import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useDeleteSingleOrganization} from 'src/hooks/UseOrganizationActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {isFreshLoginError} from 'src/utils/freshLoginErrors';
+import {OrganizationsTableItem} from '../OrganizationsList';
 
 interface DeleteOrganizationModalProps {
   isOpen: boolean;
   onClose: () => void;
   organizationName: string;
+  selectedOrganization?: OrganizationsTableItem[];
+  setSelectedOrganization?: (orgs: OrganizationsTableItem[]) => void;
 }
 
 export default function DeleteOrganizationModal(
@@ -22,6 +25,14 @@ export default function DeleteOrganizationModal(
         variant: AlertVariant.Success,
         title: `Successfully deleted organization ${props.organizationName}`,
       });
+      // Remove the deleted organization from selectedOrganization state
+      if (props.setSelectedOrganization && props.selectedOrganization) {
+        props.setSelectedOrganization(
+          props.selectedOrganization.filter(
+            (org) => org.name !== props.organizationName,
+          ),
+        );
+      }
       handleClose();
     },
     onError: (err) => {
