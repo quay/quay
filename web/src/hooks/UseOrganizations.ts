@@ -11,6 +11,7 @@ import {
   bulkDeleteOrganizations,
   createOrg,
   fetchOrgsAsSuperUser,
+  IAvatar,
 } from 'src/resources/OrganizationResource';
 import {
   fetchUsersAsSuperUser,
@@ -26,6 +27,7 @@ export type OrganizationDetail = {
   userEnabled?: boolean;
   userSuperuser?: boolean;
   quota_report?: IQuotaReport;
+  avatar?: IAvatar;
 };
 
 export function useOrganizations() {
@@ -95,6 +97,7 @@ export function useOrganizations() {
         name: orgname,
         isUser: false,
         quota_report: orgObj?.quota_report,
+        avatar: orgObj?.avatar,
       });
     }
     for (const username of usernames) {
@@ -107,6 +110,7 @@ export function useOrganizations() {
         userEnabled: userObj?.enabled,
         userSuperuser: userObj?.super_user,
         quota_report: userObj?.quota_report,
+        avatar: userObj?.avatar,
       });
     }
 
