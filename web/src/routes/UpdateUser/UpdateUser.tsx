@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   Button,
   Form,
@@ -30,6 +30,7 @@ export default function UpdateUser() {
   const navigate = useNavigate();
   const {user, loading: userLoading} = useCurrentUser();
   const [isUpdating, setIsUpdating] = useState(false);
+  const isNavigatingRef = useRef(false);
   const [username, setUsername] = useState('');
   const [metadata, setMetadata] = useState({
     given_name: '',
@@ -47,6 +48,10 @@ export default function UpdateUser() {
       if (updatedUser?.prompts?.length) {
         setIsUpdating(false);
       } else {
+        // Set ref to prevent useEffect from running during navigation
+        // This prevents race condition where query invalidation triggers redirect
+        isNavigatingRef.current = true;
+
         // Check for stored redirect URL (set by external login flow)
         const redirectUrl = localStorage.getItem('quay.redirectAfterLoad');
         localStorage.removeItem('quay.redirectAfterLoad');
@@ -87,9 +92,9 @@ export default function UpdateUser() {
 
   useEffect(() => {
     if (!userLoading && user) {
-      // Skip navigation while updating to prevent race condition
-      // where user query invalidation triggers redirect to /signin
-      if (isUpdating) {
+      // Skip navigation while updating or if already navigating
+      // to prevent race condition where user query invalidation triggers redirect
+      if (isUpdating || isNavigatingRef.current) {
         return;
       }
 
