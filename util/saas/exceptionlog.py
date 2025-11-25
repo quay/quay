@@ -18,7 +18,6 @@ IMPORTANT_PATTERNS = [
     "mysql",
     "redis",
     "ldap",
-    "jwt",
 ]
 
 NETWORK_PATTERNS = [
@@ -71,15 +70,11 @@ NOISY_INFRASTRUCTURE_PATTERNS = [
     "vulnerability scanner",
     "indexer api",
     "connection error when trying to connect",
-    "connection aborted",
-    "connection timeout",
-    "request timeout",
     "errno 111",
     "connectionrefusederror",
     "service unavailable",
     "endpoint not available",
     "security scanner",
-    "vulnerability scanner",
 ]
 
 BROWSER_ERROR_PATTERNS = [
