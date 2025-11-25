@@ -533,8 +533,7 @@ export default function OrganizationsList() {
               <Th>{ColumnNames.membersCount}</Th>
               <Th>{ColumnNames.robotsCount}</Th>
               <Th>{ColumnNames.lastModified}</Th>
-              {isSuperUser &&
-                quayConfig?.features?.QUOTA_MANAGEMENT &&
+              {quayConfig?.features?.QUOTA_MANAGEMENT &&
                 quayConfig?.features?.EDIT_QUOTA && <Th>{ColumnNames.size}</Th>}
               {isSuperUser && !isReadOnlySuperUser && (
                 <Th>{ColumnNames.options}</Th>
