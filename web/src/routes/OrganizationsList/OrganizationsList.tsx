@@ -565,6 +565,7 @@ export default function OrganizationsList() {
                   quota_report={org.quota_report}
                   selectedOrganization={selectedOrganization}
                   setSelectedOrganization={setSelectedOrganization}
+                  avatar={org.avatar}
                 ></OrgTableData>
               </Tr>
             ))}

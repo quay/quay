@@ -2,7 +2,7 @@ import {Td} from '@patternfly/react-table';
 import {Skeleton, Flex, FlexItem, Label} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
-import {fetchOrg} from 'src/resources/OrganizationResource';
+import {fetchOrg, IAvatar} from 'src/resources/OrganizationResource';
 import Avatar from 'src/components/Avatar';
 import {IRepository} from 'src/resources/RepositoryResource';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
@@ -46,6 +46,7 @@ interface OrgTableDataProps extends OrganizationsTableItem {
   quota_report?: import('src/libs/quotaUtils').IQuotaReport;
   selectedOrganization?: OrganizationsTableItem[];
   setSelectedOrganization?: (orgs: OrganizationsTableItem[]) => void;
+  avatar?: IAvatar;
 }
 
 // Get and assemble data from multiple endpoints to show in Org table
@@ -121,18 +122,10 @@ export default function OrgTableData(props: OrgTableDataProps) {
           justifyContent={{default: 'justifyContentSpaceBetween'}}
         >
           <Flex alignItems={{default: 'alignItemsCenter'}}>
-            {/* Show avatar for organizations OR current user */}
-            {((props.isUser &&
-              currentUser?.username === props.name &&
-              currentUser?.avatar) ||
-              (!props.isUser && organization?.avatar)) && (
+            {/* Show avatar for all entries that have avatar data */}
+            {props.avatar && (
               <FlexItem spacer={{default: 'spacerSm'}}>
-                <Avatar
-                  avatar={
-                    props.isUser ? currentUser?.avatar : organization?.avatar
-                  }
-                  size="sm"
-                />
+                <Avatar avatar={props.avatar} size="sm" />
               </FlexItem>
             )}
             <FlexItem>
