@@ -411,3 +411,65 @@ class TestSentryBeforeSendFilter:
         }
         result = _sentry_before_send_ignore_known(event, {})
         assert result is None
+
+    def test_filter_4xx_error_prefix(self):
+        """Events with 'Error 4xx' pattern should be filtered."""
+        event = {"logentry": {"formatted": "Error 404: Resource not found"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_4xx_status_prefix(self):
+        """Events with 'Status 4xx' pattern should be filtered."""
+        event = {"logentry": {"formatted": "Status 401: Unauthorized access"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_4xx_http_prefix(self):
+        """Events with 'HTTP 4xx' pattern should be filtered."""
+        event = {"logentry": {"formatted": "HTTP 403: Forbidden"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_4xx_with_colon(self):
+        """Events with ' 4xx:' pattern should be filtered."""
+        event = {"logentry": {"formatted": "Request failed with 429: Too Many Requests"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_various_4xx_codes(self):
+        """Various 4xx status codes should be filtered."""
+        codes = [400, 401, 403, 404, 405, 409, 410, 418, 422, 429, 451]
+        for code in codes:
+            event = {"logentry": {"formatted": f"Error {code}: Client error"}}
+            result = _sentry_before_send_ignore_known(event, {})
+            assert result is None, f"Status code {code} should be filtered"
+
+    def test_keep_non_contextual_4xx_numbers(self):
+        """Numbers like 4001 or 400473 without HTTP context should NOT be filtered."""
+        # Port number
+        event = {"logentry": {"formatted": "Failed to connect to port 4001"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+        # Error code without context
+        event = {"logentry": {"formatted": "Database error: 400473"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_filter_status_code_tag_non_browser(self):
+        """Events with status_code tag in 4xx range should be filtered for all requests."""
+        event = {
+            "logentry": {"formatted": "Request failed"},
+            "tags": {"status_code": 404},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_keep_status_code_tag_5xx(self):
+        """Events with status_code tag in 5xx range should NOT be filtered."""
+        event = {
+            "logentry": {"formatted": "Request failed"},
+            "tags": {"status_code": 500},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
