@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Any, Optional
 
 import sentry_sdk
@@ -57,11 +58,12 @@ CLIENT_ERROR_PATTERNS = [
     "unsupported media type",
     "requested range not satisfiable",
     "expectation failed",
-    "400",
-    "401",
-    "403",
-    "404",
 ]
+
+# Regex pattern for HTTP 4xx status codes in context
+# Matches: "Error 400", "Status 401", "HTTP 403", " 404:", etc.
+# Avoids: "error: 400473", "port 4001", etc.
+HTTP_4XX_PATTERN = re.compile(r"(error|status|http)\s+4\d{2}|\s4\d{2}:", re.IGNORECASE)
 
 NOISY_INFRASTRUCTURE_PATTERNS = [
     "security scanner endpoint",
@@ -186,6 +188,22 @@ def _should_drop_by_patterns(texts: set[str], filter_patterns: list[str]) -> boo
     return False
 
 
+def _matches_http_4xx_pattern(texts: set[str]) -> bool:
+    """
+    Check if any text matches HTTP 4xx status code pattern.
+
+    Args:
+        texts: Set of text strings to search
+
+    Returns:
+        True if 4xx pattern found (drop event), False otherwise
+    """
+    for text in texts:
+        if HTTP_4XX_PATTERN.search(text):
+            return True
+    return False
+
+
 def _sentry_before_send_ignore_known(ex_event: Any, hint: Any) -> Optional[Any]:
     """
     Drop error events for expected client-side errors that we don't want in Sentry.
@@ -238,28 +256,19 @@ def _sentry_before_send_ignore_known(ex_event: Any, hint: Any) -> Optional[Any]:
             if _should_drop_by_patterns(texts, CLIENT_ERROR_PATTERNS):
                 return None
 
+            # Check for HTTP 4xx status codes in error messages (regex matching)
+            if _matches_http_4xx_pattern(texts):
+                return None
+
             # Check for noisy infrastructure errors
             if _should_drop_by_patterns(texts, NOISY_INFRASTRUCTURE_PATTERNS):
                 return None
 
-        # Check for HTTP client errors (4xx status codes) from browser requests
-        if "request" in ex_event:
-            request_data = ex_event.get("request", {})
-            if "headers" in request_data:
-                # Check if this is a client-side request
-                headers = request_data.get("headers", {})
-                user_agent = headers.get("User-Agent", "").lower()
-
-                # Filter out browser requests with 4xx errors
-                if any(
-                    browser in user_agent
-                    for browser in ["mozilla", "chrome", "safari", "firefox", "edge"]
-                ):
-                    # Check for 4xx status codes in the event
-                    if "tags" in ex_event:
-                        status_code = ex_event.get("tags", {}).get("status_code")
-                        if status_code and 400 <= status_code < 500:
-                            return None
+        # Check for HTTP 4xx status codes in event tags (for all requests)
+        if "tags" in ex_event:
+            status_code = ex_event.get("tags", {}).get("status_code")
+            if status_code and 400 <= status_code < 500:
+                return None
 
         # Check for browser-specific errors
         if "platform" in ex_event:
