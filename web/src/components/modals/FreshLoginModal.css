@@ -1,0 +1,29 @@
+/*
+ * Ensure FreshLoginModal (session timeout/password re-entry) always appears
+ * on top of other modals to prevent it from being hidden behind other dialogs.
+ *
+ * PROJQUAY-9844: The pop-up prompting you to re-enter your password was
+ * hidden beneath other pop-ups.
+ *
+ * PatternFly default modal z-index values:
+ * - Backdrop: 800
+ * - Modal content: 900
+ *
+ * We use higher values to ensure FreshLoginModal stacks above other modals:
+ * - Backdrop: 1100
+ * - Modal content: 1200
+ */
+
+.fresh-login-modal.pf-v5-c-modal-box {
+  z-index: 1200;
+}
+
+/* Target the backdrop specifically for this modal */
+.pf-v5-c-backdrop:has(+ .fresh-login-modal) {
+  z-index: 1100;
+}
+
+/* Alternative selector for when the modal is inside the backdrop */
+.pf-v5-c-backdrop:has(.fresh-login-modal) {
+  z-index: 1100;
+}
