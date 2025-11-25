@@ -4,7 +4,17 @@ import {formatDate} from '../../src/libs/utils';
 describe('Default permissions page', () => {
   beforeEach(() => {
     cy.exec('npm run quay:seed');
-    cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
+    cy.fixture('config.json').then((config) => {
+      config.features.BILLING = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Intercept external StatusPage script to prevent actual network requests
+    cy.intercept('GET', '**/cdn.statuspage.io/**', {
+      statusCode: 200,
+      body: '// Mock StatusPage script',
+    }).as('getStatuspageScript');
+
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
@@ -13,12 +23,26 @@ describe('Default permissions page', () => {
   });
 
   it('Displays incidents and maintanences', () => {
-    cy.intercept(
-      'GET',
-      'https://dn6mqn7xvzz3.statuspage.io/api/v2/summary.json',
-      {fixture: 'registry-status.json'},
-    );
-    cy.visit('/organization/testorg');
+    cy.fixture('registry-status.json').then((statusData) => {
+      cy.visit('/organization/testorg', {
+        onBeforeLoad(win) {
+          // Mock window.StatusPage library API
+          // The intercept above prevents the real script from loading, but we need to
+          // simulate what that script would define to test the useServiceStatus hook
+          (win as any).StatusPage = {
+            page: class {
+              summary(callbacks: {success: (data: any) => void}) {
+                // Async callback to simulate library behavior
+                setTimeout(() => {
+                  callbacks.success(statusData);
+                }, 0);
+              }
+            },
+          };
+        },
+      });
+    });
+    cy.wait('@getConfig');
     cy.contains('incident1').should(
       'have.attr',
       'href',
@@ -47,13 +71,25 @@ describe('Default permissions page', () => {
     cy.fixture('registry-status.json').then((statusFixture) => {
       statusFixture.incidents = [];
       statusFixture.scheduled_maintenances = [];
-      cy.intercept(
-        'GET',
-        'https://dn6mqn7xvzz3.statuspage.io/api/v2/summary.json',
-        statusFixture,
-      );
+      cy.visit('/organization/testorg', {
+        onBeforeLoad(win) {
+          // Mock window.StatusPage library API
+          // The intercept above prevents the real script from loading, but we need to
+          // simulate what that script would define to test the useServiceStatus hook
+          (win as any).StatusPage = {
+            page: class {
+              summary(callbacks: {success: (data: any) => void}) {
+                // Async callback to simulate library behavior
+                setTimeout(() => {
+                  callbacks.success(statusFixture);
+                }, 0);
+              }
+            },
+          };
+        },
+      });
     });
-    cy.visit('/organization/testorg');
+    cy.wait('@getConfig');
     cy.get('#registry-status').should('not.exist');
   });
 });
