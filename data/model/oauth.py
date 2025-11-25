@@ -1,7 +1,8 @@
 import json
 import logging
+import posixpath
 from datetime import datetime, timedelta
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from flask import url_for
 
@@ -91,29 +92,24 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
             if provided.username or provided.password:
                 return False
 
-            # Validate path prefix match
-            configured_path = (
-                configured.path.rstrip("/") if configured.path != "/" else configured.path
-            )
-            provided_path = provided.path
+            # Decode path to catch encoded traversal attacks (e.g., %2e%2e)
+            provided_path_decoded = unquote(provided.path)
 
-            if configured_path == "" or configured_path == "/":
-                configured_path = "/"
-                if not provided_path.startswith("/"):
-                    return False
-            else:
-                if not configured_path.endswith("/"):
-                    configured_path_with_slash = configured_path + "/"
-                    if provided_path != configured_path and not provided_path.startswith(
-                        configured_path_with_slash
-                    ):
-                        return False
-                else:
-                    if not provided_path.startswith(configured_path):
-                        return False
+            # Block path traversal attempts (both encoded and literal)
+            if ".." in provided_path_decoded:
+                return False
 
-            # Block path traversal attempts
-            if ".." in provided_path:
+            # Block @ in path (can be used for credential injection)
+            if "@" in provided.path:
+                return False
+
+            # Strict validation: path prefix must match
+            if not provided.path.startswith(configured.path):
+                return False
+
+            # Block percent-encoding after prefix (prevents double-encoding attacks)
+            path_after_prefix = provided.path[len(configured.path) :]
+            if "%" in path_after_prefix:
                 return False
 
             return True
