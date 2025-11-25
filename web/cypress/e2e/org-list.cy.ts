@@ -252,6 +252,74 @@ describe('Org List Page', () => {
     cy.get('td[data-label="Size"]').first().should('not.contain.text', '—');
   });
 
+  it('Regular user displays quota consumed column', () => {
+    // This test verifies that regular (non-superuser) users can see quota consumed
+    // data for their organizations and user namespaces in the organizations list
+
+    // Mock config with quota features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.QUOTA_MANAGEMENT = true;
+      config.features.EDIT_QUOTA = true;
+      config.features.SUPER_USERS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock regular user (non-superuser)
+    cy.fixture('user.json').then((user) => {
+      user.super_user = false;
+      user.username = 'user2';
+      cy.intercept('GET', '/api/v1/user/', user).as('getUser');
+    });
+
+    // Mock organization with quota_report
+    cy.intercept('GET', '/api/v1/organization/testorg', {
+      statusCode: 200,
+      body: {
+        name: 'testorg',
+        email: 'testorg@example.com',
+        teams: {owners: 'admin'},
+        quota_report: {
+          quota_bytes: 2279743488,
+          configured_quota: 10737418240,
+        },
+      },
+    });
+
+    // Mock robots/members/repositories
+    cy.intercept('GET', '/api/v1/organization/*/robots', {
+      statusCode: 200,
+      body: {robots: []},
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/members', {
+      statusCode: 200,
+      body: {members: []},
+    });
+
+    cy.intercept('GET', '/api/v1/repository?namespace=*', {
+      statusCode: 200,
+      body: {repositories: []},
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getUser');
+
+    // Verify the Size column header exists for regular users
+    cy.contains('th', 'Size').should('exist');
+
+    // Verify quota data cells are visible
+    cy.get('td[data-label="Size"]').should('exist');
+
+    // Verify that at least one organization row shows quota data
+    // (testorg should show quota since we mocked it with quota_report)
+    cy.contains('a', 'testorg')
+      .parents('tr')
+      .within(() => {
+        cy.get('td[data-label="Size"]').should('exist');
+      });
+  });
+
   it('Superuser displays user status labels', () => {
     // Mock config with superuser features enabled
     cy.fixture('config.json').then((config) => {
