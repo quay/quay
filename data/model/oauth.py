@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
 from flask import url_for
 
@@ -64,18 +65,58 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
             url_for("web.oauth_local_handler"),
         )
 
+        # Exact match for internal redirect
         if redirect_uri == internal_redirect_url:
             return True
 
         try:
             oauth_app = OAuthApplication.get(client_id=client_id)
-            if (
-                oauth_app.redirect_uri
-                and redirect_uri
-                and redirect_uri.startswith(oauth_app.redirect_uri)
-            ):
-                return True
-            return False
+
+            if not oauth_app.redirect_uri or not redirect_uri:
+                return False
+
+            # Parse URLs for secure validation
+            configured = urlparse(oauth_app.redirect_uri)
+            provided = urlparse(redirect_uri)
+
+            # Scheme must match exactly (prevent protocol downgrade)
+            if configured.scheme != provided.scheme:
+                return False
+
+            # Netloc must match exactly (prevent subdomain takeover)
+            if configured.netloc != provided.netloc:
+                return False
+
+            # Block username/password in URI (security risk)
+            if provided.username or provided.password:
+                return False
+
+            # Validate path prefix match
+            configured_path = (
+                configured.path.rstrip("/") if configured.path != "/" else configured.path
+            )
+            provided_path = provided.path
+
+            if configured_path == "" or configured_path == "/":
+                configured_path = "/"
+                if not provided_path.startswith("/"):
+                    return False
+            else:
+                if not configured_path.endswith("/"):
+                    configured_path_with_slash = configured_path + "/"
+                    if provided_path != configured_path and not provided_path.startswith(
+                        configured_path_with_slash
+                    ):
+                        return False
+                else:
+                    if not provided_path.startswith(configured_path):
+                        return False
+
+            # Block path traversal attempts
+            if ".." in provided_path:
+                return False
+
+            return True
         except OAuthApplication.DoesNotExist:
             return False
 
