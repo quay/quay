@@ -471,7 +471,7 @@ export interface ISuperuserBuildLog {
 export interface ISuperuserBuild {
   id: string;
   uuid: string;
-  status: string;
+  status: any;
   started: string;
   completed?: string;
   logs: ISuperuserBuildLog[];
