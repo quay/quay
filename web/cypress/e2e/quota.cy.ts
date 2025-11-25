@@ -138,6 +138,9 @@ describe('Quota Management', () => {
       // Apply and Remove buttons should NOT exist
       cy.get('[data-testid="apply-quota-button"]').should('not.exist');
       cy.get('[data-testid="remove-quota-button"]').should('not.exist');
+
+      // Add Limit form should not be visible in organization view
+      cy.get('[data-testid="add-limit-form"]').should('not.exist');
     });
   });
 
@@ -214,10 +217,8 @@ describe('Quota Management', () => {
       cy.get('[data-testid="apply-quota-button"]').should('not.exist');
       cy.get('[data-testid="remove-quota-button"]').should('not.exist');
 
-      // Quota policy fields should also be disabled
-      cy.get('[data-testid="new-limit-type-select"]').should('be.disabled');
-      cy.get('[data-testid="new-limit-percent-input"]').should('be.disabled');
-      cy.get('[data-testid="add-limit-button"]').should('be.disabled');
+      // Add Limit form should not be visible in organization view (even for superusers)
+      cy.get('[data-testid="add-limit-form"]').should('not.exist');
     });
   });
 
@@ -810,6 +811,9 @@ describe('Quota Management', () => {
       cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
       cy.wait('@getQuotaNoLimits');
 
+      // Add Limit form SHOULD be visible in super-user modal
+      cy.get('[data-testid="add-limit-form"]').should('be.visible');
+
       // Fields should NOT be disabled in modal
       cy.get('[data-testid="new-limit-type-select"]').should('not.be.disabled');
       cy.get('[data-testid="new-limit-type-select"]').click();
@@ -991,6 +995,9 @@ describe('Quota Management', () => {
       // Fields should be disabled (read-only for users)
       cy.get('[data-testid="quota-value-input"]').should('be.disabled');
       cy.get('[data-testid="quota-unit-select-toggle"]').should('be.disabled');
+
+      // Add Limit form should not be visible for users
+      cy.get('[data-testid="add-limit-form"]').should('not.exist');
     });
 
     it('should display quota in user Repositories tab header', () => {
