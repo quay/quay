@@ -75,6 +75,8 @@ NOISY_INFRASTRUCTURE_PATTERNS = [
     "service unavailable",
     "endpoint not available",
     "security scanner",
+    "[otel]",
+    "otel request",
 ]
 
 BROWSER_ERROR_PATTERNS = [

@@ -402,3 +402,12 @@ class TestSentryBeforeSendFilter:
         }
         result = _sentry_before_send_ignore_known(event, {})
         assert result == event
+
+    def test_filter_otel_debug_messages(self):
+        """OTEL instrumentation debug messages should be filtered."""
+        event = {
+            "logentry": {"formatted": "[OTEL] request {'User-Agent': 'Boto3/1.28.61', ...}"},
+            "logger": "storage.cloud",
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
