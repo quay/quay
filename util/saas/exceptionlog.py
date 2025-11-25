@@ -11,10 +11,189 @@ from sentry_sdk.integrations.stdlib import StdlibIntegration
 
 logger = logging.getLogger(__name__)
 
+# Pattern definitions for Sentry event filtering
+IMPORTANT_PATTERNS = [
+    "database",
+    "postgresql",
+    "mysql",
+    "redis",
+    "ldap",
+    "jwt",
+]
+
+NETWORK_PATTERNS = [
+    "err_network",
+    "err_canceled",
+    "econnaborted",
+    "etimedout",
+    "err_fr_too_many_redirects",
+    "network error",
+    "connection aborted",
+    "connection timeout",
+    "request timeout",
+    "fetch failed",
+]
+
+CSRF_PATTERNS = [
+    "csrf",
+    "invalid token",
+    "token mismatch",
+    "forbidden (csrf token missing)",
+    "session expired",
+    "authentication required",
+]
+
+CLIENT_ERROR_PATTERNS = [
+    "unauthorized",
+    "forbidden",
+    "not found",
+    "bad request",
+    "method not allowed",
+    "not acceptable",
+    "conflict",
+    "gone",
+    "precondition failed",
+    "request entity too large",
+    "request uri too long",
+    "unsupported media type",
+    "requested range not satisfiable",
+    "expectation failed",
+    "400",
+    "401",
+    "403",
+    "404",
+]
+
+NOISY_INFRASTRUCTURE_PATTERNS = [
+    "security scanner endpoint",
+    "localhost:6000",
+    "clair",
+    "vulnerability scanner",
+    "indexer api",
+    "connection error when trying to connect",
+    "connection aborted",
+    "connection timeout",
+    "request timeout",
+    "errno 111",
+    "connectionrefusederror",
+    "service unavailable",
+    "endpoint not available",
+    "security scanner",
+    "vulnerability scanner",
+]
+
+BROWSER_ERROR_PATTERNS = [
+    "script error",
+    "syntax error",
+    "reference error",
+    "type error",
+    "cannot read property",
+    "undefined is not a function",
+    "network request failed",
+    "failed to fetch",
+    "load failed",
+    "cors error",
+    "cross-origin",
+    "blocked by client",
+]
+
+
+def _extract_searchable_text(ex_event: Any) -> set[str]:
+    """
+    Extract all searchable text from a Sentry error event.
+
+    Sentry error events can be created in different ways:
+    - Via exceptions: have 'exception.values' field
+    - Via logger.error(): have 'logentry.formatted' field
+
+    Args:
+        ex_event: Sentry event dictionary
+
+    Returns:
+        Set of lowercase strings containing exception values, log messages,
+        and other searchable event fields. Empty strings are filtered out.
+    """
+    texts = set()
+
+    # Extract from exception field (errors raised as exceptions)
+    exception_values = ex_event.get("exception", {}).get("values", [])
+    for exc in exception_values:
+        texts.add(str(exc.get("value", "")).lower())
+        texts.add(exc.get("type", "").lower())
+
+    # Extract from logentry field (errors from logger.error() calls)
+    logentry = ex_event.get("logentry", {})
+    if logentry:
+        texts.add(str(logentry.get("formatted", "")).lower())
+        texts.add(str(logentry.get("message", "")).lower())
+
+    # Extract from top-level message fields
+    if "message" in ex_event:
+        texts.add(str(ex_event.get("message", "")).lower())
+
+    if "title" in ex_event:
+        texts.add(str(ex_event.get("title", "")).lower())
+
+    # Extract from metadata (may contain title or other descriptive text)
+    metadata = ex_event.get("metadata", {})
+    if isinstance(metadata, dict):
+        if "title" in metadata:
+            texts.add(str(metadata.get("title", "")).lower())
+        if "value" in metadata:
+            texts.add(str(metadata.get("value", "")).lower())
+
+    # Extract logger name and culprit (function/module that caused error)
+    if "logger" in ex_event:
+        texts.add(ex_event.get("logger", "").lower())
+
+    if "culprit" in ex_event:
+        texts.add(str(ex_event.get("culprit", "")).lower())
+
+    # Remove empty strings
+    texts.discard("")
+
+    return texts
+
+
+def _has_important_patterns(texts: set[str], important_patterns: list[str]) -> bool:
+    """
+    Check if any text contains important patterns that should never be filtered.
+
+    Args:
+        texts: Set of text strings to search
+        important_patterns: Patterns that indicate event should be kept
+
+    Returns:
+        True if important patterns found (keep event), False otherwise
+    """
+    for text in texts:
+        if any(pattern in text for pattern in important_patterns):
+            return True
+    return False
+
+
+def _should_drop_by_patterns(texts: set[str], filter_patterns: list[str]) -> bool:
+    """
+    Check if any text contains filter patterns.
+
+    Args:
+        texts: Set of text strings to search
+        filter_patterns: Patterns that indicate event should be filtered
+
+    Returns:
+        True if filter patterns found (drop event), False otherwise
+    """
+    for text in texts:
+        if any(pattern in text for pattern in filter_patterns):
+            return True
+    return False
+
 
 def _sentry_before_send_ignore_known(ex_event: Any, hint: Any) -> Optional[Any]:
     """
-    Drop events for expected client-side errors that we don't want in Sentry.
+    Drop error events for expected client-side errors that we don't want in Sentry.
+
+    Filters errors regardless of how they were reported (via exceptions or logger calls).
 
     Specifically ignore:
     - Auth token errors (InvalidBearerTokenException, InvalidJWTException)
@@ -37,118 +216,34 @@ def _sentry_before_send_ignore_known(ex_event: Any, hint: Any) -> Optional[Any]:
             if name in {"InvalidBearerTokenException", "InvalidJWTException"}:
                 return None
 
-        # Get exception mechanism-embedded exceptions
-        mechanism = ex_event.get("exception", {}).get("values", [])
+        # Extract all searchable text from event
+        texts = _extract_searchable_text(ex_event)
 
-        # Define important patterns that should NOT be filtered out
-        important_patterns = [
-            "database",
-            "postgresql",
-            "mysql",
-            "redis",
-            "auth",
-            "authentication",
-            "ldap",
-            "oauth",
-            "jwt",
-            "token",
-            "session",
-            "user",
-            "login",
-        ]
+        if texts:
+            # First: Check if this is an important error we should NEVER filter
+            if _has_important_patterns(texts, IMPORTANT_PATTERNS):
+                return ex_event
 
-        # Check exception mechanism in a single loop for efficiency
-        if mechanism:
-            for exc in mechanism:
-                exc_value = str(exc.get("value", "")).lower()
-                exc_type_str = exc.get("type", "").lower()
+            # Now check for patterns that should be filtered
+            # Check for auth token exceptions (by exception type name)
+            if "invalidbearertokenexception" in texts or "invalidjwtexception" in texts:
+                return None
 
-                # First check: Ensure important errors are NOT filtered
-                if any(pattern in exc_value for pattern in important_patterns):
-                    # Important error, don't filter - continue to next exception
-                    continue
+            # Check for network-related errors
+            if _should_drop_by_patterns(texts, NETWORK_PATTERNS):
+                return None
 
-                # Check for auth token exceptions
-                if exc_type_str in {"InvalidBearerTokenException", "InvalidJWTException"}:
-                    return None
+            # Check for CSRF token related errors
+            if _should_drop_by_patterns(texts, CSRF_PATTERNS):
+                return None
 
-                # Check for network-related errors
-                network_patterns = [
-                    "err_network",
-                    "err_canceled",
-                    "econnaborted",
-                    "etimedout",
-                    "err_fr_too_many_redirects",
-                    "network error",
-                    "connection aborted",
-                    "connection timeout",
-                    "request timeout",
-                    "fetch failed",
-                ]
-                if any(
-                    pattern in exc_value or pattern in exc_type_str for pattern in network_patterns
-                ):
-                    return None
+            # Check for client-side error messages
+            if _should_drop_by_patterns(texts, CLIENT_ERROR_PATTERNS):
+                return None
 
-                # Check for CSRF token related errors
-                csrf_patterns = [
-                    "csrf",
-                    "invalid token",
-                    "token mismatch",
-                    "forbidden (csrf token missing)",
-                    "session expired",
-                    "authentication required",
-                ]
-                if any(pattern in exc_value for pattern in csrf_patterns):
-                    return None
-
-                # Check for client-side error messages
-                client_error_patterns = [
-                    "unauthorized",
-                    "forbidden",
-                    "not found",
-                    "bad request",
-                    "method not allowed",
-                    "not acceptable",
-                    "conflict",
-                    "gone",
-                    "precondition failed",
-                    "request entity too large",
-                    "request uri too long",
-                    "unsupported media type",
-                    "requested range not satisfiable",
-                    "expectation failed",
-                    "400",
-                    "401",
-                    "403",
-                    "404",
-                ]
-                if any(pattern in exc_value for pattern in client_error_patterns):
-                    return None
-
-                # Check for noisy infrastructure errors (but skip if important service)
-                noisy_infrastructure_patterns = [
-                    "security scanner endpoint",
-                    "localhost:6000",
-                    "clair",
-                    "vulnerability scanner",
-                    "indexer api",
-                    "connection error when trying to connect",
-                    "connection aborted",
-                    "connection timeout",
-                    "request timeout",
-                    "errno 111",
-                    "connectionrefusederror",
-                    "service unavailable",
-                    "endpoint not available",
-                    "security scanner",
-                    "vulnerability scanner",
-                ]
-                if any(
-                    pattern in exc_value or pattern in exc_type_str
-                    for pattern in noisy_infrastructure_patterns
-                ):
-                    return None
+            # Check for noisy infrastructure errors
+            if _should_drop_by_patterns(texts, NOISY_INFRASTRUCTURE_PATTERNS):
+                return None
 
         # Check for HTTP client errors (4xx status codes) from browser requests
         if "request" in ex_event:
@@ -174,35 +269,8 @@ def _sentry_before_send_ignore_known(ex_event: Any, hint: Any) -> Optional[Any]:
             platform = ex_event.get("platform", "").lower()
             if platform in ["javascript", "browser"]:
                 # Filter out common browser errors that are not server-side issues
-                if mechanism:
-                    for exc in mechanism:
-                        exc_value = str(exc.get("value", "")).lower()
-                        exc_type_str = exc.get("type", "").lower()
-
-                        # First check: Ensure important errors are NOT filtered
-                        if any(pattern in exc_value for pattern in important_patterns):
-                            continue
-
-                        # Common browser errors to filter
-                        browser_error_patterns = [
-                            "script error",
-                            "syntax error",
-                            "reference error",
-                            "type error",
-                            "cannot read property",
-                            "undefined is not a function",
-                            "network request failed",
-                            "failed to fetch",
-                            "load failed",
-                            "cors error",
-                            "cross-origin",
-                            "blocked by client",
-                        ]
-                        if any(
-                            pattern in exc_value or pattern in exc_type_str
-                            for pattern in browser_error_patterns
-                        ):
-                            return None
+                if texts and _should_drop_by_patterns(texts, BROWSER_ERROR_PATTERNS):
+                    return None
 
     except Exception:
         # Never break error reporting from the filter
