@@ -3,7 +3,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 import sentry_sdk
 
-from util.saas.exceptionlog import FakeSentry, FakeSentryClient, Sentry
+from util.saas.exceptionlog import (
+    FakeSentry,
+    FakeSentryClient,
+    Sentry,
+    _sentry_before_send_ignore_known,
+)
 
 
 class TestExceptionLogSentry:
@@ -200,3 +205,200 @@ class TestExceptionLogSentry:
         assert "existing" in mock_app.extensions
         assert "sentry" in mock_app.extensions
         assert mock_app.extensions["sentry"] is sentry.state
+
+
+class TestSentryBeforeSendFilter:
+    """Test the _sentry_before_send_ignore_known filter function."""
+
+    def test_filter_log_event_401_error(self):
+        """Errors from logger.error() with 401 status should be filtered."""
+        event = {
+            "type": "default",
+            "logentry": {"formatted": "Error 401: Invalid Bearer [token] format; Arguments: {...}"},
+            "logger": "util.http",
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_log_event_403_error(self):
+        """Errors from logger.error() with 403 status should be filtered."""
+        event = {"logentry": {"formatted": "Error 403: Forbidden; Arguments: {'status_code': 403}"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_log_event_security_scanner_400(self):
+        """Security scanner 400 errors should be filtered."""
+        event = {
+            "logentry": {
+                "formatted": "Security scanner endpoint responded with 400 HTTP status code: {}"
+            }
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_log_event_with_unauthorized(self):
+        """Log events with 'unauthorized' text should be filtered."""
+        event = {"logentry": {"formatted": "Unauthorized access attempt"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_log_event_network_error(self):
+        """Log events with network errors should be filtered."""
+        event = {"logentry": {"formatted": "Connection timeout while fetching data"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_keep_log_event_with_database_error(self):
+        """Errors from logger.error() with database keywords should NOT be filtered."""
+        event = {"logentry": {"formatted": "Error 500: PostgreSQL connection failed"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_keep_log_event_with_auth_service_error(self):
+        """Log events with authentication service errors should NOT be filtered."""
+        event = {"logentry": {"formatted": "LDAP authentication service unavailable"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_keep_log_event_with_redis_error(self):
+        """Log events with Redis errors should NOT be filtered."""
+        event = {"logentry": {"formatted": "Redis connection error on 401 status"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_existing_exception_filtering_still_works(self):
+        """Existing exception filtering should not be broken."""
+        event = {
+            "exception": {
+                "values": [{"type": "InvalidBearerTokenException", "value": "Invalid token"}]
+            }
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_exception_with_401_error_filtered(self):
+        """Exception events with 401 errors should be filtered."""
+        event = {"exception": {"values": [{"type": "HTTPError", "value": "401 Unauthorized"}]}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_exception_with_database_error_kept(self):
+        """Exception events with database errors should NOT be filtered."""
+        event = {
+            "exception": {
+                "values": [{"type": "DatabaseError", "value": "PostgreSQL connection timeout"}]
+            }
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_event_with_both_exception_and_logentry(self):
+        """Events with both exception and logentry fields should be filtered if match."""
+        event = {
+            "exception": {"values": [{"type": "HTTPError", "value": "Some error"}]},
+            "logentry": {"formatted": "Error 401: Unauthorized"},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_empty_logentry(self):
+        """Events with empty logentry should be kept."""
+        event = {"logentry": {}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_none_event(self):
+        """None events should be returned as-is."""
+        result = _sentry_before_send_ignore_known(None, {})
+        assert result is None
+
+    def test_event_without_searchable_text(self):
+        """Events without searchable text should be kept."""
+        event = {"platform": "python", "timestamp": 1234567890}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_filter_csrf_error_in_log(self):
+        """CSRF errors in log messages should be filtered."""
+        event = {"logentry": {"formatted": "CSRF token mismatch error"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_session_expired_in_log(self):
+        """Session expired errors in log messages should be filtered."""
+        event = {"logentry": {"formatted": "Session expired, please login again"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_clair_vulnerability_scanner_error(self):
+        """Clair vulnerability scanner errors should be filtered."""
+        event = {
+            "logentry": {
+                "formatted": "Clair vulnerability scanner connection error when trying to connect"
+            }
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_keep_important_error_overrides_filter_pattern(self):
+        """Important patterns should take precedence over filter patterns."""
+        event = {
+            "logentry": {"formatted": "Error 401: Database authentication failed for user admin"}
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_exc_info_hint_invalidbearertokenexception(self):
+        """InvalidBearerTokenException in exc_info hint should be filtered."""
+
+        class InvalidBearerTokenException(Exception):
+            pass
+
+        event = {"message": "Some error"}
+        hint = {"exc_info": (InvalidBearerTokenException, None, None)}
+        result = _sentry_before_send_ignore_known(event, hint)
+        assert result is None
+
+    def test_exc_info_hint_invalidjwtexception(self):
+        """InvalidJWTException in exc_info hint should be filtered."""
+
+        class InvalidJWTException(Exception):
+            pass
+
+        event = {"message": "Some error"}
+        hint = {"exc_info": (InvalidJWTException, None, None)}
+        result = _sentry_before_send_ignore_known(event, hint)
+        assert result is None
+
+    def test_browser_platform_script_error_filtered(self):
+        """Browser platform script errors should be filtered."""
+        event = {
+            "platform": "javascript",
+            "exception": {"values": [{"type": "Error", "value": "Script error"}]},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_browser_platform_cors_error_filtered(self):
+        """Browser platform CORS errors should be filtered."""
+        event = {
+            "platform": "browser",
+            "logentry": {"formatted": "CORS error: Cross-origin request blocked"},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_message_field_with_401_filtered(self):
+        """Events with 401 in message field should be filtered."""
+        event = {"message": "Error 401: Invalid authentication token"}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_logger_name_extracted(self):
+        """Logger name should be included in searchable text."""
+        event = {
+            "logger": "util.http",
+            "logentry": {"formatted": "Some error occurred"},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
