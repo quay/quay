@@ -15,6 +15,64 @@ from prometheus_client import REGISTRY, Counter, Gauge, Histogram, push_to_gatew
 
 logger = logging.getLogger(__name__)
 
+def get_namespace_bucket_mapping():
+    """
+    Get namespace to bucket mapping from config.
+    Supports two formats:
+    1. List format: ["namespace1", "namespace2"] -> maps each to its own name
+    2. Dict format: {"bucket1": ["namespace1", "namespace2"], "bucket2": ["namespace3"]}
+    Returns a dict mapping namespace -> bucket_name.
+    """
+    try:
+        from app import app
+        if app and hasattr(app, "config"):
+            tracked = app.config.get("TRACKED_NAMESPACES", [])
+            if not tracked:
+                return {}
+            
+            # If it's a dict, use it directly (namespace -> bucket mapping)
+            if isinstance(tracked, dict):
+                mapping = {}
+                for bucket_name, namespaces in tracked.items():
+                    if isinstance(namespaces, (list, tuple)):
+                        for ns in namespaces:
+                            mapping[ns] = bucket_name
+                    else:
+                        # Single namespace string
+                        mapping[namespaces] = bucket_name
+                return mapping
+            
+            # If it's a list, map each namespace to itself (backward compatibility)
+            elif isinstance(tracked, (list, tuple)):
+                return {ns: ns for ns in tracked}
+            
+            # Single string value
+            elif isinstance(tracked, str):
+                return {tracked: tracked}
+    except:
+        pass
+    return {}
+
+
+def get_namespace_label_for_counter(namespace_name):
+    """
+    Get namespace label (bucket) for high-frequency counter metrics.
+    Returns bucket name if namespace is tracked, None otherwise.
+    Multiple namespaces can map to the same bucket.
+    """
+    if not namespace_name:
+        return None
+    mapping = get_namespace_bucket_mapping()
+    return mapping.get(namespace_name)
+
+
+def get_namespace_label_for_gauge(namespace_name):
+    """
+    Get namespace label for low-frequency gauge metrics.
+    Returns namespace name directly (safe for gauges updated infrequently).
+    """
+    return namespace_name if namespace_name else "unknown"
+
 
 # DB connections
 db_pooled_connections_in_use = Gauge(
@@ -35,7 +93,7 @@ db_close_calls = Counter(
 request_duration = Histogram(
     "quay_request_duration_seconds",
     "seconds taken to process a request",
-    labelnames=["method", "route", "status"],
+    labelnames=["method", "route", "status", "namespace"],
 )
 
 # GC: DB table rows
@@ -77,6 +135,7 @@ secscan_result_duration = Histogram(
     "how long it takes to receive scan results after pushing an image",
     buckets=SECSCAN_RESULT_BUCKETS,
 )
+
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
@@ -162,9 +221,38 @@ class ThreadPusher(threading.Thread):
                     pass
 
 
+def _extract_namespace_from_request():
+    """
+    Extract namespace from Flask request.
+    Checks route parameters first, then tries to parse from path.
+    """
+    # Try to get namespace from route parameters (most common case)
+    if hasattr(request, "view_args") and request.view_args:
+        namespace = request.view_args.get("namespace_name") or request.view_args.get("namespace")
+        if namespace:
+            return namespace
+    
+    # Try to parse from request path
+    try:
+        path = request.path.strip("/")
+        if "/" in path:
+            # Try to parse as namespace/repository
+            parts = path.split("/", 1)
+            if len(parts) >= 1:
+                potential_namespace = parts[0]
+                # Basic validation: namespace should be alphanumeric with dashes/underscores
+                if potential_namespace and all(c.isalnum() or c in "-_" for c in potential_namespace):
+                    return potential_namespace
+    except:
+        pass
+    
+    return None
+
+
 def timed_blueprint(bp):
     """
     Decorates a blueprint to have its request duration tracked by Prometheus.
+    Includes namespace label for tracked namespaces.
     """
 
     def _time_before_request():
@@ -178,7 +266,19 @@ def timed_blueprint(bp):
             if start is None:
                 return r
             dur = time.time() - start
-            request_duration.labels(request.method, request.endpoint, r.status_code).observe(dur)
+            
+            # Extract namespace from request
+            namespace_name = _extract_namespace_from_request()
+            namespace_label = get_namespace_label_for_counter(namespace_name)
+            # Use "other" for untracked namespaces to keep cardinality low
+            label_value = namespace_label if namespace_label else "other"
+            
+            request_duration.labels(
+                request.method, 
+                request.endpoint, 
+                r.status_code,
+                label_value
+            ).observe(dur)
             return r
 
         return f
