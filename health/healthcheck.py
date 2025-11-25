@@ -121,10 +121,12 @@ class HealthCheck(object):
 
 
 class LocalHealthCheck(HealthCheck):
-    def __init__(self, app, config_provider, instance_keys):
-        super(LocalHealthCheck, self).__init__(
-            app, config_provider, instance_keys, ["redis", "storage"]
-        )
+    def __init__(self, app, config_provider, instance_keys, instance_skips=None):
+
+        if instance_skips is None:
+            instance_skips = ["redis", "storage"]
+
+        super(LocalHealthCheck, self).__init__(app, config_provider, instance_keys, instance_skips)
 
     @classmethod
     def check_names(cls):
@@ -141,11 +143,16 @@ class RDSAwareHealthCheck(HealthCheck):
         secret_key=None,
         db_instance="quay",
         region="us-east-1",
+        instance_skips=None,
     ):
         # Note: We skip the redis check because if redis is down, we don't want ELB taking the
         # machines out of service. Redis is not considered a high avaliability-required service.
+
+        if instance_skips is None:
+            instance_skips = ["redis", "storage"]
+
         super(RDSAwareHealthCheck, self).__init__(
-            app, config_provider, instance_keys, ["redis", "storage"]
+            app, config_provider, instance_keys, instance_skips
         )
 
         self.access_key = access_key
