@@ -14,7 +14,7 @@ import {
 import {useFetchBuildLogsSuperuser} from 'src/hooks/UseBuildLogs';
 import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import {formatDate} from 'src/libs/utils';
+import {formatDate, isNullOrUndefined} from 'src/libs/utils';
 
 export default function BuildLogs() {
   const [buildUuid, setBuildUuid] = useState<string>('');
@@ -72,12 +72,16 @@ export default function BuildLogs() {
           <dt>
             <strong>Build UUID:</strong>
           </dt>
-          <dd>{build.uuid}</dd>
+          <dd>{isNullOrUndefined(build.uuid) ? build.id : build.uuid}</dd>
 
           <dt style={{marginTop: '0.5em'}}>
             <strong>Status:</strong>
           </dt>
-          <dd>{build.status}</dd>
+          <dd>
+            {typeof build.status === 'string'
+              ? build.status
+              : JSON.stringify(build.status)}
+          </dd>
 
           {build.repository && (
             <>
@@ -165,7 +169,9 @@ export default function BuildLogs() {
                   [{log.timestamp}]
                 </span>
               )}
-              {log.message}
+              {typeof log.message === 'string'
+                ? log.message
+                : JSON.stringify(log.message)}
             </div>
           ))}
         </pre>
