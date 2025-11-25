@@ -690,6 +690,9 @@ describe('Org List Page', () => {
   it('Displays avatars for all organizations and users (PROJQUAY-9749)', () => {
     cy.visit('/organization');
 
+    // Wait for the organization list to load
+    cy.get('td[data-label="Name"]').should('have.length.greaterThan', 0);
+
     // Check that every entry has an avatar
     cy.get('td[data-label="Name"]').each(($nameCell) => {
       cy.wrap($nameCell).parents('tr').find('.pf-v5-c-avatar').should('exist');
