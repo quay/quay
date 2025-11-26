@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react';
 import {isNullOrUndefined} from 'src/libs/utils';
+import {useExternalScripts} from './UseExternalScripts';
 
 const STATUSPAGE_PAGE_ID = 'dn6mqn7xvzz3';
 const STATUSPAGE_QUAY_ID = 'cllr1k2dzsf7';
@@ -36,13 +37,16 @@ interface StatusData {
 }
 
 export function useServiceStatus() {
+  const {statusPageLoaded} = useExternalScripts();
   const [statusData, setStatusData] = useState<StatusData>(null);
 
   useEffect(() => {
-    if (isNullOrUndefined(StatusPage)) {
+    if (isNullOrUndefined((window as any).StatusPage)) {
       return;
     }
-    const statusPageHandler = new StatusPage.page({page: STATUSPAGE_PAGE_ID});
+    const statusPageHandler = new (window as any).StatusPage.page({
+      page: STATUSPAGE_PAGE_ID,
+    });
     statusPageHandler.summary({
       success: (data) => {
         if (!data) {
@@ -102,7 +106,7 @@ export function useServiceStatus() {
         setStatusData(quayData);
       },
     });
-  }, []);
+  }, [statusPageLoaded]);
 
   return {
     statusData,
