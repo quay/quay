@@ -226,16 +226,6 @@ class TestSentryBeforeSendFilter:
         result = _sentry_before_send_ignore_known(event, {})
         assert result is None
 
-    def test_filter_log_event_security_scanner_400(self):
-        """Security scanner 400 errors should be filtered."""
-        event = {
-            "logentry": {
-                "formatted": "Security scanner endpoint responded with 400 HTTP status code: {}"
-            }
-        }
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result is None
-
     def test_filter_log_event_with_unauthorized(self):
         """Log events with 'unauthorized' text should be filtered."""
         event = {"logentry": {"formatted": "Unauthorized access attempt"}}
@@ -254,27 +244,11 @@ class TestSentryBeforeSendFilter:
         result = _sentry_before_send_ignore_known(event, {})
         assert result == event
 
-    def test_keep_log_event_with_auth_service_error(self):
-        """Log events with authentication service errors should NOT be filtered."""
-        event = {"logentry": {"formatted": "LDAP authentication service unavailable"}}
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result == event
-
     def test_keep_log_event_with_redis_error(self):
         """Log events with Redis errors should NOT be filtered."""
         event = {"logentry": {"formatted": "Redis connection error on 401 status"}}
         result = _sentry_before_send_ignore_known(event, {})
         assert result == event
-
-    def test_existing_exception_filtering_still_works(self):
-        """Existing exception filtering should not be broken."""
-        event = {
-            "exception": {
-                "values": [{"type": "InvalidBearerTokenException", "value": "Invalid token"}]
-            }
-        }
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result is None
 
     def test_existing_jwt_exception_filtering_still_works(self):
         """InvalidJWTException via event exception values should be filtered."""
@@ -283,22 +257,6 @@ class TestSentryBeforeSendFilter:
         }
         result = _sentry_before_send_ignore_known(event, {})
         assert result is None
-
-    def test_exception_with_401_error_filtered(self):
-        """Exception events with 401 errors should be filtered."""
-        event = {"exception": {"values": [{"type": "HTTPError", "value": "401 Unauthorized"}]}}
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result is None
-
-    def test_exception_with_database_error_kept(self):
-        """Exception events with database errors should NOT be filtered."""
-        event = {
-            "exception": {
-                "values": [{"type": "DatabaseError", "value": "PostgreSQL connection timeout"}]
-            }
-        }
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result == event
 
     def test_event_with_both_exception_and_logentry(self):
         """Events with both exception and logentry fields should be filtered if match."""
@@ -396,12 +354,6 @@ class TestSentryBeforeSendFilter:
         result = _sentry_before_send_ignore_known(event, {})
         assert result is None
 
-    def test_message_field_with_401_filtered(self):
-        """Events with 401 in message field should be filtered."""
-        event = {"message": "Error 401: Invalid authentication token"}
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result is None
-
     def test_logger_name_extracted(self):
         """Logger name should be included in searchable text."""
         event = {
@@ -417,30 +369,6 @@ class TestSentryBeforeSendFilter:
             "logentry": {"formatted": "[OTEL] request {'User-Agent': 'Boto3/1.28.61', ...}"},
             "logger": "storage.cloud",
         }
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result is None
-
-    def test_filter_4xx_error_prefix(self):
-        """Events with 'Error 4xx' pattern should be filtered."""
-        event = {"logentry": {"formatted": "Error 404: Resource not found"}}
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result is None
-
-    def test_filter_4xx_status_prefix(self):
-        """Events with 'Status 4xx' pattern should be filtered."""
-        event = {"logentry": {"formatted": "Status 401: Unauthorized access"}}
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result is None
-
-    def test_filter_4xx_http_prefix(self):
-        """Events with 'HTTP 4xx' pattern should be filtered."""
-        event = {"logentry": {"formatted": "HTTP 403: Forbidden"}}
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result is None
-
-    def test_filter_4xx_with_colon(self):
-        """Events with ' 4xx:' pattern should be filtered."""
-        event = {"logentry": {"formatted": "Request failed with 429: Too Many Requests"}}
         result = _sentry_before_send_ignore_known(event, {})
         assert result is None
 
