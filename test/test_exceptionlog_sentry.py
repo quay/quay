@@ -276,6 +276,14 @@ class TestSentryBeforeSendFilter:
         result = _sentry_before_send_ignore_known(event, {})
         assert result is None
 
+    def test_existing_jwt_exception_filtering_still_works(self):
+        """InvalidJWTException via event exception values should be filtered."""
+        event = {
+            "exception": {"values": [{"type": "InvalidJWTException", "value": "Invalid JWT token"}]}
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
     def test_exception_with_401_error_filtered(self):
         """Exception events with 401 errors should be filtered."""
         event = {"exception": {"values": [{"type": "HTTPError", "value": "401 Unauthorized"}]}}
