@@ -1488,3 +1488,5 @@ if __name__ == "__main__":
         models_missing_data = find_models_missing_data()
         if models_missing_data:
             logger.warning("The following models do not have any data: %s", models_missing_data)
+
+# test a thing
