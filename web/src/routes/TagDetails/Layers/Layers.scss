@@ -1,0 +1,133 @@
+// Layers timeline styles using PatternFly tokens
+// Recreates the Angular manifest-view-layer timeline design
+
+.layers-container {
+  margin-top: var(--pf-v5-global--spacer--lg);
+}
+
+.manifest-view-layer-element {
+  position: relative;
+  padding: var(--pf-v5-global--spacer--md);
+  padding-left: calc(var(--pf-v5-global--spacer--xl) + var(--pf-v5-global--spacer--sm));
+
+  .image-comment {
+    margin-bottom: var(--pf-v5-global--spacer--md);
+    color: var(--pf-v5-global--Color--200);
+    font-style: italic;
+  }
+
+  .nondocker-command {
+    font-family: var(--pf-v5-global--FontFamily--monospace);
+    padding: var(--pf-v5-global--spacer--xs);
+    background-color: var(--pf-v5-global--BackgroundColor--200);
+    border-radius: var(--pf-v5-global--BorderRadius--sm);
+
+    &:before {
+      content: "\f120";
+      font-family: "Font Awesome 5 Free";
+      font-weight: 900;
+      font-size: var(--pf-v5-global--FontSize--md);
+      margin-right: var(--pf-v5-global--spacer--sm);
+      color: var(--pf-v5-global--Color--200);
+    }
+  }
+
+  code {
+    font-family: var(--pf-v5-global--FontFamily--monospace);
+    background-color: var(--pf-v5-global--BackgroundColor--200);
+    padding: var(--pf-v5-global--spacer--xs) var(--pf-v5-global--spacer--sm);
+    border-radius: var(--pf-v5-global--BorderRadius--sm);
+    color: var(--pf-v5-global--primary-color--100);
+  }
+
+  // Timeline line connecting all layers
+  .image-layer-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--pf-v5-global--spacer--md);
+    border-left: 2px solid var(--pf-v5-global--primary-color--100);
+    width: 0;
+  }
+
+  // First layer - line starts from the dot
+  &.first .image-layer-line {
+    top: calc(var(--pf-v5-global--spacer--lg) + 2px);
+  }
+
+  // Last layer - line ends at the dot
+  &.last .image-layer-line {
+    height: calc(var(--pf-v5-global--spacer--lg) + 2px);
+  }
+
+  // Timeline dot for each layer
+  .image-layer-dot {
+    position: absolute;
+    top: calc(var(--pf-v5-global--spacer--md) + 2px);
+    left: calc(var(--pf-v5-global--spacer--md) - 6px);
+    border: 2px solid var(--pf-v5-global--primary-color--100);
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    background: var(--pf-v5-global--BackgroundColor--100);
+    z-index: 2;
+  }
+
+  // First layer gets a filled dot
+  &.first .image-layer-dot {
+    background: var(--pf-v5-global--primary-color--100);
+  }
+}
+
+// Dockerfile command styling
+.dockerfile-command-element {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-v5-global--spacer--sm);
+
+  .dockerfile-instruction {
+    flex-shrink: 0;
+  }
+
+  .command-title {
+    font-family: var(--pf-v5-global--FontFamily--monospace);
+    color: var(--pf-v5-global--Color--100);
+    word-break: break-all;
+
+    // FROM command link styling
+    .from-image-link {
+      color: var(--pf-v5-global--link--Color);
+      text-decoration: none;
+      font-size: var(--pf-v5-global--FontSize--md);
+
+      &:hover {
+        color: var(--pf-v5-global--link--Color--hover);
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+.image-command-element {
+  margin-bottom: var(--pf-v5-global--spacer--xs);
+}
+
+// Mobile responsiveness
+@media (max-width: 767px) {
+  .manifest-view-layer-element {
+    .dockerfile-command-element {
+      flex-direction: column;
+      align-items: flex-start;
+
+      .dockerfile-instruction {
+        position: relative;
+        display: block;
+      }
+
+      .command-title {
+        padding-top: var(--pf-v5-global--spacer--md);
+        padding-left: 0;
+      }
+    }
+  }
+}

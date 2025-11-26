@@ -4,12 +4,10 @@ import {useState} from 'react';
 import Details from './Details/Details';
 import SecurityReport from './SecurityReport/SecurityReport';
 import {ModelCard} from './ModelCard/ModelCard';
-import {Tag} from 'src/resources/TagResource';
+import {Tag, ManifestByDigestResponse} from 'src/resources/TagResource';
 import {TabIndex} from './Types';
 import {Packages} from './Packages/Packages';
-import ErrorBoundary from 'src/components/errors/ErrorBoundary';
-import {isErrorString} from 'src/resources/ErrorHandling';
-import RequestError from 'src/components/errors/RequestError';
+import {Layers} from './Layers/Layers';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 // Return the tab as an enum or null if it does not exist
@@ -53,6 +51,18 @@ export default function TagTabs(props: TagTabsProps) {
         />
       </Tab>
       <Tab
+        eventKey={TabIndex.Layers}
+        title={<TabTitleText>Layers</TabTitleText>}
+      >
+        <Layers
+          org={props.org}
+          repo={props.repo}
+          digest={props.digest}
+          manifestData={props.manifestData}
+          err={props.err}
+        />
+      </Tab>
+      <Tab
         eventKey={TabIndex.SecurityReport}
         title={<TabTitleText>Security Report</TabTitleText>}
       >
@@ -80,5 +90,6 @@ type TagTabsProps = {
   org: string;
   repo: string;
   digest: string;
+  manifestData: ManifestByDigestResponse | null;
   err: string;
 };
