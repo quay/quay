@@ -118,7 +118,7 @@ def _extract_searchable_text(ex_event: Any) -> set[str]:
     exception_values = ex_event.get("exception", {}).get("values", [])
     for exc in exception_values:
         texts.add(str(exc.get("value", "")).lower())
-        texts.add(exc.get("type", "").lower())
+        texts.add(str(exc.get("type", "")).lower())
 
     # Extract from logentry field (errors from logger.error() calls)
     logentry = ex_event.get("logentry", {})
@@ -143,7 +143,7 @@ def _extract_searchable_text(ex_event: Any) -> set[str]:
 
     # Extract logger name and culprit (function/module that caused error)
     if "logger" in ex_event:
-        texts.add(ex_event.get("logger", "").lower())
+        texts.add(str(ex_event.get("logger", "")).lower())
 
     if "culprit" in ex_event:
         texts.add(str(ex_event.get("culprit", "")).lower())
@@ -272,7 +272,7 @@ def _sentry_before_send_ignore_known(ex_event: Any, hint: Any) -> Optional[Any]:
 
         # Check for browser-specific errors
         if "platform" in ex_event:
-            platform = ex_event.get("platform", "").lower()
+            platform = str(ex_event.get("platform", "")).lower()
             if platform in ["javascript", "browser"]:
                 # Filter out common browser errors that are not server-side issues
                 if texts and _should_drop_by_patterns(texts, BROWSER_ERROR_PATTERNS):
