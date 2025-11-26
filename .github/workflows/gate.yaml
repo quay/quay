@@ -1,0 +1,97 @@
+name: Gate
+on:
+  workflow_run:
+    workflows: ['Common', 'Backend', 'Frontend']
+    types: [completed]
+    branches:
+      - '**'
+
+jobs:
+  merge-ready:
+    name: Merge Ready
+    # Only run for pull requests, not direct pushes
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check all workflows passed
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const {owner, repo} = context.repo;
+          const ref = context.payload.workflow_run.head_sha;
+          const triggeringWorkflow = context.payload.workflow_run.name;
+
+          core.info(`Triggered by: ${triggeringWorkflow}`);
+          core.info(`Commit SHA: ${ref}`);
+          core.info(`Triggering workflow conclusion: ${context.payload.workflow_run.conclusion}`);
+
+          // Define the workflows we need to check
+          const requiredWorkflows = ['Common', 'Backend', 'Frontend'];
+
+          // Get all workflow runs for this commit
+          const {data: workflowRuns} = await github.rest.actions.listWorkflowRunsForRepo({
+            owner,
+            repo,
+            head_sha: ref,
+            per_page: 100
+          });
+
+          // Filter to our required workflows and get latest run for each
+          const latestRuns = {};
+          for (const workflow of requiredWorkflows) {
+            const runs = workflowRuns.workflow_runs
+              .filter(run => run.name === workflow && run.head_sha === ref)
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            if (runs.length > 0) {
+              latestRuns[workflow] = runs[0];
+            }
+          }
+
+          core.info(`\nWorkflow status for commit ${ref}:`);
+          for (const [name, run] of Object.entries(latestRuns)) {
+            core.info(`  ${name}: ${run.status} / ${run.conclusion}`);
+          }
+
+          // Check if all triggered workflows are complete
+          const incompleteWorkflows = Object.entries(latestRuns)
+            .filter(([_, run]) => run.status !== 'completed')
+            .map(([name, _]) => name);
+
+          if (incompleteWorkflows.length > 0) {
+            core.info(`\nWaiting for workflows to complete: ${incompleteWorkflows.join(', ')}`);
+            core.info('This run will be superseded by a new gate run when those workflows complete.');
+            // Exit neutrally - don't mark as failed, just skip this run
+            // A new Gate run will be triggered when the remaining workflows complete
+            return;
+          }
+
+          // All workflows that were triggered are complete - check for failures
+          const failures = Object.entries(latestRuns)
+            .filter(([_, run]) => run.conclusion === 'failure' || run.conclusion === 'cancelled')
+            .map(([name, run]) => `${name} (${run.conclusion})`);
+
+          if (failures.length > 0) {
+            core.setFailed(`❌ The following workflows failed: ${failures.join(', ')}`);
+            return;
+          }
+
+          // Check which workflows were skipped (path filtering)
+          const skipped = Object.entries(latestRuns)
+            .filter(([_, run]) => run.conclusion === 'skipped')
+            .map(([name, _]) => name);
+
+          const succeeded = Object.entries(latestRuns)
+            .filter(([_, run]) => run.conclusion === 'success')
+            .map(([name, _]) => name);
+
+          // Success!
+          core.info('\n✅ All required workflows completed successfully!');
+          if (succeeded.length > 0) {
+            core.info(`   Passed: ${succeeded.join(', ')}`);
+          }
+          if (skipped.length > 0) {
+            core.info(`   Skipped (path filtering): ${skipped.join(', ')}`);
+          }
+
+          core.info('\n🚀 Ready to merge!');
