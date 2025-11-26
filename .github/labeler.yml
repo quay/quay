@@ -1,0 +1,60 @@
+# Component/Area Labels
+# Maps file paths to area labels for automatic PR labeling
+
+area/api:
+- changed-files:
+  - any-glob-to-any-file: endpoints/api/**
+
+area/registry:
+- changed-files:
+  - any-glob-to-any-file:
+    - endpoints/v1/**
+    - endpoints/v2/**
+
+area/web-ui:
+- changed-files:
+  - any-glob-to-any-file: web/**
+
+area/config-tool:
+- changed-files:
+  - any-glob-to-any-file: config-tool/**
+
+area/workers:
+- changed-files:
+  - any-glob-to-any-file: workers/**
+
+area/build-system:
+- changed-files:
+  - any-glob-to-any-file: buildman/**
+
+area/storage:
+- changed-files:
+  - any-glob-to-any-file: storage/**
+
+area/auth:
+- changed-files:
+  - any-glob-to-any-file: auth/**
+
+area/database:
+- changed-files:
+  - any-glob-to-any-file: data/**
+
+area/deployment:
+- changed-files:
+  - any-glob-to-any-file: deploy/**
+
+area/ci:
+- changed-files:
+  - any-glob-to-any-file: .github/workflows/**
+
+area/docs:
+- changed-files:
+  - any-glob-to-any-file:
+    - docs/**
+    - '**/*.md'
+
+area/tests:
+- changed-files:
+  - any-glob-to-any-file:
+    - test/**
+    - integration_tests/**
