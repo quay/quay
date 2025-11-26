@@ -267,8 +267,12 @@ def _sentry_before_send_ignore_known(ex_event: Any, hint: Any) -> Optional[Any]:
         # Check for HTTP 4xx status codes in event tags (for all requests)
         if "tags" in ex_event:
             status_code = ex_event.get("tags", {}).get("status_code")
-            if status_code and 400 <= status_code < 500:
-                return None
+            try:
+                if status_code is not None and 400 <= int(status_code) < 500:
+                    return None
+            except (TypeError, ValueError):
+                # Non-numeric status codes are ignored by this filter
+                pass
 
         # Check for browser-specific errors
         if "platform" in ex_event:
