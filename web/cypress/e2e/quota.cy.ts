@@ -220,6 +220,63 @@ describe('Quota Management', () => {
       // Add Limit form should not be visible in organization view (even for superusers)
       cy.get('[data-testid="add-limit-form"]').should('not.exist');
     });
+
+    it('should prevent quota submission attempts from organization-view (should not show 403 errors)', () => {
+      cy.intercept('GET', '**/api/v1/organization/projectquay/quota*', {
+        statusCode: 200,
+        body: [
+          {
+            id: 1,
+            limit_bytes: 10737418240,
+            limit: '10.0 GiB',
+            default_config: false,
+            limits: [
+              {
+                id: 1,
+                type: 'Warning',
+                limit_percent: 80,
+              },
+            ],
+            default_config_exists: false,
+          },
+        ],
+      }).as('getQuotaWithData');
+
+      // Ensure no API calls are made when attempting to submit from org-view
+      cy.intercept('POST', '**/api/v1/organization/projectquay/quota*', {
+        statusCode: 403,
+      }).as('createQuota');
+      cy.intercept('PUT', '**/api/v1/organization/projectquay/quota/*', {
+        statusCode: 403,
+      }).as('updateQuota');
+
+      cy.visit('/organization/projectquay?tab=Settings');
+      cy.wait('@getConfig');
+
+      cy.get('[data-testid="Quota"]').should('be.visible').click();
+      cy.wait('@getQuotaWithData');
+
+      // Verify the form is rendered and read-only alert is visible
+      cy.get('[data-testid="quota-management-form"]').should('be.visible');
+      cy.get('[data-testid="readonly-quota-alert"]').should('be.visible');
+
+      // Verify all form fields are disabled (read-only mode)
+      cy.get('[data-testid="quota-value-input"]').should('be.disabled');
+      cy.get('[data-testid="quota-unit-select-toggle"]').should('be.disabled');
+
+      // Verify action buttons don't exist (they're hidden in organization-view)
+      cy.get('[data-testid="apply-quota-button"]').should('not.exist');
+      cy.get('[data-testid="remove-quota-button"]').should('not.exist');
+
+      // Since form submission is prevented by disabled fields and hidden buttons,
+      // and our guards in onSubmit(), no API calls should be made
+      // Wait a bit to ensure no API calls are triggered
+      cy.wait(1000);
+
+      // Verify no API calls were made (no 403 errors should occur)
+      cy.get('@createQuota.all').should('have.length', 0);
+      cy.get('@updateQuota.all').should('have.length', 0);
+    });
   });
 
   describe('Configure Quota Modal - Access Control', () => {
