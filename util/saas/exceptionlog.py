@@ -63,7 +63,10 @@ CLIENT_ERROR_PATTERNS = [
 # Regex pattern for HTTP 4xx status codes in context
 # Matches: "Error 400", "Status 401", "HTTP 403", " 404:", etc.
 # Avoids: "error: 400473", "port 4001", etc.
-HTTP_4XX_PATTERN = re.compile(r"(error|status|http)\s+4\d{2}|\s4\d{2}:", re.IGNORECASE)
+HTTP_4XX_PATTERN = re.compile(
+    r"(?:\b(?:error|status|http)\s+4\d{2}\b)|(?:\s4\d{2}:)",
+    re.IGNORECASE,
+)
 
 NOISY_INFRASTRUCTURE_PATTERNS = [
     "security scanner endpoint",
@@ -240,8 +243,8 @@ def _sentry_before_send_ignore_known(ex_event: Any, hint: Any) -> Optional[Any]:
                 return ex_event
 
             # Now check for patterns that should be filtered
-            # Check for auth token exceptions (by exception type name)
-            if "invalidbearertokenexception" in texts or "invalidjwtexception" in texts:
+            # Check for auth token exceptions (by exception type name or in message text)
+            if any("invalidbearertokenexception" in t or "invalidjwtexception" in t for t in texts):
                 return None
 
             # Check for network-related errors
