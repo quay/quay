@@ -174,28 +174,29 @@ describe('Repository Settings - Notifications', () => {
     cy.contains('No notifications have been setup for this repository');
   });
 
-  // TODO: Need notifications in the header
-  // to be implemented first
-  // it('Creates quay notification',()=>{
-  //     cy.contains('Create notification').click();
-  //     cy.get('#create-notification-form').within(()=>{
-  //         cy.contains('Select event').click();
-  //         cy.contains('Push to Repository').click();
-  //         cy.contains('Select method').click();
-  //         cy.contains('Red Hat Quay Notification').click();
-  //         cy.get('#entity-search-select-typeahead').type('user2');
-  //         cy.contains('user2').click();
-  //         cy.get('#notification-title').type('newnotification');
-  //         cy.contains('Submit').click();
-  //     })
-  //     const newnotificationRow = cy.get('tbody:contains("newnotification")');
-  //     newnotificationRow.within(()=>{
-  //         cy.get(`[data-label="title"]`).should('have.text', 'newnotification');
-  //         cy.get(`[data-label="event"]`).should('have.text', 'Push to Repository');
-  //         cy.get(`[data-label="notification"]`).should('contain.text', 'Red Hat Quay Notification');
-  //         cy.get(`[data-label="status"]`).should('have.text', 'Enabled');
-  //     })
-  // });
+  it('Creates Red Hat Quay notification', () => {
+    cy.contains('Create notification').click();
+    cy.get('#create-notification-form').within(() => {
+      cy.contains('Select event').click();
+      cy.contains('Push to Repository').click();
+      cy.contains('Select method').click();
+      cy.contains('Red Hat Quay Notification').click();
+      cy.get('#entity-search-input').type('user2');
+      cy.contains('user2').click();
+      cy.get('#notification-title').type('newnotification');
+      cy.contains('Submit').click();
+    });
+    const newnotificationRow = cy.get('tbody:contains("newnotification")');
+    newnotificationRow.within(() => {
+      cy.get(`[data-label="title"]`).should('have.text', 'newnotification');
+      cy.get(`[data-label="event"]`).should('have.text', ' Push to Repository');
+      cy.get(`[data-label="notification"]`).should(
+        'contain.text',
+        'Red Hat Quay Notification',
+      );
+      cy.get(`[data-label="status"]`).should('have.text', 'Enabled');
+    });
+  });
 
   it('Creates Flowdock notification', () => {
     cy.contains('Create notification').click();
