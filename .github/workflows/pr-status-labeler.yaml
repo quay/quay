@@ -1,0 +1,151 @@
+name: PR Event Handler
+
+on:
+  workflow_run:
+    workflows: ["PR Auto-Labeler"]
+    types:
+      - completed
+
+jobs:
+  handle-event:
+    name: Handle PR Event and Apply Labels
+    runs-on: ubuntu-latest
+    # Run on both pull_request_target and pull_request_review events
+    if: |
+      github.event.workflow_run.event == 'pull_request_target' ||
+      github.event.workflow_run.event == 'pull_request_review'
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Download PR data
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          name: pr-data-*
+          name_is_regexp: true
+          workflow: pr-labeler.yaml
+          run_id: ${{ github.event.workflow_run.id }}
+          path: .
+
+      - name: Read PR number
+        id: pr
+        run: |
+          PR_NUMBER=$(cat pr-data-*/pr_number.txt)
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Apply all status labels
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const prNumber = ${{ steps.pr.outputs.number }};
+
+            // Get PR details and review decision using GraphQL
+            const result = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    reviewDecision
+                    mergeable
+                    mergeStateStatus
+                    baseRefName
+                    labels(first: 100) {
+                      nodes {
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            `, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              number: prNumber
+            });
+
+            const pr = result.repository.pullRequest;
+            const reviewDecision = pr.reviewDecision;
+            const isApproved = reviewDecision === 'APPROVED';
+            const currentLabels = pr.labels.nodes.map(l => l.name);
+
+            console.log('PR State:', {
+              reviewDecision: reviewDecision || 'NONE',
+              mergeable: pr.mergeable,
+              mergeStateStatus: pr.mergeStateStatus,
+              baseRefName: pr.baseRefName,
+              currentLabels: currentLabels
+            });
+
+            const labelsToAdd = [];
+            const labelsToRemove = [];
+
+            // Handle approved label
+            if (isApproved && !currentLabels.includes('approved')) {
+              labelsToAdd.push('approved');
+            } else if (!isApproved && currentLabels.includes('approved')) {
+              labelsToRemove.push('approved');
+            }
+
+            // Handle needs-rebase label (only when mergeability is definitively known)
+            if (pr.mergeable !== null) {
+              const needsRebase = pr.mergeable === false ||
+                                  pr.mergeStateStatus === 'DIRTY';
+              if (needsRebase && !currentLabels.includes('needs-rebase')) {
+                labelsToAdd.push('needs-rebase');
+              } else if (!needsRebase && currentLabels.includes('needs-rebase')) {
+                labelsToRemove.push('needs-rebase');
+              }
+            }
+
+            // Handle backport labels for redhat-3.x branches
+            const baseBranch = pr.baseRefName;
+            const backportMatch = baseBranch.match(/^redhat-3\.\d+$/);
+
+            if (backportMatch) {
+              // PR targets a redhat-3.x branch
+              const expectedBackportLabel = `backport/${baseBranch}`;
+
+              // Add the correct backport label if missing
+              if (!currentLabels.includes(expectedBackportLabel)) {
+                labelsToAdd.push(expectedBackportLabel);
+              }
+
+              // Remove any other backport labels (in case base branch changed)
+              const otherBackportLabels = currentLabels.filter(
+                label => label.startsWith('backport/') && label !== expectedBackportLabel
+              );
+              labelsToRemove.push(...otherBackportLabels);
+            } else {
+              // PR targets master or other branch - remove all backport labels
+              const backportLabels = currentLabels.filter(label => label.startsWith('backport/'));
+              labelsToRemove.push(...backportLabels);
+            }
+
+            // Apply label changes
+            if (labelsToAdd.length > 0) {
+              console.log('Adding labels:', labelsToAdd);
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                labels: labelsToAdd,
+              });
+            }
+
+            if (labelsToRemove.length > 0) {
+              console.log('Removing labels:', labelsToRemove);
+              for (const label of labelsToRemove) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  name: label,
+                });
+              }
+            }
+
+            if (labelsToAdd.length === 0 && labelsToRemove.length === 0) {
+              console.log('No label changes needed');
+            }

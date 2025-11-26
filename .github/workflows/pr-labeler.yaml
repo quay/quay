@@ -30,120 +30,17 @@ jobs:
           configuration-path: .github/labeler.yml
           sync-labels: true
 
-  label-status:
-    name: Label Status
+  capture-pr-data:
+    name: Capture PR Data
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR status and apply labels
-        uses: actions/github-script@v8
+      - name: Save PR number
+        run: |
+          mkdir -p ./pr-data
+          echo ${{ github.event.pull_request.number }} > ./pr-data/pr_number.txt
+
+      - name: Upload PR data
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const prNumber = context.payload.pull_request.number;
-
-            // Get PR details
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-            });
-
-            console.log('PR State:', {
-              mergeable: pr.mergeable,
-              mergeable_state: pr.mergeable_state,
-              labels: pr.labels.map(l => l.name),
-            });
-
-            // Get review decision using GraphQL
-            const reviewDecisionResult = await github.graphql(`
-              query($owner: String!, $repo: String!, $number: Int!) {
-                repository(owner: $owner, name: $repo) {
-                  pullRequest(number: $number) {
-                    reviewDecision
-                  }
-                }
-              }
-            `, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              number: prNumber
-            });
-
-            const reviewDecision = reviewDecisionResult.repository.pullRequest.reviewDecision;
-            const isApproved = reviewDecision === 'APPROVED';
-
-            console.log('Review Decision:', reviewDecision || 'NONE');
-
-            const currentLabels = pr.labels.map(l => l.name);
-            const labelsToAdd = [];
-            const labelsToRemove = [];
-
-            // Handle needs-rebase label (only when mergeability is definitively known)
-            if (pr.mergeable !== null) {
-              const needsRebase = pr.mergeable === false ||
-                                  pr.mergeable_state === 'dirty';
-              if (needsRebase && !currentLabels.includes('needs-rebase')) {
-                labelsToAdd.push('needs-rebase');
-              } else if (!needsRebase && currentLabels.includes('needs-rebase')) {
-                labelsToRemove.push('needs-rebase');
-              }
-            }
-
-            // Handle approved label
-            if (isApproved && !currentLabels.includes('approved')) {
-              labelsToAdd.push('approved');
-            } else if (!isApproved && currentLabels.includes('approved')) {
-              labelsToRemove.push('approved');
-            }
-
-            // Handle backport labels for redhat-3.x branches
-            const baseBranch = pr.base.ref;
-            const backportMatch = baseBranch.match(/^redhat-3\.\d+$/);
-
-            if (backportMatch) {
-              // PR targets a redhat-3.x branch
-              const expectedBackportLabel = `backport/${baseBranch}`;
-
-              // Add the correct backport label if missing
-              if (!currentLabels.includes(expectedBackportLabel)) {
-                labelsToAdd.push(expectedBackportLabel);
-              }
-
-              // Remove any other backport labels (in case base branch changed)
-              const otherBackportLabels = currentLabels.filter(
-                label => label.startsWith('backport/') && label !== expectedBackportLabel
-              );
-              labelsToRemove.push(...otherBackportLabels);
-            } else {
-              // PR targets master or other branch - remove all backport labels
-              const backportLabels = currentLabels.filter(label => label.startsWith('backport/'));
-              labelsToRemove.push(...backportLabels);
-            }
-
-            console.log('Base Branch:', baseBranch);
-
-            // Apply label changes
-            if (labelsToAdd.length > 0) {
-              console.log('Adding labels:', labelsToAdd);
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                labels: labelsToAdd,
-              });
-            }
-
-            if (labelsToRemove.length > 0) {
-              console.log('Removing labels:', labelsToRemove);
-              for (const label of labelsToRemove) {
-                await github.rest.issues.removeLabel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: prNumber,
-                  name: label,
-                });
-              }
-            }
-
-            if (labelsToAdd.length === 0 && labelsToRemove.length === 0) {
-              console.log('No label changes needed');
-            }
+          name: pr-data-${{ github.event.pull_request.number }}
+          path: pr-data/
