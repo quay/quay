@@ -251,7 +251,7 @@ class RetryOperationalError(object):
 
                 # Only retry SQLite "database is locked" errors
                 if "database is locked" in str(pe) and attempt < MAX_RETRIES - 1:
-                    if not self.is_closed():
+                    if not self.is_closed() and not self.in_transaction():
                         self.close()
 
                     # Exponential backoff with jitter
@@ -285,7 +285,7 @@ class RetryOperationalError(object):
                 # https://github.com/PyMySQL/PyMySQL/blob/main/pymysql/connections.py#L1354
                 raise
 
-            if not self.is_closed():
+            if not self.is_closed() and not self.in_transaction():
                 self.close()
 
             with __exception_wrapper__:
