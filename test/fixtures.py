@@ -12,7 +12,7 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from flask_principal import Principal, identity_loaded
 from mock import patch
-from peewee import InternalError, SqliteDatabase
+from peewee import InternalError, OperationalError, SqliteDatabase
 
 import features
 
@@ -241,16 +241,23 @@ def initialized_db(appconfig):
             test_savepoint = db.savepoint()
             test_savepoint.__enter__()
 
-            yield  # Run the test.
-
             try:
-                test_savepoint.rollback()
-                test_savepoint.__exit__(None, None, None)
-            except InternalError:
-                # If postgres fails with an exception (like IntegrityError) mid-transaction, it terminates
-                # it immediately, so when we go to remove the savepoint, it complains. We can safely ignore
-                # this case.
-                pass
+                yield  # Run the test.
+            finally:
+                # Always rollback the savepoint to ensure test isolation
+                try:
+                    test_savepoint.rollback()
+                except (InternalError, OperationalError):
+                    # If postgres or MySQL fails with an exception (like IntegrityError) mid-transaction, it terminates
+                    # it immediately, so when we go to remove the savepoint, it complains. We can safely ignore
+                    # this case.
+                    pass
+                finally:
+                    # Always exit the savepoint context
+                    try:
+                        test_savepoint.__exit__(None, None, None)
+                    except (InternalError, OperationalError):
+                        pass
     else:
         if os.environ.get("DISALLOW_AUTO_JOINS", "false").lower() == "true":
             # Patch get_rel_instance to fail if we try to load any non-joined foreign key. This will allow
