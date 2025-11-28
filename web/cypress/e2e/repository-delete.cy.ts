@@ -14,7 +14,7 @@ describe('Repository Details Page - Delete', () => {
     cy.contains(
       'Deleting a repository cannot be undone. Here be dragons!',
     ).should('exist');
-    cy.get('button[test-id="delete-repository-btn"]').click();
+    cy.get('button[data-testid="delete-repository-btn"]').click();
     cy.contains('Delete Repository?').should('exist');
     cy.contains(
       'You are requesting to delete the repository testorg/testrepo. This action is non-reversable.',

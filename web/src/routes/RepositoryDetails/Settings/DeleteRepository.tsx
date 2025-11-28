@@ -37,6 +37,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
           <Button
             key="confirm"
             variant="danger"
+            data-testid="delete-repository-confirm-btn"
             isDisabled={`${org}/${repo}` != repoNameInput}
             onClick={() => deleteRepositories([{namespace: org, name: repo}])}
           >
@@ -45,6 +46,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
           <Button
             key="cancel"
             variant="link"
+            data-testid="delete-repository-cancel-btn"
             onClick={() => {
               setIsModalOpen(!isModalOpen);
             }}
@@ -78,6 +80,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
           onChange={(_event, value) => setRepoNameInput(value.trim())}
           aria-label="repo-delete-name-input"
           placeholder="Enter repository here"
+          data-testid="delete-repository-confirm-input"
         />
       </Modal>
       <Alert
@@ -88,7 +91,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
       />
       <Button
         variant="danger"
-        test-id="delete-repository-btn"
+        data-testid="delete-repository-btn"
         onClick={() => setIsModalOpen(true)}
       >
         Delete Repository
