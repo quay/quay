@@ -766,4 +766,71 @@ describe('Org List Page', () => {
       cy.wrap($nameCell).parents('tr').find('.pf-v5-c-avatar').should('exist');
     });
   });
+
+  it('Registry calculation error shows correct modal title (PROJQUAY-9874)', () => {
+    // This test verifies that when registry size calculation fails,
+    // the error modal shows "Registry calculation failed" instead of "Org deletion failed"
+
+    // Mock config with quota features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.QUOTA_MANAGEMENT = true;
+      config.features.EDIT_QUOTA = true;
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock superuser
+    cy.fixture('superuser.json').then((user) => {
+      cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+    });
+
+    // Mock superuser organizations
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    // Mock superuser users
+    cy.fixture('superuser-users.json').then((usersData) => {
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    // Mock registry size endpoint
+    cy.intercept('GET', '/api/v1/superuser/registrysize/', {
+      statusCode: 200,
+      body: {size_bytes: 0, last_ran: null, queued: false, running: false},
+    }).as('getRegistrySize');
+
+    // Mock registry size calculation to fail with 403 Unauthorized
+    cy.intercept('POST', '/api/v1/superuser/registrysize/', {
+      statusCode: 403,
+      body: {error: 'Unauthorized'},
+    }).as('queueCalculation');
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getSuperUser');
+    cy.wait('@getRegistrySize');
+
+    // Click the Calculate button
+    cy.contains('button', 'Calculate').click();
+
+    // Confirm the calculation in the modal
+    cy.get('.pf-v5-c-modal-box').within(() => {
+      cy.contains('button', 'Calculate').click();
+    });
+
+    cy.wait('@queueCalculation');
+
+    // Verify the error modal shows correct title
+    cy.get('.pf-v5-c-modal-box').within(() => {
+      cy.contains('Registry calculation failed').should('exist');
+      // Should NOT show "Org deletion failed"
+      cy.contains('Org deletion failed').should('not.exist');
+    });
+  });
 });
