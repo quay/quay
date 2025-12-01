@@ -3,7 +3,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 import sentry_sdk
 
-from util.saas.exceptionlog import FakeSentry, FakeSentryClient, Sentry
+from util.saas.exceptionlog import (
+    FakeSentry,
+    FakeSentryClient,
+    Sentry,
+    _sentry_before_send_ignore_known,
+)
 
 
 class TestExceptionLogSentry:
@@ -49,6 +54,7 @@ class TestExceptionLogSentry:
             "SENTRY_DSN": "https://test@sentry.io/123",
             "SENTRY_ENVIRONMENT": "test",
             "SENTRY_TRACES_SAMPLE_RATE": 0.5,
+            "SENTRY_SAMPLE_RATE": 0.1,
             "SENTRY_PROFILES_SAMPLE_RATE": 0.3,
         }.get(key, default)
 
@@ -67,6 +73,7 @@ class TestExceptionLogSentry:
             assert kwargs["environment"] == "test"
             assert kwargs["traces_sample_rate"] == 0.5
             assert kwargs["profiles_sample_rate"] == 0.3
+            assert kwargs["sample_rate"] == 0.1
 
             # Verify the SDK was called exactly once
             assert mock_sentry_sdk.init.call_count == 1
@@ -200,3 +207,182 @@ class TestExceptionLogSentry:
         assert "existing" in mock_app.extensions
         assert "sentry" in mock_app.extensions
         assert mock_app.extensions["sentry"] is sentry.state
+
+
+class TestSentryBeforeSendFilter:
+    """Test the _sentry_before_send_ignore_known filter function."""
+
+    def test_filter_log_event_with_unauthorized(self):
+        """Log events with 'unauthorized' text should be filtered."""
+        event = {"logentry": {"formatted": "Unauthorized access attempt"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_log_event_network_error(self):
+        """Log events with network errors should be filtered."""
+        event = {"logentry": {"formatted": "Connection timeout while fetching data"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_keep_log_event_with_database_error(self):
+        """Errors from logger.error() with database keywords should NOT be filtered."""
+        event = {"logentry": {"formatted": "Error 500: PostgreSQL connection failed"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_keep_log_event_with_redis_error(self):
+        """Log events with Redis errors should NOT be filtered."""
+        event = {"logentry": {"formatted": "Redis connection error on 401 status"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_existing_jwt_exception_filtering_still_works(self):
+        """InvalidJWTException via event exception values should be filtered."""
+        event = {
+            "exception": {"values": [{"type": "InvalidJWTException", "value": "Invalid JWT token"}]}
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_event_with_both_exception_and_logentry(self):
+        """Events with both exception and logentry fields should be filtered if match."""
+        event = {
+            "exception": {"values": [{"type": "HTTPError", "value": "Some error"}]},
+            "logentry": {"formatted": "Error 401: Unauthorized"},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_empty_logentry(self):
+        """Events with empty logentry should be kept."""
+        event = {"logentry": {}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_none_event(self):
+        """None events should be returned as-is."""
+        result = _sentry_before_send_ignore_known(None, {})
+        assert result is None
+
+    def test_event_without_searchable_text(self):
+        """Events without searchable text should be kept."""
+        event = {"platform": "python", "timestamp": 1234567890}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_filter_csrf_error_in_log(self):
+        """CSRF errors in log messages should be filtered."""
+        event = {"logentry": {"formatted": "CSRF token mismatch error"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_session_expired_in_log(self):
+        """Session expired errors in log messages should be filtered."""
+        event = {"logentry": {"formatted": "Session expired, please login again"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_clair_vulnerability_scanner_error(self):
+        """Clair vulnerability scanner errors should be filtered."""
+        event = {
+            "logentry": {
+                "formatted": "Clair vulnerability scanner connection error when trying to connect"
+            }
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_keep_important_error_overrides_filter_pattern(self):
+        """Important patterns should take precedence over filter patterns."""
+        event = {
+            "logentry": {"formatted": "Error 401: Database authentication failed for user admin"}
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_exc_info_hint_invalidbearertokenexception(self):
+        """InvalidBearerTokenException in exc_info hint should be filtered."""
+
+        class InvalidBearerTokenException(Exception):
+            pass
+
+        event = {"message": "Some error"}
+        hint = {"exc_info": (InvalidBearerTokenException, None, None)}
+        result = _sentry_before_send_ignore_known(event, hint)
+        assert result is None
+
+    def test_exc_info_hint_invalidjwtexception(self):
+        """InvalidJWTException in exc_info hint should be filtered."""
+
+        class InvalidJWTException(Exception):
+            pass
+
+        event = {"message": "Some error"}
+        hint = {"exc_info": (InvalidJWTException, None, None)}
+        result = _sentry_before_send_ignore_known(event, hint)
+        assert result is None
+
+    def test_browser_platform_script_error_filtered(self):
+        """Browser platform script errors should be filtered."""
+        event = {
+            "platform": "javascript",
+            "exception": {"values": [{"type": "Error", "value": "Script error"}]},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_browser_platform_cors_error_filtered(self):
+        """Browser platform CORS errors should be filtered."""
+        event = {
+            "platform": "browser",
+            "logentry": {"formatted": "CORS error: Cross-origin request blocked"},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_otel_debug_messages(self):
+        """OTEL instrumentation debug messages should be filtered."""
+        event = {
+            "logentry": {"formatted": "[OTEL] request {'User-Agent': 'Boto3/1.28.61', ...}"},
+            "logger": "storage.cloud",
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_various_4xx_codes(self):
+        """Various 4xx status codes should be filtered."""
+        codes = [400, 401, 403, 404, 405, 409, 410, 418, 422, 429, 451]
+        for code in codes:
+            event = {"logentry": {"formatted": f"Error {code}: Client error"}}
+            result = _sentry_before_send_ignore_known(event, {})
+            assert result is None, f"Status code {code} should be filtered"
+
+    def test_keep_non_contextual_4xx_numbers(self):
+        """Numbers like 4001 or 400473 without HTTP context should NOT be filtered."""
+        # Port number
+        event = {"logentry": {"formatted": "Failed to connect to port 4001"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+        # Error code without context
+        event = {"logentry": {"formatted": "Database error: 400473"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
+
+    def test_filter_status_code_tag_non_browser(self):
+        """Events with status_code tag in 4xx range should be filtered for all requests."""
+        event = {
+            "logentry": {"formatted": "Request failed"},
+            "tags": {"status_code": 404},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_keep_status_code_tag_5xx(self):
+        """Events with status_code tag in 5xx range should NOT be filtered."""
+        event = {
+            "logentry": {"formatted": "Request failed"},
+            "tags": {"status_code": 500},
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
