@@ -1,0 +1,71 @@
+name: Label Original PR on Backport Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - 'redhat-*'
+
+jobs:
+  label-original-pr:
+    name: Add backported label to original PR
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Label original PR as backported
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const prBody = context.payload.pull_request.body || '';
+            const targetBranch = context.payload.pull_request.base.ref;
+
+            // Extract original PR number from body: "cherry-pick of #1234"
+            const match = prBody.match(/cherry-pick of #(\d+)/i);
+            if (!match) {
+              console.log('No original PR reference found in body:', prBody);
+              return;
+            }
+
+            const originalPrNumber = parseInt(match[1], 10);
+            const labelName = `backported/${targetBranch}`;
+
+            console.log(`Cherry-pick PR #${context.payload.pull_request.number} merged to ${targetBranch}`);
+            console.log(`Adding label "${labelName}" to original PR #${originalPrNumber}`);
+
+            // Ensure the label exists (create if needed)
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: labelName,
+              });
+            } catch (error) {
+              if (error.status === 404) {
+                console.log(`Creating label "${labelName}"`);
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: labelName,
+                  color: '0E8A16', // Green to indicate successful backport
+                  description: `Backported to ${targetBranch}`,
+                });
+              } else {
+                throw error;
+              }
+            }
+
+            // Add label to original PR
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: originalPrNumber,
+              labels: [labelName],
+            });
+
+            console.log(`Successfully labeled PR #${originalPrNumber} with "${labelName}"`);
