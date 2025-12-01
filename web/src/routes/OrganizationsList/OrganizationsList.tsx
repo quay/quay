@@ -125,7 +125,8 @@ export default function OrganizationsList() {
   const [isOrganizationModalOpen, setOrganizationModalOpen] = useState(false);
   const [selectedOrganization, setSelectedOrganization] =
     useRecoilState(selectedOrgsState);
-  const [err, setErr] = useState<string[]>();
+  const [deletionErr, setDeletionErr] = useState<string[]>();
+  const [registryCalcErr, setRegistryCalcErr] = useState<string[]>();
   const [deleteModalIsOpen, setDeleteModalIsOpen] = useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
   const [isCalculateModalOpen, setCalculateModalOpen] = useState(false);
@@ -154,7 +155,7 @@ export default function OrganizationsList() {
       setTimeout(() => refetchRegistrySize(), 1000);
     },
     onError: (errorMsg) => {
-      setErr([errorMsg]);
+      setRegistryCalcErr([errorMsg]);
       setCalculateModalOpen(false);
     },
   });
@@ -332,9 +333,11 @@ export default function OrganizationsList() {
             addDisplayError(`Failed to delete ${name}`, error.error),
           );
         });
-        setErr(errMessages);
+        setDeletionErr(errMessages);
       } else {
-        setErr([addDisplayError('Failed to delete selected items', err)]);
+        setDeletionErr([
+          addDisplayError('Failed to delete selected items', err),
+        ]);
       }
       setSelectedOrganization([]);
     }
@@ -492,7 +495,16 @@ export default function OrganizationsList() {
         isExternalAuth={!!isExternalAuth}
         isSuperUser={!!user?.super_user}
       />
-      <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
+      <ErrorModal
+        title="Deletion failed"
+        error={deletionErr}
+        setError={setDeletionErr}
+      />
+      <ErrorModal
+        title="Registry calculation failed"
+        error={registryCalcErr}
+        setError={setRegistryCalcErr}
+      />
 
       <PageSection variant={PageSectionVariants.light}>
         <OrganizationToolBar
