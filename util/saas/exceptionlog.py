@@ -12,7 +12,7 @@ from sentry_sdk.integrations.stdlib import StdlibIntegration
 
 logger = logging.getLogger(__name__)
 
-# Pattern definitions for Sentry event filtering
+# patterns to NEVER exclude
 IMPORTANT_PATTERNS = [
     "database",
     "postgresql",
@@ -21,7 +21,8 @@ IMPORTANT_PATTERNS = [
     "ldap",
 ]
 
-NETWORK_PATTERNS = [
+EXCLUDE_PATTERNS = [
+    # networking
     "err_network",
     "err_canceled",
     "econnaborted",
@@ -32,18 +33,14 @@ NETWORK_PATTERNS = [
     "connection timeout",
     "request timeout",
     "fetch failed",
-]
-
-CSRF_PATTERNS = [
+    # csrf
     "csrf",
     "invalid token",
     "token mismatch",
     "forbidden (csrf token missing)",
     "session expired",
     "authentication required",
-]
-
-CLIENT_ERROR_PATTERNS = [
+    # client errors
     "unauthorized",
     "forbidden",
     "not found",
@@ -58,17 +55,7 @@ CLIENT_ERROR_PATTERNS = [
     "unsupported media type",
     "requested range not satisfiable",
     "expectation failed",
-]
-
-# Regex pattern for HTTP 4xx status codes in context
-# Matches: "Error 400", "Status 401", "HTTP 403", " 404:", etc.
-# Avoids: "error: 400473", "port 4001", etc.
-HTTP_4XX_PATTERN = re.compile(
-    r"(?:\b(?:error|status|http)\s+4\d{2}\b)|(?:\s4\d{2}:)",
-    re.IGNORECASE,
-)
-
-NOISY_INFRASTRUCTURE_PATTERNS = [
+    # noisy infrastructure
     "security scanner endpoint",
     "localhost:6000",
     "clair",
@@ -83,6 +70,14 @@ NOISY_INFRASTRUCTURE_PATTERNS = [
     "[otel]",
     "otel request",
 ]
+
+# Regex pattern for HTTP 4xx status codes in context
+# Matches: "Error 400", "Status 401", "HTTP 403", " 404:", etc.
+# Avoids: "error: 400473", "port 4001", etc.
+HTTP_4XX_PATTERN = re.compile(
+    r"(?:\b(?:error|status|http)\s+4\d{2}\b)|(?:\s4\d{2}:)",
+    re.IGNORECASE,
+)
 
 BROWSER_ERROR_PATTERNS = [
     "script error",
@@ -248,23 +243,11 @@ def _sentry_before_send_ignore_known(ex_event: Any, hint: Any) -> Optional[Any]:
                 return None
 
             # Check for network-related errors
-            if _should_drop_by_patterns(texts, NETWORK_PATTERNS):
-                return None
-
-            # Check for CSRF token related errors
-            if _should_drop_by_patterns(texts, CSRF_PATTERNS):
-                return None
-
-            # Check for client-side error messages
-            if _should_drop_by_patterns(texts, CLIENT_ERROR_PATTERNS):
+            if _should_drop_by_patterns(texts, EXCLUDE_PATTERNS):
                 return None
 
             # Check for HTTP 4xx status codes in error messages (regex matching)
             if _matches_http_4xx_pattern(texts):
-                return None
-
-            # Check for noisy infrastructure errors
-            if _should_drop_by_patterns(texts, NOISY_INFRASTRUCTURE_PATTERNS):
                 return None
 
         # Check for HTTP 4xx status codes in event tags (for all requests)
