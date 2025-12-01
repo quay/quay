@@ -1,10 +1,14 @@
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 from peewee import IntegrityError
 
 from data import model
 from data.database import ManifestPullStatistics, TagPullStatistics
+from data.model.oci import tag as oci_tag
+from data.model.oci.tag import retarget_tag
+from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.model.pull_statistics import (
     PullStatisticsException,
     bulk_upsert_manifest_statistics,
@@ -21,7 +25,7 @@ class TestPullStatistics:
     @pytest.fixture(autouse=True)
     def setup(self, initialized_db):
         self.user = get_user("devtable")
-        self.repo = create_repository("devtable", "testpullstats", self.user, repo_kind="image")
+        self.repo = create_repository("devtable", "newrepo", self.user, repo_kind="image")
         assert self.repo is not None, "Failed to create test repository"
         self.repo_id = self.repo.id
 
@@ -553,3 +557,309 @@ class TestPullStatistics:
             2024, 1, 10, 12, 0, 0
         )  # SQL CASE keeps later date atomically (max for timestamp)
         assert updated.current_manifest_digest == "sha256:new"  # But update manifest
+
+    def test_delete_tag_clears_pull_statistics(self, initialized_db):
+        """Test that deleting a tag clears its pull statistics."""
+        with patch("data.model.oci.tag.features") as mock_features:
+            mock_features.IMAGE_PULL_STATS = True
+
+            # Create a manifest
+            manifest, _ = create_manifest_for_testing(self.repo, "test1")
+
+            # Create a tag
+            _ = retarget_tag("test-tag", manifest)
+
+            # Create pull statistics for the tag
+            TagPullStatistics.create(
+                repository=self.repo,
+                tag_name="test-tag",
+                tag_pull_count=42,
+                last_tag_pull_date=datetime(2024, 1, 1, 12, 0, 0),
+                current_manifest_digest=manifest.digest,
+            )
+
+            # Verify statistics exist
+            stats = TagPullStatistics.get(
+                TagPullStatistics.repository == self.repo_id,
+                TagPullStatistics.tag_name == "test-tag",
+            )
+            assert stats.tag_pull_count == 42
+
+            # Delete the tag
+            deleted_tag = oci_tag.delete_tag(self.repo.id, "test-tag")
+            assert deleted_tag is not None
+
+            # Verify pull statistics were deleted
+            stats_query = TagPullStatistics.select().where(
+                TagPullStatistics.repository == self.repo_id,
+                TagPullStatistics.tag_name == "test-tag",
+            )
+            assert stats_query.count() == 0
+
+    def test_delete_tag_with_feature_disabled(self, initialized_db):
+        """Test that deleting a tag with IMAGE_PULL_STATS disabled preserves pull statistics."""
+        with patch("data.model.oci.tag.features") as mock_features:
+            mock_features.IMAGE_PULL_STATS = False
+
+            # Create a manifest
+            manifest, _ = create_manifest_for_testing(self.repo, "test2")
+
+            # Create a tag
+            _ = retarget_tag("test-tag-disabled", manifest)
+
+            # Create pull statistics for the tag
+            TagPullStatistics.create(
+                repository=self.repo,
+                tag_name="test-tag-disabled",
+                tag_pull_count=99,
+                last_tag_pull_date=datetime(2024, 1, 15, 12, 0, 0),
+                current_manifest_digest=manifest.digest,
+            )
+
+            # Verify statistics exist
+            stats = TagPullStatistics.get(
+                TagPullStatistics.repository == self.repo_id,
+                TagPullStatistics.tag_name == "test-tag-disabled",
+            )
+            assert stats.tag_pull_count == 99
+
+            # Delete the tag
+            deleted_tag = oci_tag.delete_tag(self.repo.id, "test-tag-disabled")
+            assert deleted_tag is not None
+
+            # Verify pull statistics still exist (not deleted when feature is disabled)
+            stats_query = TagPullStatistics.select().where(
+                TagPullStatistics.repository == self.repo_id,
+                TagPullStatistics.tag_name == "test-tag-disabled",
+            )
+            assert stats_query.count() == 1
+            stats = stats_query.get()
+            assert stats.tag_pull_count == 99
+
+    def test_repush_tag_after_deletion_starts_fresh(self, initialized_db):
+        """Test that re-pushing a tag after deletion starts with fresh pull statistics."""
+        with patch("data.model.oci.tag.features") as mock_features:
+            mock_features.IMAGE_PULL_STATS = True
+
+            # Create first manifest
+            manifest1, _ = create_manifest_for_testing(self.repo, "1")
+
+            # Create tag
+            _ = retarget_tag("redis", manifest1)
+
+            # Simulate pulls by creating statistics
+            TagPullStatistics.create(
+                repository=self.repo,
+                tag_name="redis",
+                tag_pull_count=100,
+                last_tag_pull_date=datetime(2024, 1, 1, 12, 0, 0),
+                current_manifest_digest=manifest1.digest,
+            )
+
+            # Delete the tag
+            oci_tag.delete_tag(self.repo.id, "redis")
+
+            # Verify statistics were cleared
+            assert (
+                TagPullStatistics.select()
+                .where(
+                    TagPullStatistics.repository == self.repo_id,
+                    TagPullStatistics.tag_name == "redis",
+                )
+                .count()
+                == 0
+            )
+
+            # Re-push the same tag name (simulating user scenario from bug report)
+            manifest2, _ = create_manifest_for_testing(self.repo, "2")
+
+            _ = retarget_tag("redis", manifest2)
+
+            # Simulate new pulls
+            tag_updates = [
+                {
+                    "repository_id": self.repo_id,
+                    "tag_name": "redis",
+                    "manifest_digest": manifest2.digest,
+                    "pull_count": 5,
+                    "last_pull_timestamp": datetime(2024, 2, 1, 12, 0, 0),
+                }
+            ]
+            bulk_upsert_tag_statistics(tag_updates)
+
+            # Verify statistics start fresh (not 105, but 5)
+            stats = TagPullStatistics.get(
+                TagPullStatistics.repository == self.repo_id, TagPullStatistics.tag_name == "redis"
+            )
+            assert stats.tag_pull_count == 5  # Fresh start, not 100 + 5
+            assert stats.last_tag_pull_date == datetime(2024, 2, 1, 12, 0, 0)
+            assert stats.current_manifest_digest == manifest2.digest
+
+    def test_remove_tag_from_timemachine_clears_pull_statistics(self, initialized_db):
+        """Test that permanently deleting a tag clears its pull statistics."""
+        with patch("data.model.oci.tag.features") as mock_features:
+            mock_features.IMAGE_PULL_STATS = True
+
+            # Create a manifest
+            manifest, _ = create_manifest_for_testing(self.repo, "perm")
+
+            # Create tag
+            _ = retarget_tag("permanent-test", manifest)
+
+            # Create pull statistics
+            TagPullStatistics.create(
+                repository=self.repo,
+                tag_name="permanent-test",
+                tag_pull_count=75,
+                last_tag_pull_date=datetime(2024, 3, 1, 10, 0, 0),
+                current_manifest_digest=manifest.digest,
+            )
+
+            # Verify statistics exist
+            assert (
+                TagPullStatistics.select()
+                .where(
+                    TagPullStatistics.repository == self.repo_id,
+                    TagPullStatistics.tag_name == "permanent-test",
+                )
+                .count()
+                == 1
+            )
+
+            # Permanently delete the tag (bypass time machine)
+            result = oci_tag.remove_tag_from_timemachine(
+                self.repo.id,
+                "permanent-test",
+                manifest.id,
+                include_submanifests=False,
+                is_alive=True,
+            )
+            assert result is True
+
+            # Verify pull statistics were cleared
+            assert (
+                TagPullStatistics.select()
+                .where(
+                    TagPullStatistics.repository == self.repo_id,
+                    TagPullStatistics.tag_name == "permanent-test",
+                )
+                .count()
+                == 0
+            )
+
+    def test_remove_tag_from_timemachine_with_feature_disabled_alive(self, initialized_db):
+        """Test that permanently deleting an alive tag with IMAGE_PULL_STATS disabled preserves pull statistics."""
+        with patch("data.model.oci.tag.features") as mock_features:
+            mock_features.IMAGE_PULL_STATS = False
+
+            # Create a manifest
+            manifest, _ = create_manifest_for_testing(self.repo, "perm-disabled")
+
+            # Create tag
+            _ = retarget_tag("permanent-disabled-alive", manifest)
+
+            # Create pull statistics
+            TagPullStatistics.create(
+                repository=self.repo,
+                tag_name="permanent-disabled-alive",
+                tag_pull_count=85,
+                last_tag_pull_date=datetime(2024, 3, 15, 10, 0, 0),
+                current_manifest_digest=manifest.digest,
+            )
+
+            # Verify statistics exist
+            assert (
+                TagPullStatistics.select()
+                .where(
+                    TagPullStatistics.repository == self.repo_id,
+                    TagPullStatistics.tag_name == "permanent-disabled-alive",
+                )
+                .count()
+                == 1
+            )
+
+            # Permanently delete the tag (bypass time machine)
+            result = oci_tag.remove_tag_from_timemachine(
+                self.repo.id,
+                "permanent-disabled-alive",
+                manifest.id,
+                include_submanifests=False,
+                is_alive=True,
+            )
+            assert result is True
+
+            # Verify pull statistics still exist (not deleted when feature is disabled)
+            assert (
+                TagPullStatistics.select()
+                .where(
+                    TagPullStatistics.repository == self.repo_id,
+                    TagPullStatistics.tag_name == "permanent-disabled-alive",
+                )
+                .count()
+                == 1
+            )
+            stats = TagPullStatistics.get(
+                TagPullStatistics.repository == self.repo_id,
+                TagPullStatistics.tag_name == "permanent-disabled-alive",
+            )
+            assert stats.tag_pull_count == 85
+
+    def test_remove_tag_from_timemachine_with_feature_disabled_not_alive(self, initialized_db):
+        """Test that permanently deleting a non-alive tag with IMAGE_PULL_STATS disabled preserves pull statistics."""
+        with patch("data.model.oci.tag.features") as mock_features:
+            mock_features.IMAGE_PULL_STATS = False
+
+            # Create a manifest
+            manifest, _ = create_manifest_for_testing(self.repo, "perm-not-alive")
+
+            # Create tag
+            tag = retarget_tag("permanent-disabled-not-alive", manifest)
+
+            # Delete the tag first to make it not alive (but still in time machine)
+            oci_tag.delete_tag(self.repo.id, "permanent-disabled-not-alive")
+
+            # Create pull statistics for the deleted tag
+            TagPullStatistics.create(
+                repository=self.repo,
+                tag_name="permanent-disabled-not-alive",
+                tag_pull_count=95,
+                last_tag_pull_date=datetime(2024, 3, 20, 10, 0, 0),
+                current_manifest_digest=manifest.digest,
+            )
+
+            # Verify statistics exist
+            assert (
+                TagPullStatistics.select()
+                .where(
+                    TagPullStatistics.repository == self.repo_id,
+                    TagPullStatistics.tag_name == "permanent-disabled-not-alive",
+                )
+                .count()
+                == 1
+            )
+
+            # Permanently delete the tag from time machine (is_alive=False)
+            result = oci_tag.remove_tag_from_timemachine(
+                self.repo.id,
+                "permanent-disabled-not-alive",
+                manifest.id,
+                include_submanifests=False,
+                is_alive=False,
+            )
+            assert result is True
+
+            # Verify pull statistics still exist (not deleted when feature is disabled)
+            assert (
+                TagPullStatistics.select()
+                .where(
+                    TagPullStatistics.repository == self.repo_id,
+                    TagPullStatistics.tag_name == "permanent-disabled-not-alive",
+                )
+                .count()
+                == 1
+            )
+            stats = TagPullStatistics.get(
+                TagPullStatistics.repository == self.repo_id,
+                TagPullStatistics.tag_name == "permanent-disabled-not-alive",
+            )
+            assert stats.tag_pull_count == 95
