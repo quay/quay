@@ -36,6 +36,8 @@ export function useUpdateUser({onSuccess, onError}) {
         onSuccess(updatedUser);
         queryClient.invalidateQueries(['user']);
         queryClient.invalidateQueries(['organization']);
+        // Invalidate logs so the Logs tab shows the new user settings change entries
+        queryClient.invalidateQueries(['usageLogs']);
       },
       onError: (err) => {
         onError(err);
