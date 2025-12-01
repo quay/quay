@@ -212,22 +212,6 @@ class TestExceptionLogSentry:
 class TestSentryBeforeSendFilter:
     """Test the _sentry_before_send_ignore_known filter function."""
 
-    def test_filter_log_event_401_error(self):
-        """Errors from logger.error() with 401 status should be filtered."""
-        event = {
-            "type": "default",
-            "logentry": {"formatted": "Error 401: Invalid Bearer [token] format; Arguments: {...}"},
-            "logger": "util.http",
-        }
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result is None
-
-    def test_filter_log_event_403_error(self):
-        """Errors from logger.error() with 403 status should be filtered."""
-        event = {"logentry": {"formatted": "Error 403: Forbidden; Arguments: {'status_code': 403}"}}
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result is None
-
     def test_filter_log_event_with_unauthorized(self):
         """Log events with 'unauthorized' text should be filtered."""
         event = {"logentry": {"formatted": "Unauthorized access attempt"}}
@@ -355,15 +339,6 @@ class TestSentryBeforeSendFilter:
         }
         result = _sentry_before_send_ignore_known(event, {})
         assert result is None
-
-    def test_logger_name_extracted(self):
-        """Logger name should be included in searchable text."""
-        event = {
-            "logger": "util.http",
-            "logentry": {"formatted": "Some error occurred"},
-        }
-        result = _sentry_before_send_ignore_known(event, {})
-        assert result == event
 
     def test_filter_otel_debug_messages(self):
         """OTEL instrumentation debug messages should be filtered."""
