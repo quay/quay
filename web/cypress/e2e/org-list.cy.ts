@@ -1,8 +1,11 @@
 /// <reference types="cypress" />
 
 describe('Org List Page', () => {
-  beforeEach(() => {
+  before(() => {
     cy.exec('npm run quay:seed');
+  });
+
+  beforeEach(() => {
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
@@ -750,5 +753,17 @@ describe('Org List Page', () => {
 
     cy.contains('Successfully deleted', {timeout: 10000});
     cy.contains('a', 'testorg_delete2').should('not.exist');
+  });
+
+  it('Displays avatars for all organizations and users (PROJQUAY-9749)', () => {
+    cy.visit('/organization');
+
+    // Wait for the organization list to load
+    cy.get('td[data-label="Name"]').should('have.length.greaterThan', 0);
+
+    // Check that every entry has an avatar
+    cy.get('td[data-label="Name"]').each(($nameCell) => {
+      cy.wrap($nameCell).parents('tr').find('.pf-v5-c-avatar').should('exist');
+    });
   });
 });
