@@ -1,5 +1,5 @@
 import React from 'react';
-import {isNullOrUndefined} from 'src/libs/utils';
+import {isNullOrUndefined, humanizeTimeForExpiry} from 'src/libs/utils';
 import {useEvents} from './UseEvents';
 
 export function useLogDescriptions() {
@@ -190,8 +190,11 @@ export function useLogDescriptions() {
     user_change_metadata: function () {
       return 'User changed metadata';
     },
-    user_change_tag_expiration: function () {
-      return 'Change time machine window to {tag_expiration}';
+    user_change_tag_expiration: function (metadata: Metadata) {
+      const humanizedTime = humanizeTimeForExpiry(
+        parseInt(metadata.tag_expiration),
+      );
+      return `Change time machine window to ${humanizedTime}`;
     },
     account_change_plan: function () {
       return 'Change plan';
@@ -562,7 +565,10 @@ export function useLogDescriptions() {
       }
     },
     org_change_tag_expiration: function (metadata: Metadata) {
-      return `Change time machine window to ${metadata.tag_expiration}`;
+      const humanizedTime = humanizeTimeForExpiry(
+        parseInt(metadata.tag_expiration),
+      );
+      return `Change time machine window to ${humanizedTime}`;
     },
     org_change_name: function (metadata: Metadata) {
       if (metadata.superuser) {
