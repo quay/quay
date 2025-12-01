@@ -470,6 +470,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   );
 
   const displaySyncDirectory =
+    config?.features?.TEAM_SYNCING &&
     teamCanSync !== null &&
     !teamSyncInfo &&
     config?.registry_state !== 'readonly';
