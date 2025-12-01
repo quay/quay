@@ -56,19 +56,19 @@ export function renderQuotaConsumed(
 
   const {quota_bytes, configured_quota, backfill_status} = quotaReport;
 
-  // Format consumed bytes
+  // Format consumed bytes - handle 0 as a valid value
   let consumedDisplay = '';
-  if (quota_bytes) {
+  if (quota_bytes !== null && quota_bytes !== undefined) {
     consumedDisplay = formatSize(quota_bytes);
 
     // Add percentage if configured quota exists and option enabled
-    if (options.showPercentage && configured_quota) {
+    if (options.showPercentage && configured_quota && quota_bytes > 0) {
       const percentage = Math.round((quota_bytes / configured_quota) * 100);
       consumedDisplay += ` (${percentage}%)`;
     }
   } else if (configured_quota) {
-    // Show 0 if quota is configured but nothing consumed yet
-    consumedDisplay = '0';
+    // Show 0.00 KiB if quota is configured but nothing consumed yet
+    consumedDisplay = '0.00 KiB';
   }
 
   // Add total if configured quota exists and option enabled

@@ -906,4 +906,63 @@ describe('Org List Page', () => {
       cy.contains('Org deletion failed').should('not.exist');
     });
   });
+
+  it('Displays "0.00 KiB" for zero registry size instead of "N/A" (PROJQUAY-9860)', () => {
+    // This test verifies the fix for PROJQUAY-9860 where formatSize(0) was
+    // incorrectly returning "N/A" instead of "0.00 KiB" for zero-byte registries.
+
+    // Mock config with quota features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.QUOTA_MANAGEMENT = true;
+      config.features.EDIT_QUOTA = true;
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock superuser
+    cy.fixture('superuser.json').then((user) => {
+      cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+    });
+
+    // Mock superuser organizations
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    // Mock superuser users
+    cy.fixture('superuser-users.json').then((usersData) => {
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    // Mock registry size endpoint with 0 bytes (the bug scenario)
+    cy.intercept('GET', '/api/v1/superuser/registrysize/', {
+      statusCode: 200,
+      body: {
+        size_bytes: 0, // Zero bytes - should show "0.00 KiB", not "N/A"
+        last_ran: 1733241830, // Valid timestamp
+        queued: false,
+        running: false,
+      },
+    }).as('getRegistrySize');
+
+    // Visit organizations page
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getSuperUser');
+    cy.wait('@getRegistrySize');
+
+    // Verify the header displays "0.00 KiB" instead of "N/A"
+    cy.contains('Total Registry Size:').should('be.visible');
+    cy.contains('Total Registry Size: 0.00 KiB').should('exist');
+
+    // Verify "N/A" is NOT displayed for registry size
+    cy.contains('Total Registry Size:')
+      .parent()
+      .should('not.contain.text', 'N/A');
+  });
 });
