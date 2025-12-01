@@ -31,7 +31,6 @@ import {
 import React, {useEffect, useRef, useState} from 'react';
 import {useAppNotifications} from 'src/hooks/useAppNotifications';
 import {GlobalAuthState, logoutUser} from 'src/resources/AuthResource';
-import {addDisplayError} from 'src/resources/ErrorHandling';
 import ErrorModal from '../errors/ErrorModal';
 
 import {useQueryClient} from '@tanstack/react-query';
@@ -114,12 +113,18 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
       case 'logout':
         try {
           await logoutUser();
-          GlobalAuthState.csrfToken = undefined;
-          queryClient.invalidateQueries(['user']);
-          window.location.href = '/signin';
         } catch (err) {
-          console.error(err);
-          setErr(addDisplayError('Unable to log out', err));
+          console.error('Logout API failed:', err);
+          // Don't show error modal - user still wants to log out locally
+        } finally {
+          // ALWAYS cleanup and redirect, even on network error
+          // Clear global auth state before redirect
+          GlobalAuthState.isLoggedIn = false;
+          GlobalAuthState.csrfToken = undefined;
+          GlobalAuthState.bearerToken = undefined;
+          queryClient.invalidateQueries(['user']);
+          // Redirect to signin page (full page reload will clear React Query cache)
+          window.location.href = '/signin';
         }
         setIsDropdownOpen(false);
         break;
@@ -300,7 +305,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
       id="user-menu-toggle"
       aria-label="User menu"
     >
-      {user.username}
+      {user?.username}
     </MenuToggle>
   );
 
