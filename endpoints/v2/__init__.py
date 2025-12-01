@@ -38,7 +38,7 @@ from util.pagination import decrypt_page_token, encrypt_page_token
 from util.registry.dockerver import docker_version
 
 logger = logging.getLogger(__name__)
-v2_bp = timed_blueprint(Blueprint("v2", __name__))
+v2_bp = timed_blueprint(Blueprint("v2", __name__), get_app=lambda: app)
 
 
 @v2_bp.app_errorhandler(V2RegistryException)

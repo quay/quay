@@ -15,7 +15,8 @@ from prometheus_client import REGISTRY, Counter, Gauge, Histogram, push_to_gatew
 
 logger = logging.getLogger(__name__)
 
-def get_namespace_bucket_mapping():
+
+def get_namespace_bucket_mapping(app):
     """
     Get namespace to bucket mapping from config.
     Supports two formats:
@@ -23,38 +24,39 @@ def get_namespace_bucket_mapping():
     2. Dict format: {"bucket1": ["namespace1", "namespace2"], "bucket2": ["namespace3"]}
     Returns a dict mapping namespace -> bucket_name.
     """
+    if not app:
+        return {}
+
     try:
-        from app import app
-        if app and hasattr(app, "config"):
-            tracked = app.config.get("TRACKED_NAMESPACES", [])
-            if not tracked:
-                return {}
-            
-            # If it's a dict, use it directly (namespace -> bucket mapping)
-            if isinstance(tracked, dict):
-                mapping = {}
-                for bucket_name, namespaces in tracked.items():
-                    if isinstance(namespaces, (list, tuple)):
-                        for ns in namespaces:
-                            mapping[ns] = bucket_name
-                    else:
-                        # Single namespace string
-                        mapping[namespaces] = bucket_name
-                return mapping
-            
-            # If it's a list, map each namespace to itself (backward compatibility)
-            elif isinstance(tracked, (list, tuple)):
-                return {ns: ns for ns in tracked}
-            
-            # Single string value
-            elif isinstance(tracked, str):
-                return {tracked: tracked}
+        tracked = app.config.get("TRACKED_NAMESPACES", [])
+        if not tracked:
+            return {}
+
+        # If it's a dict, use it directly (namespace -> bucket mapping)
+        if isinstance(tracked, dict):
+            mapping = {}
+            for bucket_name, namespaces in tracked.items():
+                if isinstance(namespaces, (list, tuple)):
+                    for ns in namespaces:
+                        mapping[ns] = bucket_name
+                else:
+                    # Single namespace string
+                    mapping[namespaces] = bucket_name
+            return mapping
+
+        # If it's a list, map each namespace to itself (backward compatibility)
+        elif isinstance(tracked, (list, tuple)):
+            return {ns: ns for ns in tracked}
+
+        # Single string value
+        elif isinstance(tracked, str):
+            return {tracked: tracked}
     except:
         pass
     return {}
 
 
-def get_namespace_label_for_counter(namespace_name):
+def get_namespace_label_for_counter(namespace_name, app):
     """
     Get namespace label (bucket) for high-frequency counter metrics.
     Returns bucket name if namespace is tracked, None otherwise.
@@ -62,7 +64,7 @@ def get_namespace_label_for_counter(namespace_name):
     """
     if not namespace_name:
         return None
-    mapping = get_namespace_bucket_mapping()
+    mapping = get_namespace_bucket_mapping(app)
     return mapping.get(namespace_name)
 
 
@@ -231,7 +233,7 @@ def _extract_namespace_from_request():
         namespace = request.view_args.get("namespace_name") or request.view_args.get("namespace")
         if namespace:
             return namespace
-    
+
     # Try to parse from request path
     try:
         path = request.path.strip("/")
@@ -241,18 +243,25 @@ def _extract_namespace_from_request():
             if len(parts) >= 1:
                 potential_namespace = parts[0]
                 # Basic validation: namespace should be alphanumeric with dashes/underscores
-                if potential_namespace and all(c.isalnum() or c in "-_" for c in potential_namespace):
+                if potential_namespace and all(
+                    c.isalnum() or c in "-_" for c in potential_namespace
+                ):
                     return potential_namespace
     except:
         pass
-    
+
     return None
 
 
-def timed_blueprint(bp):
+def timed_blueprint(bp, get_app=None):
     """
     Decorates a blueprint to have its request duration tracked by Prometheus.
     Includes namespace label for tracked namespaces.
+
+    Args:
+        bp: Flask Blueprint to decorate
+        get_app: Optional callable that returns the Flask app object when called.
+                 If not provided, will attempt to get app from blueprint or request context.
     """
 
     def _time_before_request():
@@ -260,24 +269,45 @@ def timed_blueprint(bp):
 
     bp.before_request(_time_before_request)
 
+    def _get_app_from_context():
+        """Try to get app from various sources without importing current_app."""
+        # First, try the provided get_app callback
+        if get_app:
+            try:
+                return get_app()
+            except:
+                pass
+
+        # Try to get from blueprint
+        if hasattr(bp, "app") and bp.app:
+            return bp.app
+
+        # Try to get from request context (Flask stores app in request context)
+        if hasattr(request, "environ"):
+            # Flask stores the app in the WSGI environ
+            app = request.environ.get("werkzeug.app")
+            if app:
+                return app
+
+        return None
+
     def _time_after_request():
         def f(r):
             start = getattr(g, "_request_start_time", None)
             if start is None:
                 return r
             dur = time.time() - start
-            
+
             # Extract namespace from request
             namespace_name = _extract_namespace_from_request()
-            namespace_label = get_namespace_label_for_counter(namespace_name)
+            # Get app using the provided mechanism
+            app = _get_app_from_context()
+            namespace_label = get_namespace_label_for_counter(namespace_name, app) if app else None
             # Use "other" for untracked namespaces to keep cardinality low
             label_value = namespace_label if namespace_label else "other"
-            
+
             request_duration.labels(
-                request.method, 
-                request.endpoint, 
-                r.status_code,
-                label_value
+                request.method, request.endpoint, r.status_code, label_value
             ).observe(dur)
             return r
 

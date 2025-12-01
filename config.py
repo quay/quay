@@ -950,4 +950,4 @@ class DefaultConfig(ImmutableConfig):
     # 1. List format: ["namespace1", "namespace2"] - each namespace gets its own label
     # 2. Dict format: {"bucket_name": ["namespace1", "namespace2"]} - multiple namespaces share a bucket
     # Example: {"critical": ["redhat", "internal"], "customers": ["customer1", "customer2"]}
-    TRACKED_NAMESPACES = ["redhat"]
+    TRACKED_NAMESPACES = []
