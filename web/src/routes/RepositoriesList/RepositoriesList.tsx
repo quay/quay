@@ -317,7 +317,11 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     <>
       <RepoListHeader shouldRender={currentOrg === null} />
       <PageSection variant={PageSectionVariants.light}>
-        <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
+        <ErrorModal
+          title="Repository deletion failed"
+          error={err}
+          setError={setErr}
+        />
         {quayConfig?.features?.QUOTA_MANAGEMENT &&
           quayConfig?.features?.EDIT_QUOTA &&
           currentOrg && (
