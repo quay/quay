@@ -186,32 +186,30 @@ export default function OrgTableData(props: OrgTableDataProps) {
           lastModifiedDate={lastModifiedDate}
         ></RepoLastModifiedDate>
       </Td>
-      {isSuperUser &&
-        config?.features?.QUOTA_MANAGEMENT &&
-        config?.features?.EDIT_QUOTA && (
-          <Td dataLabel={ColumnNames.size}>
-            {props.isUser ? (
-              props.quota_report ? (
-                renderQuotaConsumed(props.quota_report, {
-                  showPercentage: true,
-                  showTotal: true,
-                  showBackfill: true,
-                })
-              ) : (
-                <span style={{color: '#888'}}>—</span>
-              )
+      {config?.features?.QUOTA_MANAGEMENT && config?.features?.EDIT_QUOTA && (
+        <Td dataLabel={ColumnNames.size}>
+          {props.isUser ? (
+            props.quota_report ? (
+              renderQuotaConsumed(props.quota_report, {
+                showPercentage: true,
+                showTotal: true,
+                showBackfill: true,
+              })
             ) : (
-              renderQuotaConsumed(
-                props.quota_report || organization?.quota_report,
-                {
-                  showPercentage: true,
-                  showTotal: true,
-                  showBackfill: true,
-                },
-              )
-            )}
-          </Td>
-        )}
+              <span style={{color: '#888'}}>—</span>
+            )
+          ) : (
+            renderQuotaConsumed(
+              props.quota_report || organization?.quota_report,
+              {
+                showPercentage: true,
+                showTotal: true,
+                showBackfill: true,
+              },
+            )
+          )}
+        </Td>
+      )}
       {isSuperUser && (
         <Td dataLabel={ColumnNames.options}>
           <OrganizationOptionsKebab

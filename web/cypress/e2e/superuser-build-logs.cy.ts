@@ -431,6 +431,64 @@ describe('Superuser Build Logs', () => {
       cy.contains('No logs available').should('exist');
       cy.contains('This build has no logs to display').should('exist');
     });
+
+    it('should handle object log messages without crashing (PROJQUAY-9714)', () => {
+      const buildWithObjectMessages = {
+        id: '54321',
+        uuid: 'object-messages-uuid',
+        status: {phase: 'complete', code: 0},
+        started: '2024-01-15T10:00:00Z',
+      };
+
+      const logsWithObjects = {
+        logs: [
+          {
+            message: {error: 'Build failed', code: 500},
+            timestamp: '10:00:01',
+          },
+          {message: 'String message', timestamp: '10:00:02'},
+        ],
+      };
+
+      cy.intercept(
+        'GET',
+        '/api/v1/superuser/object-messages-uuid/build',
+        buildWithObjectMessages,
+      ).as('getBuildInfo');
+
+      cy.intercept(
+        'GET',
+        '/api/v1/superuser/object-messages-uuid/logs',
+        logsWithObjects,
+      ).as('getBuildLogs');
+
+      cy.visit('/build-logs');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+
+      cy.get('[data-testid="build-uuid-input"]').type('object-messages-uuid');
+      cy.get('[data-testid="load-build-button"]').click();
+      cy.wait('@getBuildInfo');
+      cy.wait('@getBuildLogs');
+
+      // Object messages should be JSON stringified
+      cy.get('[data-testid="build-logs-display"]').should(
+        'contain',
+        '"error":"Build failed"',
+      );
+
+      // String messages should still work
+      cy.get('[data-testid="build-logs-display"]').should(
+        'contain',
+        'String message',
+      );
+
+      // Object status should be JSON stringified
+      cy.contains('"phase":"complete"').should('exist');
+
+      // Critical: No React error boundary triggered
+      cy.contains('This site is temporarily unavailable').should('not.exist');
+    });
   });
 
   describe('Sidebar Navigation', () => {

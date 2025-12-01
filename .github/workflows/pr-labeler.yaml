@@ -1,0 +1,46 @@
+name: PR Auto-Labeler
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  label-components:
+    name: Label Components
+    runs-on: ubuntu-latest
+    # Only run on PR events, not review events
+    if: github.event_name == 'pull_request_target'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Apply area labels
+        uses: actions/labeler@v6
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+  capture-pr-data:
+    name: Capture PR Data
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save PR number
+        run: |
+          mkdir -p ./pr-data
+          echo ${{ github.event.pull_request.number }} > ./pr-data/pr_number.txt
+
+      - name: Upload PR data
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-data-${{ github.event.pull_request.number }}
+          path: pr-data/
