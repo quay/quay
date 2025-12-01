@@ -320,6 +320,79 @@ describe('Org List Page', () => {
       });
   });
 
+  it('Normal user sees their own namespace quota (PROJQUAY-9886)', () => {
+    // This test verifies that normal (non-superuser) users can see their own
+    // namespace quota in the Size column. Previously, the quota_report from
+    // /api/v1/user/ was not being used for the current user's namespace row.
+
+    // Mock config with quota features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.QUOTA_MANAGEMENT = true;
+      config.features.EDIT_QUOTA = true;
+      config.features.SUPER_USERS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock regular user (non-superuser) with quota_report
+    cy.fixture('user.json').then((user) => {
+      user.super_user = false;
+      user.username = 'tom2';
+      // Add quota_report that should be displayed for the user's namespace
+      user.quota_report = {
+        quota_bytes: 1395864372, // ~1.30 GiB
+        configured_quota: 10737418240, // 10 GiB
+      };
+      cy.intercept('GET', '/api/v1/user/', user).as('getUser');
+    });
+
+    // Mock organization with quota_report
+    cy.intercept('GET', '/api/v1/organization/quayqe', {
+      statusCode: 200,
+      body: {
+        name: 'quayqe',
+        email: 'quayqe@example.com',
+        teams: {owners: 'admin'},
+        quota_report: {
+          quota_bytes: 2319925248, // ~2.16 GiB
+          configured_quota: 10737418240, // 10 GiB
+        },
+      },
+    });
+
+    // Mock robots/members/repositories
+    cy.intercept('GET', '/api/v1/organization/*/robots', {
+      statusCode: 200,
+      body: {robots: []},
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/members', {
+      statusCode: 200,
+      body: {members: []},
+    });
+
+    cy.intercept('GET', '/api/v1/repository?namespace=*', {
+      statusCode: 200,
+      body: {repositories: []},
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getUser');
+
+    // Verify the Size column header exists
+    cy.contains('th', 'Size').should('exist');
+
+    // Find the user's own namespace row and verify quota is displayed (not "—")
+    cy.contains('a', 'tom2')
+      .parents('tr')
+      .within(() => {
+        // The Size column should show the quota data, not a dash
+        cy.get('td[data-label="Size"]').should('not.contain.text', '—');
+        // Verify it shows the percentage format (e.g., "1.30 GiB (13%)")
+        cy.get('td[data-label="Size"]').should('contain.text', 'GiB');
+      });
+  });
+
   it('Superuser displays user status labels', () => {
     // Mock config with superuser features enabled
     cy.fixture('config.json').then((config) => {

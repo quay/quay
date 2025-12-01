@@ -104,13 +104,18 @@ export function useOrganizations() {
       const userObj = (superUserUsers || []).find(
         (u) => u.username === username,
       );
+      // For the current user, use quota_report from user object if superuser data not available
+      const isCurrentUser = user?.username === username;
+      const quotaReport =
+        userObj?.quota_report ??
+        (isCurrentUser ? user?.quota_report : undefined);
       details.push({
         name: username,
         isUser: true,
         userEnabled: userObj?.enabled,
         userSuperuser: userObj?.super_user,
-        quota_report: userObj?.quota_report,
-        avatar: userObj?.avatar,
+        quota_report: quotaReport,
+        avatar: userObj?.avatar ?? (isCurrentUser ? user?.avatar : undefined),
       });
     }
 
