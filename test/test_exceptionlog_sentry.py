@@ -54,6 +54,7 @@ class TestExceptionLogSentry:
             "SENTRY_DSN": "https://test@sentry.io/123",
             "SENTRY_ENVIRONMENT": "test",
             "SENTRY_TRACES_SAMPLE_RATE": 0.5,
+            "SENTRY_SAMPLE_RATE": 0.1,
             "SENTRY_PROFILES_SAMPLE_RATE": 0.3,
         }.get(key, default)
 
@@ -72,6 +73,7 @@ class TestExceptionLogSentry:
             assert kwargs["environment"] == "test"
             assert kwargs["traces_sample_rate"] == 0.5
             assert kwargs["profiles_sample_rate"] == 0.3
+            assert kwargs["sample_rate"] == 0.1
 
             # Verify the SDK was called exactly once
             assert mock_sentry_sdk.init.call_count == 1
