@@ -325,6 +325,22 @@ describe('Account Settings Page', () => {
     });
   });
 
+  it('displays correct terminology for user accounts (PROJQUAY-9884)', () => {
+    cy.visit('/organization/user1?tab=Settings');
+
+    // For user accounts, should show "Username" not "Organization"
+    cy.contains('label', 'Username').should('exist');
+    cy.contains('label', 'Organization').should('not.exist');
+
+    // Helper text should mention "Usernames" not "Namespace names"
+    cy.contains('Usernames cannot be changed once set.').should('exist');
+
+    // Email helper should reference "your account" not "the organization"
+    cy.contains('The e-mail address associated with your account.').should(
+      'exist',
+    );
+  });
+
   it('Password Change Modal', () => {
     cy.fixture('config.json').then((config) => {
       config.config.AUTHENTICATION_TYPE = 'Database';

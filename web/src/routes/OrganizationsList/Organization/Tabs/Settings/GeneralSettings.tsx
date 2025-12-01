@@ -379,7 +379,11 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
   return (
     <Form id="form-form" maxWidth="70%" onSubmit={handleSubmit(onSubmit)}>
-      <FormGroup isInline label="Organization" fieldId="form-organization">
+      <FormGroup
+        isInline
+        label={isUserOrganization ? 'Username' : 'Organization'}
+        fieldId="form-organization"
+      >
         <TextInput
           isDisabled
           type="text"
@@ -390,7 +394,9 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         <FormHelperText>
           <HelperText>
             <HelperTextItem variant="indeterminate">
-              Namespace names cannot be changed once set.
+              {isUserOrganization
+                ? 'Usernames cannot be changed once set.'
+                : 'Organization names cannot be changed once set.'}
             </HelperTextItem>
           </HelperText>
         </FormHelperText>
@@ -438,7 +444,11 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         label="Email"
         fieldId="org-settings-email"
         type="email"
-        helperText="The e-mail address associated with the organization."
+        helperText={
+          isUserOrganization
+            ? 'The e-mail address associated with your account.'
+            : 'The e-mail address associated with the organization.'
+        }
         customValidation={(value: string) =>
           isValidEmail(value) || 'Please enter a valid email address'
         }
