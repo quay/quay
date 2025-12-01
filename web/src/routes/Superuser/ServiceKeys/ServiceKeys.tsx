@@ -43,6 +43,7 @@ import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {Kebab} from 'src/components/toolbar/Kebab';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {useServiceKeys} from 'src/hooks/UseServiceKeys';
 import {IServiceKey} from 'src/resources/ServiceKeysResource';
 import {CreateServiceKeyForm} from './CreateServiceKeyForm';
@@ -152,6 +153,7 @@ function getExpirationStatus(key: IServiceKey): {
 
 export default function ServiceKeys() {
   const {isSuperUser, loading: userLoading} = useCurrentUser();
+  const {canModify} = useSuperuserPermissions();
   const {
     serviceKeys,
     paginatedKeys,
@@ -316,6 +318,7 @@ export default function ServiceKeys() {
       key="delete-keys"
       onClick={() => setIsDeleteModalOpen(true)}
       data-testid="bulk-delete-keys"
+      isAriaDisabled={!canModify}
     >
       Delete Keys
     </DropdownItem>,
@@ -401,6 +404,7 @@ export default function ServiceKeys() {
               Modal={<div />}
               isModalOpen={isCreateModalOpen}
               setModalOpen={setIsCreateModalOpen}
+              isDisabled={!canModify}
             />
             <ToolbarItem>
               {selectedKeys.length > 0 && (
@@ -538,16 +542,21 @@ export default function ServiceKeys() {
                           }}
                         >
                           <DropdownList>
-                            <DropdownItem onClick={() => openNameModal(key)}>
+                            <DropdownItem
+                              onClick={() => openNameModal(key)}
+                              isAriaDisabled={!canModify}
+                            >
                               Set Friendly Name
                             </DropdownItem>
                             <DropdownItem
                               onClick={() => openExpirationModal(key)}
+                              isAriaDisabled={!canModify}
                             >
                               Change Expiration Time
                             </DropdownItem>
                             <DropdownItem
                               onClick={() => openRowDeleteModal(key)}
+                              isAriaDisabled={!canModify}
                             >
                               Delete Key
                             </DropdownItem>
