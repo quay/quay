@@ -2,6 +2,7 @@ import {AxiosResponse, AxiosError} from 'axios';
 import axios from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
 import {IAvatar, IOrganization} from './OrganizationResource';
+import {IQuotaReport} from 'src/libs/quotaUtils';
 
 export interface IUserResource {
   anonymous: boolean;
@@ -35,6 +36,7 @@ export interface IUserResource {
   is_free_account: boolean;
   has_password_set: boolean;
   organizations: IOrganization[];
+  quota_report?: IQuotaReport; // Quota report for the user's namespace
 }
 
 export async function fetchUser() {
