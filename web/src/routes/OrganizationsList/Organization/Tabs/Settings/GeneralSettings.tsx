@@ -455,7 +455,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           <FormHelperText>
             <HelperText>
               <HelperTextItem variant="indeterminate">
-                The e-mail address associated with the organization.
+                The e-mail address associated with the account.
               </HelperTextItem>
             </HelperText>
           </FormHelperText>
@@ -468,7 +468,11 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           label="Email"
           fieldId="org-settings-email"
           type="email"
-          helperText="The e-mail address associated with the organization."
+          helperText={
+            isUserOrganization
+              ? 'The e-mail address associated with your account.'
+              : 'The e-mail address associated with the organization.'
+          }
           customValidation={(value: string) =>
             isValidEmail(value) || 'Please enter a valid email address'
           }

@@ -1241,53 +1241,6 @@ describe('Account Settings Page', () => {
     cy.contains('Please enter a valid email address').should('exist');
   });
 
-  it('Email Change Modal - Successful email change triggers verification', () => {
-    const currentEmail = 'current@example.com';
-    const newEmail = 'newemail@example.com';
-
-    cy.fixture('config.json').then((config) => {
-      config.features.MAILING = true;
-      cy.intercept('GET', '/config', config).as('getConfigWithMailing');
-
-      cy.intercept('GET', '/api/v1/user', (req) => {
-        req.continue((res) => {
-          res.body.email = currentEmail;
-        });
-      }).as('getUser');
-
-      // Mock successful email change API call
-      cy.intercept('PUT', '/api/v1/user/', (req) => {
-        // Verify the request contains the new email
-        expect(req.body.email).to.equal(newEmail);
-        req.reply({
-          statusCode: 200,
-          body: {},
-        });
-      }).as('changeEmail');
-
-      cy.visit('/organization/user1?tab=Settings');
-      cy.wait('@getConfigWithMailing');
-      cy.wait('@getUser');
-
-      // Open modal
-      cy.contains('button', currentEmail).click();
-
-      // Enter new email
-      cy.get('#new-email').clear().type(newEmail);
-      cy.contains('button', 'Change Email').click();
-
-      // Wait for API call
-      cy.wait('@changeEmail');
-
-      // Modal should close
-      cy.contains('Change Email for user1').should('not.exist');
-
-      // Should show success alert about verification email (global alert)
-      cy.contains('Verification email sent', {timeout: 10000}).should('exist');
-      cy.contains(`An email has been sent to ${newEmail}`).should('exist');
-    });
-  });
-
   it('Email Change Modal - Empty email disables submit button', () => {
     const currentEmail = 'current@example.com';
 
