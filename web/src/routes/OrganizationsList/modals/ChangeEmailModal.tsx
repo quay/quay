@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {
   Modal,
   ModalVariant,
@@ -9,6 +9,7 @@ import {
   Alert,
 } from '@patternfly/react-core';
 import {useChangeUserEmail} from 'src/hooks/UseUserActions';
+import {useChangeEmail} from 'src/hooks/UseCurrentUser';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {isFreshLoginError} from 'src/utils/freshLoginErrors';
 
@@ -16,41 +17,85 @@ interface ChangeEmailModalProps {
   isOpen: boolean;
   onClose: () => void;
   username: string;
+  currentEmail?: string; // Current email to pre-fill
+  isSuperuserMode?: boolean; // Default true for backward compatibility
 }
 
 export default function ChangeEmailModal(props: ChangeEmailModalProps) {
-  const [newEmail, setNewEmail] = useState('');
+  const [newEmail, setNewEmail] = useState(props.currentEmail || '');
   const [error, setError] = useState<string | null>(null);
   const {addAlert} = useUI();
+  const isSuperuserMode = props.isSuperuserMode ?? true; // Default to true
 
-  const {changeEmail, isLoading} = useChangeUserEmail({
-    onSuccess: () => {
-      addAlert({
-        variant: AlertVariant.Success,
-        title: `Successfully changed email for ${props.username}`,
-      });
-      handleClose();
-    },
-    onError: (err) => {
-      const errorMessage =
-        err?.response?.data?.error_message ||
-        err?.message ||
-        'Failed to change email';
-      // Filter out fresh login errors to prevent duplicate alerts
-      if (isFreshLoginError(errorMessage)) {
-        return;
-      }
-      setError(errorMessage);
-      addAlert({
-        variant: AlertVariant.Failure,
-        title: `Failed to change email for ${props.username}`,
-        message: errorMessage,
-      });
-    },
-  });
+  // Superuser mode hook
+  const {changeEmail: changeUserEmailSuperuser, isLoading: isLoadingSuperuser} =
+    useChangeUserEmail({
+      onSuccess: () => {
+        addAlert({
+          variant: AlertVariant.Success,
+          title: `Successfully changed email for ${props.username}`,
+        });
+        handleClose();
+      },
+      onError: (err) => {
+        const errorMessage =
+          err?.response?.data?.error_message ||
+          err?.message ||
+          'Failed to change email';
+        // Filter out fresh login errors to prevent duplicate alerts
+        if (isFreshLoginError(errorMessage)) {
+          return;
+        }
+        setError(errorMessage);
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: `Failed to change email for ${props.username}`,
+          message: errorMessage,
+        });
+      },
+    });
+
+  // User self-service mode hook
+  const {changeEmail: changeUserEmailSelf, isLoading: isLoadingSelf} =
+    useChangeEmail({
+      onSuccess: () => {
+        addAlert({
+          variant: AlertVariant.Success,
+          title: 'Verification email sent',
+          message: `An email has been sent to ${newEmail}. Please click the Confirm button to apply the email change.`,
+        });
+        handleClose();
+      },
+      onError: (err) => {
+        const errorMessage =
+          err?.response?.data?.error_message ||
+          err?.message ||
+          'Failed to change email';
+        // Filter out fresh login errors to prevent duplicate alerts
+        if (isFreshLoginError(errorMessage)) {
+          return;
+        }
+        setError(errorMessage);
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: 'Failed to change email',
+          message: errorMessage,
+        });
+      },
+    });
+
+  const isLoading = isSuperuserMode ? isLoadingSuperuser : isLoadingSelf;
+
+  // Reset email when modal opens/closes
+  useEffect(() => {
+    if (props.isOpen) {
+      setNewEmail(props.currentEmail || '');
+      setError(null);
+    }
+  }, [props.isOpen, props.currentEmail]);
 
   const handleClose = () => {
-    setNewEmail('');
+    setNewEmail(props.currentEmail || '');
     setError(null);
     props.onClose();
   };
@@ -60,6 +105,13 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
       setError('Email cannot be empty');
       return;
     }
+
+    // Check if email is the same as current
+    if (newEmail.trim() === props.currentEmail) {
+      setError('Please enter a different email address');
+      return;
+    }
+
     // Basic email validation
     const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
     if (!emailRegex.test(newEmail.trim())) {
@@ -67,7 +119,13 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
       return;
     }
     setError(null);
-    changeEmail(props.username, newEmail.trim());
+
+    if (isSuperuserMode) {
+      changeUserEmailSuperuser(props.username, newEmail.trim());
+    } else {
+      changeUserEmailSelf(newEmail.trim());
+    }
+
     // Close modal; request is queued if fresh login required
     handleClose();
   };
@@ -94,7 +152,10 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
       ]}
     >
       <Form>
-        <FormGroup label="Enter new email address:" isRequired>
+        <FormGroup
+          label="Please enter a new email address. A verification email will be sent before the change is applied."
+          isRequired
+        >
           <TextInput
             id="new-email"
             value={newEmail}

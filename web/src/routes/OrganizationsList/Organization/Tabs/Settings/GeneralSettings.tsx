@@ -36,6 +36,7 @@ import ChangePasswordModal from 'src/components/modals/ChangePasswordModal';
 import ChangeAccountTypeModal from 'src/components/modals/ChangeAccountTypeModal';
 import DesktopNotificationsModal from 'src/components/modals/DesktopNotificationsModal';
 import DeleteAccountModal from 'src/components/modals/DeleteAccountModal';
+import ChangeEmailModal from 'src/routes/OrganizationsList/modals/ChangeEmailModal';
 import {getCookie, setPermanentCookie} from 'src/libs/cookieUtils';
 import {useDeleteAccount} from 'src/hooks/UseDeleteAccount';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
@@ -152,6 +153,9 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
   // Account type modal state
   const [isAccountTypeModalOpen, setIsAccountTypeModalOpen] = useState(false);
+
+  // Email change modal state
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
   // Desktop notifications state
   const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
@@ -437,22 +441,39 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         </FormGroup>
       )}
 
-      <FormTextInput<GeneralSettingsFormData>
-        name="email"
-        control={control}
-        errors={errors}
-        label="Email"
-        fieldId="org-settings-email"
-        type="email"
-        helperText={
-          isUserOrganization
-            ? 'The e-mail address associated with your account.'
-            : 'The e-mail address associated with the organization.'
-        }
-        customValidation={(value: string) =>
-          isValidEmail(value) || 'Please enter a valid email address'
-        }
-      />
+      {/* Show email as clickable link when FEATURE_MAILING is enabled for users */}
+      {isUserOrganization && quayConfig?.features?.MAILING ? (
+        <FormGroup isInline label="Email" fieldId="org-settings-email">
+          <Button
+            variant="link"
+            isInline
+            onClick={() => setIsEmailModalOpen(true)}
+            style={{padding: 0}}
+          >
+            {namespaceEmail || 'Add email address'}
+          </Button>
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem variant="indeterminate">
+                The e-mail address associated with the organization.
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+      ) : (
+        <FormTextInput<GeneralSettingsFormData>
+          name="email"
+          control={control}
+          errors={errors}
+          label="Email"
+          fieldId="org-settings-email"
+          type="email"
+          helperText="The e-mail address associated with the organization."
+          customValidation={(value: string) =>
+            isValidEmail(value) || 'Please enter a valid email address'
+          }
+        />
+      )}
 
       {isUserOrganization && quayConfig?.features.USER_METADATA === true && (
         <Grid hasGutter>
@@ -624,6 +645,14 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       <ChangeAccountTypeModal
         isOpen={isAccountTypeModalOpen}
         onClose={() => setIsAccountTypeModalOpen(false)}
+      />
+
+      <ChangeEmailModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        username={user?.username || ''}
+        currentEmail={namespaceEmail}
+        isSuperuserMode={false}
       />
 
       <DesktopNotificationsModal
