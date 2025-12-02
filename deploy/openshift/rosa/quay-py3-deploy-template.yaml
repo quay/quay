@@ -74,20 +74,6 @@ objects:
 - apiVersion: v1
   kind: Service
   metadata:
-    name: ${NAME}-https-lb-svc
-    annotations: ${{HTTPS_LB_ANNOTATIONS}}
-  spec:
-    ports:
-    - name: https
-      protocol: TCP
-      port: ${{HTTPS_LB_SERVICE_PORT}}
-      targetPort: ${{HTTPS_LB_SERVICE_TARGET_PORT}}
-    type: LoadBalancer
-    selector:
-      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
-- apiVersion: v1
-  kind: Service
-  metadata:
     name: ${NAME}-https-lb
     annotations: ${{HTTPS_SVC_ANNOTATIONS}}
   spec:
@@ -483,18 +469,6 @@ parameters:
     displayName: loadbalancer service port
   - name: HTTPS_LB_SERVICE_TARGET_PORT
     value: "8443"
-  - name: HTTPS_LB_ANNOTATIONS
-    value: |-
-      {
-        "service.beta.kubernetes.io/aws-load-balancer-name": "quay-py3-https-lb",
-        "service.beta.kubernetes.io/aws-load-balancer-type": "external",
-        "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "instance",
-        "service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
-        "service.beta.kubernetes.io/aws-load-balancer-ip-address-type": "ipv4",
-        "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags": "red-hat-managed=true"
-      }
-    displayName: HTTPS service annotations.
-    description: HTTPS Service annotations.
   - name: HTTPS_SVC_ANNOTATIONS
     value: |-
       {
