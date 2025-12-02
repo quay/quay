@@ -29,6 +29,7 @@ import {useState} from 'react';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import Empty from 'src/components/empty/Empty';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {
   useGlobalMessages,
   useDeleteGlobalMessage,
@@ -37,7 +38,12 @@ import {Navigate} from 'react-router-dom';
 import {IGlobalMessage} from 'src/resources/GlobalMessagesResource';
 import {CreateMessageForm} from './CreateMessageForm';
 
-function MessagesHeader({onCreateMessage}: {onCreateMessage: () => void}) {
+interface MessagesHeaderProps {
+  onCreateMessage: () => void;
+  canModify: boolean;
+}
+
+function MessagesHeader({onCreateMessage, canModify}: MessagesHeaderProps) {
   return (
     <>
       <QuayBreadcrumb />
@@ -55,6 +61,7 @@ function MessagesHeader({onCreateMessage}: {onCreateMessage: () => void}) {
             variant="primary"
             icon={<PlusIcon />}
             onClick={onCreateMessage}
+            isDisabled={!canModify}
           >
             Create Message
           </Button>
@@ -128,6 +135,7 @@ function SeverityDisplay({severity}: {severity: IGlobalMessage['severity']}) {
 
 export default function Messages() {
   const {isSuperUser, loading: userLoading} = useCurrentUser();
+  const {canModify} = useSuperuserPermissions();
   const {
     data: messages = [],
     isLoading: messagesLoading,
@@ -273,7 +281,7 @@ export default function Messages() {
                         handleDeleteMessage(message);
                         setActionMenuOpen(message.uuid, false);
                       }}
-                      isDisabled={deleteMessage.isLoading}
+                      isAriaDisabled={!canModify || deleteMessage.isLoading}
                       icon={<TrashIcon />}
                     >
                       Delete Message
@@ -290,7 +298,10 @@ export default function Messages() {
 
   return (
     <>
-      <MessagesHeader onCreateMessage={handleCreateMessage} />
+      <MessagesHeader
+        onCreateMessage={handleCreateMessage}
+        canModify={canModify}
+      />
       <PageSection>{renderContent()}</PageSection>
 
       {/* Create Message Modal */}

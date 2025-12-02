@@ -1,8 +1,11 @@
 /// <reference types="cypress" />
 
 describe('Service Keys Management', () => {
-  beforeEach(() => {
+  before(() => {
     cy.exec('npm run quay:seed');
+  });
+
+  beforeEach(() => {
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
@@ -657,6 +660,98 @@ describe('Service Keys Management', () => {
 
       // Verify modal closes after successful deletion
       cy.get('[data-testid="bulk-delete-modal"]').should('not.exist');
+    });
+  });
+
+  describe('Read-Only Superuser Permissions', () => {
+    beforeEach(() => {
+      // Setup read-only superuser access
+      cy.intercept('GET', '/api/v1/user/', {
+        fixture: 'readonly-superuser.json',
+      }).as('getReadOnlySuperUser');
+
+      cy.intercept('GET', '/config', {
+        fixture: 'config.json',
+      }).as('getConfig');
+
+      cy.intercept('GET', '/api/v1/superuser/keys', {
+        fixture: 'service-keys.json',
+      }).as('getServiceKeys');
+    });
+
+    it('should allow read-only superuser access to service keys page', () => {
+      cy.visit('/service-keys');
+      cy.wait('@getConfig');
+      cy.wait('@getReadOnlySuperUser');
+      cy.wait('@getServiceKeys');
+
+      // Should stay on service keys page
+      cy.get('h1').should('contain', 'Service Keys');
+      cy.contains(
+        'Service keys provide a recognized means of authentication',
+      ).should('exist');
+
+      // Should show service keys table with content
+      cy.get('table').should('exist');
+      cy.contains('Clair Scanner Key').should('exist');
+    });
+
+    it('should disable Create Preshareable Key button for read-only superuser', () => {
+      cy.visit('/service-keys');
+      cy.wait('@getConfig');
+      cy.wait('@getReadOnlySuperUser');
+      cy.wait('@getServiceKeys');
+
+      // Create Preshareable Key button should be disabled
+      cy.get('#create-service-key-button').should('be.disabled');
+    });
+
+    it('should disable row action items for read-only superuser', () => {
+      cy.visit('/service-keys');
+      cy.wait('@getConfig');
+      cy.wait('@getReadOnlySuperUser');
+      cy.wait('@getServiceKeys');
+
+      // Open action menu for first service key
+      cy.get('[data-testid="test-key-1-actions-toggle"]').click();
+
+      // All action items should be disabled (use cy.contains(selector, text) to get the menuitem, not the text span)
+      cy.contains('[role="menuitem"]', 'Set Friendly Name').should(
+        'have.attr',
+        'aria-disabled',
+        'true',
+      );
+
+      cy.contains('[role="menuitem"]', 'Change Expiration Time').should(
+        'have.attr',
+        'aria-disabled',
+        'true',
+      );
+
+      cy.contains('[role="menuitem"]', 'Delete Key').should(
+        'have.attr',
+        'aria-disabled',
+        'true',
+      );
+    });
+
+    it('should disable bulk delete action for read-only superuser', () => {
+      cy.visit('/service-keys');
+      cy.wait('@getConfig');
+      cy.wait('@getReadOnlySuperUser');
+      cy.wait('@getServiceKeys');
+
+      // Select some keys
+      cy.get('[data-testid="select-test-key-1"]').click();
+      cy.get('[data-testid="select-test-key-2"]').click();
+
+      // Click Actions button
+      cy.contains('button', 'Actions').click();
+
+      // Delete Keys option should be disabled
+      cy.get('[data-testid="bulk-delete-keys"]')
+        .find('button')
+        .should('have.attr', 'aria-disabled', 'true');
     });
   });
 });
