@@ -451,29 +451,22 @@ class RepositoryTagPullStatistics(RepositoryParamResource):
         tag_stats = get_tag_pull_statistics(repo_ref.id, tag)
         manifest_stats = get_manifest_pull_statistics(repo_ref.id, tag_ref.manifest_digest)
 
-        if not tag_stats:
-            # Return default values if no statistics are available
-            return {
-                "tag_name": tag,
-                "tag_pull_count": 0,
-                "last_tag_pull_date": None,
-                "current_manifest_digest": tag_ref.manifest_digest,
-                "manifest_pull_count": 0,
-                "last_manifest_pull_date": None,
-            }
-
-        last_tag_pull = tag_stats.get("last_pull_date")
+        # Return statistics - handle cases where tag_stats or manifest_stats may be None
+        # Note: manifest_stats can exist even when tag_stats doesn't (digest pulls only)
+        last_tag_pull = tag_stats.get("last_pull_date") if tag_stats else None
         last_manifest_pull = manifest_stats.get("last_pull_date") if manifest_stats else None
 
         return {
             "tag_name": tag,
-            "tag_pull_count": tag_stats.get("pull_count", 0),
+            "tag_pull_count": tag_stats.get("pull_count", 0) if tag_stats else 0,
             "last_tag_pull_date": format_date(last_tag_pull) if last_tag_pull else None,
-            "current_manifest_digest": tag_stats.get(
-                "current_manifest_digest", tag_ref.manifest_digest
+            "current_manifest_digest": (
+                tag_stats.get("current_manifest_digest", tag_ref.manifest_digest)
+                if tag_stats
+                else tag_ref.manifest_digest
             ),
             "manifest_pull_count": manifest_stats.get("pull_count", 0) if manifest_stats else 0,
-            "last_manifest_pull_date": format_date(last_manifest_pull)
-            if last_manifest_pull
-            else None,
+            "last_manifest_pull_date": (
+                format_date(last_manifest_pull) if last_manifest_pull else None
+            ),
         }
