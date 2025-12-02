@@ -6,7 +6,7 @@ import re
 import traceback
 from typing import Optional
 
-from prometheus_client import Gauge
+from prometheus_client import Counter, Gauge
 
 import features
 from app import app
@@ -35,6 +35,31 @@ logger = logging.getLogger(__name__)
 unmirrored_repositories = Gauge(
     "quay_repository_rows_unmirrored",
     "number of repositories in the database that have not yet been mirrored",
+)
+
+# Repository mirroring metrics
+repo_mirror_pending_tags = Gauge(
+    "quay_repository_mirror_pending_tags",
+    "number of tags pending synchronization for each mirrored repository",
+    labelnames=["namespace", "repository"],
+)
+
+repo_mirror_last_sync_status = Gauge(
+    "quay_repository_mirror_last_sync_status",
+    "status of the last synchronization attempt (1=SUCCESS, 0=NEVER_RUN, -1=FAIL, -2=CANCEL, 2=SYNCING, 3=SYNC_NOW)",
+    labelnames=["namespace", "repository", "status"],
+)
+
+repo_mirror_sync_complete = Gauge(
+    "quay_repository_mirror_sync_complete",
+    "boolean indicator if all tags were successfully synchronized (1=complete, 0=incomplete)",
+    labelnames=["namespace", "repository"],
+)
+
+repo_mirror_sync_failures_total = Counter(
+    "quay_repository_mirror_sync_failures_total",
+    "total number of synchronization failures per repository",
+    labelnames=["namespace", "repository"],
 )
 
 # Used only for testing - should not be set in production
@@ -102,7 +127,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     else:
         verbose_logs = False
 
-    mirror = claim_mirror(mirror)
+    mirror = claim_mirror(mirror)  # type: ignore
     if not mirror:
         raise PreemptedException
 
@@ -117,6 +142,9 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     # Fetch the tags to mirror, being careful to handle exceptions. The 'Exception' is safety net only, allowing
     # easy communication by user through bug report.
     tags = []
+    namespace = mirror.repository.namespace_user.username
+    repository_name = mirror.repository.name
+    
     try:
         tags = tags_to_mirror(skopeo, mirror)
     except RepoMirrorSkopeoException as e:
@@ -130,6 +158,8 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             stdout=e.stdout,
             stderr=e.stderr,
         )
+        # Update metrics for early failure
+        _update_mirror_metrics_on_failure(namespace, repository_name)
         release_mirror(mirror, RepoMirrorStatus.FAIL)
         return
     except Exception as e:
@@ -143,6 +173,8 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             stdout="Not applicable",
             stderr=traceback.format_exc(),
         )
+        # Update metrics for early failure
+        _update_mirror_metrics_on_failure(namespace, repository_name)
         release_mirror(mirror, RepoMirrorStatus.FAIL)
         return
     if tags == []:
@@ -154,6 +186,20 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
             tags="No tags matched",
         )
+        # Set metrics for empty tag list
+        repo_mirror_pending_tags.labels(
+            namespace=namespace,
+            repository=repository_name,
+        ).set(0)
+        repo_mirror_last_sync_status.labels(
+            namespace=namespace,
+            repository=repository_name,
+            status=RepoMirrorStatus.SUCCESS.name,
+        ).set(RepoMirrorStatus.SUCCESS.value)
+        repo_mirror_sync_complete.labels(
+            namespace=namespace,
+            repository=repository_name,
+        ).set(1)
         release_mirror(mirror, RepoMirrorStatus.SUCCESS)
         return
 
@@ -161,6 +207,12 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     now_ms = database.get_epoch_timestamp_ms()
     overall_status = RepoMirrorStatus.SUCCESS
     failed_tags = []
+    
+    # Set initial pending tags metric
+    repo_mirror_pending_tags.labels(
+        namespace=namespace,
+        repository=repository_name,
+    ).set(len(tags))
     try:
         try:
             username = (
@@ -185,7 +237,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
 
         skopeo_timeout = mirror.skopeo_timeout
 
-        for tag in tags:
+        for tag_index, tag in enumerate(tags):
             src_image = "docker://%s:%s" % (mirror.external_reference, tag)
             dest_image = "docker://%s/%s/%s:%s" % (
                 dest_server,
@@ -210,6 +262,13 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                     verbose_logs=verbose_logs,
                     unsigned_images=mirror.external_registry_config.get("unsigned_images", False),
                 )
+
+            # Update pending tags metric after processing each tag
+            remaining_tags = len(tags) - (tag_index + 1)
+            repo_mirror_pending_tags.labels(
+                namespace=namespace,
+                repository=repository_name,
+            ).set(remaining_tags)
 
             if check_repo_mirror_sync_status(mirror) == RepoMirrorStatus.CANCEL:
                 logger.info(
@@ -327,6 +386,32 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
                 tags=", ".join(tags),
             )
+        
+        # Update mirroring metrics
+        namespace = mirror.repository.namespace_user.username
+        repository_name = mirror.repository.name
+        
+        # Set last sync status metric
+        repo_mirror_last_sync_status.labels(
+            namespace=namespace,
+            repository=repository_name,
+            status=overall_status.name,
+        ).set(overall_status.value)
+        
+        # Set complete sync metric (1 if all tags synced successfully, 0 otherwise)
+        is_complete = 1 if (overall_status == RepoMirrorStatus.SUCCESS and len(failed_tags) == 0) else 0
+        repo_mirror_sync_complete.labels(
+            namespace=namespace,
+            repository=repository_name,
+        ).set(is_complete)
+        
+        # Increment failure counter on failures
+        if overall_status == RepoMirrorStatus.FAIL:
+            repo_mirror_sync_failures_total.labels(
+                namespace=namespace,
+                repository=repository_name,
+            ).inc()
+        
         release_mirror(mirror, overall_status)
 
     return overall_status
@@ -479,3 +564,55 @@ def emit_log(mirror, log_kind, verb, message, tag=None, tags=None, stdout=None, 
         "repo_mirror_sync_success",
     ):
         spawn_notification(wrap_repository(mirror.repository), log_kind, {"message": message})
+
+
+def _update_mirror_metrics_on_failure(namespace, repository_name):
+    """
+    Helper function to update metrics when a mirror sync fails.
+    """
+    repo_mirror_pending_tags.labels(
+        namespace=namespace,
+        repository=repository_name,
+    ).set(0)
+    
+    repo_mirror_last_sync_status.labels(
+        namespace=namespace,
+        repository=repository_name,
+        status=RepoMirrorStatus.FAIL.name,
+    ).set(RepoMirrorStatus.FAIL.value)
+    
+    repo_mirror_sync_complete.labels(
+        namespace=namespace,
+        repository=repository_name,
+    ).set(0)
+    
+    repo_mirror_sync_failures_total.labels(
+        namespace=namespace,
+        repository=repository_name,
+    ).inc()
+
+
+def cleanup_mirror_metrics(namespace, repository_name):
+    """
+    Remove metrics for a repository that is being deleted or disabled.
+    This helps prevent stale metrics from accumulating.
+    """
+    try:
+        repo_mirror_pending_tags.remove(namespace, repository_name)
+        repo_mirror_sync_complete.remove(namespace, repository_name)
+        # Note: Last sync status has an additional 'status' label, 
+        # so we need to remove all possible status values
+        for status in RepoMirrorStatus:
+            try:
+                repo_mirror_last_sync_status.remove(namespace, repository_name, status.name)
+            except KeyError:
+                pass
+        # Note: Counter metrics cannot be removed in prometheus_client,
+        # they will naturally expire when not updated
+    except (KeyError, AttributeError):
+        # Metrics may not exist or removal not supported
+        logger.debug(
+            "Could not remove metrics for %s/%s - may not exist",
+            namespace,
+            repository_name,
+        )
