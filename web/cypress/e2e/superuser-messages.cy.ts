@@ -27,8 +27,11 @@ describe('Superuser Messages', () => {
     ],
   };
 
-  beforeEach(() => {
+  before(() => {
     cy.exec('npm run quay:seed');
+  });
+
+  beforeEach(() => {
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
@@ -331,6 +334,66 @@ describe('Superuser Messages', () => {
 
       // Modal should close
       cy.get('[role="dialog"]').should('not.exist');
+    });
+  });
+
+  describe('Read-Only Superuser Permissions', () => {
+    beforeEach(() => {
+      // Setup read-only superuser access
+      cy.fixture('config.json').then((config) => {
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('readonly-superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getReadOnlySuperUser');
+      });
+
+      cy.intercept('GET', '/api/v1/messages', mockMessagesResponse).as(
+        'getMessages',
+      );
+    });
+
+    it('should allow read-only superuser access to messages page', () => {
+      cy.visit('/messages');
+      cy.wait('@getConfig');
+      cy.wait('@getReadOnlySuperUser');
+      cy.wait('@getMessages');
+
+      // Should stay on messages page
+      cy.url().should('include', '/messages');
+      cy.contains('Messages').should('exist');
+
+      // Should show messages table with content
+      cy.get('table').should('exist');
+      cy.contains('System Maintenance').should('exist');
+    });
+
+    it('should disable Create Message button for read-only superuser', () => {
+      cy.visit('/messages');
+      cy.wait('@getConfig');
+      cy.wait('@getReadOnlySuperUser');
+      cy.wait('@getMessages');
+
+      // Create Message button should be disabled
+      cy.contains('button', 'Create Message').should('be.disabled');
+    });
+
+    it('should disable Delete Message action for read-only superuser', () => {
+      cy.visit('/messages');
+      cy.wait('@getConfig');
+      cy.wait('@getReadOnlySuperUser');
+      cy.wait('@getMessages');
+
+      // Click the action menu for the first message
+      cy.get('[data-testid="msg-1-actions-toggle"]').click();
+
+      // Delete option should be disabled (use cy.contains(selector, text) to get the menuitem, not the text span)
+      cy.contains('[role="menuitem"]', 'Delete Message').should(
+        'have.attr',
+        'aria-disabled',
+        'true',
+      );
     });
   });
 });
