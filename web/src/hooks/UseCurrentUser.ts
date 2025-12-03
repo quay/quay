@@ -52,3 +52,26 @@ export function useUpdateUser({onSuccess, onError}) {
     error: updateUserMutator.error,
   };
 }
+
+export function useChangeEmail({onSuccess, onError}) {
+  const queryClient = useQueryClient();
+  const changeEmailMutator = useMutation(
+    async (email: string) => {
+      return updateUser({email});
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['user']);
+        onSuccess();
+      },
+      onError: (err) => {
+        onError(err);
+      },
+    },
+  );
+
+  return {
+    changeEmail: async (email: string) => changeEmailMutator.mutate(email),
+    isLoading: changeEmailMutator.isLoading,
+  };
+}

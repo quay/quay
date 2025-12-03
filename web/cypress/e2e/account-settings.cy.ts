@@ -1101,4 +1101,184 @@ describe('Account Settings Page', () => {
         cy.get('[aria-selected="true"]').should('contain.text', 'Settings');
       });
   });
+
+  it('Email Change - FEATURE_MAILING enabled shows clickable link', () => {
+    cy.fixture('config.json').then((config) => {
+      config.features.MAILING = true;
+      cy.intercept('GET', '/config', config).as('getConfigWithMailing');
+    });
+
+    cy.intercept('GET', '/api/v1/user', (req) => {
+      req.continue((res) => {
+        res.body.email = 'user1@example.com';
+      });
+    }).as('getUser');
+
+    cy.visit('/organization/user1?tab=Settings');
+    cy.wait('@getConfigWithMailing');
+    cy.wait('@getUser');
+
+    // Email should be displayed as a clickable button, not a text input
+    cy.get('#org-settings-email').should('not.exist');
+    cy.contains('button', 'user1@example.com').should('exist');
+  });
+
+  it('Email Change - FEATURE_MAILING disabled shows text input', () => {
+    cy.fixture('config.json').then((config) => {
+      config.features.MAILING = false;
+      cy.intercept('GET', '/config', config).as('getConfigWithoutMailing');
+    });
+
+    cy.visit('/organization/user1?tab=Settings');
+    cy.wait('@getConfigWithoutMailing');
+
+    // Email should be editable text input when MAILING is disabled
+    cy.get('#org-settings-email').should('exist');
+    cy.get('#org-settings-email').should('not.be.disabled');
+  });
+
+  it('Email Change Modal - Opens with current email pre-filled', () => {
+    cy.fixture('config.json').then((config) => {
+      config.features.MAILING = true;
+      cy.intercept('GET', '/config', config).as('getConfigWithMailing');
+    });
+
+    const currentEmail = 'current@example.com';
+    cy.intercept('GET', '/api/v1/user', (req) => {
+      req.continue((res) => {
+        res.body.email = currentEmail;
+      });
+    }).as('getUser');
+
+    cy.visit('/organization/user1?tab=Settings');
+    cy.wait('@getConfigWithMailing');
+    cy.wait('@getUser');
+
+    // Click email button to open modal
+    cy.contains('button', currentEmail).click();
+
+    // Modal should open
+    cy.contains('Change Email for user1').should('be.visible');
+
+    // Current email should be pre-filled in the input
+    cy.get('#new-email').should('have.value', currentEmail);
+
+    // Close modal
+    cy.contains('button', 'Cancel').click();
+  });
+
+  it('Email Change Modal - Validation prevents same email', () => {
+    const currentEmail = 'current@example.com';
+
+    cy.fixture('config.json').then((config) => {
+      config.features.MAILING = true;
+      cy.intercept('GET', '/config', config).as('getConfigWithMailing');
+
+      cy.intercept('GET', '/api/v1/user', (req) => {
+        req.continue((res) => {
+          res.body.email = currentEmail;
+        });
+      }).as('getUser');
+
+      cy.visit('/organization/user1?tab=Settings');
+      cy.wait('@getConfigWithMailing');
+      cy.wait('@getUser');
+
+      // Open modal
+      cy.contains('button', currentEmail).click();
+
+      // Try to submit the same email
+      cy.contains('button', 'Change Email').click();
+
+      // Should show error
+      cy.contains('Please enter a different email address').should('exist');
+
+      // Button should still be enabled for retry
+      cy.contains('button', 'Change Email').should('not.be.disabled');
+    });
+  });
+
+  it('Email Change Modal - Validation for invalid email format', () => {
+    cy.fixture('config.json').then((config) => {
+      config.features.MAILING = true;
+      cy.intercept('GET', '/config', config).as('getConfigWithMailing');
+    });
+
+    cy.intercept('GET', '/api/v1/user', (req) => {
+      req.continue((res) => {
+        res.body.email = 'current@example.com';
+      });
+    }).as('getUser');
+
+    cy.visit('/organization/user1?tab=Settings');
+    cy.wait('@getConfigWithMailing');
+    cy.wait('@getUser');
+
+    // Open modal
+    cy.contains('button', 'current@example.com').click();
+
+    // Enter invalid email
+    cy.get('#new-email').clear().type('not-a-valid-email');
+    cy.contains('button', 'Change Email').click();
+
+    // Should show validation error
+    cy.contains('Please enter a valid email address').should('exist');
+  });
+
+  it('Email Change Modal - Empty email disables submit button', () => {
+    const currentEmail = 'current@example.com';
+
+    cy.fixture('config.json').then((config) => {
+      config.features.MAILING = true;
+      cy.intercept('GET', '/config', config).as('getConfigWithMailing');
+
+      cy.intercept('GET', '/api/v1/user', (req) => {
+        req.continue((res) => {
+          res.body.email = currentEmail;
+        });
+      }).as('getUser');
+
+      cy.visit('/organization/user1?tab=Settings');
+      cy.wait('@getConfigWithMailing');
+      cy.wait('@getUser');
+
+      // Open modal
+      cy.contains('button', currentEmail).click();
+
+      // Clear email field
+      cy.get('#new-email').clear();
+
+      // Submit button should be disabled when email is empty
+      cy.contains('button', 'Change Email').should('be.disabled');
+    });
+  });
+
+  it('Email Change Modal - Cancel button closes modal', () => {
+    cy.fixture('config.json').then((config) => {
+      config.features.MAILING = true;
+      cy.intercept('GET', '/config', config).as('getConfigWithMailing');
+    });
+
+    cy.intercept('GET', '/api/v1/user', (req) => {
+      req.continue((res) => {
+        res.body.email = 'current@example.com';
+      });
+    }).as('getUser');
+
+    cy.visit('/organization/user1?tab=Settings');
+    cy.wait('@getConfigWithMailing');
+    cy.wait('@getUser');
+
+    // Open modal
+    cy.contains('button', 'current@example.com').click();
+
+    // Modal should be visible
+    cy.contains('Change Email for user1').should('be.visible');
+
+    // Click cancel
+    cy.contains('button', 'Cancel').click();
+
+    // Modal should close
+    cy.contains('Change Email for user1').should('not.exist');
+  });
 });
