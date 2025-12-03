@@ -24,6 +24,7 @@ import {GenerateEncryptedPassword} from 'src/components/modals/GenerateEncrypted
 import CreateApplicationTokenModal from 'src/components/modals/CreateApplicationTokenModal';
 import RevokeTokenModal from 'src/components/modals/RevokeTokenModal';
 import CredentialsModal from 'src/components/modals/CredentialsModal';
+import ChangePasswordModal from 'src/components/modals/ChangePasswordModal';
 import {
   useFetchApplicationTokens,
   useApplicationToken,
@@ -41,6 +42,7 @@ export const CliConfiguration = () => {
   const {user} = useCurrentUser();
   const [encryptedPasswordModalOpen, toggleEncryptedPasswordModal] =
     useState(false);
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
   const [createTokenModalOpen, setCreateTokenModalOpen] = useState(false);
   const [revokeTokenModalOpen, setRevokeTokenModalOpen] = useState(false);
   const [tokenToRevoke, setTokenToRevoke] = useState<IApplicationToken | null>(
@@ -114,6 +116,12 @@ export const CliConfiguration = () => {
   const showAppTokens = quayConfig?.features?.APP_SPECIFIC_TOKENS === true;
   const requireEncryptedAuth =
     quayConfig?.features?.REQUIRE_ENCRYPTED_BASIC_AUTH === true;
+  const hasOIDC =
+    quayConfig?.external_login && quayConfig.external_login.length > 0;
+  const isAuthTypeDatabase =
+    quayConfig?.config?.AUTHENTICATION_TYPE === 'Database';
+  const shouldShowPasswordPrompt =
+    !user?.has_password_set && hasOIDC && isAuthTypeDatabase;
 
   return (
     <Form id="cli-configuration-form" width="70%">
@@ -146,7 +154,7 @@ export const CliConfiguration = () => {
             </FlexItem>
           </Flex>
           <Flex width={'70%'}>
-            {user?.has_password_set ? (
+            {!shouldShowPasswordPrompt ? (
               <Button
                 variant="secondary"
                 onClick={() => toggleEncryptedPasswordModal(true)}
@@ -157,7 +165,15 @@ export const CliConfiguration = () => {
             ) : (
               <Alert variant="info" isInline title="Password not set">
                 A password must be set on your account before generating an
-                encrypted version.
+                encrypted version.{' '}
+                <Button
+                  variant="link"
+                  isInline
+                  onClick={() => setChangePasswordModalOpen(true)}
+                  data-testid="set-password-button"
+                >
+                  Set password
+                </Button>
               </Alert>
             )}
           </Flex>
@@ -356,6 +372,11 @@ export const CliConfiguration = () => {
         isOpen={revokeTokenModalOpen}
         onClose={handleCloseRevokeModal}
         token={tokenToRevoke}
+      />
+
+      <ChangePasswordModal
+        isOpen={changePasswordModalOpen}
+        onClose={() => setChangePasswordModalOpen(false)}
       />
 
       {/* View Token Credentials Modal */}
