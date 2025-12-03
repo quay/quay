@@ -142,21 +142,21 @@ class LDAPHealthCheck(HealthCheck):
         return ["LDAPHealthCheck"]
 
     def calculate_overall_health(self, service_statuses, skip=None, notes=None):
+        # Delegate to the base implementation first.
         data, retcode = super(LDAPHealthCheck, self).calculate_overall_health(
-            service_statuses, skip=skip, notes=skip
+            service_statuses, skip=skip, notes=notes
         )
 
-        is_healthy = True
-        if all([retcode != 200, data.get("services", {}).get("auth", True) == False]):
-            if list(filter(lambda x: x[1] == False, data.get("services").items())) != [
-                ("auth", False)
-            ]:
-                # more than auth is state False set error response
-                is_healthy = False
-            else:
-                is_healthy = True
+        services = data.get("services", {}) or {}
+        failed_services = [name for name, status in services.items() if not status]
 
-        return (data, 200 if is_healthy else 503)
+        # If *only* auth is failing, keep the service marked as failed in the body
+        # but treat the overall health as OK (HTTP 200) so we don't reconcile on LDAP issues.
+        if retcode != 200 and failed_services and set(failed_services) == {"auth"}:
+            return data, 200
+
+        # For any other failure combination (or no failures), preserve the base behavior.
+        return data, retcode
 
 
 class RDSAwareHealthCheck(HealthCheck):

@@ -76,3 +76,26 @@ def test_healtcheck_failauth():
         states, code = hc.calculate_overall_health(_check_all_services())
         assert code == 200
         assert set(states["services"].values()) == set([True, False])
+
+
+def test_healtcheck_failnonauth():
+    with app.app_context():
+        hc = LDAPHealthCheck(app, ConfigProvider(), InstanceKeys())
+        assert hc.check_names() == ["LDAPHealthCheck"]
+        assert hc.instance_skips == ["redis", "storage"]
+        GLOBAL_SERVICES["database"] = (False, "failing")
+        states, code = hc.calculate_overall_health(_check_all_services())
+        assert code == 503
+        assert set(states["services"].values()) == set([True, False])
+
+
+def test_healtcheck_failnonauthandauth():
+    with app.app_context():
+        hc = LDAPHealthCheck(app, ConfigProvider(), InstanceKeys())
+        assert hc.check_names() == ["LDAPHealthCheck"]
+        assert hc.instance_skips == ["redis", "storage"]
+        GLOBAL_SERVICES["database"] = (False, "failing")
+        GLOBAL_SERVICES["auth"] = (False, "failing")
+        states, code = hc.calculate_overall_health(_check_all_services())
+        assert code == 503
+        assert set(states["services"].values()) == set([True, False])
