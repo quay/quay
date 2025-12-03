@@ -1,0 +1,17 @@
+# Keycloak OIDC configuration for Quay local development
+# This config adds Keycloak as an OIDC authentication provider
+#
+# Merge into config.yaml with: make enable-oidc
+
+SOMEOIDC_LOGIN_CONFIG:
+  SERVICE_NAME: "Keycloak"
+  OIDC_SERVER: "http://host.containers.internal:8081/realms/quay/"
+  CLIENT_ID: "quay-ui"
+  LOGIN_SCOPES:
+    - "openid"
+    - "profile"
+    - "email"
+  DEBUGGING: true
+  USE_PKCE: true
+  PKCE_METHOD: "S256"
+  PUBLIC_CLIENT: true

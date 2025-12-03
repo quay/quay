@@ -70,6 +70,23 @@ services:
       wait
       "
 
+  keycloak:
+    container_name: quay-keycloak
+    image: quay.io/keycloak/keycloak:latest
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+    volumes:
+      - "./local-dev/keycloak/quay-realm-export.json:/opt/keycloak/data/import/quay-realm.json:ro"
+    ports:
+      - "8081:8080"
+    command:
+      - start-dev
+      - --import-realm
+
   local-dev-frontend:
     user: ${DOCKER_USER:-root}
     container_name: quay-local-dev-frontend
