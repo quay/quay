@@ -125,9 +125,6 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
     } else {
       changeUserEmailSelf(newEmail.trim());
     }
-
-    // Close modal; request is queued if fresh login required
-    handleClose();
   };
 
   return (
