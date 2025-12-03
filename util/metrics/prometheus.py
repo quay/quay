@@ -47,10 +47,6 @@ def get_namespace_bucket_mapping(app):
         # If it's a list, map each namespace to itself (backward compatibility)
         elif isinstance(tracked, (list, tuple)):
             return {ns: ns for ns in tracked}
-
-        # Single string value
-        elif isinstance(tracked, str):
-            return {tracked: tracked}
     except:
         pass
     return {}
@@ -66,14 +62,6 @@ def get_namespace_label_for_counter(namespace_name, app):
         return None
     mapping = get_namespace_bucket_mapping(app)
     return mapping.get(namespace_name)
-
-
-def get_namespace_label_for_gauge(namespace_name):
-    """
-    Get namespace label for low-frequency gauge metrics.
-    Returns namespace name directly (safe for gauges updated infrequently).
-    """
-    return namespace_name if namespace_name else "unknown"
 
 
 # DB connections
