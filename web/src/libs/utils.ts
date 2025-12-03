@@ -37,9 +37,14 @@ export function formatDate(
 }
 
 export function formatSize(sizeInBytes: number) {
-  if (!sizeInBytes) {
-    // null or undefined
+  // Handle null/undefined but allow 0 as a valid value
+  if (sizeInBytes === null || sizeInBytes === undefined) {
     return 'N/A';
+  }
+
+  // Handle 0 explicitly to avoid Math.log(0) = -Infinity
+  if (sizeInBytes === 0) {
+    return '0.00 KiB';
   }
 
   const i = Math.floor(Math.log(sizeInBytes) / Math.log(1024));
