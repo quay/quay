@@ -48,7 +48,7 @@ from endpoints.test.shared import client_with_identity, toggle_feature
 from endpoints.api.repository import Repository  # isort: skip
 
 # app should be the pytest fixture, not the Flask app.
-from test.fixtures import *  # type: ignore[assignment] # isort: skip
+from test.fixtures import *  # isort: skip
 
 ORG_PARAMS = {"orgname": "buynlarge"}
 TEAM_PARAMS = {"orgname": "buynlarge", "teamname": "owners"}

@@ -6,7 +6,7 @@ RUN yum install -y nodejs && \
     npm install --ignore-engines && \
     npm run build
 
-FROM golang:1.23-alpine
+FROM golang:1.24.8-alpine3.22
 
 RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/* && mkdir /usr/local/share/ca-certificates/extra
 WORKDIR /go/src/config-tool
