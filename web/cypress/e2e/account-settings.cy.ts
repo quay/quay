@@ -1090,6 +1090,50 @@ describe('Account Settings Page', () => {
     cy.url().should('include', 'tab=Settings');
   });
 
+  it('CLI Configuration - Password Not Set Alert (PROJQUAY-9898)', () => {
+    // Mock config with OIDC and Database authentication
+    cy.fixture('config.json').then((config) => {
+      config.config.AUTHENTICATION_TYPE = 'Database';
+      config.external_login = [
+        {
+          id: 'oidc',
+          title: 'OIDC Login',
+          icon: 'oidc-icon',
+        },
+      ];
+      cy.intercept('GET', '/config', config).as('getConfigWithOIDC');
+    });
+
+    // Mock user with has_password_set: false (simulates OIDC user without password)
+    cy.intercept('GET', '/api/v1/user', (req) => {
+      req.continue((res) => {
+        res.body.has_password_set = false;
+      });
+    }).as('getUserNoPassword');
+
+    cy.visit('/organization/user1?tab=Settings');
+    cy.wait('@getConfigWithOIDC');
+    cy.wait('@getUserNoPassword');
+
+    // Navigate to CLI configuration tab
+    cy.contains('CLI configuration').click();
+
+    // Verify info alert is displayed
+    cy.contains('Password not set').should('exist');
+    cy.contains('A password must be set on your account').should('exist');
+
+    // Verify "Set password" button exists and works
+    cy.get('[data-testid="set-password-button"]').should('exist').click();
+
+    // Verify modal opens
+    cy.get('[data-testid="change-password-modal"]').should('be.visible');
+    cy.contains('Change Password').should('exist');
+
+    // Close modal
+    cy.contains('button', 'Cancel').click();
+    cy.get('[data-testid="change-password-modal"]').should('not.exist');
+  });
+
   it('normalizes lowercase "settings" to correct tab', () => {
     cy.visit('/user/user1?tab=settings');
     cy.wait('@getConfig');
