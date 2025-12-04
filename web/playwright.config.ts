@@ -52,21 +52,28 @@ export default defineConfig({
   outputDir: 'test-results/',
 
   // Configure projects for different browsers
-  projects: [
-    {
-      name: 'chromium',
-      use: {...devices['Desktop Chrome']},
-    },
-    // Future: Add Firefox and WebKit when needed
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
-  ],
+  // In CI, run all browsers; locally, just chromium for speed
+  projects: process.env.CI
+    ? [
+        {
+          name: 'chromium',
+          use: {...devices['Desktop Chrome']},
+        },
+        {
+          name: 'firefox',
+          use: {...devices['Desktop Firefox']},
+        },
+        {
+          name: 'webkit',
+          use: {...devices['Desktop Safari']},
+        },
+      ]
+    : [
+        {
+          name: 'chromium',
+          use: {...devices['Desktop Chrome']},
+        },
+      ],
 
   // Configure web server for local development
   // Note: In CI, services are started separately via docker-compose
