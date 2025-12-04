@@ -54,7 +54,7 @@ from util.request import crossorigin, get_request_ip
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
-api_bp = timed_blueprint(Blueprint("api", __name__))
+api_bp = timed_blueprint(Blueprint("api", __name__), get_app=lambda: app)
 
 
 FRESH_LOGIN_TIMEOUT = convert_to_timedelta(app.config.get("FRESH_LOGIN_TIMEOUT", "10m"))

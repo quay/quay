@@ -944,3 +944,10 @@ class DefaultConfig(ImmutableConfig):
     # OTEL CONFIG
     FEATURE_OTEL_TRACING = False
     OTEL_TRACING_EXCLUDED_URLS = None
+
+    # Metrics tracking namespaces
+    # Supports two formats:
+    # 1. List format: ["namespace1", "namespace2"] - each namespace gets its own label
+    # 2. Dict format: {"bucket_name": ["namespace1", "namespace2"]} - multiple namespaces share a bucket
+    # Example: {"critical": ["redhat", "internal"], "customers": ["customer1", "customer2"]}
+    TRACKED_NAMESPACES: Union[List[str], Dict[str, Union[List[str], str]]] = []

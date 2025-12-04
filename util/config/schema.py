@@ -666,6 +666,32 @@ CONFIG_SCHEMA = {
             "description": "The prefix applied to all exposed Prometheus metrics. Defaults to `quay`",
             "x-example": "myregistry",
         },
+        "TRACKED_NAMESPACES": {
+            "oneOf": [
+                {
+                    "type": "array",
+                    "description": "List of namespace names to track in metrics. Each namespace gets its own label.",
+                    "items": {"type": "string"},
+                    "x-example": ["redhat", "internal"],
+                },
+                {
+                    "type": "object",
+                    "description": "Mapping of bucket names to namespace lists. Multiple namespaces can share the same bucket label.",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"type": "array", "items": {"type": "string"}},
+                            {"type": "string"},
+                        ]
+                    },
+                    "x-example": {
+                        "critical": ["redhat", "internal"],
+                        "customers": ["customer1", "customer2"],
+                    },
+                },
+            ],
+            "description": "Namespaces to track in Prometheus metrics. Supports two formats: list (each namespace gets its own label) or dict (multiple namespaces share a bucket).",
+            "x-example": ["redhat"],
+        },
         # Misc configuration.
         "BLACKLIST_V2_SPEC": {
             "type": "string",
