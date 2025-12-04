@@ -56,7 +56,7 @@ jobs:
         run: cd web && npm install
 
       - name: Install Playwright browsers
-        run: cd web && npx playwright install --with-deps chromium
+        run: cd web && npx playwright install --with-deps
 
       - name: Run Playwright tests
         run: cd web && npm run test:e2e

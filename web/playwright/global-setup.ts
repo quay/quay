@@ -6,16 +6,14 @@
  *
  * Users created:
  * - testuser: Regular user for standard tests
- * - testadmin: Superuser for admin tests
- * - testreadonly: User with read-only access (if applicable)
+ * - admin: Superuser for admin tests
+ * - readonly: User with read-only access (if applicable)
  */
 
 import {chromium, FullConfig} from '@playwright/test';
 import {API_URL} from './utils/config';
 import {getCsrfToken} from './utils/api';
 
-// Test user definitions
-// Note: Quay config determines permissions (admin is superuser, readonly is readonly)
 export const TEST_USERS = {
   // Admin/superuser for admin operations
   admin: {
