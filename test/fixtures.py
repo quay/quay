@@ -12,7 +12,7 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from flask_principal import Principal, identity_loaded
 from mock import patch
-from peewee import InternalError, SqliteDatabase
+from peewee import InternalError, OperationalError, SqliteDatabase
 
 import features
 
@@ -246,10 +246,10 @@ def initialized_db(appconfig):
             try:
                 test_savepoint.rollback()
                 test_savepoint.__exit__(None, None, None)
-            except InternalError:
-                # If postgres fails with an exception (like IntegrityError) mid-transaction, it terminates
-                # it immediately, so when we go to remove the savepoint, it complains. We can safely ignore
-                # this case.
+            except (InternalError, OperationalError):
+                # If the database fails with an exception mid-transaction (like IntegrityError in
+                # PostgreSQL or a deadlock in MySQL), the transaction may already be invalidated,
+                # so when we go to remove the savepoint, it complains. We can safely ignore this.
                 pass
     else:
         if os.environ.get("DISALLOW_AUTO_JOINS", "false").lower() == "true":
