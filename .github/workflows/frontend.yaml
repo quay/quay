@@ -1,12 +1,25 @@
-name: Web CI
+name: Frontend
 on:
   push:
     branches:
     - "!dependabot/*"
     - "*"
+    paths:
+    - 'web/**'
+    - 'endpoints/**'  # API changes affect frontend
+    - 'auth/**'  # Auth changes affect frontend
+    - 'data/**'  # Data layer changes may affect API responses
+    - '.github/workflows/frontend.yaml'
   pull_request:
     branches:
     - "*"
+    paths:
+    - 'web/**'
+    - 'endpoints/**'  # API changes affect frontend
+    - 'auth/**'  # Auth changes affect frontend
+    - 'data/**'  # Data layer changes may affect API responses
+    - '.github/workflows/frontend.yaml'
+
 jobs:
   cypress:
     name: Cypress Tests
@@ -14,10 +27,10 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
 
     - name: Docker Build
       env:
@@ -30,14 +43,11 @@ jobs:
         docker exec -t quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
         DOCKER_USER="1001:0" docker compose up -d --no-build quay
 
-    - name: Checkout
-      uses: actions/checkout@v3
-
     - name: Seed Database
       run: cd web && npm run quay:seed
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: 3.12
         cache: 'pip'
@@ -61,14 +71,14 @@ jobs:
         sleep 30
 
     - name: Set up Node.js with npm caching
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '22'
         cache: 'npm'
         cache-dependency-path: web/package-lock.json
 
     - name: Cypress run
-      uses: cypress-io/github-action@v5
+      uses: cypress-io/github-action@v6
       with:
         browser: chrome
         build: npm run build
@@ -118,10 +128,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
 
     - name: Set up Node.js with npm caching
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '22'
         cache: 'npm'
@@ -132,3 +142,58 @@ jobs:
 
     - name: Build plugin
       run: cd web && npm run build-plugin
+
+  surge-preview-build:
+    name: Surge Preview Build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout PR code
+      uses: actions/checkout@v6
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: 'web/package-lock.json'
+
+    - name: Install dependencies
+      run: cd web && npm install
+
+    - name: Build with mocked API
+      run: cd web && npm run build
+      env:
+        MOCK_API: 'true'
+
+    - name: Setup Surge for SPA routing
+      run: |
+        cd web/dist
+        cp index.html 200.html
+
+    - name: Save PR number
+      if: success()
+      run: |
+        mkdir -p ./preview-build
+        echo ${{ github.event.pull_request.number }} > ./preview-build/pr_number.txt
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: preview-build
+        path: |
+          web/dist/
+          preview-build/pr_number.txt
+
+  all-green:
+    name: All Green
+    if: always()
+    needs: [cypress, frontend-plugin, surge-preview-build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs passed
+        uses: re-actors/alls-green@release/v1
+        with:
+          allowed-skips: surge-preview-build
+          jobs: ${{ toJSON(needs) }}
