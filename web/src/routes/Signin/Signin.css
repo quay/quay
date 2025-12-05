@@ -11,17 +11,6 @@
   font-weight: 400;
 }
 
-/* reCAPTCHA styling */
-.captcha {
-  display: block;
-  text-align: center;
-  margin: 16px 0;
-}
-
-.captcha > div {
-  display: inline-block;
-}
-
 /* Forgot password and create account link styling */
 .signin-link-button {
   background: none;

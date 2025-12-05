@@ -21,7 +21,6 @@ import './Signin.css';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {usePasswordRecovery} from 'src/hooks/UsePasswordRecovery';
 import {useQuayState} from 'src/hooks/UseQuayState';
-import {ReCaptcha} from 'src/components/ReCaptcha';
 import {useExternalLogins} from 'src/hooks/UseExternalLogins';
 import {useExternalLoginAuth} from 'src/hooks/UseExternalLoginAuth';
 import {ExternalLoginButton} from 'src/components/ExternalLoginButton';
@@ -40,7 +39,6 @@ export function Signin() {
 
   const [currentView, setCurrentView] = useState<ViewType>('signin');
   const [recoveryEmail, setRecoveryEmail] = useState('');
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [externalLoginError, setExternalLoginError] = useState<string | null>(
     null,
   );
@@ -148,7 +146,7 @@ export function Signin() {
     if (!recoveryEmail) return;
 
     try {
-      await requestRecovery(recoveryEmail, recaptchaToken);
+      await requestRecovery(recoveryEmail);
     } catch (error) {
       // Error is handled by the hook
     }
@@ -158,7 +156,6 @@ export function Signin() {
     setCurrentView(view);
     if (view === 'signin') {
       setRecoveryError(null);
-      setRecaptchaToken(null);
     } else {
       setErr(undefined);
     }
@@ -316,8 +313,6 @@ export function Signin() {
                   }
                 />
               </FormGroup>
-
-              <ReCaptcha onChange={setRecaptchaToken} className="captcha" />
 
               <Button
                 variant="primary"
