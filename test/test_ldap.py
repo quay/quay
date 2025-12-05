@@ -573,21 +573,22 @@ class TestLDAP(unittest.TestCase):
         memberof_attr = "memberOf"
         secondary_user_rdns = ["ou=otheremployees"]
 
-        with self.assertRaisesRegex(Exception, "Can't contact LDAP server"):
-            ldap = LDAPUsers(
-                "ldap://localhost",
-                base_dn,
-                admin_dn,
-                admin_passwd,
-                user_rdn,
-                uid_attr,
-                email_attr,
-                memberof_attr,
-                secondary_user_rdns=secondary_user_rdns,
-                requires_email=False,
-                timeout=5,
-            )
-            ldap.query_users("cool")
+        ldap = LDAPUsers(
+            "ldap://localhost",
+            base_dn,
+            admin_dn,
+            admin_passwd,
+            user_rdn,
+            uid_attr,
+            email_attr,
+            memberof_attr,
+            secondary_user_rdns=secondary_user_rdns,
+            requires_email=False,
+            timeout=5,
+        )
+        (response, federated_id, error_message) = ldap.query_users("cool")
+        self.assertEqual(None, response)
+        self.assertEqual("Invalid username or password.", error_message)
 
     def test_iterate_group_members(self):
         with mock_ldap() as ldap:
