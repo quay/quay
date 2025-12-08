@@ -688,6 +688,7 @@ describe('Repository Details Page', () => {
       },
     );
     const nextMonth = new Date();
+    nextMonth.setDate(15); // Use day 15 to avoid month overflow (e.g., Jan 31 → Mar 3)
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
@@ -777,6 +778,7 @@ describe('Repository Details Page', () => {
 
   it('changes expiration through tag row', () => {
     const nextMonth = new Date();
+    nextMonth.setDate(15); // Use day 15 to avoid month overflow (e.g., Jan 31 → Mar 3)
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
@@ -823,6 +825,7 @@ describe('Repository Details Page', () => {
 
   it('changes multiple tag expirations', () => {
     const nextMonth = new Date();
+    nextMonth.setDate(15); // Use day 15 to avoid month overflow (e.g., Jan 31 → Mar 3)
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
@@ -870,6 +873,7 @@ describe('Repository Details Page', () => {
 
   it('alerts on failure to change expiration', () => {
     const nextMonth = new Date();
+    nextMonth.setDate(15); // Use day 15 to avoid month overflow (e.g., Jan 31 → Mar 3)
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
