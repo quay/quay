@@ -38,9 +38,9 @@ objects:
   kind: ServiceAccount
   metadata:
     name: ${{NAME}}
+    annotations: ${{SERVICE_ACCOUNT_ANNOTATIONS}}
   imagePullSecrets:
   - name: quayio-backup-image-pull-secret
-  annotations: ${{SERVICE_ACCOUNT_ANNOTATIONS}}
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: RoleBinding
   metadata:
