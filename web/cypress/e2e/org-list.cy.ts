@@ -81,6 +81,42 @@ describe('Org List Page', () => {
     cy.get('#create-org-cancel').click();
   });
 
+  it('Shows error when creating organization with duplicate name (PROJQUAY-9948)', () => {
+    cy.visit('/organization');
+
+    // First create an org
+    cy.get('#create-organization-button').click();
+    cy.get('#create-org-name-input').type('duplicatetest');
+    cy.get('#create-org-email-input').type('duplicatetest@redhat.com');
+    cy.get('#create-org-confirm').click({timeout: 10000});
+    cy.contains('Successfully created organization duplicatetest');
+
+    // Try to create org with same name
+    cy.get('#create-organization-button').click();
+    cy.get('#create-org-name-input').type('duplicatetest');
+    cy.get('#create-org-email-input').type('duplicatetest2@redhat.com');
+    cy.get('#create-org-confirm').click({timeout: 10000});
+
+    // Should show error, NOT success
+    cy.contains('A user or organization with this name already exists');
+
+    // Modal should still be open
+    cy.get('#create-org-cancel').should('be.visible');
+    cy.get('#create-org-cancel').click();
+
+    // Clean up: delete the created org
+    cy.get('#orgslist-search-input').type('duplicatetest');
+    cy.contains('1 - 1 of 1');
+    cy.get('button[id="toolbar-dropdown-checkbox"]').click();
+    cy.contains('Select page').click();
+    cy.contains('Actions').click();
+    cy.contains('Delete').click();
+    cy.get('input[id="delete-confirmation-input"]').type('confirm');
+    cy.get('[id="bulk-delete-modal"]').within(() => {
+      cy.get('button:contains("Delete")').click();
+    });
+  });
+
   it('Delete Org', () => {
     cy.visit('/organization');
 
