@@ -73,6 +73,7 @@ export default function DockerfileUploadBuild(
     },
   });
   const config = useQuayConfig();
+  const robotsDisallowed = config?.config?.ROBOTS_DISALLOW === true;
 
   if (isErrorLoadingTransitivePermissions) {
     return (
@@ -181,18 +182,22 @@ export default function DockerfileUploadBuild(
                   ))
                 )}
               </SelectGroup>
-              <Divider component="li" key={7} />
-              <SelectOption
-                data-testid="create-new-robot-accnt-btn"
-                key="create-robot-account"
-                component="button"
-                onClick={() =>
-                  setIsCreateRobotModalOpen(!isCreateRobotModalOpen)
-                }
-                isFocused
-              >
-                <DesktopIcon /> &nbsp; Create robot account
-              </SelectOption>
+              {!robotsDisallowed && (
+                <>
+                  <Divider component="li" key={7} />
+                  <SelectOption
+                    data-testid="create-new-robot-accnt-btn"
+                    key="create-robot-account"
+                    component="button"
+                    onClick={() =>
+                      setIsCreateRobotModalOpen(!isCreateRobotModalOpen)
+                    }
+                    isFocused
+                  >
+                    <DesktopIcon /> &nbsp; Create robot account
+                  </SelectOption>
+                </>
+              )}
             </React.Fragment>
           }
           placeholderText="Add a registered user, robot to team"

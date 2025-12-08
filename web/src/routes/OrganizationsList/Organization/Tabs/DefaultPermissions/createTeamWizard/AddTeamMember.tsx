@@ -17,6 +17,7 @@ import {getAccountTypeForMember} from 'src/libs/utils';
 import {TrashIcon} from '@patternfly/react-icons';
 import NameAndDescription from 'src/components/modals/robotAccountWizard/NameAndDescription';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {addDisplayError} from 'src/resources/ErrorHandling';
 import ToggleDrawer from 'src/components/ToggleDrawer';
 
 const memberAndRobotColNames = {
@@ -57,7 +58,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
     onError: (err) => {
       addAlert({
         variant: AlertVariant.Failure,
-        title: err,
+        title: addDisplayError('Unable to create robot account', err),
       });
     },
   });
@@ -87,13 +88,22 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   };
 
   const onCreateRobotAccount = async () => {
-    await createNewRobot({
-      namespace: props.orgName,
-      robotname: newRobotAccntName,
-      description: newRobotAccntDescription,
-    });
-    props.setDrawerExpanded(false);
-    addTeamMemberHandler(`${props.orgName}+${newRobotAccntName}`, true);
+    try {
+      const created = await createNewRobot({
+        namespace: props.orgName,
+        robotname: newRobotAccntName,
+        description: newRobotAccntDescription,
+      });
+
+      if (!created || created['name'] === '') {
+        return;
+      }
+
+      props.setDrawerExpanded(false);
+      addTeamMemberHandler(`${props.orgName}+${newRobotAccntName}`, true);
+    } catch (err) {
+      // Error already handled by onError callback
+    }
   };
 
   const validateRobotName = () => {

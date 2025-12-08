@@ -26,6 +26,7 @@ import {useCreateDefaultPermission} from 'src/hooks/UseDefaultPermissions';
 import {Entity} from 'src/resources/UserResource';
 import React from 'react';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
 import {CreateTeamWizard} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createTeamWizard/CreateTeamWizard';
 import {CreateTeamModal} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
@@ -73,6 +74,8 @@ export default function CreatePermissionDrawer(
   const {robots, isLoadingRobots} = useFetchRobotAccounts(props.orgName);
   // Get teams
   const {teams, isLoadingTeams} = useFetchTeams(props.orgName);
+  const quayConfig = useQuayConfig();
+  const robotsDisallowed = quayConfig?.config?.ROBOTS_DISALLOW === true;
   const {addAlert} = useUI();
 
   const permissionRadioButtons = (
@@ -124,18 +127,24 @@ export default function CreatePermissionDrawer(
           ))
         )}
       </SelectGroup>
-      <Divider component="li" key={7} />
-      <SelectOption
-        data-testid="create-new-robot-accnt-btn"
-        key="create-robot-account"
-        component="button"
-        onClick={() =>
-          setIsCreateRobotModalForCreatorOpen(!isCreateRobotModalForCreatorOpen)
-        }
-        isFocused
-      >
-        <DesktopIcon /> &nbsp; Create robot account
-      </SelectOption>
+      {!robotsDisallowed && (
+        <>
+          <Divider component="li" key={7} />
+          <SelectOption
+            data-testid="create-new-robot-accnt-btn"
+            key="create-robot-account"
+            component="button"
+            onClick={() =>
+              setIsCreateRobotModalForCreatorOpen(
+                !isCreateRobotModalForCreatorOpen,
+              )
+            }
+            isFocused
+          >
+            <DesktopIcon /> &nbsp; Create robot account
+          </SelectOption>
+        </>
+      )}
     </React.Fragment>,
   ];
 
@@ -292,19 +301,21 @@ export default function CreatePermissionDrawer(
       >
         <UsersIcon /> &nbsp; Create team
       </SelectOption>
-      <SelectOption
-        data-testid="create-new-robot-accnt-btn"
-        key="Create robot account2"
-        component="button"
-        onClick={() =>
-          setIsCreateRobotModalForAppliedToOpen(
-            !isCreateRobotModalForAppliedToOpen,
-          )
-        }
-        isFocused
-      >
-        <DesktopIcon /> &nbsp; Create robot account
-      </SelectOption>
+      {!robotsDisallowed && (
+        <SelectOption
+          data-testid="create-new-robot-accnt-btn"
+          key="Create robot account2"
+          component="button"
+          onClick={() =>
+            setIsCreateRobotModalForAppliedToOpen(
+              !isCreateRobotModalForAppliedToOpen,
+            )
+          }
+          isFocused
+        >
+          <DesktopIcon /> &nbsp; Create robot account
+        </SelectOption>
+      )}
     </React.Fragment>,
   ];
 

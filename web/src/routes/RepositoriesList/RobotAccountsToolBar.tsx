@@ -29,13 +29,15 @@ export function RobotAccountsToolBar(props: RobotAccountsToolBarProps) {
           onChange={props.setSearch}
           id="robot-account-search"
         />
-        <ToolbarButton
-          id="create-robot-account-btn"
-          buttonValue={props.buttonText}
-          Modal={props.pageModal}
-          isModalOpen={props.isModalOpen}
-          setModalOpen={props.setModalOpen}
-        />
+        {!props.hideCreateButton && (
+          <ToolbarButton
+            id="create-robot-account-btn"
+            buttonValue={props.buttonText}
+            Modal={props.pageModal}
+            isModalOpen={props.isModalOpen}
+            setModalOpen={props.setModalOpen}
+          />
+        )}
         <ExpandCollapseButton
           expandTable={props.expandTable}
           collapseTable={props.collapseTable}
@@ -69,6 +71,7 @@ type RobotAccountsToolBarProps = {
   pageModal: object;
   isModalOpen: boolean;
   setModalOpen: (open) => void;
+  hideCreateButton?: boolean;
   isKebabOpen: boolean;
   setKebabOpen: (open) => void;
   kebabItems: ReactElement[];
