@@ -1109,6 +1109,61 @@ export function useLogDescriptions() {
     federated_robot_token_exchange: function (metadata: Metadata) {
       return `Federated robot token exchange robot:${metadata.robot}, issuer:${metadata.issuer}, subject:${metadata.subject}`;
     },
+    org_create_quota: function (metadata: Metadata) {
+      return (
+        <>
+          Created storage quota of {wrapVariable(metadata.limit)} for
+          organization {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+    org_change_quota: function (metadata: Metadata) {
+      return (
+        <>
+          Changed storage quota for organization{' '}
+          {wrapVariable(metadata.namespace)} from{' '}
+          {wrapVariable(metadata.previous_limit)} to{' '}
+          {wrapVariable(metadata.limit)}
+        </>
+      );
+    },
+    org_delete_quota: function (metadata: Metadata) {
+      return (
+        <>
+          Deleted storage quota of {wrapVariable(metadata.limit)} for
+          organization {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+    org_create_quota_limit: function (metadata: Metadata) {
+      return (
+        <>
+          Created {wrapVariable(metadata.type)} quota limit at{' '}
+          {wrapVariable(`${metadata.threshold_percent}%`)} for organization{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+    org_change_quota_limit: function (metadata: Metadata) {
+      return (
+        <>
+          Changed quota limit for organization{' '}
+          {wrapVariable(metadata.namespace)}: {wrapVariable(metadata.type)}{' '}
+          threshold from{' '}
+          {wrapVariable(`${metadata.previous_threshold_percent}%`)} to{' '}
+          {wrapVariable(`${metadata.threshold_percent}%`)}
+        </>
+      );
+    },
+    org_delete_quota_limit: function (metadata: Metadata) {
+      return (
+        <>
+          Deleted {wrapVariable(metadata.type)} quota limit at{' '}
+          {wrapVariable(`${metadata.threshold_percent}%`)} for organization{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
   };
 
   return descriptions;

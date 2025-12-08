@@ -287,6 +287,152 @@ describe('Usage Logs', () => {
     cy.contains('Unable to complete request').should('not.exist');
   });
 
+  it('displays quota audit log descriptions', () => {
+    const quotaLogsResp = {
+      start_time: 'Tue, 20 Feb 2024 17:33:43 -0000',
+      end_time: 'Thu, 22 Feb 2024 17:33:43 -0000',
+      logs: [
+        {
+          kind: 'org_create_quota',
+          metadata: {
+            namespace: 'projectquay',
+            limit_bytes: 1073741824,
+            limit: '1.0 GiB',
+          },
+          ip: '192.168.228.1',
+          datetime: 'Wed, 21 Feb 2024 17:33:07 -0000',
+          performer: {
+            kind: 'user',
+            name: 'admin',
+            is_robot: false,
+          },
+        },
+        {
+          kind: 'org_change_quota',
+          metadata: {
+            namespace: 'projectquay',
+            limit_bytes: 5368709120,
+            limit: '5.0 GiB',
+            previous_limit_bytes: 1073741824,
+            previous_limit: '1.0 GiB',
+          },
+          ip: '192.168.228.1',
+          datetime: 'Wed, 21 Feb 2024 17:34:07 -0000',
+          performer: {
+            kind: 'user',
+            name: 'admin',
+            is_robot: false,
+          },
+        },
+        {
+          kind: 'org_delete_quota',
+          metadata: {
+            namespace: 'projectquay',
+            quota_id: 1,
+            limit_bytes: 5368709120,
+            limit: '5.0 GiB',
+          },
+          ip: '192.168.228.1',
+          datetime: 'Wed, 21 Feb 2024 17:35:07 -0000',
+          performer: {
+            kind: 'user',
+            name: 'admin',
+            is_robot: false,
+          },
+        },
+        {
+          kind: 'org_create_quota_limit',
+          metadata: {
+            namespace: 'projectquay',
+            type: 'Warning',
+            threshold_percent: 80,
+          },
+          ip: '192.168.228.1',
+          datetime: 'Wed, 21 Feb 2024 17:36:07 -0000',
+          performer: {
+            kind: 'user',
+            name: 'admin',
+            is_robot: false,
+          },
+        },
+        {
+          kind: 'org_change_quota_limit',
+          metadata: {
+            namespace: 'projectquay',
+            type: 'Warning',
+            threshold_percent: 90,
+            previous_type: 'Warning',
+            previous_threshold_percent: 80,
+          },
+          ip: '192.168.228.1',
+          datetime: 'Wed, 21 Feb 2024 17:37:07 -0000',
+          performer: {
+            kind: 'user',
+            name: 'admin',
+            is_robot: false,
+          },
+        },
+        {
+          kind: 'org_delete_quota_limit',
+          metadata: {
+            namespace: 'projectquay',
+            limit_id: 1,
+            type: 'Reject',
+            threshold_percent: 100,
+          },
+          ip: '192.168.228.1',
+          datetime: 'Wed, 21 Feb 2024 17:38:07 -0000',
+          performer: {
+            kind: 'user',
+            name: 'admin',
+            is_robot: false,
+          },
+        },
+      ],
+    };
+
+    cy.intercept(
+      'GET',
+      '/api/v1/organization/projectquay/logs?*',
+      quotaLogsResp,
+    );
+    cy.visit('/organization/projectquay?tab=Logs');
+
+    // Verify quota audit log descriptions are displayed correctly
+    cy.get('table')
+      .contains('td', 'Created storage quota of')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table').contains('td', '1.0 GiB').should('be.visible');
+
+    cy.get('table')
+      .contains('td', 'Changed storage quota for organization')
+      .scrollIntoView()
+      .should('be.visible');
+
+    cy.get('table')
+      .contains('td', 'Deleted storage quota of')
+      .scrollIntoView()
+      .should('be.visible');
+
+    cy.get('table')
+      .contains('td', 'Created Warning quota limit at')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table').contains('td', '80%').should('be.visible');
+
+    cy.get('table')
+      .contains('td', 'Changed quota limit for organization')
+      .scrollIntoView()
+      .should('be.visible');
+
+    cy.get('table')
+      .contains('td', 'Deleted Reject quota limit at')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table').contains('td', '100%').should('be.visible');
+  });
+
   it('filter logs', () => {
     cy.intercept('GET', '/api/v1/organization/projectquay/logs?*', logsResp);
 

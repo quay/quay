@@ -486,6 +486,13 @@ def initialize_database():
     LogEntryKind.create(name="export_logs_success")
     LogEntryKind.create(name="export_logs_failure")
 
+    LogEntryKind.create(name="org_create_quota")
+    LogEntryKind.create(name="org_change_quota")
+    LogEntryKind.create(name="org_delete_quota")
+    LogEntryKind.create(name="org_create_quota_limit")
+    LogEntryKind.create(name="org_change_quota_limit")
+    LogEntryKind.create(name="org_delete_quota_limit")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
