@@ -142,7 +142,6 @@ def render_page_template(name, route_data=None, **kwargs):
         vuln_priority_set=PRIORITY_LEVELS,
         mixpanel_key=app.config.get("MIXPANEL_KEY", ""),
         munchkin_key=app.config.get("MARKETO_MUNCHKIN_ID", ""),
-        recaptcha_key=app.config.get("RECAPTCHA_SITE_KEY", ""),
         google_tagmanager_key=app.config.get("GOOGLE_TAGMANAGER_KEY", ""),
         google_anaytics_key=app.config.get("GOOGLE_ANALYTICS_KEY", ""),
         sentry_public_dsn=app.config.get("SENTRY_PUBLIC_DSN", ""),

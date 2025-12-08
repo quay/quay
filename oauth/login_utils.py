@@ -12,7 +12,7 @@ from util.validation import generate_valid_usernames
 
 OAuthResult = namedtuple(
     "OAuthResult",
-    ["user_obj", "service_name", "error_message", "register_redirect", "requires_verification"],
+    ["user_obj", "service_name", "error_message", "register_redirect"],
 )
 
 logger = logging.getLogger(__name__)
@@ -110,11 +110,8 @@ def _oauthresult(
     service_name=None,
     error_message=None,
     register_redirect=False,
-    requires_verification=False,
 ):
-    return OAuthResult(
-        user_obj, service_name, error_message, register_redirect, requires_verification
-    )
+    return OAuthResult(user_obj, service_name, error_message, register_redirect)
 
 
 def _attach_service(config, login_service, user_obj, lid, lusername):
@@ -159,7 +156,6 @@ def _conduct_oauth_login(
     lusername,
     lemail,
     metadata=None,
-    captcha_verified=False,
     additional_login_info=None,
 ):
     """
@@ -216,9 +212,6 @@ def _conduct_oauth_login(
     if not can_create_user(lemail, blacklisted_domains=blacklisted_domains):
         error_message = "User creation is disabled. Please contact your administrator"
         return _oauthresult(service_name=service_name, error_message=error_message)
-
-    if features.RECAPTCHA and not captcha_verified:
-        return _oauthresult(service_name=service_name, requires_verification=True)
 
     # Try to create the user
     try:

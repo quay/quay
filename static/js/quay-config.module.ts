@@ -32,9 +32,6 @@ if (INJECTED_CONFIG && INJECTED_CONFIG.MIXPANEL_KEY) {
 if (INJECTED_CONFIG && INJECTED_CONFIG.GOOGLE_ANALYTICS_KEY) {
   quayDependencies.push('angulartics.google.analytics');
 }
-if (INJECTED_CONFIG && INJECTED_CONFIG.RECAPTCHA_SITE_KEY) {
-  quayDependencies.push('vcRecaptcha');
-}
 
 
 /**

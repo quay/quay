@@ -807,35 +807,6 @@ class TestCreateNewUser(ApiTestCase):
         data = self.postJsonResponse(User, data=NEW_USER_DETAILS, expected_code=200)
         self.assertEqual(True, data["awaiting_verification"])
 
-    def test_createuser_captcha(self):
-        @urlmatch(netloc=r"(.*\.)?google.com", path="/recaptcha/api/siteverify")
-        def captcha_endpoint(url, request):
-            if url.query.find("response=somecode") > 0:
-                return {"status_code": 200, "content": py_json.dumps({"success": True})}
-            else:
-                return {"status_code": 400, "content": py_json.dumps({"success": False})}
-
-        with HTTMock(captcha_endpoint):
-            with self.toggleFeature("RECAPTCHA", True):
-                # Try with a missing captcha.
-                self.postResponse(User, data=NEW_USER_DETAILS, expected_code=400)
-
-                # Try with an invalid captcha.
-                details = dict(NEW_USER_DETAILS)
-                details["recaptcha_response"] = "someinvalidcode"
-                self.postResponse(User, data=details, expected_code=400)
-
-                # Try with a valid captcha.
-                details = dict(NEW_USER_DETAILS)
-                details["recaptcha_response"] = "somecode"
-                self.postResponse(User, data=details, expected_code=200)
-
-    def test_recaptcha_whitelisted_users(self):
-        self.login(READ_ACCESS_USER)
-        with (self.toggleFeature("RECAPTCHA", True)):
-            app.config["RECAPTCHA_WHITELISTED_USERS"] = READ_ACCESS_USER
-            self.postResponse(User, data=NEW_USER_DETAILS, expected_code=200)
-
     def test_createuser_withteaminvite(self):
         inviter = model.user.get_user(ADMIN_ACCESS_USER)
         team = model.team.get_organization_team(ORGANIZATION, "owners")

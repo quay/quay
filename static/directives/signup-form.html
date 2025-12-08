@@ -28,13 +28,6 @@
            match="newUser.password" required
            ng-pattern="/^.{8,}$/">
 
-    <div quay-require="['RECAPTCHA']">
-      <div class="captcha"
-           ng-class="{'expanded': !!(newUser.password == newUser.repeatPassword && newUser.password)}">
-        <div vc-recaptcha ng-model="newUser.recaptcha_response" key="Config.RECAPTCHA_SITE_KEY"></div>
-      </div>
-    </div>
-
     <button id="signupButton"
             class="btn btn-primary btn-block landing-signup-button" ng-disabled="signupForm.$invalid" type="submit"
             analytics-on analytics-event="register">

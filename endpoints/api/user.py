@@ -6,7 +6,6 @@ import json
 import logging
 import time
 
-import recaptcha2
 from flask import abort, request, session
 from flask_login import logout_user
 from flask_principal import AnonymousIdentity, identity_changed
@@ -298,10 +297,6 @@ class User(ApiResource):
                     "type": "string",
                     "description": "The optional invite code",
                 },
-                "recaptcha_response": {
-                    "type": "string",
-                    "description": "The (may be disabled) recaptcha response code for verification",
-                },
             },
         },
         "UpdateUser": {
@@ -566,19 +561,6 @@ class User(ApiResource):
             raise request_error(
                 message="Creation of a user account for this e-mail is disabled; please contact an administrator"
             )
-
-        # If recaptcha is enabled, then verify the user is a human.
-        if features.RECAPTCHA:
-            user = get_authenticated_user()
-            # check if the user is whitelisted to bypass recaptcha security check
-            if user is None or (user.username not in app.config["RECAPTCHA_WHITELISTED_USERS"]):
-                recaptcha_response = user_data.get("recaptcha_response", "")
-                result = recaptcha2.verify(
-                    app.config["RECAPTCHA_SECRET_KEY"], recaptcha_response, get_request_ip()
-                )
-
-                if not result["success"]:
-                    return {"message": "Are you a bot? If not, please revalidate the captcha."}, 400
 
         is_possible_abuser = ip_resolver.is_ip_possible_threat(get_request_ip())
         try:
@@ -1075,10 +1057,6 @@ class Recovery(ApiResource):
                     "type": "string",
                     "description": "The user's email address",
                 },
-                "recaptcha_response": {
-                    "type": "string",
-                    "description": "The (may be disabled) recaptcha response code for verification",
-                },
             },
         },
     }
@@ -1103,16 +1081,6 @@ class Recovery(ApiResource):
             return v
 
         recovery_data = request.get_json()
-
-        # If recaptcha is enabled, then verify the user is a human.
-        if features.RECAPTCHA:
-            recaptcha_response = recovery_data.get("recaptcha_response", "")
-            result = recaptcha2.verify(
-                app.config["RECAPTCHA_SECRET_KEY"], recaptcha_response, get_request_ip()
-            )
-
-            if not result["success"]:
-                return {"message": "Are you a bot? If not, please revalidate the captcha."}, 400
 
         email = recovery_data["email"]
         user = model.user.find_user_by_email(email)
