@@ -1064,6 +1064,15 @@ export function useLogDescriptions() {
         </>
       );
     },
+    oauth_token_revoked: function (metadata) {
+      return (
+        <>
+          OAuth token revoked for user {wrapVariable(metadata.assigned_user)} by{' '}
+          {wrapVariable(metadata.revoking_user)} for application{' '}
+          {wrapVariable(metadata.application)}
+        </>
+      );
+    },
     export_logs_success: function (metadata: Metadata) {
       if (metadata.repo) {
         if (metadata.url) {

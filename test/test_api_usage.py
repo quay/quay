@@ -4806,6 +4806,35 @@ class TestUserAssignedAuthorization(ApiTestCase):
             expected_code=404,
         )
 
+    def test_delete_assigned_authorization_logs_action(self):
+        assigned_scope = READ_REPO.scope
+        self.login(PUBLIC_USER)
+        admin = get_user(ADMIN_ACCESS_USER)
+        assigned_user = get_user(PUBLIC_USER)
+        org = create_organization("neworg2", "neworg2@devtable.com", admin)
+        app = model.oauth.create_application(org, "testapp", "http://foo/bar", "http://foo/bar/baz")
+        assigned_authorization = model.oauth.assign_token_to_user(
+            app, assigned_user, app.redirect_uri, assigned_scope, "token"
+        )
+
+        # Delete the assigned authorization
+        self.deleteEmptyResponse(
+            UserAssignedAuthorization,
+            params=dict(assigned_authorization_uuid=assigned_authorization.uuid),
+        )
+
+        # Switch to admin to access org logs
+        self.login(ADMIN_ACCESS_USER)
+
+        # Verify the oauth_token_revoked log was created
+        response = self.getJsonResponse(OrgLogs, params=dict(orgname="neworg2"))
+        revoke_logs = [log for log in response["logs"] if log["kind"] == "oauth_token_revoked"]
+        assert len(revoke_logs) == 1
+        assert revoke_logs[0]["metadata"]["revoking_user"] == PUBLIC_USER
+        assert revoke_logs[0]["metadata"]["assigned_user"] == PUBLIC_USER
+        assert revoke_logs[0]["metadata"]["application"] == "testapp"
+        assert revoke_logs[0]["metadata"]["client_id"] == app.client_id
+
 
 class TestSuperUserLogs(ApiTestCase):
     def test_get_logs(self):
