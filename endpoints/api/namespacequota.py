@@ -15,6 +15,7 @@ from endpoints.api import (
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
+    log_action,
     nickname,
     request_error,
     require_scope,
@@ -158,6 +159,15 @@ class OrganizationQuotaList(ApiResource):
 
         try:
             model.namespacequota.create_namespace_quota(org, limit_bytes)
+            log_action(
+                "org_create_quota",
+                orgname,
+                {
+                    "namespace": orgname,
+                    "limit_bytes": limit_bytes,
+                    "limit": bitmath.Byte(limit_bytes).best_prefix().format("{value:.1f} {unit}"),
+                },
+            )
             return "Created", 201
         except model.DataModelException as ex:
             raise request_error(exception=ex)
@@ -228,6 +238,7 @@ class OrganizationQuota(ApiResource):
 
         quota_data = request.get_json()
         quota = get_quota(orgname, quota_id)
+        previous_limit_bytes = quota.limit_bytes
 
         try:
             limit_bytes = None
@@ -244,6 +255,21 @@ class OrganizationQuota(ApiResource):
 
             if limit_bytes:
                 model.namespacequota.update_namespace_quota_size(quota, limit_bytes)
+                log_action(
+                    "org_change_quota",
+                    orgname,
+                    {
+                        "namespace": orgname,
+                        "limit_bytes": limit_bytes,
+                        "limit": bitmath.Byte(limit_bytes)
+                        .best_prefix()
+                        .format("{value:.1f} {unit}"),
+                        "previous_limit_bytes": previous_limit_bytes,
+                        "previous_limit": bitmath.Byte(previous_limit_bytes)
+                        .best_prefix()
+                        .format("{value:.1f} {unit}"),
+                    },
+                )
         except model.DataModelException as ex:
             raise request_error(exception=ex)
 
@@ -257,8 +283,24 @@ class OrganizationQuota(ApiResource):
 
         quota = get_quota(orgname, quota_id)
 
-        # Exceptions by`delete_instance` are unexpected and raised
+        # Capture values before deletion for audit logging
+        deleted_quota_id = quota.id
+        limit_bytes = quota.limit_bytes
+
+        # Perform deletion first - exceptions are unexpected and raised
         model.namespacequota.delete_namespace_quota(quota)
+
+        # Log after successful deletion
+        log_action(
+            "org_delete_quota",
+            orgname,
+            {
+                "namespace": orgname,
+                "quota_id": deleted_quota_id,
+                "limit_bytes": limit_bytes,
+                "limit": bitmath.Byte(limit_bytes).best_prefix().format("{value:.1f} {unit}"),
+            },
+        )
 
         return "", 204
 
@@ -333,6 +375,15 @@ class OrganizationQuotaLimitList(ApiResource):
                 quota_type,
                 quota_limit_threshold,
             )
+            log_action(
+                "org_create_quota_limit",
+                orgname,
+                {
+                    "namespace": orgname,
+                    "type": quota_type,
+                    "threshold_percent": quota_limit_threshold,
+                },
+            )
             return "Created", 201
         except model.DataModelException as ex:
             raise request_error(exception=ex)
@@ -390,12 +441,26 @@ class OrganizationQuotaLimit(ApiResource):
         if quota_limit is None:
             raise NotFound()
 
+        # Capture previous values for audit logging
+        previous_type = quota_limit.quota_type.name
+        previous_threshold = quota_limit.percent_of_limit
+
         if "type" in quota_limit_data:
             new_type = quota_limit_data["type"]
             model.namespacequota.update_namespace_quota_limit_type(quota_limit, new_type)
         if "threshold_percent" in quota_limit_data:
             new_threshold = quota_limit_data["threshold_percent"]
             model.namespacequota.update_namespace_quota_limit_threshold(quota_limit, new_threshold)
+
+        # Build metadata with current values after updates
+        metadata = {
+            "namespace": orgname,
+            "type": quota_limit_data.get("type", previous_type),
+            "threshold_percent": quota_limit_data.get("threshold_percent", previous_threshold),
+            "previous_type": previous_type,
+            "previous_threshold_percent": previous_threshold,
+        }
+        log_action("org_change_quota_limit", orgname, metadata)
 
         return quota_view(quota)
 
@@ -410,12 +475,30 @@ class OrganizationQuotaLimit(ApiResource):
         if quota_limit is None:
             raise NotFound()
 
+        # Capture values before deletion for audit logging
+        deleted_limit_id = quota_limit.id
+        quota_type = quota_limit.quota_type.name
+        threshold_percent = quota_limit.percent_of_limit
+
         try:
-            # Exceptions by`delete_instance` are unexpected and raised
+            # Perform deletion first - exceptions are unexpected and raised
             model.namespacequota.delete_namespace_quota_limit(quota_limit)
-            return "", 204
         except model.DataModelException as ex:
             raise request_error(exception=ex)
+
+        # Log after successful deletion
+        log_action(
+            "org_delete_quota_limit",
+            orgname,
+            {
+                "namespace": orgname,
+                "limit_id": deleted_limit_id,
+                "type": quota_type,
+                "threshold_percent": threshold_percent,
+            },
+        )
+
+        return "", 204
 
 
 @resource("/v1/user/quota")
