@@ -1070,6 +1070,54 @@ describe('Repository Builds', () => {
     cy.get('tbody tr').eq(1).should('contain', 'build3');
     cy.get('tbody tr').eq(2).should('contain', 'build1');
   });
+
+  it('Sorts builds by Build ID correctly (hex values)', () => {
+    // Build IDs are hex strings that should be sorted numerically
+    // Hex values: 5468c229 < 69ab0698 < 7a86feb2
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      builds: [
+        {
+          id: '7a86feb2-1234-5678-9abc-def012345678',
+          phase: 'complete',
+          started: 'Mon, 04 Nov 2024 14:21:00 -0000',
+          tags: [],
+        },
+        {
+          id: '5468c229-1234-5678-9abc-def012345678',
+          phase: 'complete',
+          started: 'Tue, 17 Sep 2024 10:15:00 -0000',
+          tags: [],
+        },
+        {
+          id: '69ab0698-1234-5678-9abc-def012345678',
+          phase: 'complete',
+          started: 'Tue, 17 Sep 2024 16:30:00 -0000',
+          tags: [],
+        },
+      ],
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      triggers: [],
+    }).as('getBuildTriggers');
+
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    // Default sort is by date descending, click Build ID to sort by Build ID
+    cy.get('th').contains('Build ID').click();
+
+    // Ascending order: 5468c229 < 69ab0698 < 7a86feb2 (hex numeric sort)
+    cy.get('tbody tr').eq(0).should('contain', '5468c229');
+    cy.get('tbody tr').eq(1).should('contain', '69ab0698');
+    cy.get('tbody tr').eq(2).should('contain', '7a86feb2');
+
+    // Click again for descending order
+    cy.get('th').contains('Build ID').click();
+
+    // Descending order: 7a86feb2 > 69ab0698 > 5468c229
+    cy.get('tbody tr').eq(0).should('contain', '7a86feb2');
+    cy.get('tbody tr').eq(1).should('contain', '69ab0698');
+    cy.get('tbody tr').eq(2).should('contain', '5468c229');
+  });
 });
 
 describe('Repository Builds - Create Custom Git Build Triggers', () => {
