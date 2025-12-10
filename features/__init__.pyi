@@ -94,12 +94,6 @@ USER_METADATA: FeatureNameValue
 # Feature Flag: Whether to support signing
 SIGNING: FeatureNameValue
 
-# Feature Flag: Whether to enable support for App repositories.
-APP_REGISTRY: FeatureNameValue
-
-# Feature Flag: Whether app registry is in a read-only mode.
-READONLY_APP_REGISTRY: FeatureNameValue
-
 # Feature Flag: If set to true, the _catalog endpoint returns public repositories. Otherwise,
 # only private repositories can be returned.
 PUBLIC_CATALOG: FeatureNameValue

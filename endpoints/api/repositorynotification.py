@@ -9,7 +9,6 @@ from flask import request
 from endpoints.api import (
     InvalidRequest,
     RepositoryParamResource,
-    disallow_for_app_repositories,
     log_action,
     nickname,
     path_param,
@@ -74,7 +73,6 @@ class RepositoryNotificationList(RepositoryParamResource):
 
     @require_repo_admin(allow_for_superuser=True)
     @nickname("createRepoNotification")
-    @disallow_for_app_repositories
     @validate_json_request("NotificationCreateRequest")
     def post(self, namespace_name, repository_name):
         parsed = request.get_json()
@@ -111,7 +109,6 @@ class RepositoryNotificationList(RepositoryParamResource):
 
     @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("listRepoNotifications")
-    @disallow_for_app_repositories
     def get(self, namespace_name, repository_name):
         """
         List the notifications for the specified repository.
@@ -130,7 +127,6 @@ class RepositoryNotification(RepositoryParamResource):
 
     @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("getRepoNotification")
-    @disallow_for_app_repositories
     def get(self, namespace_name, repository_name, uuid):
         """
         Get information for the specified notification.
@@ -142,7 +138,6 @@ class RepositoryNotification(RepositoryParamResource):
 
     @require_repo_admin(allow_for_superuser=True)
     @nickname("deleteRepoNotification")
-    @disallow_for_app_repositories
     def delete(self, namespace_name, repository_name, uuid):
         """
         Deletes the specified notification.
@@ -171,7 +166,6 @@ class RepositoryNotification(RepositoryParamResource):
 
     @require_repo_admin(allow_for_superuser=True)
     @nickname("resetRepositoryNotificationFailures")
-    @disallow_for_app_repositories
     def post(self, namespace_name, repository_name, uuid):
         """
         Resets repository notification to 0 failures.
@@ -209,7 +203,6 @@ class TestRepositoryNotification(RepositoryParamResource):
 
     @require_repo_admin(allow_for_superuser=True)
     @nickname("testRepoNotification")
-    @disallow_for_app_repositories
     def post(self, namespace_name, repository_name, uuid):
         """
         Queues a test notification for this repository.

@@ -6,7 +6,6 @@ from peewee import IntegrityError, fn
 import features
 from data.database import (
     AccessToken,
-    ApprTag,
     BlobUpload,
     DeletedRepository,
     ImageStorage,
@@ -85,23 +84,10 @@ def purge_repository(repo, force=False):
     repo.state = RepositoryState.MARKED_FOR_DELETION
     repo.save()
 
-    # Delete the repository of all Appr-referenced entries.
-    # Note that new-model Tag's must be deleted in *two* passes, as they can reference parent tags,
-    # and MySQL is... particular... about such relationships when deleting.
-    if repo.kind.name == "application":
-        fst_pass = (
-            ApprTag.delete()
-            .where(ApprTag.repository == repo, ~(ApprTag.linked_tag >> None))
-            .execute()
-        )
-        snd_pass = ApprTag.delete().where(ApprTag.repository == repo).execute()
-        gc_table_rows_deleted.labels(table="ApprTag").inc(fst_pass + snd_pass)
-    else:
-        # GC to remove the images and storage.
-        _purge_repository_contents(repo)
+    # GC to remove the images and storage.
+    _purge_repository_contents(repo)
 
     # Ensure there are no additional tags, manifests, images or blobs in the repository.
-    assert ApprTag.select().where(ApprTag.repository == repo).count() == 0
     assert Tag.select().where(Tag.repository == repo).count() == 0
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0

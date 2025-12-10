@@ -22,8 +22,6 @@ from app import tf
 from data import model
 from data.database import (
     AccessTokenKind,
-    ApprBlobPlacementLocation,
-    ApprTagKind,
     BuildTriggerService,
     DeletedNamespace,
     DeletedRepository,
@@ -61,7 +59,6 @@ from data.database import (
     UserRegion,
     Visibility,
     all_models,
-    appr_classes,
     db,
     db_encrypter,
     get_epoch_timestamp_ms,
@@ -511,9 +508,6 @@ def initialize_database():
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
-    ApprBlobPlacementLocation.create(name="local_eu")
-    ApprBlobPlacementLocation.create(name="local_us")
-
     ImageStorageTransformation.create(name="squash")
     ImageStorageTransformation.create(name="aci")
 
@@ -593,11 +587,6 @@ def initialize_database():
     UserPromptKind.create(name="enter_company")
 
     RepositoryKind.create(name="image")
-    RepositoryKind.create(name="application")
-
-    ApprTagKind.create(name="tag")
-    ApprTagKind.create(name="release")
-    ApprTagKind.create(name="channel")
 
     DisableReason.create(name="user_toggled")
     DisableReason.create(name="successive_build_failures")
@@ -1480,9 +1469,6 @@ def find_models_missing_data():
     # whitelisted.
     models_missing_data = set()
     for one_model in all_models:
-        if one_model in appr_classes:
-            continue
-
         try:
             one_model.select().get()
         except one_model.DoesNotExist:

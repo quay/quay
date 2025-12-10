@@ -7,7 +7,6 @@ import { ContextPathSelectComponent } from './directives/ui/context-path-select/
 import { LinearWorkflowComponent } from './directives/ui/linear-workflow/linear-workflow.component';
 import { LinearWorkflowSectionComponent } from './directives/ui/linear-workflow/linear-workflow-section.component';
 import { QuayConfigModule } from './quay-config.module';
-import { AppPublicViewComponent } from './directives/ui/app-public-view/app-public-view.component';
 import { VisibilityIndicatorComponent } from './directives/ui/visibility-indicator/visibility-indicator.component';
 import { CorTableComponent } from './directives/ui/cor-table/cor-table.component';
 import { CorTableColumn } from './directives/ui/cor-table/cor-table-col.component';
@@ -66,7 +65,6 @@ import { NewUiToggleComponent } from './directives/ui/new-ui-toggle/new-ui-toggl
     ContextPathSelectComponent,
     LinearWorkflowComponent,
     LinearWorkflowSectionComponent,
-    AppPublicViewComponent,
     VisibilityIndicatorComponent,
     CorTableComponent,
     CorTableColumn,

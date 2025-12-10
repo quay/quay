@@ -39,7 +39,7 @@ def start_build(
 ):
     # Ensure that builds are only run in image repositories.
     if repository.kind.name != "image":
-        raise Exception("Attempt to start a build for application repository %s" % repository.id)
+        raise Exception("Attempt to start a build for non-image repository %s" % repository.id)
 
     # Ensure the repository isn't in mirror or read-only mode.
     if repository.state != RepositoryState.NORMAL:

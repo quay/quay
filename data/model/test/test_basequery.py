@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from peewee import JOIN
 from playhouse.test_utils import assert_query_count
@@ -8,6 +6,7 @@ from data.database import Namespace, Repository, RepositoryPermission, TeamMembe
 from data.model._basequery import filter_to_repos_for_user
 from data.model.organization import get_admin_users
 from data.model.user import get_namespace_user
+from test.fixtures import *
 from util.names import parse_robot_username
 
 
@@ -76,7 +75,6 @@ def _get_visible_repositories_for_user(
     [
         None,
         "image",
-        "application",
     ],
 )
 def test_filter_repositories(

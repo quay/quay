@@ -799,56 +799,52 @@ class User(BaseModel):
 
             # These models don't need to use transitive deletes, because the referenced objects
             # are cleaned up directly in the model.
-            skip_transitive_deletes = (
-                {
-                    Repository,
-                    Team,
-                    RepositoryBuild,
-                    ServiceKeyApproval,
-                    RepositoryBuildTrigger,
-                    ServiceKey,
-                    RepositoryPermission,
-                    TeamMemberInvite,
-                    Star,
-                    RepositoryAuthorizedEmail,
-                    TeamMember,
-                    PermissionPrototype,
-                    AccessToken,
-                    OAuthAccessToken,
-                    BlobUpload,
-                    RepositoryNotification,
-                    OAuthAuthorizationCode,
-                    RepositoryActionCount,
-                    TeamSync,
-                    RepositorySearchScore,
-                    DeletedNamespace,
-                    DeletedRepository,
-                    RepoMirrorRule,
-                    NamespaceGeoRestriction,
-                    ManifestSecurityStatus,
-                    RepoMirrorConfig,
-                    UploadedBlob,
-                    QuotaRepositorySize,
-                    QuotaNamespaceSize,
-                    UserOrganizationQuota,
-                    QuotaLimits,
-                    RedHatSubscriptions,
-                    OrganizationRhSkus,
-                    NamespaceAutoPrunePolicy,
-                    AutoPruneTaskStatus,
-                    RepositoryAutoPrunePolicy,
-                    NamespaceImmutabilityPolicy,
-                    RepositoryImmutabilityPolicy,
-                    OauthAssignedToken,
-                    TagNotificationSuccess,
-                    TagPullStatistics,
-                    ManifestPullStatistics,
-                    OrgMirrorConfig,
-                    OrgMirrorRepository,
-                }
-                | appr_classes
-                | v22_classes
-            )
+            skip_transitive_deletes = {
+                Repository,
+                Team,
+                RepositoryBuild,
+                ServiceKeyApproval,
+                RepositoryBuildTrigger,
+                ServiceKey,
+                RepositoryPermission,
+                TeamMemberInvite,
+                Star,
+                RepositoryAuthorizedEmail,
+                TeamMember,
+                PermissionPrototype,
+                AccessToken,
+                OAuthAccessToken,
+                BlobUpload,
+                RepositoryNotification,
+                OAuthAuthorizationCode,
+                RepositoryActionCount,
+                TeamSync,
+                RepositorySearchScore,
+                DeletedNamespace,
+                DeletedRepository,
+                RepoMirrorRule,
+                NamespaceGeoRestriction,
+                ManifestSecurityStatus,
+                RepoMirrorConfig,
+                UploadedBlob,
+                QuotaRepositorySize,
+                QuotaNamespaceSize,
+                UserOrganizationQuota,
+                QuotaLimits,
+                RedHatSubscriptions,
+                OrganizationRhSkus,
+                NamespaceAutoPrunePolicy,
+                AutoPruneTaskStatus,
+                RepositoryAutoPrunePolicy,
+                NamespaceImmutabilityPolicy,
+                RepositoryImmutabilityPolicy,
+                OauthAssignedToken,
+                TagNotificationSuccess,
+                TagPullStatistics,
+                ManifestPullStatistics,
+                OrgMirrorConfig,
+                OrgMirrorRepository,
+            } | v22_classes
             delete_instance_filtered(self, User, delete_nullable, skip_transitive_deletes)
 
 
@@ -1053,30 +1049,26 @@ class Repository(BaseModel):
 
         # These models don't need to use transitive deletes, because the referenced objects
         # are cleaned up directly
-        skip_transitive_deletes = (
-            {
-                RepositoryBuild,
-                RepositoryBuildTrigger,
-                BlobUpload,
-                Label,
-                RepositorySearchScore,
-                RepoMirrorConfig,
-                RepoMirrorRule,
-                DeletedRepository,
-                ManifestSecurityStatus,
-                UploadedBlob,
-                QuotaNamespaceSize,
-                QuotaRepositorySize,
-                RepositoryAutoPrunePolicy,
-                RepositoryImmutabilityPolicy,
-                TagNotificationSuccess,
-                TagPullStatistics,
-                ManifestPullStatistics,
-                OrgMirrorRepository,
-            }
-            | appr_classes
-            | v22_classes
-        )
+        skip_transitive_deletes = {
+            RepositoryBuild,
+            RepositoryBuildTrigger,
+            BlobUpload,
+            Label,
+            RepositorySearchScore,
+            RepoMirrorConfig,
+            RepoMirrorRule,
+            DeletedRepository,
+            ManifestSecurityStatus,
+            UploadedBlob,
+            QuotaNamespaceSize,
+            QuotaRepositorySize,
+            RepositoryAutoPrunePolicy,
+            RepositoryImmutabilityPolicy,
+            TagNotificationSuccess,
+            TagPullStatistics,
+            ManifestPullStatistics,
+            OrgMirrorRepository,
+        } | v22_classes
 
         delete_instance_filtered(self, Repository, delete_nullable, skip_transitive_deletes)
 
@@ -1701,131 +1693,6 @@ class Label(BaseModel):
     source_type = EnumField(LabelSourceType)
 
 
-class ApprBlob(BaseModel):
-    """
-    ApprBlob represents a content-addressable object stored outside of the database.
-    """
-
-    digest = CharField(index=True, unique=True)
-    media_type = EnumField(MediaType)
-    size = BigIntegerField()
-    uncompressed_size = BigIntegerField(null=True)
-
-
-class ApprBlobPlacementLocation(BaseModel):
-    """
-    ApprBlobPlacementLocation is an enumeration of the possible storage locations for ApprBlobs.
-    """
-
-    name = CharField(index=True, unique=True)
-
-
-class ApprBlobPlacement(BaseModel):
-    """
-    ApprBlobPlacement represents the location of a Blob.
-    """
-
-    blob = ForeignKeyField(ApprBlob)
-    location = EnumField(ApprBlobPlacementLocation)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("blob", "location"), True),)
-
-
-class ApprManifest(BaseModel):
-    """
-    ApprManifest represents the metadata and collection of blobs that comprise an Appr image.
-    """
-
-    digest = CharField(index=True, unique=True)
-    media_type = EnumField(MediaType)
-    manifest_json = JSONField()
-
-
-class ApprManifestBlob(BaseModel):
-    """
-    ApprManifestBlob is a many-to-many relation table linking ApprManifests and ApprBlobs.
-    """
-
-    manifest = ForeignKeyField(ApprManifest, index=True)
-    blob = ForeignKeyField(ApprBlob, index=True)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("manifest", "blob"), True),)
-
-
-class ApprManifestList(BaseModel):
-    """
-    ApprManifestList represents all of the various Appr manifests that compose an ApprTag.
-    """
-
-    digest = CharField(index=True, unique=True)
-    manifest_list_json = JSONField()
-    schema_version = CharField()
-    media_type = EnumField(MediaType)
-
-
-class ApprTagKind(BaseModel):
-    """
-    ApprTagKind is a enumtable to reference tag kinds.
-    """
-
-    name = CharField(index=True, unique=True)
-
-
-class ApprTag(BaseModel):
-    """
-    ApprTag represents a user-facing alias for referencing an ApprManifestList.
-    """
-
-    name = CharField()
-    repository = ForeignKeyField(Repository)
-    manifest_list = ForeignKeyField(ApprManifestList, null=True)
-    lifetime_start = BigIntegerField(default=get_epoch_timestamp_ms)
-    lifetime_end = BigIntegerField(null=True, index=True)
-    hidden = BooleanField(default=False)
-    reverted = BooleanField(default=False)
-    protected = BooleanField(default=False)
-    tag_kind = EnumField(ApprTagKind)
-    linked_tag = ForeignKeyField("self", null=True, backref="tag_parents")
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = (
-            (("repository", "name"), False),
-            (("repository", "name", "hidden"), False),
-            # This unique index prevents deadlocks when concurrently moving and deleting tags
-            (("repository", "name", "lifetime_end"), True),
-        )
-
-
-ApprChannel = ApprTag.alias()
-
-
-class ApprManifestListManifest(BaseModel):
-    """
-    ApprManifestListManifest is a many-to-many relation table linking ApprManifestLists and
-    ApprManifests.
-    """
-
-    manifest_list = ForeignKeyField(ApprManifestList, index=True)
-    manifest = ForeignKeyField(ApprManifest, index=True)
-    operating_system = CharField(null=True)
-    architecture = CharField(null=True)
-    platform_json = JSONField(null=True)
-    media_type = EnumField(MediaType)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("manifest_list", "media_type"), False),)
-
-
 class AppSpecificAuthToken(BaseModel):
     """
     AppSpecificAuthToken represents a token generated by a user for use with an external application
@@ -2359,19 +2226,6 @@ LEGACY_INDEX_MAP = {
 }
 
 
-appr_classes = set(
-    [
-        ApprTag,
-        ApprTagKind,
-        ApprBlobPlacementLocation,
-        ApprManifestList,
-        ApprManifestBlob,
-        ApprBlob,
-        ApprManifestListManifest,
-        ApprManifest,
-        ApprBlobPlacement,
-    ]
-)
 v22_classes = set([Manifest, ManifestLabel, ManifestBlob, TagKind, ManifestChild, Tag])
 
 is_model = lambda x: inspect.isclass(x) and issubclass(x, BaseModel) and x is not BaseModel

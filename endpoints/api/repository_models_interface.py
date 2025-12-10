@@ -71,37 +71,6 @@ class RepositoryBaseElement(
         return repo
 
 
-class ApplicationRepository(
-    namedtuple(
-        "ApplicationRepository", ["repository_base_elements", "channels", "releases", "state"]
-    )
-):
-    """
-    Repository a single quay repository.
-
-    :type repository_base_elements: RepositoryBaseElement
-    :type channels: [Channel]
-    :type releases: [Release]
-    """
-
-    def to_dict(self):
-        repo_data = {
-            "namespace": self.repository_base_elements.namespace_name,
-            "name": self.repository_base_elements.repository_name,
-            "kind": self.repository_base_elements.kind_name,
-            "description": self.repository_base_elements.description,
-            "is_public": self.repository_base_elements.is_public,
-            "is_organization": self.repository_base_elements.namespace_user_organization,
-            "is_starred": self.repository_base_elements.is_starred,
-            "channels": [chan.to_dict() for chan in self.channels],
-            "releases": [release.to_dict() for release in self.releases],
-            "state": self.state.name if self.state is not None else None,
-            "is_free_account": self.repository_base_elements.is_free_account,
-        }
-
-        return repo_data
-
-
 class ImageRepositoryRepository(
     namedtuple(
         "NonApplicationRepository",
@@ -158,42 +127,6 @@ class Repository(
     :type namespace_name: string
     :type repository_name: string
     """
-
-
-class Channel(namedtuple("Channel", ["name", "linked_tag_name", "linked_tag_lifetime_start"])):
-    """
-    Repository a single quay repository.
-
-    :type name: string
-    :type linked_tag_name: string
-    :type linked_tag_lifetime_start: string
-    """
-
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "release": self.linked_tag_name,
-            "last_modified": format_date(
-                datetime.fromtimestamp(self.linked_tag_lifetime_start // 1000)
-            ),
-        }
-
-
-class Release(namedtuple("Channel", ["name", "lifetime_start", "releases_channels_map"])):
-    """
-    Repository a single quay repository.
-
-    :type name: string
-    :type last_modified: string
-    :type releases_channels_map: {string -> string}
-    """
-
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "last_modified": format_date(datetime.fromtimestamp(self.lifetime_start // 1000)),
-            "channels": self.releases_channels_map[self.name],
-        }
 
 
 class Tag(
