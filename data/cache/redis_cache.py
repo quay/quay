@@ -1,5 +1,5 @@
 from redis import RedisError, StrictRedis
-from rediscluster import RedisCluster
+from redis.cluster import RedisCluster
 
 
 class ReadEndpointSupportedRedis(object):
