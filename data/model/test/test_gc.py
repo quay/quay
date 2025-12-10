@@ -13,7 +13,6 @@ from playhouse.test_utils import assert_query_count
 from app import docker_v2_signing_key, model_cache, storage
 from data import database, model
 from data.database import (
-    ApprBlob,
     ExternalNotificationMethod,
     ImageStorage,
     ImageStorageLocation,
@@ -221,9 +220,6 @@ def assert_gc_integrity(expect_storage_removed=True):
         if storage_row.cas_path:
             existing_digests.add(storage_row.content_checksum)
 
-    for blob_row in ApprBlob.select():
-        existing_digests.add(blob_row.digest)
-
     # Store the number of dangling objects.
     existing_storage_count = _get_dangling_storage_count()
     existing_label_count = _get_dangling_label_count()
@@ -254,12 +250,6 @@ def assert_gc_integrity(expect_storage_removed=True):
 
         if storage_row.cas_path:
             storage.get_content({preferred}, storage.blob_path(storage_row.content_checksum))
-
-    for blob_row in ApprBlob.select():
-        if blob_row.digest in existing_digests:
-            continue
-
-        storage.get_content({preferred}, storage.blob_path(blob_row.digest))
 
     # Ensure all tags have valid manifests.
     for manifest in {t.manifest for t in Tag.select()}:
