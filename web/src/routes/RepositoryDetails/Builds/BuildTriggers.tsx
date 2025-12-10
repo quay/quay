@@ -45,7 +45,7 @@ export default function BuildTriggers(props: BuildTriggersProps) {
       <Toolbar>
         <ToolbarContent style={{paddingLeft: '1em', paddingTop: '1em'}}>
           <ToolbarItem>
-            <Title headingLevel="h2">Build Triggers</Title>
+            <Title headingLevel="h2">Build triggers</Title>
           </ToolbarItem>
           <ToolbarItem align={{default: 'alignRight'}}>
             <CreateBuildTriggerDropdown
@@ -59,12 +59,12 @@ export default function BuildTriggers(props: BuildTriggersProps) {
         <Table aria-label="Repository build triggers table" variant="compact">
           <Thead>
             <Tr>
-              <Th>Trigger Name</Th>
-              <Th>Dockerfile Location</Th>
-              <Th>Context Location</Th>
-              <Th>Branches/Tags</Th>
-              <Th>Pull Robot</Th>
-              <Th>Tagging Options</Th>
+              <Th>Trigger name</Th>
+              <Th>Dockerfile location</Th>
+              <Th>Context location</Th>
+              <Th>Branches/tags</Th>
+              <Th>Pull robot</Th>
+              <Th>Tagging options</Th>
               <Th></Th>
             </Tr>
           </Thead>

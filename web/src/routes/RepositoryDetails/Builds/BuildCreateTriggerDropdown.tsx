@@ -22,7 +22,7 @@ export default function CreateBuildTriggerDropdown(
       }}
     >
       <a href={getRedirectUrl('customgit', props.namespace, props.repo)}>
-        Custom Git Repository Push
+        Custom Git repository push
       </a>
     </DropdownItem>,
   ];
@@ -39,7 +39,7 @@ export default function CreateBuildTriggerDropdown(
           id="create-github-trigger-link"
           href={getRedirectUrl('github', props.namespace, props.repo)}
         >
-          GitHub Repository Push
+          GitHub repository push
         </a>
       </DropdownItem>,
     );
@@ -68,7 +68,7 @@ export default function CreateBuildTriggerDropdown(
         }}
       >
         <a href={getRedirectUrl('gitlab', props.namespace, props.repo)}>
-          GitLab Repository Push
+          GitLab repository push
         </a>
       </DropdownItem>,
     );
@@ -86,7 +86,7 @@ export default function CreateBuildTriggerDropdown(
           onClick={() => setIsOpen(() => !isOpen)}
           isExpanded={isOpen}
         >
-          Create Build Trigger
+          Create build trigger
         </MenuToggle>
       )}
       isOpen={isOpen}

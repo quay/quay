@@ -80,7 +80,7 @@ export default function ManuallyStartTrigger(props: ManuallyStartTriggerProps) {
             startBuild(trigger?.service === 'custom-git' ? commit : ref)
           }
         >
-          Start Build
+          Start build
         </Button>,
         <Button key="cancel" variant="primary" onClick={() => props.onClose()}>
           Cancel
@@ -92,7 +92,7 @@ export default function ManuallyStartTrigger(props: ManuallyStartTriggerProps) {
       }}
     >
       <Conditional if={trigger?.service === 'custom-git'}>
-        <Title headingLevel="h4">Manually Start Build Trigger</Title>
+        <Title headingLevel="h4">Manually start build trigger</Title>
         <BuildTriggerDescription trigger={trigger} />
         <br />
         Commit:
@@ -120,7 +120,7 @@ export default function ManuallyStartTrigger(props: ManuallyStartTriggerProps) {
           <Alert variant="danger" title={error?.toString()} />
         </Conditional>
         <Conditional if={!isLoading && !isError}>
-          <Title headingLevel="h4">Manually Start Build Trigger</Title>
+          <Title headingLevel="h4">Manually start build trigger</Title>
           <BuildTriggerDescription trigger={trigger} />
           <br />
           Branch/Tag:{' '}

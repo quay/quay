@@ -113,7 +113,7 @@ export default function RobotAccounts(props: RobotAccountsProps) {
         <Alert variant="warning" title={triggerAnalysis?.message} />
       </Conditional>
       <Conditional if={triggerAnalysis.status == 'publicbase'}>
-        <Title headingLevel="h3">Optional Robot Account</Title>
+        <Title headingLevel="h3">Optional robot account</Title>
         <strong>
           <Conditional if={triggerAnalysis.is_admin}>
             <span>
@@ -128,7 +128,7 @@ export default function RobotAccounts(props: RobotAccountsProps) {
           triggerAnalysis.status == 'requiresrobot' && !triggerAnalysis.is_admin
         }
       >
-        <Title headingLevel="h3">Robot Account Required</Title>
+        <Title headingLevel="h3">Robot account required</Title>
         <p>
           The selected Dockerfile in the selected repository depends upon a
           private base image.
@@ -147,7 +147,7 @@ export default function RobotAccounts(props: RobotAccountsProps) {
           triggerAnalysis.status == 'requiresrobot' && triggerAnalysis.is_admin
         }
       >
-        <Title headingLevel="h3">Robot Account Required</Title>
+        <Title headingLevel="h3">Robot account required</Title>
         <p>
           The selected Dockerfile in the selected repository depends upon a
           private base image.
@@ -190,7 +190,7 @@ export default function RobotAccounts(props: RobotAccountsProps) {
           <Thead>
             <Tr>
               <Th></Th>
-              <Th>Robot Account</Th>
+              <Th>Robot account</Th>
               <Th></Th>
             </Tr>
           </Thead>
