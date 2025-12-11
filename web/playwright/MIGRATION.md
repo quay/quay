@@ -567,12 +567,12 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `tags-signatures.cy.ts` | | |
 | ⬚ | `teams-and-membership.cy.ts` | | |
 | ⬚ | `team-sync.cy.ts` | | @config:OIDC |
-| ⬚ | `theme-switcher.cy.ts` | | |
+| ✅ | `theme-switcher.cy.ts` | `ui/theme-switcher.spec.ts` | |
 | ⬚ | `update-user.cy.ts` | | |
 | ⬚ | `usage-logs.cy.ts` | | |
 
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 1 (2%)
-- **Remaining**: 53
+- **Migrated**: 2 (4%)
+- **Remaining**: 52
