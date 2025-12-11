@@ -79,6 +79,10 @@ HTTP_4XX_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Regex pattern to strip Arguments metadata from error messages
+# Matches: "; Arguments: {'repository': 'bitnami/redis-exporter', ...}"
+ARGUMENTS_PATTERN = re.compile(r";\s*Arguments:\s*\{.*\}$", re.IGNORECASE | re.DOTALL)
+
 BROWSER_ERROR_PATTERNS = [
     "script error",
     "syntax error",
@@ -145,6 +149,9 @@ def _extract_searchable_text(ex_event: Any) -> set[str]:
 
     if "culprit" in ex_event:
         texts.add(str(ex_event.get("culprit", "")).lower())
+
+    # Strip Arguments metadata to prevent false positives from repository/image names
+    texts = {ARGUMENTS_PATTERN.sub("", t) for t in texts}
 
     # Remove empty strings
     texts.discard("")

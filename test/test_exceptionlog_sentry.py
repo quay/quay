@@ -386,3 +386,29 @@ class TestSentryBeforeSendFilter:
         }
         result = _sentry_before_send_ignore_known(event, {})
         assert result == event
+
+    def test_filter_401_with_redis_in_repository_name(self):
+        """401 errors should be filtered even if repository name contains 'redis'."""
+        event = {
+            "logentry": {
+                "formatted": "Error 401: Invalid Bearer [token] format; Arguments: {'repository': 'bitnami/redis-exporter', 'status_code': 401}"
+            }
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_filter_401_with_database_in_repository_name(self):
+        """401 errors should be filtered even if repository name contains 'database'."""
+        event = {
+            "logentry": {
+                "formatted": "Error 401: Invalid Bearer [token] format; Arguments: {'repository': 'vpenx/clamav-database-mirror'}"
+            }
+        }
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result is None
+
+    def test_keep_actual_redis_error(self):
+        """Actual Redis errors should NOT be filtered."""
+        event = {"logentry": {"formatted": "Redis connection refused: ECONNREFUSED 127.0.0.1:6379"}}
+        result = _sentry_before_send_ignore_known(event, {})
+        assert result == event
