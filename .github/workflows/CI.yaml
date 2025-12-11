@@ -104,9 +104,13 @@ jobs:
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         cat requirements-dev.txt | grep tox | xargs pip install
 
-    - name: tox
+    - name: tox (parallel tests)
       run: |
         tox -e py312-unit -- --cov=./ --cov-report=xml
+
+    - name: tox (legacy sequential tests)
+      run: |
+        tox -e py312-unit-legacy
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
