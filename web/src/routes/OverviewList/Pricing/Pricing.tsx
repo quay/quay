@@ -77,7 +77,7 @@ const MorePlansCard: React.FunctionComponent = () => {
 
   const dropdownItems = [
     <DropdownItem
-      id="medium"
+      data-testid="plan-medium"
       key="medium"
       component="button"
       onClick={() => setPricing('medium')}
@@ -85,7 +85,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['medium']}
     </DropdownItem>,
     <DropdownItem
-      id="large"
+      data-testid="plan-large"
       key="large"
       component="button"
       onClick={() => setPricing('large')}
@@ -93,7 +93,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['large']}
     </DropdownItem>,
     <DropdownItem
-      id="XL"
+      data-testid="plan-XL"
       key="XL"
       component="button"
       onClick={() => setPricing('XL')}
@@ -101,7 +101,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['XL']}
     </DropdownItem>,
     <DropdownItem
-      id="XXL"
+      data-testid="plan-XXL"
       key="XXL"
       component="button"
       onClick={() => setPricing('XXL')}
@@ -109,7 +109,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['XXL']}
     </DropdownItem>,
     <DropdownItem
-      id="XXXL"
+      data-testid="plan-XXXL"
       key="XXXL"
       component="button"
       onClick={() => setPricing('XXXL')}
@@ -117,7 +117,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['XXXL']}
     </DropdownItem>,
     <DropdownItem
-      id="XXXXL"
+      data-testid="plan-XXXXL"
       key="XXXXL"
       component="button"
       onClick={() => setPricing('XXXXL')}
@@ -125,7 +125,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['XXXXL']}
     </DropdownItem>,
     <DropdownItem
-      id="XXXXXL"
+      data-testid="plan-XXXXXL"
       key="XXXXXL"
       component="button"
       onClick={() => setPricing('XXXXXL')}
@@ -140,19 +140,23 @@ const MorePlansCard: React.FunctionComponent = () => {
       toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
         <MenuToggle
           ref={toggleRef}
-          id="plans-dropdown"
+          data-testid="plans-dropdown"
           onClick={onToggleClick}
           isExpanded={isOpen}
           style={{margin: '10px'}}
         >
-          <Text id="selected-pricing">{pricingText[currentPricing]}</Text>
+          <Text data-testid="selected-pricing">
+            {pricingText[currentPricing]}
+          </Text>
         </MenuToggle>
       )}
       isOpen={isOpen}
       style={{alignSelf: 'center', minWidth: '241px', maxWidth: '241px'}}
     >
       <DropdownGroup>
-        <DropdownList id="plans-dropdown-options">{dropdownItems}</DropdownList>
+        <DropdownList data-testid="plans-dropdown-options">
+          {dropdownItems}
+        </DropdownList>
       </DropdownGroup>
     </Dropdown>
   );
@@ -168,7 +172,7 @@ const MorePlansCard: React.FunctionComponent = () => {
         -Team-based permissions <br />
       </CardBody>
       <CardFooter style={{textAlign: 'center'}}>
-        <Title id="pricing-value" headingLevel="h1">
+        <Title data-testid="pricing-value" headingLevel="h1">
           {pricings[currentPricing]}
         </Title>
         <Button
@@ -186,7 +190,7 @@ const MorePlansCard: React.FunctionComponent = () => {
 
 export default function Pricing() {
   const planCards = (
-    <Level hasGutter style={{margin: '24px'}} id="purchase-plans">
+    <Level hasGutter style={{margin: '24px'}} data-testid="purchase-plans">
       <LevelItem>
         <Card className="pricing-card">
           <CardTitle>

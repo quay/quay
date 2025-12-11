@@ -39,7 +39,7 @@ export default function GettingStarted(props: GettingStartedProps) {
               component="a"
               href="/organization"
               size="lg"
-              id="try-quayio-button"
+              data-testid="try-quayio-button"
             >
               Try free
             </Button>
@@ -47,7 +47,7 @@ export default function GettingStarted(props: GettingStartedProps) {
               variant="secondary"
               component="a"
               size="lg"
-              id="purchase-quayio-button"
+              data-testid="purchase-quayio-button"
               onClick={props.onPaidPlansClick}
             >
               Sign up for paid plans
