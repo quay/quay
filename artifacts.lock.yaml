@@ -1,0 +1,7 @@
+---
+metadata:
+  version: "1.0"
+artifacts:
+  - download_url: "https://github.com/prometheus/pushgateway/releases/download/v1.6.0/pushgateway-1.6.0.linux-amd64.tar.gz"
+    checksum: "sha256:6247e16f6c30f5fc3603a1efbc7c2069e965938bc5381897b1317f7119f28ac4"
+    filename: "pushgateway-1.6.0.linux-amd64.tar.gz"

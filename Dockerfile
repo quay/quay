@@ -29,7 +29,7 @@ RUN set -ex\
 	; microdnf -y clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
-FROM registry.access.redhat.com/ubi8/nodejs-10 AS config-editor
+FROM registry.access.redhat.com/ubi8/nodejs-16 AS config-editor
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 config-tool/pkg/lib/editor/ ./
 RUN set -ex\
@@ -100,7 +100,7 @@ RUN set -ex\
 	;
 
 # Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
+FROM registry.access.redhat.com/ubi8/nodejs-16 AS build-static
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 package.json package-lock.json  ./
 RUN npm clean-install
@@ -112,7 +112,7 @@ RUN npm run --quiet build
 FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/package-lock.json  ./
-RUN npm clean-install
+RUN CYPRESS_INSTALL_BINARY=0 npm clean-install
 COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
@@ -123,8 +123,10 @@ ARG PUSHGATEWAY_VERSION=1.6.0
 RUN set -ex\
 	; ARCH=$(uname -m) ; echo $ARCH \
 	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
-	; curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz"\
-	| tar xz "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway"\
+    ; TARBALL="pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz" \
+    ; URL="https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/${TARBALL}" \
+    ; curl -sSL ${URL} | tar xz  "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" \
+    || tar -xzf /cachi2/output/deps/generic/${TARBALL} "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway"\
 	; install "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" /usr/local/bin/pushgateway\
 	;
 
@@ -133,7 +135,7 @@ FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
-RUN go install -tags=fips ./cmd/config-tool
+RUN GOPATH=/opt/app-root/src/go go install -tags=fips ./cmd/config-tool
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
 WORKDIR /quaydir
@@ -147,7 +149,8 @@ COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
 COPY --chown=0:0 . .
 RUN set -ex\
 	; chmod -R g=u ./conf\
-	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json\
+    ; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json 2>/dev/null \
+    || cp /cachi2/output/deps/generic/aws-ip-ranges.json util/ipresolver/aws-ip-ranges.json \
 	;
 
 # Final is the end container, where all the work from the other
