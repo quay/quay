@@ -1,6 +1,10 @@
+import hashlib
 import logging
 import os
-from collections import namedtuple
+import threading
+from collections import OrderedDict, namedtuple
+from datetime import datetime, timedelta
+from typing import Any, Callable, Optional
 
 import ldap
 from ldap.controls import SimplePagedResultsControl
@@ -26,6 +30,74 @@ _DEFAULT_REFERRALS = True
 _DEFAULT_KEEPALIVE_IDLE = 10
 _DEFAULT_KEEPALIVE_INTERVAL = 5
 _DEFAULT_KEEPALIVE_PROBES = 3
+_DEFAULT_CACHE_TTL = 60  # seconds
+_DEFAULT_CACHE_MAX_SIZE = 1000  # max entries
+
+# Error messages that indicate transient/configuration failures - do not cache these
+_TRANSIENT_ERROR_MESSAGES = frozenset(
+    [
+        "LDAP Admin dn or password is invalid",
+        "Failed to follow referral when looking up username",
+    ]
+)
+
+
+class LDAPCache:
+    """
+    Thread-safe in-memory TTL cache with LRU eviction for LDAP query results.
+
+    Used to cache expensive LDAP lookups like superuser/restricted user checks
+    that are performed frequently during request processing.
+
+    Features:
+    - TTL-based expiration
+    - Maximum size with true LRU eviction (O(1))
+    - Thread-safe operations
+    """
+
+    def __init__(
+        self,
+        default_ttl: int = _DEFAULT_CACHE_TTL,
+        max_size: int = _DEFAULT_CACHE_MAX_SIZE,
+    ):
+        self._cache: OrderedDict[str, tuple[Any, datetime]] = OrderedDict()
+        self._default_ttl = default_ttl
+        self._max_size = max_size
+        self._lock = threading.RLock()
+
+    def get(self, key: str) -> Optional[Any]:
+        """Get cached value if not expired, otherwise return None."""
+        with self._lock:
+            entry = self._cache.get(key)
+            if entry is None:
+                return None
+            value, expires_at = entry
+            if datetime.now() >= expires_at:
+                del self._cache[key]
+                return None
+            # Move to end (most recently used)
+            self._cache.move_to_end(key)
+            return value
+
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+        """Set cached value with TTL."""
+        ttl = ttl if ttl is not None else self._default_ttl
+        expires_at = datetime.now() + timedelta(seconds=ttl)
+        with self._lock:
+            if key in self._cache:
+                # Update existing and move to end
+                self._cache[key] = (value, expires_at)
+                self._cache.move_to_end(key)
+            else:
+                # Evict if at capacity
+                while len(self._cache) >= self._max_size:
+                    self._cache.popitem(last=False)  # Remove oldest (first item)
+                self._cache[key] = (value, expires_at)
+
+    def size(self) -> int:
+        """Return current cache size."""
+        with self._lock:
+            return len(self._cache)
 
 
 class LDAPConnectionBuilder(object):
@@ -131,6 +203,8 @@ class LDAPUsers(FederatedUsers):
         ldap_global_readonly_superuser_filter=None,
         ldap_restricted_user_filter=None,
         ldap_referrals=_DEFAULT_REFERRALS,
+        enable_caching=False,
+        cache_ttl=_DEFAULT_CACHE_TTL,
     ):
         super(LDAPUsers, self).__init__("ldap", requires_email)
 
@@ -156,6 +230,11 @@ class LDAPUsers(FederatedUsers):
         self._ldap_restricted_user_filter = ldap_restricted_user_filter
         self._ldap_referrals = int(ldap_referrals)
 
+        # Initialize cache if enabled
+        self._cache: Optional[LDAPCache] = (
+            LDAPCache(default_ttl=cache_ttl) if enable_caching else None
+        )
+
         # Note: user_rdn is a list of RDN pieces (for historical reasons), and secondary_user_rds
         # is a list of RDN strings.
         relative_user_dns = [",".join(user_rdn)] + (secondary_user_rdns or [])
@@ -167,6 +246,64 @@ class LDAPUsers(FederatedUsers):
         # Create the set of full DN paths.
         self._user_dns = [get_full_rdn(relative_dn) for relative_dn in relative_user_dns]
         self._base_dn = ",".join(base_dn)
+
+    def _cache_key(self, prefix: str, username_or_email: str) -> str:
+        """Generate a safe cache key by hashing the username/email."""
+        normalized = username_or_email.lower().strip()
+        key_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+        return f"{prefix}:{key_hash}"
+
+    def _cached_permission_check(
+        self,
+        cache_prefix: str,
+        username_or_email: str,
+        lookup_fn: Callable[[], tuple[Any, Optional[str]]],
+        log_name: str,
+    ) -> bool:
+        """
+        Perform a permission check with caching.
+
+        Args:
+            cache_prefix: Prefix for the cache key (e.g., "superuser")
+            username_or_email: The user identifier
+            lookup_fn: Function to call for the actual LDAP lookup
+            log_name: Human-readable name for logging
+
+        Returns:
+            True if user has the permission, False otherwise
+        """
+        if not username_or_email:
+            return False
+
+        try:
+            lookup_robot(username_or_email)
+            return False  # Robots are not in LDAP
+        except InvalidRobotException:
+            pass
+
+        cache_key = self._cache_key(cache_prefix, username_or_email)
+        if self._cache is not None:
+            cached = self._cache.get(cache_key)
+            if cached is not None:
+                logger.debug(
+                    "Cache hit for %s check: key=%s result=%s", log_name, cache_key, cached
+                )
+                return cached
+
+        logger.debug("Looking up LDAP %s with key=%s", log_name, cache_key)
+        (found_user, err_msg) = lookup_fn()
+        result = found_user is not None
+
+        if found_user is None:
+            logger.debug("LDAP %s not found for key=%s: %s", log_name, cache_key, err_msg)
+        else:
+            logger.debug("Found %s for LDAP key=%s", log_name, cache_key)
+
+        # Cache the result only if not a transient error
+        if self._cache is not None and err_msg not in _TRANSIENT_ERROR_MESSAGES:
+            self._cache.set(cache_key, result)
+
+        return result
 
     def _get_ldap_referral_dn(self, referral_exception):
         logger.debug("Got referral: %s", referral_exception.args[0])
@@ -548,58 +685,28 @@ class LDAPUsers(FederatedUsers):
         return (self._iterate_members(group_dn, memberof_attr, page_size, disable_pagination), None)
 
     def is_superuser(self, username_or_email: str) -> bool:
-        if not username_or_email:
-            return False
-
-        try:
-            lookup_robot(username_or_email)
-            return False  # Robots are not in LDAP so return False as not being a superuser
-        except InvalidRobotException:
-            # continue with LDAP lookup
-            pass
-
-        logger.debug("Looking up LDAP superuser username or email %s", username_or_email)
-        (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email, filter_superusers=True
+        return self._cached_permission_check(
+            cache_prefix="superuser",
+            username_or_email=username_or_email,
+            lookup_fn=lambda: self._ldap_single_user_search(
+                username_or_email, filter_superusers=True
+            ),
+            log_name="superuser",
         )
-        if found_user is None:
-            logger.debug("LDAP superuser %s not found: %s", username_or_email, err_msg)
-            return False
-
-        logger.debug("Found superuser for LDAP username or email %s", username_or_email)
-        return True
 
     def has_superusers(self) -> bool:
         has_superusers, _ = self.at_least_one_user_exists(filter_superusers=True)
         return has_superusers
 
     def is_global_readonly_superuser(self, username_or_email: str) -> bool:
-        if not username_or_email:
-            return False
-
-        try:
-            lookup_robot(username_or_email)
-            return False  # Robots are not in LDAP so return False as not being a superuser
-        except InvalidRobotException:
-            # continue with LDAP lookup
-            pass
-
-        logger.debug(
-            "Looking up LDAP global readonly superuser username or email %s", username_or_email
+        return self._cached_permission_check(
+            cache_prefix="global_readonly_superuser",
+            username_or_email=username_or_email,
+            lookup_fn=lambda: self._ldap_single_user_search(
+                username_or_email, filter_global_readonly_superusers=True
+            ),
+            log_name="global readonly superuser",
         )
-        (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email, filter_global_readonly_superusers=True
-        )
-        if found_user is None:
-            logger.debug(
-                "LDAP global readonly superuser %s not found: %s", username_or_email, err_msg
-            )
-            return False
-
-        logger.debug(
-            "Found global readonly superuser for LDAP username or email %s", username_or_email
-        )
-        return True
 
     def is_restricted_user(self, username_or_email: str) -> bool:
         if not username_or_email:
@@ -608,23 +715,14 @@ class LDAPUsers(FederatedUsers):
         if self._ldap_restricted_user_filter is None:
             return True
 
-        try:
-            lookup_robot(username_or_email)
-            return False  # Robots are not in LDAP so return False as not being a superuser
-        except InvalidRobotException:
-            # continue with LDAP lookup
-            pass
-
-        logger.debug("Looking up LDAP restricted user username or email %s", username_or_email)
-        (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email, filter_restricted_users=True
+        return self._cached_permission_check(
+            cache_prefix="restricted_user",
+            username_or_email=username_or_email,
+            lookup_fn=lambda: self._ldap_single_user_search(
+                username_or_email, filter_restricted_users=True
+            ),
+            log_name="restricted user",
         )
-        if found_user is None:
-            logger.debug("LDAP user %s not found: %s", username_or_email, err_msg)
-            return False
-
-        logger.debug("Found restricted user for LDAP username or email %s", username_or_email)
-        return True
 
     def has_restricted_users(self) -> bool:
         if self._ldap_restricted_user_filter is None and self.at_least_one_user_exists():
