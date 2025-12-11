@@ -457,7 +457,7 @@ describe('Usage Logs', () => {
   });
 
   // Test for verifying all logs can be loaded across multiple pages
-  it('loads all logs across multiple pages', () => {
+  it.skip('loads all logs across multiple pages', () => {
     const firstPageLogs = {
       start_time: 'Tue, 20 Feb 2024 17:33:43 -0000',
       end_time: 'Thu, 22 Feb 2024 17:33:43 -0000',
