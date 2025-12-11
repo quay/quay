@@ -567,7 +567,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `oauth-callback.cy.ts` | | |
 | ⬚ | `org-list.cy.ts` | | |
 | ⬚ | `org-oauth.cy.ts` | | |
-| ⬚ | `overview.cy.ts` | | |
+| ✅ | `overview.cy.ts` | `ui/overview.spec.ts` | |
 | ⬚ | `packages-report.cy.ts` | | |
 | ⬚ | `proxy-cache.cy.ts` | | @feature:PROXY_CACHE |
 | ⬚ | `quota.cy.ts` | | @feature:QUOTA_MANAGEMENT |
@@ -606,5 +606,5 @@ Track migration progress from Cypress to Playwright.
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 3 (6%)
-- **Remaining**: 51
+- **Migrated**: 4 (7%)
+- **Remaining**: 50
