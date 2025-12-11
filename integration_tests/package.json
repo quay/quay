@@ -76,7 +76,7 @@
     "@types/react-helmet": "5.x",
     "@types/react-jsonschema-form": "^1.0.8",
     "@types/react-redux": "6.0.28",
-    "@types/react-router-dom": "4.2.7",
+    "@types/react-router-dom": "4.3.5",
     "@types/react-transition-group": "2.x",
     "@types/react-virtualized": "9.x",
     "@types/webpack": "4.x",
