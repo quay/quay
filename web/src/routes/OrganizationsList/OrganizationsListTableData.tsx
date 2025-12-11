@@ -145,6 +145,11 @@ export default function OrgTableData(props: OrgTableDataProps) {
                   <Label color="blue">Superuser</Label>
                 </FlexItem>
               )}
+              {props.userGlobalReadonlySuperuser && (
+                <FlexItem>
+                  <Label color="cyan">Global Readonly Superuser</Label>
+                </FlexItem>
+              )}
               {props.userEnabled === false && (
                 <FlexItem>
                   <Label>Disabled</Label>
@@ -217,6 +222,7 @@ export default function OrgTableData(props: OrgTableDataProps) {
             isUser={props.isUser}
             userEnabled={props.userEnabled}
             userSuperuser={props.userSuperuser}
+            userGlobalReadonlySuperuser={props.userGlobalReadonlySuperuser}
             selectedOrganization={props.selectedOrganization}
             setSelectedOrganization={props.setSelectedOrganization}
           />

@@ -50,6 +50,7 @@ export interface OrganizationsTableItem {
   isUser: boolean;
   userEnabled?: boolean; // Only used when isUser is true
   userSuperuser?: boolean; // Only used when isUser is true
+  userGlobalReadonlySuperuser?: boolean; // Only used when isUser is true
 }
 
 interface OrgListHeaderProps {
@@ -572,6 +573,7 @@ export default function OrganizationsList() {
                   isUser={org.isUser}
                   userEnabled={org.userEnabled}
                   userSuperuser={org.userSuperuser}
+                  userGlobalReadonlySuperuser={org.userGlobalReadonlySuperuser}
                   userEmail={org.isUser ? userEmailMap[org.name] : undefined}
                   quota_report={org.quota_report}
                   selectedOrganization={selectedOrganization}
