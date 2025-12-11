@@ -26,6 +26,7 @@ export type OrganizationDetail = {
   isUser: boolean;
   userEnabled?: boolean;
   userSuperuser?: boolean;
+  userGlobalReadonlySuperuser?: boolean;
   quota_report?: IQuotaReport;
   avatar?: IAvatar;
 };
@@ -114,6 +115,7 @@ export function useOrganizations() {
         isUser: true,
         userEnabled: userObj?.enabled,
         userSuperuser: userObj?.super_user,
+        userGlobalReadonlySuperuser: userObj?.global_readonly_super_user,
         quota_report: quotaReport,
         avatar: userObj?.avatar ?? (isCurrentUser ? user?.avatar : undefined),
       });

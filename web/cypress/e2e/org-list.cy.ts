@@ -455,6 +455,67 @@ describe('Org List Page', () => {
       });
   });
 
+  it('Superuser displays global readonly superuser label', () => {
+    // This test verifies that global readonly superusers have a visible label
+    // in the Organizations list to help administrators identify them
+
+    // Mock config with superuser features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock superuser viewing the organizations list
+    cy.fixture('superuser.json').then((user) => {
+      cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+    });
+
+    // Mock superuser users including a global readonly superuser
+    cy.fixture('superuser-users.json').then((usersData) => {
+      // Add a global readonly superuser to the users list
+      usersData.users.push({
+        username: 'readonly_admin',
+        email: 'readonly_admin@example.com',
+        enabled: true,
+        super_user: false,
+        global_readonly_super_user: true,
+      });
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getSuperUser');
+    cy.wait('@getSuperuserUsers');
+
+    // Search for the global readonly superuser
+    cy.get('#orgslist-search-input').type('readonly_admin');
+
+    // Verify the "Global Readonly Superuser" label is displayed
+    cy.contains('a', 'readonly_admin')
+      .parents('tr')
+      .within(() => {
+        cy.contains('Global Readonly Superuser').should('exist');
+        // Verify the label has cyan color (PatternFly cyan label class)
+        cy.contains('Global Readonly Superuser')
+          .closest('.pf-v5-c-label')
+          .should('have.class', 'pf-m-cyan');
+      });
+
+    // Verify regular superuser does NOT show "Global Readonly Superuser" label
+    cy.get('[aria-label="Reset search"]').click();
+    cy.get('#orgslist-search-input').type('user1');
+    cy.contains('a', 'user1')
+      .parents('tr')
+      .within(() => {
+        cy.contains('Superuser').should('exist');
+        cy.contains('Global Readonly Superuser').should('not.exist');
+      });
+  });
+
   it('Shows user orgs when superuser API fails', () => {
     // Setup superuser with feature flags enabled
     cy.fixture('config.json').then((config) => {
