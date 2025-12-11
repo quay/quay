@@ -2,7 +2,7 @@ from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
-from rediscluster.nodemanager import NodeManager
+from redis.cluster import ClusterNode, RedisCluster
 
 from data.cache import (
     InMemoryDataModelCache,
@@ -192,11 +192,35 @@ def test_redis_cache():
     ],
 )
 def test_redis_cache_config(cache_config, expected_exception):
-    with patch("rediscluster.nodemanager.NodeManager.initialize", MagicMock):
+    mock_cluster = MagicMock(spec=RedisCluster)
+    with patch.dict(REDIS_DRIVERS, {"rediscluster": mock_cluster}):
         if expected_exception is not None:
             with pytest.raises(expected_exception[0]) as e:
                 rc = redis_cache_from_config(cache_config)
             assert str(e.value) == expected_exception[1]
         else:
             rc = redis_cache_from_config(cache_config)
-            assert isinstance(rc, REDIS_DRIVERS[cache_config["engine"]])
+            if cache_config["engine"] == "rediscluster":
+                mock_cluster.assert_called_once()
+                call_kwargs = mock_cluster.call_args[1]
+                assert all(isinstance(n, ClusterNode) for n in call_kwargs["startup_nodes"])
+            else:
+                assert isinstance(rc, REDIS_DRIVERS[cache_config["engine"]])
+
+
+def test_redis_cluster_readonly_mode_backwards_compat():
+    """Test that legacy readonly_mode is converted to read_from_replicas."""
+    cache_config = {
+        "engine": "rediscluster",
+        "redis_config": {
+            "startup_nodes": [{"host": "127.0.0.1", "port": "6379"}],
+            "readonly_mode": True,
+        },
+    }
+    mock_cluster = MagicMock(spec=RedisCluster)
+    with patch.dict(REDIS_DRIVERS, {"rediscluster": mock_cluster}):
+        redis_cache_from_config(cache_config)
+        mock_cluster.assert_called_once()
+        call_kwargs = mock_cluster.call_args[1]
+        assert "readonly_mode" not in call_kwargs
+        assert call_kwargs["read_from_replicas"] is True
