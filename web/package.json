@@ -92,7 +92,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "file-loader": "^6.2.0",
     "html-webpack-plugin": "^5.5.0",
-    "jws": "^4.0.0",
+    "jws": "^4.0.1",
     "moment": "^2.29.4",
     "prettier": "^3.0.3",
     "raw-loader": "^4.0.2",
