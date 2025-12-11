@@ -133,7 +133,7 @@ urllib3==1.26.19
 webencodings==0.5.1
 WebOb==1.8.8
 websocket-client==1.7.0
-Werkzeug==3.0.6
+Werkzeug==3.1.4
 xhtml2pdf==0.2.6
 resumablesha256==1.0
 deprecation==2.1.0
