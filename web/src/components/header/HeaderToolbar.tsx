@@ -303,6 +303,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
         user?.avatar ? <Avatar avatar={user.avatar} size="sm" /> : <UserIcon />
       }
       id="user-menu-toggle"
+      data-testid="user-menu-toggle"
       aria-label="User menu"
     >
       {user?.username}
