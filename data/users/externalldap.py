@@ -418,18 +418,31 @@ class LDAPUsers(FederatedUsers):
                     else:
                         return (False, "Restricted user filter not set")
 
+                # PagesResultsControl of size=1 blocks if there's no iteration handle on rdata == []
                 lc = ldap.controls.libldap.SimplePagedResultsControl(
                     criticality=True, size=1, cookie=""
                 )
                 try:
                     if has_pagination:
+                        # add sizelimit as we do not want to iter over all records, just one
                         msgid = conn.search_ext(
-                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, serverctrls=[lc]
+                            user_search_dn,
+                            ldap.SCOPE_SUBTREE,
+                            search_flt,
+                            serverctrls=[lc],
+                            sizelimit=1,
                         )
                         _, rdata, _, serverctrls = conn.result3(msgid)
                     else:
-                        msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
+                        # ensure none paged requets are sizelimited as well
+                        msgid = conn.search_ext(
+                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, sizelimit=1
+                        )
                         _, rdata = conn.result(msgid)
+
+                    # if no data is returned fail
+                    if rdata == []:
+                        return (False, None)
 
                     for entry in rdata:  # Handles both lists and iterators.
                         return (True, None)

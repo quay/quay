@@ -883,9 +883,11 @@ func ValidateLDAPServer(opts Options, ldapUri, ldapAdminDn, ldapAdminPasswd, lda
 
 	userFilter := fmt.Sprintf("(&(%s=*)%s)", ldapUidAttr, ldapUserFilter)
 	request := &ldap.SearchRequest{
-		BaseDN: strings.Join(InterfaceArrayToStringArray(ldapBaseDn), ","),
-		Scope:  ldap.ScopeWholeSubtree,
-		Filter: userFilter,
+		BaseDN:    strings.Join(InterfaceArrayToStringArray(ldapBaseDn), ","),
+		Scope:     ldap.ScopeWholeSubtree,
+		SizeLimit: 1,
+		TimeLimit: 10,
+		Filter:    userFilter,
 		Attributes: []string{
 			ldapEmailAttr, ldapUidAttr,
 		},

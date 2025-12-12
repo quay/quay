@@ -1,5 +1,6 @@
 import unittest
 from contextlib import contextmanager
+from time import time
 
 import ldap
 from ldap.filter import filter_format
@@ -1015,6 +1016,42 @@ class TestLDAP(unittest.TestCase):
             (response, err_msg) = ldap.at_least_one_user_exists()
             self.assertIsNone(err_msg)
             self.assertFalse(response)
+
+    def test_at_least_one_user_exists_not_blocking(self):
+        base_dn = ["dc=quay", "dc=io"]
+        admin_dn = "uid=testy,ou=employees,dc=quay,dc=io"
+        admin_passwd = "password"
+        user_rdn = ["ou=employees"]
+        uid_attr = "uid"
+        email_attr = "mail"
+        memberof_attr = "memberOf"
+        secondary_user_rdns = ["ou=otheremployees"]
+
+        with mock_ldap():
+            ldap = LDAPUsers(
+                "ldap://localhost",
+                base_dn,
+                admin_dn,
+                admin_passwd,
+                user_rdn,
+                uid_attr,
+                email_attr,
+                memberof_attr,
+                ldap_user_filter="(filterField=invalidfilterwithnodatareturned)",
+            )
+            # check if result/result3 stops blocking
+            try:
+                starttime = time()
+                (response, err_msg) = ldap.at_least_one_user_exists()
+                stoptime = time()
+                self.assertFalse(response)
+                self.assertLess((stoptime - starttime), 10, "Timeout limit of 10 breached")
+            except ldap.TIMEOUT as lerr:
+                # cannot and should not
+                raise ldap.TIMEOUT("PROJQUAY-3810 should not raise a timeout anymore")
+            except ldap.TIMELIMIT_EXCEEDED as lerr:
+                # cannot and should not
+                raise ldap.TIMEOUT("PROJQUAY-3810 should not raise a timeout anymore")
 
 
 if __name__ == "__main__":
