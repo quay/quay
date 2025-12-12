@@ -73,7 +73,7 @@ data/               # Data layer
   ├── registry_model/   # Registry-specific data models
   ├── secscan_model/    # Security scanning models
   ├── logs_model/       # Audit logging models
-  ├── tests/          # unit tests
+  ├── test/          # unit tests
   └── users/        # User data providers (LDAP, Keystone, etc.)
 
 # === Background Processing ===
@@ -142,7 +142,6 @@ test/               # Python unit and integration tests
   ├── data/         # Test fixtures and data
   ├── registry/     # Registry protocol tests
   └── integration/  # Integration test suites
-integration_tests/  # Frontend integration tests (Protractor)
 
 Note that some unit tests are located in other directories under test/
 
