@@ -31,7 +31,7 @@ go test ./pkg/lib/fieldgroups/...  # Test specific field groups
 
 ## Directory Structure
 
-```
+```text
 config-tool/
 ├── cmd/config-tool/main.go   # Entrypoint
 ├── commands/                 # CLI commands (Cobra)
@@ -60,7 +60,7 @@ Each configuration section is a "field group" in `pkg/lib/fieldgroups/`. Key gro
 ### Field Group Structure
 
 Each field group has three files:
-```
+```text
 fieldgroup/
 ├── fieldgroup.go           # Struct definition + constructor
 ├── fieldgroup_fields.go    # Fields() method listing config keys
