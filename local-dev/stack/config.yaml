@@ -80,7 +80,8 @@ PULL_METRICS_REDIS:
   port: 6379
   db: 1
 USE_CDN: false
-FEATURE_QUOTA_MANAGEMENT: false
+FEATURE_QUOTA_MANAGEMENT: true
+FEATURE_EDIT_QUOTA: true
 BROWSER_API_CALLS_XHR_ONLY: False
 # CORS_ORIGIN: "https://stage.foo.redhat.com:1337 http://localhost:9000/"
 CORS_ORIGIN:
