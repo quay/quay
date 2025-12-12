@@ -15,7 +15,7 @@ Quay uses Peewee ORM with PostgreSQL (primary) or MySQL. Redis handles caching a
 | `Team` | Organization teams |
 | `TeamMember` | Team membership |
 
-See: `data/database.py:788-881` (User), `data/database.py:963-988` (Team)
+See: `data/database.py`: `User`, `FederatedLogin`, `Team`, `TeamMember` classes
 
 ### Repository & Images
 
@@ -27,7 +27,7 @@ See: `data/database.py:788-881` (User), `data/database.py:963-988` (Team)
 | `ManifestBlob` | Manifest layer references |
 | `ImageStorage` | Blob storage metadata |
 
-See: `data/database.py:1056-1106` (Repository), `data/database.py:1875-1946` (Manifest/Tag)
+See: `data/database.py`: `Repository`, `RepositoryTag`, `Manifest`, `ManifestBlob`, `ImageStorage` classes
 
 ### Permissions
 
@@ -36,7 +36,7 @@ See: `data/database.py:1056-1106` (Repository), `data/database.py:1875-1946` (Ma
 | `RepositoryPermission` | User/team repo access |
 | `TeamRole` | Team roles in org |
 
-See: `data/database.py:1160-1172`
+See: `data/database.py`: `RepositoryPermission`, `TeamRole` classes
 
 ## Business Logic (data/model/)
 
@@ -73,7 +73,7 @@ See: `data/migrations/versions/`
 | `UseThenDisconnect` | Context manager for worker processes |
 | `configure()` | Database configuration |
 
-See: `data/database.py:320-335` (UseThenDisconnect), `data/database.py:601` (configure)
+See: `data/database.py`: `UseThenDisconnect` class, `configure()` function
 
 ## Redis Caching
 

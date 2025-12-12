@@ -14,7 +14,7 @@ Quay uses a worker system for background processing tasks such as garbage collec
 
 The `Worker` base class provides scheduling infrastructure using APScheduler's `BackgroundScheduler`.
 
-See: `workers/worker.py:59-194`
+See: `workers/worker.py`: `Worker` class
 
 | Component | Purpose |
 |-----------|---------|
@@ -39,13 +39,13 @@ Workers skip startup if:
 - `SETUP_COMPLETE` is `False` - Product not yet configured
 - `REGISTRY_STATE` is `readonly` - Registry in read-only mode
 
-See: `workers/worker.py:144-156`
+See: `workers/worker.py`: `Worker.start()` method
 
 ## Queue Worker
 
 `QueueWorker` extends `Worker` to process jobs from a database-backed queue.
 
-See: `workers/queueworker.py:50-188`
+See: `workers/queueworker.py`: `QueueWorker` class
 
 ### Constructor Parameters
 
@@ -90,7 +90,7 @@ def poll_queue(self):
 
 Queue workers use exceptions to control job retry behavior.
 
-See: `workers/queueworker.py:15-47`
+See: `workers/queueworker.py`: `JobException`, `WorkerUnhealthyException`, `WorkerSleepException` classes
 
 | Exception | Behavior | Use Case |
 |-----------|----------|----------|
@@ -108,13 +108,13 @@ def process_queue_item(self, job_details):
         raise WorkerSleepException  # Another worker has the lock
 ```
 
-See: `workers/repositorygcworker.py:25-33`
+See: `workers/repositorygcworker.py`: `RepositoryGCWorker.process_queue_item()` method
 
 ## Queue System
 
 Quay uses a database-backed queue implemented via the `QueueItem` model.
 
-See: `data/queue.py:45-428`
+See: `data/queue.py`: `WorkQueue` class
 
 ### WorkQueue Class
 
@@ -151,13 +151,13 @@ queue.put(
 | `quay_queue_items_available` | Gauge | Items available for processing |
 | `quay_queue_items_available_unlocked` | Gauge | Available items not currently locked |
 
-See: `data/queue.py:10-38`
+See: `data/queue.py`: `queue_item_puts`, `queue_item_gets`, `queue_items_locked`, `queue_items_available`, `queue_items_available_unlocked` metrics
 
 ## Queue Definitions
 
 Queues are instantiated in `app.py` using the `WorkQueue` class.
 
-See: `app.py:259-310`
+See: `app.py`: queue instantiations (`chunk_cleanup_queue` through `namespace_gc_queue`)
 
 | Queue Variable | Config Key | Namespaced |
 |----------------|------------|------------|
@@ -181,7 +181,7 @@ See: `app.py:259-310`
 | `STAGGER_WORKERS` | True | Randomize worker start times to prevent thundering herd |
 | `TEAM_SYNC_WORKER_FREQUENCY` | 60 | Team sync interval in seconds |
 
-See: `config.py:278-631`
+See: `config.py`: `DefaultConfig` class (worker-related configuration)
 
 ## Creating a New Worker
 
@@ -282,7 +282,7 @@ See: `workers/gunicorn_worker.py`
 
 Automatically retry operations with exponential backoff on failure.
 
-See: `workers/worker.py:27-56`
+See: `workers/worker.py`: `with_exponential_backoff()` decorator
 
 ```python
 from workers.worker import with_exponential_backoff

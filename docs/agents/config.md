@@ -35,7 +35,7 @@ class DefaultConfig(ImmutableConfig):
     MY_NEW_CONFIG: Optional[str] = "default_value"
 ```
 
-See: `config.py:182-954` (DefaultConfig class)
+See: `config.py`: `DefaultConfig` class
 
 ### Step 2: Add validation in config-tool (if complex)
 
@@ -51,7 +51,7 @@ CLIENT_WHITELIST = [
 ]
 ```
 
-See: `config.py:20-65`
+See: `config.py`: `CLIENT_WHITELIST`
 
 ## Adding a Quay.io-Only Config
 
@@ -74,7 +74,7 @@ Examples of runtime-only configs:
 - `STRIPE_SECRET_KEY`
 - Worker poll periods: `QUOTA_REGISTRY_SIZE_POLL_PERIOD`, etc.
 
-See: `endpoints/common.py:146-147`, `workers/worker.py:99-102`
+See: `endpoints/common.py`, `workers/worker.py` for runtime config access patterns
 
 ### Option 2: Internal-only (in DefaultConfig but hidden)
 
@@ -106,7 +106,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_MY_FEATURE = False  # Default to False for gradual rollout
 ```
 
-See: `config.py:316-932` (existing feature flags)
+See: `config.py`: `DefaultConfig` class (`FEATURE_*` attributes)
 
 ### Step 2: Use in Python code
 
@@ -120,7 +120,7 @@ if features.MY_FEATURE:
     pass
 ```
 
-See: `features/__init__.py:4-36`, `app.py:136` (feature loading)
+See: `features/__init__.py`: `import_features()`, `app.py`: `features.import_features(app.config)`
 
 ### Frontend access
 
@@ -152,7 +152,7 @@ if os.environ.get("RED_HAT_QUAY", False):
     # Red Hat Quay branding
 ```
 
-See: `config.py:196-201`, `endpoints/api/__init__.py:594`
+See: `config.py`, `endpoints/api/__init__.py`: `verify_not_prod()` decorator
 
 ## Removing a Config Field
 

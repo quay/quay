@@ -21,7 +21,7 @@ The application is defined in `app.py` and uses Flask blueprints for modular end
 5. Registry and security scan models configured
 6. Blueprints registered for each protocol
 
-See: `app.py:77-379`
+See: `app.py` (Flask app initialization through `database.configure()`)
 
 ### Request Lifecycle
 
@@ -31,7 +31,7 @@ Every request gets a unique ID via `RequestWithId` class. Before/after hooks han
 - Sensitive data filtering (passwords, tokens)
 - Config digest tracking
 
-See: `app.py:158-233`
+See: `app.py`: `RequestWithId` class, `_request_start()`, `_request_end()`
 
 ## REST API (`endpoints/api/`)
 
@@ -45,7 +45,7 @@ Endpoints extend `ApiResource` (Flask-RESTful) and register via the `@resource` 
 | `@show_if(feature)` | Conditionally show endpoint |
 | `@hide_if(feature)` | Conditionally hide endpoint |
 
-See: `endpoints/api/__init__.py:85-128`
+See: `endpoints/api/__init__.py`: `resource()`, `show_if()`, `hide_if()`
 
 ### Base Classes
 
@@ -54,7 +54,7 @@ See: `endpoints/api/__init__.py:85-128`
 | `ApiResource` | Base class with `check_anon_protection`, `check_readonly` decorators |
 | `RepositoryParamResource` | Adds `parse_repository_name` for repo-scoped endpoints |
 
-See: `endpoints/api/__init__.py:257-273`
+See: `endpoints/api/__init__.py`: `ApiResource`, `RepositoryParamResource`
 
 ### Request Handling Decorators
 
@@ -67,12 +67,12 @@ See: `endpoints/api/__init__.py:257-273`
 | `@nickname('name')` | OpenAPI operation ID |
 | `@deprecated()` | Add Deprecation header |
 
-See: `endpoints/api/__init__.py:180-243`, `endpoints/api/__init__.py:658-753`
+See: `endpoints/api/__init__.py`: `query_param()`, `page_support()`, `parse_args()`, `validate_json_request()`, `deprecated()`
 
 ### Example Endpoint Structure
 
 Endpoints define JSON schemas as class attributes and use decorators for auth/validation.
-See: `endpoints/api/repository.py:86-150` for `RepositoryList` example.
+See: `endpoints/api/repository.py`: `RepositoryList` class
 
 ## Authentication & Authorization
 
@@ -88,7 +88,7 @@ See: `endpoints/api/repository.py:86-150` for `RepositoryList` example.
 | `@require_scope(scope)` | Custom OAuth scope | |
 | `@require_fresh_login` | - | Requires recent auth |
 
-See: `endpoints/api/__init__.py:318-424`, `endpoints/api/__init__.py:603-641`
+See: `endpoints/api/__init__.py`: `require_repo_read()`, `require_repo_write()`, `require_repo_admin()`, `require_user_read()`, `require_user_admin()`, `require_fresh_login()`, `require_scope()`
 
 ### Superuser Access Helpers
 
@@ -98,13 +98,13 @@ See: `endpoints/api/__init__.py:318-424`, `endpoints/api/__init__.py:603-641`
 | `allow_if_superuser_with_full_access()` | Bypass normal permissions (requires SUPERUSERS_FULL_ACCESS) |
 | `allow_if_global_readonly_superuser()` | Read-only superuser access |
 
-See: `endpoints/api/__init__.py:508-584`
+See: `endpoints/api/__init__.py`: `allow_if_superuser()`, `allow_if_superuser_with_full_access()`, `allow_if_global_readonly_superuser()`
 
 ### Authentication Processing
 
 API endpoints use OAuth token validation via `process_oauth` decorator applied globally to the API blueprint.
 
-See: `endpoints/api/__init__.py:77-82`, `auth/decorators.py`
+See: `endpoints/api/__init__.py`: `api.decorators` list, `auth/decorators.py`
 
 ## Docker Registry v2 (`endpoints/v2/`)
 
@@ -154,7 +154,7 @@ Similar to API but with OCI scope format:
 | `@require_repo_write()` | `["pull", "push"]` |
 | `@require_repo_admin()` | `["pull", "push"]` |
 
-See: `endpoints/v2/__init__.py:182-281`
+See: `endpoints/v2/__init__.py`: `require_repo_read()`, `require_repo_write()`, `require_repo_admin()`
 
 ## Common Decorators (`endpoints/decorators.py`)
 
@@ -201,7 +201,7 @@ Endpoints interact with data through abstraction layers:
 
 Audit logging via `log_action()` function records user actions.
 
-See: `endpoints/api/__init__.py:690-713`, `data/registry_model/registry_oci_model.py`
+See: `endpoints/api/__init__.py`: `log_action()`, `data/registry_model/registry_oci_model.py`
 
 For detailed database documentation, see: `docs/agents/database.md`
 
