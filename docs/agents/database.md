@@ -97,3 +97,5 @@ make full-db-test
 ```
 
 See: `data/test/`, `data/model/test/`
+
+For test patterns and examples, see: `docs/agents/testing.md`

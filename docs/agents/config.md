@@ -179,3 +179,5 @@ Edit `local-dev/config/config.yaml` for local settings.
 See: `local-dev/`
 
 Full config-tool documentation: `config-tool/AGENTS.md`
+
+For test patterns (including mocking feature flags), see: `docs/agents/testing.md`

@@ -227,3 +227,5 @@ TEST=true PYTHONPATH="." py.test --cov=endpoints endpoints/api/test/ -v
 ```
 
 See: `test/` directory for integration tests, `endpoints/*/test/` for unit tests
+
+For test patterns and examples, see: `docs/agents/testing.md`
