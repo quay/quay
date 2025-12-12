@@ -50,7 +50,7 @@ Read specific documentation based on your task:
 
 ## Directory Structure
 
-```
+```text
 # === Core Application ===
 app.py              # Flask application factory
 config.py           # Configuration loading and validation
