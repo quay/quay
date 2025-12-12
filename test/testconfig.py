@@ -86,10 +86,6 @@ class TestConfig(DefaultConfig):
         "LOGIN_BINDING_FIELD": "sub",
     }
 
-    RECAPTCHA_SITE_KEY = "somekey"
-    RECAPTCHA_SECRET_KEY = "somesecretkey"
-    RECAPTCHA_WHITELISTED_USERS: List[str] = []
-
     FEATURE_TEAM_SYNCING = True
     FEATURE_CHANGE_TAG_EXPIRATION = True
 

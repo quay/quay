@@ -61,8 +61,7 @@
       var org = $scope.org;
       var data = {
         'name': org.name,
-        'email': org.email,
-        'recaptcha_response': org.recaptcha_response
+        'email': org.email
       };
 
       ApiService.createOrganization(data).then(function(created) {

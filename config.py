@@ -34,7 +34,6 @@ CLIENT_WHITELIST = [
     "DEBUG",
     "MARKETO_MUNCHKIN_ID",
     "STATIC_SITE_BUCKET",
-    "RECAPTCHA_SITE_KEY",
     "CHANNEL_COLORS",
     "TAG_EXPIRATION_OPTIONS",
     "INTERNAL_OIDC_SERVICE_ID",
@@ -607,14 +606,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Location of the static marketing site.
     STATIC_SITE_BUCKET = None
-
-    # Site key and secret key for using recaptcha.
-    FEATURE_RECAPTCHA = False
-    RECAPTCHA_SITE_KEY: Optional[str] = None
-    RECAPTCHA_SECRET_KEY: Optional[str] = None
-
-    # List of users allowed to pass through recaptcha security check to enable org/user creation via API
-    RECAPTCHA_WHITELISTED_USERS: List[str] = []
 
     # Server where TUF metadata can be found
     TUF_SERVER = None
