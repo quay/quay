@@ -10,11 +10,8 @@ from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
 from endpoints.api import allow_if_global_readonly_superuser, allow_if_superuser
 from endpoints.api.repository_models_interface import (
-    ApplicationRepository,
-    Channel,
     Count,
     ImageRepositoryRepository,
-    Release,
     Repository,
     RepositoryBaseElement,
     RepositoryDataInterface,
@@ -23,11 +20,6 @@ from endpoints.api.repository_models_interface import (
 
 MAX_DAYS_IN_3_MONTHS = 92
 REPOS_PER_PAGE = 100
-
-
-def _create_channel(channel, releases_channels_map):
-    releases_channels_map[channel.linked_tag.name].append(channel.name)
-    return Channel(channel.name, channel.linked_tag.name, channel.linked_tag.lifetime_start)
 
 
 class PreOCIModel(RepositoryDataInterface):

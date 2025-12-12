@@ -21,14 +21,6 @@ from data.model.storage import get_image_location_for_name
 from test.fixtures import *
 
 
-def test_duplicate_repository_different_kinds(initialized_db):
-    # Create an image repo.
-    assert create_repository("devtable", "somenewrepo", None, repo_kind="image")
-
-    # Try to create an app repo with the same name, which should fail.
-    assert not create_repository("devtable", "somenewrepo", None, repo_kind="application")
-
-
 @pytest.mark.skipif(
     os.environ.get("TEST_DATABASE_URI", "").find("mysql") >= 0,
     reason="MySQL requires specialized indexing of newly created repos",

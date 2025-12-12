@@ -59,7 +59,6 @@ class Failures(Enum):
     INVALID_REGISTRY = "invalid-registry"
     INVALID_REPOSITORY = "invalid-repository"
     SLASH_REPOSITORY = "slash-repository"
-    APP_REPOSITORY = "app-repository"
     UNKNOWN_TAG = "unknown-tag"
     ANONYMOUS_NOT_ALLOWED = "anonymous-not-allowed"
     DISALLOWED_LIBRARY_NAMESPACE = "disallowed-library-namespace"
