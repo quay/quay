@@ -28,6 +28,7 @@ import {
 } from 'src/hooks/UseMembers';
 import {useFetchTeams} from 'src/hooks/UseTeams';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {Entity} from 'src/resources/UserResource';
 import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';
@@ -49,6 +50,8 @@ export default function AddNewTeamMemberDrawer(
   const {robots, isLoadingRobots} = useFetchRobotAccounts(props.orgName);
   // Get teams
   const {teams} = useFetchTeams(props.orgName);
+  const quayConfig = useQuayConfig();
+  const robotsDisallowed = quayConfig?.config?.ROBOTS_DISALLOW === true;
   const {addAlert} = useUI();
 
   const creatorDefaultOptions = [
@@ -76,16 +79,20 @@ export default function AddNewTeamMemberDrawer(
           ))
         )}
       </SelectGroup>
-      <Divider component="li" key={7} />
-      <SelectOption
-        data-testid="create-new-robot-accnt-btn"
-        key="create-robot-account"
-        component="button"
-        onClick={() => setIsCreateRobotModalOpen(!isCreateRobotModalOpen)}
-        isFocused
-      >
-        <DesktopIcon /> &nbsp; Create robot account
-      </SelectOption>
+      {!robotsDisallowed && (
+        <>
+          <Divider component="li" key={7} />
+          <SelectOption
+            data-testid="create-new-robot-accnt-btn"
+            key="create-robot-account"
+            component="button"
+            onClick={() => setIsCreateRobotModalOpen(!isCreateRobotModalOpen)}
+            isFocused
+          >
+            <DesktopIcon /> &nbsp; Create robot account
+          </SelectOption>
+        </>
+      )}
     </React.Fragment>,
   ];
 
