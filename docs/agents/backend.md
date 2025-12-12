@@ -209,13 +209,13 @@ For detailed database documentation, see: `docs/agents/database.md`
 
 ```bash
 # API endpoint tests
-TEST=true PYTHONPATH="." py.test endpoints/api/test/ -v
+TEST=true PYTHONPATH="." pytest endpoints/api/test/ -v
 
 # Registry v2 tests
-TEST=true PYTHONPATH="." py.test endpoints/v2/test/ -v
+TEST=true PYTHONPATH="." pytest endpoints/v2/test/ -v
 
 # Run with coverage
-TEST=true PYTHONPATH="." py.test --cov=endpoints endpoints/api/test/ -v
+TEST=true PYTHONPATH="." pytest --cov=endpoints endpoints/api/test/ -v
 ```
 
 See: `test/` directory for integration tests, `endpoints/*/test/` for unit tests

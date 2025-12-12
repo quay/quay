@@ -170,7 +170,7 @@ See: `config.py:196-201`, `endpoints/api/__init__.py:594`
 ./config-tool validate -c /path/to/config.yaml
 
 # Override config in tests
-QUAY_OVERRIDE_CONFIG='{"MY_NEW_CONFIG": "test_value"}' py.test ...
+QUAY_OVERRIDE_CONFIG='{"MY_NEW_CONFIG": "test_value"}' pytest ...
 ```
 
 ## Local Development

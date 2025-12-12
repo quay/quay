@@ -33,26 +33,26 @@ npm run test:integration    # Cypress e2e tests
 
 ```bash
 # Single test file
-TEST=true PYTHONPATH="." py.test path/to/test_file.py -v
+TEST=true PYTHONPATH="." pytest path/to/test_file.py -v
 
 # Single test function
-TEST=true PYTHONPATH="." py.test path/to/test_file.py::test_function -v
+TEST=true PYTHONPATH="." pytest path/to/test_file.py::test_function -v
 
 # Tests matching pattern
-TEST=true PYTHONPATH="." py.test -k "test_pattern" -v
+TEST=true PYTHONPATH="." pytest -k "test_pattern" -v
 
 # With parallel execution
-TEST=true PYTHONPATH="." py.test -n auto path/to/tests/ -v
+TEST=true PYTHONPATH="." pytest -n auto path/to/tests/ -v
 ```
 
 ### Test Markers
 
 ```bash
 # Exclude e2e tests (faster)
-py.test -m 'not e2e'
+pytest -m 'not e2e'
 
 # Only e2e tests
-py.test -m 'e2e'
+pytest -m 'e2e'
 ```
 
 ### Using tox
@@ -223,10 +223,10 @@ make update-testdata
 
 ```bash
 # Increase timeout
-py.test --timeout=7200 path/to/test.py
+pytest --timeout=7200 path/to/test.py
 
 # Run without timeout
-py.test --timeout=0 path/to/test.py
+pytest --timeout=0 path/to/test.py
 ```
 
 ### Database connection issues

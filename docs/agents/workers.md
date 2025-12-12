@@ -307,8 +307,8 @@ Worker tests are located alongside other unit tests.
 
 ```bash
 # Run worker-related tests
-TEST=true PYTHONPATH="." py.test workers/ -v
-TEST=true PYTHONPATH="." py.test test/workers/ -v
+TEST=true PYTHONPATH="." pytest workers/ -v
+TEST=true PYTHONPATH="." pytest test/workers/ -v
 ```
 
 For testing patterns, see: `docs/agents/testing.md`
