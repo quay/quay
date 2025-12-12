@@ -68,6 +68,7 @@ poll_period = app.config.get("MY_WORKER_POLL_PERIOD", 300)
 ```
 
 Examples of runtime-only configs:
+
 - `GOOGLE_TAGMANAGER_KEY`, `GOOGLE_ANALYTICS_KEY`
 - `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE`
 - `STRIPE_SECRET_KEY`

@@ -3,6 +3,7 @@
 ## Overview
 
 Quay's backend is a Flask application serving multiple protocols:
+
 - **REST API** (`/api/v1/`) - Web UI and external integrations
 - **Docker Registry v2** (`/v2/`) - OCI Distribution Spec for `docker push/pull`
 - **OAuth** (`/oauth/`) - Authentication flows
@@ -22,19 +23,10 @@ The application is defined in `app.py` and uses Flask blueprints for modular end
 
 See: `app.py:77-379`
 
-### Custom URL Converters
-
-| Converter | Purpose |
-|-----------|---------|
-| `repopath` | Parses `namespace/repository` paths |
-| `apirepopath` | API-specific repository path handling |
-| `regex` | Custom regex pattern matching |
-
-See: `path_converters.py`, registered in `app.py:244-248`
-
 ### Request Lifecycle
 
 Every request gets a unique ID via `RequestWithId` class. Before/after hooks handle:
+
 - Debug logging with request ID
 - Sensitive data filtering (passwords, tokens)
 - Config digest tracking

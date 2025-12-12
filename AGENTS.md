@@ -40,13 +40,13 @@ Read specific documentation based on your task:
 
 | Keywords | Documentation |
 |----------|---------------|
-| **UI, React, Component, PatternFly, frontend** | `read_file web/AGENTS.md` |
-| **API, endpoint, Flask, route, decorator** | `read_file docs/agents/backend.md` |
-| **Database, model, migration, schema, Alembic** | `read_file docs/agents/database.md` |
-| **Worker, background job, queue, async** | `read_file docs/agents/workers.md` |
-| **Test, pytest, Cypress, coverage** | `read_file TESTING.md` |
-| **Config, settings, environment** | `read_file docs/agents/config.md` |
-| **config-tool, field group, validation schema, Go** | `read_file config-tool/AGENTS.md` |
+| **UI, React, Component, PatternFly, frontend** | `web/AGENTS.md` |
+| **API, endpoint, Flask, route, decorator** | `docs/agents/backend.md` |
+| **Database, model, migration, schema, Alembic** | `docs/agents/database.md` |
+| **Worker, background job, queue, async** | `docs/agents/workers.md` |
+| **Test, pytest, Cypress, coverage** | `TESTING.md` |
+| **Config, settings, environment** | `docs/agents/config.md` |
+| **config-tool, field group, validation schema, Go** | `config-tool/AGENTS.md` |
 
 ## Directory Structure
 

@@ -1,6 +1,6 @@
 # Testing - Agent Context
 
-For general testing commands and setup, see `TESTING.md` at the repo root.
+For general testing commands and setup, see [`TESTING.md`](../../TESTING.md) at the repo root.
 
 This document covers patterns for writing tests.
 
