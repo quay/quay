@@ -34,7 +34,7 @@
     "memoize-one": "5.x",
     "murmurhash-js": "1.0.x",
     "openshift-logos-icon": "1.7.1",
-    "plotly.js": "1.47.3",
+    "plotly.js": "3.3.1",
     "prop-types": "15.6.x",
     "react": "16.8.6",
     "react-copy-to-clipboard": "5.x",
