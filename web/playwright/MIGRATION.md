@@ -16,12 +16,23 @@ This guide provides instructions for migrating Quay's Cypress e2e tests to Playw
 web/playwright/
 ├── e2e/                          # Test specifications
 │   ├── auth/                     # Authentication tests
+│   │   └── create-account.spec.ts
 │   ├── repository/               # Repository tests
 │   │   └── repository-delete.spec.ts
-│   └── superuser/                # Superuser tests
+│   ├── superuser/                # Superuser tests
+│   └── ui/                       # UI component tests
+│       ├── breadcrumbs.spec.ts
+│       └── theme-switcher.spec.ts
 ├── utils/                        # Shared utilities
-│   ├── api.ts                    # createRepository, deleteRepository
-│   └── config.ts                 # API_URL, BASE_URL
+│   ├── api/                      # API utilities by resource
+│   │   ├── index.ts              # Re-exports all API utilities
+│   │   ├── csrf.ts               # getCsrfToken
+│   │   ├── organization.ts       # createOrganization, deleteOrganization
+│   │   ├── repository.ts         # createRepository, deleteRepository
+│   │   ├── team.ts               # createTeam, deleteTeam
+│   │   └── user.ts               # createUser, deleteUser, userExists
+│   ├── config.ts                 # API_URL, BASE_URL
+│   └── container.ts              # pushImage (podman utilities)
 ├── fixtures.ts                   # Custom fixtures, uniqueName()
 ├── global-setup.ts               # Creates admin, testuser, readonly users
 └── MIGRATION.md                  # This guide
@@ -138,6 +149,24 @@ If a Cypress test uses selectors like:
 - `[aria-label="..."]` (accessibility attribute)
 
 Add a `data-testid` to the source component and use `getByTestId()` in Playwright.
+
+### IMPORTANT: Use data-testid, NOT test-id
+
+⚠️ **Always use `data-testid`, not `test-id`**
+
+Playwright's `getByTestId()` method only works with the standard `data-testid` attribute.
+Using `test-id` (without the `data-` prefix) requires manual locator selectors and loses
+the benefits of Playwright's built-in test ID support.
+
+```tsx
+// ❌ Wrong - requires manual locator
+<Button test-id="my-button">Click</Button>
+await page.locator('[test-id="my-button"]').click();
+
+// ✅ Correct - works with getByTestId()
+<Button data-testid="my-button">Click</Button>
+await page.getByTestId('my-button').click();
+```
 
 ### Naming Conventions
 
@@ -498,8 +527,14 @@ test.describe('Repository Delete', { tag: ['@critical', '@repository'] }, () => 
 | `playwright.config.ts` | Playwright configuration |
 | `playwright/global-setup.ts` | Creates test users (admin, testuser, readonly) |
 | `playwright/fixtures.ts` | Custom fixtures with pre-auth contexts, `uniqueName()` |
-| `playwright/utils/api.ts` | API utilities: `createRepository`, `deleteRepository` |
+| `playwright/utils/api/` | API utilities organized by resource type |
+| `playwright/utils/api/csrf.ts` | CSRF token helper: `getCsrfToken` |
+| `playwright/utils/api/organization.ts` | Organization utilities: `createOrganization`, `deleteOrganization` |
+| `playwright/utils/api/repository.ts` | Repository utilities: `createRepository`, `deleteRepository` |
+| `playwright/utils/api/team.ts` | Team utilities: `createTeam`, `deleteTeam` |
+| `playwright/utils/api/user.ts` | User utilities: `createUser`, `deleteUser`, `userExists` |
 | `playwright/utils/config.ts` | Global config: `API_URL`, `BASE_URL` |
+| `playwright/utils/container.ts` | Container utilities: `pushImage`, `isPodmanAvailable` |
 | `playwright/MIGRATION.md` | This guide |
 
 ## Migration Checklist
@@ -519,9 +554,9 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `org-settings.cy.ts` | | |
 | ⬚ | `account-settings.cy.ts` | | |
 | ⬚ | `autopruning.cy.ts` | | |
-| ⬚ | `breadcrumbs.cy.ts` | | |
+| ✅ | `breadcrumbs.cy.ts` | `ui/breadcrumbs.spec.ts` | |
 | ⬚ | `builds.cy.ts` | | |
-| ⬚ | `create-account.cy.ts` | | |
+| ✅ | `create-account.cy.ts` | `auth/create-account.spec.ts` | Uses mocks for MAILING feature states |
 | ⬚ | `default-permissions.cy.ts` | | |
 | ⬚ | `external-login.cy.ts` | | @config:OIDC |
 | ⬚ | `external-scripts.cy.ts` | | |
@@ -535,7 +570,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `oauth-callback.cy.ts` | | |
 | ⬚ | `org-list.cy.ts` | | |
 | ⬚ | `org-oauth.cy.ts` | | |
-| ⬚ | `overview.cy.ts` | | |
+| ✅ | `overview.cy.ts` | `ui/overview.spec.ts` | |
 | ⬚ | `packages-report.cy.ts` | | |
 | ⬚ | `proxy-cache.cy.ts` | | @feature:PROXY_CACHE |
 | ⬚ | `quota.cy.ts` | | @feature:QUOTA_MANAGEMENT |
@@ -567,12 +602,12 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `tags-signatures.cy.ts` | | |
 | ⬚ | `teams-and-membership.cy.ts` | | |
 | ⬚ | `team-sync.cy.ts` | | @config:OIDC |
-| ⬚ | `theme-switcher.cy.ts` | | |
+| ✅ | `theme-switcher.cy.ts` | `ui/theme-switcher.spec.ts` | |
 | ⬚ | `update-user.cy.ts` | | |
 | ⬚ | `usage-logs.cy.ts` | | |
 
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 1 (2%)
-- **Remaining**: 53
+- **Migrated**: 5 (9%)
+- **Remaining**: 49
