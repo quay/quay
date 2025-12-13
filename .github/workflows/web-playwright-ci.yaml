@@ -24,8 +24,6 @@ jobs:
           context: .
           load: true
           tags: localhost/quay-local:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Start Quay
         run: |
