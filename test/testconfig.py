@@ -1,4 +1,5 @@
 import os
+import tempfile
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
 from typing import Any, Dict, List, Optional
@@ -14,7 +15,34 @@ class FakeTransaction(object):
         pass
 
 
-TEST_DB_FILE = NamedTemporaryFile(delete=True)
+def _get_test_db_uri():
+    """
+    Get the test database URI.
+
+    Priority:
+    1. TEST_DATABASE_URI environment variable (for MySQL/PostgreSQL tests)
+    2. Golden database created by pytest_configure (for xdist parallel runs)
+    3. Fallback to a new temporary file (for non-xdist sequential runs)
+    """
+    # Check for explicit database URI (MySQL/PostgreSQL)
+    if os.environ.get("TEST_DATABASE_URI"):
+        return os.environ["TEST_DATABASE_URI"], None
+
+    # Check for golden database from pytest_configure
+    golden_db_dir = os.path.join(tempfile.gettempdir(), "quay_test_golden_db")
+    golden_db_ready = os.path.join(golden_db_dir, "golden.ready")
+    golden_db_file = os.path.join(golden_db_dir, "golden.db")
+
+    if os.path.exists(golden_db_ready) and os.path.exists(golden_db_file):
+        # Use golden database - tests will use this directly or copy from it
+        return f"sqlite:///{golden_db_file}", None
+
+    # Fallback for non-xdist runs or when golden DB not yet created
+    test_db_file = NamedTemporaryFile(delete=True)
+    return f"sqlite:///{test_db_file.name}", test_db_file
+
+
+_DB_URI, TEST_DB_FILE = _get_test_db_uri()
 
 
 class TestConfig(DefaultConfig):
@@ -24,7 +52,7 @@ class TestConfig(DefaultConfig):
     BILLING_TYPE = "FakeStripe"
 
     TEST_DB_FILE = TEST_DB_FILE
-    DB_URI = os.environ.get("TEST_DATABASE_URI", "sqlite:///{0}".format(TEST_DB_FILE.name))
+    DB_URI = _DB_URI
     DB_CONNECTION_ARGS = {
         "threadlocals": True,
         "autorollback": True,

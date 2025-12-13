@@ -267,6 +267,34 @@ def setup_database_for_testing(testcase):
     Called when a testcase has started using the database, indicating that the database should be
     setup (if not already) and a savepoint created.
     """
+    import tempfile
+
+    # Check if golden database exists (created by pytest_configure for parallel runs)
+    golden_db_dir = os.path.join(tempfile.gettempdir(), "quay_test_golden_db")
+    golden_db_ready = os.path.join(golden_db_dir, "golden.ready")
+    golden_db_file = os.path.join(golden_db_dir, "golden.db")
+
+    if os.path.exists(golden_db_ready) and os.path.exists(golden_db_file):
+        # Golden database exists - ensure we're connected to it
+        if not isinstance(db.obj, SqliteDatabase) or db.obj.database != golden_db_file:
+            logger.debug(f"Reconnecting to golden database at {golden_db_file}")
+            db.initialize(SqliteDatabase(golden_db_file))
+            db.obj.execute_sql("PRAGMA foreign_keys = ON;")
+
+        # Golden DB is already populated, just set the flag and create savepoint
+        db_initialized_for_testing.set()
+
+        # Initialize caches
+        Repository.kind.get_id("image")
+
+        # Create a savepoint for the testcase
+        testcases[testcase] = {}
+        testcases[testcase]["transaction"] = db.transaction()
+        testcases[testcase]["transaction"].__enter__()
+
+        testcases[testcase]["savepoint"] = db.savepoint()
+        testcases[testcase]["savepoint"].__enter__()
+        return
 
     # Sanity check to make sure we're not killing our prod db
     if not IS_TESTING_REAL_DATABASE and not isinstance(db.obj, SqliteDatabase):
