@@ -16,6 +16,7 @@ This guide provides instructions for migrating Quay's Cypress e2e tests to Playw
 web/playwright/
 ├── e2e/                          # Test specifications
 │   ├── auth/                     # Authentication tests
+│   │   └── create-account.spec.ts
 │   ├── repository/               # Repository tests
 │   │   └── repository-delete.spec.ts
 │   ├── superuser/                # Superuser tests
@@ -28,7 +29,8 @@ web/playwright/
 │   │   ├── csrf.ts               # getCsrfToken
 │   │   ├── organization.ts       # createOrganization, deleteOrganization
 │   │   ├── repository.ts         # createRepository, deleteRepository
-│   │   └── team.ts               # createTeam, deleteTeam
+│   │   ├── team.ts               # createTeam, deleteTeam
+│   │   └── user.ts               # createUser, deleteUser, userExists
 │   ├── config.ts                 # API_URL, BASE_URL
 │   └── container.ts              # pushImage, isContainerRuntimeAvailable (multi-runtime: podman/docker)
 ├── fixtures.ts                   # Custom fixtures, uniqueName()
@@ -530,6 +532,7 @@ test.describe('Repository Delete', { tag: ['@critical', '@repository'] }, () => 
 | `playwright/utils/api/organization.ts` | Organization utilities: `createOrganization`, `deleteOrganization` |
 | `playwright/utils/api/repository.ts` | Repository utilities: `createRepository`, `deleteRepository` |
 | `playwright/utils/api/team.ts` | Team utilities: `createTeam`, `deleteTeam` |
+| `playwright/utils/api/user.ts` | User utilities: `createUser`, `deleteUser`, `userExists` |
 | `playwright/utils/config.ts` | Global config: `API_URL`, `BASE_URL` |
 | `playwright/utils/container.ts` | Container utilities (multi-runtime: podman/docker): `pushImage`, `isContainerRuntimeAvailable` |
 | `playwright/MIGRATION.md` | This guide |
@@ -553,7 +556,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `autopruning.cy.ts` | | |
 | ✅ | `breadcrumbs.cy.ts` | `ui/breadcrumbs.spec.ts` | |
 | ⬚ | `builds.cy.ts` | | |
-| ⬚ | `create-account.cy.ts` | | |
+| ✅ | `create-account.cy.ts` | `auth/create-account.spec.ts` | Uses mocks for MAILING feature states |
 | ⬚ | `default-permissions.cy.ts` | | |
 | ⬚ | `external-login.cy.ts` | | @config:OIDC |
 | ⬚ | `external-scripts.cy.ts` | | |
@@ -606,5 +609,5 @@ Track migration progress from Cypress to Playwright.
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 4 (7%)
-- **Remaining**: 50
+- **Migrated**: 5 (9%)
+- **Remaining**: 49
