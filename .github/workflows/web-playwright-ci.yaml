@@ -10,7 +10,7 @@ on:
 jobs:
   playwright:
     name: Playwright E2E Tests
-    runs-on: ubuntu-22.04
+    runs-on: quay-001-large-ubuntu-24-x64
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -60,6 +60,20 @@ jobs:
 
       - name: Run Playwright tests
         run: cd web && npm run test:e2e
+
+      - name: Save PR number
+        if: always()
+        run: |
+          mkdir -p ./pr-info
+          echo ${{ github.event.pull_request.number }} > ./pr-info/pr_number.txt
+
+      - name: Upload PR info
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr-info
+          path: pr-info/
+          retention-days: 1
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
