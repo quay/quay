@@ -50,6 +50,10 @@
     "test": "react-scripts test",
     "format": "prettier --config .prettierrc \"src/**/*.{ts,tsx}\" --write",
     "test:integration": "cypress run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:headed": "playwright test --headed",
     "start:integration": "serve -s dist -l 9000",
     "quay:dump": "${CLIENT:=docker} exec quay-db pg_dump -U quay -d quay --clean --if-exists > ./cypress/test/quay-db-data.txt && ${CLIENT:=docker} cp quay-quay:/datastorage/registry/. ./cypress/test/quay-storage-data",
     "quay:seed": "npm run quay:seed-db && npm run quay:seed-storage",
@@ -111,7 +115,8 @@
     "webpack": "^5.95.0",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.8.1",
-    "webpack-merge": "^5.10.0"
+    "webpack-merge": "^5.10.0",
+    "@playwright/test": "^1.56.1"
   },
   "optionalDependencies": {
     "cypress": "^13.13.2"

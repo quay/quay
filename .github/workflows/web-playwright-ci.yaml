@@ -1,0 +1,95 @@
+name: Playwright E2E Tests
+on:
+  pull_request:
+    branches:
+      - "*"
+    paths:
+      - "web/**"
+      - ".github/workflows/web-playwright-ci.yaml"
+
+jobs:
+  playwright:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Quay image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: localhost/quay-local:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start Quay
+        run: |
+          docker compose up -d redis quay-db
+          docker exec -t quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+          DOCKER_USER="1001:0" docker compose up -d --no-build quay
+
+      - name: Wait for Quay to be ready
+        run: |
+          docker restart quay-quay
+          echo "Waiting for Quay to be ready..."
+          if curl -sf --retry 60 --retry-delay 2 --retry-all-errors \
+              http://localhost:8080/health/instance > /dev/null 2>&1; then
+            echo "Quay is ready!"
+          else
+            echo "Quay failed to become ready within 120 seconds"
+            exit 1
+          fi
+
+      - name: Set up Node.js with npm caching
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: cd web && npm install
+
+      - name: Install Playwright browsers
+        run: cd web && npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: cd web && npm run test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          retention-days: 30
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-test-results
+          path: web/test-results/
+          retention-days: 30
+
+      - name: Create debugging logs
+        run: |
+          mkdir -p logs/
+          docker ps -a >logs/container-status.txt 2>&1 || true
+          docker logs quay-quay >logs/quay.log 2>&1 || true
+          docker logs quay-db >logs/quay-db.log 2>&1 || true
+          docker logs quay-redis >logs/redis.log 2>&1 || true
+        if: failure()
+
+      - name: Upload debugging artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-debug
+          path: logs/
+          retention-days: 30

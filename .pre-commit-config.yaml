@@ -18,6 +18,12 @@ repos:
         name: Checking Config file changes
         entry: .github/hooks/pre-commit.sh
         language: script
+    -   id: no-new-cypress-tests
+        name: Block new Cypress tests (use Playwright instead)
+        entry: bash -c 'if git diff --cached --name-only --diff-filter=A | grep -q "^web/cypress/e2e/.*\.cy\.ts$"; then echo "❌ New Cypress tests are not allowed. Please use Playwright instead. See web/playwright/MIGRATION.md"; exit 1; fi'
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
     -   id: eslint
         name: ESLint
         entry: web/node_modules/.bin/eslint --fix

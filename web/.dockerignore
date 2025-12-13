@@ -44,6 +44,14 @@ typings/
 
 # testing
 /coverage
+cypress/
+cypress.config.ts
+playwright/
+playwright.config.ts
+playwright-report/
+test-results/
+*.spec.ts
+*.test.ts
 
 # production
 /build
@@ -58,4 +66,3 @@ typings/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
