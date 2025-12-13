@@ -12,7 +12,7 @@
 
 import {chromium, FullConfig} from '@playwright/test';
 import {API_URL} from './utils/config';
-import {getCsrfToken} from './utils/api';
+import {createUser} from './utils/api';
 
 export const TEST_USERS = {
   // Admin/superuser for admin operations
@@ -57,52 +57,23 @@ async function globalSetup(config: FullConfig) {
       const userRequest = userContext.request;
 
       try {
-        // Get fresh CSRF token for this request
-        const csrfToken = await getCsrfToken(userRequest);
-
         console.log(`[Global Setup] Creating ${role} user: ${user.username}`);
-        const createResponse = await userRequest.post(
-          `${API_URL}/api/v1/user/`,
-          {
-            headers: {'X-CSRF-Token': csrfToken},
-            data: {
-              username: user.username,
-              password: user.password,
-              email: user.email,
-            },
-          },
-        );
-
-        if (createResponse.ok()) {
-          console.log(`[Global Setup] Created ${role} user: ${user.username}`);
-        } else if (createResponse.status() === 400) {
-          // User might already exist
-          const body = await createResponse.text();
-          if (
-            body.includes('already exists') ||
-            body.includes('already taken')
-          ) {
-            console.log(
-              `[Global Setup] ${role} user already exists: ${user.username}`,
-            );
-          } else {
-            console.error(
-              `[Global Setup] Failed to create ${role} user: ${body}`,
-            );
-            failures.push(`${role} (${user.username}): ${body}`);
-          }
-        } else {
-          const body = await createResponse.text();
-          console.error(
-            `[Global Setup] Failed to create ${role} user: ${createResponse.status()} - ${body}`,
-          );
-          failures.push(
-            `${role} (${user.username}): ${createResponse.status()} - ${body}`,
-          );
-        }
+        await createUser(userRequest, user.username, user.password, user.email);
+        console.log(`[Global Setup] Created ${role} user: ${user.username}`);
       } catch (error) {
-        console.error(`[Global Setup] Error creating ${role} user: ${error}`);
-        failures.push(`${role} (${user.username}): ${error}`);
+        const errorMessage = String(error);
+        // User might already exist (400 error with "already exists")
+        if (
+          errorMessage.includes('already exists') ||
+          errorMessage.includes('already taken')
+        ) {
+          console.log(
+            `[Global Setup] ${role} user already exists: ${user.username}`,
+          );
+        } else {
+          console.error(`[Global Setup] Error creating ${role} user: ${error}`);
+          failures.push(`${role} (${user.username}): ${error}`);
+        }
       } finally {
         await userContext.close();
       }
