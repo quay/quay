@@ -27,6 +27,37 @@ _DEFAULT_KEEPALIVE_IDLE = 10
 _DEFAULT_KEEPALIVE_INTERVAL = 5
 _DEFAULT_KEEPALIVE_PROBES = 3
 
+# exception we are interested to catch
+LDAP_CONNECTION_ERRORS = (
+    ldap.AUTH_UNKNOWN,
+    ldap.CONFIDENTIALITY_REQUIRED,
+    ldap.CONSTRAINT_VIOLATION,
+    ldap.INVALID_DN_SYNTAX,
+    ldap.INVALID_SYNTAX,
+    ldap.SERVER_DOWN,
+    ldap.STRONG_AUTH_NOT_SUPPORTED,
+    ldap.STRONG_AUTH_REQUIRED,
+    ldap.UNAVAILABLE,
+    ldap.UNWILLING_TO_PERFORM,
+    ldap.CONTROL_NOT_FOUND,
+    ldap.INAPPROPRIATE_AUTH,
+    ldap.INSUFFICIENT_ACCESS,
+)
+
+
+def _log_ldap_error(exc, level=logging.WARNING, details: bool = False, additional: str = ""):
+    """Log LDAP exception details."""
+    message = ""
+    for arg in exc.args:
+        if isinstance(arg, dict):
+            msg = arg.get("info", arg.get("desc", str(arg)))
+        else:
+            msg = str(arg)
+        message = f"{exc.__class__.__name__} {getattr(exc, 'errnum', 'N/A')} {msg}"
+        logger.log(level, additional) if additional != "" else None
+        logger.log(level, message)
+    return message if details else None
+
 
 class LDAPConnectionBuilder(object):
     def __init__(
@@ -266,9 +297,11 @@ class LDAPUsers(FederatedUsers):
             except ldap.LDAPError:
                 logger.debug("LDAP referral search exception")
                 return (None, "Username not found")
-
-        except ldap.LDAPError:
-            logger.debug("LDAP search exception")
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
+            return (None, "Username not found.")
+        except ldap.LDAPError as ldaperr:
+            _log_ldap_error(ldaperr, additional="LDAP search exception")
             return (None, "Username not found")
 
     def _ldap_user_search(
@@ -297,34 +330,43 @@ class LDAPUsers(FederatedUsers):
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
+        try:
+            with self._ldap.get_connection() as conn:
+                logger.debug("Incoming username or email param: %s", username_or_email.__repr__())
 
-        with self._ldap.get_connection() as conn:
-            logger.debug("Incoming username or email param: %s", username_or_email.__repr__())
+                for user_search_dn in self._user_dns:
+                    (pairs, err_msg) = self._ldap_user_search_with_rdn(
+                        conn,
+                        username_or_email,
+                        user_search_dn,
+                        suffix=suffix,
+                        filter_superusers=filter_superusers,
+                        filter_restricted_users=filter_restricted_users,
+                        filter_global_readonly_superusers=filter_global_readonly_superusers,
+                    )
+                    if pairs is not None and len(pairs) > 0:
+                        break
 
-            for user_search_dn in self._user_dns:
-                (pairs, err_msg) = self._ldap_user_search_with_rdn(
-                    conn,
-                    username_or_email,
-                    user_search_dn,
-                    suffix=suffix,
-                    filter_superusers=filter_superusers,
-                    filter_restricted_users=filter_restricted_users,
-                    filter_global_readonly_superusers=filter_global_readonly_superusers,
-                )
-                if pairs is not None and len(pairs) > 0:
-                    break
+                if err_msg is not None:
+                    return (None, err_msg)
 
-            if err_msg is not None:
-                return (None, err_msg)
+                dn_lst = [pair[0] for pair in pairs]
+                logger.debug("Found matching DNs: %s" % dn_lst)
 
-            dn_lst = [pair[0] for pair in pairs]
-            logger.debug("Found matching DNs: %s" % dn_lst)
+                results = [LDAPUsers._LDAPResult(*pair) for pair in take(limit, pairs)]
 
-            results = [LDAPUsers._LDAPResult(*pair) for pair in take(limit, pairs)]
-
-            # Filter out pairs without DNs. Some LDAP impls will return such pairs.
-            with_dns = [result for result in results if result.dn]
-            return (with_dns, None)
+                # Filter out pairs without DNs. Some LDAP impls will return such pairs.
+                with_dns = [result for result in results if result.dn]
+                return (with_dns, None)
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
+            return (None, "Invalid username or password.")
+        except Exception as ldaperr:
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
+            return (None, "Invalid username or password.")
 
     def _ldap_single_user_search(
         self,
@@ -386,9 +428,17 @@ class LDAPUsers(FederatedUsers):
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (False, "LDAP Admin dn or password is invalid")
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            args = _log_ldap_error(
+                ldaperr, details=True, additional="Exception when trying to health check LDAP"
+            )
+            return (False, str(args))
         except ldap.LDAPError as lde:
-            logger.exception("Exception when trying to health check LDAP")
-            return (False, str(lde))
+            # capture any other error to ensure we can track and fix problems
+            args = _log_ldap_error(
+                ldaperr, details=True, additional="Exception when trying to health check LDAP"
+            )
+            return (False, str(args))
 
         return (True, None)
 
@@ -399,43 +449,58 @@ class LDAPUsers(FederatedUsers):
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
+            return (None, "LDAP Admin dn or password is invalid")
+        except Exception as ldaperr:
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
+            return (None, "LDAP Admin dn or password is invalid")
 
         has_pagination = not self._force_no_pagination
-        with self._ldap.get_connection() as conn:
-            for user_search_dn in self._user_dns:
-                search_flt = "(objectClass=*)"
+        try:
+            with self._ldap.get_connection() as conn:
+                for user_search_dn in self._user_dns:
+                    search_flt = "(objectClass=*)"
 
-                search_flt = self._add_user_filter(search_flt)
+                    search_flt = self._add_user_filter(search_flt)
 
-                if filter_restricted_users:
-                    if self._ldap_restricted_user_filter:
-                        search_flt = self._add_restricted_user_filter(search_flt)
-                    else:
-                        return (False, "Superuser filter not set")
-                elif filter_superusers:
-                    if self._ldap_superuser_filter:
-                        search_flt = self._add_superuser_filter(search_flt)
-                    else:
-                        return (False, "Restricted user filter not set")
+                    if filter_restricted_users:
+                        if self._ldap_restricted_user_filter:
+                            search_flt = self._add_restricted_user_filter(search_flt)
+                        else:
+                            return (False, "Superuser filter not set")
+                    elif filter_superusers:
+                        if self._ldap_superuser_filter:
+                            search_flt = self._add_superuser_filter(search_flt)
+                        else:
+                            return (False, "Restricted user filter not set")
 
-                lc = ldap.controls.libldap.SimplePagedResultsControl(
-                    criticality=True, size=1, cookie=""
-                )
-                try:
-                    if has_pagination:
-                        msgid = conn.search_ext(
-                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, serverctrls=[lc]
-                        )
-                        _, rdata, _, serverctrls = conn.result3(msgid)
-                    else:
-                        msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
-                        _, rdata = conn.result(msgid)
+                    lc = ldap.controls.libldap.SimplePagedResultsControl(
+                        criticality=True, size=1, cookie=""
+                    )
+                    try:
+                        if has_pagination:
+                            msgid = conn.search_ext(
+                                user_search_dn, ldap.SCOPE_SUBTREE, search_flt, serverctrls=[lc]
+                            )
+                            _, rdata, _, serverctrls = conn.result3(msgid)
+                        else:
+                            msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
+                            _, rdata = conn.result(msgid)
 
-                    for entry in rdata:  # Handles both lists and iterators.
-                        return (True, None)
+                        for entry in rdata:  # Handles both lists and iterators.
+                            return (True, None)
 
-                except ldap.LDAPError as lde:
-                    return (False, str(lde) or "Could not find DN %s" % user_search_dn)
+                    except ldap.LDAPError as lde:
+                        return (False, str(lde) or "Could not find DN %s" % user_search_dn)
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
+            return (None, "Could not find DN")
+        except Exception as ldaperr:
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
+            return (None, "Could not find DN")
 
         return (False, None)
 
@@ -508,9 +573,23 @@ class LDAPUsers(FederatedUsers):
             except ldap.INVALID_CREDENTIALS:
                 logger.debug("Invalid LDAP credentials")
                 return (None, "Invalid username or password.")
+            except LDAP_CONNECTION_ERRORS as ldaperr:
+                _log_ldap_error(ldaperr)
+                return (None, "Invalid username or password.")
+            except Exception as ldaperr:
+                # capture any other error to ensure we can track and fix problems
+                _log_ldap_error(ldaperr)
+                return (None, "Invalid username or password.")
 
         except ldap.INVALID_CREDENTIALS:
             logger.debug("Invalid LDAP credentials")
+            return (None, "Invalid username or password.")
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
+            return (None, "Invalid username or password.")
+        except Exception as ldaperr:
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
             return (None, "Invalid username or password.")
 
         return self._build_user_information(found_response)
@@ -541,6 +620,13 @@ class LDAPUsers(FederatedUsers):
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
+            return (None, "Invalid username or password.")
+        except Exception as ldaperr:
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
+            return (None, "Invalid username or password.")
 
         group_dn = group_lookup_args["group_dn"]
         memberof_attr = self._memberof_attr
@@ -635,108 +721,24 @@ class LDAPUsers(FederatedUsers):
 
     def _iterate_members(self, group_dn, memberof_attr, page_size, disable_pagination):
         has_pagination = not (self._force_no_pagination or disable_pagination)
-        with self._ldap.get_connection() as conn:
-            search_flt = filter_format("(%s=%s,%s)", (memberof_attr, group_dn, self._base_dn))
-            search_flt = self._add_user_filter(search_flt)
+        try:
+            with self._ldap.get_connection() as conn:
+                search_flt = filter_format("(%s=%s,%s)", (memberof_attr, group_dn, self._base_dn))
+                search_flt = self._add_user_filter(search_flt)
 
-            attributes = [self._uid_attr, self._email_attr]
+                attributes = [self._uid_attr, self._email_attr]
 
-            for user_search_dn in self._user_dns:
-                lc = ldap.controls.libldap.SimplePagedResultsControl(
-                    criticality=True, size=page_size, cookie=""
-                )
-
-                # Conduct the initial search for users that are a member of the group.
-                logger.debug(
-                    "Conducting LDAP search of DN: %s and filter %s", user_search_dn, search_flt
-                )
-                try:
-                    if has_pagination:
-                        msgid = conn.search_ext(
-                            user_search_dn,
-                            ldap.SCOPE_SUBTREE,
-                            search_flt,
-                            serverctrls=[lc],
-                            attrlist=attributes,
-                        )
-                    else:
-                        msgid = conn.search(
-                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, attrlist=attributes
-                        )
-                except ldap.LDAPError as lde:
-                    logger.exception(
-                        "Got error when trying to search %s with filter %s: %s",
-                        user_search_dn,
-                        search_flt,
-                        str(lde),
+                for user_search_dn in self._user_dns:
+                    lc = ldap.controls.libldap.SimplePagedResultsControl(
+                        criticality=True, size=page_size, cookie=""
                     )
-                    break
 
-                while True:
-                    found_results = 0
+                    # Conduct the initial search for users that are a member of the group.
+                    logger.debug(
+                        "Conducting LDAP search of DN: %s and filter %s", user_search_dn, search_flt
+                    )
                     try:
                         if has_pagination:
-                            _, rdata, _, serverctrls = conn.result3(msgid)
-                        else:
-                            _, rdata = conn.result(msgid)
-
-                        # Yield any users found.
-                        for userdata in rdata:
-                            found_results = found_results + 1
-                            if isinstance(userdata[1], list):
-                                # we do not follow referrals here
-                                continue
-                            yield self._build_user_information(userdata[1])
-
-                        logger.debug(
-                            "Found %s users in group %s; %s",
-                            found_results,
-                            user_search_dn,
-                            search_flt,
-                        )
-                    except ldap.NO_SUCH_OBJECT as nsoe:
-                        logger.debug(
-                            "NSO when trying to lookup results of search %s with filter %s: %s",
-                            user_search_dn,
-                            search_flt,
-                            str(nsoe),
-                        )
-                    except ldap.LDAPError as lde:
-                        logger.exception(
-                            "Error when trying to lookup results of search %s with filter %s: %s",
-                            user_search_dn,
-                            search_flt,
-                            str(lde),
-                        )
-                        break
-
-                    # If no additional results, nothing more to do.
-                    if not found_results:
-                        break
-
-                    # If pagination is disabled, nothing more to do.
-                    if not has_pagination:
-                        logger.debug("Pagination is disabled, no further queries")
-                        break
-
-                    # Filter down the controls with which the server responded, looking for the paging
-                    # control type. If not found, then the server does not support pagination and we already
-                    # got all of the results.
-                    pctrls = [
-                        control
-                        for control in serverctrls
-                        if control.controlType
-                        == ldap.controls.SimplePagedResultsControl.controlType
-                    ]
-
-                    if pctrls:
-                        # Server supports pagination. Update the cookie so the next search finds the next page,
-                        # then conduct the next search.
-                        cookie = lc.cookie = pctrls[0].cookie
-                        if cookie:
-                            logger.debug(
-                                "Pagination is supported for this LDAP server; trying next page"
-                            )
                             msgid = conn.search_ext(
                                 user_search_dn,
                                 ldap.SCOPE_SUBTREE,
@@ -744,14 +746,100 @@ class LDAPUsers(FederatedUsers):
                                 serverctrls=[lc],
                                 attrlist=attributes,
                             )
-                            continue
                         else:
-                            # No additional results.
+                            msgid = conn.search(
+                                user_search_dn, ldap.SCOPE_SUBTREE, search_flt, attrlist=attributes
+                            )
+                    except ldap.LDAPError as ldaperr:
+                        _log_ldap_error(
+                            ldaperr,
+                            additional=f"Got error when trying to search {user_search_dn} with filter {search_flt}",
+                        )
+                        break
+
+                    while True:
+                        found_results = 0
+                        try:
+                            if has_pagination:
+                                _, rdata, _, serverctrls = conn.result3(msgid)
+                            else:
+                                _, rdata = conn.result(msgid)
+
+                            # Yield any users found.
+                            for userdata in rdata:
+                                found_results = found_results + 1
+                                if isinstance(userdata[1], list):
+                                    # we do not follow referrals here
+                                    continue
+                                yield self._build_user_information(userdata[1])
+
                             logger.debug(
-                                "Pagination is supported for this LDAP server but on last page"
+                                "Found %s users in group %s; %s",
+                                found_results,
+                                user_search_dn,
+                                search_flt,
+                            )
+                        except ldap.NO_SUCH_OBJECT as nsoe:
+                            logger.debug(
+                                "NSO when trying to lookup results of search %s with filter %s: %s",
+                                user_search_dn,
+                                search_flt,
+                                str(nsoe),
+                            )
+                        except ldap.LDAPError as ldaperr:
+                            _log_ldap_error(
+                                ldaperr,
+                                additional=f"Error when trying to lookup results of search {user_search_dn} with filter {serch_flt}",
                             )
                             break
-                    else:
-                        # Pagination is not supported.
-                        logger.debug("Pagination is not supported for this LDAP server")
-                        break
+
+                        # If no additional results, nothing more to do.
+                        if not found_results:
+                            break
+
+                        # If pagination is disabled, nothing more to do.
+                        if not has_pagination:
+                            logger.debug("Pagination is disabled, no further queries")
+                            break
+
+                        # Filter down the controls with which the server responded, looking for the paging
+                        # control type. If not found, then the server does not support pagination and we already
+                        # got all of the results.
+                        pctrls = [
+                            control
+                            for control in serverctrls
+                            if control.controlType
+                            == ldap.controls.SimplePagedResultsControl.controlType
+                        ]
+
+                        if pctrls:
+                            # Server supports pagination. Update the cookie so the next search finds the next page,
+                            # then conduct the next search.
+                            cookie = lc.cookie = pctrls[0].cookie
+                            if cookie:
+                                logger.debug(
+                                    "Pagination is supported for this LDAP server; trying next page"
+                                )
+                                msgid = conn.search_ext(
+                                    user_search_dn,
+                                    ldap.SCOPE_SUBTREE,
+                                    search_flt,
+                                    serverctrls=[lc],
+                                    attrlist=attributes,
+                                )
+                                continue
+                            else:
+                                # No additional results.
+                                logger.debug(
+                                    "Pagination is supported for this LDAP server but on last page"
+                                )
+                                break
+                        else:
+                            # Pagination is not supported.
+                            logger.debug("Pagination is not supported for this LDAP server")
+                            break
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
+        except Exception as ldaperr:
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
