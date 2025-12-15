@@ -925,3 +925,12 @@ class DefaultConfig(ImmutableConfig):
     # OTEL CONFIG
     FEATURE_OTEL_TRACING = False
     OTEL_TRACING_EXCLUDED_URLS = None
+
+    # Feature Flag: Whether to allow sparse manifest indexes where not all architectures are required.
+    # When enabled, manifests for architectures not in SPARSE_INDEX_REQUIRED_ARCHS will be skipped
+    # if they cannot be loaded.
+    FEATURE_SPARSE_INDEX = False
+
+    # List of architectures that are required to be present in manifest indexes when
+    # FEATURE_SPARSE_INDEX is enabled.
+    SPARSE_INDEX_REQUIRED_ARCHS: List[str] = []
