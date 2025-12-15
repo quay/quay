@@ -1675,6 +1675,18 @@ CONFIG_SCHEMA = {
             "description": "Whether to enable open telemetry tracing on quay",
             "x-example": False,
         },
+        "FEATURE_SPARSE_INDEX": {
+            "type": "boolean",
+            "description": "Whether to allow sparse manifest indexes where not all architectures are required to be present. When enabled, manifests for architectures not in SPARSE_INDEX_REQUIRED_ARCHS will be skipped if they cannot be loaded. Defaults to False",
+            "x-example": False,
+        },
+        "SPARSE_INDEX_REQUIRED_ARCHS": {
+            "type": "array",
+            "description": "List of architectures that are required to be present in manifest indexes when FEATURE_SPARSE_INDEX is enabled. Manifests for architectures not in this list will be skipped if they cannot be loaded.",
+            "uniqueItems": True,
+            "items": {"type": "string"},
+            "x-example": ["amd64", "arm64"],
+        },
         "OTEL_CONFIG": {
             "type": "object",
             "description": "open telemetry config options",

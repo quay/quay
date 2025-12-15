@@ -301,6 +301,12 @@ class DockerSchema2ManifestList(ManifestListInterface):
 
                 # Validate the architecture against the schema 1 architecture defined.
                 parsed = self.manifests(content_retriever)[index].manifest_obj
+
+                # Skip validation for manifests that were not loaded
+                # (e.g., due to sparse index configuration).
+                if parsed is None:
+                    continue
+
                 assert isinstance(parsed, DockerSchema1Manifest)
                 if (
                     parsed.architecture
