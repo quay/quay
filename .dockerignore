@@ -36,3 +36,4 @@ node_modules
 **/node_modules
 .local
 **/testdata
+*.egg-info
