@@ -290,41 +290,38 @@ class LDAPUsers(FederatedUsers):
             # continue with LDAP lookup
             pass
 
-        # Verify the admin connection works first. We do this here to avoid wrapping
-        # the entire block in the INVALID CREDENTIALS check.
         try:
-            with self._ldap.get_connection():
-                pass
+            with self._ldap.get_connection() as conn:
+                logger.debug("Incoming username or email param: %s", username_or_email.__repr__())
+
+                pairs = []
+                err_msg = None
+                for user_search_dn in self._user_dns:
+                    (pairs, err_msg) = self._ldap_user_search_with_rdn(
+                        conn,
+                        username_or_email,
+                        user_search_dn,
+                        suffix=suffix,
+                        filter_superusers=filter_superusers,
+                        filter_restricted_users=filter_restricted_users,
+                        filter_global_readonly_superusers=filter_global_readonly_superusers,
+                    )
+                    if pairs is not None and len(pairs) > 0:
+                        break
+
+                if err_msg is not None:
+                    return (None, err_msg)
+
+                dn_lst = [pair[0] for pair in pairs]
+                logger.debug("Found matching DNs: %s" % dn_lst)
+
+                results = [LDAPUsers._LDAPResult(*pair) for pair in take(limit, pairs)]
+
+                # Filter out pairs without DNs. Some LDAP impls will return such pairs.
+                with_dns = [result for result in results if result.dn]
+                return (with_dns, None)
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
-
-        with self._ldap.get_connection() as conn:
-            logger.debug("Incoming username or email param: %s", username_or_email.__repr__())
-
-            for user_search_dn in self._user_dns:
-                (pairs, err_msg) = self._ldap_user_search_with_rdn(
-                    conn,
-                    username_or_email,
-                    user_search_dn,
-                    suffix=suffix,
-                    filter_superusers=filter_superusers,
-                    filter_restricted_users=filter_restricted_users,
-                    filter_global_readonly_superusers=filter_global_readonly_superusers,
-                )
-                if pairs is not None and len(pairs) > 0:
-                    break
-
-            if err_msg is not None:
-                return (None, err_msg)
-
-            dn_lst = [pair[0] for pair in pairs]
-            logger.debug("Found matching DNs: %s" % dn_lst)
-
-            results = [LDAPUsers._LDAPResult(*pair) for pair in take(limit, pairs)]
-
-            # Filter out pairs without DNs. Some LDAP impls will return such pairs.
-            with_dns = [result for result in results if result.dn]
-            return (with_dns, None)
 
     def _ldap_single_user_search(
         self,
@@ -394,50 +391,47 @@ class LDAPUsers(FederatedUsers):
 
     def at_least_one_user_exists(self, filter_superusers=False, filter_restricted_users=False):
         logger.debug("Checking if any users exist in LDAP")
+        has_pagination = not self._force_no_pagination
         try:
-            with self._ldap.get_connection():
-                pass
+            with self._ldap.get_connection() as conn:
+                for user_search_dn in self._user_dns:
+                    search_flt = "(objectClass=*)"
+
+                    search_flt = self._add_user_filter(search_flt)
+
+                    if filter_restricted_users:
+                        if self._ldap_restricted_user_filter:
+                            search_flt = self._add_restricted_user_filter(search_flt)
+                        else:
+                            return (False, "Restricted user filter not set")
+                    elif filter_superusers:
+                        if self._ldap_superuser_filter:
+                            search_flt = self._add_superuser_filter(search_flt)
+                        else:
+                            return (False, "Superuser filter not set")
+
+                    lc = ldap.controls.libldap.SimplePagedResultsControl(
+                        criticality=True, size=1, cookie=""
+                    )
+                    try:
+                        if has_pagination:
+                            msgid = conn.search_ext(
+                                user_search_dn, ldap.SCOPE_SUBTREE, search_flt, serverctrls=[lc]
+                            )
+                            _, rdata, _, _serverctrls = conn.result3(msgid)
+                        else:
+                            msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
+                            _, rdata = conn.result(msgid)
+
+                        for _entry in rdata:  # Handles both lists and iterators.
+                            return (True, None)
+
+                    except ldap.LDAPError as lde:
+                        return (False, str(lde) or "Could not find DN %s" % user_search_dn)
+
+            return (False, None)
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
-
-        has_pagination = not self._force_no_pagination
-        with self._ldap.get_connection() as conn:
-            for user_search_dn in self._user_dns:
-                search_flt = "(objectClass=*)"
-
-                search_flt = self._add_user_filter(search_flt)
-
-                if filter_restricted_users:
-                    if self._ldap_restricted_user_filter:
-                        search_flt = self._add_restricted_user_filter(search_flt)
-                    else:
-                        return (False, "Superuser filter not set")
-                elif filter_superusers:
-                    if self._ldap_superuser_filter:
-                        search_flt = self._add_superuser_filter(search_flt)
-                    else:
-                        return (False, "Restricted user filter not set")
-
-                lc = ldap.controls.libldap.SimplePagedResultsControl(
-                    criticality=True, size=1, cookie=""
-                )
-                try:
-                    if has_pagination:
-                        msgid = conn.search_ext(
-                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, serverctrls=[lc]
-                        )
-                        _, rdata, _, serverctrls = conn.result3(msgid)
-                    else:
-                        msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
-                        _, rdata = conn.result(msgid)
-
-                    for entry in rdata:  # Handles both lists and iterators.
-                        return (True, None)
-
-                except ldap.LDAPError as lde:
-                    return (False, str(lde) or "Could not find DN %s" % user_search_dn)
-
-        return (False, None)
 
     def get_user(self, username_or_email):
         """
