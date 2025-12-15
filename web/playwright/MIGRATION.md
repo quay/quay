@@ -568,7 +568,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `mirroring.cy.ts` | | @feature:REPO_MIRROR |
 | ⬚ | `notification-drawer.cy.ts` | | |
 | ⬚ | `oauth-callback.cy.ts` | | |
-| ⬚ | `org-list.cy.ts` | | |
+| ✅ | `org-list.cy.ts` | `organization/org-list.spec.ts` | |
 | ⬚ | `org-oauth.cy.ts` | | |
 | ✅ | `overview.cy.ts` | `ui/overview.spec.ts` | |
 | ⬚ | `packages-report.cy.ts` | | |

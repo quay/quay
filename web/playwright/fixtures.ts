@@ -48,7 +48,8 @@ export type QuayFeature =
   | 'SECURITY_SCANNER'
   | 'CHANGE_TAG_EXPIRATION'
   | 'USER_METADATA'
-  | 'MAILING';
+  | 'MAILING'
+  | 'SUPER_USERS';
 
 /**
  * Quay configuration from /config endpoint
