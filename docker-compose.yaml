@@ -80,6 +80,7 @@ services:
     init: true
     volumes:
       - ".:/quay-registry"
+      - "/quay-registry/.venv"
     working_dir: /quay-registry
     environment:
       npm_config_cache: /quay-registry/.npm
@@ -99,6 +100,7 @@ services:
     image: localhost/quay-react:latest
     volumes:
       - ".:/quay-registry"
+      - "/quay-registry/.venv"
     working_dir: /quay-registry
     entrypoint:
       - sh
@@ -121,6 +123,7 @@ services:
     volumes:
       - ".:/quay-registry"
       - "./local-dev/stack:/quay-registry/conf/stack"
+      - "/quay-registry/.venv"
     ports:
       - "8080:8080"
       - "8443:8443"
@@ -145,6 +148,7 @@ services:
     volumes:
       - ".:/quay-registry"
       - "./local-dev/stack:/quay-registry/conf/stack"
+      - "/quay-registry/.venv"
     environment:
       QUAY_VERSION: local-dev
       QUAY_HOTRELOAD: "true"
