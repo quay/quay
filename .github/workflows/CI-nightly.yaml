@@ -26,6 +26,16 @@ jobs:
       matrix:
         platform: ['amd64','ppc64le','s390x']
     steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install uv and export requirements
+      uses: astral-sh/setup-uv@v7
+
+    - name: Export requirements from lockfile
+      run: |
+        uv export --group=dev --no-hashes > requirements-ci.txt
+
     - name: install ibmcli and setup ibm login
       if: ${{ matrix.platform  == 's390x' }}
       run: |
@@ -71,26 +81,42 @@ jobs:
       run: >-
         docker run
         --rm
-        -w /
+        -w /build
+        -v ${{ github.workspace }}/requirements-ci.txt:/build/requirements-ci.txt:ro
         -e GH_REPOSITORY
         -e GH_REF
-        ubuntu:20.04
+        ubuntu:22.04
         /bin/bash -ec '
         export DEBIAN_FRONTEND=noninteractive;
         apt-get -y update;
-        apt-get -y install libgpgme-dev libldap2-dev libsasl2-dev swig python3.9-dev python3-pip findutils git;
+        apt-get -y install libgpgme-dev libldap2-dev libsasl2-dev swig python3-dev python3-pip python3-venv findutils git;
         apt-get -y install libffi-dev libssl-dev libjpeg-dev libpq-dev libxml2-dev libxslt-dev;
         apt-get -y install rustc cargo pkg-config;
-        git clone ${GH_REPOSITORY} build;
-        cd build && git checkout ${GH_REF};
-        cat requirements-dev.txt | grep tox | xargs pip install;
 
-        tox -e py39-unit;
-        tox -e py39-e2e;
-        tox -e py39-registry;'
+        git clone ${GH_REPOSITORY} repo;
+        cd repo && git checkout ${GH_REF};
+        cp /build/requirements-ci.txt .;
+
+        python3 -m venv .venv;
+        source .venv/bin/activate;
+        pip install -r requirements-ci.txt;
+
+        tox -e py312-unit;
+        tox -e py312-e2e;
+        tox -e py312-registry;'
       env:
         GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
         GH_REF: ${{ github.ref }}
+
+    - name: Copy requirements to remote host
+      if: matrix.platform != 'amd64'
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ matrix.platform == 's390x' && steps.ZVSI.outputs.IP || secrets.BUILDER_PPC64LE_SSH_HOST_UBUNTU }}
+        username: ${{ matrix.platform == 's390x' && secrets.ZVSI_SSH_USER || secrets.BUILDER_PPC64LE_SSH_USER }}
+        key: ${{ matrix.platform == 's390x' && secrets.ZVSI_PR_KEY || secrets.BUILDER_PPC64LE_SSH_KEY }}
+        source: "requirements-ci.txt"
+        target: "/tmp"
 
     - name: Install dependencies and run all tests on ${{ matrix.platform }}
       if: matrix.platform  != 'amd64'
@@ -107,27 +133,28 @@ jobs:
         command_timeout: 100m
         script: |
           apt-get update -y
-          apt-get -y install build-essential libgpgme-dev libldap2-dev libsasl2-dev swig python3.9-dev python3-pip findutils git
+          apt-get -y install build-essential libgpgme-dev libldap2-dev libsasl2-dev swig python3-dev python3-pip python3-venv findutils git
           apt-get -y install libffi-dev libssl-dev libjpeg-dev libpq-dev libxml2-dev libxslt-dev
           apt-get -y install rustc cargo pkg-config
+
           rm -rf build
           git clone ${GH_REPOSITORY} build
           cd build && git checkout ${GH_REF}
-          cat requirements-dev.txt | grep tox | xargs python3 -m pip -qq install
+          cp /tmp/requirements-ci.txt .
+
+          python3 -m venv .venv
+          source .venv/bin/activate
 
           if [[ 's390x' == $(uname -m) ]]; then
-            GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3)
-            export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 && python3 -m pip install -qq grpcio==${GRPC_LATEST}
+            GRPC_LATEST=$(grep "grpcio==" requirements-ci.txt | cut -d "=" -f 3 | cut -d ";" -f 1)
+            export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 && pip install grpcio==${GRPC_LATEST}
           fi
 
-          #Unit
-          tox -e py39-unit
+          pip install -r requirements-ci.txt
 
-          #e2e
-          tox -e py39-e2e
-
-          #registry
-          tox -e py39-registry
+          tox -e py312-unit
+          tox -e py312-e2e
+          tox -e py312-registry
 
     - name: Cleanup ZVSI
       if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
