@@ -37,6 +37,7 @@ RUN set -ex\
 
 # Build-python installs the requirements for the python code.
 FROM base AS build-python
+COPY --from=ghcr.io/astral-sh/uv:0.9.17@sha256:5cb6b54d2bc3fe2eb9a8483db958a0b9eebf9edff68adedb369df8e7b98711a2   /uv /bin/uv
 ENV PYTHONDONTWRITEBYTECODE 1
 RUN set -ex\
 	; dnf -y --setopt=tsflags=nodocs install \
@@ -58,8 +59,10 @@ RUN set -ex\
 		freetype-devel \
 	; dnf -y clean all
 WORKDIR /build
-RUN python3 -m ensurepip --upgrade
-COPY requirements.txt .
+ENV UV_PROJECT_ENVIRONMENT=/opt/app-root/.venv \
+    UV_NO_CACHE=true
+
+COPY pyproject.toml uv.lock Makefile ./
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
@@ -72,25 +75,23 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 # Added below line for GRPC support for IBMZ i.e. s390x
 ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL 1
 
+RUN chown -R 1001:0 /opt/app-root
 USER 1001
 
 # Added GRPC support for IBM Power
 # In Future if wget is to be removed , then uncomment below lines for grpc installation on IBM Power i.e. ppc64le
 RUN ARCH=$(uname -m) ; echo $ARCH; \
     if [ "$ARCH" == "ppc64le" ] ; then \
-    GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
-	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl -O /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
-	python3 -m pip install --no-cache-dir /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
-	fi
+    GRPC_LATEST=$(grep '"grpcio==' pyproject.toml | sed 's/.*grpcio==\([^"]*\).*/\1/'); \
+    wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl -O /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
+    uv pip install /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
+    fi
 
-RUN set -ex\
-	; python3 -m pip install --no-cache-dir --progress-bar off $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
-	; python3 -m pip install --no-cache-dir --progress-bar off --requirement requirements.txt \
-	;
+RUN set -ex; uv sync --frozen --no-install-project
 RUN set -ex\
 # Doing this is explicitly against the purpose and use of certifi.
 	; for dir in\
-		$(find "/opt/app-root/lib/python3.12/site-packages" -type d -name certifi)\
+		$(find "/opt/app-root/.venv/lib64/python3.12/site-packages" -type d -name certifi)\
 	; do chgrp -R 0 "$dir" && chmod -R g=u "$dir" ; done\
 	;
 
@@ -153,11 +154,14 @@ RUN set -ex\
 FROM base AS final
 LABEL maintainer "quay-devel@redhat.com"
 
+COPY --from=ghcr.io/astral-sh/uv:0.9.17@sha256:5cb6b54d2bc3fe2eb9a8483db958a0b9eebf9edff68adedb369df8e7b98711a2   /uv /bin/uv
+
 ENV QUAYDIR /quay-registry
 ENV QUAYCONF /quay-registry/conf
 ENV QUAYRUN /quay-registry/conf
 ENV QUAYPATH $QUAYDIR
-ENV PYTHONPATH $QUAYPATH
+ENV PYTHONPATH /opt/app-root/.venv/lib64/python3.12/site-packages:/opt/app-root/.venv/lib/python3.12/site-packages:$QUAYPATH
+ENV PATH /opt/app-root/.venv/bin:$PATH
 
 # All of these chgrp+chmod commands are an Openshift-ism.
 #
@@ -191,14 +195,17 @@ RUN set -ex\
 	; chmod ug+wx -R /etc/pki/ \
 	; chmod ug+wx -R /etc/ssl/
 
-
-RUN python3 -m pip install --no-cache-dir --progress-bar off dumb-init
-
 WORKDIR $QUAYDIR
 # Ordered from least changing to most changing.
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
-COPY --from=build-python /opt/app-root/lib/python3.12/site-packages /opt/app-root/lib/python3.12/site-packages
-COPY --from=build-python /opt/app-root/bin /opt/app-root/bin
+COPY --from=build-python /opt/app-root/.venv /opt/app-root/.venv
+# Install setuptools and create sitecustomize.py to import it early, which sets up distutils
+# compatibility for Python 3.12+ (distutils was removed but redis 3.5.3 needs it)
+RUN /opt/app-root/bin/python3 -m pip install --no-cache-dir setuptools \
+    && echo 'import setuptools' > /opt/app-root/lib64/python3.12/site-packages/sitecustomize.py
+RUN set -ex \
+    && ln -sf /usr/bin/python3.12 /opt/app-root/.venv/bin/python \
+    && ln -sf /usr/bin/python3.12 /opt/app-root/.venv/bin/python3
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=build-quaydir /quaydir $QUAYDIR
 
