@@ -556,7 +556,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `create-account.cy.ts` | | |
 | ✅ | `default-permissions.cy.ts` | `organization/default-permissions.spec.ts` | |
 | ⬚ | `external-login.cy.ts` | | @config:OIDC |
-| ⬚ | `external-scripts.cy.ts` | | |
+| ✅ | `external-scripts.cy.ts` | `ui/external-scripts.spec.ts` | @feature:BILLING |
 | ⬚ | `footer.cy.ts` | | |
 | ⬚ | `fresh-login-oidc.cy.ts` | | @config:OIDC |
 | ⬚ | `logout.cy.ts` | | |
@@ -606,5 +606,5 @@ Track migration progress from Cypress to Playwright.
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 6 (11%)
-- **Remaining**: 48
+- **Migrated**: 7 (13%)
+- **Remaining**: 47
