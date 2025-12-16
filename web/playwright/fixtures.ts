@@ -29,7 +29,7 @@ import {
 } from '@playwright/test';
 import {TEST_USERS} from './global-setup';
 import {API_URL} from './utils/config';
-import {getCsrfToken} from './utils/api';
+import {ApiClient} from './utils/api';
 
 // ============================================================================
 // Quay Config Types
@@ -85,28 +85,16 @@ export function skipUnlessFeature(
 }
 
 /**
- * Login a user and return the CSRF token
+ * Login a user and return the API client (with cached CSRF token)
  */
 async function loginUser(
   request: APIRequestContext,
   username: string,
   password: string,
-): Promise<string> {
-  const csrfToken = await getCsrfToken(request);
-
-  const response = await request.post(`${API_URL}/api/v1/signin`, {
-    headers: {'X-CSRF-Token': csrfToken},
-    data: {username, password},
-  });
-
-  if (!response.ok()) {
-    const body = await response.text();
-    throw new Error(
-      `Login failed for ${username}: ${response.status()} - ${body}`,
-    );
-  }
-
-  return csrfToken;
+): Promise<ApiClient> {
+  const api = new ApiClient(request);
+  await api.signIn(username, password);
+  return api;
 }
 
 /**
@@ -235,11 +223,12 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // =========================================================================
 
   csrfToken: async ({request}, use) => {
-    const token = await loginUser(
+    const api = await loginUser(
       request,
       TEST_USERS.user.username,
       TEST_USERS.user.password,
     );
+    const token = await api.getToken();
     await use(token);
   },
 
