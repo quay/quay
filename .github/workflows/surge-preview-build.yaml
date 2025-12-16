@@ -5,6 +5,9 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'web/**'
+      - '!web/cypress/**'
+      - '!web/playwright/**'
+      - '!web/**/*.md'
 
 jobs:
   build:
