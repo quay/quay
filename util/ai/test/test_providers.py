@@ -1,24 +1,25 @@
 """
 Tests for LLM provider implementations.
 """
-import pytest
-from unittest.mock import patch, MagicMock
 import json
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from util.ai.providers import (
-    LLMProviderInterface,
     AnthropicProvider,
-    OpenAIProvider,
-    GoogleProvider,
-    DeepSeekProvider,
     CustomProvider,
-    ProviderFactory,
-    ProviderConfigError,
-    ProviderAPIError,
-    ProviderRateLimitError,
-    ProviderAuthError,
-    ProviderTimeoutError,
+    DeepSeekProvider,
+    GoogleProvider,
     ImageAnalysis,
+    LLMProviderInterface,
+    OpenAIProvider,
+    ProviderAPIError,
+    ProviderAuthError,
+    ProviderConfigError,
+    ProviderFactory,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
 )
 
 
@@ -31,7 +32,7 @@ def sample_image_analysis():
             "/bin/sh -c apt-get update && apt-get install -y nodejs",
             "/bin/sh -c npm install express",
             "/bin/sh -c #(nop) EXPOSE 8080",
-            "/bin/sh -c #(nop) CMD [\"node\", \"server.js\"]",
+            '/bin/sh -c #(nop) CMD ["node", "server.js"]',
         ],
         exposed_ports=["8080"],
         environment_vars={"NODE_ENV": "production", "PORT": "8080"},
@@ -263,9 +264,7 @@ class TestGoogleProvider:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "candidates": [
-                {"content": {"parts": [{"text": "This image runs a Node.js server."}]}}
-            ]
+            "candidates": [{"content": {"parts": [{"text": "This image runs a Node.js server."}]}}]
         }
         mock_post.return_value = mock_response
 
@@ -366,9 +365,7 @@ class TestConnectivityVerification:
         """Test successful connectivity verification."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "content": [{"type": "text", "text": "Hello"}]
-        }
+        mock_response.json.return_value = {"content": [{"type": "text", "text": "Hello"}]}
         mock_post.return_value = mock_response
 
         provider = AnthropicProvider(

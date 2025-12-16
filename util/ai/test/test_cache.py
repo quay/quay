@@ -1,17 +1,18 @@
 """
 Tests for AI description caching.
 """
-import pytest
-from unittest.mock import MagicMock, patch
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from util.ai.cache import (
-    AIDescriptionCache,
-    get_cached_description,
-    cache_description,
-    invalidate_description_cache,
-    for_ai_description,
     DEFAULT_CACHE_TTL,
+    AIDescriptionCache,
+    cache_description,
+    for_ai_description,
+    get_cached_description,
+    invalidate_description_cache,
 )
 
 

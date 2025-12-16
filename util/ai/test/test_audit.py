@@ -1,8 +1,9 @@
 """
 Tests for AI feature audit logging.
 """
+from unittest.mock import MagicMock, call, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, call
 
 
 class TestAIDescriptionAuditLogging:

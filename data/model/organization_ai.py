@@ -56,9 +56,7 @@ def create_or_update_org_ai_settings(
 
     with db_transaction():
         try:
-            settings = OrganizationAISettings.get(
-                OrganizationAISettings.organization == org
-            )
+            settings = OrganizationAISettings.get(OrganizationAISettings.organization == org)
             # Update existing record
             if description_generator_enabled is not None:
                 settings.description_generator_enabled = description_generator_enabled
@@ -115,9 +113,7 @@ def set_org_ai_credentials(
 
     with db_transaction():
         try:
-            settings = OrganizationAISettings.get(
-                OrganizationAISettings.organization == org
-            )
+            settings = OrganizationAISettings.get(OrganizationAISettings.organization == org)
 
             # Check if credentials actually changed (requires re-verification)
             # Use .matches() for encrypted field comparison

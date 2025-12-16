@@ -294,7 +294,9 @@ class OpenAIProvider(LLMProviderInterface):
 class GoogleProvider(LLMProviderInterface):
     """Provider for Google Gemini API."""
 
-    API_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    API_URL_TEMPLATE = (
+        "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    )
 
     def __init__(
         self,

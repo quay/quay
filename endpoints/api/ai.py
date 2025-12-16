@@ -45,11 +45,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
-from util.ai.cache import (
-    AIDescriptionCache,
-    cache_description,
-    get_cached_description,
-)
+from util.ai.cache import AIDescriptionCache, cache_description, get_cached_description
 from util.ai.history_extractor import ImageExtractionError, extract_image_analysis
 from util.ai.providers import (
     ProviderAuthError,
@@ -429,9 +425,7 @@ class RepositoryAIDescription(RepositoryParamResource):
         if not force_regenerate:
             from app import model_cache
 
-            cached = get_cached_description(
-                model_cache, namespace_name, repo_name, manifest_digest
-            )
+            cached = get_cached_description(model_cache, namespace_name, repo_name, manifest_digest)
             if cached:
                 return {
                     "description": cached,

@@ -6,7 +6,7 @@ in generating AI-powered descriptions.
 """
 import json
 import logging
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from util.ai.providers import ImageAnalysis
 
@@ -90,9 +90,7 @@ def get_config_from_manifest(manifest, content_retriever) -> Dict[str, Any]:
 
     config_bytes = content_retriever.get_blob_bytes_with_digest(config_digest)
     if config_bytes is None:
-        raise ImageExtractionError(
-            f"Could not retrieve config blob with digest {config_digest}"
-        )
+        raise ImageExtractionError(f"Could not retrieve config blob with digest {config_digest}")
 
     actual_size = len(config_bytes)
     if actual_size != expected_size:

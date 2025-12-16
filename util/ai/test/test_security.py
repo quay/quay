@@ -1,17 +1,18 @@
 """
 Tests for AI response sanitization and security utilities.
 """
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from util.ai.security import (
-    sanitize_llm_response,
-    filter_sensitive_env_vars,
-    escape_for_prompt,
-    mask_api_key,
-    is_sensitive_key,
-    SENSITIVE_PATTERNS,
     MAX_RESPONSE_LENGTH,
+    SENSITIVE_PATTERNS,
+    escape_for_prompt,
+    filter_sensitive_env_vars,
+    is_sensitive_key,
+    mask_api_key,
+    sanitize_llm_response,
 )
 
 
@@ -100,7 +101,7 @@ More text."""
 
     def test_strips_javascript_urls_case_insensitive(self):
         """Test that javascript: URLs are removed regardless of case."""
-        malicious = '[Link](JAVASCRIPT:evil())'
+        malicious = "[Link](JAVASCRIPT:evil())"
         result = sanitize_llm_response(malicious)
         assert "javascript:" not in result.lower()
 

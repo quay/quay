@@ -4,15 +4,15 @@ Tests for prompt template construction.
 import pytest
 
 from util.ai.prompt import (
+    MAX_COMMAND_LENGTH,
+    MAX_LAYER_COMMANDS,
+    MAX_PROMPT_LENGTH,
     build_prompt,
-    sanitize_env_vars,
+    format_env_vars,
     format_layer_commands,
     format_ports,
-    format_env_vars,
+    sanitize_env_vars,
     truncate_command,
-    MAX_LAYER_COMMANDS,
-    MAX_COMMAND_LENGTH,
-    MAX_PROMPT_LENGTH,
 )
 from util.ai.providers import ImageAnalysis
 
@@ -26,7 +26,7 @@ def sample_image_analysis():
             "/bin/sh -c apt-get update && apt-get install -y nodejs",
             "/bin/sh -c npm install express",
             "/bin/sh -c #(nop) EXPOSE 8080",
-            "/bin/sh -c #(nop) CMD [\"node\", \"server.js\"]",
+            '/bin/sh -c #(nop) CMD ["node", "server.js"]',
         ],
         exposed_ports=["8080"],
         environment_vars={"NODE_ENV": "production", "PORT": "8080"},
@@ -257,7 +257,9 @@ class TestFormatLayerCommands:
         result = format_layer_commands(commands)
 
         # Count numbered commands
-        numbered_count = sum(1 for line in result.split("\n") if line.startswith(tuple("0123456789")))
+        numbered_count = sum(
+            1 for line in result.split("\n") if line.startswith(tuple("0123456789"))
+        )
         assert numbered_count <= MAX_LAYER_COMMANDS
 
     def test_empty_commands(self):

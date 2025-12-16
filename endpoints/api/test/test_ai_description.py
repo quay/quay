@@ -4,8 +4,9 @@ Tests for AI description generation API endpoints.
 These tests verify the AI description API endpoint logic through unit tests
 of the underlying functions, as integration tests require specific app configuration.
 """
+from unittest.mock import MagicMock, PropertyMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
 
 from features import FeatureNameValue
 

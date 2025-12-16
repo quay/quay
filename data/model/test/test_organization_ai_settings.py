@@ -158,9 +158,7 @@ class TestAPIKeyEncryption:
         )
 
         # Get raw database record
-        settings = OrganizationAISettings.get(
-            OrganizationAISettings.organization == org
-        )
+        settings = OrganizationAISettings.get(OrganizationAISettings.organization == org)
 
         # The raw value should not be the plaintext key
         # EncryptedTextField stores versioned encrypted data

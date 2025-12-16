@@ -2,18 +2,18 @@
 Tests for image history extraction.
 """
 import json
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from util.ai.history_extractor import (
+    ImageExtractionError,
     extract_image_analysis,
+    get_config_from_manifest,
     parse_env_vars,
     parse_exposed_ports,
-    get_config_from_manifest,
-    ImageExtractionError,
 )
 from util.ai.providers import ImageAnalysis
-
 
 # Sample Docker Schema2 config JSON matching the format in image/docker/schema2/config.py
 SAMPLE_CONFIG_JSON = {
@@ -72,7 +72,7 @@ SAMPLE_CONFIG_JSON = {
         },
         {
             "created": "2024-01-15T10:41:00.000000000Z",
-            "created_by": '/bin/sh -c #(nop)  EXPOSE 8080',
+            "created_by": "/bin/sh -c #(nop)  EXPOSE 8080",
             "empty_layer": True,
         },
         {
@@ -345,7 +345,9 @@ class TestParseExposedPorts:
 class TestGetConfigFromManifest:
     """Tests for getting parsed config from manifest."""
 
-    def test_retrieves_config_blob(self, mock_manifest, mock_content_retriever, sample_config_bytes):
+    def test_retrieves_config_blob(
+        self, mock_manifest, mock_content_retriever, sample_config_bytes
+    ):
         """Test that config blob is retrieved correctly."""
         config = get_config_from_manifest(mock_manifest, mock_content_retriever)
 
