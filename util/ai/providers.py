@@ -4,6 +4,7 @@ LLM provider implementations for AI-powered features.
 This module provides a unified interface for interacting with various LLM providers
 including Anthropic, OpenAI, Google, DeepSeek, and custom OpenAI-compatible endpoints.
 """
+
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -670,4 +671,46 @@ class ProviderFactory:
             api_key=api_key,
             model=org_settings.model,
             endpoint=org_settings.endpoint,
+        )
+
+    @classmethod
+    def create_managed(cls) -> LLMProviderInterface:
+        """
+        Create a provider from Quay's internal managed configuration.
+
+        This is used in managed mode (quay.io) where Quay provides the LLM backend.
+
+        Returns:
+            LLM provider instance
+
+        Raises:
+            ProviderConfigError: If managed provider is not configured
+        """
+        from app import app
+
+        managed_config = app.config.get("AI_MANAGED_PROVIDER", {})
+
+        if not managed_config:
+            raise ProviderConfigError(
+                "Managed AI provider is not configured. "
+                "Please set AI_MANAGED_PROVIDER in config."
+            )
+
+        provider = managed_config.get("PROVIDER")
+        api_key = managed_config.get("API_KEY")
+        model = managed_config.get("MODEL")
+        endpoint = managed_config.get("ENDPOINT")
+        max_tokens = managed_config.get("MAX_TOKENS", DEFAULT_MAX_TOKENS)
+        temperature = managed_config.get("TEMPERATURE", DEFAULT_TEMPERATURE)
+
+        if not provider:
+            raise ProviderConfigError("AI_MANAGED_PROVIDER.PROVIDER is required")
+
+        return cls.create(
+            provider=provider,
+            api_key=api_key,
+            model=model,
+            endpoint=endpoint,
+            max_tokens=max_tokens,
+            temperature=temperature,
         )

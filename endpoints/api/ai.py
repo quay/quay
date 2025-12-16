@@ -4,6 +4,7 @@ AI-powered features API endpoints.
 This module provides endpoints for managing AI settings and generating
 descriptions for container images.
 """
+
 import logging
 
 from flask import request
@@ -45,6 +46,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
+from util.ai.billing import check_ai_subscription_required, is_managed_mode
 from util.ai.cache import AIDescriptionCache, cache_description, get_cached_description
 from util.ai.history_extractor import ImageExtractionError, extract_image_analysis
 from util.ai.providers import (
@@ -397,18 +399,29 @@ class RepositoryAIDescription(RepositoryParamResource):
         if owner is None:
             raise NotFound()
 
-        if not is_description_generator_enabled(owner):
-            raise InvalidRequest(
-                "AI description generation is not enabled for this organization. "
-                "Please configure AI settings first."
-            )
+        # Check subscription requirements for managed mode (quay.io)
+        allowed, error_message = check_ai_subscription_required(owner)
+        if not allowed:
+            raise InvalidRequest(error_message)
 
-        # Get AI settings
-        settings = get_org_ai_settings(owner)
-        if settings is None or not settings.api_key_encrypted:
-            raise InvalidRequest(
-                "AI credentials are not configured. Please set up API credentials first."
-            )
+        # In managed mode, AI is always available for paid subscribers
+        # In BYOK mode, check if the org has enabled and configured AI
+        if not is_managed_mode():
+            if not is_description_generator_enabled(owner):
+                raise InvalidRequest(
+                    "AI description generation is not enabled for this organization. "
+                    "Please configure AI settings first."
+                )
+
+            # Get AI settings - required for BYOK mode
+            settings = get_org_ai_settings(owner)
+            if settings is None or not settings.api_key_encrypted:
+                raise InvalidRequest(
+                    "AI credentials are not configured. Please set up API credentials first."
+                )
+        else:
+            # Managed mode - settings may exist for feature toggle but credentials not required
+            settings = get_org_ai_settings(owner)
 
         # Get the tag and manifest
         tag = model.tag.get_tag(repo, tag_name)
@@ -456,16 +469,23 @@ class RepositoryAIDescription(RepositoryParamResource):
 
         # Create LLM provider and generate description
         try:
-            api_key = settings.api_key_encrypted
-            if hasattr(api_key, "decrypt"):
-                api_key = api_key.decrypt()
+            if is_managed_mode():
+                # Managed mode (quay.io) - use Quay's internal provider config
+                provider = ProviderFactory.create_managed()
+                provider_name = "managed"
+            else:
+                # BYOK mode - use org credentials
+                api_key = settings.api_key_encrypted
+                if hasattr(api_key, "decrypt"):
+                    api_key = api_key.decrypt()
 
-            provider = ProviderFactory.create(
-                provider=settings.provider,
-                api_key=api_key,
-                model=settings.model,
-                endpoint=settings.endpoint,
-            )
+                provider = ProviderFactory.create(
+                    provider=settings.provider,
+                    api_key=api_key,
+                    model=settings.model,
+                    endpoint=settings.endpoint,
+                )
+                provider_name = settings.provider
 
             raw_description = provider.generate_description(image_analysis)
             # Sanitize the LLM response to prevent XSS and other attacks
@@ -493,7 +513,7 @@ class RepositoryAIDescription(RepositoryParamResource):
                 "repository": repo_name,
                 "tag": tag_name,
                 "manifest_digest": manifest_digest,
-                "provider": settings.provider,
+                "provider": provider_name,
             },
         )
 
