@@ -781,3 +781,6 @@ import endpoints.api.tag
 import endpoints.api.team
 import endpoints.api.trigger
 import endpoints.api.user
+
+# AI-powered features (requires FEATURE_AI)
+import endpoints.api.ai
