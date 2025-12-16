@@ -58,6 +58,11 @@ from util.ai.providers import (
     ProviderRateLimitError,
     ProviderTimeoutError,
 )
+from util.ai.security import (
+    filter_sensitive_env_vars,
+    mask_api_key,
+    sanitize_llm_response,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -447,6 +452,11 @@ class RepositoryAIDescription(RepositoryParamResource):
                 content_retriever=content_retriever,
                 tag=tag_name,
             )
+
+            # Filter sensitive environment variables before sending to LLM
+            image_analysis.environment_vars = filter_sensitive_env_vars(
+                image_analysis.environment_vars
+            )
         except ImageExtractionError as e:
             raise InvalidRequest(f"Failed to extract image information: {str(e)}")
 
@@ -463,7 +473,9 @@ class RepositoryAIDescription(RepositoryParamResource):
                 endpoint=settings.endpoint,
             )
 
-            description = provider.generate_description(image_analysis)
+            raw_description = provider.generate_description(image_analysis)
+            # Sanitize the LLM response to prevent XSS and other attacks
+            description = sanitize_llm_response(raw_description)
         except ProviderRateLimitError:
             raise InvalidRequest("Rate limit exceeded. Please try again later.")
         except ProviderAuthError:
