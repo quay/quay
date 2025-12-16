@@ -154,12 +154,13 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
 
     // Add to delete member list if member already exists in db
     props.setDeletedTeamMembers((prev) => {
-      const memberExists = props?.allMembers.find(
+      const memberExists = props?.allMembers?.find(
         (currentMember) => currentMember.name === member.name,
       );
       if (memberExists && !prev.includes(memberExists)) {
         return [...prev, memberExists];
       }
+      return prev;
     });
   };
 

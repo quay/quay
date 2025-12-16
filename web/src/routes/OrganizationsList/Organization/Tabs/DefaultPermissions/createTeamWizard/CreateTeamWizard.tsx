@@ -57,7 +57,7 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
   const [tableItems, setTableItems] = useState<ITeamMember[]>(allMembers || []);
 
   useEffect(() => {
-    setTableItems(allMembers);
+    setTableItems(allMembers || []);
   }, [allMembers]);
 
   const filteredRepos = () => {
