@@ -619,7 +619,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
 | ⬚ | `manage-team-members.cy.ts` | | |
 | ⬚ | `marketplace.cy.ts` | | @config:BILLING |
-| ⬚ | `mirroring.cy.ts` | | @feature:REPO_MIRROR |
+| ✅ | `mirroring.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated 18→5 tests |
 | ✅ | `notification-drawer.cy.ts` | `ui/notification-drawer.spec.ts` | @container |
 | ⬚ | `oauth-callback.cy.ts` | | |
 | ⬚ | `org-list.cy.ts` | | |
@@ -663,5 +663,5 @@ Track migration progress from Cypress to Playwright.
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 7 (13%)
-- **Remaining**: 47
+- **Migrated**: 8 (15%)
+- **Remaining**: 46
