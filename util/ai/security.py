@@ -31,12 +31,13 @@ SENSITIVE_PATTERNS = [
 ]
 
 # Regex patterns for dangerous HTML/JS content
-# Use \s* before > to match tags with spaces like </script >
-SCRIPT_TAG_PATTERN = re.compile(r"<script[^>]*>.*?</script\s*>", re.IGNORECASE | re.DOTALL)
-STYLE_TAG_PATTERN = re.compile(r"<style[^>]*>.*?</style\s*>", re.IGNORECASE | re.DOTALL)
-IFRAME_TAG_PATTERN = re.compile(r"<iframe[^>]*>.*?</iframe\s*>", re.IGNORECASE | re.DOTALL)
-OBJECT_TAG_PATTERN = re.compile(r"<object[^>]*>.*?</object\s*>", re.IGNORECASE | re.DOTALL)
-EMBED_TAG_PATTERN = re.compile(r"<embed[^>]*\s*>", re.IGNORECASE)
+# Use [^>]* before > to match any characters including spaces, tabs, newlines
+# This properly handles malformed tags like </script\t\n bar>
+SCRIPT_TAG_PATTERN = re.compile(r"<script[^>]*>.*?</script[^>]*>", re.IGNORECASE | re.DOTALL)
+STYLE_TAG_PATTERN = re.compile(r"<style[^>]*>.*?</style[^>]*>", re.IGNORECASE | re.DOTALL)
+IFRAME_TAG_PATTERN = re.compile(r"<iframe[^>]*>.*?</iframe[^>]*>", re.IGNORECASE | re.DOTALL)
+OBJECT_TAG_PATTERN = re.compile(r"<object[^>]*>.*?</object[^>]*>", re.IGNORECASE | re.DOTALL)
+EMBED_TAG_PATTERN = re.compile(r"<embed[^>]*>", re.IGNORECASE)
 EVENT_HANDLER_PATTERN = re.compile(r"\s+on\w+\s*=\s*[\"'][^\"']*[\"']", re.IGNORECASE)
 JAVASCRIPT_URL_PATTERN = re.compile(r"javascript\s*:", re.IGNORECASE)
 

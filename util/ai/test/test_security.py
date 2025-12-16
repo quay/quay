@@ -82,6 +82,30 @@ More text."""
         assert "evil" not in result
         assert "script" not in result.lower()
 
+    def test_strips_script_tags_with_tabs_newlines_and_content(self):
+        """Test that malformed script end tags with tabs, newlines and content are removed.
+
+        This tests the specific case that CodeQL flagged: </script\t\n bar>
+        HTML parsers may accept various malformed closing tags.
+        """
+        # Test with tabs and newlines before closing
+        malicious = "<script>evil()</script\t\n>"
+        result = sanitize_llm_response(malicious)
+        assert "evil" not in result
+        assert "script" not in result.lower()
+
+        # Test with extra content before closing (the specific CodeQL case)
+        malicious = "<script>evil()</script\t\n bar>"
+        result = sanitize_llm_response(malicious)
+        assert "evil" not in result
+        assert "script" not in result.lower()
+
+        # Test with various attribute-like content
+        malicious = "<script>evil()</script foo=bar>"
+        result = sanitize_llm_response(malicious)
+        assert "evil" not in result
+        assert "script" not in result.lower()
+
     def test_strips_onclick_handlers(self):
         """Test that onclick and other event handlers are removed."""
         malicious = '<div onclick="evil()">Click me</div>'
