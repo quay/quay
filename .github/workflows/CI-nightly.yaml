@@ -32,6 +32,7 @@ jobs:
     - name: Install uv and export requirements
       uses: astral-sh/setup-uv@v7
 
+    # doing this to avoid install uv on the VM, nightly tests will continue to use pip
     - name: Export requirements from lockfile
       run: |
         uv export --group=dev --no-hashes > requirements-ci.txt
