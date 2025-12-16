@@ -322,6 +322,63 @@ test.describe('Feature Tests', () => {
 - Cleanup prevents database bloat in CI environments
 - Use `uniqueName()` to avoid collisions even if cleanup fails
 
+## Session-Destructive Tests (Logout)
+
+Tests that call `/api/v1/signout` require special handling because Quay invalidates **ALL sessions** for that user server-side (`invalidate_all_sessions(user)`). This breaks parallel tests using the same user.
+
+### Solution: Unique Temporary Users
+
+Create a custom fixture that provisions a unique user per test:
+
+```typescript
+import {test as base, expect, uniqueName} from '../../fixtures';
+import {ApiClient} from '../../utils/api';
+
+const test = base.extend<{logoutPage: Page; logoutUsername: string}>({
+  logoutUsername: async ({}, use) => {
+    await use(uniqueName('logout'));
+  },
+
+  logoutPage: async ({browser, superuserRequest, logoutUsername}, use) => {
+    const password = 'testpassword123';
+    const email = `${logoutUsername}@example.com`;
+
+    // Create temporary user
+    const superApi = new ApiClient(superuserRequest);
+    await superApi.createUser(logoutUsername, password, email);
+
+    // Login as temporary user
+    const context = await browser.newContext();
+    const api = new ApiClient(context.request);
+    await api.signIn(logoutUsername, password);
+
+    const page = await context.newPage();
+    await use(page);
+
+    // Cleanup
+    await page.close();
+    await context.close();
+    try {
+      await superApi.deleteUser(logoutUsername);
+    } catch {
+      // Already deleted
+    }
+  },
+});
+
+test('logs out successfully', async ({logoutPage}) => {
+  // Safe to logout - won't affect other tests
+});
+```
+
+### When to Use This Pattern
+
+- Tests that call the logout API
+- Tests that invalidate sessions
+- Any test where signing out is part of the test flow
+
+See `e2e/auth/logout.spec.ts` for a complete implementation.
+
 ## Test Consolidation Guidelines
 
 ### When to Consolidate
@@ -559,7 +616,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `external-scripts.cy.ts` | `ui/external-scripts.spec.ts` | @feature:BILLING |
 | ⬚ | `footer.cy.ts` | | |
 | ⬚ | `fresh-login-oidc.cy.ts` | | @config:OIDC |
-| ⬚ | `logout.cy.ts` | | |
+| ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
 | ⬚ | `manage-team-members.cy.ts` | | |
 | ⬚ | `marketplace.cy.ts` | | @config:BILLING |
 | ⬚ | `mirroring.cy.ts` | | @feature:REPO_MIRROR |
