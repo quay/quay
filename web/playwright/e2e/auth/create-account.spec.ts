@@ -6,7 +6,7 @@
  */
 
 import {test, expect, uniqueName, skipUnlessFeature} from '../../fixtures';
-import {createUser, deleteUser} from '../../utils/api';
+import {ApiClient} from '../../utils/api';
 
 test.describe(
   'Create Account Page',
@@ -81,7 +81,8 @@ test.describe(
 
       // Clean up: delete the test user
       try {
-        await deleteUser(superuserRequest, testUsername);
+        const superuserApi = new ApiClient(superuserRequest);
+        await superuserApi.deleteUser(testUsername);
       } catch {
         // User might already be deleted or not exist
       }
@@ -96,12 +97,8 @@ test.describe(
       const existingEmail = `${existingUsername}@example.com`;
 
       // Create the existing user via API
-      await createUser(
-        page.request,
-        existingUsername,
-        'password123',
-        existingEmail,
-      );
+      const api = new ApiClient(page.request);
+      await api.createUser(existingUsername, 'password123', existingEmail);
 
       await page.goto('/createaccount');
 
@@ -124,7 +121,8 @@ test.describe(
 
       // Clean up
       try {
-        await deleteUser(superuserRequest, existingUsername);
+        const superuserApi = new ApiClient(superuserRequest);
+        await superuserApi.deleteUser(existingUsername);
       } catch {
         // User might already be deleted
       }
@@ -257,7 +255,8 @@ test.describe(
 
         // Clean up: delete the test user
         try {
-          await deleteUser(superuserRequest, testUsername);
+          const superuserApi = new ApiClient(superuserRequest);
+          await superuserApi.deleteUser(testUsername);
         } catch {
           // User might already be deleted or not exist
         }

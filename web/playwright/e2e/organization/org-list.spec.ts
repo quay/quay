@@ -1,5 +1,5 @@
 import {test, expect, uniqueName, skipUnlessFeature} from '../../fixtures';
-import {createOrganization, deleteOrganization} from '../../utils/api';
+import {ApiClient} from '../../utils/api';
 import {TEST_USERS} from '../../global-setup';
 
 test.describe('Organization List', {tag: ['@organization']}, () => {
@@ -69,15 +69,17 @@ test.describe('Organization List', {tag: ['@organization']}, () => {
     test.beforeEach(async ({authenticatedRequest}) => {
       org1 = uniqueName('searchtest');
       org2 = uniqueName('another');
-      await createOrganization(authenticatedRequest, org1);
-      await createOrganization(authenticatedRequest, org2);
+      const api = new ApiClient(authenticatedRequest);
+      await api.createOrganization(org1);
+      await api.createOrganization(org2);
     });
 
     test.afterEach(async ({authenticatedRequest}) => {
-      await deleteOrganization(authenticatedRequest, org1).catch(() => {
+      const api = new ApiClient(authenticatedRequest);
+      await api.deleteOrganization(org1).catch(() => {
         /* ignore cleanup errors */
       });
-      await deleteOrganization(authenticatedRequest, org2).catch(() => {
+      await api.deleteOrganization(org2).catch(() => {
         /* ignore cleanup errors */
       });
     });
@@ -128,26 +130,16 @@ test.describe('Organization List', {tag: ['@organization']}, () => {
     test.beforeAll(async ({browser}) => {
       // Create 25 orgs for pagination testing
       const context = await browser.newContext();
-      const request = context.request;
+      const api = new ApiClient(context.request);
 
-      // Login
-      const {getCsrfToken} = await import('../../utils/api/csrf');
-      const {API_URL} = await import('../../utils/config');
-      const csrfToken = await getCsrfToken(request);
-      await request.post(`${API_URL}/api/v1/signin`, {
-        headers: {'X-CSRF-Token': csrfToken},
-        data: {
-          username: TEST_USERS.user.username,
-          password: TEST_USERS.user.password,
-        },
-      });
+      // Login and create orgs
+      await api.signIn(TEST_USERS.user.username, TEST_USERS.user.password);
 
-      // Create orgs
       for (let i = 0; i < ORG_COUNT; i++) {
         const name = `${orgPrefix}${i.toString().padStart(2, '0')}`;
         orgNames.push(name);
         try {
-          await createOrganization(request, name);
+          await api.createOrganization(name);
         } catch {
           // May already exist
         }
@@ -159,22 +151,13 @@ test.describe('Organization List', {tag: ['@organization']}, () => {
     test.afterAll(async ({browser}) => {
       // Cleanup all created orgs
       const context = await browser.newContext();
-      const request = context.request;
+      const api = new ApiClient(context.request);
 
-      // Login
-      const {getCsrfToken} = await import('../../utils/api/csrf');
-      const {API_URL} = await import('../../utils/config');
-      const csrfToken = await getCsrfToken(request);
-      await request.post(`${API_URL}/api/v1/signin`, {
-        headers: {'X-CSRF-Token': csrfToken},
-        data: {
-          username: TEST_USERS.user.username,
-          password: TEST_USERS.user.password,
-        },
-      });
+      // Login and delete orgs
+      await api.signIn(TEST_USERS.user.username, TEST_USERS.user.password);
 
       for (const name of orgNames) {
-        await deleteOrganization(request, name).catch(() => {
+        await api.deleteOrganization(name).catch(() => {
           /* ignore cleanup errors */
         });
       }
@@ -213,7 +196,8 @@ test.describe('Organization List', {tag: ['@organization']}, () => {
     async ({authenticatedPage, authenticatedRequest}) => {
       // Create a test org
       const orgName = uniqueName('avatartest');
-      await createOrganization(authenticatedRequest, orgName);
+      const api = new ApiClient(authenticatedRequest);
+      await api.createOrganization(orgName);
 
       try {
         await authenticatedPage.goto('/organization');
@@ -227,7 +211,7 @@ test.describe('Organization List', {tag: ['@organization']}, () => {
           .filter({hasText: orgName});
         await expect(orgRow.locator('.pf-v5-c-avatar')).toBeVisible();
       } finally {
-        await deleteOrganization(authenticatedRequest, orgName).catch(() => {
+        await api.deleteOrganization(orgName).catch(() => {
           /* ignore cleanup errors */
         });
       }
@@ -376,7 +360,8 @@ test.describe('Organization List', {tag: ['@organization']}, () => {
 
         // Create an org owned by testuser (not readonly user)
         const testOrg = uniqueName('otherorg');
-        await createOrganization(authenticatedRequest, testOrg);
+        const api = new ApiClient(authenticatedRequest);
+        await api.createOrganization(testOrg);
 
         try {
           await readonlyPage.goto('/organization');
@@ -400,7 +385,7 @@ test.describe('Organization List', {tag: ['@organization']}, () => {
             otherRow.locator('input[type="checkbox"]'),
           ).not.toBeVisible();
         } finally {
-          await deleteOrganization(authenticatedRequest, testOrg).catch(() => {
+          await api.deleteOrganization(testOrg).catch(() => {
             /* ignore cleanup errors */
           });
         }
@@ -529,7 +514,8 @@ test.describe('Organization List', {tag: ['@organization']}, () => {
 
         // Create a test org
         const orgName = uniqueName('quotatest');
-        await createOrganization(authenticatedRequest, orgName);
+        const api = new ApiClient(authenticatedRequest);
+        await api.createOrganization(orgName);
 
         try {
           await authenticatedPage.goto('/organization');
@@ -544,7 +530,7 @@ test.describe('Organization List', {tag: ['@organization']}, () => {
             authenticatedPage.locator('td[data-label="Size"]').first(),
           ).toBeVisible();
         } finally {
-          await deleteOrganization(authenticatedRequest, orgName).catch(() => {
+          await api.deleteOrganization(orgName).catch(() => {
             /* ignore cleanup errors */
           });
         }

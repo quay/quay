@@ -12,7 +12,7 @@
 
 import {chromium, FullConfig} from '@playwright/test';
 import {API_URL} from './utils/config';
-import {createUser} from './utils/api';
+import {ApiClient} from './utils/api';
 
 export const TEST_USERS = {
   // Admin/superuser for admin operations
@@ -58,7 +58,8 @@ async function globalSetup(config: FullConfig) {
 
       try {
         console.log(`[Global Setup] Creating ${role} user: ${user.username}`);
-        await createUser(userRequest, user.username, user.password, user.email);
+        const api = new ApiClient(userRequest);
+        await api.createUser(user.username, user.password, user.email);
         console.log(`[Global Setup] Created ${role} user: ${user.username}`);
       } catch (error) {
         const errorMessage = String(error);

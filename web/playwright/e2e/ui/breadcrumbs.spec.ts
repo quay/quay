@@ -5,14 +5,7 @@
  */
 
 import {test, expect, uniqueName} from '../../fixtures';
-import {
-  createOrganization,
-  deleteOrganization,
-  createRepository,
-  deleteRepository,
-  createTeam,
-  deleteTeam,
-} from '../../utils/api';
+import {ApiClient} from '../../utils/api';
 import {TEST_USERS} from '../../global-setup';
 import {pushImage, isContainerRuntimeAvailable} from '../../utils/container';
 
@@ -42,12 +35,14 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
 
     test.beforeEach(async ({authenticatedRequest}) => {
       orgName = uniqueName('breadcrumborg');
-      await createOrganization(authenticatedRequest, orgName);
+      const api = new ApiClient(authenticatedRequest);
+      await api.createOrganization(orgName);
     });
 
     test.afterEach(async ({authenticatedRequest}) => {
       try {
-        await deleteOrganization(authenticatedRequest, orgName);
+        const api = new ApiClient(authenticatedRequest);
+        await api.deleteOrganization(orgName);
       } catch {
         // Already deleted or never created
       }
@@ -90,18 +85,20 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
     test.beforeEach(async ({authenticatedRequest}) => {
       orgName = uniqueName('breadcrumborg');
       repoName = uniqueName('breadcrumbrepo');
-      await createOrganization(authenticatedRequest, orgName);
-      await createRepository(authenticatedRequest, orgName, repoName);
+      const api = new ApiClient(authenticatedRequest);
+      await api.createOrganization(orgName);
+      await api.createRepository(orgName, repoName);
     });
 
     test.afterEach(async ({authenticatedRequest}) => {
+      const api = new ApiClient(authenticatedRequest);
       try {
-        await deleteRepository(authenticatedRequest, orgName, repoName);
+        await api.deleteRepository(orgName, repoName);
       } catch {
         // Already deleted
       }
       try {
-        await deleteOrganization(authenticatedRequest, orgName);
+        await api.deleteOrganization(orgName);
       } catch {
         // Already deleted
       }
@@ -159,8 +156,9 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
 
       orgName = uniqueName('breadcrumborg');
       repoName = uniqueName('breadcrumbrepo');
-      await createOrganization(authenticatedRequest, orgName);
-      await createRepository(authenticatedRequest, orgName, repoName);
+      const api = new ApiClient(authenticatedRequest);
+      await api.createOrganization(orgName);
+      await api.createRepository(orgName, repoName);
 
       // Push an image with a tag
       await pushImage(
@@ -173,13 +171,14 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
     });
 
     test.afterEach(async ({authenticatedRequest}) => {
+      const api = new ApiClient(authenticatedRequest);
       try {
-        await deleteRepository(authenticatedRequest, orgName, repoName);
+        await api.deleteRepository(orgName, repoName);
       } catch {
         // Already deleted
       }
       try {
-        await deleteOrganization(authenticatedRequest, orgName);
+        await api.deleteOrganization(orgName);
       } catch {
         // Already deleted
       }
@@ -236,18 +235,20 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
     test.beforeEach(async ({authenticatedRequest}) => {
       orgName = uniqueName('breadcrumborg');
       teamName = uniqueName('breadcrumbteam');
-      await createOrganization(authenticatedRequest, orgName);
-      await createTeam(authenticatedRequest, orgName, teamName);
+      const api = new ApiClient(authenticatedRequest);
+      await api.createOrganization(orgName);
+      await api.createTeam(orgName, teamName);
     });
 
     test.afterEach(async ({authenticatedRequest}) => {
+      const api = new ApiClient(authenticatedRequest);
       try {
-        await deleteTeam(authenticatedRequest, orgName, teamName);
+        await api.deleteTeam(orgName, teamName);
       } catch {
         // Already deleted
       }
       try {
-        await deleteOrganization(authenticatedRequest, orgName);
+        await api.deleteOrganization(orgName);
       } catch {
         // Already deleted
       }
@@ -295,24 +296,26 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
 
     test.beforeEach(async ({authenticatedRequest}) => {
       sameName = uniqueName('samename');
-      await createOrganization(authenticatedRequest, sameName);
-      await createRepository(authenticatedRequest, sameName, sameName);
-      await createTeam(authenticatedRequest, sameName, sameName);
+      const api = new ApiClient(authenticatedRequest);
+      await api.createOrganization(sameName);
+      await api.createRepository(sameName, sameName);
+      await api.createTeam(sameName, sameName);
     });
 
     test.afterEach(async ({authenticatedRequest}) => {
+      const api = new ApiClient(authenticatedRequest);
       try {
-        await deleteTeam(authenticatedRequest, sameName, sameName);
+        await api.deleteTeam(sameName, sameName);
       } catch {
         // Already deleted
       }
       try {
-        await deleteRepository(authenticatedRequest, sameName, sameName);
+        await api.deleteRepository(sameName, sameName);
       } catch {
         // Already deleted
       }
       try {
-        await deleteOrganization(authenticatedRequest, sameName);
+        await api.deleteOrganization(sameName);
       } catch {
         // Already deleted
       }
