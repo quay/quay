@@ -8,6 +8,7 @@ from mock import patch
 
 from data import model
 from data.database import OrganizationAISettings
+from data.model import InvalidOrganizationException
 from data.model.organization import get_organization
 from data.model.organization_ai import (
     create_or_update_org_ai_settings,
@@ -408,7 +409,7 @@ class TestInvalidOrganization:
 
     def test_create_settings_invalid_org_raises(self, initialized_db):
         """Test creating settings for non-existent org raises exception."""
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidOrganizationException):
             create_or_update_org_ai_settings(
                 "nonexistent-org",
                 description_generator_enabled=True,
@@ -416,7 +417,7 @@ class TestInvalidOrganization:
 
     def test_set_credentials_invalid_org_raises(self, initialized_db):
         """Test setting credentials for non-existent org raises exception."""
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidOrganizationException):
             set_org_ai_credentials(
                 "nonexistent-org",
                 provider="anthropic",

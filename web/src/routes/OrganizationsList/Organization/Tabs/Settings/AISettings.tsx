@@ -207,13 +207,26 @@ export function AISettings({organizationName}: AISettingsProps) {
       return;
     }
 
-    updateSettingsMutation.mutate({
-      orgName: organizationName,
-      settings: {
-        description_generator_enabled: checked,
-      },
-    });
+    // Store previous state for rollback on error
+    const previousEnabled = descriptionEnabled;
+
+    // Optimistic update
     setDescriptionEnabled(checked);
+
+    updateSettingsMutation.mutate(
+      {
+        orgName: organizationName,
+        settings: {
+          description_generator_enabled: checked,
+        },
+      },
+      {
+        onError: () => {
+          // Rollback on error
+          setDescriptionEnabled(previousEnabled);
+        },
+      },
+    );
   };
 
   if (isLoading) {

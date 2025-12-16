@@ -1,7 +1,7 @@
 """
 Tests for AI feature audit logging.
 """
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -161,9 +161,9 @@ class TestAuditLogSecurityConstraints:
             log_action(kind, org, metadata)
 
         # Verify no call includes api_key
-        for call in mock_log_action.call_args_list:
-            if len(call[0]) > 2:
-                metadata = call[0][2]
+        for mock_call in mock_log_action.call_args_list:
+            if len(mock_call[0]) > 2:
+                metadata = mock_call[0][2]
                 assert "api_key" not in metadata
                 assert "API_KEY" not in metadata
                 assert "apiKey" not in metadata
@@ -244,9 +244,10 @@ class TestCacheStatusLogging:
             },
         )
 
-        call_args = mock_log_action.call_args
-        # Verify cache_hit can be logged (optional field)
-        # The current implementation doesn't log this, but it could be added
+        # Verify log_action was called with cache_hit field
+        mock_log_action.assert_called_once()
+        logged_metadata = mock_log_action.call_args[0][2]
+        assert logged_metadata.get("cache_hit") is True
 
     @patch("endpoints.api.ai.log_action")
     def test_log_includes_provider_used(self, mock_log_action):

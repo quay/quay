@@ -120,7 +120,7 @@ class OrganizationAISettings(ApiResource):
         org = _get_organization(orgname)
         _require_org_admin(org)
 
-        settings = get_org_ai_settings(org)
+        settings = get_org_ai_settings(org.username)
 
         return {
             "description_generator_enabled": (
@@ -152,7 +152,7 @@ class OrganizationAISettings(ApiResource):
 
         # Update settings
         settings = create_or_update_org_ai_settings(
-            org,
+            org.username,
             description_generator_enabled=req.get("description_generator_enabled"),
             provider=provider,
             model=req.get("model"),
@@ -233,7 +233,7 @@ class OrganizationAICredentials(ApiResource):
 
         # Save credentials
         settings = set_org_ai_credentials(
-            org,
+            org.username,
             provider=provider,
             api_key=api_key,
             model=model,
@@ -262,8 +262,8 @@ class OrganizationAICredentials(ApiResource):
         _require_org_admin(org)
 
         # Clear credentials
-        settings = set_org_ai_credentials(
-            org,
+        set_org_ai_credentials(
+            org.username,
             provider=None,
             api_key=None,
             model=None,
@@ -337,9 +337,7 @@ class OrganizationAICredentialsVerify(ApiResource):
 
             if success:
                 # Mark credentials as verified in database
-                settings = get_org_ai_settings(org)
-                if settings:
-                    mark_credentials_verified(settings, True)
+                mark_credentials_verified(org.username, True)
 
                 return {"valid": True}
             else:
@@ -407,21 +405,21 @@ class RepositoryAIDescription(RepositoryParamResource):
         # In managed mode, AI is always available for paid subscribers
         # In BYOK mode, check if the org has enabled and configured AI
         if not is_managed_mode():
-            if not is_description_generator_enabled(owner):
+            if not is_description_generator_enabled(owner.username):
                 raise InvalidRequest(
                     "AI description generation is not enabled for this organization. "
                     "Please configure AI settings first."
                 )
 
             # Get AI settings - required for BYOK mode
-            settings = get_org_ai_settings(owner)
+            settings = get_org_ai_settings(owner.username)
             if settings is None or not settings.api_key_encrypted:
                 raise InvalidRequest(
                     "AI credentials are not configured. Please set up API credentials first."
                 )
         else:
             # Managed mode - settings may exist for feature toggle but credentials not required
-            settings = get_org_ai_settings(owner)
+            settings = get_org_ai_settings(owner.username)
 
         # Get the tag and manifest
         tag = model.tag.get_tag(repo, tag_name)

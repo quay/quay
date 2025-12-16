@@ -173,8 +173,6 @@ def build_prompt(image_analysis: "ImageAnalysis") -> str:
 
     # Ensure prompt doesn't exceed max length
     if len(prompt) > MAX_PROMPT_LENGTH:
-        # Truncate from the layer commands section
-        overflow = len(prompt) - MAX_PROMPT_LENGTH
         prompt = prompt[:MAX_PROMPT_LENGTH]
 
     return prompt
