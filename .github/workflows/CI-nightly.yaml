@@ -102,9 +102,9 @@ jobs:
         source .venv/bin/activate;
         pip install -r requirements-ci.txt;
 
-        tox -e py312-unit;
-        tox -e py312-e2e;
-        tox -e py312-registry;'
+        TEST=true PYTHONPATH=. pytest -m "not e2e" --timeout=3600 -x --ignore=buildman/;
+        TEST=true PYTHONPATH=. pytest -m "e2e" --timeout=3600 -x --ignore=buildman/;
+        TEST=true PYTHONPATH=. pytest -m "not e2e" --timeout=3600 -x test/registry/registry_tests.py;'
       env:
         GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
         GH_REF: ${{ github.ref }}
@@ -153,9 +153,9 @@ jobs:
 
           pip install -r requirements-ci.txt
 
-          tox -e py312-unit
-          tox -e py312-e2e
-          tox -e py312-registry
+          TEST=true PYTHONPATH=. pytest -m "not e2e" --timeout=3600 -x --ignore=buildman/
+          TEST=true PYTHONPATH=. pytest -m "e2e" --timeout=3600 -x --ignore=buildman/
+          TEST=true PYTHONPATH=. pytest -m "not e2e" --timeout=3600 -x test/registry/registry_tests.py
 
     - name: Cleanup ZVSI
       if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
