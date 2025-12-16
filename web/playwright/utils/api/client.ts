@@ -149,6 +149,45 @@ export class ApiClient {
     }
   }
 
+  // Repository notification methods
+
+  async createRepositoryNotification(
+    namespace: string,
+    repo: string,
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/notification/`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          event,
+          method,
+          config,
+          eventConfig,
+          title,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create repository notification: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
   // Team methods
 
   async createTeam(
@@ -285,5 +324,33 @@ export class ApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
+  }
+
+  // User notification methods
+
+  async getUserNotifications(): Promise<{
+    notifications: Array<{
+      id: string;
+      kind: string;
+      metadata: {name: string; repository: string};
+      dismissed: boolean;
+    }>;
+    additional: boolean;
+  }> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/user/notifications`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get user notifications: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
   }
 }
