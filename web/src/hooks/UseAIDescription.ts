@@ -32,7 +32,10 @@ export function useAISettings(orgName: string, enabled = true) {
       staleTime: 30000, // 30 seconds
       retry: (failureCount, error) => {
         // Don't retry on 404 (feature not enabled) or 403 (not authorized)
-        if (error?.response?.status === 404 || error?.response?.status === 403) {
+        if (
+          error?.response?.status === 404 ||
+          error?.response?.status === 403
+        ) {
           return false;
         }
         return failureCount < 3;

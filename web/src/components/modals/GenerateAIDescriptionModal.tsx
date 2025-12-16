@@ -192,17 +192,19 @@ export default function GenerateAIDescriptionModal({
         </Alert>
       )}
 
-      {!isLoading && !needsConfiguration && !aiSettings?.description_generator_enabled && (
-        <Alert
-          variant="info"
-          isInline
-          title="AI disabled"
-          style={{marginBottom: '1rem'}}
-        >
-          AI description generation is disabled for this organization. Enable it
-          in organization settings.
-        </Alert>
-      )}
+      {!isLoading &&
+        !needsConfiguration &&
+        !aiSettings?.description_generator_enabled && (
+          <Alert
+            variant="info"
+            isInline
+            title="AI disabled"
+            style={{marginBottom: '1rem'}}
+          >
+            AI description generation is disabled for this organization. Enable
+            it in organization settings.
+          </Alert>
+        )}
 
       {error && (
         <Alert

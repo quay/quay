@@ -213,7 +213,9 @@ export async function getCachedDescription(
   manifestDigest: string,
 ): Promise<CachedDescriptionResponse> {
   const response = await axios.get(
-    `/api/v1/repository/${namespace}/${repository}/ai/description/cached/${encodeURIComponent(manifestDigest)}`,
+    `/api/v1/repository/${namespace}/${repository}/ai/description/cached/${encodeURIComponent(
+      manifestDigest,
+    )}`,
   );
   return response.data;
 }
