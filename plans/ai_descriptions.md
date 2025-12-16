@@ -136,6 +136,146 @@ util/ai/
 
 ---
 
+## Testing with Local LLM (Ollama)
+
+### Prerequisites
+
+1. **Install Ollama** (https://ollama.ai):
+   ```bash
+   # macOS
+   brew install ollama
+
+   # Linux
+   curl -fsSL https://ollama.ai/install.sh | sh
+   ```
+
+2. **Pull a model** (llama3.2 recommended for testing):
+   ```bash
+   ollama pull llama3.2
+   # Or for a smaller/faster model:
+   ollama pull llama3.2:1b
+   ```
+
+3. **Start Ollama server**:
+   ```bash
+   ollama serve
+   # Runs on http://localhost:11434 by default
+   ```
+
+### Configure Quay for Local LLM
+
+Add to your `conf/stack/config.yaml`:
+
+```yaml
+# Enable AI feature
+FEATURE_AI: true
+
+# Use BYOK mode (default) - users configure their own credentials
+AI_PROVIDER_MODE: byok
+```
+
+### Start Quay
+
+```bash
+make local-dev-up
+# Or with Clair:
+make local-dev-up-with-clair
+```
+
+### Configure AI in the UI
+
+1. **Login** to Quay UI at http://localhost:8080
+2. **Navigate** to Organization Settings → AI Settings tab
+3. **Configure credentials**:
+   - Provider: `Custom (OpenAI-compatible)`
+   - Model: `llama3.2` (or whichever model you pulled)
+   - API Key: `ollama` (any non-empty string works for Ollama)
+   - Custom Endpoint: `http://host.docker.internal:11434/v1`
+     - Use `host.docker.internal` if Quay runs in Docker/Podman
+     - Use `http://localhost:11434/v1` if running Quay natively
+4. **Click "Save Credentials"**
+5. **Click "Verify Credentials"** - should show success
+6. **Enable** the "AI Description Generator" toggle
+
+### Test AI Description Generation
+
+1. **Push a test image** to Quay:
+   ```bash
+   podman pull docker.io/library/nginx:latest
+   podman tag nginx:latest localhost:8080/myorg/nginx:latest
+   podman push localhost:8080/myorg/nginx:latest --tls-verify=false
+   ```
+
+2. **Navigate** to the repository → Information tab
+3. **Click** "Generate with AI" button
+4. **Select** a tag (e.g., `latest`)
+5. **Click** "Generate Description"
+6. **Review** the generated description and click "Apply" to use it
+
+### Testing Managed Mode (quay.io simulation)
+
+To test managed mode locally, configure:
+
+```yaml
+FEATURE_AI: true
+AI_PROVIDER_MODE: managed
+
+AI_MANAGED_PROVIDER:
+  PROVIDER: custom
+  API_KEY: ollama
+  MODEL: llama3.2
+  ENDPOINT: http://host.docker.internal:11434/v1
+  MAX_TOKENS: 500
+  TEMPERATURE: 0.7
+```
+
+In managed mode, users don't configure credentials - Quay uses the internal provider.
+Note: Subscription checks are bypassed in local dev since there's no Stripe integration.
+
+### API Testing (curl)
+
+```bash
+# 1. Get CSRF token and login
+CSRF_TOKEN=$(curl -s -c cookies.txt -b cookies.txt "http://localhost:8080/csrf_token" | jq -r '.csrf_token')
+
+curl -s -c cookies.txt -b cookies.txt -X POST \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -d '{"username": "admin", "password": "password"}' \
+  "http://localhost:8080/api/v1/signin"
+
+# 2. Get AI settings for an org
+curl -s -b cookies.txt "http://localhost:8080/api/v1/organization/myorg/ai" | jq
+
+# 3. Generate description for a repository
+curl -s -b cookies.txt -X POST \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -d '{"tag": "latest"}' \
+  "http://localhost:8080/api/v1/repository/myorg/nginx/ai/description" | jq
+```
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "Cannot connect to endpoint" | Check Ollama is running: `curl http://localhost:11434/api/tags` |
+| "Model not found" | Pull the model: `ollama pull llama3.2` |
+| Connection refused from container | Use `host.docker.internal` instead of `localhost` |
+| FEATURE_AI not recognized | Restart Quay after config change |
+| AI Settings tab not visible | Ensure `FEATURE_AI: true` in config and restart |
+
+### Alternative Local LLM Options
+
+| Provider | Endpoint | Notes |
+|----------|----------|-------|
+| Ollama | `http://localhost:11434/v1` | OpenAI-compatible API |
+| LM Studio | `http://localhost:1234/v1` | GUI-based, OpenAI-compatible |
+| LocalAI | `http://localhost:8080/v1` | Requires different port if Quay uses 8080 |
+| llama.cpp server | `http://localhost:8000/v1` | Lightweight, OpenAI-compatible |
+
+---
+
 ## Overview
 
 Add a "Generate Description" button to the Repository Information page (New UI only) that analyzes container image layer history and uses an LLM to auto-generate meaningful Markdown descriptions.
