@@ -4,7 +4,7 @@ Prompt templates for AI-powered features.
 This module provides prompt construction for LLM-based description generation.
 """
 import re
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 if TYPE_CHECKING:
     from util.ai.providers import ImageAnalysis
@@ -144,7 +144,7 @@ def format_labels(labels: Dict[str, str]) -> str:
     return ", ".join(formatted)
 
 
-def format_command_list(cmd: List[str]) -> str:
+def format_command_list(cmd: Optional[List[str]]) -> str:
     """Format entrypoint or cmd for the prompt."""
     if not cmd:
         return "None"

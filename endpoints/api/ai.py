@@ -12,10 +12,9 @@ from flask import request
 import features
 from features import FeatureNameValue
 
-# Create a placeholder for FEATURE_AI if not configured
-# This allows the module to load even when the feature is not configured
-if not hasattr(features, "AI"):
-    features.AI = FeatureNameValue("AI", False)
+# Get the AI feature flag, defaulting to False if not configured
+# Using getattr allows this module to load even when the feature is not in config
+_AI_FEATURE = getattr(features, "AI", FeatureNameValue("AI", False))
 
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
@@ -85,7 +84,7 @@ def _require_org_admin(org):
 
 @resource("/v1/organization/<orgname>/ai")
 @path_param("orgname", "The name of the organization")
-@show_if(features.AI)
+@show_if(_AI_FEATURE)
 class OrganizationAISettings(ApiResource):
     """
     Resource for managing organization AI settings.
@@ -175,7 +174,7 @@ class OrganizationAISettings(ApiResource):
 
 @resource("/v1/organization/<orgname>/ai/credentials")
 @path_param("orgname", "The name of the organization")
-@show_if(features.AI)
+@show_if(_AI_FEATURE)
 class OrganizationAICredentials(ApiResource):
     """
     Resource for managing organization AI API credentials.
@@ -277,7 +276,7 @@ class OrganizationAICredentials(ApiResource):
 
 @resource("/v1/organization/<orgname>/ai/credentials/verify")
 @path_param("orgname", "The name of the organization")
-@show_if(features.AI)
+@show_if(_AI_FEATURE)
 class OrganizationAICredentialsVerify(ApiResource):
     """
     Resource for verifying AI API credentials.
@@ -352,7 +351,7 @@ class OrganizationAICredentialsVerify(ApiResource):
 
 @resource("/v1/repository/<apirepopath:repository>/ai/description")
 @path_param("repository", "The full path of the repository (e.g., namespace/name)")
-@show_if(features.AI)
+@show_if(_AI_FEATURE)
 class RepositoryAIDescription(RepositoryParamResource):
     """
     Resource for generating AI descriptions for repository images.
@@ -525,7 +524,7 @@ class RepositoryAIDescription(RepositoryParamResource):
 
 @resource("/v1/repository/<apirepopath:repository>/ai/description/tags")
 @path_param("repository", "The full path of the repository")
-@show_if(features.AI)
+@show_if(_AI_FEATURE)
 class RepositoryAIDescriptionTags(RepositoryParamResource):
     """
     Resource for listing available tags for AI description generation.
@@ -558,7 +557,7 @@ class RepositoryAIDescriptionTags(RepositoryParamResource):
 @resource("/v1/repository/<apirepopath:repository>/ai/description/cached/<manifest_digest>")
 @path_param("repository", "The full path of the repository")
 @path_param("manifest_digest", "The manifest digest")
-@show_if(features.AI)
+@show_if(_AI_FEATURE)
 class RepositoryAIDescriptionCached(RepositoryParamResource):
     """
     Resource for retrieving cached AI descriptions.

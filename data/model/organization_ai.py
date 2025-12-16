@@ -83,7 +83,7 @@ def create_or_update_org_ai_settings(
             return settings
 
 
-def _api_key_matches(encrypted_value, plaintext: str) -> bool:
+def _api_key_matches(encrypted_value, plaintext: Optional[str]) -> bool:
     """
     Check if an encrypted API key matches a plaintext value.
 

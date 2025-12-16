@@ -31,7 +31,7 @@ class ProviderConfigError(Exception):
 class ProviderAPIError(Exception):
     """Raised when the provider API returns an error."""
 
-    def __init__(self, message: str, status_code: int = None):
+    def __init__(self, message: str, status_code: Optional[int] = None):
         super().__init__(message)
         self.status_code = status_code
 
@@ -597,7 +597,7 @@ class ProviderFactory:
         provider: str,
         api_key: str,
         model: str,
-        endpoint: str = None,
+        endpoint: Optional[str] = None,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         temperature: float = DEFAULT_TEMPERATURE,
     ) -> LLMProviderInterface:
