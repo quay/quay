@@ -4,6 +4,19 @@
 
 Quay uses Peewee ORM with PostgreSQL (primary) or MySQL. Redis handles caching and queuing.
 
+### Peewee + Alembic
+
+Quay uses two database libraries for different purposes:
+
+| Library | Purpose | Location |
+|---------|---------|----------|
+| **Peewee** | Runtime ORM for all queries, inserts, updates | `data/database.py`, `data/model/` |
+| **Alembic** | Database schema migrations | `data/migrations/` |
+
+Alembic is designed for SQLAlchemy, not Peewee. The bridge at `data/model/sqlalchemybridge.py` converts Peewee model definitions into SQLAlchemy metadata that Alembic can understand. This allows Quay to use Peewee's simpler ORM for runtime operations while leveraging Alembic's mature migration tooling.
+
+For authoritative guidance, see `data/database.py` for model definitions and `data/migrations/` for migration implementation.
+
 ## Core Models
 
 ### User & Organization
