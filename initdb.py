@@ -1453,6 +1453,7 @@ WHITELISTED_EMPTY_MODELS = [
     "TagNotificationSuccess",
     "TagPullStatistics",
     "ManifestPullStatistics",
+    "OrganizationAISettings",
 ]
 
 
