@@ -79,9 +79,9 @@ jobs:
     - name: Setup Quay Dev Environment
       uses: ./.github/actions/setup-quay-dev
 
-    - name: Unit Tests
+    - name: tox
       run: |
-        uv run pytest -m 'not e2e' --timeout=3600 -x --ignore=buildman/ --cov=./ --cov-report=xml
+        uv run tox -e py312-unit -- --cov=./ --cov-report=xml
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
@@ -114,9 +114,9 @@ jobs:
     - name: Setup Quay Dev Environment
       uses: ./.github/actions/setup-quay-dev
 
-    - name: E2E Tests
+    - name: tox
       run: |
-        PYTHONPATH=. uv run pytest -m 'e2e' --timeout=3600 -x --ignore=buildman/
+        uv run tox -e py312-e2e
 
   registry:
     name: E2E Registry Tests
@@ -129,9 +129,9 @@ jobs:
     - name: Setup Quay Dev Environment
       uses: ./.github/actions/setup-quay-dev
 
-    - name: Registry Tests
+    - name: tox
       run: |
-        PYTHONPATH=. uv run pytest -m 'not e2e' --timeout=3600 -x test/registry/registry_tests.py
+        uv run tox -e py312-registry
 
   psql:
     name: E2E Postgres Test
@@ -150,16 +150,6 @@ jobs:
         sudo systemctl start docker
         docker version
 
-    - name: Run PostgreSQL Tests
+    - name: tox
       run: |
-        docker run --name postgres-ci \
-          -e POSTGRES_PASSWORD=quay -e POSTGRES_USER=quay -e POSTGRES_DB=quay_ci \
-          -p 5432:5432 -d postgres:12.1
-        docker exec postgres-ci bash -c 'while ! pg_isready; do sleep 2; done'
-        docker exec postgres-ci psql -U quay -d quay_ci -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
-        PYTHONPATH=. TEST_DATABASE_URI=postgresql://quay:quay@localhost:5432/quay_ci \
-          uv run alembic upgrade head
-        TEST=true SKIP_DB_SCHEMA=true \
-          TEST_DATABASE_URI=postgresql://quay:quay@localhost:5432/quay_ci \
-          uv run pytest -m 'not e2e' -n auto --timeout=3600 -x --ignore=buildman/ -vv
-        docker rm -f postgres-ci
+        uv run tox -e py312-psql

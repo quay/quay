@@ -558,6 +558,20 @@ wheels = [
 ]
 
 [[package]]
+name = "docker"
+version = "7.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pywin32", marker = "sys_platform == 'win32'" },
+    { name = "requests" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/91/9b/4a2ea29aeba62471211598dac5d96825bb49348fa07e906ea930394a83ce/docker-7.1.0.tar.gz", hash = "sha256:ad8c70e6e3f8926cb8a92619b832b4ea5299e2831c14284663184e200546fa6c", size = 117834, upload-time = "2024-05-23T11:13:57.216Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e3/26/57c6fb270950d476074c087527a558ccb6f4436657314bfb6cdf484114c4/docker-7.1.0-py3-none-any.whl", hash = "sha256:c96b93b7f0a746f9e77d325bcfb87422a3d8bd4f03136ae8a85b37f1898d5fc0", size = 147774, upload-time = "2024-05-23T11:13:55.01Z" },
+]
+
+[[package]]
 name = "dumb-init"
 version = "1.2.5.post1"
 source = { registry = "https://pypi.org/simple" }
@@ -2049,6 +2063,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/38/a7/55aeac6bc35446517ea2f50e9f285a35181cdf0a85e320bff997e2497721/PyPDF3-1.0.6.tar.gz", hash = "sha256:c946f3273419e37258e35e72273f49904ab15723d87a761c1115ef99799f8c5f", size = 294825, upload-time = "2022-02-03T16:27:31.402Z" }
 
 [[package]]
+name = "pyproject-api"
+version = "1.6.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1b/c6/b39e42e1d721dcb35be6a7d35157795398193ec0b78a034c110bd0ab3e48/pyproject_api-1.6.1.tar.gz", hash = "sha256:1817dc018adc0d1ff9ca1ed8c60e1623d5aaca40814b953af14a9cf9a5cae538", size = 22507, upload-time = "2023-08-29T18:05:50.47Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cf/b4/39eea50542e50e93876ebc09c4349a9c9eee9f6b9c9d30f88c7dc5433db8/pyproject_api-1.6.1-py3-none-any.whl", hash = "sha256:4c0116d60476b0786c88692cf4e325a9814965e2469c5998b830bba16b183675", size = 12904, upload-time = "2023-08-29T18:05:48.804Z" },
+]
+
+[[package]]
 name = "pyrsistent"
 version = "0.18.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2288,6 +2314,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/82/c3/534ddba230bd4fbbd3b7a3d35f3341d014cca213f369a9940925e7e5f691/pytz-2019.3.tar.gz", hash = "sha256:b02c06db6cf09c12dd25137e563b31700d3b80fcc4ad23abb7a315f2789819be", size = 312286, upload-time = "2019-10-07T03:18:27.399Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e7/f9/f0b53f88060247251bf481fa6ea62cd0d25bf1b11a87888e53ce5b7c8ad2/pytz-2019.3-py2.py3-none-any.whl", hash = "sha256:1c557d7d0e871de1f5ccd5833f60fb2550652da6be2693c1e02300743d21500d", size = 509158, upload-time = "2019-10-07T03:18:16.9Z" },
+]
+
+[[package]]
+name = "pywin32"
+version = "311"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e7/ab/01ea1943d4eba0f850c3c61e78e8dd59757ff815ff3ccd0a84de5f541f42/pywin32-311-cp312-cp312-win32.whl", hash = "sha256:750ec6e621af2b948540032557b10a2d43b0cee2ae9758c54154d711cc852d31", size = 8706543, upload-time = "2025-07-14T20:13:20.765Z" },
+    { url = "https://files.pythonhosted.org/packages/d1/a8/a0e8d07d4d051ec7502cd58b291ec98dcc0c3fff027caad0470b72cfcc2f/pywin32-311-cp312-cp312-win_amd64.whl", hash = "sha256:b8c095edad5c211ff31c05223658e71bf7116daa0ecf3ad85f3201ea3190d067", size = 9495040, upload-time = "2025-07-14T20:13:22.543Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/3a/2ae996277b4b50f17d61f0603efd8253cb2d79cc7ae159468007b586396d/pywin32-311-cp312-cp312-win_arm64.whl", hash = "sha256:e286f46a9a39c4a18b319c28f59b61de793654af2f395c102b4f819e584b5852", size = 8710102, upload-time = "2025-07-14T20:13:24.682Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/be/3fd5de0979fcb3994bfee0d65ed8ca9506a8a1260651b86174f6a86f52b3/pywin32-311-cp313-cp313-win32.whl", hash = "sha256:f95ba5a847cba10dd8c4d8fefa9f2a6cf283b8b88ed6178fa8a6c1ab16054d0d", size = 8705700, upload-time = "2025-07-14T20:13:26.471Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/28/e0a1909523c6890208295a29e05c2adb2126364e289826c0a8bc7297bd5c/pywin32-311-cp313-cp313-win_amd64.whl", hash = "sha256:718a38f7e5b058e76aee1c56ddd06908116d35147e133427e59a3983f703a20d", size = 9494700, upload-time = "2025-07-14T20:13:28.243Z" },
+    { url = "https://files.pythonhosted.org/packages/04/bf/90339ac0f55726dce7d794e6d79a18a91265bdf3aa70b6b9ca52f35e022a/pywin32-311-cp313-cp313-win_arm64.whl", hash = "sha256:7b4075d959648406202d92a2310cb990fea19b535c7f4a78d3f5e10b926eeb8a", size = 8709318, upload-time = "2025-07-14T20:13:30.348Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/31/097f2e132c4f16d99a22bfb777e0fd88bd8e1c634304e102f313af69ace5/pywin32-311-cp314-cp314-win32.whl", hash = "sha256:b7a2c10b93f8986666d0c803ee19b5990885872a7de910fc460f9b0c2fbf92ee", size = 8840714, upload-time = "2025-07-14T20:13:32.449Z" },
+    { url = "https://files.pythonhosted.org/packages/90/4b/07c77d8ba0e01349358082713400435347df8426208171ce297da32c313d/pywin32-311-cp314-cp314-win_amd64.whl", hash = "sha256:3aca44c046bd2ed8c90de9cb8427f581c479e594e99b5c0bb19b29c10fd6cb87", size = 9656800, upload-time = "2025-07-14T20:13:34.312Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/d2/21af5c535501a7233e734b8af901574572da66fcc254cb35d0609c9080dd/pywin32-311-cp314-cp314-win_arm64.whl", hash = "sha256:a508e2d9025764a8270f93111a970e1d0fbfc33f4153b388bb649b7eec4f9b42", size = 8932540, upload-time = "2025-07-14T20:13:36.379Z" },
 ]
 
 [[package]]
@@ -2576,6 +2618,8 @@ dev = [
     { name = "python-coveralls" },
     { name = "sqlalchemy-stubs" },
     { name = "termcolor" },
+    { name = "tox" },
+    { name = "tox-docker" },
     { name = "tqdm" },
     { name = "types-beautifulsoup4" },
     { name = "types-boto" },
@@ -2850,6 +2894,8 @@ dev = [
     { name = "python-coveralls" },
     { name = "sqlalchemy-stubs", specifier = "==0.3" },
     { name = "termcolor", specifier = "==2.3.0" },
+    { name = "tox" },
+    { name = "tox-docker" },
     { name = "tqdm" },
     { name = "types-beautifulsoup4", specifier = "==4.12.0.6" },
     { name = "types-boto", specifier = "==2.49.18.9" },
@@ -3291,6 +3337,39 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/69/19/8e955d90985ecbd3b9adb2a759753a6840da2dff3c569d412b2c9217678b/toposort-1.10.tar.gz", hash = "sha256:bfbb479c53d0a696ea7402601f4e693c97b0367837c8898bc6471adfca37a6bd", size = 11132, upload-time = "2023-02-27T13:59:51.834Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f6/17/57b444fd314d5e1593350b9a31d000e7411ba8e17ce12dc7ad54ca76b810/toposort-1.10-py3-none-any.whl", hash = "sha256:cbdbc0d0bee4d2695ab2ceec97fe0679e9c10eab4b2a87a9372b929e70563a87", size = 8500, upload-time = "2023-02-25T20:07:06.538Z" },
+]
+
+[[package]]
+name = "tox"
+version = "4.15.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cachetools" },
+    { name = "chardet" },
+    { name = "colorama" },
+    { name = "filelock" },
+    { name = "packaging" },
+    { name = "platformdirs" },
+    { name = "pluggy" },
+    { name = "pyproject-api" },
+    { name = "virtualenv" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b2/20/755c6633aff141720933cc7ae2e04fcff0465e6221164edf3b8a6b96b752/tox-4.15.1.tar.gz", hash = "sha256:53a092527d65e873e39213ebd4bd027a64623320b6b0326136384213f95b7076", size = 179723, upload-time = "2024-06-06T00:54:46.152Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2f/67/285c5357df0c98a3475e9f5676b012f570d4326e71ed382428bbdbb03e92/tox-4.15.1-py3-none-any.whl", hash = "sha256:f00a5dc4222b358e69694e47e3da0227ac41253509bca9f45aa8f012053e8d9d", size = 156007, upload-time = "2024-06-06T00:54:42.671Z" },
+]
+
+[[package]]
+name = "tox-docker"
+version = "5.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "docker" },
+    { name = "tox" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/de/3c/dcec11dadd48a8f2ba276cd499a4db46a0c70388e0505dae46730a185a35/tox_docker-5.0.0.tar.gz", hash = "sha256:3cbfe70713910b9dbb9f74e20a5c42f19da42d375bac7d6a3ccc11aed0738d7a", size = 19779, upload-time = "2024-05-25T12:50:22.173Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/98/82381ccd7adf9b1d4b488199b916f0b77068e449b7186f8aeeb9f5264f1e/tox_docker-5.0.0-py3-none-any.whl", hash = "sha256:7dd7293ea286dff422eab6c23a70652147b275eb436c02e97a90ac59ba41f8a8", size = 29561, upload-time = "2024-05-25T12:50:20.636Z" },
 ]
 
 [[package]]

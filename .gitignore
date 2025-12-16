@@ -18,6 +18,7 @@ GIT_HEAD
 .coverage.*
 coverage
 htmlcov
+.tox
 .cache
 .npm-debug.log
 Dockerfile-e
