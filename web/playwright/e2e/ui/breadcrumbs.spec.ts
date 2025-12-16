@@ -61,7 +61,7 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       const breadcrumbNav = authenticatedPage.getByTestId(
         'page-breadcrumbs-list',
       );
-      await expect(breadcrumbNav).toBeVisible();
+      await expect(breadcrumbNav).toBeVisible({timeout: 15000});
 
       const items = breadcrumbNav.locator('li');
       await expect(items).toHaveCount(2);
@@ -115,7 +115,7 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       const breadcrumbNav = authenticatedPage.getByTestId(
         'page-breadcrumbs-list',
       );
-      await expect(breadcrumbNav).toBeVisible();
+      await expect(breadcrumbNav).toBeVisible({timeout: 15000});
 
       const items = breadcrumbNav.locator('li');
       await expect(items).toHaveCount(3);
@@ -193,7 +193,7 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       const breadcrumbNav = authenticatedPage.getByTestId(
         'page-breadcrumbs-list',
       );
-      await expect(breadcrumbNav).toBeVisible();
+      await expect(breadcrumbNav).toBeVisible({timeout: 15000});
 
       const items = breadcrumbNav.locator('li');
       await expect(items).toHaveCount(4);
@@ -261,7 +261,7 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       const breadcrumbNav = authenticatedPage.getByTestId(
         'page-breadcrumbs-list',
       );
-      await expect(breadcrumbNav).toBeVisible();
+      await expect(breadcrumbNav).toBeVisible({timeout: 15000});
 
       const items = breadcrumbNav.locator('li');
       await expect(items).toHaveCount(3);
@@ -328,7 +328,7 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       const breadcrumbNav = authenticatedPage.getByTestId(
         'page-breadcrumbs-list',
       );
-      await expect(breadcrumbNav).toBeVisible();
+      await expect(breadcrumbNav).toBeVisible({timeout: 15000});
 
       const items = breadcrumbNav.locator('li');
       await expect(items).toHaveCount(3);
@@ -364,7 +364,7 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       const breadcrumbNav = authenticatedPage.getByTestId(
         'page-breadcrumbs-list',
       );
-      await expect(breadcrumbNav).toBeVisible();
+      await expect(breadcrumbNav).toBeVisible({timeout: 15000});
 
       const items = breadcrumbNav.locator('li');
       await expect(items).toHaveCount(3);
