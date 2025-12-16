@@ -1,5 +1,5 @@
 import {test, expect, uniqueName} from '../../fixtures';
-import {createRepository, deleteRepository} from '../../utils/api';
+import {ApiClient} from '../../utils/api';
 import {API_URL} from '../../utils/config';
 import {TEST_USERS} from '../../global-setup';
 
@@ -13,13 +13,15 @@ test.describe('Repository Delete', {tag: ['@repository']}, () => {
     repoName = uniqueName('delrepo');
 
     // Create test repository in user's namespace via API
-    await createRepository(authenticatedRequest, namespace, repoName);
+    const api = new ApiClient(authenticatedRequest);
+    await api.createRepository(namespace, repoName);
   });
 
   test.afterEach(async ({authenticatedRequest}) => {
     // Cleanup: Delete repository if it still exists
     try {
-      await deleteRepository(authenticatedRequest, namespace, repoName);
+      const api = new ApiClient(authenticatedRequest);
+      await api.deleteRepository(namespace, repoName);
     } catch {
       // Repository already deleted by test or never created
     }
