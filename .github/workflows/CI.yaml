@@ -25,7 +25,7 @@ jobs:
 
     - name: Check Formatting (Black)
       run: |
-        uv run black --line-length=100 --target-version=py39 --check --diff .
+        uv run black --line-length=100 --target-version=py312 --check --diff .
 
     - name: Check Formatting (Flake8)
       run: |
