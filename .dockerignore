@@ -17,7 +17,6 @@ ROADMAP.md
 run-local.sh
 .DS_Store
 **/*.pyc
-.tox
 htmlcov
 .coverage
 coverage

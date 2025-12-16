@@ -202,8 +202,6 @@ dev = [
     "pytest-sugar",
     "sqlalchemy-stubs==0.3",
     "termcolor==2.3.0",
-    "tox",
-    "tox-docker",
     "tqdm",
     "types-boto==2.49.18.9",
     "types-cachetools==4.2.10",
