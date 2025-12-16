@@ -116,7 +116,7 @@ jobs:
 
     - name: E2E Tests
       run: |
-        uv run pytest -m 'e2e' --timeout=3600 -x --ignore=buildman/
+        PYTHONPATH=. uv run pytest -m 'e2e' --timeout=3600 -x --ignore=buildman/
 
   registry:
     name: E2E Registry Tests
@@ -131,7 +131,7 @@ jobs:
 
     - name: Registry Tests
       run: |
-        uv run pytest -m 'not e2e' --timeout=3600 -x test/registry/registry_tests.py
+        PYTHONPATH=. uv run pytest -m 'not e2e' --timeout=3600 -x test/registry/registry_tests.py
 
   psql:
     name: E2E Postgres Test
@@ -157,7 +157,7 @@ jobs:
           -p 5432:5432 -d postgres:12.1
         docker exec postgres-ci bash -c 'while ! pg_isready; do sleep 2; done'
         docker exec postgres-ci psql -U quay -d quay_ci -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
-        TEST_DATABASE_URI=postgresql://quay:quay@localhost:5432/quay_ci \
+        PYTHONPATH=. TEST_DATABASE_URI=postgresql://quay:quay@localhost:5432/quay_ci \
           uv run alembic upgrade head
         TEST=true SKIP_DB_SCHEMA=true \
           TEST_DATABASE_URI=postgresql://quay:quay@localhost:5432/quay_ci \
