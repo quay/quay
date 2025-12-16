@@ -22,7 +22,6 @@ jobs:
       uses: ./.github/actions/setup-quay-dev
       with:
         sync-group: only-dev
-        install-system-deps: 'false'
 
     - name: Check Formatting (Black)
       run: |
