@@ -128,5 +128,4 @@ local-dev/stack/quay-marketplace-api.crt
 local-dev/stack/quay-marketplace-api.key
 
 # UV
-uv.lock
 *.egg-info
