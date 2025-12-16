@@ -90,7 +90,11 @@ jobs:
         /bin/bash -ec '
         export DEBIAN_FRONTEND=noninteractive;
         apt-get -y update;
-        apt-get -y install libgpgme-dev libldap2-dev libsasl2-dev swig python3-dev python3-pip python3-venv findutils git;
+        apt-get -y install software-properties-common;
+        add-apt-repository -y ppa:deadsnakes/ppa;
+        apt-get -y update;
+        apt-get -y install python3.12 python3.12-dev python3.12-venv;
+        apt-get -y install libgpgme-dev libldap2-dev libsasl2-dev swig findutils git;
         apt-get -y install libffi-dev libssl-dev libjpeg-dev libpq-dev libxml2-dev libxslt-dev;
         apt-get -y install rustc cargo pkg-config;
 
@@ -98,7 +102,7 @@ jobs:
         cd repo && git checkout ${GH_REF};
         cp /build/requirements-ci.txt .;
 
-        python3 -m venv .venv;
+        python3.12 -m venv .venv;
         source .venv/bin/activate;
         pip install -r requirements-ci.txt;
 
@@ -133,8 +137,13 @@ jobs:
         envs: GH_REPOSITORY,GH_REF,GRPC_PYTHON_BUILD_SYSTEM_OPENSSL
         command_timeout: 100m
         script: |
+          export DEBIAN_FRONTEND=noninteractive
           apt-get update -y
-          apt-get -y install build-essential libgpgme-dev libldap2-dev libsasl2-dev swig python3-dev python3-pip python3-venv findutils git
+          apt-get -y install software-properties-common
+          add-apt-repository -y ppa:deadsnakes/ppa
+          apt-get -y update
+          apt-get -y install python3.12 python3.12-dev python3.12-venv
+          apt-get -y install build-essential libgpgme-dev libldap2-dev libsasl2-dev swig findutils git
           apt-get -y install libffi-dev libssl-dev libjpeg-dev libpq-dev libxml2-dev libxslt-dev
           apt-get -y install rustc cargo pkg-config
 
@@ -143,7 +152,7 @@ jobs:
           cd build && git checkout ${GH_REF}
           cp /tmp/requirements-ci.txt .
 
-          python3 -m venv .venv
+          python3.12 -m venv .venv
           source .venv/bin/activate
 
           if [[ 's390x' == $(uname -m) ]]; then
