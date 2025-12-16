@@ -277,7 +277,14 @@ export default function Information(props: InformationProps) {
                     </TextContent>
                   )}
                   {repoDetails?.can_write && !inReadOnlyMode && (
-                    <div style={{marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center'}}>
+                    <div
+                      style={{
+                        marginTop: '1rem',
+                        display: 'flex',
+                        gap: '1rem',
+                        alignItems: 'center',
+                      }}
+                    >
                       <Text
                         component={TextVariants.a}
                         onClick={() => setIsEditing(true)}
