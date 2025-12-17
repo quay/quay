@@ -554,16 +554,16 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `breadcrumbs.cy.ts` | `ui/breadcrumbs.spec.ts` | |
 | ⬚ | `builds.cy.ts` | | |
 | ⬚ | `create-account.cy.ts` | | |
-| ⬚ | `default-permissions.cy.ts` | | |
+| ✅ | `default-permissions.cy.ts` | `organization/default-permissions.spec.ts` | |
 | ⬚ | `external-login.cy.ts` | | @config:OIDC |
-| ⬚ | `external-scripts.cy.ts` | | |
+| ✅ | `external-scripts.cy.ts` | `ui/external-scripts.spec.ts` | @feature:BILLING |
 | ⬚ | `footer.cy.ts` | | |
 | ⬚ | `fresh-login-oidc.cy.ts` | | @config:OIDC |
 | ⬚ | `logout.cy.ts` | | |
 | ⬚ | `manage-team-members.cy.ts` | | |
 | ⬚ | `marketplace.cy.ts` | | @config:BILLING |
 | ⬚ | `mirroring.cy.ts` | | @feature:REPO_MIRROR |
-| ⬚ | `notification-drawer.cy.ts` | | |
+| ✅ | `notification-drawer.cy.ts` | `ui/notification-drawer.spec.ts` | @container |
 | ⬚ | `oauth-callback.cy.ts` | | |
 | ⬚ | `org-list.cy.ts` | | |
 | ⬚ | `org-oauth.cy.ts` | | |
@@ -606,5 +606,5 @@ Track migration progress from Cypress to Playwright.
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 4 (7%)
-- **Remaining**: 50
+- **Migrated**: 7 (13%)
+- **Remaining**: 47

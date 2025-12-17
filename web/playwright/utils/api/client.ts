@@ -9,10 +9,44 @@ import {API_URL} from '../config';
 
 export type RepositoryVisibility = 'public' | 'private';
 export type TeamRole = 'member' | 'creator' | 'admin';
+export type PrototypeRole = 'read' | 'write' | 'admin';
 
 export interface CreateUserResponse {
   username: string;
   awaiting_verification?: boolean;
+}
+
+export interface CreateRobotResponse {
+  name: string;
+  token: string;
+}
+
+export interface PrototypeDelegate {
+  name: string;
+  kind: 'user' | 'team';
+}
+
+export interface PrototypeActivatingUser {
+  name: string;
+}
+
+export interface Prototype {
+  id: string;
+  role: string;
+  activating_user: {
+    name: string;
+    is_robot: boolean;
+    kind: string;
+    is_org_member: boolean;
+  } | null;
+  delegate: {
+    name: string;
+    kind: string;
+  };
+}
+
+export interface GetPrototypesResponse {
+  prototypes: Prototype[];
 }
 
 export class ApiClient {
@@ -149,6 +183,45 @@ export class ApiClient {
     }
   }
 
+  // Repository notification methods
+
+  async createRepositoryNotification(
+    namespace: string,
+    repo: string,
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/notification/`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          event,
+          method,
+          config,
+          eventConfig,
+          title,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create repository notification: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
   // Team methods
 
   async createTeam(
@@ -196,6 +269,135 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to delete team ${teamName} from ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Robot account methods
+
+  async createRobot(
+    orgName: string,
+    robotShortname: string,
+    description = '',
+  ): Promise<CreateRobotResponse> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/organization/${orgName}/robots/${robotShortname}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          description,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create robot ${robotShortname} in ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteRobot(orgName: string, robotShortname: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/robots/${robotShortname}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete robot ${robotShortname} from ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Prototype (default permission) methods
+
+  async getPrototypes(orgName: string): Promise<GetPrototypesResponse> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/organization/${orgName}/prototypes`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get prototypes for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async createPrototype(
+    orgName: string,
+    role: PrototypeRole,
+    delegate: PrototypeDelegate,
+    activatingUser?: PrototypeActivatingUser,
+  ): Promise<{id: string}> {
+    const token = await this.fetchToken();
+
+    const data: Record<string, unknown> = {
+      role,
+      delegate,
+    };
+
+    if (activatingUser) {
+      data.activating_user = activatingUser;
+    }
+
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/prototypes`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create prototype in ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deletePrototype(orgName: string, prototypeId: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/prototypes/${prototypeId}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete prototype ${prototypeId} from ${orgName}: ${response.status()} - ${body}`,
       );
     }
   }
@@ -285,5 +487,33 @@ export class ApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
+  }
+
+  // User notification methods
+
+  async getUserNotifications(): Promise<{
+    notifications: Array<{
+      id: string;
+      kind: string;
+      metadata: {name: string; repository: string};
+      dismissed: boolean;
+    }>;
+    additional: boolean;
+  }> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/user/notifications`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get user notifications: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
   }
 }
