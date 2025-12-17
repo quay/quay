@@ -199,10 +199,6 @@ WORKDIR $QUAYDIR
 # Ordered from least changing to most changing.
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
 COPY --from=build-python /opt/app-root/.venv /opt/app-root/.venv
-# Install setuptools and create sitecustomize.py to import it early, which sets up distutils
-# compatibility for Python 3.12+ (distutils was removed but redis 3.5.3 needs it)
-RUN /opt/app-root/bin/python3 -m pip install --no-cache-dir setuptools \
-    && echo 'import setuptools' > /opt/app-root/lib64/python3.12/site-packages/sitecustomize.py
 RUN set -ex \
     && ln -sf /usr/bin/python3.12 /opt/app-root/.venv/bin/python \
     && ln -sf /usr/bin/python3.12 /opt/app-root/.venv/bin/python3
