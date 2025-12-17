@@ -28,7 +28,7 @@ runs:
 
     - name: Clean existing venv
       shell: bash
-      run: sudo rm -rf .venv || true
+      run: rm -rf .venv || true
 
     - name: Sync dependencies
       shell: bash
