@@ -29,7 +29,241 @@ import {
 } from '@playwright/test';
 import {TEST_USERS} from './global-setup';
 import {API_URL} from './utils/config';
-import {ApiClient} from './utils/api';
+import {
+  ApiClient,
+  PrototypeRole,
+  RepositoryVisibility,
+  TeamRole,
+} from './utils/api';
+
+// ============================================================================
+// TestApi: Auto-cleanup API client for tests
+// ============================================================================
+
+/**
+ * Cleanup action to run after test completes
+ */
+type CleanupAction = () => Promise<void>;
+
+/**
+ * Created organization info
+ */
+export interface CreatedOrg {
+  name: string;
+  email: string;
+}
+
+/**
+ * Created repository info
+ */
+export interface CreatedRepo {
+  namespace: string;
+  name: string;
+  fullName: string;
+}
+
+/**
+ * Created team info
+ */
+export interface CreatedTeam {
+  orgName: string;
+  name: string;
+}
+
+/**
+ * Created robot info
+ */
+export interface CreatedRobot {
+  orgName: string;
+  shortname: string;
+  fullName: string;
+}
+
+/**
+ * API client with auto-cleanup tracking.
+ *
+ * All resources created via this client are automatically
+ * cleaned up when the test completes (even on failure).
+ *
+ * @example
+ * ```typescript
+ * test('my test', async ({api}) => {
+ *   const org = await api.organization();
+ *   const repo = await api.repository(org.name);
+ *   // After test: auto-deletes repo, then org (reverse order)
+ * });
+ * ```
+ */
+export class TestApi {
+  private client: ApiClient;
+  private cleanupStack: CleanupAction[] = [];
+
+  constructor(client: ApiClient) {
+    this.client = client;
+  }
+
+  /**
+   * Access the underlying ApiClient for operations
+   * that don't need auto-cleanup tracking
+   */
+  get raw(): ApiClient {
+    return this.client;
+  }
+
+  /**
+   * Create a unique organization.
+   * Automatically deleted after test.
+   */
+  async organization(namePrefix = 'org'): Promise<CreatedOrg> {
+    const name = uniqueName(namePrefix);
+    const email = `${name}@example.com`;
+
+    await this.client.createOrganization(name, email);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOrganization(name);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {name, email};
+  }
+
+  /**
+   * Create a unique repository.
+   * Automatically deleted after test.
+   *
+   * @param namespace - Organization or username (defaults to test user)
+   */
+  async repository(
+    namespace?: string,
+    namePrefix = 'repo',
+    visibility: RepositoryVisibility = 'private',
+  ): Promise<CreatedRepo> {
+    const ns = namespace ?? TEST_USERS.user.username;
+    const name = uniqueName(namePrefix);
+
+    await this.client.createRepository(ns, name, visibility);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepository(ns, name);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      namespace: ns,
+      name,
+      fullName: `${ns}/${name}`,
+    };
+  }
+
+  /**
+   * Create a team in an organization.
+   * Automatically deleted after test.
+   */
+  async team(
+    orgName: string,
+    namePrefix = 'team',
+    role: TeamRole = 'member',
+  ): Promise<CreatedTeam> {
+    const name = uniqueName(namePrefix);
+
+    await this.client.createTeam(orgName, name, role);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteTeam(orgName, name);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {orgName, name};
+  }
+
+  /**
+   * Create a robot account in an organization.
+   * Automatically deleted after test.
+   */
+  async robot(
+    orgName: string,
+    namePrefix = 'bot',
+    description = '',
+  ): Promise<CreatedRobot> {
+    // Robot names can't have dashes, only underscores
+    const shortname = uniqueName(namePrefix).replace(/-/g, '_');
+
+    await this.client.createRobot(orgName, shortname, description);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRobot(orgName, shortname);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      orgName,
+      shortname,
+      fullName: `${orgName}+${shortname}`,
+    };
+  }
+
+  /**
+   * Set repository to MIRROR state.
+   * (No cleanup needed - deleting repo handles it)
+   */
+  async setMirrorState(namespace: string, repoName: string): Promise<void> {
+    await this.client.changeRepositoryState(namespace, repoName, 'MIRROR');
+  }
+
+  /**
+   * Create a default permission (prototype).
+   * Automatically deleted after test.
+   */
+  async prototype(
+    orgName: string,
+    role: PrototypeRole,
+    delegate: {name: string; kind: 'user' | 'team'},
+    activatingUser?: {name: string},
+  ): Promise<{id: string}> {
+    const result = await this.client.createPrototype(
+      orgName,
+      role,
+      delegate,
+      activatingUser,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deletePrototype(orgName, result.id);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return result;
+  }
+
+  /**
+   * Run all cleanup actions in reverse order.
+   * Called automatically by fixture teardown.
+   */
+  async cleanup(): Promise<void> {
+    // Run in reverse order (LIFO)
+    let action = this.cleanupStack.pop();
+    while (action) {
+      await action();
+      action = this.cleanupStack.pop();
+    }
+  }
+}
 
 // ============================================================================
 // Quay Config Types
@@ -121,6 +355,12 @@ type TestFixtures = {
 
   // Quay configuration (features, config settings)
   quayConfig: QuayConfig;
+
+  // API client for regular user with auto-cleanup
+  api: TestApi;
+
+  // API client for superuser with auto-cleanup
+  superuserApi: TestApi;
 };
 
 /**
@@ -260,6 +500,20 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   quayConfig: async ({cachedQuayConfig}, use) => {
     await use(cachedQuayConfig);
+  },
+
+  api: async ({authenticatedRequest}, use) => {
+    const client = new ApiClient(authenticatedRequest);
+    const testApi = new TestApi(client);
+    await use(testApi);
+    await testApi.cleanup();
+  },
+
+  superuserApi: async ({superuserRequest}, use) => {
+    const client = new ApiClient(superuserRequest);
+    const testApi = new TestApi(client);
+    await use(testApi);
+    await testApi.cleanup();
   },
 });
 
