@@ -10,7 +10,7 @@ jobs:
     name: conventional commit check
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: check conventional commit
         id: check-for-cc
