@@ -11,7 +11,7 @@
  * Requires REPO_MIRROR feature to be enabled in Quay config.
  */
 
-import {test, expect, skipUnlessFeature} from '../../fixtures';
+import {test, expect} from '../../fixtures';
 
 test.describe(
   'Repository Mirroring',
@@ -20,10 +20,7 @@ test.describe(
     test('shows state warning for non-mirror repositories and form for mirror repositories', async ({
       authenticatedPage,
       api,
-      quayConfig,
     }) => {
-      test.skip(...skipUnlessFeature(quayConfig, 'REPO_MIRROR'));
-
       // Create repository in user's namespace (starts in NORMAL state)
       const repo = await api.repository(undefined, 'mirrortab');
 
@@ -54,10 +51,7 @@ test.describe(
     test('creates new mirror configuration with form validation', async ({
       authenticatedPage,
       api,
-      quayConfig,
     }) => {
-      test.skip(...skipUnlessFeature(quayConfig, 'REPO_MIRROR'));
-
       // Setup: create organization, repository, robot account
       const org = await api.organization('mirrororg');
       const repo = await api.repository(org.name, 'mirrorrepo');
@@ -137,10 +131,7 @@ test.describe(
     test('loads and manages existing mirror configuration', async ({
       authenticatedPage,
       api,
-      quayConfig,
     }) => {
-      test.skip(...skipUnlessFeature(quayConfig, 'REPO_MIRROR'));
-
       // Setup: create org, repo, robot, set MIRROR state, create mirror config via API
       const org = await api.organization('existmirror');
       const repo = await api.repository(org.name, 'existrepo');
@@ -210,13 +201,7 @@ test.describe(
       expect(updatedConfig?.external_reference).toBe('quay.io/library/busybox');
     });
 
-    test('triggers sync-now operation', async ({
-      authenticatedPage,
-      api,
-      quayConfig,
-    }) => {
-      test.skip(...skipUnlessFeature(quayConfig, 'REPO_MIRROR'));
-
+    test('triggers sync-now operation', async ({authenticatedPage, api}) => {
       // Setup: create mirror configuration via API
       const org = await api.organization('syncorg');
       const repo = await api.repository(org.name, 'syncrepo');
@@ -260,10 +245,7 @@ test.describe(
     test('displays error on mirror configuration failure', async ({
       authenticatedPage,
       api,
-      quayConfig,
     }) => {
-      test.skip(...skipUnlessFeature(quayConfig, 'REPO_MIRROR'));
-
       // Setup: create org, repo, robot, set MIRROR state
       const org = await api.organization('errororg');
       const repo = await api.repository(org.name, 'errorrepo');
@@ -317,10 +299,7 @@ test.describe(
     test('shows repository state setting in Settings tab', async ({
       authenticatedPage,
       api,
-      quayConfig,
     }) => {
-      test.skip(...skipUnlessFeature(quayConfig, 'REPO_MIRROR'));
-
       const repo = await api.repository(undefined, 'statetest');
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=settings`);
       await expect(

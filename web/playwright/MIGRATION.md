@@ -492,33 +492,43 @@ test('repo settings lifecycle: create, update, delete', { tag: '@PROJQUAY-1234' 
 
 ## Config-Dependent Tests
 
-For tests that require specific Quay features, use the `skipUnlessFeature` helper for runtime skip with clear messaging.
+For tests that require specific Quay features, use `@feature:X` tags on the describe block. The test framework automatically skips tests when required features are not enabled.
 
-### Using skipUnlessFeature
+### Using @feature: Tags (Recommended)
+
+```typescript
+import { test, expect } from '../../fixtures';
+
+// Single feature requirement - just add the tag
+test.describe('Billing Settings', { tag: ['@organization', '@feature:BILLING'] }, () => {
+  test('shows billing information', async ({ authenticatedPage }) => {
+    // Auto-skipped if BILLING is not enabled - no manual skip needed!
+    await authenticatedPage.goto('/organization/myorg?tab=Settings');
+    await authenticatedPage.getByTestId('Billing information').click();
+  });
+});
+
+// Multiple feature requirements - add multiple @feature: tags
+test.describe('Quota Editing', { tag: ['@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA'] }, () => {
+  test('edits quota', async ({ authenticatedPage }) => {
+    // Auto-skipped if EITHER feature is disabled
+  });
+});
+```
+
+### Manual Skip (Edge Cases Only)
+
+For rare cases where you need conditional logic beyond feature flags, use `skipUnlessFeature` directly:
 
 ```typescript
 import { test, expect, skipUnlessFeature } from '../../fixtures';
 
-// Single feature requirement
-test('billing settings', { tag: '@config:BILLING' }, async ({
-  authenticatedPage,
-  quayConfig,
-}) => {
-  test.skip(...skipUnlessFeature(quayConfig, 'BILLING'));
+test('shows registry autoprune policy', async ({ authenticatedPage, quayConfig }) => {
+  // Additional condition beyond the @feature: tag
+  const hasRegistryPolicy = quayConfig?.config?.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY != null;
+  test.skip(!hasRegistryPolicy, 'DEFAULT_NAMESPACE_AUTOPRUNE_POLICY not configured');
 
-  // Test only runs if BILLING is enabled
-  await authenticatedPage.goto('/organization/myorg?tab=Settings');
-  await authenticatedPage.getByTestId('Billing information').click();
-});
-
-// Multiple feature requirements
-test('quota editing', { tag: '@config:QUOTA' }, async ({
-  page,
-  quayConfig,
-}) => {
-  test.skip(...skipUnlessFeature(quayConfig, 'QUOTA_MANAGEMENT', 'EDIT_QUOTA'));
-
-  // Test only runs if both features are enabled
+  // Test code...
 });
 ```
 
@@ -537,10 +547,11 @@ The `QuayFeature` type includes:
 
 ### Why This Pattern?
 
-1. **Self-documenting**: Tests skip with clear reason in output
-2. **Type-safe**: Feature names are typed for autocomplete
-3. **No manual filtering**: Works automatically in any environment
-4. **Tag compatible**: Keep `@config:*` tags for documentation/filtering
+1. **Single source of truth**: Feature specified only in the tag, no duplication
+2. **Self-documenting**: Tests skip with clear reason in output
+3. **Type-safe**: Feature names are typed for autocomplete
+4. **CLI filtering**: Filter tests with `npx playwright test --grep @feature:BILLING`
+5. **No boilerplate**: No manual `test.skip()` calls needed in each test
 
 ### Test Output
 
