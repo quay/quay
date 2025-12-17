@@ -84,7 +84,7 @@ export default function Settings(props: SettingsProps) {
       name: 'AI Settings',
       id: 'aisettings',
       content: () => <AISettings organizationName={props.organizationName} />,
-      visible: quayConfig?.features?.AI && !isUserOrganization,
+      visible: quayConfig?.features?.AI,
     },
   ];
 

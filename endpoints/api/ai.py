@@ -67,16 +67,24 @@ logger = logging.getLogger(__name__)
 VALID_PROVIDERS = ["anthropic", "openai", "google", "deepseek", "custom"]
 
 
-def _get_organization(orgname):
-    """Get organization by name, raising NotFound if not found."""
-    org = model.organization.get_organization(orgname)
+def _get_organization_or_user(orgname):
+    """Get organization or user by name, raising NotFound if not found."""
+    org = model.user.get_user_or_org(orgname)
     if org is None:
         raise NotFound()
     return org
 
 
 def _require_org_admin(org):
-    """Require admin permission on the organization."""
+    """Require admin permission on the organization or user namespace."""
+    # For user namespaces, check if current user matches
+    if not org.organization:
+        user = get_authenticated_user()
+        if user is None or user.username != org.username:
+            raise Unauthorized()
+        return
+
+    # For organizations, use the standard permission check
     permission = AdministerOrganizationPermission(org.username)
     if not permission.can():
         raise Unauthorized()
@@ -116,7 +124,7 @@ class OrganizationAISettings(ApiResource):
         """
         Get AI settings for the organization.
         """
-        org = _get_organization(orgname)
+        org = _get_organization_or_user(orgname)
         _require_org_admin(org)
 
         settings = get_org_ai_settings(org.username)
@@ -139,7 +147,7 @@ class OrganizationAISettings(ApiResource):
         """
         Update AI settings for the organization.
         """
-        org = _get_organization(orgname)
+        org = _get_organization_or_user(orgname)
         _require_org_admin(org)
 
         req = request.get_json()
@@ -212,7 +220,7 @@ class OrganizationAICredentials(ApiResource):
         """
         Set AI API credentials for the organization.
         """
-        org = _get_organization(orgname)
+        org = _get_organization_or_user(orgname)
         _require_org_admin(org)
 
         req = request.get_json()
@@ -257,7 +265,7 @@ class OrganizationAICredentials(ApiResource):
         """
         Delete AI API credentials for the organization.
         """
-        org = _get_organization(orgname)
+        org = _get_organization_or_user(orgname)
         _require_org_admin(org)
 
         # Clear credentials
@@ -314,7 +322,7 @@ class OrganizationAICredentialsVerify(ApiResource):
         """
         Verify AI API credentials.
         """
-        org = _get_organization(orgname)
+        org = _get_organization_or_user(orgname)
         _require_org_admin(org)
 
         req = request.get_json()
@@ -420,12 +428,18 @@ class RepositoryAIDescription(RepositoryParamResource):
             # Managed mode - settings may exist for feature toggle but credentials not required
             settings = get_org_ai_settings(owner.username)
 
-        # Get the tag and manifest
-        tag = model.tag.get_tag(repo, tag_name)
+        # Get the tag and manifest using registry_model
+        from data.registry_model import registry_model
+
+        repo_ref = registry_model.lookup_repository(namespace_name, repo_name)
+        if repo_ref is None:
+            raise NotFound()
+
+        tag = registry_model.get_repo_tag(repo_ref, tag_name)
         if tag is None:
             raise NotFound(f"Tag '{tag_name}' not found")
 
-        manifest = model.tag.get_manifest_for_tag(tag)
+        manifest = registry_model.get_manifest_for_tag(tag)
         if manifest is None:
             raise NotFound("No manifest found for tag")
 
@@ -447,12 +461,16 @@ class RepositoryAIDescription(RepositoryParamResource):
         # Extract image analysis
         try:
             # Get content retriever for blob access
-            from data.registry_model import registry_model
+            from app import storage
+            from data.model.oci.retriever import RepositoryContentRetriever
 
-            content_retriever = registry_model.get_content_retriever(repo)
+            content_retriever = RepositoryContentRetriever(repo_ref.id, storage)
+
+            # Get the parsed manifest for accessing the config
+            parsed_manifest = manifest.get_parsed_manifest()
 
             image_analysis = extract_image_analysis(
-                manifest=manifest,
+                manifest=parsed_manifest,
                 content_retriever=content_retriever,
                 tag=tag_name,
             )
@@ -492,7 +510,10 @@ class RepositoryAIDescription(RepositoryParamResource):
         except ProviderAuthError:
             raise InvalidRequest("AI credentials are invalid. Please update your API key.")
         except ProviderTimeoutError:
-            raise InvalidRequest("Request timed out. Please try again.")
+            raise InvalidRequest(
+                "The AI provider took too long to respond. This can happen with complex "
+                "images or when the model is loading for the first time. Please try again."
+            )
         except Exception as e:
             logger.exception("Error generating AI description")
             raise InvalidRequest(f"Failed to generate description: {str(e)}")
@@ -536,18 +557,22 @@ class RepositoryAIDescriptionTags(RepositoryParamResource):
         """
         List available tags for AI description generation.
         """
-        repo = model.repository.get_repository(namespace_name, repo_name)
-        if repo is None:
+        from data.registry_model import registry_model
+
+        repo_ref = registry_model.lookup_repository(namespace_name, repo_name)
+        if repo_ref is None:
             raise NotFound()
 
         # Get tags (limited to 50 for performance)
-        tags = model.tag.list_alive_tags(repo, limit=50)
+        tags, _ = registry_model.list_repository_tag_history(
+            repo_ref, page=1, size=50, active_tags_only=True
+        )
 
         return {
             "tags": [
                 {
                     "name": tag.name,
-                    "manifest_digest": tag.manifest.digest if tag.manifest else None,
+                    "manifest_digest": tag.manifest_digest,
                 }
                 for tag in tags
             ]

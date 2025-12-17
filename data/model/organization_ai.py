@@ -11,26 +11,26 @@ from data.database import OrganizationAISettings, User
 from data.model import InvalidOrganizationException, db_transaction
 
 
-def _get_organization(org_name: str) -> User:
+def _get_organization_or_user(org_name: str) -> User:
     """
-    Get an organization by name.
+    Get an organization or user by name.
 
     Raises InvalidOrganizationException if not found.
     """
     try:
-        return User.get(username=org_name, organization=True)
+        return User.get(username=org_name)
     except User.DoesNotExist:
         raise InvalidOrganizationException(f"Organization does not exist: {org_name}")
 
 
 def get_org_ai_settings(org_name: str) -> Optional[OrganizationAISettings]:
     """
-    Get AI settings for an organization.
+    Get AI settings for an organization or user.
 
-    Returns None if no settings exist or if the organization doesn't exist.
+    Returns None if no settings exist or if the organization/user doesn't exist.
     """
     try:
-        org = User.get(username=org_name, organization=True)
+        org = User.get(username=org_name)
     except User.DoesNotExist:
         return None
 
@@ -52,7 +52,7 @@ def create_or_update_org_ai_settings(
 
     Only updates fields that are explicitly provided (not None).
     """
-    org = _get_organization(org_name)
+    org = _get_organization_or_user(org_name)
 
     with db_transaction():
         try:
@@ -109,7 +109,7 @@ def set_org_ai_credentials(
 
     This resets the credentials_verified status since the credentials changed.
     """
-    org = _get_organization(org_name)
+    org = _get_organization_or_user(org_name)
 
     with db_transaction():
         try:

@@ -424,3 +424,73 @@ class TestInvalidOrganization:
                 api_key="test",
                 model="test",
             )
+
+
+class TestUserNamespaceSupport:
+    """Tests for AI settings on user namespaces (not just organizations)."""
+
+    def test_create_settings_for_user_namespace(self, initialized_db):
+        """Test creating AI settings for a user (not an organization)."""
+        # devtable is a user, not an organization
+        user = model.user.get_user("devtable")
+        assert user is not None
+        assert user.organization is False
+
+        settings = create_or_update_org_ai_settings(
+            user.username,
+            description_generator_enabled=True,
+            provider="anthropic",
+        )
+
+        assert settings is not None
+        assert settings.organization == user
+        assert settings.description_generator_enabled is True
+        assert settings.provider == "anthropic"
+
+    def test_get_settings_for_user_namespace(self, initialized_db):
+        """Test retrieving AI settings for a user namespace."""
+        user = model.user.get_user("devtable")
+
+        # Create settings first
+        create_or_update_org_ai_settings(
+            user.username,
+            description_generator_enabled=True,
+        )
+
+        # Retrieve settings
+        settings = get_org_ai_settings(user.username)
+
+        assert settings is not None
+        assert settings.description_generator_enabled is True
+
+    def test_set_credentials_for_user_namespace(self, initialized_db):
+        """Test setting AI credentials for a user namespace."""
+        user = model.user.get_user("devtable")
+
+        set_org_ai_credentials(
+            user.username,
+            provider="custom",
+            api_key="user-api-key",
+            model="llama3",
+            endpoint="http://localhost:11434/v1",
+        )
+
+        settings = get_org_ai_settings(user.username)
+
+        assert settings is not None
+        assert settings.provider == "custom"
+        assert settings.model == "llama3"
+        assert settings.endpoint == "http://localhost:11434/v1"
+        assert settings.api_key_encrypted is not None
+
+    def test_toggle_feature_for_user_namespace(self, initialized_db):
+        """Test toggling AI feature for a user namespace."""
+        user = model.user.get_user("devtable")
+
+        # Enable
+        toggle_description_generator(user.username, enabled=True)
+        assert is_description_generator_enabled(user.username) is True
+
+        # Disable
+        toggle_description_generator(user.username, enabled=False)
+        assert is_description_generator_enabled(user.username) is False

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Default configuration
 DEFAULT_MAX_TOKENS = 500
 DEFAULT_TEMPERATURE = 0.7
-DEFAULT_TIMEOUT = 30  # seconds
+DEFAULT_TIMEOUT = 90  # seconds - increased for local LLMs and complex images
 
 
 class ProviderConfigError(Exception):
@@ -148,7 +148,11 @@ class AnthropicProvider(LLMProviderInterface):
                 timeout=timeout,
             )
         except requests.Timeout:
-            raise ProviderTimeoutError("Request timed out")
+            raise ProviderTimeoutError(
+                "Request timed out. The AI provider took too long to respond. "
+                "This can happen with complex images or when the model is loading. "
+                "Please try again."
+            )
         except requests.ConnectionError as e:
             raise ProviderAPIError(f"Connection error: {str(e)}")
 
@@ -240,7 +244,11 @@ class OpenAIProvider(LLMProviderInterface):
                 timeout=timeout,
             )
         except requests.Timeout:
-            raise ProviderTimeoutError("Request timed out")
+            raise ProviderTimeoutError(
+                "Request timed out. The AI provider took too long to respond. "
+                "This can happen with complex images or when the model is loading. "
+                "Please try again."
+            )
         except requests.ConnectionError as e:
             raise ProviderAPIError(f"Connection error: {str(e)}")
 
@@ -336,7 +344,11 @@ class GoogleProvider(LLMProviderInterface):
                 timeout=timeout,
             )
         except requests.Timeout:
-            raise ProviderTimeoutError("Request timed out")
+            raise ProviderTimeoutError(
+                "Request timed out. The AI provider took too long to respond. "
+                "This can happen with complex images or when the model is loading. "
+                "Please try again."
+            )
         except requests.ConnectionError as e:
             raise ProviderAPIError(f"Connection error: {str(e)}")
 
@@ -430,7 +442,11 @@ class DeepSeekProvider(LLMProviderInterface):
                 timeout=timeout,
             )
         except requests.Timeout:
-            raise ProviderTimeoutError("Request timed out")
+            raise ProviderTimeoutError(
+                "Request timed out. The AI provider took too long to respond. "
+                "This can happen with complex images or when the model is loading. "
+                "Please try again."
+            )
         except requests.ConnectionError as e:
             raise ProviderAPIError(f"Connection error: {str(e)}")
 
@@ -528,7 +544,11 @@ class CustomProvider(LLMProviderInterface):
                 timeout=timeout,
             )
         except requests.Timeout:
-            raise ProviderTimeoutError("Request timed out")
+            raise ProviderTimeoutError(
+                "Request timed out. The AI provider took too long to respond. "
+                "This can happen with complex images or when the model is loading. "
+                "Please try again."
+            )
         except requests.ConnectionError as e:
             raise ProviderAPIError(f"Connection error: {str(e)}")
 
