@@ -82,7 +82,7 @@ USER 1001
 # In Future if wget is to be removed , then uncomment below lines for grpc installation on IBM Power i.e. ppc64le
 RUN ARCH=$(uname -m) ; echo $ARCH; \
     if [ "$ARCH" == "ppc64le" ] ; then \
-    GRPC_LATEST=$(grep '"grpcio==' pyproject.toml | sed 's/.*grpcio==\([^"]*\).*/\1/'); \
+    GRPC_LATEST=$(python3 -c "import tomllib; print(next(d.split('==')[1] for d in tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies'] if d.startswith('grpcio==')))"); \
     wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl -O /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
     uv pip install /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
     fi
