@@ -1,39 +1,18 @@
-import {test, expect, uniqueName} from '../../fixtures';
-import {ApiClient} from '../../utils/api';
+import {test, expect} from '../../fixtures';
 import {API_URL} from '../../utils/config';
-import {TEST_USERS} from '../../global-setup';
 
 test.describe('Repository Delete', {tag: ['@repository']}, () => {
-  // Test data - unique per test run to avoid collisions
-  const namespace = TEST_USERS.user.username;
-  let repoName: string;
-
-  test.beforeEach(async ({authenticatedRequest}) => {
-    // Generate unique name for this test
-    repoName = uniqueName('delrepo');
-
-    // Create test repository in user's namespace via API
-    const api = new ApiClient(authenticatedRequest);
-    await api.createRepository(namespace, repoName);
-  });
-
-  test.afterEach(async ({authenticatedRequest}) => {
-    // Cleanup: Delete repository if it still exists
-    try {
-      const api = new ApiClient(authenticatedRequest);
-      await api.deleteRepository(namespace, repoName);
-    } catch {
-      // Repository already deleted by test or never created
-    }
-  });
-
   test('deletes repository via settings page and verifies removal', async ({
     authenticatedPage,
     authenticatedRequest,
+    api,
   }) => {
+    // Create test repository - will be auto-cleaned if test fails
+    const repo = await api.repository(undefined, 'delrepo');
+
     // Navigate to repository settings
     await authenticatedPage.goto(
-      `/repository/${namespace}/${repoName}?tab=settings`,
+      `/repository/${repo.namespace}/${repo.name}?tab=settings`,
     );
 
     // Click on "Delete Repository" tab in settings sidebar
@@ -57,19 +36,19 @@ test.describe('Repository Delete', {tag: ['@repository']}, () => {
     ).toBeVisible();
     await expect(
       authenticatedPage.getByText(
-        `You are requesting to delete the repository ${namespace}/${repoName}`,
+        `You are requesting to delete the repository ${repo.fullName}`,
       ),
     ).toBeVisible();
     await expect(
       authenticatedPage.getByText(
-        `You must type ${namespace}/${repoName} below to confirm deletion:`,
+        `You must type ${repo.fullName} below to confirm deletion:`,
       ),
     ).toBeVisible();
 
     // Type confirmation text
     await authenticatedPage
       .getByTestId('delete-repository-confirm-input')
-      .fill(`${namespace}/${repoName}`);
+      .fill(repo.fullName);
 
     // Click Delete button in modal
     await authenticatedPage
@@ -84,11 +63,11 @@ test.describe('Repository Delete', {tag: ['@repository']}, () => {
     await authenticatedPage.waitForLoadState('networkidle');
 
     // The deleted repository should not be visible
-    await expect(authenticatedPage.getByText(repoName)).not.toBeVisible();
+    await expect(authenticatedPage.getByText(repo.name)).not.toBeVisible();
 
     // Verify via API that repository is actually deleted
     const verifyResponse = await authenticatedRequest.get(
-      `${API_URL}/api/v1/repository/${namespace}/${repoName}`,
+      `${API_URL}/api/v1/repository/${repo.fullName}`,
     );
     expect(verifyResponse.status()).toBe(404);
   });
@@ -96,10 +75,14 @@ test.describe('Repository Delete', {tag: ['@repository']}, () => {
   test('cancel button closes modal without deleting', async ({
     authenticatedPage,
     authenticatedRequest,
+    api,
   }) => {
+    // Create test repository - will be auto-cleaned after test
+    const repo = await api.repository(undefined, 'delrepo');
+
     // Navigate to repository settings
     await authenticatedPage.goto(
-      `/repository/${namespace}/${repoName}?tab=settings`,
+      `/repository/${repo.namespace}/${repo.name}?tab=settings`,
     );
 
     // Open delete section in sidebar
@@ -125,7 +108,7 @@ test.describe('Repository Delete', {tag: ['@repository']}, () => {
 
     // Verify repository still exists via API
     const verifyResponse = await authenticatedRequest.get(
-      `${API_URL}/api/v1/repository/${namespace}/${repoName}`,
+      `${API_URL}/api/v1/repository/${repo.fullName}`,
       {timeout: 5000},
     );
     expect(verifyResponse.ok()).toBe(true);
@@ -133,10 +116,14 @@ test.describe('Repository Delete', {tag: ['@repository']}, () => {
 
   test('delete button disabled without confirmation text', async ({
     authenticatedPage,
+    api,
   }) => {
+    // Create test repository - will be auto-cleaned after test
+    const repo = await api.repository(undefined, 'delrepo');
+
     // Navigate to repository settings
     await authenticatedPage.goto(
-      `/repository/${namespace}/${repoName}?tab=settings`,
+      `/repository/${repo.namespace}/${repo.name}?tab=settings`,
     );
 
     // Open delete section in sidebar and modal
@@ -167,7 +154,7 @@ test.describe('Repository Delete', {tag: ['@repository']}, () => {
     // Type correct confirmation
     await authenticatedPage
       .getByTestId('delete-repository-confirm-input')
-      .fill(`${namespace}/${repoName}`);
+      .fill(repo.fullName);
 
     // Button should now be enabled
     await expect(deleteButton).toBeEnabled();

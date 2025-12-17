@@ -252,45 +252,113 @@ test('custom login scenario', async ({ page, request }) => {
 
 ## Creating Test Data
 
-### Repositories
+### Using the `api` Fixture (Recommended)
 
-Create repositories in the user's namespace (e.g., `testuser`):
+The `api` fixture provides methods to create test resources with automatic cleanup:
 
 ```typescript
-import { test, expect, uniqueName } from '../../fixtures';
-import { createRepository, deleteRepository } from '../../utils/api';
-import { TEST_USERS } from '../../global-setup';
+import {test, expect} from '../../fixtures';
 
 test.describe('Repository Tests', () => {
-  const namespace = TEST_USERS.user.username; // 'testuser'
-  let repoName: string;
+  test('works with repository', async ({authenticatedPage, api}) => {
+    // Create repo in user's namespace (auto-cleaned after test)
+    const repo = await api.repository(undefined, 'testrepo');
 
-  test.beforeEach(async ({ authenticatedRequest }) => {
-    repoName = uniqueName('testrepo');
-    // Create repo in user's namespace (CSRF token is fetched automatically)
-    await createRepository(authenticatedRequest, namespace, repoName, 'private');
-  });
+    // Or create in an organization
+    const org = await api.organization('myorg');
+    const orgRepo = await api.repository(org.name, 'orgrepo');
 
-  test.afterEach(async ({ authenticatedRequest }) => {
-    await deleteRepository(authenticatedRequest, namespace, repoName);
+    await authenticatedPage.goto(`/repository/${repo.fullName}`);
+    // ... test code ...
   });
 });
 ```
 
 ## Test Data Cleanup (REQUIRED)
 
-**All tests that create data MUST clean up after themselves.** Use `test.afterEach` hooks.
+**All tests that create data MUST clean up after themselves.** Use the `api` fixture for automatic cleanup.
 
-### Key Principles
+### Recommended: Use the `api` Fixture (Auto-Cleanup)
 
-- Create data in `test.beforeEach`
-- Delete data in `test.afterEach`
-- Use try/catch in cleanup to handle cases where deletion already happened
-- Use `uniqueName()` to generate unique resource names
-
-### Example Pattern
+The `api` fixture provides a `TestApi` instance that automatically tracks created resources and cleans them up after each test (even on failure). This is the preferred pattern.
 
 ```typescript
+import {test, expect} from '../../fixtures';
+
+test.describe('Feature Tests', () => {
+  test('creates and uses resources', async ({authenticatedPage, api}) => {
+    // Create resources - auto-cleaned after test
+    const org = await api.organization('myorg');
+    const repo = await api.repository(org.name, 'myrepo');
+    const team = await api.team(org.name, 'myteam');
+    const robot = await api.robot(org.name, 'mybot');
+
+    // Resources are deleted in reverse order: robot, team, repo, org
+    await authenticatedPage.goto(`/repository/${repo.fullName}`);
+    // ... test code ...
+  });
+});
+```
+
+### Available `api` Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `api.organization(prefix?)` | `{name, email}` | Creates org with unique name |
+| `api.repository(namespace?, prefix?, visibility?)` | `{namespace, name, fullName}` | Creates repo (defaults to test user namespace) |
+| `api.team(orgName, prefix?, role?)` | `{orgName, name}` | Creates team in org |
+| `api.robot(orgName, prefix?, description?)` | `{orgName, shortname, fullName}` | Creates robot account |
+| `api.prototype(orgName, role, delegate, activatingUser?)` | `{id}` | Creates default permission |
+| `api.setMirrorState(namespace, repoName)` | `void` | Sets repo to MIRROR state |
+| `api.raw` | `ApiClient` | Access underlying client for non-tracked operations |
+
+### Using `api.raw` for Non-Tracked Operations
+
+For operations that don't need cleanup (reads) or are cleaned up by parent resource deletion:
+
+```typescript
+test('configures mirror', async ({api}) => {
+  const org = await api.organization('mirror');
+  const repo = await api.repository(org.name, 'mirrorrepo');
+  const robot = await api.robot(org.name, 'mirrorbot');
+  await api.setMirrorState(org.name, repo.name);
+
+  // Mirror config is cleaned up when repo is deleted
+  await api.raw.createMirrorConfig(org.name, repo.name, {...});
+
+  // Read operations don't need cleanup
+  const config = await api.raw.getMirrorConfig(org.name, repo.name);
+});
+```
+
+### Superuser API
+
+Use `superuserApi` for operations requiring superuser privileges:
+
+```typescript
+test('admin creates user', async ({superuserApi}) => {
+  // Created resources auto-cleaned
+  const user = await superuserApi.raw.createUser('newuser', 'password', 'user@example.com');
+});
+```
+
+### Why Auto-Cleanup is Better
+
+| Manual Cleanup | Auto-Cleanup (`api` fixture) |
+|----------------|------------------------------|
+| Requires `beforeEach`/`afterEach` | Inline resource creation |
+| Must wrap cleanup in try/catch | Automatic error handling |
+| Easy to forget cleanup | Cleanup guaranteed |
+| Cleanup order must be correct | Reverse-order cleanup automatic |
+| Shared state via `let` variables | Scoped variables per test |
+| Breaks with parallel tests | Parallel-safe |
+
+### Legacy Pattern (Manual Cleanup)
+
+For reference, the old pattern using `beforeEach`/`afterEach`:
+
+```typescript
+// ❌ Legacy pattern - avoid in new tests
 test.describe('Feature Tests', () => {
   const namespace = TEST_USERS.user.username;
   let repoName: string;
@@ -301,11 +369,10 @@ test.describe('Feature Tests', () => {
   });
 
   test.afterEach(async ({ authenticatedRequest }) => {
-    // Always attempt cleanup, even if test failed
     try {
       await deleteRepository(authenticatedRequest, namespace, repoName);
     } catch {
-      // Already deleted by test or never created - that's fine
+      // Already deleted
     }
   });
 
@@ -527,48 +594,36 @@ describe('Repository Delete', () => {
 
 ```typescript
 // playwright/e2e/repository/repository-delete.spec.ts
-import { test, expect, uniqueName } from '../../fixtures';
-import { createRepository, deleteRepository } from '../../utils/api';
-import { API_URL } from '../../utils/config';
-import { TEST_USERS } from '../../global-setup';
+import {test, expect} from '../../fixtures';
+import {API_URL} from '../../utils/config';
 
-test.describe('Repository Delete', { tag: ['@critical', '@repository'] }, () => {
-  const namespace = TEST_USERS.user.username;
-  let repoName: string;
-
-  test.beforeEach(async ({ authenticatedRequest }) => {
-    repoName = uniqueName('delrepo');
-    await createRepository(authenticatedRequest, namespace, repoName, 'private');
-  });
-
-  test.afterEach(async ({ authenticatedRequest }) => {
-    try {
-      await deleteRepository(authenticatedRequest, namespace, repoName);
-    } catch {
-      // Already deleted by test
-    }
-  });
-
-  test('deletes repository via UI', { tag: '@PROJQUAY-XXXX' }, async ({
+test.describe('Repository Delete', {tag: ['@critical', '@repository']}, () => {
+  test('deletes repository via UI', {tag: '@PROJQUAY-XXXX'}, async ({
     authenticatedPage,
     authenticatedRequest,
+    api,
   }) => {
-    await authenticatedPage.goto(`/repository/${namespace}/${repoName}?tab=settings`);
+    // Create test repository - auto-cleaned if test fails
+    const repo = await api.repository(undefined, 'delrepo');
+
+    await authenticatedPage.goto(`/repository/${repo.fullName}?tab=settings`);
     await authenticatedPage.getByTestId('settings-tab-deleterepository').click();
 
     await expect(
-      authenticatedPage.getByText('Deleting a repository cannot be undone')
+      authenticatedPage.getByText('Deleting a repository cannot be undone'),
     ).toBeVisible();
 
     await authenticatedPage.getByTestId('delete-repository-btn').click();
-    await authenticatedPage.getByTestId('delete-repository-confirm-input').fill(`${namespace}/${repoName}`);
+    await authenticatedPage
+      .getByTestId('delete-repository-confirm-input')
+      .fill(repo.fullName);
     await authenticatedPage.getByTestId('delete-repository-confirm-btn').click();
 
     await expect(authenticatedPage).toHaveURL('/repository');
 
     // Verify via API
     const response = await authenticatedRequest.get(
-      `${API_URL}/api/v1/repository/${namespace}/${repoName}`
+      `${API_URL}/api/v1/repository/${repo.fullName}`,
     );
     expect(response.status()).toBe(404);
   });
