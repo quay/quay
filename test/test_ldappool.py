@@ -84,6 +84,24 @@ def mock_ldap_server_down(monkeypatch):
     return mock
 
 
+outage = [ldap.SERVER_DOWN, ldap.SERVER_DOWN]
+
+
+@pytest.fixture
+def mock_ldap_server_outage(monkeypatch):
+    """Fixture to provide a fresh MockLDAPPool instance for each test."""
+
+    def server_down(*args, **kwargs):
+        if len(outage) > 0:
+            raise outage.pop()()
+        return True
+
+    mock = MockLDAPPool()
+    monkeypatch.setattr(ldappool.ldap, "initialize", mock.initialize)
+    monkeypatch.setattr(ldappool.Connection, "_Connection__whoami", server_down)
+    return mock
+
+
 def test_pool_authentication(mock_ldap):
     pool = ConnectionPool(
         "ldaps://ldap.example.com:636/dc=example,dc=com?uid,mail,memberOf?sub?(objectClass=*)",
@@ -126,6 +144,7 @@ def test_pool_exhausted(mock_ldap):
 
     with pytest.raises(LDAPPoolExhausted):
         conn2 = pool.get()
+        conn2.authenticate("", "")
 
 
 def test_pool_exhausted_butnotblocked(mock_ldap):
@@ -245,3 +264,78 @@ def test_connection_server_down(mock_ldap_server_down):
         )
         conn = pool.get()
         conn.authenticate("", "")
+
+
+def test_connection_server_down_recover(mock_ldap_server_outage):
+    pool = ConnectionPool(
+        "ldaps://ldap.example.com:636/dc=example,dc=com?uid,mail,memberOf?sub?(objectClass=*)",
+        binddn="uid=quay,ou=users,dc=example,dc=com",
+        bindpw="special",
+        max=1,
+        params={"prewarm": False, "lock_timeout": 3},
+    )
+    oiter = len(outage)
+    for _ in range(oiter):
+        with pytest.raises((ldap.SERVER_DOWN, LDAPPoolExhausted)):
+            conn = pool.get()
+            conn.authenticate("uid=jdoe,ou=users,dc=example,dc=com", "changeme")
+    for _ in range(oiter):
+        try:
+            conn = pool.get()
+        except (ldap.SERVER_DOWN, LDAPPoolExhausted):
+            continue
+    assert conn.authenticate("uid=jdoe,ou=users,dc=example,dc=com", "changeme") == True
+    assert outage == []
+    with pytest.raises(ldap.INVALID_CREDENTIALS):
+        conn.authenticate("uid=jdoe,ou=users,dc=example,dc=com", "xxx")
+
+
+def test_connection_locks(mock_ldap):
+    pool = ConnectionPool(
+        "ldaps://ldap.example.com:636/dc=example,dc=com?uid,mail,memberOf?sub?(objectClass=*)",
+        binddn="uid=quay,ou=users,dc=example,dc=com",
+        bindpw="special",
+        max=1,
+        params={"prewarm": False, "lock_timeout": 1},
+    )
+    conn1 = pool.get()
+    assert conn1._Connection__lock_acquire() == True
+    assert conn1._Connection__lock_acquire() == False
+
+    assert conn1._Connection__lock_release() == True
+    assert conn1._Connection__lock_release() == False
+
+    conn1.giveback()
+
+    conn1 = pool.get()
+    assert conn1._Connection__locktime() == True
+    assert conn1._health > 0.0
+    assert conn1._Connection__locktime() == False
+    sleep(1)
+    assert conn1._Connection__locktime() == True
+
+
+def test_ldapurl_parsing(mock_ldap):
+    pool = ConnectionPool(
+        "ldaps://ldap.example.com:636/dc=example,dc=com?uid,mail?sub?(&(memberOf=user)(!(loginShell=/sbin/nologin)))"
+        + "?uid=quay,ou=users,dc=example,dc=com,X-BINDPW=changeme",
+        binddn="uid=quay,ou=users,dc=example,dc=com",
+        bindpw="special",
+        max=1,
+    )
+    conn = pool.get()
+
+    assert pool.basedn == "dc=example,dc=com"
+    assert pool.scope == 2
+    assert sorted(pool.attributes) == sorted(["uid", "mail"])
+    assert pool.uri.urlscheme == "ldaps"
+    assert pool.uri.hostport == "ldap.example.com:636"
+    assert pool.filter == "(&(memberOf=user)(!(loginShell=/sbin/nologin)))"
+    assert sorted(pool.extensions) == sorted(["X-BINDPW", "dc", "ou", "uid"])
+
+    assert conn.uri.urlscheme == "ldaps"
+    assert conn.uri.hostport == "ldap.example.com:636"
+    assert conn.uri.filterstr == "(&(memberOf=user)(!(loginShell=/sbin/nologin)))"
+    assert conn.uri.hostport == "ldap.example.com:636"
+    assert conn.uri.scope == 2
+    assert sorted(conn.uri.extensions) == sorted(["X-BINDPW", "dc", "ou", "uid"])

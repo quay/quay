@@ -85,7 +85,7 @@ class Connection(object):
 
     def __whoami(self):
         # do not stress the connection too often
-        if not self.__locktime():
+        if self.__locktime():
             return
         for r in range(self.params.get("retries", 3)):
             try:
@@ -94,11 +94,13 @@ class Connection(object):
             except ldap.SERVER_DOWN as ldaperr:
                 logging.exception("__whoami ConnectionPool %s", ldaperr)
                 self.established = False
-                # just catch that error until we finished iterating
+                # just catch that error until we finish iterating
                 try:
                     self.__enter__()
                 except ldap.LDAPError:
+                    self.giveback()
                     continue
+        self.giveback()
         raise ldap.SERVER_DOWN(f"max retries {self.params.get('retries', 3)} reached") from None
 
     @property
@@ -110,6 +112,7 @@ class Connection(object):
                 self.__whoami()
         except ldap.SERVER_DOWN as ldaperr:
             self.established = False
+            self.giveback()
             raise LDAPPoolDown(
                 f"could not establish connection with {self.uri.initializeUrl()}"
                 + f" with max retries of {self.params.get('retries', 3)}"
@@ -122,6 +125,7 @@ class Connection(object):
                 return True
         except Exception as lockerr:
             return False
+        return False
 
     def __lock_release(self):
         try:
@@ -129,6 +133,7 @@ class Connection(object):
             return True
         except Exception as lockerr:
             return False
+        return False
 
     def authenticate(self, binddn: str, bindpw: str):
         if not self.__lock_acquire():
@@ -144,7 +149,11 @@ class Connection(object):
             ldappool_auth_calls_failure.inc()
             self.__lock_release()
             self.__authenticate__()
-            raise ldap.INVALID_CREDENTIALS
+            raise
+        except ldap.SERVER_DOWN as ldaperr:
+            # free connection
+            self.__lock_release()
+            raise
         # rollback auth anyway
         self.__authenticate__()
         return True
@@ -158,7 +167,10 @@ class Connection(object):
         except ldap.INVALID_CREDENTIALS as ldaperr:
             ldappool_auth_calls_failure.inc()
             logging.info(ldaperr)
-            raise ldap.INVALID_CREDENTIALS
+            raise
+        except ldap.SERVER_DOWN as ldaperr:
+            self.giveback()
+            raise
 
     def __set_connection_parameters__(self):
         try:
@@ -184,7 +196,7 @@ class Connection(object):
     def __enter__(self):
         self.inUse = True
         if not self.established:
-            logging.debug("ConnectionPool %s initializin LDAP %s", self, self.uri.initializeUrl())
+            logging.debug("ConnectionPool %s initializing LDAP %s", self, self.uri.initializeUrl())
             try:
                 ldappool_connect_calls.inc()
                 self._conn = ldap.initialize(self.uri.initializeUrl())
@@ -200,6 +212,7 @@ class Connection(object):
                 self.__authenticate__()
             except Exception as ldaperr:
                 logging.error(ldaperr)  # Fixed implicit string to log
+                self.giveback()
                 raise ldaperr
         self.established = True
         return self.conn
@@ -384,26 +397,45 @@ class ConnectionPool(object):
             ldappool_close_calls.inc()
         return False
 
+    def __revamp__(self):
+        logger.error("LDAP revamping pool")
+        for stale in self._pool:
+            try:
+                logger.error(f"LDAP revamp conn {stale}")
+                self.delete(stale)
+            except Exception as ldaperr:
+                logger.error(f"LDAP cannot revamp pool {ldaperr}")
+                continue
+        self.scale()
+
     def ping(self):
         conn = self.get()
         try:
             # whoami_s is a lightweight operation to verify connectivity
             conn.conn.whoami_s()
+            self.put(conn)
             return True
+        except ldap.SERVER_DOWN:
+            conn.inUse = False
+            self.put(conn)
+            self.__revamp__()
+            raise
         except ldap.LDAPError as e:
+            self.put(conn)
             logging.exception("LDAP ping failed for %s", self.uri.initializeUrl())
             raise LDAPPoolDown(f"Server unreachable: {self.uri.initializeUrl()}") from e
-        finally:
-            self.put(conn)
 
     def get(self, binddn: str = "", bindpw: str = ""):
         if len(self._pool) == 0:
             self.scale()
         if not self._lock.acquire(timeout=1):
-            raise LDAPLockTimeout("Could not acquire pool lock")
+            raise LDAPLockTimeout("LDAP Could not acquire pool lock")
         if len(self._pool) == 0:
             self._lock.release()
-            logging.warning("max connections %s reached, consider increasing pool size", self.max)
+            logging.warning(
+                "LDAP max connections %s reached, consider increasing pool size", self.max
+            )
+            self.__revamp__()
             raise LDAPPoolExhausted(f"max connections {self.max} reached")
         try:
             con = next((c for c in self._pool if not c.inUse), None)
@@ -412,6 +444,8 @@ class ConnectionPool(object):
         except IndexError:
             self._lock.release()
             logging.warning("all connections %s in use, consider increasing pool size", self.max)
+            logging.warning(f"pool = {self._pool}")
+            self.__revamp__()
             raise LDAPPoolExhausted(
                 f"all connections {self.max} in use, consider increasing pool size"
             )
@@ -421,8 +455,19 @@ class ConnectionPool(object):
             try:
                 con.authenticate(binddn, bindpw)
             except ldap.INVALID_CREDENTIALS:
+                con.inUse = False
                 self.put(con)
-                raise ldap.INVALID_CREDENTIALS
+                raise
+            except ldap.SERVER_DOWN:
+                con.inUse = False
+                self.put(con)
+                self.__revamp__()
+                raise
+            except LDAPPoolExhausted as ldaperr:
+                con.inUse = False
+                self.put(con)
+                self.__revamp__()
+                raise
         return con
 
     def put(self, connection):
@@ -430,7 +475,7 @@ class ConnectionPool(object):
             raise LDAPLockTimeout("Could not acquire pool lock")
         if connection.inUse:
             connection.giveback()
-        if not connection in self._pool:
+        if connection not in self._pool:
             self._pool.append(connection)
         connection._pool = self
         self._lock.release()

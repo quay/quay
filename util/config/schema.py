@@ -1708,7 +1708,7 @@ CONFIG_SCHEMA = {
         },
         "LDAP_POOL_MAX": {
             "type": "number",
-            "description": "Maximum connection per worker in pool. Defaults to 50",
+            "description": "Maximum connections per worker in pool. Defaults to 50",
             "x-example": 50,
             "x-reference": None,
         },
@@ -1723,22 +1723,22 @@ CONFIG_SCHEMA = {
                 },
                 "network_timeout": {
                     "type": "number",
-                    "description": "Connection timeout in seconds. Defaults to 10.0 seconds",
+                    "description": "Connection timeout in seconds. Defaults to 10.0",
                     "x-example": 10.0,
                 },
                 "timeout": {
                     "type": "number",
-                    "description": "LDAP Statement timeout in seconds. Defaults to 10.0 seconds",
+                    "description": "LDAP Statement timeout in seconds. Defaults to 10.0",
                     "x-example": 10.0,
                 },
                 "keepalive_idle": {
                     "type": "integer",
-                    "description": "Keepalive idle setting for LDAP connections. Defaults to 10 seconds",
+                    "description": "Keepalive idle setting for LDAP connections. Defaults to 10",
                     "x-example": 10,
                 },
                 "keepalive_interval": {
                     "type": "integer",
-                    "description": "Keepalive interval setting for LDAP connections. Defaults to 5 seconds",
+                    "description": "Keepalive interval setting for LDAP connections. Defaults to 5",
                     "x-example": 5,
                 },
                 "keepalive_probes": {

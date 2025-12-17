@@ -173,7 +173,7 @@ if features.LDAPPOOL:  # type: ignore
             params=app.config.get(
                 "LDAP_POOL_PARAMS",
                 {
-                    "referrals": app.config.get("LDAP_POOL_PARAMS", {}).get("referrals"),
+                    "referrals": app.config.get("LDAP_POOL_PARAMS", {}).get("referrals", False),
                     "network_timeout": float(
                         app.config.get("LDAP_POOL_PARAMS", {}).get("network_timeout", 10.0)
                     ),
@@ -191,7 +191,7 @@ if features.LDAPPOOL:  # type: ignore
                         "allow_tls_fallback", False
                     ),
                     "lock_timeout": float(
-                        app.config.get("LDAP_POOL_PARAMS", {}).get("lock_timeoout", 15.0)
+                        app.config.get("LDAP_POOL_PARAMS", {}).get("lock_timeout", 15.0)
                     ),
                 },
             ),
