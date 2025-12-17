@@ -4683,13 +4683,13 @@ data:
               "type": "prometheus",
               "uid": "${datasource}"
             },
-            "definition": "label_values(aggregation:quay_request_duration_seconds_count:rate1m:sum,namespace)",
+            "definition": "label_values(aggregation:quay_request_duration_seconds_count:rate1m:sum,namespace_name)",
             "description": "",
             "name": "namespace",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(aggregation:quay_request_duration_seconds_count:rate1m:sum,namespace)",
+              "query": "label_values(aggregation:quay_request_duration_seconds_count:rate1m:sum,namespace_name)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 1,

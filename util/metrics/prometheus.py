@@ -83,7 +83,7 @@ db_close_calls = Counter(
 request_duration = Histogram(
     "quay_request_duration_seconds",
     "seconds taken to process a request",
-    labelnames=["method", "route", "status", "namespace"],
+    labelnames=["method", "route", "status", "namespace_name"],
 )
 
 # GC: DB table rows
