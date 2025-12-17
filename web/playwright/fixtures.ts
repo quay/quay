@@ -361,6 +361,9 @@ type TestFixtures = {
 
   // API client for superuser with auto-cleanup
   superuserApi: TestApi;
+
+  // Auto-fixture: skips tests based on @feature: tags (runs automatically)
+  _autoSkipByFeature: void;
 };
 
 /**
@@ -515,6 +518,46 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(testApi);
     await testApi.cleanup();
   },
+
+  // =========================================================================
+  // Auto-fixture: Skip tests based on @feature: tags
+  // =========================================================================
+
+  /**
+   * Automatically skip tests that have @feature:X tags when those
+   * features are not enabled in Quay config.
+   *
+   * This eliminates the need for manual `test.skip(...skipUnlessFeature(...))`
+   * calls in each test. Just add the tag to the describe block:
+   *
+   * @example
+   * ```typescript
+   * test.describe('Repository Mirroring', {tag: ['@feature:REPO_MIRROR']}, () => {
+   *   test('creates mirror', async ({authenticatedPage}) => {
+   *     // Auto-skipped if REPO_MIRROR is not enabled - no manual skip needed!
+   *   });
+   * });
+   * ```
+   */
+  _autoSkipByFeature: [
+    async ({quayConfig}, use, testInfo) => {
+      // Extract feature names from @feature:X tags
+      const featureTags = testInfo.tags
+        .filter((tag) => tag.startsWith('@feature:'))
+        .map((tag) => tag.replace('@feature:', '') as QuayFeature);
+
+      if (featureTags.length > 0) {
+        const [shouldSkip, reason] = skipUnlessFeature(
+          quayConfig,
+          ...featureTags,
+        );
+        testInfo.skip(shouldSkip, reason);
+      }
+
+      await use();
+    },
+    {auto: true},
+  ],
 });
 
 // Re-export expect for convenience
