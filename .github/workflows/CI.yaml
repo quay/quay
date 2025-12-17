@@ -50,7 +50,6 @@ jobs:
       uses: ./.github/actions/setup-quay-dev
       with:
         sync-group: none
-        install-system-deps: 'false'
 
     - name: Set up Node 18
       uses: actions/setup-node@v3
