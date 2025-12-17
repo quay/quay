@@ -38,8 +38,6 @@ jobs:
 
     - name: Setup Quay Dev Environment
       uses: ./.github/actions/setup-quay-dev
-      with:
-        install-system-deps: 'false'
 
     - name: Integration Test
       run:  |
