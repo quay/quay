@@ -224,6 +224,28 @@ export class TestApi {
   }
 
   /**
+   * Add a member to a team (for test setup).
+   * Automatically removed after test.
+   *
+   * Note: If the team or org is deleted, this cleanup becomes a no-op.
+   */
+  async teamMember(
+    orgName: string,
+    teamName: string,
+    memberName: string,
+  ): Promise<void> {
+    await this.client.addTeamMember(orgName, teamName, memberName);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.removeTeamMember(orgName, teamName, memberName);
+      } catch {
+        /* ignore cleanup errors - member may already be removed or team deleted */
+      }
+    });
+  }
+
+  /**
    * Create a default permission (prototype).
    * Automatically deleted after test.
    */
