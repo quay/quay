@@ -689,7 +689,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `repository-notifications.cy.ts` | | |
 | ⬚ | `repository-permissions.cy.ts` | | |
 | ⬚ | `repository-shorthand-navigation.cy.ts` | | |
-| ⬚ | `repository-state.cy.ts` | | |
+| ✅ | `repository-state.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated into mirroring tests |
 | ⬚ | `repository-visibility.cy.ts` | | |
 | ⬚ | `robot-accounts.cy.ts` | | |
 | ⬚ | `security-report.cy.ts` | | @feature:SECURITY_SCANNER |

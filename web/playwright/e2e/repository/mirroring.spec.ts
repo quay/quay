@@ -313,5 +313,19 @@ test.describe(
         authenticatedPage.getByText('Error saving mirror configuration'),
       ).toBeVisible();
     });
+
+    test('shows repository state setting in Settings tab', async ({
+      authenticatedPage,
+      api,
+      quayConfig,
+    }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'REPO_MIRROR'));
+
+      const repo = await api.repository(undefined, 'statetest');
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=settings`);
+      await expect(
+        authenticatedPage.getByText('Repository state'),
+      ).toBeVisible();
+    });
   },
 );
