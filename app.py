@@ -149,6 +149,57 @@ if features.HELM_OCI_SUPPORT:
     ]
     register_artifact_type(HELM_CHART_CONFIG_TYPE, HELM_CHART_LAYER_TYPES)
 
+if features.LDAPPOOL:  # type: ignore
+    from ldappool import ConnectionPool
+
+    def get_or_raise(key):
+        value = app.config.get(key)
+        if value is None:
+            raise ValueError(f"Required configuration missing: {key}")
+        return value
+
+    try:
+        # parse legacy and newstyle LDAP configuration
+        basedn = ",".join(get_or_raise("LDAP_BASE_DN"))
+        attrs = ",".join([get_or_raise("LDAP_UID_ATTR"), get_or_raise("LDAP_EMAIL_ATTR")])
+        filter = app.config.get("LDAP_USER_FILTER", "(objectClass=*)")
+        ldap_uri = get_or_raise("LDAP_URI")
+        uri = f"{ldap_uri}/{basedn}?{attrs}?sub?{filter}"
+
+        app.ldappool = ConnectionPool(  # type: ignore
+            uri,
+            binddn=get_or_raise("LDAP_ADMIN_DN"),
+            bindpw=get_or_raise("LDAP_ADMIN_PASSWD"),
+            params=app.config.get(
+                "LDAP_POOL_PARAMS",
+                {
+                    "referrals": app.config.get("LDAP_POOL_PARAMS", {}).get("referrals"),
+                    "network_timeout": float(
+                        app.config.get("LDAP_POOL_PARAMS", {}).get("network_timeout", 10.0)
+                    ),
+                    "timeout": float(app.config.get("LDAP_POOL_PARAMS", {}).get("timeout", 10.0)),
+                    "keepalive_idle": int(
+                        app.config.get("LDAP_POOL_PARAMS", {}).get("keepalive_idle", 10)
+                    ),
+                    "keepalive_interval": int(
+                        app.config.get("LDAP_POOL_PARAMS", {}).get("keepalive_interval", 5)
+                    ),
+                    "keepalive_probes": int(
+                        app.config.get("LDAP_POOL_PARAMS", {}).get("keepalive_probes", 3)
+                    ),
+                    "allow_tls_fallback": app.config.get("LDAP_POOL_PARAMS", {}).get(
+                        "allow_tls_fallback", False
+                    ),
+                    "lock_timeout": float(
+                        app.config.get("LDAP_POOL_PARAMS", {}).get("lock_timeoout", 15.0)
+                    ),
+                },
+            ),
+            max=app.config.get("LDAP_POOL_MAX", 50),
+        )
+    except ValueError as ldaperr:
+        logger.exception(f"LDAP missing parameter {ldaperr}")
+        raise
 
 CONFIG_DIGEST = hashlib.sha256(json.dumps(app.config, default=str).encode("utf-8")).hexdigest()[0:8]
 
