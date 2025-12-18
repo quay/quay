@@ -697,7 +697,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `repositories-list.cy.ts` | | |
 | ⬚ | `repository-autopruning.cy.ts` | | @feature:AUTO_PRUNE |
 | ⬚ | `repository-details.cy.ts` | | |
-| ⬚ | `repository-notifications.cy.ts` | | |
+| ✅ | `repository-notifications.cy.ts` | `repository/notifications.spec.ts` | @feature:MAILING, consolidated 18→7 tests |
 | ✅ | `repository-permissions.cy.ts` | `repository/permissions.spec.ts` | Consolidated 6→3 tests |
 | ✅ | `repository-shorthand-navigation.cy.ts` | `repository/shorthand-navigation.spec.ts` | consolidated 11 → 7 tests |
 | ✅ | `repository-state.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated into mirroring tests |

@@ -356,6 +356,43 @@ export class TestApi {
   }
 
   /**
+   * Create a notification for a repository.
+   * Automatically deleted after test.
+   */
+  async notification(
+    namespace: string,
+    repoName: string,
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    title?: string,
+  ): Promise<{uuid: string; namespace: string; repoName: string}> {
+    const result = await this.client.createRepositoryNotification(
+      namespace,
+      repoName,
+      event,
+      method,
+      config,
+      {},
+      title,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepositoryNotification(
+          namespace,
+          repoName,
+          result.uuid,
+        );
+      } catch {
+        /* ignore cleanup errors - notification may already be deleted */
+      }
+    });
+
+    return {uuid: result.uuid, namespace, repoName};
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
@@ -386,7 +423,8 @@ export type QuayFeature =
   | 'SECURITY_SCANNER'
   | 'CHANGE_TAG_EXPIRATION'
   | 'USER_METADATA'
-  | 'MAILING';
+  | 'MAILING'
+  | 'IMAGE_EXPIRY_TRIGGER';
 
 /**
  * Quay configuration from /config endpoint

@@ -73,6 +73,7 @@ export default function CreateHipchatNotification(
         <TextInput
           required
           id="room-id-number-field"
+          data-testid="room-id-number-field"
           value={roomId}
           onChange={(_event, value) => setRoomId(value)}
         />
@@ -95,6 +96,7 @@ export default function CreateHipchatNotification(
         <TextInput
           required
           id="room-notification-token-field"
+          data-testid="room-notification-token-field"
           value={token}
           onChange={(_event, value) => setToken(value)}
         />
@@ -102,12 +104,14 @@ export default function CreateHipchatNotification(
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
+          data-testid="notification-title"
           value={title}
           onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>
         <Button
+          data-testid="notification-submit-btn"
           isDisabled={!isFormComplete}
           onClick={createNotification}
           variant="primary"
