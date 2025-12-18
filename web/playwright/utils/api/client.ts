@@ -761,4 +761,60 @@ export class ApiClient {
       );
     }
   }
+
+  // Repository permission methods
+
+  async addRepositoryPermission(
+    namespace: string,
+    repo: string,
+    entityType: 'user' | 'team',
+    entityName: string,
+    role: PrototypeRole,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/permissions/${entityType}/${entityName}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          role,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to add ${entityType} permission for ${entityName} on ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async deleteRepositoryPermission(
+    namespace: string,
+    repo: string,
+    entityType: 'user' | 'team',
+    entityName: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/permissions/${entityType}/${entityName}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete ${entityType} permission for ${entityName} on ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
 }

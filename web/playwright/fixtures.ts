@@ -310,6 +310,52 @@ export class TestApi {
   }
 
   /**
+   * Add a permission to a repository.
+   * Automatically deleted after test.
+   *
+   * @param namespace - Organization or username that owns the repository
+   * @param repoName - Repository name
+   * @param entityType - Type of entity ('user' for users/robots, 'team' for teams)
+   * @param entityName - Name of the entity (username, robot fullName like "org+bot", or team name)
+   * @param role - Permission level ('read', 'write', or 'admin')
+   */
+  async repositoryPermission(
+    namespace: string,
+    repoName: string,
+    entityType: 'user' | 'team',
+    entityName: string,
+    role: PrototypeRole = 'read',
+  ): Promise<{
+    namespace: string;
+    repoName: string;
+    entityType: 'user' | 'team';
+    entityName: string;
+  }> {
+    await this.client.addRepositoryPermission(
+      namespace,
+      repoName,
+      entityType,
+      entityName,
+      role,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepositoryPermission(
+          namespace,
+          repoName,
+          entityType,
+          entityName,
+        );
+      } catch {
+        /* ignore cleanup errors - permission may already be deleted */
+      }
+    });
+
+    return {namespace, repoName, entityType, entityName};
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
