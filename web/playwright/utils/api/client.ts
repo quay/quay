@@ -417,6 +417,107 @@ export class ApiClient {
     return response.json();
   }
 
+  async deleteRepositoryNotification(
+    namespace: string,
+    repo: string,
+    uuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/notification/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete repository notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async enableRepositoryNotification(
+    namespace: string,
+    repo: string,
+    uuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/notification/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to enable repository notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async testRepositoryNotification(
+    namespace: string,
+    repo: string,
+    uuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/notification/${uuid}/test`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to test repository notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async getRepositoryNotifications(
+    namespace: string,
+    repo: string,
+  ): Promise<{
+    notifications: Array<{
+      uuid: string;
+      title: string;
+      event: string;
+      method: string;
+      number_of_failures: number;
+    }>;
+  }> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/notification/`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get repository notifications: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
   // Team methods
 
   async createTeam(
