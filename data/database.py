@@ -2008,9 +2008,13 @@ class RepoMirrorRuleType(IntEnum):
     Types of mirroring rules.
 
     TAG_GLOB_CSV: Comma separated glob values (eg. "7.6,7.6-1.*")
+    REPO_NAME_LIST: Comma separated repository names for filtering
+    REPO_NAME_REGEX: Regular expression pattern for repository name filtering
     """
 
     TAG_GLOB_CSV = 1
+    REPO_NAME_LIST = 2
+    REPO_NAME_REGEX = 3
 
 
 class RepoMirrorRule(BaseModel):
@@ -2087,6 +2091,96 @@ class RepoMirrorConfig(BaseModel):
 
     # Skopeo timeout
     skopeo_timeout = BigIntegerField()
+
+
+@unique
+class OrgMirrorStatus(IntEnum):
+    """
+    Possible statuses of organization mirroring.
+    """
+
+    CANCEL = -2
+    FAIL = -1
+    NEVER_RUN = 0
+    SUCCESS = 1
+    SYNCING = 2
+    SYNC_NOW = 3
+
+
+class OrgMirrorConfig(BaseModel):
+    """
+    Represents an organization-level mirror configuration for automatically discovering and
+    syncing all repositories from a source namespace (Harbor Project or Quay Organization).
+    """
+
+    organization = ForeignKeyField(User, index=True, unique=True, backref="org_mirror")
+    creation_date = DateTimeField(default=datetime.utcnow)
+    is_enabled = BooleanField(default=True)
+
+    # Mirror Configuration
+    mirror_type = ClientEnumField(RepoMirrorType, default=RepoMirrorType.PULL)
+    internal_robot = QuayUserField(
+        allows_robots=True,
+        backref="orgmirrorrobot",
+    )
+    external_reference = CharField()
+    external_registry_username = EncryptedCharField(max_length=4096, null=True)
+    external_registry_password = EncryptedCharField(max_length=9000, null=True)
+    external_registry_config = JSONField(default={})
+
+    # Worker Queueing
+    sync_interval = IntegerField()
+    sync_start_date = DateTimeField(null=True)
+    sync_expiration_date = DateTimeField(null=True)
+    sync_retries_remaining = IntegerField(default=3)
+    sync_status = ClientEnumField(OrgMirrorStatus, default=OrgMirrorStatus.NEVER_RUN)
+    sync_transaction_id = CharField(default=uuid_generator, max_length=36)
+
+    # Tag-Matching Rules
+    root_rule = ForeignKeyField(RepoMirrorRule, null=True)
+
+    # Skopeo timeout
+    skopeo_timeout = BigIntegerField()
+
+
+@unique
+class OrgMirrorRepoStatus(IntEnum):
+    """
+    Possible statuses of repositories discovered by organization mirror.
+    """
+
+    DISCOVERED = 0
+    PENDING_SYNC = 1
+    CREATED = 2
+    SKIPPED = 3
+    FAILED = 4
+
+
+class OrgMirrorRepo(BaseModel):
+    """
+    Tracks repositories discovered by organization mirror for lazy creation workflow.
+    """
+
+    org_mirror = ForeignKeyField(OrgMirrorConfig, index=True, backref="discovered_repos")
+
+    # Repository information
+    repository_name = CharField()
+    external_repo_name = CharField()
+
+    # Status tracking
+    status = ClientEnumField(OrgMirrorRepoStatus, default=OrgMirrorRepoStatus.DISCOVERED)
+    discovery_date = DateTimeField(default=datetime.utcnow)
+    last_sync_date = DateTimeField(null=True)
+
+    # Link to created repository (if created)
+    repository = ForeignKeyField(Repository, null=True, index=True, backref="org_mirror_source")
+
+    # Error tracking
+    last_error = TextField(null=True)
+
+    class Meta:
+        database = db
+        indexes = ((("org_mirror", "repository_name"), True),)  # Unique per org mirror
 
 
 @unique
