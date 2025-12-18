@@ -684,21 +684,6 @@ CONFIG_SCHEMA = {
             "description": "Whether Google login is supported. Defaults to False",
             "x-example": False,
         },
-        # Recaptcha
-        "FEATURE_RECAPTCHA": {
-            "type": "boolean",
-            "description": "Whether Recaptcha is necessary for user login and recovery. Defaults to False",
-            "x-example": False,
-            "x-reference": "https://www.google.com/recaptcha/intro/",
-        },
-        "RECAPTCHA_SITE_KEY": {
-            "type": ["string", "null"],
-            "description": "If recaptcha is enabled, the site key for the Recaptcha service",
-        },
-        "RECAPTCHA_SECRET_KEY": {
-            "type": ["string", "null"],
-            "description": "If recaptcha is enabled, the secret key for the Recaptcha service",
-        },
         # External application tokens.
         "FEATURE_APP_SPECIFIC_TOKENS": {
             "type": "boolean",

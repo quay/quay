@@ -77,7 +77,6 @@ def validate_sso_oauth_token(token):
             lid=sub,
             lusername=lusername,
             lemail=lemail,
-            captcha_verified=True,
         )
         if login_result.error_message:
             logger.error(f"Error logging in {login_result.error_message}")

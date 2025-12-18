@@ -69,15 +69,9 @@
                <div class="plans-table" plans="plans" current-plan="holder.currentPlan"></div>
               </div>
 
-              <div quay-require="['RECAPTCHA']" style="margin-bottom: 10px;">
-                <div class="captcha">
-                  <div vc-recaptcha ng-model="org.recaptcha_response" key="Config.RECAPTCHA_SITE_KEY"></div>
-                </div>
-              </div>
-
               <div class="button-bar">
                 <button class="btn btn-large btn-primary" type="submit"
-                        ng-disabled="newOrgForm.$invalid || (Features.BILLING && !holder.currentPlan) || (Features.RECAPTCHA && !org.recaptcha_response)"
+                        ng-disabled="newOrgForm.$invalid || (Features.BILLING && !holder.currentPlan)"
                         analytics-on analytics-event="create_organization">
                   Create Organization
                 </button>

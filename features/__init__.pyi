@@ -125,12 +125,6 @@ SECURITY_NOTIFICATIONS: FeatureNameValue
 # Repository mirror
 REPO_MIRROR: FeatureNameValue
 
-# Site key and secret key for using recaptcha.
-RECAPTCHA: FeatureNameValue
-
-# List of users allowed to pass through recaptcha security check to enable org/user creation via API
-RECAPTCHA_WHITELISTED_USERS: FeatureNameValue
-
 # Feature Flag: Whether team syncing from the backing auth is enabled.
 TEAM_SYNCING: FeatureNameValue
 

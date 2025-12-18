@@ -19,13 +19,6 @@
     <form class="form-signin" ng-submit="sendRecovery()" ng-show="!sent">
       <input type="text" class="form-control" placeholder="Email" ng-model="recovery.email">
 
-      <div quay-require="['RECAPTCHA']">
-        <div class="captcha"
-             ng-class="{'expanded': recovery.email}">
-          <div vc-recaptcha ng-model="recovery.recaptcha_response" key="Config.RECAPTCHA_SITE_KEY"></div>
-        </div>
-      </div>
-    
       <button class="btn btn-primary btn-block" type="submit">Send Recovery Email</button>
     </form>
   </div>

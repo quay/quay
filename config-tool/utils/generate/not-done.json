@@ -78,10 +78,6 @@
       "type": "boolean",
       "description": "If set to true, the _catalog endpoint returns public repositories. Otherwise, only private repositories can be returned. Defaults to False"
     },
-    "RECAPTCHA_SECRET_KEY": {
-      "type": ["string", "null"],
-      "description": "If recaptcha is enabled, the secret key for the Recaptcha service"
-    },
     "FEATURE_ACI_CONVERSION": {
       "x-example": false,
       "type": "boolean",
@@ -152,12 +148,6 @@
       "description": "Whether the `secure` property should be set on session cookies. Defaults to False. Recommended to be True for all installations using SSL.",
       "x-reference": "https://en.wikipedia.org/wiki/Secure_cookies"
     },
-    "FEATURE_RECAPTCHA": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether Recaptcha is necessary for user login and recovery. Defaults to False",
-      "x-reference": "https://www.google.com/recaptcha/intro/"
-    },
     "FEATURE_AGGREGATED_LOG_COUNT_RETRIEVAL": {
       "x-example": true,
       "type": "boolean",
@@ -214,10 +204,6 @@
       "type": "string",
       "description": "The Docker CLI versions to which Quay will respond that V2 is *unsupported*. Defaults to `<1.6.0`",
       "x-reference": "http://pythonhosted.org/semantic_version/reference.html#semantic_version.Spec"
-    },
-    "RECAPTCHA_SITE_KEY": {
-      "type": ["string", "null"],
-      "description": "If recaptcha is enabled, the site key for the Recaptcha service"
     },
     "FEATURE_RESTRICTED_V1_PUSH": {
       "x-example": false,

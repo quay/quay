@@ -5,7 +5,6 @@ import time
 from collections import namedtuple
 from urllib.parse import urlencode, urlparse
 
-import recaptcha2
 from flask import Blueprint, abort, redirect, request, session, url_for
 
 import features
@@ -262,9 +261,6 @@ def _register_service(login_service):
         }
 
         # Conduct OAuth login.
-        captcha_verified = (int(time.time()) - session.get("captcha_verified", 0)) <= 600
-        session["captcha_verified"] = 0
-
         result = _conduct_oauth_login(
             app.config,
             analytics,
@@ -274,15 +270,8 @@ def _register_service(login_service):
             lusername,
             lemail,
             metadata=metadata,
-            captcha_verified=captcha_verified,
             additional_login_info=additional_info,
         )
-        if result.requires_verification:
-            return render_page_template_with_routedata(
-                "oauthcaptcha.html",
-                recaptcha_site_key=app.config["RECAPTCHA_SITE_KEY"],
-                callback_url=request.base_url,
-            )
 
         return _get_response(result)
 
@@ -323,24 +312,6 @@ def _register_service(login_service):
             )
         )
 
-    def captcha_func():
-        recaptcha_response = request.values.get("recaptcha_response", "")
-        result = recaptcha2.verify(
-            app.config["RECAPTCHA_SECRET_KEY"], recaptcha_response, get_request_ip()
-        )
-
-        if not result["success"]:
-            abort(400)
-
-        # Save that the captcha was verified.
-        session["captcha_verified"] = int(time.time())
-
-        # Redirect to the normal OAuth flow again, so that the user can now create an account.
-        csrf_token = generate_csrf_token(OAUTH_CSRF_TOKEN_NAME)
-        login_scopes = login_service.get_login_scopes()
-        auth_url = login_service.get_auth_url(url_scheme_and_hostname, "", csrf_token, login_scopes)
-        return redirect(auth_url)
-
     @require_session_login
     @oauthlogin_csrf_protect
     def cli_token_func():
@@ -373,13 +344,6 @@ def _register_service(login_service):
                 idtoken=idtoken,
             )
         )
-
-    oauthlogin.add_url_rule(
-        "/%s/callback/captcha" % login_service.service_id(),
-        "%s_oauth_captcha" % login_service.service_id(),
-        captcha_func,
-        methods=["POST"],
-    )
 
     oauthlogin.add_url_rule(
         "/%s/callback" % login_service.service_id(),
