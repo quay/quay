@@ -1,4 +1,6 @@
-import {defineConfig, devices} from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
+
+// test cache hit
 
 /**
  * Playwright configuration for Quay E2E tests
