@@ -163,6 +163,42 @@ export class TestApi {
   }
 
   /**
+   * Create a repository with an exact name (supports multi-segment names like "release/installer").
+   * Automatically deleted after test.
+   *
+   * @param namespace - Organization or username
+   * @param name - Exact repository name (can contain "/" for multi-segment)
+   * @param visibility - Repository visibility (default: private)
+   *
+   * @example
+   * ```typescript
+   * // Create a multi-segment repository
+   * const repo = await api.repositoryWithName('myorg', 'release/installer');
+   * ```
+   */
+  async repositoryWithName(
+    namespace: string,
+    name: string,
+    visibility: RepositoryVisibility = 'private',
+  ): Promise<CreatedRepo> {
+    await this.client.createRepository(namespace, name, visibility);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepository(namespace, name);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      namespace,
+      name,
+      fullName: `${namespace}/${name}`,
+    };
+  }
+
+  /**
    * Create a team in an organization.
    * Automatically deleted after test.
    */
