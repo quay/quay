@@ -694,7 +694,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `packages-report.cy.ts` | | |
 | ⬚ | `proxy-cache.cy.ts` | | @feature:PROXY_CACHE |
 | ⬚ | `quota.cy.ts` | | @feature:QUOTA_MANAGEMENT |
-| ⬚ | `repositories-list.cy.ts` | | |
+| ✅ | `repositories-list.cy.ts` | `repository/repositories-list.spec.ts` | Consolidated 11→6 tests |
 | ⬚ | `repository-autopruning.cy.ts` | | @feature:AUTO_PRUNE |
 | ⬚ | `repository-details.cy.ts` | | |
 | ✅ | `repository-notifications.cy.ts` | `repository/notifications.spec.ts` | @feature:MAILING, consolidated 18→7 tests |
@@ -702,7 +702,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `repository-shorthand-navigation.cy.ts` | `repository/shorthand-navigation.spec.ts` | consolidated 11 → 7 tests |
 | ✅ | `repository-state.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated into mirroring tests |
 | ⬚ | `repository-visibility.cy.ts` | | |
-| ⬚ | `robot-accounts.cy.ts` | | |
+| ✅ | `robot-accounts.cy.ts` | `organization/robot-accounts.spec.ts` | Consolidated 12→4 tests |
 | ⬚ | `security-report.cy.ts` | | @feature:SECURITY_SCANNER |
 | ⬚ | `security-scanner-feature-toggle.cy.ts` | | @feature:SECURITY_SCANNER |
 | ⬚ | `service-status.cy.ts` | | |
@@ -729,5 +729,5 @@ Track migration progress from Cypress to Playwright.
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 11 (20%)
-- **Remaining**: 43
+- **Migrated**: 13 (24%)
+- **Remaining**: 41
