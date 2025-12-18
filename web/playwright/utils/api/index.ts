@@ -17,7 +17,12 @@ export type {
   PrototypeActivatingUser,
   PrototypeDelegate,
   PrototypeRole,
+  Quota,
+  QuotaLimit,
   RepositoryState,
   RepositoryVisibility,
+  ServiceKey,
+  ServiceKeyApproval,
+  ServiceKeysResponse,
   TeamRole,
 } from './client';

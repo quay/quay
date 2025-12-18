@@ -109,6 +109,15 @@ export interface CreatedServiceKey {
 }
 
 /**
+ * Created quota info
+ */
+export interface CreatedQuota {
+  orgName: string;
+  quotaId: string;
+  limitBytes: number;
+}
+
+/**
  * API client with auto-cleanup tracking.
  *
  * All resources created via this client are automatically
@@ -486,6 +495,37 @@ export class TestApi {
           ? result.expiration_date
           : undefined,
     };
+  }
+
+  /**
+   * Create a quota for an organization.
+   * Automatically deleted after test.
+   *
+   * @param orgName - Organization name
+   * @param limitBytes - Quota limit in bytes (default: 10 GiB)
+   */
+  async quota(
+    orgName: string,
+    limitBytes = 10737418240, // 10 GiB default
+  ): Promise<CreatedQuota> {
+    await this.client.createOrganizationQuota(orgName, limitBytes);
+
+    // Fetch quota to get the ID
+    const quotas = await this.client.getOrganizationQuota(orgName);
+    if (quotas.length === 0) {
+      throw new Error(`Failed to create quota for ${orgName}`);
+    }
+    const quotaId = quotas[0].id;
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOrganizationQuota(orgName, quotaId);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {orgName, quotaId, limitBytes};
   }
 
   /**
