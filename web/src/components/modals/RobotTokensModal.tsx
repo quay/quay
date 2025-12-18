@@ -182,6 +182,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
   const secretScopeToggle = (toggleRef: React.Ref<MenuToggleElement>) => (
     <MenuToggle
       id="secret-scope-toggle"
+      data-testid="secret-scope-toggle"
       ref={toggleRef}
       onClick={onToggleClick}
       isExpanded={isSecretScopeSelectOpen}
@@ -242,6 +243,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
         </Tab>
         <Tab
           id="kubernetes-tab"
+          data-testid="kubernetes-tab"
           eventKey={1}
           title={
             <>
@@ -271,6 +273,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               <FlexItem>
                 <Select
                   id="secret-scope-selector"
+                  data-testid="secret-scope-selector"
                   isOpen={isSecretScopeSelectOpen}
                   selected={secretScopeSelected}
                   onSelect={onSecretScopeSelect}
@@ -289,7 +292,11 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
                 <AngleRightIcon />
               </FlexItem>
               <FlexItem>
-                <Text id="secret-scope" component={TextVariants.p}>
+                <Text
+                  id="secret-scope"
+                  data-testid="secret-scope"
+                  component={TextVariants.p}
+                >
                   {secretScopeSelected}
                 </Text>
               </FlexItem>
@@ -305,6 +312,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               clickTip="Copied"
               variant={ClipboardCopyVariant.expansion}
               id="step-2"
+              data-testid="step-2-secret"
               className="pf-v5-u-mb-sm"
             >
               {getKubernetesContent().join('')}
