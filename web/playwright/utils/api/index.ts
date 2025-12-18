@@ -13,6 +13,8 @@ export type {
   PrototypeActivatingUser,
   PrototypeDelegate,
   PrototypeRole,
+  Quota,
+  QuotaLimit,
   RepositoryState,
   RepositoryVisibility,
   TeamRole,
