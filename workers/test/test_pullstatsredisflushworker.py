@@ -3,6 +3,7 @@ Tests for RedisFlushWorker.
 
 Tests the main worker that processes Redis pull events.
 """
+
 import sys
 from typing import List, Set
 from unittest.mock import MagicMock, patch

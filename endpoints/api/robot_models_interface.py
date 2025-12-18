@@ -69,9 +69,9 @@ class RobotWithPermissions(
         data = {
             "name": self.name,
             "created": format_date(self.created) if self.created is not None else None,
-            "last_accessed": format_date(self.last_accessed)
-            if self.last_accessed is not None
-            else None,
+            "last_accessed": (
+                format_date(self.last_accessed) if self.last_accessed is not None else None
+            ),
             "teams": [team.to_dict() for team in self.teams],
             "repositories": self.repository_names,
             "description": self.description,
@@ -111,9 +111,9 @@ class Robot(
         data = {
             "name": self.name,
             "created": format_date(self.created) if self.created is not None else None,
-            "last_accessed": format_date(self.last_accessed)
-            if self.last_accessed is not None
-            else None,
+            "last_accessed": (
+                format_date(self.last_accessed) if self.last_accessed is not None else None
+            ),
             "description": self.description,
         }
 

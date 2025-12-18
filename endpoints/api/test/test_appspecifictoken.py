@@ -338,9 +338,12 @@ def test_superuser_endpoint_sees_all_tokens(app):
 
         # Test global readonly superuser
         # Mock global readonly superuser by mocking the permission functions
-        with patch(
-            "endpoints.api.superuser.allow_if_global_readonly_superuser", return_value=True
-        ), patch("endpoints.api.superuser.allow_if_superuser_with_full_access", return_value=False):
+        with (
+            patch("endpoints.api.superuser.allow_if_global_readonly_superuser", return_value=True),
+            patch(
+                "endpoints.api.superuser.allow_if_superuser_with_full_access", return_value=False
+            ),
+        ):
             with client_with_identity("reader", app) as cl:
                 # On /v1/superuser/apptokens, global readonly superuser should see all tokens
                 resp = conduct_api_call(cl, SuperUserAppTokens, "GET", None, None, 200).json
@@ -360,9 +363,10 @@ def test_superuser_endpoint_sees_all_tokens(app):
 def test_superuser_endpoint_requires_full_access(app):
     """Test that regular superusers without FULL_ACCESS get 403 on /v1/superuser/apptokens"""
     # Mock a regular superuser (not global readonly) without FULL_ACCESS
-    with patch(
-        "endpoints.api.superuser.allow_if_global_readonly_superuser", return_value=False
-    ), patch("endpoints.api.superuser.allow_if_superuser_with_full_access", return_value=False):
+    with (
+        patch("endpoints.api.superuser.allow_if_global_readonly_superuser", return_value=False),
+        patch("endpoints.api.superuser.allow_if_superuser_with_full_access", return_value=False),
+    ):
         with client_with_identity("devtable", app) as cl:
             # Regular superuser without FULL_ACCESS should get 403
             conduct_api_call(cl, SuperUserAppTokens, "GET", None, None, 403)
