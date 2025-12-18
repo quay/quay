@@ -6,7 +6,7 @@ If you'd like to understand a Quay deployment in more details continue reading..
 
 This guide is meant to show how to get Quay up and running with a minimum of external dependencies for testing or evaluation.  It aims to illustrate the components of a Quay installation to understand how the pieces fit together.  Please don't use this configuration for production or a highly available Quay installation.
 
-NOTE: This guide uses [podman](https://podman.io/) which assumes a Linux environment- on MacOS or Windows you should be able to substitute with `docker` without trouble.
+NOTE: This guide uses [podman](https://podman.io/), however you should be able to substitute with `docker` without trouble.
 
 As a starting point, create or locate a directory where you want to store Quay's configuration and image blobs- we will refer to this as $QUAY going forward.
 
