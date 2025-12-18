@@ -698,9 +698,9 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `repository-autopruning.cy.ts` | | @feature:AUTO_PRUNE |
 | ⬚ | `repository-details.cy.ts` | | |
 | ⬚ | `repository-notifications.cy.ts` | | |
-| ⬚ | `repository-permissions.cy.ts` | | |
-| ⬚ | `repository-shorthand-navigation.cy.ts` | | |
-| ⬚ | `repository-state.cy.ts` | | |
+| ✅ | `repository-permissions.cy.ts` | `repository/permissions.spec.ts` | Consolidated 6→3 tests |
+| ✅ | `repository-shorthand-navigation.cy.ts` | `repository/shorthand-navigation.spec.ts` | consolidated 11 → 7 tests |
+| ✅ | `repository-state.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated into mirroring tests |
 | ⬚ | `repository-visibility.cy.ts` | | |
 | ⬚ | `robot-accounts.cy.ts` | | |
 | ⬚ | `security-report.cy.ts` | | @feature:SECURITY_SCANNER |
@@ -725,9 +725,3 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `theme-switcher.cy.ts` | `ui/theme-switcher.spec.ts` | |
 | ⬚ | `update-user.cy.ts` | | |
 | ⬚ | `usage-logs.cy.ts` | | |
-
-### Progress Summary
-
-- **Total**: 54 Cypress test files
-- **Migrated**: 8 (15%)
-- **Remaining**: 46

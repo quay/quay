@@ -711,4 +711,110 @@ export class ApiClient {
 
     return response.json();
   }
+
+  // Team member methods (for test setup)
+
+  async addTeamMember(
+    orgName: string,
+    teamName: string,
+    memberName: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/members/${memberName}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to add member ${memberName} to team ${teamName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async removeTeamMember(
+    orgName: string,
+    teamName: string,
+    memberName: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/members/${memberName}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to remove member ${memberName} from team ${teamName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Repository permission methods
+
+  async addRepositoryPermission(
+    namespace: string,
+    repo: string,
+    entityType: 'user' | 'team',
+    entityName: string,
+    role: PrototypeRole,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/permissions/${entityType}/${entityName}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          role,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to add ${entityType} permission for ${entityName} on ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async deleteRepositoryPermission(
+    namespace: string,
+    repo: string,
+    entityType: 'user' | 'team',
+    entityName: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/permissions/${entityType}/${entityName}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete ${entityType} permission for ${entityName} on ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
 }
