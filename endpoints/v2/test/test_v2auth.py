@@ -26,9 +26,11 @@ def get_robot_password(username):
             "devtable",
             "password",
             400 if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"] else 200,
-            []
-            if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"]
-            else ["devtable/simple/foo/bar/baz:pull"],
+            (
+                []
+                if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"]
+                else ["devtable/simple/foo/bar/baz:pull"]
+            ),
             True,
             "private",
             False,

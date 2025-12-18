@@ -1,6 +1,7 @@
 """
 Billing information, subscriptions, and plan information.
 """
+
 import datetime
 import json
 import time
@@ -1155,9 +1156,9 @@ class UserSkuList(ApiResource):
                         # the response body
                         child_subscription = subscription.copy()
                         child_subscription["quantity"] = binding["quantity"]
-                        child_subscription[
-                            "assigned_to_org"
-                        ] = model.organization.get_organization_by_id(binding["org_id"]).username
+                        child_subscription["assigned_to_org"] = (
+                            model.organization.get_organization_by_id(binding["org_id"]).username
+                        )
                         child_subscription["metadata"] = metadata
                         child_subscriptions.append(child_subscription)
 

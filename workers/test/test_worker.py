@@ -18,9 +18,10 @@ def test_worker_name_defined_outside_sentry_condition():
 
 def test_sentry_not_initialized_when_disabled():
     """Test that Sentry is not initialized when disabled."""
-    with patch("workers.worker.app") as mock_app, patch(
-        "workers.worker.sentry_sdk"
-    ) as mock_sentry_sdk:
+    with (
+        patch("workers.worker.app") as mock_app,
+        patch("workers.worker.sentry_sdk") as mock_sentry_sdk,
+    ):
 
         # Configure Sentry to be disabled
         mock_app.config.get.side_effect = lambda key, default=None: {
@@ -36,9 +37,10 @@ def test_sentry_not_initialized_when_disabled():
 
 def test_sentry_not_initialized_when_no_dsn():
     """Test that Sentry is not initialized when DSN is empty."""
-    with patch("workers.worker.app") as mock_app, patch(
-        "workers.worker.sentry_sdk"
-    ) as mock_sentry_sdk:
+    with (
+        patch("workers.worker.app") as mock_app,
+        patch("workers.worker.sentry_sdk") as mock_sentry_sdk,
+    ):
 
         mock_app.config.get.side_effect = lambda key, default=None: {
             "EXCEPTION_LOG_TYPE": "Sentry",
@@ -54,9 +56,11 @@ def test_sentry_not_initialized_when_no_dsn():
 
 def test_exception_capture_in_operation():
     """Test that exceptions are captured by Sentry in operations."""
-    with patch("workers.worker.app") as mock_app, patch(
-        "workers.worker.sentry_sdk"
-    ) as mock_sentry_sdk, patch("workers.worker.UseThenDisconnect") as mock_use_then_disconnect:
+    with (
+        patch("workers.worker.app") as mock_app,
+        patch("workers.worker.sentry_sdk") as mock_sentry_sdk,
+        patch("workers.worker.UseThenDisconnect") as mock_use_then_disconnect,
+    ):
 
         mock_app.config.get.side_effect = lambda key, default=None: {
             "EXCEPTION_LOG_TYPE": "Sentry",
@@ -79,9 +83,11 @@ def test_exception_capture_in_operation():
 
 def test_default_sentry_config_values():
     """Test that default Sentry configuration values are used when not specified."""
-    with patch("workers.worker.app") as mock_app, patch(
-        "workers.worker.sentry_sdk"
-    ) as mock_sentry_sdk, patch("socket.gethostname") as mock_hostname:
+    with (
+        patch("workers.worker.app") as mock_app,
+        patch("workers.worker.sentry_sdk") as mock_sentry_sdk,
+        patch("socket.gethostname") as mock_hostname,
+    ):
 
         mock_app.config.get.side_effect = lambda key, default=None: {
             "EXCEPTION_LOG_TYPE": "Sentry",

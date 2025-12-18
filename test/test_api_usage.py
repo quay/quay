@@ -832,7 +832,7 @@ class TestCreateNewUser(ApiTestCase):
 
     def test_recaptcha_whitelisted_users(self):
         self.login(READ_ACCESS_USER)
-        with (self.toggleFeature("RECAPTCHA", True)):
+        with self.toggleFeature("RECAPTCHA", True):
             app.config["RECAPTCHA_WHITELISTED_USERS"] = READ_ACCESS_USER
             self.postResponse(User, data=NEW_USER_DETAILS, expected_code=200)
 
