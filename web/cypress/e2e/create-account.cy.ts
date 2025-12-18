@@ -1,13 +1,24 @@
 /// <reference types="cypress" />
 
 describe('Create Account Page', () => {
-  beforeEach(() => {
+  before(() => {
     cy.exec('npm run quay:seed');
+  });
 
+  beforeEach(() => {
     // Common intercepts for create account tests
     cy.intercept('GET', '/csrf_token', {
       body: {csrf_token: 'test-token'},
     }).as('getCsrfToken');
+
+    // Mock anonymous user to prevent 401 redirect to signin
+    cy.intercept('GET', '/api/v1/user/', {
+      statusCode: 200,
+      body: {
+        anonymous: true,
+        username: null,
+      },
+    }).as('getAnonymousUser');
 
     cy.visit('/createaccount');
   });

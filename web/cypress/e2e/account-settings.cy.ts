@@ -8,12 +8,7 @@ describe('Account Settings Page', () => {
   });
 
   beforeEach(() => {
-    cy.visit('/signin');
-    cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
-      .then((response) => response.body.csrf_token)
-      .then((token) => {
-        cy.loginByCSRF(token);
-      });
+    cy.login();
     cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
     cy.intercept('GET', '/api/v1/plans/', {fixture: 'plans.json'}).as(
       'getPlans',

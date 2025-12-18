@@ -3,14 +3,12 @@
 import {parseTimeDuration, humanizeTimeForExpiry} from 'src/libs/utils';
 
 describe('Org Settings Page', () => {
-  beforeEach(() => {
+  before(() => {
     cy.exec('npm run quay:seed');
-    cy.visit('/signin');
-    cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
-      .then((response) => response.body.csrf_token)
-      .then((token) => {
-        cy.loginByCSRF(token);
-      });
+  });
+
+  beforeEach(() => {
+    cy.login();
     cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
     cy.intercept('GET', '/api/v1/plans/', {fixture: 'plans.json'}).as(
       'getPlans',
