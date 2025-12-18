@@ -32,6 +32,7 @@ export function ExpandCollapseButton(props: ExpandCollapseButtonProps) {
           isSelected={tableMode === 'Expand'}
           onChange={onTableModeChange}
           id="expand-tab"
+          data-testid="expand-tab"
         />
         <ToggleGroupItem
           text="Collapse"
@@ -39,6 +40,7 @@ export function ExpandCollapseButton(props: ExpandCollapseButtonProps) {
           isSelected={tableMode === 'Collapse'}
           onChange={onTableModeChange}
           id="collapse-tab"
+          data-testid="collapse-tab"
         />
       </ToggleGroup>
     </ToolbarItem>
