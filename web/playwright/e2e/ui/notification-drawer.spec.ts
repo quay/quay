@@ -44,15 +44,19 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
     const bell = authenticatedPage.getByTestId('notification-bell');
     await expect(bell).toBeVisible();
 
-    // 5. Click bell to open drawer
-    await bell.click();
+    // 5. Click bell and wait for notification to appear (may need retries for backend processing)
     const drawer = authenticatedPage.getByTestId('notification-drawer');
-    await expect(drawer).toBeVisible();
+    const ourNotification = authenticatedPage
+      .getByTestId('notification-item')
+      .filter({hasText: repo.name});
 
-    // 6. Verify our notification exists (find by repo name to avoid interference from other tests)
-    const items = authenticatedPage.getByTestId('notification-item');
-    const ourNotification = items.filter({hasText: repo.name});
-    await expect(ourNotification).toBeVisible();
+    await expect(async () => {
+      await authenticatedPage.reload();
+      await expect(bell).toBeVisible();
+      await bell.click();
+      await expect(drawer).toBeVisible();
+      await expect(ourNotification).toBeVisible();
+    }).toPass({timeout: 20000, intervals: [2000, 3000, 5000]});
 
     // 7. Mark our notification as read by clicking header
     await ourNotification.getByTestId('notification-header').click();
