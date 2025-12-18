@@ -29,6 +29,7 @@ from endpoints.api import (
     ApiResource,
     define_json_response,
     format_date,
+    log_action,
     nickname,
     path_param,
     require_scope,
@@ -37,7 +38,6 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
-from util.audit import track_and_log
 from util.parsing import truthy_bool
 
 logger = logging.getLogger(__name__)
@@ -308,9 +308,9 @@ class OrganizationMirrorResource(ApiResource):
             )
 
             # Log audit event
-            track_and_log(
+            log_action(
                 "org_mirror_config_created",
-                namespace_name=orgname,
+                orgname,
                 metadata={
                     "external_reference": mirror.external_reference,
                     "sync_interval": mirror.sync_interval,
@@ -384,9 +384,9 @@ class OrganizationMirrorResource(ApiResource):
             updated_mirror = update_org_mirror_config(orgname, **updates)
 
             # Log audit event
-            track_and_log(
+            log_action(
                 "org_mirror_config_changed",
-                namespace_name=orgname,
+                orgname,
                 metadata={
                     "changed": list(data.keys()),
                     "external_reference": updated_mirror.external_reference,
@@ -420,9 +420,9 @@ class OrganizationMirrorResource(ApiResource):
             delete_org_mirror(orgname)
 
             # Log audit event
-            track_and_log(
+            log_action(
                 "org_mirror_config_deleted",
-                namespace_name=orgname,
+                orgname,
                 metadata={
                     "external_reference": external_ref,
                 },
@@ -536,9 +536,9 @@ class OrganizationMirrorSyncNowResource(ApiResource):
             trigger_sync_now(mirror)
 
             # Log audit event
-            track_and_log(
+            log_action(
                 "org_mirror_sync_requested",
-                namespace_name=orgname,
+                orgname,
                 metadata={
                     "sync_status": "SYNC_NOW",
                 },

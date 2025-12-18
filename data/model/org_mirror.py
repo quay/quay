@@ -51,7 +51,7 @@ def get_org_mirror_config(org_name):
     try:
         return (
             OrgMirrorConfig.select()
-            .join(User)
+            .join(User, on=(OrgMirrorConfig.organization == User.id))
             .where(
                 (User.username == org_name)
                 & (User.organization == True)
@@ -73,6 +73,7 @@ def create_org_mirror(
     external_registry_password=None,
     external_registry_config=None,
     root_rule=None,
+    is_enabled=True,
 ):
     """
     Create a new organization mirror configuration.
@@ -87,6 +88,7 @@ def create_org_mirror(
         external_registry_password: Optional password for external registry
         external_registry_config: Optional additional config (dict)
         root_rule: Optional RepoMirrorRule for filtering
+        is_enabled: Whether the mirror is enabled (default True)
 
     Returns:
         Created OrgMirrorConfig
@@ -111,6 +113,7 @@ def create_org_mirror(
         external_registry_password=password,
         external_registry_config=external_registry_config or {},
         root_rule=root_rule,
+        is_enabled=is_enabled,
     )
 
 
