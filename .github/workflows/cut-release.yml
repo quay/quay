@@ -17,7 +17,7 @@ jobs:
           echo "PREFIX=quay-${tag}/" >> $GITHUB_ENV
           echo "TAG=${tag}" >> $GITHUB_ENV
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Create Release Archive

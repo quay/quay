@@ -14,7 +14,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
@@ -31,22 +31,13 @@ jobs:
         DOCKER_USER="1001:0" docker compose up -d --no-build quay
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Seed Database
       run: cd web && npm run quay:seed
 
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-        cache: 'pip'
-        cache-dependency-path: requirements-dev.txt
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest requests
+    - name: Setup Quay Dev Environment
+      uses: ./.github/actions/setup-quay-dev
 
     - name: Integration Test
       run:  |
@@ -118,7 +109,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Node.js with npm caching
       uses: actions/setup-node@v4
