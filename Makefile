@@ -74,7 +74,7 @@ ensure-test-db:
 	fi
 
 install-pre-commit-hook:
-	pip install pre-commit==2.20.0
+	pip install pre-commit==4.5.0
 	pre-commit install
 
 PG_PASSWORD := quay
@@ -241,7 +241,7 @@ local-dev-up-react: local-dev-clean | build-image-quay
 	BUILD_ANGULAR=false DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) stop quay
 	BUILD_ANGULAR=false DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
 	# Wait for backend to be ready
-	while ! docker exec quay-quay test -e /tmp/gunicorn_web.sock 2>/dev/null; do echo "Waiting for backend..."; sleep 3; done
+	while ! $(DOCKER) exec quay-quay test -e /tmp/gunicorn_web.sock 2>/dev/null; do echo "Waiting for backend..."; sleep 3; done
 	@echo "You can now access the React frontend at http://localhost:8080"
 
 local-docker-rebuild:
