@@ -252,4 +252,3 @@ Query OK, 1 row affected (0.02 sec)
 ```
 
 Lastly, when you run the Quay Config Tool, remember to pick `MySQL` as your database type and use the credentials `root/password` and database name `quay`.
-
