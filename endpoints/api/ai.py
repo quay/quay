@@ -135,6 +135,7 @@ class OrganizationAISettings(ApiResource):
             ),
             "provider": settings.provider if settings else None,
             "model": settings.model if settings else None,
+            "endpoint": settings.endpoint if settings else None,
             "credentials_configured": (
                 settings.api_key_encrypted is not None if settings else False
             ),
@@ -437,11 +438,11 @@ class RepositoryAIDescription(RepositoryParamResource):
 
         tag = registry_model.get_repo_tag(repo_ref, tag_name)
         if tag is None:
-            raise NotFound(f"Tag '{tag_name}' not found")
+            raise InvalidRequest(f"Tag '{tag_name}' not found")
 
         manifest = registry_model.get_manifest_for_tag(tag)
         if manifest is None:
-            raise NotFound("No manifest found for tag")
+            raise InvalidRequest("No manifest found for tag")
 
         manifest_digest = manifest.digest
 

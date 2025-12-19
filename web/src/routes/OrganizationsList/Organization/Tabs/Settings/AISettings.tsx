@@ -63,10 +63,10 @@ export function AISettings({organizationName}: AISettingsProps) {
     if (settings) {
       setProvider((settings.provider as AIProvider) || 'anthropic');
       setModel(settings.model || '');
+      setEndpoint(settings.endpoint || '');
       setDescriptionEnabled(settings.description_generator_enabled);
       // API key is never returned from server for security
       setApiKey('');
-      setEndpoint('');
     }
   }, [settings]);
 

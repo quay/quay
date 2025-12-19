@@ -8,6 +8,7 @@ export interface AISettings {
   description_generator_enabled: boolean;
   provider: string | null;
   model: string | null;
+  endpoint: string | null;
   credentials_configured: boolean;
   credentials_verified: boolean;
 }
