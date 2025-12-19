@@ -695,7 +695,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `proxy-cache.cy.ts` | | @feature:PROXY_CACHE |
 | ✅ | `quota.cy.ts` | `organization/quota.spec.ts` | @feature:QUOTA_MANAGEMENT, @feature:EDIT_QUOTA, consolidated 27→7 tests |
 | ✅ | `repositories-list.cy.ts` | `repository/repositories-list.spec.ts` | Consolidated 11→6 tests |
-| ⬚ | `repository-autopruning.cy.ts` | | @feature:AUTO_PRUNE |
+| ✅ | `repository-autopruning.cy.ts` | `repository/autopruning.spec.ts` | @feature:AUTO_PRUNE, consolidated 17→6 tests |
 | ⬚ | `repository-details.cy.ts` | | |
 | ✅ | `repository-notifications.cy.ts` | `repository/notifications.spec.ts` | @feature:MAILING, consolidated 18→7 tests |
 | ✅ | `repository-permissions.cy.ts` | `repository/permissions.spec.ts` | Consolidated 6→3 tests |
@@ -729,5 +729,5 @@ Track migration progress from Cypress to Playwright.
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 14 (26%)
-- **Remaining**: 40
+- **Migrated**: 15 (28%)
+- **Remaining**: 39
