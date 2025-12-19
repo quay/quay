@@ -1,6 +1,7 @@
 """
 Messages API.
 """
+
 from flask import abort, make_response, request
 
 import features

@@ -9,6 +9,7 @@ This test suite covers:
 - Pull statistics retrieval from Redis
 - Error handling
 """
+
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock, patch
 

@@ -291,9 +291,11 @@ class V2Protocol(RegistryProtocol):
 
         headers = {
             "Authorization": "Bearer " + token,
-            "Accept": ",".join(options.accept_mimetypes)
-            if options.accept_mimetypes is not None
-            else "*/*",
+            "Accept": (
+                ",".join(options.accept_mimetypes)
+                if options.accept_mimetypes is not None
+                else "*/*"
+            ),
         }
 
         # Push all blobs.
@@ -505,9 +507,11 @@ class V2Protocol(RegistryProtocol):
 
         headers = {
             "Authorization": "Bearer " + token,
-            "Accept": ",".join(options.accept_mimetypes)
-            if options.accept_mimetypes is not None
-            else "*/*",
+            "Accept": (
+                ",".join(options.accept_mimetypes)
+                if options.accept_mimetypes is not None
+                else "*/*"
+            ),
         }
 
         # Build fake manifests.

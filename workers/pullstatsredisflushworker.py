@@ -209,9 +209,9 @@ class RedisFlushWorker(Worker):
         """
         # Use dictionaries to aggregate updates by unique key
         tag_updates_dict: Dict[Tuple[int, str], Dict] = {}  # Key: (repository_id, tag_name)
-        manifest_updates_dict: Dict[
-            Tuple[int, str], Dict
-        ] = {}  # Key: (repository_id, manifest_digest)
+        manifest_updates_dict: Dict[Tuple[int, str], Dict] = (
+            {}
+        )  # Key: (repository_id, manifest_digest)
         database_dependent_keys = (
             set()
         )  # Keys that should only be cleaned up after successful DB write

@@ -235,9 +235,11 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             body["layers"].append(
                 {
                     "hash": str(l.layer_info.blob_digest),
-                    "uri": self._blob_url_retriever.url_for_download(manifest.repository, l.blob)
-                    if not l.layer_info.is_remote
-                    else l.layer_info.urls[0],
+                    "uri": (
+                        self._blob_url_retriever.url_for_download(manifest.repository, l.blob)
+                        if not l.layer_info.is_remote
+                        else l.layer_info.urls[0]
+                    ),
                     "headers": _join(
                         {
                             "Accept": ["application/gzip"],

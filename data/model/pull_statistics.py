@@ -6,6 +6,7 @@ This module provides functions for managing pull statistics data:
 - Helper functions for individual record operations
 - Query functions for retrieving statistics
 """
+
 import logging
 from datetime import datetime
 from functools import reduce
