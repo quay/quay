@@ -497,7 +497,7 @@ class OrganizationMirrorRepositoriesResource(ApiResource):
                     "repository_name": repo.repository_name,
                     "external_repo_name": repo.external_repo_name,
                     "status": repo.status.name,
-                    "message": repo.message,
+                    "message": repo.last_error,
                     "created_repository": f"{orgname}/{repo.repository_name}"
                     if repo.repository
                     else None,

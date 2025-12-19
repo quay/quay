@@ -7,7 +7,7 @@ distributed worker coordination via claim/release patterns and optimistic lockin
 
 from datetime import datetime, timedelta
 
-from peewee import IntegrityError
+from peewee import SQL, IntegrityError
 
 from data.database import (
     OrgMirrorConfig,
@@ -173,16 +173,20 @@ def orgs_to_mirror(start_token=None):
                 | (
                     (OrgMirrorConfig.sync_status == OrgMirrorStatus.SUCCESS)
                     & (
-                        OrgMirrorConfig.sync_start_date
-                        < (now - timedelta(seconds=OrgMirrorConfig.sync_interval))
+                        SQL(
+                            "sync_start_date + (sync_interval * INTERVAL '1 second') < %s",
+                            [now],
+                        )
                     )
                 )
                 | (
                     (OrgMirrorConfig.sync_status == OrgMirrorStatus.FAIL)
                     & (OrgMirrorConfig.sync_retries_remaining > 0)
                     & (
-                        OrgMirrorConfig.sync_start_date
-                        < (now - timedelta(seconds=OrgMirrorConfig.sync_interval))
+                        SQL(
+                            "sync_start_date + (sync_interval * INTERVAL '1 second') < %s",
+                            [now],
+                        )
                     )
                 )
                 | (

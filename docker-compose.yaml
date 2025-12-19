@@ -160,6 +160,33 @@ services:
       - redis
       - quay
 
+  orgmirror:
+    user: ${DOCKER_USER:-nobody:0}
+    container_name: quay-orgmirror
+    build:
+      context: .
+      args:
+        BUILD_ANGULAR: ${BUILD_ANGULAR:-true}
+      target: final
+    image: localhost/quay-local:latest
+    volumes:
+      - ".:/quay-registry"
+      - "./local-dev/stack:/quay-registry/conf/stack"
+    environment:
+      QUAY_VERSION: local-dev
+      QUAY_HOTRELOAD: "true"
+      DEBUGLOG: "true"
+      IGNORE_VALIDATION: "true"
+      QUAYRUN: /tmp
+      WORKER_COUNT_UNSUPPORTED_MINIMUM: "1"
+      WORKER_COUNT: "1"
+    command: ["orgmirror-nomigrate"]
+    network_mode: "service:quay"
+    depends_on:
+      - quay-db
+      - redis
+      - quay
+
   # clair is configured to share it's network
   # namespace with quay. this allows quay to serve
   # layers to clair over localhost.

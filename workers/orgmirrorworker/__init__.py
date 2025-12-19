@@ -18,6 +18,11 @@ from data.model.org_mirror import (
     record_discovered_repos,
     release_org_mirror,
 )
+from data.model.repo_mirror import (
+    create_mirroring_rule,
+    enable_mirroring_for_repository,
+    get_mirror,
+)
 from data.model.repository import create_repository
 from workers.orgmirrorworker.discovery import discover_repositories
 from workers.orgmirrorworker.filtering import apply_repo_filters
@@ -131,19 +136,20 @@ def process_org_mirrors(model, token=None):
         return next_token
 
     with UseThenDisconnect(app.config):
-        for mirror, abt, num_remaining in iterator:
+        mirrors = list(iterator)
+        total = len(mirrors)
+        for idx, mirror in enumerate(mirrors):
             try:
                 perform_org_mirror(model, mirror)
             except PreemptedException:
                 logger.info(
                     "Another worker pre-empted us for org: %s", mirror.organization.username
                 )
-                abt.set()
             except Exception as e:
                 logger.exception("Organization mirror service unavailable: %s" % e)
                 return None
 
-            undiscovered_orgs.set(num_remaining)
+            undiscovered_orgs.set(total - idx - 1)
 
     return next_token
 
@@ -380,9 +386,56 @@ def create_repositories(model, mirror):
             existing_repo = get_repository(org_name, repo_name)
 
             if existing_repo:
-                logger.info("Repository %s/%s already exists, skipping", org_name, repo_name)
-                mark_repo_skipped(org_mirror_repo, "Repository already exists")
-                skipped_count += 1
+                # Check if repository already has mirroring configured
+                existing_mirror = get_mirror(existing_repo)
+                if existing_mirror:
+                    logger.info(
+                        "Repository %s/%s already has mirroring configured, skipping",
+                        org_name,
+                        repo_name,
+                    )
+                    mark_repo_skipped(
+                        org_mirror_repo, "Repository already has mirroring configured"
+                    )
+                    skipped_count += 1
+                    continue
+
+                # Repository exists but no mirroring config - set it up
+                logger.info(
+                    "Setting up mirroring for existing repository %s/%s", org_name, repo_name
+                )
+
+                # Create a mirroring rule - sync all tags by default
+                root_rule = create_mirroring_rule(existing_repo, ["*"])
+
+                # Set up RepoMirrorConfig so repomirrorworker can sync images
+                enable_mirroring_for_repository(
+                    repository=existing_repo,
+                    root_rule=root_rule,
+                    internal_robot=mirror.internal_robot,
+                    external_reference=org_mirror_repo.external_repo_name,
+                    sync_interval=mirror.sync_interval,
+                    skopeo_timeout_interval=mirror.skopeo_timeout,
+                    external_registry_username=mirror.external_registry_username.decrypt()
+                    if mirror.external_registry_username
+                    else None,
+                    external_registry_password=mirror.external_registry_password.decrypt()
+                    if mirror.external_registry_password
+                    else None,
+                    external_registry_config=mirror.external_registry_config,
+                    is_enabled=True,
+                )
+
+                logger.info(
+                    "Enabled repository mirroring for existing repo %s/%s from %s",
+                    org_name,
+                    repo_name,
+                    org_mirror_repo.external_repo_name,
+                )
+
+                # Mark as created (mirroring enabled)
+                mark_repo_created(org_mirror_repo, existing_repo)
+                created_count += 1
                 continue
 
             # Create the repository
@@ -390,6 +443,35 @@ def create_repositories(model, mirror):
 
             new_repo = create_repository(
                 org_name, repo_name, mirror.internal_robot, description="Created by org mirror"
+            )
+
+            # Enable repository-level mirroring for the new repository
+            # Create a mirroring rule - sync all tags by default
+            root_rule = create_mirroring_rule(new_repo, ["*"])
+
+            # Set up RepoMirrorConfig so repomirrorworker can sync images
+            enable_mirroring_for_repository(
+                repository=new_repo,
+                root_rule=root_rule,
+                internal_robot=mirror.internal_robot,
+                external_reference=org_mirror_repo.external_repo_name,
+                sync_interval=mirror.sync_interval,
+                skopeo_timeout_interval=mirror.skopeo_timeout,
+                external_registry_username=mirror.external_registry_username.decrypt()
+                if mirror.external_registry_username
+                else None,
+                external_registry_password=mirror.external_registry_password.decrypt()
+                if mirror.external_registry_password
+                else None,
+                external_registry_config=mirror.external_registry_config,
+                is_enabled=True,
+            )
+
+            logger.info(
+                "Enabled repository mirroring for %s/%s from %s",
+                org_name,
+                repo_name,
+                org_mirror_repo.external_repo_name,
             )
 
             # Mark as created

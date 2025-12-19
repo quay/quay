@@ -171,7 +171,7 @@ class QuayDiscoveryClient:
 
         params = {
             "namespace": org_name,
-            "public": "false",  # Include private repos
+            "public": "true",  # Include public repositories
         }
 
         if next_page:
