@@ -676,7 +676,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `autopruning.cy.ts` | | |
 | ✅ | `breadcrumbs.cy.ts` | `ui/breadcrumbs.spec.ts` | |
 | ⬚ | `builds.cy.ts` | | |
-| ⬚ | `create-account.cy.ts` | | |
+| ✅ | `create-account.cy.ts` | `auth/create-account.spec.ts` | @feature:MAILING, @feature:QUOTA_MANAGEMENT, consolidated 10→6 tests |
 | ✅ | `default-permissions.cy.ts` | `organization/default-permissions.spec.ts` | |
 | ⬚ | `external-login.cy.ts` | | @config:OIDC |
 | ✅ | `external-scripts.cy.ts` | `ui/external-scripts.spec.ts` | @feature:BILLING |
@@ -729,5 +729,5 @@ Track migration progress from Cypress to Playwright.
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 15 (28%)
-- **Remaining**: 39
+- **Migrated**: 16 (30%)
+- **Remaining**: 38
