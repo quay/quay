@@ -746,6 +746,44 @@ export class ApiClient {
     };
   }
 
+  /**
+   * Create a user as superuser (requires superuser API context).
+   * Returns the generated temporary password.
+   */
+  async createUserAsSuperuser(
+    username: string,
+    email?: string,
+  ): Promise<{username: string; email?: string; password: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/superuser/users/`,
+      {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          username,
+          email,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create user as superuser ${username}: ${response.status()} - ${body}`,
+      );
+    }
+
+    const result = await response.json();
+    return {
+      username: result.username,
+      email: result.email,
+      password: result.password,
+    };
+  }
+
   async deleteUser(username: string): Promise<void> {
     const token = await this.fetchToken();
     const response = await this.request.delete(
