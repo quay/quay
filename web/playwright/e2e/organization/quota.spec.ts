@@ -18,119 +18,120 @@ test.describe(
   'Quota Management',
   {tag: ['@organization', '@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA']},
   () => {
-    test('superuser can configure quota lifecycle: create, update, add limit, update limit, delete limit, delete quota', async ({
-      superuserPage,
-      superuserApi,
-    }) => {
-      // Setup: Create organization
-      const org = await superuserApi.organization('quotatest');
+    test(
+      'superuser can configure quota lifecycle: create, update, add limit, update limit, delete limit, delete quota',
+      {tag: '@feature:SUPERUSERS_FULL_ACCESS'},
+      async ({superuserPage, superuserApi}) => {
+        // Setup: Create organization
+        const org = await superuserApi.organization('quotatest');
 
-      // Navigate to organizations list
-      await superuserPage.goto('/organization');
+        // Navigate to organizations list
+        await superuserPage.goto('/organization');
 
-      // Open Configure Quota modal via kebab menu
-      await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
-      await superuserPage.getByTestId('configure-quota-option').click();
+        // Open Configure Quota modal via kebab menu
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
 
-      // Verify modal opens
-      await expect(
-        superuserPage.getByTestId('configure-quota-modal'),
-      ).toBeVisible();
-      await expect(
-        superuserPage.getByText(`Configure Quota for ${org.name}`),
-      ).toBeVisible();
+        // Verify modal opens
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).toBeVisible();
+        await expect(
+          superuserPage.getByText(`Configure Quota for ${org.name}`),
+        ).toBeVisible();
 
-      // CREATE QUOTA: Enter 10 GiB and apply
-      await superuserPage.getByTestId('quota-value-input').fill('10');
-      await superuserPage.getByTestId('apply-quota-button').click();
+        // CREATE QUOTA: Enter 10 GiB and apply
+        await superuserPage.getByTestId('quota-value-input').fill('10');
+        await superuserPage.getByTestId('apply-quota-button').click();
 
-      // Verify success
-      await expect(
-        superuserPage.getByText('Successfully created quota'),
-      ).toBeVisible();
+        // Verify success
+        await expect(
+          superuserPage.getByText('Successfully created quota'),
+        ).toBeVisible();
 
-      // Wait for modal to close before reopening
-      await expect(
-        superuserPage.getByTestId('configure-quota-modal'),
-      ).not.toBeVisible();
+        // Wait for modal to close before reopening
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).not.toBeVisible();
 
-      // Reopen modal and wait for quota data to load
-      await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
-      await superuserPage.getByTestId('configure-quota-option').click();
-      await expect(
-        superuserPage.getByTestId('configure-quota-modal'),
-      ).toBeVisible();
-      // Wait for existing quota value to populate (confirms query cache updated)
-      await expect(superuserPage.getByTestId('quota-value-input')).toHaveValue(
-        '10',
-      );
+        // Reopen modal and wait for quota data to load
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).toBeVisible();
+        // Wait for existing quota value to populate (confirms query cache updated)
+        await expect(
+          superuserPage.getByTestId('quota-value-input'),
+        ).toHaveValue('10');
 
-      // UPDATE QUOTA: Change to 20 GiB
-      await superuserPage.getByTestId('quota-value-input').fill('20');
-      await superuserPage.getByTestId('apply-quota-button').click();
-      await expect(
-        superuserPage.getByText('Successfully updated quota'),
-      ).toBeVisible();
+        // UPDATE QUOTA: Change to 20 GiB
+        await superuserPage.getByTestId('quota-value-input').fill('20');
+        await superuserPage.getByTestId('apply-quota-button').click();
+        await expect(
+          superuserPage.getByText('Successfully updated quota'),
+        ).toBeVisible();
 
-      // Reopen modal
-      await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
-      await superuserPage.getByTestId('configure-quota-option').click();
-      await expect(
-        superuserPage.getByTestId('configure-quota-modal'),
-      ).toBeVisible();
+        // Reopen modal
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).toBeVisible();
 
-      // ADD LIMIT: Add Warning limit at 80%
-      await expect(superuserPage.getByTestId('add-limit-form')).toBeVisible();
-      await superuserPage.getByTestId('new-limit-type-select').click();
-      await superuserPage.getByRole('option', {name: 'Warning'}).click();
-      await superuserPage.getByTestId('new-limit-percent-input').fill('80');
-      await superuserPage.getByTestId('add-limit-button').click();
-      await expect(
-        superuserPage.getByText('Successfully added quota limit'),
-      ).toBeVisible();
+        // ADD LIMIT: Add Warning limit at 80%
+        await expect(superuserPage.getByTestId('add-limit-form')).toBeVisible();
+        await superuserPage.getByTestId('new-limit-type-select').click();
+        await superuserPage.getByRole('option', {name: 'Warning'}).click();
+        await superuserPage.getByTestId('new-limit-percent-input').fill('80');
+        await superuserPage.getByTestId('add-limit-button').click();
+        await expect(
+          superuserPage.getByText('Successfully added quota limit'),
+        ).toBeVisible();
 
-      // Reopen modal and verify limit exists
-      await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
-      await superuserPage.getByTestId('configure-quota-option').click();
-      await expect(
-        superuserPage.getByTestId('configure-quota-modal'),
-      ).toBeVisible();
+        // Reopen modal and verify limit exists
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
+        await expect(
+          superuserPage.getByTestId('configure-quota-modal'),
+        ).toBeVisible();
 
-      // UPDATE LIMIT: Change to 85%
-      await superuserPage.getByTestId('limit-percent-input').fill('85');
-      await superuserPage.getByTestId('update-limit-button').click();
-      await expect(
-        superuserPage.getByText('Successfully updated quota limit'),
-      ).toBeVisible();
+        // UPDATE LIMIT: Change to 85%
+        await superuserPage.getByTestId('limit-percent-input').fill('85');
+        await superuserPage.getByTestId('update-limit-button').click();
+        await expect(
+          superuserPage.getByText('Successfully updated quota limit'),
+        ).toBeVisible();
 
-      // Reopen modal
-      await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
-      await superuserPage.getByTestId('configure-quota-option').click();
+        // Reopen modal
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
 
-      // DELETE LIMIT
-      await superuserPage.getByTestId('remove-limit-button').click();
-      await expect(
-        superuserPage.getByText('Successfully deleted quota limit'),
-      ).toBeVisible();
+        // DELETE LIMIT
+        await superuserPage.getByTestId('remove-limit-button').click();
+        await expect(
+          superuserPage.getByText('Successfully deleted quota limit'),
+        ).toBeVisible();
 
-      // Reopen modal
-      await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
-      await superuserPage.getByTestId('configure-quota-option').click();
+        // Reopen modal
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        await superuserPage.getByTestId('configure-quota-option').click();
 
-      // DELETE QUOTA
-      await superuserPage.getByTestId('remove-quota-button').click();
-      await expect(
-        superuserPage.getByRole('heading', {name: 'Delete Quota'}),
-      ).toBeVisible();
-      await superuserPage.getByRole('button', {name: 'OK'}).click();
-      await expect(
-        superuserPage.getByText('Successfully deleted quota'),
-      ).toBeVisible();
+        // DELETE QUOTA
+        await superuserPage.getByTestId('remove-quota-button').click();
+        await expect(
+          superuserPage.getByRole('heading', {name: 'Delete Quota'}),
+        ).toBeVisible();
+        await superuserPage.getByRole('button', {name: 'OK'}).click();
+        await expect(
+          superuserPage.getByText('Successfully deleted quota'),
+        ).toBeVisible();
 
-      // Verify quota deleted via API
-      const quotas = await superuserApi.raw.getOrganizationQuota(org.name);
-      expect(quotas).toHaveLength(0);
-    });
+        // Verify quota deleted via API
+        const quotas = await superuserApi.raw.getOrganizationQuota(org.name);
+        expect(quotas).toHaveLength(0);
+      },
+    );
 
     test('regular user sees read-only quota in organization settings', async ({
       authenticatedPage,
@@ -209,49 +210,51 @@ test.describe(
       ).toBeVisible();
     });
 
-    test('superuser sees no quota alert with instructions in organization settings', async ({
-      superuserPage,
-      superuserApi,
-    }) => {
-      // Setup: Create organization WITHOUT quota
-      const org = await superuserApi.organization('noquotasu');
+    test(
+      'superuser sees no quota alert with instructions in organization settings',
+      {tag: '@feature:SUPERUSERS_FULL_ACCESS'},
+      async ({superuserPage, superuserApi}) => {
+        // Setup: Create organization WITHOUT quota
+        const org = await superuserApi.organization('noquotasu');
 
-      // Navigate to org settings as superuser
-      await superuserPage.goto(`/organization/${org.name}?tab=Settings`);
+        // Navigate to org settings as superuser
+        await superuserPage.goto(`/organization/${org.name}?tab=Settings`);
 
-      // Click on Quota tab
-      await superuserPage.getByTestId('Quota').click();
+        // Click on Quota tab
+        await superuserPage.getByTestId('Quota').click();
 
-      // Should see superuser-specific alert
-      await expect(
-        superuserPage.getByTestId('no-quota-superuser-alert'),
-      ).toBeVisible();
-      await expect(
-        superuserPage.getByText(
-          'Use the "Configure Quota" option from the Organizations list page',
-        ),
-      ).toBeVisible();
-    });
+        // Should see superuser-specific alert
+        await expect(
+          superuserPage.getByTestId('no-quota-superuser-alert'),
+        ).toBeVisible();
+        await expect(
+          superuserPage.getByText(
+            'Use the "Configure Quota" option from the Organizations list page',
+          ),
+        ).toBeVisible();
+      },
+    );
 
-    test('superuser sees Configure Quota option in organizations list kebab menu', async ({
-      superuserPage,
-      superuserApi,
-    }) => {
-      // Setup: Create organization
-      const org = await superuserApi.organization('kebabquota');
+    test(
+      'superuser sees Configure Quota option in organizations list kebab menu',
+      {tag: '@feature:SUPERUSERS_FULL_ACCESS'},
+      async ({superuserPage, superuserApi}) => {
+        // Setup: Create organization
+        const org = await superuserApi.organization('kebabquota');
 
-      // Navigate to organizations list
-      await superuserPage.goto('/organization');
+        // Navigate to organizations list
+        await superuserPage.goto('/organization');
 
-      // Wait for org to appear and click kebab menu
-      await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
+        // Wait for org to appear and click kebab menu
+        await superuserPage.getByTestId(`${org.name}-options-toggle`).click();
 
-      // Should see Configure Quota option
-      await expect(
-        superuserPage.getByTestId('configure-quota-option'),
-      ).toBeVisible();
-      await expect(superuserPage.getByText('Configure Quota')).toBeVisible();
-    });
+        // Should see Configure Quota option
+        await expect(
+          superuserPage.getByTestId('configure-quota-option'),
+        ).toBeVisible();
+        await expect(superuserPage.getByText('Configure Quota')).toBeVisible();
+      },
+    );
 
     test('regular user does not see organization options kebab menu', async ({
       authenticatedPage,

@@ -16,7 +16,7 @@ import {test, expect, uniqueName} from '../../fixtures';
 
 test.describe(
   'Superuser Organization Actions',
-  {tag: ['@superuser', '@feature:SUPERUSERS_FULL_ACCESS']},
+  {tag: '@feature:SUPERUSERS_FULL_ACCESS'},
   () => {
     test('superuser sees actions column and options menu for organizations', async ({
       superuserPage,
