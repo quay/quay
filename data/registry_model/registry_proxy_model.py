@@ -531,7 +531,7 @@ class ProxyModel(OCIModel):
                     self._create_placeholder_blobs(manifest, db_manifest.id, repository_ref.id)
                     return wrapped_manifest, wrapped_tag
 
-                manifests_to_connect = []
+                manifests_to_connect = set()
                 for child in manifest.child_manifests(content_retriever=None):
                     m = oci.manifest.lookup_manifest(
                         repository_ref.id, child.digest, allow_dead=True
@@ -544,9 +544,11 @@ class ProxyModel(OCIModel):
                     try:
                         ManifestChild.get(manifest=db_manifest.id, child_manifest=m.id)
                     except ManifestChild.DoesNotExist:
-                        manifests_to_connect.append(m)
+                        manifests_to_connect.add(m)
 
-                oci.manifest.connect_manifests(manifests_to_connect, db_manifest, repository_ref.id)
+                oci.manifest.connect_manifests(
+                    list(manifests_to_connect), db_manifest, repository_ref.id
+                )
 
                 return wrapped_manifest, wrapped_tag
 
