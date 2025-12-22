@@ -11,6 +11,8 @@ export type RepositoryVisibility = 'public' | 'private';
 export type RepositoryState = 'NORMAL' | 'MIRROR' | 'READ_ONLY';
 export type TeamRole = 'member' | 'creator' | 'admin';
 export type PrototypeRole = 'read' | 'write' | 'admin';
+export type MessageSeverity = 'info' | 'warning' | 'error';
+export type MessageMediaType = 'text/plain' | 'text/markdown';
 
 export interface MirrorConfig {
   external_reference: string;
@@ -92,6 +94,18 @@ export interface Quota {
   id: string;
   limit_bytes: number;
   limits: QuotaLimit[];
+}
+
+// Global message types
+export interface GlobalMessage {
+  uuid: string;
+  content: string;
+  media_type: MessageMediaType;
+  severity: MessageSeverity;
+}
+
+export interface GlobalMessagesResponse {
+  messages: GlobalMessage[];
 }
 
 export class ApiClient {
@@ -1085,6 +1099,78 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to delete quota limit for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Global message methods (superuser only)
+
+  async getMessages(): Promise<GlobalMessage[]> {
+    const response = await this.request.get(`${API_URL}/api/v1/messages`, {
+      timeout: 5000,
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(`Failed to get messages: ${response.status()} - ${body}`);
+    }
+
+    const data: GlobalMessagesResponse = await response.json();
+    return data.messages || [];
+  }
+
+  async createMessage(
+    content: string,
+    severity: MessageSeverity = 'info',
+    mediaType: MessageMediaType = 'text/markdown',
+  ): Promise<GlobalMessage> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(`${API_URL}/api/v1/messages`, {
+      timeout: 5000,
+      headers: {
+        'X-CSRF-Token': token,
+      },
+      data: {
+        message: {
+          content,
+          media_type: mediaType,
+          severity,
+        },
+      },
+    });
+
+    if (response.status() !== 201) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create message: ${response.status()} - ${body}`,
+      );
+    }
+
+    // API doesn't return the created message, so fetch to get the UUID
+    const messages = await this.getMessages();
+    const created = messages.find((m) => m.content === content);
+    if (!created) {
+      throw new Error('Created message not found after creation');
+    }
+    return created;
+  }
+
+  async deleteMessage(uuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/message/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete message ${uuid}: ${response.status()} - ${body}`,
       );
     }
   }
