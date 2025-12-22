@@ -26,14 +26,19 @@ const test = base.extend<LogoutTestFixtures>({
     await use(username);
   },
 
-  logoutPage: async ({browser, superuserRequest, logoutUsername}, use) => {
+  logoutPage: async ({browser, logoutUsername}, use) => {
     const username = logoutUsername;
     const password = 'testpassword123';
     const email = `${username}@example.com`;
 
-    // Create temporary user using superuser API
-    const superApi = new ApiClient(superuserRequest);
-    await superApi.createUser(username, password, email);
+    // Create a SEPARATE context for admin operations to avoid corrupting
+    // the worker-scoped superuserContext. Quay's user creation API automatically
+    // logs in as the new user (sets session cookie), which would overwrite
+    // the admin session if we used superuserRequest.
+    const adminContext = await browser.newContext();
+    const adminApi = new ApiClient(adminContext.request);
+    await adminApi.signIn('admin', 'password');
+    await adminApi.createUser(username, password, email);
 
     // Create new context and login as the temporary user
     const context = await browser.newContext();
@@ -47,12 +52,13 @@ const test = base.extend<LogoutTestFixtures>({
     await page.close();
     await context.close();
 
-    // Delete the temporary user
+    // Delete the temporary user using the admin context
     try {
-      await superApi.deleteUser(username);
+      await adminApi.deleteUser(username);
     } catch {
       // User may already be deleted or cleanup failed - that's ok
     }
+    await adminContext.close();
   },
 });
 

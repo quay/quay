@@ -796,6 +796,10 @@ export class ApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
+
+    // Clear cached CSRF token after login since Quay regenerates tokens on session change.
+    // Subsequent API calls will fetch a fresh token.
+    this.csrfToken = null;
   }
 
   // User notification methods

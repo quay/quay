@@ -205,10 +205,10 @@ test.describe('Manage Team Members', {tag: ['@organization', '@team']}, () => {
 
     // Wizard: Name & Description
     await authenticatedPage
-      .getByTestId('new-robot-name-input')
+      .getByTestId('robot-wizard-form-name')
       .fill(robotShortname);
     await authenticatedPage
-      .getByTestId('new-robot-description-input')
+      .getByTestId('robot-wizard-form-description')
       .fill('Test robot description');
     await authenticatedPage.getByTestId('next-btn').click();
 
@@ -226,7 +226,7 @@ test.describe('Manage Team Members', {tag: ['@organization', '@team']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Wizard: Review and Finish
-    await authenticatedPage.getByTestId('review-and-finish-btn').click();
+    await authenticatedPage.getByTestId('create-robot-submit').click();
 
     // Verify robot is selected and submit
     const robotFullName = `${org.name}+${robotShortname}`;
