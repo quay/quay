@@ -710,7 +710,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `superuser-build-logs.cy.ts` | | Superuser required |
 | ⬚ | `superuser-change-log.cy.ts` | | Superuser required |
 | ⬚ | `superuser-framework.cy.ts` | | Superuser required |
-| ⬚ | `superuser-messages.cy.ts` | | Superuser required |
+| ✅ | `superuser-messages.cy.ts` | `superuser/messages.spec.ts` | Superuser required, consolidated 14→6 tests |
 | ✅ | `superuser-org-actions.cy.ts` | `superuser/org-actions.spec.ts` | Superuser required |
 | ⬚ | `superuser-service-keys.cy.ts` | | Superuser required |
 | ⬚ | `superuser-usage-logs.cy.ts` | | Superuser required |

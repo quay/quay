@@ -80,6 +80,15 @@ export interface CreatedRobot {
 }
 
 /**
+ * Created message info
+ */
+export interface CreatedMessage {
+  uuid: string;
+  content: string;
+  severity: 'info' | 'warning' | 'error';
+}
+
+/**
  * API client with auto-cleanup tracking.
  *
  * All resources created via this client are automatically
@@ -371,6 +380,32 @@ export class TestApi {
   }
 
   /**
+   * Create a global message.
+   * Automatically deleted after test.
+   * (Superuser only)
+   */
+  async message(
+    content: string,
+    severity: 'info' | 'warning' | 'error' = 'info',
+  ): Promise<CreatedMessage> {
+    const result = await this.client.createMessage(content, severity);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteMessage(result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      uuid: result.uuid,
+      content: result.content,
+      severity: result.severity,
+    };
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
@@ -402,7 +437,8 @@ export type QuayFeature =
   | 'CHANGE_TAG_EXPIRATION'
   | 'USER_METADATA'
   | 'MAILING'
-  | 'IMAGE_EXPIRY_TRIGGER';
+  | 'IMAGE_EXPIRY_TRIGGER'
+  | 'SUPERUSERS_FULL_ACCESS';
 
 /**
  * Quay configuration from /config endpoint
