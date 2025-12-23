@@ -4,6 +4,7 @@ import {useOrganization} from 'src/hooks/UseOrganization';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import AutoPruning from './AutoPruning';
 import {BillingInformation} from './BillingInformation';
+import OrgMirroringConfig from '../Mirroring/OrgMirroringConfig';
 import {CliConfiguration} from './CLIConfiguration';
 import {GeneralSettings} from './GeneralSettings';
 import {ProxyCacheConfig} from './ProxyCacheConfig';
@@ -78,6 +79,14 @@ export default function Settings(props: SettingsProps) {
       visible:
         quayConfig?.features?.QUOTA_MANAGEMENT &&
         quayConfig?.features?.EDIT_QUOTA,
+    },
+    {
+      name: 'Organization Mirroring',
+      id: 'orgmirroring',
+      content: () => (
+        <OrgMirroringConfig organizationName={props.organizationName} />
+      ),
+      visible: quayConfig?.features?.ORG_MIRROR && !props.isUserOrganization,
     },
   ];
 

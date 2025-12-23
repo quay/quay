@@ -438,6 +438,11 @@ def initialize_database():
     LogEntryKind.create(name="repo_mirror_sync_test_failed")
     LogEntryKind.create(name="repo_mirror_sync_test_started")
 
+    LogEntryKind.create(name="org_mirror_config_created")
+    LogEntryKind.create(name="org_mirror_config_changed")
+    LogEntryKind.create(name="org_mirror_config_deleted")
+    LogEntryKind.create(name="org_mirror_sync_requested")
+
     LogEntryKind.create(name="service_key_create")
     LogEntryKind.create(name="service_key_approve")
     LogEntryKind.create(name="service_key_delete")
