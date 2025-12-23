@@ -676,14 +676,14 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `autopruning.cy.ts` | | |
 | ✅ | `breadcrumbs.cy.ts` | `ui/breadcrumbs.spec.ts` | |
 | ⬚ | `builds.cy.ts` | | |
-| ⬚ | `create-account.cy.ts` | | |
+| ✅ | `create-account.cy.ts` | `auth/create-account.spec.ts` | @feature:MAILING, @feature:QUOTA_MANAGEMENT, consolidated 10→6 tests |
 | ✅ | `default-permissions.cy.ts` | `organization/default-permissions.spec.ts` | |
 | ⬚ | `external-login.cy.ts` | | @config:OIDC |
 | ✅ | `external-scripts.cy.ts` | `ui/external-scripts.spec.ts` | @feature:BILLING |
 | ⬚ | `footer.cy.ts` | | |
 | ⬚ | `fresh-login-oidc.cy.ts` | | @config:OIDC |
 | ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
-| ⬚ | `manage-team-members.cy.ts` | | |
+| ✅ | `manage-team-members.cy.ts` | `organization/team-members.spec.ts` | Consolidated 7→5 tests |
 | ⬚ | `marketplace.cy.ts` | | @config:BILLING |
 | ✅ | `mirroring.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated 18→5 tests |
 | ✅ | `notification-drawer.cy.ts` | `ui/notification-drawer.spec.ts` | @container |
@@ -693,9 +693,9 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `overview.cy.ts` | `ui/overview.spec.ts` | |
 | ⬚ | `packages-report.cy.ts` | | |
 | ⬚ | `proxy-cache.cy.ts` | | @feature:PROXY_CACHE |
-| ⬚ | `quota.cy.ts` | | @feature:QUOTA_MANAGEMENT |
+| ✅ | `quota.cy.ts` | `organization/quota.spec.ts` | @feature:QUOTA_MANAGEMENT, @feature:EDIT_QUOTA, consolidated 27→7 tests |
 | ✅ | `repositories-list.cy.ts` | `repository/repositories-list.spec.ts` | Consolidated 11→6 tests |
-| ⬚ | `repository-autopruning.cy.ts` | | @feature:AUTO_PRUNE |
+| ✅ | `repository-autopruning.cy.ts` | `repository/autopruning.spec.ts` | @feature:AUTO_PRUNE, consolidated 17→6 tests |
 | ⬚ | `repository-details.cy.ts` | | |
 | ✅ | `repository-notifications.cy.ts` | `repository/notifications.spec.ts` | @feature:MAILING, consolidated 18→7 tests |
 | ✅ | `repository-permissions.cy.ts` | `repository/permissions.spec.ts` | Consolidated 6→3 tests |
@@ -708,8 +708,8 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `service-status.cy.ts` | | |
 | ⬚ | `signin.cy.ts` | | |
 | ⬚ | `superuser-build-logs.cy.ts` | | Superuser required |
-| ⬚ | `superuser-change-log.cy.ts` | | Superuser required |
-| ⬚ | `superuser-framework.cy.ts` | | Superuser required |
+| ✅ | `superuser-change-log.cy.ts` | `superuser/change-log.spec.ts` | Superuser required, 7→2 tests (access control in framework.spec.ts) |
+| ✅ | `superuser-framework.cy.ts` | `superuser/framework.spec.ts` | Superuser required, consolidated 7→4 tests |
 | ✅ | `superuser-messages.cy.ts` | `superuser/messages.spec.ts` | Superuser required, consolidated 14→6 tests |
 | ✅ | `superuser-org-actions.cy.ts` | `superuser/org-actions.spec.ts` | Superuser required |
 | ✅ | `superuser-service-keys.cy.ts` | `superuser/service-keys.spec.ts` | Superuser required, 17→5 tests consolidated |
