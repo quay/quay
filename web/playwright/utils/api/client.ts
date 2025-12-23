@@ -95,6 +95,31 @@ export interface GlobalMessagesResponse {
   messages: GlobalMessage[];
 }
 
+// Service key types
+export interface ServiceKeyApproval {
+  approval_type: string;
+  approver?: {
+    name: string;
+    username: string;
+    kind: string;
+  };
+  notes?: string;
+}
+
+export interface ServiceKey {
+  kid: string;
+  name?: string;
+  service: string;
+  created_date: string | number;
+  expiration_date?: string | number;
+  approval?: ServiceKeyApproval;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ServiceKeysResponse {
+  keys: ServiceKey[];
+}
+
 export class ApiClient {
   private request: APIRequestContext;
   private csrfToken: string | null = null;
@@ -1039,6 +1064,104 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to delete message ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Service key methods (superuser only)
+
+  async getServiceKeys(): Promise<ServiceKey[]> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/superuser/keys`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get service keys: ${response.status()} - ${body}`,
+      );
+    }
+
+    const data: ServiceKeysResponse = await response.json();
+    return data.keys || [];
+  }
+
+  async createServiceKey(
+    service: string,
+    name?: string,
+    expiration?: number,
+  ): Promise<ServiceKey> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/superuser/keys`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          service,
+          name,
+          expiration: expiration ?? null,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create service key: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async updateServiceKey(
+    kid: string,
+    updates: {name?: string; expiration?: number},
+  ): Promise<ServiceKey> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/superuser/keys/${kid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: updates,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to update service key ${kid}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteServiceKey(kid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/superuser/keys/${kid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete service key ${kid}: ${response.status()} - ${body}`,
       );
     }
   }

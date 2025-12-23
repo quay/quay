@@ -33,6 +33,7 @@ import {
   ApiClient,
   PrototypeRole,
   RepositoryVisibility,
+  ServiceKey,
   TeamRole,
 } from './utils/api';
 
@@ -95,6 +96,16 @@ export interface CreatedUser {
   username: string;
   email: string;
   password: string;
+}
+
+/**
+ * Created service key info
+ */
+export interface CreatedServiceKey {
+  kid: string;
+  service: string;
+  name?: string;
+  expiration?: number;
 }
 
 /**
@@ -436,6 +447,45 @@ export class TestApi {
     });
 
     return {username, email, password: result.password};
+  }
+
+  /**
+   * Create a service key.
+   * Automatically deleted after test.
+   * (Superuser only)
+   *
+   * @param service - Service name (must match [a-z0-9_]+ pattern)
+   * @param name - Optional friendly name for the key
+   * @param expiration - Optional expiration timestamp (unix epoch seconds)
+   */
+  async serviceKey(
+    service: string,
+    name?: string,
+    expiration?: number,
+  ): Promise<CreatedServiceKey> {
+    const result: ServiceKey = await this.client.createServiceKey(
+      service,
+      name,
+      expiration,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteServiceKey(result.kid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      kid: result.kid,
+      service: result.service,
+      name: result.name,
+      expiration:
+        typeof result.expiration_date === 'number'
+          ? result.expiration_date
+          : undefined,
+    };
   }
 
   /**
