@@ -4,10 +4,9 @@
  * Verifies breadcrumb navigation is displayed correctly across different pages.
  */
 
-import {test, expect, uniqueName} from '../../fixtures';
-import {ApiClient} from '../../utils/api';
-import {TEST_USERS} from '../../global-setup';
+import {test, expect} from '../../fixtures';
 import {pushImage, isContainerRuntimeAvailable} from '../../utils/container';
+import {TEST_USERS} from '../../global-setup';
 
 test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
   test.describe('List pages (no breadcrumbs)', () => {
@@ -31,27 +30,13 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
   });
 
   test.describe('Organization breadcrumbs', () => {
-    let orgName: string;
-
-    test.beforeEach(async ({authenticatedRequest}) => {
-      orgName = uniqueName('breadcrumborg');
-      const api = new ApiClient(authenticatedRequest);
-      await api.createOrganization(orgName);
-    });
-
-    test.afterEach(async ({authenticatedRequest}) => {
-      try {
-        const api = new ApiClient(authenticatedRequest);
-        await api.deleteOrganization(orgName);
-      } catch {
-        // Already deleted or never created
-      }
-    });
-
     test('organization page shows correct breadcrumbs', async ({
       authenticatedPage,
+      api,
     }) => {
-      await authenticatedPage.goto(`/organization/${orgName}`);
+      const org = await api.organization('breadcrumborg');
+
+      await authenticatedPage.goto(`/organization/${org.name}`);
 
       const breadcrumbNav = authenticatedPage.getByTestId(
         'page-breadcrumbs-list',
@@ -69,45 +54,24 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       );
 
       // Second item: org name (disabled link)
-      await expect(items.nth(1)).toHaveText(orgName);
+      await expect(items.nth(1)).toHaveText(org.name);
       await expect(items.nth(1).locator('a')).toHaveClass(/disabled-link/);
       await expect(items.nth(1).locator('a')).toHaveAttribute(
         'href',
-        `/organization/${orgName}`,
+        `/organization/${org.name}`,
       );
     });
   });
 
   test.describe('Repository breadcrumbs', () => {
-    let orgName: string;
-    let repoName: string;
-
-    test.beforeEach(async ({authenticatedRequest}) => {
-      orgName = uniqueName('breadcrumborg');
-      repoName = uniqueName('breadcrumbrepo');
-      const api = new ApiClient(authenticatedRequest);
-      await api.createOrganization(orgName);
-      await api.createRepository(orgName, repoName);
-    });
-
-    test.afterEach(async ({authenticatedRequest}) => {
-      const api = new ApiClient(authenticatedRequest);
-      try {
-        await api.deleteRepository(orgName, repoName);
-      } catch {
-        // Already deleted
-      }
-      try {
-        await api.deleteOrganization(orgName);
-      } catch {
-        // Already deleted
-      }
-    });
-
     test('repository page shows correct breadcrumbs', async ({
       authenticatedPage,
+      api,
     }) => {
-      await authenticatedPage.goto(`/repository/${orgName}/${repoName}`);
+      const org = await api.organization('breadcrumborg');
+      const repo = await api.repository(org.name, 'breadcrumbrepo');
+
+      await authenticatedPage.goto(`/repository/${org.name}/${repo.name}`);
 
       const breadcrumbNav = authenticatedPage.getByTestId(
         'page-breadcrumbs-list',
@@ -125,28 +89,27 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       );
 
       // Second item: org name
-      await expect(items.nth(1)).toHaveText(orgName);
+      await expect(items.nth(1)).toHaveText(org.name);
       await expect(items.nth(1).locator('a')).toHaveAttribute(
         'href',
-        `/organization/${orgName}`,
+        `/organization/${org.name}`,
       );
 
       // Third item: repo name (disabled link)
-      await expect(items.nth(2)).toHaveText(repoName);
+      await expect(items.nth(2)).toHaveText(repo.name);
       await expect(items.nth(2).locator('a')).toHaveClass(/disabled-link/);
       await expect(items.nth(2).locator('a')).toHaveAttribute(
         'href',
-        `/repository/${orgName}/${repoName}`,
+        `/repository/${org.name}/${repo.name}`,
       );
     });
   });
 
   test.describe('Tag breadcrumbs', () => {
-    let orgName: string;
-    let repoName: string;
-    const tagName = 'latest';
-
-    test.beforeEach(async ({authenticatedRequest}) => {
+    test('tag page shows correct breadcrumbs', async ({
+      authenticatedPage,
+      api,
+    }) => {
       // Check if container runtime is available
       const hasRuntime = await isContainerRuntimeAvailable();
       test.skip(
@@ -154,39 +117,21 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
         'No container runtime available for pushing images',
       );
 
-      orgName = uniqueName('breadcrumborg');
-      repoName = uniqueName('breadcrumbrepo');
-      const api = new ApiClient(authenticatedRequest);
-      await api.createOrganization(orgName);
-      await api.createRepository(orgName, repoName);
+      const tagName = 'latest';
+      const org = await api.organization('breadcrumborg');
+      const repo = await api.repository(org.name, 'breadcrumbrepo');
 
       // Push an image with a tag
       await pushImage(
-        orgName,
-        repoName,
+        org.name,
+        repo.name,
         tagName,
         TEST_USERS.user.username,
         TEST_USERS.user.password,
       );
-    });
 
-    test.afterEach(async ({authenticatedRequest}) => {
-      const api = new ApiClient(authenticatedRequest);
-      try {
-        await api.deleteRepository(orgName, repoName);
-      } catch {
-        // Already deleted
-      }
-      try {
-        await api.deleteOrganization(orgName);
-      } catch {
-        // Already deleted
-      }
-    });
-
-    test('tag page shows correct breadcrumbs', async ({authenticatedPage}) => {
       await authenticatedPage.goto(
-        `/repository/${orgName}/${repoName}/tag/${tagName}`,
+        `/repository/${org.name}/${repo.name}/tag/${tagName}`,
       );
 
       const breadcrumbNav = authenticatedPage.getByTestId(
@@ -205,17 +150,17 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       );
 
       // Second item: org name
-      await expect(items.nth(1)).toHaveText(orgName);
+      await expect(items.nth(1)).toHaveText(org.name);
       await expect(items.nth(1).locator('a')).toHaveAttribute(
         'href',
-        `/organization/${orgName}`,
+        `/organization/${org.name}`,
       );
 
       // Third item: repo name
-      await expect(items.nth(2)).toHaveText(repoName);
+      await expect(items.nth(2)).toHaveText(repo.name);
       await expect(items.nth(2).locator('a')).toHaveAttribute(
         'href',
-        `/repository/${orgName}/${repoName}`,
+        `/repository/${org.name}/${repo.name}`,
       );
 
       // Fourth item: tag name (disabled link)
@@ -223,40 +168,21 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       await expect(items.nth(3).locator('a')).toHaveClass(/disabled-link/);
       await expect(items.nth(3).locator('a')).toHaveAttribute(
         'href',
-        `/repository/${orgName}/${repoName}/tag/${tagName}`,
+        `/repository/${org.name}/${repo.name}/tag/${tagName}`,
       );
     });
   });
 
   test.describe('Team breadcrumbs', () => {
-    let orgName: string;
-    let teamName: string;
+    test('team page shows correct breadcrumbs', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('breadcrumborg');
+      const team = await api.team(org.name, 'breadcrumbteam');
 
-    test.beforeEach(async ({authenticatedRequest}) => {
-      orgName = uniqueName('breadcrumborg');
-      teamName = uniqueName('breadcrumbteam');
-      const api = new ApiClient(authenticatedRequest);
-      await api.createOrganization(orgName);
-      await api.createTeam(orgName, teamName);
-    });
-
-    test.afterEach(async ({authenticatedRequest}) => {
-      const api = new ApiClient(authenticatedRequest);
-      try {
-        await api.deleteTeam(orgName, teamName);
-      } catch {
-        // Already deleted
-      }
-      try {
-        await api.deleteOrganization(orgName);
-      } catch {
-        // Already deleted
-      }
-    });
-
-    test('team page shows correct breadcrumbs', async ({authenticatedPage}) => {
       await authenticatedPage.goto(
-        `/organization/${orgName}/teams/${teamName}?tab=Teamsandmembership`,
+        `/organization/${org.name}/teams/${team.name}?tab=Teamsandmembership`,
       );
 
       const breadcrumbNav = authenticatedPage.getByTestId(
@@ -275,57 +201,33 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       );
 
       // Second item: org name
-      await expect(items.nth(1)).toHaveText(orgName);
+      await expect(items.nth(1)).toHaveText(org.name);
       await expect(items.nth(1).locator('a')).toHaveAttribute(
         'href',
-        `/organization/${orgName}`,
+        `/organization/${org.name}`,
       );
 
       // Third item: team name (disabled link)
-      await expect(items.nth(2)).toHaveText(teamName);
+      await expect(items.nth(2)).toHaveText(team.name);
       await expect(items.nth(2).locator('a')).toHaveClass(/disabled-link/);
       await expect(items.nth(2).locator('a')).toHaveAttribute(
         'href',
-        `/organization/${orgName}/teams/${teamName}`,
+        `/organization/${org.name}/teams/${team.name}`,
       );
     });
   });
 
   test.describe('Same name edge cases', () => {
-    let sameName: string;
-
-    test.beforeEach(async ({authenticatedRequest}) => {
-      sameName = uniqueName('samename');
-      const api = new ApiClient(authenticatedRequest);
-      await api.createOrganization(sameName);
-      await api.createRepository(sameName, sameName);
-      await api.createTeam(sameName, sameName);
-    });
-
-    test.afterEach(async ({authenticatedRequest}) => {
-      const api = new ApiClient(authenticatedRequest);
-      try {
-        await api.deleteTeam(sameName, sameName);
-      } catch {
-        // Already deleted
-      }
-      try {
-        await api.deleteRepository(sameName, sameName);
-      } catch {
-        // Already deleted
-      }
-      try {
-        await api.deleteOrganization(sameName);
-      } catch {
-        // Already deleted
-      }
-    });
-
     test('org and team with same name shows correct breadcrumbs', async ({
       authenticatedPage,
+      api,
     }) => {
+      const org = await api.organization('samename');
+      // Create team with same name as org
+      await api.team(org.name, org.name);
+
       await authenticatedPage.goto(
-        `/organization/${sameName}/teams/${sameName}?tab=Teamsandmembership`,
+        `/organization/${org.name}/teams/${org.name}?tab=Teamsandmembership`,
       );
 
       const breadcrumbNav = authenticatedPage.getByTestId(
@@ -344,25 +246,30 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       );
 
       // Second item: org name (same as team name)
-      await expect(items.nth(1)).toHaveText(sameName);
+      await expect(items.nth(1)).toHaveText(org.name);
       await expect(items.nth(1).locator('a')).toHaveAttribute(
         'href',
-        `/organization/${sameName}`,
+        `/organization/${org.name}`,
       );
 
       // Third item: team name (same as org name, disabled link)
-      await expect(items.nth(2)).toHaveText(sameName);
+      await expect(items.nth(2)).toHaveText(org.name);
       await expect(items.nth(2).locator('a')).toHaveClass(/disabled-link/);
       await expect(items.nth(2).locator('a')).toHaveAttribute(
         'href',
-        `/organization/${sameName}/teams/${sameName}`,
+        `/organization/${org.name}/teams/${org.name}`,
       );
     });
 
     test('org and repo with same name shows correct breadcrumbs', async ({
       authenticatedPage,
+      api,
     }) => {
-      await authenticatedPage.goto(`/repository/${sameName}/${sameName}`);
+      const org = await api.organization('samename');
+      // Create repo with same name as org
+      await api.repository(org.name, org.name);
+
+      await authenticatedPage.goto(`/repository/${org.name}/${org.name}`);
 
       const breadcrumbNav = authenticatedPage.getByTestId(
         'page-breadcrumbs-list',
@@ -380,18 +287,18 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
       );
 
       // Second item: org name (same as repo name)
-      await expect(items.nth(1)).toHaveText(sameName);
+      await expect(items.nth(1)).toHaveText(org.name);
       await expect(items.nth(1).locator('a')).toHaveAttribute(
         'href',
-        `/organization/${sameName}`,
+        `/organization/${org.name}`,
       );
 
       // Third item: repo name (same as org name, disabled link)
-      await expect(items.nth(2)).toHaveText(sameName);
+      await expect(items.nth(2)).toHaveText(org.name);
       await expect(items.nth(2).locator('a')).toHaveClass(/disabled-link/);
       await expect(items.nth(2).locator('a')).toHaveAttribute(
         'href',
-        `/repository/${sameName}/${sameName}`,
+        `/repository/${org.name}/${org.name}`,
       );
     });
   });

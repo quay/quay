@@ -252,45 +252,113 @@ test('custom login scenario', async ({ page, request }) => {
 
 ## Creating Test Data
 
-### Repositories
+### Using the `api` Fixture (Recommended)
 
-Create repositories in the user's namespace (e.g., `testuser`):
+The `api` fixture provides methods to create test resources with automatic cleanup:
 
 ```typescript
-import { test, expect, uniqueName } from '../../fixtures';
-import { createRepository, deleteRepository } from '../../utils/api';
-import { TEST_USERS } from '../../global-setup';
+import {test, expect} from '../../fixtures';
 
 test.describe('Repository Tests', () => {
-  const namespace = TEST_USERS.user.username; // 'testuser'
-  let repoName: string;
+  test('works with repository', async ({authenticatedPage, api}) => {
+    // Create repo in user's namespace (auto-cleaned after test)
+    const repo = await api.repository(undefined, 'testrepo');
 
-  test.beforeEach(async ({ authenticatedRequest }) => {
-    repoName = uniqueName('testrepo');
-    // Create repo in user's namespace (CSRF token is fetched automatically)
-    await createRepository(authenticatedRequest, namespace, repoName, 'private');
-  });
+    // Or create in an organization
+    const org = await api.organization('myorg');
+    const orgRepo = await api.repository(org.name, 'orgrepo');
 
-  test.afterEach(async ({ authenticatedRequest }) => {
-    await deleteRepository(authenticatedRequest, namespace, repoName);
+    await authenticatedPage.goto(`/repository/${repo.fullName}`);
+    // ... test code ...
   });
 });
 ```
 
 ## Test Data Cleanup (REQUIRED)
 
-**All tests that create data MUST clean up after themselves.** Use `test.afterEach` hooks.
+**All tests that create data MUST clean up after themselves.** Use the `api` fixture for automatic cleanup.
 
-### Key Principles
+### Recommended: Use the `api` Fixture (Auto-Cleanup)
 
-- Create data in `test.beforeEach`
-- Delete data in `test.afterEach`
-- Use try/catch in cleanup to handle cases where deletion already happened
-- Use `uniqueName()` to generate unique resource names
-
-### Example Pattern
+The `api` fixture provides a `TestApi` instance that automatically tracks created resources and cleans them up after each test (even on failure). This is the preferred pattern.
 
 ```typescript
+import {test, expect} from '../../fixtures';
+
+test.describe('Feature Tests', () => {
+  test('creates and uses resources', async ({authenticatedPage, api}) => {
+    // Create resources - auto-cleaned after test
+    const org = await api.organization('myorg');
+    const repo = await api.repository(org.name, 'myrepo');
+    const team = await api.team(org.name, 'myteam');
+    const robot = await api.robot(org.name, 'mybot');
+
+    // Resources are deleted in reverse order: robot, team, repo, org
+    await authenticatedPage.goto(`/repository/${repo.fullName}`);
+    // ... test code ...
+  });
+});
+```
+
+### Available `api` Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `api.organization(prefix?)` | `{name, email}` | Creates org with unique name |
+| `api.repository(namespace?, prefix?, visibility?)` | `{namespace, name, fullName}` | Creates repo (defaults to test user namespace) |
+| `api.team(orgName, prefix?, role?)` | `{orgName, name}` | Creates team in org |
+| `api.robot(orgName, prefix?, description?)` | `{orgName, shortname, fullName}` | Creates robot account |
+| `api.prototype(orgName, role, delegate, activatingUser?)` | `{id}` | Creates default permission |
+| `api.setMirrorState(namespace, repoName)` | `void` | Sets repo to MIRROR state |
+| `api.raw` | `ApiClient` | Access underlying client for non-tracked operations |
+
+### Using `api.raw` for Non-Tracked Operations
+
+For operations that don't need cleanup (reads) or are cleaned up by parent resource deletion:
+
+```typescript
+test('configures mirror', async ({api}) => {
+  const org = await api.organization('mirror');
+  const repo = await api.repository(org.name, 'mirrorrepo');
+  const robot = await api.robot(org.name, 'mirrorbot');
+  await api.setMirrorState(org.name, repo.name);
+
+  // Mirror config is cleaned up when repo is deleted
+  await api.raw.createMirrorConfig(org.name, repo.name, {...});
+
+  // Read operations don't need cleanup
+  const config = await api.raw.getMirrorConfig(org.name, repo.name);
+});
+```
+
+### Superuser API
+
+Use `superuserApi` for operations requiring superuser privileges:
+
+```typescript
+test('admin creates user', async ({superuserApi}) => {
+  // Created resources auto-cleaned
+  const user = await superuserApi.raw.createUser('newuser', 'password', 'user@example.com');
+});
+```
+
+### Why Auto-Cleanup is Better
+
+| Manual Cleanup | Auto-Cleanup (`api` fixture) |
+|----------------|------------------------------|
+| Requires `beforeEach`/`afterEach` | Inline resource creation |
+| Must wrap cleanup in try/catch | Automatic error handling |
+| Easy to forget cleanup | Cleanup guaranteed |
+| Cleanup order must be correct | Reverse-order cleanup automatic |
+| Shared state via `let` variables | Scoped variables per test |
+| Breaks with parallel tests | Parallel-safe |
+
+### Legacy Pattern (Manual Cleanup)
+
+For reference, the old pattern using `beforeEach`/`afterEach`:
+
+```typescript
+// ❌ Legacy pattern - avoid in new tests
 test.describe('Feature Tests', () => {
   const namespace = TEST_USERS.user.username;
   let repoName: string;
@@ -301,11 +369,10 @@ test.describe('Feature Tests', () => {
   });
 
   test.afterEach(async ({ authenticatedRequest }) => {
-    // Always attempt cleanup, even if test failed
     try {
       await deleteRepository(authenticatedRequest, namespace, repoName);
     } catch {
-      // Already deleted by test or never created - that's fine
+      // Already deleted
     }
   });
 
@@ -321,6 +388,63 @@ test.describe('Feature Tests', () => {
 - Tests should be independent and repeatable
 - Cleanup prevents database bloat in CI environments
 - Use `uniqueName()` to avoid collisions even if cleanup fails
+
+## Session-Destructive Tests (Logout)
+
+Tests that call `/api/v1/signout` require special handling because Quay invalidates **ALL sessions** for that user server-side (`invalidate_all_sessions(user)`). This breaks parallel tests using the same user.
+
+### Solution: Unique Temporary Users
+
+Create a custom fixture that provisions a unique user per test:
+
+```typescript
+import {test as base, expect, uniqueName} from '../../fixtures';
+import {ApiClient} from '../../utils/api';
+
+const test = base.extend<{logoutPage: Page; logoutUsername: string}>({
+  logoutUsername: async ({}, use) => {
+    await use(uniqueName('logout'));
+  },
+
+  logoutPage: async ({browser, superuserRequest, logoutUsername}, use) => {
+    const password = 'testpassword123';
+    const email = `${logoutUsername}@example.com`;
+
+    // Create temporary user
+    const superApi = new ApiClient(superuserRequest);
+    await superApi.createUser(logoutUsername, password, email);
+
+    // Login as temporary user
+    const context = await browser.newContext();
+    const api = new ApiClient(context.request);
+    await api.signIn(logoutUsername, password);
+
+    const page = await context.newPage();
+    await use(page);
+
+    // Cleanup
+    await page.close();
+    await context.close();
+    try {
+      await superApi.deleteUser(logoutUsername);
+    } catch {
+      // Already deleted
+    }
+  },
+});
+
+test('logs out successfully', async ({logoutPage}) => {
+  // Safe to logout - won't affect other tests
+});
+```
+
+### When to Use This Pattern
+
+- Tests that call the logout API
+- Tests that invalidate sessions
+- Any test where signing out is part of the test flow
+
+See `e2e/auth/logout.spec.ts` for a complete implementation.
 
 ## Test Consolidation Guidelines
 
@@ -368,33 +492,43 @@ test('repo settings lifecycle: create, update, delete', { tag: '@PROJQUAY-1234' 
 
 ## Config-Dependent Tests
 
-For tests that require specific Quay features, use the `skipUnlessFeature` helper for runtime skip with clear messaging.
+For tests that require specific Quay features, use `@feature:X` tags on the describe block. The test framework automatically skips tests when required features are not enabled.
 
-### Using skipUnlessFeature
+### Using @feature: Tags (Recommended)
+
+```typescript
+import { test, expect } from '../../fixtures';
+
+// Single feature requirement - just add the tag
+test.describe('Billing Settings', { tag: ['@organization', '@feature:BILLING'] }, () => {
+  test('shows billing information', async ({ authenticatedPage }) => {
+    // Auto-skipped if BILLING is not enabled - no manual skip needed!
+    await authenticatedPage.goto('/organization/myorg?tab=Settings');
+    await authenticatedPage.getByTestId('Billing information').click();
+  });
+});
+
+// Multiple feature requirements - add multiple @feature: tags
+test.describe('Quota Editing', { tag: ['@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA'] }, () => {
+  test('edits quota', async ({ authenticatedPage }) => {
+    // Auto-skipped if EITHER feature is disabled
+  });
+});
+```
+
+### Manual Skip (Edge Cases Only)
+
+For rare cases where you need conditional logic beyond feature flags, use `skipUnlessFeature` directly:
 
 ```typescript
 import { test, expect, skipUnlessFeature } from '../../fixtures';
 
-// Single feature requirement
-test('billing settings', { tag: '@config:BILLING' }, async ({
-  authenticatedPage,
-  quayConfig,
-}) => {
-  test.skip(...skipUnlessFeature(quayConfig, 'BILLING'));
+test('shows registry autoprune policy', async ({ authenticatedPage, quayConfig }) => {
+  // Additional condition beyond the @feature: tag
+  const hasRegistryPolicy = quayConfig?.config?.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY != null;
+  test.skip(!hasRegistryPolicy, 'DEFAULT_NAMESPACE_AUTOPRUNE_POLICY not configured');
 
-  // Test only runs if BILLING is enabled
-  await authenticatedPage.goto('/organization/myorg?tab=Settings');
-  await authenticatedPage.getByTestId('Billing information').click();
-});
-
-// Multiple feature requirements
-test('quota editing', { tag: '@config:QUOTA' }, async ({
-  page,
-  quayConfig,
-}) => {
-  test.skip(...skipUnlessFeature(quayConfig, 'QUOTA_MANAGEMENT', 'EDIT_QUOTA'));
-
-  // Test only runs if both features are enabled
+  // Test code...
 });
 ```
 
@@ -413,10 +547,11 @@ The `QuayFeature` type includes:
 
 ### Why This Pattern?
 
-1. **Self-documenting**: Tests skip with clear reason in output
-2. **Type-safe**: Feature names are typed for autocomplete
-3. **No manual filtering**: Works automatically in any environment
-4. **Tag compatible**: Keep `@config:*` tags for documentation/filtering
+1. **Single source of truth**: Feature specified only in the tag, no duplication
+2. **Self-documenting**: Tests skip with clear reason in output
+3. **Type-safe**: Feature names are typed for autocomplete
+4. **CLI filtering**: Filter tests with `npx playwright test --grep @feature:BILLING`
+5. **No boilerplate**: No manual `test.skip()` calls needed in each test
 
 ### Test Output
 
@@ -470,48 +605,36 @@ describe('Repository Delete', () => {
 
 ```typescript
 // playwright/e2e/repository/repository-delete.spec.ts
-import { test, expect, uniqueName } from '../../fixtures';
-import { createRepository, deleteRepository } from '../../utils/api';
-import { API_URL } from '../../utils/config';
-import { TEST_USERS } from '../../global-setup';
+import {test, expect} from '../../fixtures';
+import {API_URL} from '../../utils/config';
 
-test.describe('Repository Delete', { tag: ['@critical', '@repository'] }, () => {
-  const namespace = TEST_USERS.user.username;
-  let repoName: string;
-
-  test.beforeEach(async ({ authenticatedRequest }) => {
-    repoName = uniqueName('delrepo');
-    await createRepository(authenticatedRequest, namespace, repoName, 'private');
-  });
-
-  test.afterEach(async ({ authenticatedRequest }) => {
-    try {
-      await deleteRepository(authenticatedRequest, namespace, repoName);
-    } catch {
-      // Already deleted by test
-    }
-  });
-
-  test('deletes repository via UI', { tag: '@PROJQUAY-XXXX' }, async ({
+test.describe('Repository Delete', {tag: ['@critical', '@repository']}, () => {
+  test('deletes repository via UI', {tag: '@PROJQUAY-XXXX'}, async ({
     authenticatedPage,
     authenticatedRequest,
+    api,
   }) => {
-    await authenticatedPage.goto(`/repository/${namespace}/${repoName}?tab=settings`);
+    // Create test repository - auto-cleaned if test fails
+    const repo = await api.repository(undefined, 'delrepo');
+
+    await authenticatedPage.goto(`/repository/${repo.fullName}?tab=settings`);
     await authenticatedPage.getByTestId('settings-tab-deleterepository').click();
 
     await expect(
-      authenticatedPage.getByText('Deleting a repository cannot be undone')
+      authenticatedPage.getByText('Deleting a repository cannot be undone'),
     ).toBeVisible();
 
     await authenticatedPage.getByTestId('delete-repository-btn').click();
-    await authenticatedPage.getByTestId('delete-repository-confirm-input').fill(`${namespace}/${repoName}`);
+    await authenticatedPage
+      .getByTestId('delete-repository-confirm-input')
+      .fill(repo.fullName);
     await authenticatedPage.getByTestId('delete-repository-confirm-btn').click();
 
     await expect(authenticatedPage).toHaveURL('/repository');
 
     // Verify via API
     const response = await authenticatedRequest.get(
-      `${API_URL}/api/v1/repository/${namespace}/${repoName}`
+      `${API_URL}/api/v1/repository/${repo.fullName}`,
     );
     expect(response.status()).toBe(404);
   });
@@ -559,10 +682,10 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `external-scripts.cy.ts` | `ui/external-scripts.spec.ts` | @feature:BILLING |
 | ⬚ | `footer.cy.ts` | | |
 | ⬚ | `fresh-login-oidc.cy.ts` | | @config:OIDC |
-| ⬚ | `logout.cy.ts` | | |
+| ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
 | ⬚ | `manage-team-members.cy.ts` | | |
 | ⬚ | `marketplace.cy.ts` | | @config:BILLING |
-| ⬚ | `mirroring.cy.ts` | | @feature:REPO_MIRROR |
+| ✅ | `mirroring.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated 18→5 tests |
 | ✅ | `notification-drawer.cy.ts` | `ui/notification-drawer.spec.ts` | @container |
 | ⬚ | `oauth-callback.cy.ts` | | |
 | ⬚ | `org-list.cy.ts` | | |
@@ -606,5 +729,5 @@ Track migration progress from Cypress to Playwright.
 ### Progress Summary
 
 - **Total**: 54 Cypress test files
-- **Migrated**: 7 (13%)
-- **Remaining**: 47
+- **Migrated**: 8 (15%)
+- **Remaining**: 46

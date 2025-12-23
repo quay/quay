@@ -29,8 +29,6 @@ import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
 import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
-import axios from 'axios';
-import axiosIns from 'src/libs/axios';
 import Alerts from './Alerts';
 import Conditional from 'src/components/empty/Conditional';
 import RegistryStatus from './RegistryStatus';
@@ -218,11 +216,6 @@ const NavigationRoutes = [
 ];
 
 export function StandaloneMain() {
-  axios.defaults.baseURL =
-    process.env.REACT_QUAY_APP_API_URL ||
-    `${window.location.protocol}//${window.location.host}`;
-  axiosIns.defaults.baseURL = axios.defaults.baseURL;
-
   const quayConfig = useQuayConfig();
   const {loading, error} = useCurrentUser();
   const location = useLocation();

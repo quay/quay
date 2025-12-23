@@ -8,8 +8,40 @@ import {APIRequestContext} from '@playwright/test';
 import {API_URL} from '../config';
 
 export type RepositoryVisibility = 'public' | 'private';
+export type RepositoryState = 'NORMAL' | 'MIRROR' | 'READ_ONLY';
 export type TeamRole = 'member' | 'creator' | 'admin';
 export type PrototypeRole = 'read' | 'write' | 'admin';
+
+export interface MirrorConfig {
+  external_reference: string;
+  sync_interval: number;
+  sync_start_date: string;
+  root_rule: {
+    rule_kind: 'tag_glob_csv';
+    rule_value: string[];
+  };
+  robot_username: string;
+  skopeo_timeout_interval?: number;
+  is_enabled?: boolean;
+  external_registry_username?: string | null;
+  external_registry_password?: string | null;
+  external_registry_config?: {
+    verify_tls?: boolean;
+    unsigned_images?: boolean;
+    proxy?: {
+      http_proxy?: string | null;
+      https_proxy?: string | null;
+      no_proxy?: string | null;
+    };
+  };
+}
+
+export interface MirrorConfigResponse extends MirrorConfig {
+  sync_status: string;
+  sync_retries_remaining: number;
+  sync_expiration_date: string | null;
+  mirror_type: string;
+}
 
 export interface CreateUserResponse {
   username: string;
@@ -179,6 +211,169 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to delete repository ${namespace}/${name}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async changeRepositoryState(
+    namespace: string,
+    name: string,
+    state: RepositoryState,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/repository/${namespace}/${name}/changestate`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          state,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to change repository state ${namespace}/${name} to ${state}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Repository mirroring methods
+
+  async createMirrorConfig(
+    namespace: string,
+    name: string,
+    config: MirrorConfig,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${name}/mirror`,
+      {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          external_reference: config.external_reference,
+          sync_interval: config.sync_interval,
+          sync_start_date: config.sync_start_date,
+          root_rule: config.root_rule,
+          robot_username: config.robot_username,
+          skopeo_timeout_interval: config.skopeo_timeout_interval ?? 300,
+          is_enabled: config.is_enabled ?? true,
+          external_registry_username: config.external_registry_username ?? null,
+          external_registry_password: config.external_registry_password ?? null,
+          external_registry_config: config.external_registry_config ?? {
+            verify_tls: true,
+            unsigned_images: false,
+            proxy: {
+              http_proxy: null,
+              https_proxy: null,
+              no_proxy: null,
+            },
+          },
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create mirror config for ${namespace}/${name}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async getMirrorConfig(
+    namespace: string,
+    name: string,
+  ): Promise<MirrorConfigResponse | null> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${name}/mirror`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (response.status() === 404) {
+      return null;
+    }
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get mirror config for ${namespace}/${name}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async updateMirrorConfig(
+    namespace: string,
+    name: string,
+    updates: Partial<MirrorConfig>,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/repository/${namespace}/${name}/mirror`,
+      {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: updates,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to update mirror config for ${namespace}/${name}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async triggerMirrorSync(namespace: string, name: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${name}/mirror/sync-now`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to trigger mirror sync for ${namespace}/${name}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async cancelMirrorSync(namespace: string, name: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${name}/mirror/sync-cancel`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to cancel mirror sync for ${namespace}/${name}: ${response.status()} - ${body}`,
       );
     }
   }
