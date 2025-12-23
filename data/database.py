@@ -2222,6 +2222,35 @@ class TagNotificationSuccess(BaseModel):
     method = ForeignKeyField(ExternalNotificationMethod, null=False)
 
 
+class OrganizationAISettings(BaseModel):
+    """
+    Stores AI feature settings and credentials for an organization.
+
+    In BYOK (Bring Your Own Key) mode, organizations configure their own
+    LLM provider credentials. In managed mode (quay.io), this table stores
+    feature toggles only.
+    """
+
+    organization = ForeignKeyField(User, unique=True, index=True)
+
+    # Feature toggles (user-controlled per-org)
+    description_generator_enabled = BooleanField(default=False)
+
+    # Provider configuration (BYOK mode only)
+    provider = CharField(max_length=32, null=True)  # anthropic, openai, google, deepseek, custom
+    api_key_encrypted = EncryptedTextField(null=True)
+    model = CharField(max_length=128, null=True)
+    endpoint = CharField(max_length=512, null=True)  # For custom providers
+
+    # Verification status
+    credentials_verified = BooleanField(default=False)
+    credentials_verified_at = DateTimeField(null=True)
+
+    # Metadata
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+
 # Defines a map from full-length index names to the legacy names used in our code
 # to meet length restrictions.
 LEGACY_INDEX_MAP = {

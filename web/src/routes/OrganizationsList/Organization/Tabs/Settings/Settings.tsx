@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {Tabs, Tab, TabTitleText, Flex, FlexItem} from '@patternfly/react-core';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {AISettings} from './AISettings';
 import AutoPruning from './AutoPruning';
 import {BillingInformation} from './BillingInformation';
 import {CliConfiguration} from './CLIConfiguration';
@@ -78,6 +79,12 @@ export default function Settings(props: SettingsProps) {
       visible:
         quayConfig?.features?.QUOTA_MANAGEMENT &&
         quayConfig?.features?.EDIT_QUOTA,
+    },
+    {
+      name: 'AI Settings',
+      id: 'aisettings',
+      content: () => <AISettings organizationName={props.organizationName} />,
+      visible: quayConfig?.features?.AI,
     },
   ];
 

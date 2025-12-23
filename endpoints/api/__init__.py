@@ -753,6 +753,8 @@ def deprecated():
     return wrapper
 
 
+# AI-powered features (requires FEATURE_AI)
+import endpoints.api.ai
 import endpoints.api.appspecifictokens
 import endpoints.api.billing
 import endpoints.api.build

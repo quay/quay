@@ -989,6 +989,12 @@ CONFIG_SCHEMA = {
             "description": "Whether the v2/ endpoint is visible. Defaults to True",
             "x-example": True,
         },
+        # Feature Flag: AI-powered features.
+        "FEATURE_AI": {
+            "type": "boolean",
+            "description": "Whether AI-powered features like description generation are enabled. Defaults to False",
+            "x-example": False,
+        },
         # Feature Flag: Log Rotation.
         "FEATURE_ACTION_LOG_ROTATION": {
             "type": "boolean",
