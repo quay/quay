@@ -337,4 +337,56 @@ describe('Robot Accounts Page', () => {
         cy.contains('1 - 1 of 1');
       });
   });
+
+  describe('ROBOTS_DISALLOW enabled', () => {
+    beforeEach(() => {
+      cy.intercept('GET', '/config', (req) =>
+        req.reply((res) => {
+          res.body.config['ROBOTS_DISALLOW'] = true;
+          return res;
+        }),
+      );
+    });
+
+    it('hides Create robot account button in Robot Accounts tab', () => {
+      cy.visit('/organization/testorg?tab=Robotaccounts');
+      cy.get('#create-robot-account-btn').should('not.exist');
+    });
+
+    it('hides Create robot account in manage team members dropdown', () => {
+      cy.visit('/organization/testorg?tab=Teamsandmembership');
+      cy.get('#teams-view-search').type('owners');
+      cy.get('[data-testid="owners-toggle-kebab"]').click();
+      cy.get('[data-testid="owners-manage-team-member-option"]').click();
+      cy.get('[data-testid="add-new-member-button"]').click();
+      cy.get('#repository-creator-dropdown').click();
+      cy.get('[data-testid="create-new-robot-accnt-btn"]').should('not.exist');
+    });
+
+    it('hides Create robot account in default permissions drawer', () => {
+      cy.visit('/organization/testorg?tab=Defaultpermissions');
+      cy.get('[data-testid="create-default-permissions-btn"]').click();
+
+      // Check repository creator dropdown
+      cy.get('#repository-creator-dropdown').click();
+      cy.get('[data-testid="create-new-robot-accnt-btn"]').should('not.exist');
+      cy.get('body').type('{esc}');
+
+      // Check applied-to dropdown
+      cy.get('#applied-to-dropdown').click();
+      cy.get('[data-testid="create-new-robot-accnt-btn"]').should('not.exist');
+    });
+
+    it('hides Create robot account in repository permissions', () => {
+      cy.visit('/repository/testorg/testrepo?tab=settings');
+      cy.contains('Add permissions').click();
+      cy.get('#add-permission-form').within(() => {
+        cy.wait(1000);
+        cy.get(
+          'input[placeholder="Search for user, add/create robot account"]',
+        ).click();
+      });
+      cy.get('[data-testid="create-new-robot-accnt-btn"]').should('not.exist');
+    });
+  });
 });
