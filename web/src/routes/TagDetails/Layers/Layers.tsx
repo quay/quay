@@ -6,7 +6,7 @@ import {
   TextContent,
   Alert,
 } from '@patternfly/react-core';
-import {ManifestByDigestResponse, Layer} from 'src/resources/TagResource';
+import {useManifestByDigest} from 'src/hooks/UseManifestByDigest';
 import {LayerItem} from './LayerItem';
 import './Layers.scss';
 
@@ -14,21 +14,25 @@ interface LayersProps {
   org: string;
   repo: string;
   digest: string;
-  manifestData: ManifestByDigestResponse;
-  err?: string;
 }
 
 export function Layers(props: LayersProps) {
+  const {
+    data: manifestData,
+    isLoading,
+    isError,
+  } = useManifestByDigest(props.org, props.repo, props.digest);
+
   // Memoize layer reversal for performance
   const layers = useMemo(() => {
-    if (!props.manifestData?.layers) {
+    if (!manifestData?.layers) {
       return [];
     }
-    return props.manifestData.layers.slice().reverse();
-  }, [props.manifestData]);
+    return manifestData.layers.slice().reverse();
+  }, [manifestData]);
 
   // Show error state if manifest fetch failed
-  if (props.err && !props.manifestData) {
+  if (isError) {
     return (
       <PageSection>
         <Title headingLevel="h3" className="pf-v5-u-text-align-left">
@@ -42,7 +46,7 @@ export function Layers(props: LayersProps) {
   }
 
   // Show loading state while waiting for manifest data
-  if (!props.manifestData) {
+  if (isLoading) {
     return (
       <PageSection>
         <TextContent>

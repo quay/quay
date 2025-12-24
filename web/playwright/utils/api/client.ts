@@ -682,6 +682,9 @@ export class ApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
+
+    // Clear cached CSRF token - the server issues a new one after authentication
+    this.csrfToken = null;
   }
 
   // User notification methods
