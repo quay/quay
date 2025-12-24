@@ -48,8 +48,11 @@ test.describe(
         '/repository/user1/hello-world/tag/manifestlist?tab=layers',
       );
 
-      // Wait for page to load
-      await page.waitForLoadState('networkidle');
+      // Wait for page to fully load by checking for the page heading
+      // This is more reliable than networkidle in CI environments
+      await expect(
+        page.getByRole('heading', {level: 1, name: /hello-world:manifestlist/}),
+      ).toBeVisible();
 
       // Verify we're on the Layers tab
       await expect(page.getByRole('tab', {name: 'Layers'})).toBeVisible();
@@ -72,8 +75,10 @@ test.describe(
       // Navigate to the manifestlist tag
       await page.goto('/repository/user1/hello-world/tag/manifestlist');
 
-      // Wait for page to load
-      await page.waitForLoadState('networkidle');
+      // Wait for page to fully load by checking for the page heading
+      await expect(
+        page.getByRole('heading', {level: 1, name: /hello-world:manifestlist/}),
+      ).toBeVisible();
 
       // Verify architecture selector is visible (indicates multi-arch manifest)
       const archSelector = page.getByText('linux on amd64');
@@ -87,9 +92,6 @@ test.describe(
 
       // Navigate to Layers tab
       await page.getByRole('tab', {name: 'Layers'}).click();
-
-      // Wait for layers to load
-      await page.waitForLoadState('networkidle');
 
       // Verify layers are displayed for the new architecture
       await expect(page.getByText('Manifest Layers')).toBeVisible();
@@ -111,8 +113,10 @@ test.describe(
         '/repository/user1/hello-world/tag/manifestlist?digest=sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4&tab=layers',
       );
 
-      // Wait for page to load
-      await page.waitForLoadState('networkidle');
+      // Wait for page to fully load by checking for the page heading
+      await expect(
+        page.getByRole('heading', {level: 1, name: /hello-world:manifestlist/}),
+      ).toBeVisible();
 
       // Verify layers are displayed
       await expect(page.getByText('Manifest Layers')).toBeVisible();
@@ -131,8 +135,10 @@ test.describe(
       // Navigate to a single-arch tag (latest) - Layers tab
       await page.goto('/repository/user1/hello-world/tag/latest?tab=layers');
 
-      // Wait for page to load
-      await page.waitForLoadState('networkidle');
+      // Wait for page to fully load by checking for the page heading
+      await expect(
+        page.getByRole('heading', {level: 1, name: /hello-world:latest/}),
+      ).toBeVisible();
 
       // Verify layers are displayed for single-arch image
       await expect(page.getByText('Manifest Layers')).toBeVisible();
