@@ -157,8 +157,8 @@ describe('Manage team members page', () => {
 
     // create robot account wizard
     // step - Name & Description
-    cy.get('[data-testid="new-robot-name-input"]').type(`${newRobotName}`);
-    cy.get('[data-testid="new-robot-description-input"]').type(
+    cy.get('[data-testid="robot-wizard-form-name"]').type(`${newRobotName}`);
+    cy.get('[data-testid="robot-wizard-form-description"]').type(
       `${newRobotDescription}`,
     );
     cy.get('[data-testid="next-btn"]').click();
@@ -178,7 +178,7 @@ describe('Manage team members page', () => {
     cy.get('[data-testid="next-btn"]').click();
 
     // step - Review and Finish
-    cy.get('[data-testid="review-and-finish-btn"]').click();
+    cy.get('[data-testid="create-robot-submit"]').click();
 
     // verify newly created robot account is shown in the dropdown
     cy.get('#repository-creator-dropdown input').should(

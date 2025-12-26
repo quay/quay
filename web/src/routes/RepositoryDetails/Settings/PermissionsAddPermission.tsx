@@ -192,6 +192,7 @@ export default function AddPermissions(props: AddPermissionsProps) {
         </FormGroup>
         <ActionGroup>
           <Button
+            data-testid="permissions-submit-btn"
             isDisabled={props.selectedEntity == null}
             onClick={() => {
               createPermission();

@@ -120,12 +120,14 @@ export default function CreateQuayNotification(props: CreateQuayNotification) {
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
+          data-testid="notification-title"
           value={title}
           onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>
         <Button
+          data-testid="notification-submit-btn"
           isDisabled={!isFormComplete}
           onClick={createNotification}
           variant="primary"

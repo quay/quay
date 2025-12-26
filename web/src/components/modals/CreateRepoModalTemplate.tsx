@@ -179,10 +179,16 @@ export default function CreateRepositoryModalTemplate(
             !newRepository.name ||
             !validationState.repoName
           }
+          data-testid="create-repository-submit-btn"
         >
           Create
         </Button>,
-        <Button key="cancel" variant="link" onClick={props.handleModalToggle}>
+        <Button
+          key="cancel"
+          variant="link"
+          onClick={props.handleModalToggle}
+          data-testid="create-repository-cancel-btn"
+        >
           Cancel
         </Button>,
       ]}
@@ -258,6 +264,7 @@ export default function CreateRepositoryModalTemplate(
                 isRequired
                 type="text"
                 id="repository-name-input"
+                data-testid="repository-name-input"
                 value={newRepository.name}
                 onChange={handleNameInputChange}
                 ref={nameInputRef}
@@ -287,6 +294,7 @@ export default function CreateRepositoryModalTemplate(
           <TextInput
             type="text"
             id="repository-description-input"
+            data-testid="repository-description-input"
             name="modal-with-form-form-name"
             value={newRepository.description}
             onChange={(_event, value) => handleRepoDescriptionChange(value)}
@@ -307,6 +315,7 @@ export default function CreateRepositoryModalTemplate(
               onChange={() => setrepoVisibility(visibilityType.PUBLIC)}
               label="Public"
               id={visibilityType.PUBLIC}
+              data-testid="visibility-public-radio"
               value={visibilityType.PUBLIC}
               description="Anyone can see and pull from this repository. You choose who can push."
             />
@@ -316,6 +325,7 @@ export default function CreateRepositoryModalTemplate(
               onChange={() => setrepoVisibility(visibilityType.PRIVATE)}
               label="Private"
               id={visibilityType.PRIVATE}
+              data-testid="visibility-private-radio"
               value={visibilityType.PRIVATE}
               description="You choose who can see,pull and push from/to this repository."
             />

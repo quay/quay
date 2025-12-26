@@ -248,6 +248,7 @@ export default function CreateRobotAccountModal(
   return (
     <Modal
       id="create-robot-account-modal"
+      data-testid="create-robot-account-modal"
       aria-label="CreateRobotAccount"
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}

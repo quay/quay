@@ -5,6 +5,7 @@ export function ToolbarButton(props: ToolbarButtonProps) {
     <ToolbarItem>
       <Button
         id={props.id}
+        data-testid={props.id || 'toolbar-button'}
         variant="primary"
         onClick={() => props.setModalOpen(true)}
         isDisabled={props.isDisabled}
