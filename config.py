@@ -951,3 +951,9 @@ class DefaultConfig(ImmutableConfig):
     # 2. Dict format: {"bucket_name": ["namespace1", "namespace2"]} - multiple namespaces share a bucket
     # Example: {"critical": ["redhat", "internal"], "customers": ["customer1", "customer2"]}
     TRACKED_NAMESPACES: Union[List[str], Dict[str, Union[List[str], str]]] = []
+
+    # LDAPPool Config and Feature
+    FEATURE_LDAPPOOL = False
+    # Params can be used to pre-warm connections
+    LDAP_POOL_PARAMS = {"prewarm": False}
+    LDAP_POOL_MAX = 50

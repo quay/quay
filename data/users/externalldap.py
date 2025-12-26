@@ -6,6 +6,8 @@ import ldap
 from ldap.controls import SimplePagedResultsControl
 from ldap.filter import escape_filter_chars, filter_format
 
+import app
+import features
 from data.model import InvalidRobotException
 from data.model.user import (
     find_user_by_email,
@@ -82,29 +84,44 @@ class LDAPConnection(object):
     def __enter__(self):
         trace_level = 2 if os.environ.get("USERS_DEBUG") == "1" else 0
 
-        self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
-        self._conn.set_option(ldap.OPT_REFERRALS, self._referrals)
-        self._conn.set_option(
-            ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
-        )
-        self._conn.set_option(ldap.OPT_TIMEOUT, self._timeout or _DEFAULT_TIMEOUT)
-        self._conn.set_option(ldap.OPT_X_KEEPALIVE_IDLE, _DEFAULT_KEEPALIVE_IDLE)
-        self._conn.set_option(ldap.OPT_X_KEEPALIVE_INTERVAL, _DEFAULT_KEEPALIVE_INTERVAL)
-        self._conn.set_option(ldap.OPT_X_KEEPALIVE_PROBES, _DEFAULT_KEEPALIVE_PROBES)
-        self._conn.set_option(ldap.OPT_RESTART, ldap.OPT_ON)
+        if features.LDAPPOOL:
+            self._conn = app.app.ldappool.get()
+            try:
+                self._conn.authenticate(self._user_dn, self._user_pw)
+            except ldap.INVALID_CREDENTIALS as ldaperr:
+                self._conn.giveback()
+                raise ldap.INVALID_CREDENTIALS from ldaperr
+            except ldap.LDAPError as ldaperr:
+                self._conn.giveback()
+                raise ldap.LDAPError from ldaperr
+            return self._conn.conn
+        else:
+            self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
+            self._conn.set_option(ldap.OPT_REFERRALS, self._referrals)
+            self._conn.set_option(
+                ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
+            )
+            self._conn.set_option(ldap.OPT_TIMEOUT, self._timeout or _DEFAULT_TIMEOUT)
+            self._conn.set_option(ldap.OPT_X_KEEPALIVE_IDLE, _DEFAULT_KEEPALIVE_IDLE)
+            self._conn.set_option(ldap.OPT_X_KEEPALIVE_INTERVAL, _DEFAULT_KEEPALIVE_INTERVAL)
+            self._conn.set_option(ldap.OPT_X_KEEPALIVE_PROBES, _DEFAULT_KEEPALIVE_PROBES)
+            self._conn.set_option(ldap.OPT_RESTART, ldap.OPT_ON)
 
-        if self._allow_tls_fallback:
-            logger.debug("TLS Fallback enabled in LDAP")
-            self._conn.set_option(ldap.OPT_X_TLS_TRY, 1)
+            if self._allow_tls_fallback:
+                logger.debug("TLS Fallback enabled in LDAP")
+                self._conn.set_option(ldap.OPT_X_TLS_TRY, 1)
 
-        # Must come _after_ all other TLS options
-        self._conn.set_option(ldap.OPT_X_TLS_NEWCTX, ldap.OPT_OFF)
+            # Must come _after_ all other TLS options
+            self._conn.set_option(ldap.OPT_X_TLS_NEWCTX, ldap.OPT_OFF)
 
-        self._conn.simple_bind_s(self._user_dn, self._user_pw)
-        return self._conn
+            self._conn.simple_bind_s(self._user_dn, self._user_pw)
+            return self._conn
 
     def __exit__(self, exc_type, value, tb):
-        self._conn.unbind_s()
+        if features.LDAPPOOL:
+            self._conn.giveback()
+        else:
+            self._conn.unbind_s()
 
 
 class LDAPUsers(FederatedUsers):
