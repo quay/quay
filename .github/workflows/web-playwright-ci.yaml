@@ -6,6 +6,7 @@ on:
     paths:
       - "web/**"
       - ".github/workflows/web-playwright-ci.yaml"
+      - ".github/actions/setup-quay/**"
 
 jobs:
   playwright:
@@ -15,35 +16,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Quay image
-        uses: docker/build-push-action@v6
+      - name: Setup Quay
+        uses: ./.github/actions/setup-quay
         with:
-          context: .
-          load: true
-          tags: localhost/quay-local:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Start Quay
-        run: |
-          docker compose up -d redis quay-db
-          docker exec -t quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-          DOCKER_USER="1001:0" docker compose up -d --no-build quay
-
-      - name: Wait for Quay to be ready
-        run: |
-          docker restart quay-quay
-          echo "Waiting for Quay to be ready..."
-          if curl -sf --retry 60 --retry-delay 2 --retry-all-errors \
-              http://localhost:8080/health/instance > /dev/null 2>&1; then
-            echo "Quay is ready!"
-          else
-            echo "Quay failed to become ready within 120 seconds"
-            exit 1
-          fi
+          logs-artifact-name: 'playwright-debug'
 
       - name: Set up Node.js with npm caching
         uses: actions/setup-node@v6
@@ -108,21 +84,4 @@ jobs:
         with:
           name: playwright-test-results
           path: web/test-results/
-          retention-days: 30
-
-      - name: Create debugging logs
-        run: |
-          mkdir -p logs/
-          docker ps -a >logs/container-status.txt 2>&1 || true
-          docker logs quay-quay >logs/quay.log 2>&1 || true
-          docker logs quay-db >logs/quay-db.log 2>&1 || true
-          docker logs quay-redis >logs/redis.log 2>&1 || true
-        if: failure()
-
-      - name: Upload debugging artifacts
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-debug
-          path: logs/
           retention-days: 30
