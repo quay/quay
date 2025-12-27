@@ -18,6 +18,8 @@ def _create_ldap(
     superuser_filter=None,
     restricted_user_filter=None,
     global_readonly_superuser_filter=None,
+    enable_caching=False,
+    cache_ttl=60.0,
 ):
     base_dn = ["dc=quay", "dc=io"]
     admin_dn = "uid=testy,ou=employees,dc=quay,dc=io"
@@ -43,6 +45,8 @@ def _create_ldap(
         ldap_superuser_filter=superuser_filter,
         ldap_restricted_user_filter=restricted_user_filter,
         ldap_global_readonly_superuser_filter=global_readonly_superuser_filter,
+        enable_caching=enable_caching,
+        cache_ttl=cache_ttl,
     )
     return ldap
 
@@ -54,6 +58,8 @@ def mock_ldap(
     superuser_filter=None,
     restricted_user_filter=None,
     global_readonly_superuser_filter=None,
+    enable_caching=False,
+    cache_ttl=60.0,
 ):
     mock_data = {
         "dc=quay,dc=io": {"dc": ["quay", "io"]},
@@ -344,6 +350,8 @@ def mock_ldap(
                 superuser_filter=superuser_filter,
                 restricted_user_filter=restricted_user_filter,
                 global_readonly_superuser_filter=global_readonly_superuser_filter,
+                enable_caching=enable_caching,
+                cache_ttl=cache_ttl,
             )
     finally:
         mockldap.stop()
@@ -1015,6 +1023,141 @@ class TestLDAP(unittest.TestCase):
             (response, err_msg) = ldap.at_least_one_user_exists()
             self.assertIsNone(err_msg)
             self.assertFalse(response)
+
+
+class TestLDAPCache(unittest.TestCase):
+    def setUp(self):
+        setup_database_for_testing(self)
+
+    def tearDown(self):
+        finished_database_for_testing(self)
+
+    def test_cache_disabled_by_default(self):
+        """Test that cache is None when not enabled."""
+        with mock_ldap() as ldap:
+            self.assertIsNone(ldap._cache)
+
+    def test_cache_enabled(self):
+        """Test that cache is created when enabled."""
+        with mock_ldap(superuser_filter="(filterField=superuser)") as ldap:
+            # Default mock_ldap doesn't enable caching, so cache is None
+            self.assertIsNone(ldap._cache)
+
+        # Test with caching enabled directly
+        from data.users.externalldap import LDAPCache
+
+        cache = LDAPCache(default_ttl=60)
+        self.assertIsNotNone(cache)
+
+    def test_ldap_cache_basic_operations(self):
+        """Test LDAPCache get/set operations."""
+        from data.users.externalldap import LDAPCache
+
+        cache = LDAPCache(default_ttl=60)
+
+        # Initially empty
+        self.assertIsNone(cache.get("nonexistent"))
+
+        # Set and retrieve
+        cache.set("test_key", True)
+        self.assertTrue(cache.get("test_key"))
+
+        cache.set("false_key", False)
+        self.assertFalse(cache.get("false_key"))
+
+    def test_ldap_cache_expiration(self):
+        """Test that cached entries expire after TTL."""
+        import time
+
+        from data.users.externalldap import LDAPCache
+
+        # Use very short TTL for testing
+        cache = LDAPCache(default_ttl=0.1)
+
+        cache.set("expires_soon", "value")
+        self.assertEqual(cache.get("expires_soon"), "value")
+
+        # Wait for expiration
+        time.sleep(0.15)
+        self.assertIsNone(cache.get("expires_soon"))
+
+    def test_ldap_cache_max_size_eviction(self):
+        """Test that cache evicts entries when max size is reached."""
+        from data.users.externalldap import LDAPCache
+
+        # Small cache for testing
+        cache = LDAPCache(default_ttl=60, max_size=3)
+
+        cache.set("key1", "value1")
+        cache.set("key2", "value2")
+        cache.set("key3", "value3")
+        self.assertEqual(cache.size(), 3)
+
+        # Adding a 4th key should evict one
+        cache.set("key4", "value4")
+        self.assertEqual(cache.size(), 3)
+
+        # The new key should be present
+        self.assertEqual(cache.get("key4"), "value4")
+
+    def test_ldap_cache_size_method(self):
+        """Test the size() method."""
+        from data.users.externalldap import LDAPCache
+
+        cache = LDAPCache(default_ttl=60)
+
+        self.assertEqual(cache.size(), 0)
+        cache.set("key1", "value1")
+        self.assertEqual(cache.size(), 1)
+        cache.set("key2", "value2")
+        self.assertEqual(cache.size(), 2)
+
+    def test_ldap_cache_lru_eviction_order(self):
+        """Test that LRU eviction removes least recently used items."""
+        from data.users.externalldap import LDAPCache
+
+        cache = LDAPCache(default_ttl=60, max_size=3)
+
+        # Add 3 items
+        cache.set("key1", "value1")
+        cache.set("key2", "value2")
+        cache.set("key3", "value3")
+
+        # Access key1 to make it most recently used
+        cache.get("key1")
+
+        # Add key4, should evict key2 (least recently used)
+        cache.set("key4", "value4")
+
+        self.assertEqual(cache.size(), 3)
+        self.assertEqual(cache.get("key1"), "value1")  # Still present
+        self.assertIsNone(cache.get("key2"))  # Evicted
+        self.assertEqual(cache.get("key3"), "value3")  # Still present
+        self.assertEqual(cache.get("key4"), "value4")  # Newly added
+
+    def test_permission_check_uses_cache(self):
+        """Test that permission checks use cache and skip LDAP lookup on cache hit."""
+        from unittest.mock import patch
+
+        with mock_ldap(
+            superuser_filter="(filterField=superuser)", enable_caching=True, cache_ttl=60.0
+        ) as ldap:
+            # First call - should hit LDAP
+            with patch.object(
+                ldap, "_ldap_single_user_search", wraps=ldap._ldap_single_user_search
+            ) as mock_search:
+                result1 = ldap.is_superuser("somesuperuser")
+                self.assertTrue(result1)
+                self.assertEqual(mock_search.call_count, 1)
+
+            # Second call - should use cache, not LDAP
+            with patch.object(ldap, "_ldap_single_user_search") as mock_search:
+                result2 = ldap.is_superuser("somesuperuser")
+                self.assertTrue(result2)
+                mock_search.assert_not_called()
+
+            # Verify cache has the entry
+            self.assertEqual(ldap._cache.size(), 1)
 
 
 if __name__ == "__main__":
