@@ -616,12 +616,6 @@ class DefaultConfig(ImmutableConfig):
     # List of users allowed to pass through recaptcha security check to enable org/user creation via API
     RECAPTCHA_WHITELISTED_USERS: List[str] = []
 
-    # Server where TUF metadata can be found
-    TUF_SERVER = None
-
-    # Prefix to add to metadata e.g. <prefix>/<namespace>/<reponame>
-    TUF_GUN_PREFIX = None
-
     # Maximum size allowed for layers in the registry.
     MAXIMUM_LAYER_SIZE = "20G"
 
