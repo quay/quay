@@ -31,14 +31,6 @@
             <div class="section">
               <div class="new-header">
                 <div class="namespace-selector-header">
-                  <span quay-show="Features.APP_REGISTRY">
-                    <span class="visible-xs xs-label">Repository Kind:</span>
-                    <select class="form-control repo-kind-select" ng-model="repo.repo_kind">
-                      <option value="image">Container Image Repository</option>
-                      <option value="application">Application Repository</option>
-                    </select>
-                  </span>
-
                   <span class="visible-xs xs-label">Namespace:</span>
                   <span class="namespace-selector" user="user" namespace="repo.namespace" require-create="true"></span>
 

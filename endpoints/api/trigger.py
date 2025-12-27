@@ -25,7 +25,6 @@ from endpoints.api import (
     allow_if_superuser,
     allow_if_superuser_with_full_access,
     api,
-    disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
     internal_only,
@@ -73,7 +72,6 @@ class BuildTriggerList(RepositoryParamResource):
     """
 
     @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
-    @disallow_for_app_repositories
     @nickname("listBuildTriggers")
     def get(self, namespace_name, repo_name):
         """
@@ -108,7 +106,6 @@ class BuildTrigger(RepositoryParamResource):
     }
 
     @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
-    @disallow_for_app_repositories
     @nickname("getBuildTrigger")
     def get(self, namespace_name, repo_name, trigger_uuid):
         """
@@ -117,7 +114,6 @@ class BuildTrigger(RepositoryParamResource):
         return trigger_view(get_trigger(trigger_uuid), can_admin=True)
 
     @require_repo_admin(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("updateBuildTrigger")
@@ -149,7 +145,6 @@ class BuildTrigger(RepositoryParamResource):
         return trigger_view(trigger)
 
     @require_repo_admin(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("deleteBuildTrigger")
@@ -199,7 +194,6 @@ class BuildTriggerSubdirs(RepositoryParamResource):
     }
 
     @require_repo_admin(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("listBuildTriggerSubdirs")
@@ -267,7 +261,6 @@ class BuildTriggerActivate(RepositoryParamResource):
     }
 
     @require_repo_admin(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("activateBuildTrigger")
@@ -379,7 +372,6 @@ class BuildTriggerAnalyze(RepositoryParamResource):
     }
 
     @require_repo_admin(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("analyzeBuildTrigger")
@@ -450,7 +442,6 @@ class ActivateBuildTrigger(RepositoryParamResource):
     }
 
     @require_repo_admin(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("manuallyStartBuildTrigger")
@@ -507,7 +498,6 @@ class TriggerBuildList(RepositoryParamResource):
     """
 
     @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
-    @disallow_for_app_repositories
     @parse_args()
     @query_param("limit", "The maximum number of builds to return", type=int, default=5)
     @nickname("listTriggerRecentBuilds")
@@ -531,7 +521,6 @@ class BuildTriggerFieldValues(RepositoryParamResource):
     """
 
     @require_repo_admin(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("listTriggerFieldValues")
@@ -577,7 +566,6 @@ class BuildTriggerSources(RepositoryParamResource):
     }
 
     @require_repo_admin(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("listTriggerBuildSources")
@@ -614,7 +602,6 @@ class BuildTriggerSourceNamespaces(RepositoryParamResource):
     """
 
     @require_repo_admin(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
-    @disallow_for_app_repositories
     @nickname("listTriggerBuildSourceNamespaces")
     def get(self, namespace_name, repo_name, trigger_uuid):
         """

@@ -17,7 +17,6 @@ from data.registry_model import registry_model
 from endpoints.api import RepositoryParamResource
 from endpoints.api import abort as custom_abort
 from endpoints.api import (
-    disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
     format_date,
@@ -72,7 +71,6 @@ class ListRepositoryTags(RepositoryParamResource):
     """
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
-    @disallow_for_app_repositories
     @parse_args()
     @query_param("specificTag", "Filters the tags to the specific tag.", type=str, default="")
     @query_param(
@@ -144,7 +142,6 @@ class RepositoryTag(RepositoryParamResource):
     }
 
     @require_repo_write(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("changeTag")
@@ -239,7 +236,6 @@ class RepositoryTag(RepositoryParamResource):
         return "Updated", 201
 
     @require_repo_write(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("deleteFullTag")
@@ -289,7 +285,6 @@ class RestoreTag(RepositoryParamResource):
     }
 
     @require_repo_write(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("restoreTag")
@@ -370,7 +365,6 @@ class TagTimeMachineDelete(RepositoryParamResource):
     }
 
     @require_repo_write(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @nickname("removeTagFromTimemachine")
     @validate_json_request("ExpireTag")
     def post(self, namespace, repository, tag):
@@ -432,7 +426,6 @@ class RepositoryTagPullStatistics(RepositoryParamResource):
     """
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
-    @disallow_for_app_repositories
     @nickname("getTagPullStatistics")
     def get(self, namespace, repository, tag):
         """

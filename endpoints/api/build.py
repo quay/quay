@@ -33,7 +33,6 @@ from endpoints.api import (
     allow_if_superuser,
     allow_if_superuser_with_full_access,
     api,
-    disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
     format_date,
@@ -248,7 +247,6 @@ class RepositoryBuildList(RepositoryParamResource):
         "since", "Returns all builds since the given unix timecode", type=int, default=None
     )
     @nickname("getRepoBuilds")
-    @disallow_for_app_repositories
     def get(self, namespace, repository, parsed_args):
         """
         Get the list of repository builds.
@@ -264,7 +262,6 @@ class RepositoryBuildList(RepositoryParamResource):
 
     @require_repo_write(allow_for_superuser=True)
     @nickname("requestRepoBuild")
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @validate_json_request("RepositoryBuildRequest")
@@ -406,7 +403,6 @@ class RepositoryBuildResource(RepositoryParamResource):
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoBuild")
-    @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
         """
         Returns information about a build.
@@ -426,7 +422,6 @@ class RepositoryBuildResource(RepositoryParamResource):
 
     @require_repo_admin(allow_for_superuser=True)
     @nickname("cancelRepoBuild")
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     def delete(self, namespace, repository, build_uuid):
@@ -461,7 +456,6 @@ class RepositoryBuildStatus(RepositoryParamResource):
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoBuildStatus")
-    @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
         """
         Return the status for the builds specified by the build uuids.
@@ -512,7 +506,6 @@ class RepositoryBuildLogs(RepositoryParamResource):
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoBuildLogs")
-    @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
         """
         Return the build logs for the build specified by the build uuid.

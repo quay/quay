@@ -5,7 +5,6 @@ from cachetools.func import lru_cache
 from peewee import SQL, IntegrityError
 
 from data.database import (
-    ApprBlob,
     ImageStorage,
     ImageStorageLocation,
     ImageStoragePlacement,
@@ -133,20 +132,7 @@ def garbage_collect_storage(storage_id_whitelist):
                         is_referenced_checksums,
                     )
 
-                # Check the ApprBlob table as well.
-                query = ApprBlob.select(ApprBlob.digest).where(
-                    ApprBlob.digest << list(content_checksums)
-                )
-                appr_blob_referenced_checksums = set([blob.digest for blob in query])
-                if appr_blob_referenced_checksums:
-                    logger.warning(
-                        "GC attempted to remove CAS checksums %s, which are ApprBlob referenced",
-                        appr_blob_referenced_checksums,
-                    )
-
-                unreferenced_checksums = (
-                    content_checksums - appr_blob_referenced_checksums - is_referenced_checksums
-                )
+                unreferenced_checksums = content_checksums - is_referenced_checksums
 
             # Return all placements for all image storages found not at a CAS path or with a content
             # checksum that is referenced.

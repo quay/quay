@@ -124,7 +124,7 @@ class RepositoryList(ApiResource):
                 "repo_kind": {
                     "type": ["string", "null"],
                     "description": "The kind of repository",
-                    "enum": ["image", "application", None],
+                    "enum": ["image", None],
                 },
             },
         },
@@ -324,7 +324,7 @@ class Repository(RepositoryParamResource):
         repo_data["can_write"] = has_write_permission
         repo_data["can_admin"] = AdministerRepositoryPermission(namespace, repository).can()
 
-        if parsed_args["includeStats"] and repo.repository_base_elements.kind_name != "application":
+        if parsed_args["includeStats"]:
             stats = []
             found_dates = {}
 
