@@ -1,4 +1,4 @@
-import {test as base, expect, uniqueName} from '../../fixtures';
+import {test as base, expect, uniqueName, mailpit} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 import {Page} from '@playwright/test';
 
@@ -122,10 +122,11 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
   test(
     'creates account with valid inputs and redirects to organization',
     {tag: '@critical'},
-    async ({createAccountPage, cleanupUser}) => {
+    async ({createAccountPage, cleanupUser, quayConfig}) => {
       const username = uniqueName('newuser');
       const email = `${username}@example.com`;
       const password = 'validpassword123';
+      const mailingEnabled = quayConfig?.features?.MAILING === true;
 
       await createAccountPage.goto('/createaccount');
 
@@ -152,6 +153,19 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
       );
       await expect(submitButton).toBeEnabled({timeout: 10000});
       await submitButton.click();
+
+      // If FEATURE_MAILING is enabled, we need to confirm email first
+      if (mailingEnabled) {
+        // Wait for verification message to appear
+        await expect(
+          createAccountPage.getByTestId('awaiting-verification-alert'),
+        ).toBeVisible({timeout: 10000});
+
+        // Get confirmation link from email (searches by recipient address)
+        const confirmLink = await mailpit.waitForConfirmationLink(email);
+        expect(confirmLink).not.toBeNull();
+        await createAccountPage.goto(confirmLink!);
+      }
 
       // Should redirect to /organization or /updateuser after successful creation
       // (depends on whether user has prompts configured)
@@ -296,13 +310,14 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
   test(
     'redirects to updateuser when user has prompts',
     {tag: '@feature:QUOTA_MANAGEMENT'},
-    async ({createAccountPage, cleanupUser}) => {
+    async ({createAccountPage, cleanupUser, quayConfig}) => {
       // This test only runs when FEATURE_QUOTA_MANAGEMENT is enabled
       // When enabled, new users may have prompts (enter_name, enter_company)
       // that redirect them to /updateuser
       const username = uniqueName('promptuser');
       const email = `${username}@example.com`;
       const password = 'validpassword123';
+      const mailingEnabled = quayConfig?.features?.MAILING === true;
 
       await createAccountPage.goto('/createaccount');
 
@@ -320,6 +335,19 @@ test.describe('Create Account Page', {tag: ['@auth']}, () => {
 
       // Submit form
       await createAccountPage.getByTestId('create-account-submit').click();
+
+      // If FEATURE_MAILING is enabled, we need to confirm email first
+      if (mailingEnabled) {
+        // Wait for verification message to appear
+        await expect(
+          createAccountPage.getByTestId('awaiting-verification-alert'),
+        ).toBeVisible({timeout: 10000});
+
+        // Get confirmation link from email (searches by recipient address)
+        const confirmLink = await mailpit.waitForConfirmationLink(email);
+        expect(confirmLink).not.toBeNull();
+        await createAccountPage.goto(confirmLink!);
+      }
 
       // With QUOTA_MANAGEMENT enabled, user should have prompts
       // and be redirected to /updateuser
