@@ -176,3 +176,15 @@ services:
     cpus: 2
     command:
       ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
+
+  # Mailpit - local email testing server
+  # Web UI: http://localhost:8025
+  mailpit:
+    container_name: quay-mailpit
+    image: docker.io/axllent/mailpit:latest
+    ports:
+      - "8025:8025"  # Web UI
+      - "1025:1025"  # SMTP
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1

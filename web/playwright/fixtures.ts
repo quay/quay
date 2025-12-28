@@ -691,3 +691,13 @@ export function uniqueName(prefix: string): string {
     .toString(36)
     .substring(2, 8)}`;
 }
+
+// ============================================================================
+// Mailpit: Re-export from utils for backward compatibility
+// ============================================================================
+
+export {
+  mailpit,
+  MailpitMessage,
+  MailpitMessagesResponse,
+} from './utils/mailpit';

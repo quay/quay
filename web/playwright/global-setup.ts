@@ -13,6 +13,7 @@
 import {chromium, FullConfig} from '@playwright/test';
 import {API_URL} from './utils/config';
 import {ApiClient} from './utils/api';
+import {mailpit} from './utils/mailpit';
 
 export const TEST_USERS = {
   // Admin/superuser for admin operations
@@ -49,6 +50,33 @@ async function globalSetup(config: FullConfig) {
     // Track failures to report at the end
     const failures: string[] = [];
 
+    // Check if FEATURE_MAILING is enabled
+    let mailingEnabled = false;
+    try {
+      const configResponse = await fetch(`${API_URL}/config`);
+      if (configResponse.ok) {
+        const quayConfig = await configResponse.json();
+        mailingEnabled = quayConfig?.features?.MAILING === true;
+      }
+    } catch {
+      console.log(
+        '[Global Setup] Could not fetch config, assuming mailing disabled',
+      );
+    }
+
+    // Check if Mailpit is available when mailing is enabled
+    const mailpitAvailable = mailingEnabled && (await mailpit.isAvailable());
+    if (mailingEnabled) {
+      console.log(
+        `[Global Setup] FEATURE_MAILING enabled, Mailpit ${
+          mailpitAvailable ? 'available' : 'NOT available'
+        }`,
+      );
+      if (mailpitAvailable) {
+        await mailpit.clearInbox();
+      }
+    }
+
     // Create test users (skip if they already exist)
     // Each user creation requires a fresh context and CSRF token
     for (const [role, user] of Object.entries(TEST_USERS)) {
@@ -61,6 +89,26 @@ async function globalSetup(config: FullConfig) {
         const api = new ApiClient(userRequest);
         await api.createUser(user.username, user.password, user.email);
         console.log(`[Global Setup] Created ${role} user: ${user.username}`);
+
+        // Verify email if mailing is enabled and Mailpit is available
+        if (mailpitAvailable) {
+          console.log(
+            `[Global Setup] Verifying email for ${role} user: ${user.email}`,
+          );
+          const confirmLink = await mailpit.waitForConfirmationLink(user.email);
+          if (confirmLink) {
+            const page = await userContext.newPage();
+            await page.goto(confirmLink);
+            await page.close();
+            console.log(
+              `[Global Setup] Email verified for ${role} user: ${user.username}`,
+            );
+          } else {
+            console.warn(
+              `[Global Setup] No confirmation email found for ${user.email}`,
+            );
+          }
+        }
       } catch (error) {
         const errorMessage = String(error);
         // User might already exist (400 error with "already exists")
