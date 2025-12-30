@@ -232,7 +232,7 @@ describe('Superuser User Management', () => {
       }).as('getOrgs');
     });
 
-    it('shows all management options for regular users', () => {
+    it('shows all management options for regular users (without Configure Quota)', () => {
       cy.intercept('GET', '/api/v1/superuser/users/', {
         body: {
           users: [
@@ -258,13 +258,14 @@ describe('Superuser User Management', () => {
       // Click kebab menu for regular user (tom)
       cy.get('[data-testid="tom-options-toggle"]').click();
 
-      // Should see all 6 options
+      // Should see all user management options (but NOT Configure Quota)
       cy.contains('Change E-mail Address').should('be.visible');
       cy.contains('Change Password').should('be.visible');
       cy.contains('Disable User').should('be.visible');
       cy.contains('Delete User').should('be.visible');
       cy.contains('Take Ownership').should('be.visible');
-      cy.contains('Configure Quota').should('be.visible');
+      // Configure Quota should NOT be visible for regular users (only superusers can configure quota)
+      cy.contains('Configure Quota').should('not.exist');
     });
 
     it('shows "Enable User" for disabled users', () => {
@@ -997,25 +998,46 @@ describe('Superuser User Management', () => {
       });
     });
 
-    it('shows Configure Quota option for regular users', () => {
+    it('should NOT show Configure Quota option for regular users (only superusers can configure quota)', () => {
       cy.visit('/organization');
       cy.wait(['@getConfig', '@getUsers', '@getOrgs']);
 
       // Click kebab menu for regular user
       cy.get('[data-testid="tom-options-toggle"]').click();
 
-      // Should see Configure Quota in menu
-      cy.contains('Configure Quota').should('be.visible');
+      // Should NOT see Configure Quota in menu (only superusers can configure quota)
+      cy.contains('Configure Quota').should('not.exist');
     });
 
-    it('shows Configure Quota option for organizations', () => {
+    it('shows Configure Quota option for organizations when user is superuser', () => {
       cy.visit('/organization');
       cy.wait(['@getConfig', '@getUsers', '@getOrgs']);
 
       // Click kebab menu for organization
       cy.get('[data-testid="testorg-options-toggle"]').click();
 
-      // Should see Configure Quota in menu
+      // Should see Configure Quota in menu (superusers can configure quota)
+      cy.contains('Configure Quota').should('be.visible');
+    });
+
+    it('shows Configure Quota option for superuser viewing their own row', () => {
+      // Mock logged-in user as user1 (superuser viewing own row)
+      cy.intercept('GET', '/api/v1/user/', {
+        body: {
+          username: 'user1',
+          email: 'user1@example.com',
+          super_user: true,
+          global_readonly_super_user: false,
+        },
+      }).as('getUser1');
+
+      cy.visit('/organization');
+      cy.wait(['@getConfig', '@getUser1', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu for superuser's own row
+      cy.get('[data-testid="user1-options-toggle"]').click();
+
+      // Should see Configure Quota in menu (superusers can configure quota for themselves)
       cy.contains('Configure Quota').should('be.visible');
     });
   });
