@@ -317,7 +317,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
                       rowIndex={rowIndex}
                       setUserEntry={setUserEntry}
                       isUserEntry={isUserEntry}
-                      wizarStep={false}
+                      wizarStep={props.isWizardStep ?? false}
                     />
                   </Td>
                   <Td dataLabel={ColumnNames.lastUpdated}>

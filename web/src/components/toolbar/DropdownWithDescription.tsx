@@ -30,11 +30,16 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
 
   useEffect(() => {
     if (props.wizarStep) {
-      if (props.selectedVal) {
+      // Wizard step mode: always default to 'Read' when a row is selected
+      if (props.selectedVal && props.selectedVal != 'None') {
         dropdownOnSelect(props.selectedVal, true);
+      } else if (props?.isItemSelected) {
+        // Row is selected but no permission set yet - default to 'Read'
+        dropdownOnSelect(defaultSelectedVal, true);
       }
       return;
     }
+    // Non-wizard mode: only show actual values, be careful about defaulting
     // If we have a valid permission value, always use it first
     if (props.selectedVal && props.selectedVal != 'None') {
       if (props.selectedVal != dropdownToggle) {

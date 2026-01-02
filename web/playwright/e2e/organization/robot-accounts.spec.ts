@@ -258,7 +258,9 @@ test.describe(
       // Verify initial permission is displayed correctly as 'Read'
       // This tests the fix for PROJQUAY-10084
       await expect(
-        authenticatedPage.getByTestId(`${repo1.name}-permission-dropdown-toggle`),
+        authenticatedPage.getByTestId(
+          `${repo1.name}-permission-dropdown-toggle`,
+        ),
       ).toContainText('Read');
 
       // Change permission to Admin via dropdown - use first() since there could be multiple
@@ -324,7 +326,9 @@ test.describe(
 
       // Verify Write permission is displayed correctly (not defaulting to 'Read')
       await expect(
-        authenticatedPage.getByTestId(`${repo.name}-permission-dropdown-toggle`),
+        authenticatedPage.getByTestId(
+          `${repo.name}-permission-dropdown-toggle`,
+        ),
       ).toContainText('Write');
 
       // Close modal
@@ -336,7 +340,9 @@ test.describe(
       // Reopen modal and verify permission is still Write
       await authenticatedPage.getByText('1 repository').click();
       await expect(
-        authenticatedPage.getByTestId(`${repo.name}-permission-dropdown-toggle`),
+        authenticatedPage.getByTestId(
+          `${repo.name}-permission-dropdown-toggle`,
+        ),
       ).toContainText('Write');
     });
 
