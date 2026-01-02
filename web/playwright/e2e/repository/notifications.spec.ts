@@ -1,4 +1,4 @@
-import {test, expect, skipUnlessFeature} from '../../fixtures';
+import {test, expect, mailpit} from '../../fixtures';
 
 test.describe('Repository Notifications', {tag: ['@repository']}, () => {
   test('renders and expands notification details', async ({
@@ -340,34 +340,11 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
   test(
     'creates email notification with authorization flow',
     {tag: '@feature:MAILING'},
-    async ({authenticatedPage, api, page}) => {
+    async ({authenticatedPage, api}) => {
       // Create test organization with repository
       const org = await api.organization('emailnotif');
       const repo = await api.repository(org.name, 'emailrepo');
-
-      // Mock email authorization endpoints (email confirmation can't be automated)
-      let callCount = 0;
-      await page.route(
-        '**/api/v1/repository/**/authorizedemail/**',
-        async (route) => {
-          callCount++;
-          if (route.request().method() === 'GET') {
-            // First GET returns not confirmed, subsequent returns confirmed
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({confirmed: callCount > 2}),
-            });
-          } else {
-            // POST to send authorization email
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({success: true}),
-            });
-          }
-        },
-      );
+      const testEmail = 'notification-test@example.com';
 
       // Navigate to repository settings > Events and notifications tab
       await authenticatedPage.goto(
@@ -394,12 +371,12 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await authenticatedPage
         .getByTestId('notification-method-dropdown')
         .click();
-      await authenticatedPage.getByText('E-mail').click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Email Notification'})
+        .click();
 
       // Fill email
-      await authenticatedPage
-        .getByTestId('notification-email')
-        .fill('test@example.com');
+      await authenticatedPage.getByTestId('notification-email').fill(testEmail);
 
       // Enter title
       await authenticatedPage
@@ -422,8 +399,25 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         authenticatedPage.getByText(/An email has been sent/i),
       ).toBeVisible();
 
-      // Mock will return confirmed after a few calls, notification should be created
-      // Wait for the notification to appear in the table
+      // Wait for the verification email in Mailpit
+      const authEmail = await mailpit.waitForEmail(
+        (msg) =>
+          msg.To.some((to) => to.Address === testEmail) &&
+          msg.Subject.toLowerCase().includes('verify'),
+        15000,
+      );
+      expect(authEmail).not.toBeNull();
+
+      // Extract and visit the confirmation link
+      const confirmLink = await mailpit.extractLink(authEmail!.ID);
+      expect(confirmLink).not.toBeNull();
+
+      // Open confirmation link in a new page to avoid disrupting the polling
+      const confirmPage = await authenticatedPage.context().newPage();
+      await confirmPage.goto(confirmLink!);
+      await confirmPage.close();
+
+      // Wait for the notification to appear in the table (UI polls for confirmation)
       await expect(
         authenticatedPage.locator('tbody', {hasText: 'Email Notification'}),
       ).toBeVisible({timeout: 15000});

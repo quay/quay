@@ -118,12 +118,12 @@ export const mailpit = {
    * Extract a confirmation/action link from an email body
    *
    * @param emailId - Email ID from MailpitMessage.ID
-   * @param linkPattern - Regex pattern to match the link (default: /confirm?code=)
+   * @param linkPattern - Regex pattern to match the link (default: URLs with code= parameter)
    * @returns The extracted URL or null if not found
    */
   async extractLink(
     emailId: string,
-    linkPattern = /https?:\/\/[^\s\]]+\/confirm\?code=[^\s\]]+/,
+    linkPattern = /https?:\/\/[^\s\])]+[?&]code=[^\s\])]+/,
   ): Promise<string | null> {
     const body = await this.getEmailBody(emailId);
     const match = body.match(linkPattern);
