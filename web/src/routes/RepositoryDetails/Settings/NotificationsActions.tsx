@@ -80,6 +80,7 @@ export default function Actions(props: ActionsProps) {
         toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
           <MenuToggle
             ref={toggleRef}
+            data-testid="notifications-actions-dropdown"
             isDisabled={props.isDisabled}
             onClick={() => setIsOpen(() => !isOpen)}
             isExpanded={isOpen}
@@ -94,6 +95,7 @@ export default function Actions(props: ActionsProps) {
         <DropdownList>
           <Conditional if={notificationsToEnable.length > 0}>
             <DropdownItem
+              data-testid="bulk-enable-notifications"
               onClick={() => enableNotifications(notificationsToEnable)}
             >
               Enable
@@ -102,6 +104,7 @@ export default function Actions(props: ActionsProps) {
 
           <DropdownItem
             id="bulk-delete-notifications"
+            data-testid="bulk-delete-notifications"
             onClick={() => {
               deleteNotifications(props.selectedItems.map((n) => n.uuid));
             }}

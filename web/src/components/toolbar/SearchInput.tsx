@@ -16,6 +16,7 @@ export function SearchInput(props: SearchInput) {
         isRequired
         type="search"
         id={props.id ? props.id : 'toolbar-text-input'}
+        data-testid={props.id ? props.id : 'toolbar-text-input'}
         name="search input"
         placeholder={`Search by ${props.searchState.field}...`}
         value={props.searchState.query}

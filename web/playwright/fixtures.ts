@@ -163,6 +163,42 @@ export class TestApi {
   }
 
   /**
+   * Create a repository with an exact name (supports multi-segment names like "release/installer").
+   * Automatically deleted after test.
+   *
+   * @param namespace - Organization or username
+   * @param name - Exact repository name (can contain "/" for multi-segment)
+   * @param visibility - Repository visibility (default: private)
+   *
+   * @example
+   * ```typescript
+   * // Create a multi-segment repository
+   * const repo = await api.repositoryWithName('myorg', 'release/installer');
+   * ```
+   */
+  async repositoryWithName(
+    namespace: string,
+    name: string,
+    visibility: RepositoryVisibility = 'private',
+  ): Promise<CreatedRepo> {
+    await this.client.createRepository(namespace, name, visibility);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepository(namespace, name);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      namespace,
+      name,
+      fullName: `${namespace}/${name}`,
+    };
+  }
+
+  /**
    * Create a team in an organization.
    * Automatically deleted after test.
    */
@@ -252,6 +288,89 @@ export class TestApi {
   }
 
   /**
+   * Add a permission to a repository.
+   * Automatically deleted after test.
+   *
+   * @param namespace - Organization or username that owns the repository
+   * @param repoName - Repository name
+   * @param entityType - Type of entity ('user' for users/robots, 'team' for teams)
+   * @param entityName - Name of the entity (username, robot fullName like "org+bot", or team name)
+   * @param role - Permission level ('read', 'write', or 'admin')
+   */
+  async repositoryPermission(
+    namespace: string,
+    repoName: string,
+    entityType: 'user' | 'team',
+    entityName: string,
+    role: PrototypeRole = 'read',
+  ): Promise<{
+    namespace: string;
+    repoName: string;
+    entityType: 'user' | 'team';
+    entityName: string;
+  }> {
+    await this.client.addRepositoryPermission(
+      namespace,
+      repoName,
+      entityType,
+      entityName,
+      role,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepositoryPermission(
+          namespace,
+          repoName,
+          entityType,
+          entityName,
+        );
+      } catch {
+        /* ignore cleanup errors - permission may already be deleted */
+      }
+    });
+
+    return {namespace, repoName, entityType, entityName};
+  }
+
+  /**
+   * Create a notification for a repository.
+   * Automatically deleted after test.
+   */
+  async notification(
+    namespace: string,
+    repoName: string,
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    title?: string,
+  ): Promise<{uuid: string; namespace: string; repoName: string}> {
+    const result = await this.client.createRepositoryNotification(
+      namespace,
+      repoName,
+      event,
+      method,
+      config,
+      {},
+      title,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepositoryNotification(
+          namespace,
+          repoName,
+          result.uuid,
+        );
+      } catch {
+        /* ignore cleanup errors - notification may already be deleted */
+      }
+    });
+
+    return {uuid: result.uuid, namespace, repoName};
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
@@ -282,7 +401,8 @@ export type QuayFeature =
   | 'SECURITY_SCANNER'
   | 'CHANGE_TAG_EXPIRATION'
   | 'USER_METADATA'
-  | 'MAILING';
+  | 'MAILING'
+  | 'IMAGE_EXPIRY_TRIGGER';
 
 /**
  * Quay configuration from /config endpoint

@@ -378,10 +378,10 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await authenticatedPage.locator('#search-member-dropdown').click();
     await authenticatedPage.getByTestId('create-new-robot-accnt-btn').click();
     await authenticatedPage
-      .getByTestId('new-robot-name-input')
+      .getByTestId('robot-wizard-form-name')
       .fill(newRobotShortname);
     await authenticatedPage
-      .getByTestId('new-robot-description-input')
+      .getByTestId('robot-wizard-form-description')
       .fill(newRobotDescription);
     await authenticatedPage
       .getByTestId('create-robot-accnt-drawer-btn')
@@ -459,10 +459,10 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Robot wizard - Step: Name & Description
     await authenticatedPage
-      .getByTestId('new-robot-name-input')
+      .getByTestId('robot-wizard-form-name')
       .fill(newRobotShortname);
     await authenticatedPage
-      .getByTestId('new-robot-description-input')
+      .getByTestId('robot-wizard-form-description')
       .fill(newRobotDescription);
     await authenticatedPage.getByTestId('next-btn').click();
 
@@ -485,7 +485,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Review and Finish
-    await authenticatedPage.getByTestId('review-and-finish-btn').click();
+    await authenticatedPage.getByTestId('create-robot-submit').click();
 
     // Verify robot creation success alert
     await expect(

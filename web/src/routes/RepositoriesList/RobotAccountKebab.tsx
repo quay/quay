@@ -61,12 +61,14 @@ export default function RobotAccountKebab(props: RobotAccountKebabProps) {
           <DropdownItem
             onClick={() => onSetRepoPerms()}
             id={`${props.robotAccount.name}-set-repo-perms-btn`}
+            data-testid={`${props.robotAccount.name}-set-repo-perms-btn`}
           >
             Set repository permissions
           </DropdownItem>
           <DropdownItem
             onClick={() => onSetRobotFederation()}
             id={`${props.robotAccount.name}-set-robot-federation-btn`}
+            data-testid={`${props.robotAccount.name}-set-robot-federation-btn`}
           >
             Set robot federation
           </DropdownItem>
@@ -74,6 +76,7 @@ export default function RobotAccountKebab(props: RobotAccountKebabProps) {
             onClick={() => onDelete()}
             className="red-color"
             id={`${props.robotAccount.name}-del-btn`}
+            data-testid={`${props.robotAccount.name}-del-btn`}
           >
             Delete
           </DropdownItem>

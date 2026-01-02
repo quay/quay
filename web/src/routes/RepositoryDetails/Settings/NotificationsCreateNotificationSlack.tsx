@@ -71,6 +71,7 @@ export default function CreateSlackNotification(
         <TextInput
           required
           id="slack-webhook-url-field"
+          data-testid="slack-webhook-url-field"
           value={url}
           onChange={(_event, value) => setUrl(value)}
         />
@@ -89,12 +90,14 @@ export default function CreateSlackNotification(
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
+          data-testid="notification-title"
           value={title}
           onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>
         <Button
+          data-testid="notification-submit-btn"
           isDisabled={!isFormComplete}
           onClick={createNotification}
           variant="primary"
