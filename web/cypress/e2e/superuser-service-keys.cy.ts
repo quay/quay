@@ -1,5 +1,15 @@
 /// <reference types="cypress" />
 
+/**
+ * Generate a future expiration date string for datetime-local input
+ * Returns a date 1 year from now in the format "YYYY-MM-DDTHH:mm"
+ */
+function getFutureExpirationDate(): string {
+  const futureDate = new Date();
+  futureDate.setFullYear(futureDate.getFullYear() + 1);
+  return futureDate.toISOString().slice(0, 16);
+}
+
 describe('Service Keys Management', () => {
   before(() => {
     cy.exec('npm run quay:seed');
@@ -322,7 +332,7 @@ describe('Service Keys Management', () => {
       // Fill out required form fields
       cy.get('#service-name').type('new_service'); // Must match [a-z0-9_]+ pattern
       cy.get('#key-name').type('New Test Key');
-      cy.get('#expiration').type('2025-12-31T23:59'); // Required field
+      cy.get('#expiration').type(getFutureExpirationDate()); // Required field
 
       // Submit form
       cy.get('[data-testid="create-key-submit"]').click();
@@ -356,7 +366,7 @@ describe('Service Keys Management', () => {
       cy.get('[data-testid="create-key-submit"]').should('be.disabled');
 
       // Fill all required fields
-      cy.get('#expiration').type('2025-12-31T23:59');
+      cy.get('#expiration').type(getFutureExpirationDate());
 
       // Submit button should now be enabled
       cy.get('[data-testid="create-key-submit"]').should('not.be.disabled');
@@ -382,7 +392,7 @@ describe('Service Keys Management', () => {
       cy.get('#create-service-key-button').click();
       cy.get('#service-name').type('existing_service'); // Must match [a-z0-9_]+ pattern
       cy.get('#key-name').type('Test Key');
-      cy.get('#expiration').type('2025-12-31T23:59'); // Required field
+      cy.get('#expiration').type(getFutureExpirationDate()); // Required field
 
       // Submit form
       cy.get('[data-testid="create-key-submit"]').click();
