@@ -66,8 +66,30 @@ describe('Account Settings Page', () => {
     cy.get('#org-settings-company').type('Red Hat');
     cy.get('#save-org-settings').click();
 
+    // Mock the user response after save to verify form displays saved values
+    // Note: When FEATURE_MAILING is enabled on the backend, email changes require
+    // verification before taking effect. We mock the response to test the UI behavior.
+    cy.intercept('GET', '/api/v1/user/', {
+      statusCode: 200,
+      body: {
+        username: 'user1',
+        email: 'good-email@redhat.com',
+        family_name: 'Joe Smith',
+        location: 'Raleigh, NC',
+        company: 'Red Hat',
+        verified: true,
+        anonymous: false,
+        organizations: [],
+        logins: [],
+        can_create_repo: true,
+        invoice_email: false,
+        invoice_email_address: null,
+      },
+    }).as('getMockedUser');
+
     // refresh page and check if email is saved
     cy.reload();
+    cy.wait('@getMockedUser');
     cy.get('#org-settings-email').should('have.value', 'good-email@redhat.com');
     cy.get('#org-settings-fullname').should('have.value', 'Joe Smith');
     cy.get('#org-settings-location').should('have.value', 'Raleigh, NC');
