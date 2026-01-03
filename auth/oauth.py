@@ -14,8 +14,10 @@ from oauth.login_utils import (
     _conduct_oauth_login,
     get_jwt_issuer,
     get_sub_username_email_from_token,
+    sync_oidc_groups,
 )
 from oauth.oidc import PublicKeyLoadException
+from oauth.services.openshift import OpenShiftOAuthService
 from util.security.jwtutil import is_jwt
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,12 @@ def validate_oauth_token(token):
     if is_jwt(token):
         return validate_sso_oauth_token(token)
     else:
+        # Try OpenShift opaque token validation first
+        result = validate_openshift_opaque_token(token)
+        if result is not None and not result.error_message:
+            return result
+
+        # Fall back to app OAuth token
         return validate_app_oauth_token(token)
 
 
@@ -93,6 +101,70 @@ def validate_sso_oauth_token(token):
     ) as ole:
         logger.exception(ole)
         return ValidateResult(AuthKind.ssojwt, error_message=str(ole))
+
+
+def validate_openshift_opaque_token(token):
+    """
+    Validate an opaque (non-JWT) OpenShift access token.
+
+    OpenShift can issue opaque access tokens that aren't JWTs. We validate
+    these by calling the OpenShift User API - if it succeeds, the token is valid.
+
+    Returns:
+        ValidateResult on success, None if no OpenShift service configured
+    """
+    # Find OpenShift OAuth service
+    openshift_service = None
+    for service in oauth_login.services:
+        if isinstance(service, OpenShiftOAuthService):
+            openshift_service = service
+            break
+
+    if openshift_service is None:
+        return None
+
+    try:
+        # Validate token by calling OpenShift User API
+        user_info = openshift_service.validate_opaque_token(openshift_service._http_client, token)
+
+        if not user_info or not user_info.get("sub"):
+            return ValidateResult(
+                AuthKind.ssojwt,
+                error_message="Could not extract user info from OpenShift token",
+            )
+
+        # Conduct OAuth login with extracted info
+        login_result = _conduct_oauth_login(
+            config=app.config,
+            analytics=analytics,
+            auth_system=authentication,
+            login_service=openshift_service,
+            lid=user_info["sub"],
+            lusername=user_info.get("preferred_username", user_info["sub"]),
+            lemail=user_info.get("email"),
+            captcha_verified=True,
+            additional_login_info={"groups": user_info.get("groups", [])},
+        )
+
+        if login_result.error_message:
+            logger.error(f"OpenShift login failed: {login_result.error_message}")
+            return ValidateResult(AuthKind.ssojwt, error_message=login_result.error_message)
+
+        # Sync groups to teams
+        if user_info.get("groups"):
+            sync_oidc_groups(
+                {"groups": user_info["groups"]},
+                login_result.user_obj,
+                authentication,
+                openshift_service,
+                app.config,
+            )
+
+        return ValidateResult(AuthKind.ssojwt, user=login_result.user_obj, sso_token=token)
+
+    except Exception as e:
+        logger.debug(f"OpenShift opaque token validation failed: {e}")
+        return None
 
 
 def validate_app_oauth_token(token):

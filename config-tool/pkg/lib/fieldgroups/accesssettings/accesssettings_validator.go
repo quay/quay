@@ -9,7 +9,7 @@ func (fg *AccessSettingsFieldGroup) Validate(opts shared.Options) []shared.Valid
 	errors := []shared.ValidationError{}
 
 	// Check that AuthType is one of
-	if ok, err := shared.ValidateIsOneOfString(fg.AuthenticationType, []string{"Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken"}, "AUTHENTICATION_TYPE", "AccessSettings"); !ok {
+	if ok, err := shared.ValidateIsOneOfString(fg.AuthenticationType, []string{"Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken", "OpenShift"}, "AUTHENTICATION_TYPE", "AccessSettings"); !ok {
 		errors = append(errors, err)
 	}
 

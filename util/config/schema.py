@@ -400,7 +400,7 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "The authentication engine to use for credential authentication.",
             "x-example": "Database",
-            "enum": ["Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken"],
+            "enum": ["Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken", "OpenShift"],
         },
         "SUPER_USERS": {
             "type": "array",
@@ -596,6 +596,69 @@ CONFIG_SCHEMA = {
                     "type": "string",
                     "description": "The registered client secret for this Quay instance",
                     "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
+                },
+            },
+        },
+        "OPENSHIFT_LOGIN_CONFIG": {
+            "type": ["object", "null"],
+            "description": "Configuration for using OpenShift OAuth as an external login provider",
+            "required": ["OIDC_SERVER", "CLIENT_ID"],
+            "properties": {
+                "OIDC_SERVER": {
+                    "type": "string",
+                    "description": "The OpenShift OAuth server URL",
+                    "x-example": "https://oauth-openshift.apps.cluster.example.com",
+                },
+                "OPENSHIFT_API_URL": {
+                    "type": "string",
+                    "description": "The OpenShift API server URL for user/group lookups. Auto-detected when running in-cluster.",
+                    "x-example": "https://api.cluster.example.com:6443",
+                },
+                "CLIENT_ID": {
+                    "type": "string",
+                    "description": "The OAuth client ID registered in OpenShift (OAuthClient CR name)",
+                    "x-example": "quay-registry",
+                },
+                "CLIENT_SECRET": {
+                    "type": "string",
+                    "description": "The OAuth client secret (not needed if PUBLIC_CLIENT is true)",
+                    "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
+                },
+                "PUBLIC_CLIENT": {
+                    "type": "boolean",
+                    "description": "Set to true for public OAuth clients (no client secret required)",
+                    "x-example": True,
+                },
+                "SERVICE_NAME": {
+                    "type": "string",
+                    "description": "Display name for the login button",
+                    "x-example": "OpenShift",
+                },
+                "SERVICE_ICON": {
+                    "type": "string",
+                    "description": "FontAwesome icon class for the login button",
+                    "x-example": "fa-openshift",
+                },
+                "PREFERRED_GROUP_CLAIM_NAME": {
+                    "type": "string",
+                    "description": "Claim name for groups in token/API response",
+                    "x-example": "groups",
+                },
+                "LOGIN_SCOPES": {
+                    "type": "array",
+                    "description": "OAuth scopes to request from OpenShift",
+                    "items": {"type": "string"},
+                    "x-example": ["user:info", "user:check-access"],
+                },
+                "USE_PKCE": {
+                    "type": "boolean",
+                    "description": "Enable PKCE for OAuth flow",
+                    "x-example": True,
+                },
+                "SERVICE_ACCOUNT_TOKEN_PATH": {
+                    "type": "string",
+                    "description": "Path to service account token for background group sync",
+                    "x-example": "/var/run/secrets/kubernetes.io/serviceaccount/token",
                 },
             },
         },
@@ -865,6 +928,11 @@ CONFIG_SCHEMA = {
         "FEATURE_GOOGLE_LOGIN": {
             "type": "boolean",
             "description": "Whether Google login is supported. Defaults to False",
+            "x-example": False,
+        },
+        "FEATURE_OPENSHIFT_LOGIN": {
+            "type": "boolean",
+            "description": "Whether OpenShift OAuth login is supported. Defaults to False",
             "x-example": False,
         },
         # Recaptcha

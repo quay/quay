@@ -17,7 +17,7 @@ def sync_teams_to_groups(authentication, stale_cutoff):
     logger.debug("Looking up teams to sync to groups")
 
     sync_team_tried = set()
-    supported_services = ["ldap", "keystone"]
+    supported_services = ["ldap", "keystone", "openshift", "oidc"]
     while len(sync_team_tried) < MAX_TEAMS_PER_ITERATION:
         # Find a stale team.
         stale_team_sync = model.team.get_stale_team(stale_cutoff, supported_services)

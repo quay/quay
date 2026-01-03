@@ -142,9 +142,10 @@ def _attach_service(config, login_service, user_obj, lid, lusername):
 
 def sync_oidc_groups(additional_login_info, user_obj, auth_system, login_service, config):
     if (
-        config.get("AUTHENTICATION_TYPE", "oidc")
-        and config.get("FEATURE_TEAM_SYNCING", False)
+        config.get("FEATURE_TEAM_SYNCING", False)
         and additional_login_info
+        and hasattr(auth_system, "sync_user_groups")
+        and callable(auth_system.sync_user_groups)
     ):
         auth_system.sync_user_groups(additional_login_info.get("groups"), user_obj, login_service)
     return

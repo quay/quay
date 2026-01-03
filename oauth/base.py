@@ -11,6 +11,7 @@ from six import add_metaclass
 from six.moves.urllib.parse import quote
 
 from util.config import URLSchemeAndHostname
+from util.security.serviceaccount import get_ssl_verification
 
 logger = logging.getLogger(__name__)
 
@@ -271,15 +272,26 @@ class OAuthService(object):
                     headers["X-Quay-Retry-Attempts"] = str(attempts)
 
                 try:
+                    ssl_verify = get_ssl_verification()
                     if form_encode:
                         form_headers = headers.copy()
                         form_headers["Content-Type"] = "application/x-www-form-urlencoded"
                         return http_client.post(
-                            token_url, data=payload, headers=form_headers, auth=auth, timeout=5
+                            token_url,
+                            data=payload,
+                            headers=form_headers,
+                            auth=auth,
+                            timeout=5,
+                            verify=ssl_verify,
                         )
                     else:
                         return http_client.post(
-                            token_url, params=payload, headers=headers, auth=auth, timeout=5
+                            token_url,
+                            params=payload,
+                            headers=headers,
+                            auth=auth,
+                            timeout=5,
+                            verify=ssl_verify,
                         )
                 except requests.ConnectionError:
                     logger.debug("Got ConnectionError during OAuth token exchange, retrying.")

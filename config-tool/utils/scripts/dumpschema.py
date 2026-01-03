@@ -284,7 +284,7 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "The authentication engine to use for credential authentication.",
             "x-example": "Database",
-            "enum": ["Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken"],
+            "enum": ["Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken", "OpenShift"],
         },
         "SUPER_USERS": {
             "type": "array",

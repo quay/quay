@@ -13,6 +13,7 @@ from data.users.externalldap import LDAPUsers
 from data.users.externaloidc import OIDCUsers
 from data.users.federated import FederatedUsers
 from data.users.keystone import get_keystone_users
+from data.users.openshift import OpenShiftUsers
 from oauth.oidc import OIDCLoginService
 from util.config.superusermanager import ConfigUserManager
 from util.security.aes import AESCipher
@@ -39,6 +40,9 @@ def get_federated_service_name(authentication_type):
 
     if authentication_type == "OIDC":
         return "oidc"
+
+    if authentication_type == "OpenShift":
+        return "openshift"
 
     raise Exception("Unknown auth type: %s" % authentication_type)
 
@@ -162,6 +166,26 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
                     service_name,
                     login_scopes,
                     preferred_group_claim_name,
+                )
+
+    if authentication_type == "OpenShift" and oauth_login:
+        from oauth.services.openshift import OpenShiftOAuthService
+
+        for service in oauth_login.services:
+            if isinstance(service, OpenShiftOAuthService):
+                svc_config = service.config
+                return OpenShiftUsers(
+                    client_id=svc_config.get("CLIENT_ID"),
+                    client_secret=svc_config.get("CLIENT_SECRET"),
+                    oidc_server=svc_config.get("OIDC_SERVER"),
+                    service_name=svc_config.get("SERVICE_NAME", "OpenShift"),
+                    login_scopes=svc_config.get("LOGIN_SCOPES", ["user:info"]),
+                    preferred_group_claim_name=svc_config.get(
+                        "PREFERRED_GROUP_CLAIM_NAME", "groups"
+                    ),
+                    openshift_api_url=svc_config.get("OPENSHIFT_API_URL"),
+                    service_account_token_path=svc_config.get("SERVICE_ACCOUNT_TOKEN_PATH"),
+                    requires_email=False,  # OpenShift doesn't provide email by default
                 )
 
     raise RuntimeError("Unknown authentication type: %s" % authentication_type)

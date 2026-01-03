@@ -301,7 +301,7 @@
     },
     "AUTHENTICATION_TYPE": {
       "x-example": "Database",
-      "enum": ["Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken"],
+      "enum": ["Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken", "OpenShift"],
       "type": "string",
       "description": "The authentication engine to use for credential authentication.",
       "ct-default": "Database",
