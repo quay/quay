@@ -31,6 +31,9 @@ GITHUB_LOGIN: FeatureNameValue
 # Feature Flag: Whether Google login is supported.
 GOOGLE_LOGIN: FeatureNameValue
 
+# Feature Flag: Whether Kubernetes ServiceAccount OIDC authentication is supported.
+KUBERNETES_SA_AUTH: FeatureNameValue
+
 # Feature Flag: Whether to support GitHub build triggers.
 GITHUB_BUILD: FeatureNameValue
 

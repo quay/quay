@@ -599,6 +599,51 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        "FEATURE_KUBERNETES_SA_AUTH": {
+            "type": "boolean",
+            "description": "Whether Kubernetes ServiceAccount OIDC authentication is supported. "
+            "When enabled, Kubernetes ServiceAccounts can authenticate to Quay using "
+            "OIDC-federated tokens. Defaults to False.",
+            "x-example": True,
+        },
+        "KUBERNETES_SA_AUTH_CONFIG": {
+            "type": ["object", "null"],
+            "description": "Configuration for Kubernetes ServiceAccount OIDC authentication. "
+            "Enables Kubernetes operators to authenticate using ServiceAccount tokens. "
+            "Uses the in-cluster Kubernetes API server (https://kubernetes.default.svc) for OIDC.",
+            "properties": {
+                "SERVICE_NAME": {
+                    "type": "string",
+                    "description": "Display name for the authentication service in logs.",
+                    "x-example": "Kubernetes",
+                },
+                "VERIFY_TLS": {
+                    "type": "boolean",
+                    "description": "Whether to verify TLS certificates when connecting to "
+                    "the Kubernetes API server. Defaults to True.",
+                    "x-example": True,
+                },
+                "CA_BUNDLE": {
+                    "type": ["string", "null"],
+                    "description": "Path to CA certificate bundle for TLS verification. "
+                    "Defaults to /var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+                    "x-example": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+                },
+                "SYSTEM_ORG_NAME": {
+                    "type": "string",
+                    "description": "Organization name that will own robot accounts for "
+                    "authenticated ServiceAccounts. Must be created before enabling. "
+                    "Defaults to 'quay-system'.",
+                    "x-example": "quay-system",
+                },
+                "SUPERUSER_SUBJECT": {
+                    "type": ["string", "null"],
+                    "description": "Kubernetes ServiceAccount subject that receives "
+                    "superuser permissions. Format: system:serviceaccount:<namespace>:<name>",
+                    "x-example": "system:serviceaccount:quay-operator:quay-operator-controller-manager",
+                },
+            },
+        },
         "GITLAB_TRIGGER_CONFIG": {
             "type": ["object", "null"],
             "description": "Configuration for using Gitlab (Enterprise) for external authentication",

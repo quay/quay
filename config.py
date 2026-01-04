@@ -295,6 +295,9 @@ class DefaultConfig(ImmutableConfig):
     # Gitlab Config.
     GITLAB_TRIGGER_CONFIG: Optional[Dict[str, str]] = None
 
+    # Kubernetes ServiceAccount authentication configuration
+    KUBERNETES_SA_AUTH_CONFIG: Optional[Dict[str, str]] = None
+
     NOTIFICATION_QUEUE_NAME = "notification"
     DOCKERFILE_BUILD_QUEUE_NAME = "dockerfilebuild"
     REPLICATION_QUEUE_NAME = "imagestoragereplication"
@@ -333,6 +336,9 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether Google login is supported.
     FEATURE_GOOGLE_LOGIN = False
+
+    # Feature Flag: Whether Kubernetes ServiceAccount OIDC authentication is supported.
+    FEATURE_KUBERNETES_SA_AUTH = False
 
     # Feature Flag: Whether to support GitHub build triggers.
     FEATURE_GITHUB_BUILD = False

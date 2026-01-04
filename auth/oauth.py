@@ -1,9 +1,14 @@
 import logging
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 
 from flask import request
 from jwt import ExpiredSignatureError, InvalidTokenError
 
+import features
+
+if TYPE_CHECKING:
+    from data.database import User
 from app import analytics, app, authentication, oauth_login
 from auth.log import log_action
 from auth.scopes import scopes_from_scope_string
@@ -39,6 +44,13 @@ def validate_bearer_auth(auth_header):
 
 
 def validate_oauth_token(token):
+    # K8s SA tokens do not have typ:JWT header so is_jwt() returns False for
+    # them, but they're still valid JWTs
+    if features.KUBERNETES_SA_AUTH:
+        result = validate_kubernetes_sa_token(token)
+        if result is not None:
+            return result
+
     if is_jwt(token):
         return validate_sso_oauth_token(token)
     else:
@@ -93,6 +105,205 @@ def validate_sso_oauth_token(token):
     ) as ole:
         logger.exception(ole)
         return ValidateResult(AuthKind.ssojwt, error_message=str(ole))
+
+
+def _create_kubernetes_sa_system_org(org_name: str) -> "User":
+    """
+    Create the system organization for Kubernetes SA robot accounts.
+
+    This is called lazily on the first SA authentication if the org doesn't exist.
+
+    Args:
+        org_name: Name of the organization to create
+
+    Returns:
+        The created organization object
+
+    Raises:
+        Exception if creation fails
+    """
+    from data.database import db_transaction
+    from data.model import team, user
+
+    with db_transaction():
+        # Create org without an owner - it's a system org
+        new_org = user.create_user_noverify(
+            org_name,
+            email=None,
+            email_required=False,
+        )
+        new_org.organization = True
+        new_org.save()
+
+        # Create the owners team (required for org structure)
+        team.create_team("owners", new_org, "admin")
+
+    logger.info(f"Created Kubernetes SA system organization '{org_name}'")
+    return new_org
+
+
+def validate_kubernetes_sa_token(token: str) -> Optional[ValidateResult]:
+    """
+    Validate a Kubernetes ServiceAccount JWT token.
+
+    Kubernetes SA tokens are validated via OIDC/JWKS, then mapped to robot accounts
+    in the configured system organization. If the SA matches the configured superuser
+    subject, the robot is dynamically registered as a superuser.
+
+    Returns:
+        ValidateResult on success, None if Kubernetes SA auth not configured or
+        token issuer doesn't match
+    """
+    from data import model
+    from data.model import organization, team, user
+    from oauth.oidc import PublicKeyLoadException
+    from oauth.services.kubernetes_sa import (
+        KUBERNETES_OIDC_SERVER,
+        KubernetesServiceAccountLoginService,
+    )
+    from util.security.jwtutil import InvalidTokenError
+
+    kubernetes_config = app.config.get("KUBERNETES_SA_AUTH_CONFIG", {})
+    if not kubernetes_config:
+        logger.debug("FEATURE_KUBERNETES_SA_AUTH is enabled but no config provided")
+        return None
+
+    # Check if token issuer matches our configured Kubernetes OIDC server
+    # This allows other JWT tokens to fall through to generic SSO handling
+    try:
+        issuer = get_jwt_issuer(token)
+        if not issuer:
+            return None
+
+        # Normalize trailing slashes for comparison
+        if issuer.rstrip("/") != KUBERNETES_OIDC_SERVER.rstrip("/"):
+            logger.debug(
+                "Token issuer %s doesn't match Kubernetes OIDC server %s, skipping",
+                issuer,
+                KUBERNETES_OIDC_SERVER,
+            )
+            return None
+    except Exception:
+        # If we can't decode issuer, let it fall through to other handlers
+        return None
+
+    try:
+        # Create Kubernetes SA login service
+        kubernetes_service = KubernetesServiceAccountLoginService(app.config)
+
+        # Validate the token
+        decoded_token = kubernetes_service.validate_sa_token(token)
+
+    except (InvalidTokenError, PublicKeyLoadException) as e:
+        logger.warning(f"Kubernetes SA token validation failed: {e}")
+        return ValidateResult(
+            AuthKind.kubernetessa,
+            error_message=f"Token validation failed: {e}",
+        )
+    except Exception as e:
+        logger.warning(f"Kubernetes SA token validation error: {e}")
+        return ValidateResult(
+            AuthKind.kubernetessa,
+            error_message=f"Token validation error: {e}",
+        )
+
+    # Extract subject (required claim)
+    subject = decoded_token.get("sub")
+    if not subject:
+        logger.warning("Kubernetes SA token missing 'sub' claim")
+        return ValidateResult(
+            AuthKind.kubernetessa,
+            error_message="Token missing subject claim",
+        )
+
+    # Parse and validate SA subject format
+    parsed = kubernetes_service.parse_sa_subject(subject)
+    if not parsed:
+        logger.warning(f"Invalid Kubernetes SA subject format: {subject}")
+        return ValidateResult(
+            AuthKind.kubernetessa,
+            error_message=f"Invalid ServiceAccount subject format: {subject}",
+        )
+
+    namespace, sa_name = parsed
+
+    # Get or create robot account
+    robot_shortname = kubernetes_service.generate_robot_shortname(namespace, sa_name)
+    system_org_name = kubernetes_service.system_org_name
+    robot_username = f"{system_org_name}+{robot_shortname}"
+
+    try:
+        robot = user.lookup_robot(robot_username)
+    except model.InvalidRobotException:
+        # Robot doesn't exist - need to create it
+        # First ensure system org exists (lazy creation)
+        try:
+            system_org = organization.get_organization(system_org_name)
+        except model.InvalidOrganizationException:
+            # Create the system org lazily on first SA authentication
+            logger.info(f"Creating Kubernetes SA system organization '{system_org_name}'")
+            try:
+                system_org = _create_kubernetes_sa_system_org(system_org_name)
+            except Exception as e:
+                logger.error(f"Failed to create system organization '{system_org_name}': {e}")
+                return ValidateResult(
+                    AuthKind.kubernetessa,
+                    error_message=f"Failed to create system organization: {e}",
+                )
+
+        # Create the robot account
+        try:
+            description = f"Kubernetes SA: {namespace}/{sa_name}"
+            metadata = {
+                "kubernetes_namespace": namespace,
+                "kubernetes_sa_name": sa_name,
+                "kubernetes_subject": subject,
+            }
+            robot, _ = user.create_robot(
+                robot_shortname,
+                system_org,
+                description=description,
+                unstructured_metadata=metadata,
+            )
+            logger.info(f"Created Kubernetes SA robot account: {robot_username}")
+
+            # Add robot to owners
+            try:
+                owners_team = team.get_organization_team(system_org_name, "owners")
+                team.add_user_to_team(robot, owners_team)
+            except Exception as e:
+                logger.warning(f"Failed to add robot to owners team: {e}")
+        except model.InvalidRobotException as e:
+            logger.error(f"Failed to create robot {robot_username}: {e}")
+            return ValidateResult(
+                AuthKind.kubernetessa,
+                error_message=f"Failed to create robot account: {e}",
+            )
+
+    # Check if this SA should be a superuser and register dynamically
+    if kubernetes_service.is_superuser_subject(subject):
+        try:
+            from app import usermanager
+
+            if not usermanager.is_superuser(robot_username):
+                usermanager.register_superuser(robot_username)
+                logger.info(f"Registered Kubernetes SA robot as superuser: {robot_username}")
+        except Exception as e:
+            logger.error(f"Failed to register superuser {robot_username}: {e}")
+            # Continue - auth still valid, just not superuser
+
+    # Log successful authentication
+    logger.info(
+        f"Kubernetes SA authenticated: {subject} -> {robot_username}",
+        extra={
+            "kubernetes_namespace": namespace,
+            "kubernetes_sa_name": sa_name,
+            "robot_username": robot_username,
+            "is_superuser": kubernetes_service.is_superuser_subject(subject),
+        },
+    )
+
+    return ValidateResult(AuthKind.kubernetessa, robot=robot, sso_token=token)
 
 
 def validate_app_oauth_token(token):

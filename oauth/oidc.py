@@ -419,11 +419,18 @@ class _PublicKeyCache(TTLCache):
 
         # Load the keys.
         try:
-            keys = KeySet(
-                _load_keys_from_url(
-                    keys_url, verify=not self._login_service.config.get("DEBUGGING", False)
-                )
-            )
+            # Check if service has custom SSL verification (e.g., Kubernetes SA with CA bundle)
+            if hasattr(self._login_service, "get_ssl_verification"):
+                verify = self._login_service.get_ssl_verification()
+            else:
+                verify = not self._login_service.config.get("DEBUGGING", False)
+
+            # Check if service provides auth headers for JWKS fetching (e.g., Kubernetes SA)
+            headers = None
+            if hasattr(self._login_service, "get_jwks_auth_headers"):
+                headers = self._login_service.get_jwks_auth_headers()
+
+            keys = KeySet(_load_keys_from_url(keys_url, verify=verify, headers=headers))
         except Exception as ex:
             logger.exception("Exception loading public key")
             raise PublicKeyLoadException(str(ex))
@@ -443,7 +450,7 @@ class _PublicKeyCache(TTLCache):
         return rsa_key
 
 
-def _load_keys_from_url(url, verify=True):
+def _load_keys_from_url(url, verify=True, headers=None):
     """
     Expects something on this form:
         {"keys":
@@ -467,7 +474,7 @@ def _load_keys_from_url(url, verify=True):
     """
 
     keys = []
-    r = request("GET", url, allow_redirects=True, verify=verify)
+    r = request("GET", url, allow_redirects=True, verify=verify, headers=headers)
     if r.status_code == 200:
         keys_dict = json.loads(r.text)
         for key_spec in keys_dict["keys"]:
