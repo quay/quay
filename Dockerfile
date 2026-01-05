@@ -35,16 +35,6 @@ RUN set -ex\
 	; dnf -y reinstall tzdata \
 	; dnf -y clean all && rm -rf /var/cache/yum
 
-# Config-editor builds the javascript for the configtool.
-FROM registry.access.redhat.com/ubi8/nodejs-22 AS config-editor
-WORKDIR /opt/app-root/src
-COPY --chown=1001:0 config-tool/pkg/lib/editor/ ./
-RUN set -ex\
-	; npm install --quiet --no-progress --ignore-engines \
-	; npm run --quiet build\
-	; rm -Rf .cache .npm* node_modules\
-	;
-
 # Build-python installs the requirements for the python code.
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -140,13 +130,11 @@ RUN set -ex\
 FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
-COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 ENV GOTOOLCHAIN=auto
 RUN GOPATH=/opt/app-root/src/go GOFIPS140=latest go install -tags=fips ./cmd/config-tool
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
 WORKDIR /quaydir
-COPY --from=config-editor /opt/app-root/src /quaydir/config_app
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
 
