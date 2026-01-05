@@ -9,7 +9,6 @@ test/data/registry
 venv
 .venv
 .git
-!.git/HEAD
 .gitignore
 .github
 Bobfile
