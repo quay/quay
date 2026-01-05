@@ -11,6 +11,8 @@ export type RepositoryVisibility = 'public' | 'private';
 export type RepositoryState = 'NORMAL' | 'MIRROR' | 'READ_ONLY';
 export type TeamRole = 'member' | 'creator' | 'admin';
 export type PrototypeRole = 'read' | 'write' | 'admin';
+export type MessageSeverity = 'info' | 'warning' | 'error';
+export type MessageMediaType = 'text/plain' | 'text/markdown';
 
 export interface MirrorConfig {
   external_reference: string;
@@ -79,6 +81,43 @@ export interface Prototype {
 
 export interface GetPrototypesResponse {
   prototypes: Prototype[];
+}
+
+// Global message types
+export interface GlobalMessage {
+  uuid: string;
+  content: string;
+  media_type: MessageMediaType;
+  severity: MessageSeverity;
+}
+
+export interface GlobalMessagesResponse {
+  messages: GlobalMessage[];
+}
+
+// Service key types
+export interface ServiceKeyApproval {
+  approval_type: string;
+  approver?: {
+    name: string;
+    username: string;
+    kind: string;
+  };
+  notes?: string;
+}
+
+export interface ServiceKey {
+  kid: string;
+  name?: string;
+  service: string;
+  created_date: string | number;
+  expiration_date?: string | number;
+  approval?: ServiceKeyApproval;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ServiceKeysResponse {
+  keys: ServiceKey[];
 }
 
 export class ApiClient {
@@ -732,6 +771,44 @@ export class ApiClient {
     };
   }
 
+  /**
+   * Create a user as superuser (requires superuser API context).
+   * Returns the generated temporary password.
+   */
+  async createUserAsSuperuser(
+    username: string,
+    email?: string,
+  ): Promise<{username: string; email?: string; password: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/superuser/users/`,
+      {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          username,
+          email,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create user as superuser ${username}: ${response.status()} - ${body}`,
+      );
+    }
+
+    const result = await response.json();
+    return {
+      username: result.username,
+      email: result.email,
+      password: result.password,
+    };
+  }
+
   async deleteUser(username: string): Promise<void> {
     const token = await this.fetchToken();
     const response = await this.request.delete(
@@ -915,6 +992,176 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to delete ${entityType} permission for ${entityName} on ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Global message methods (superuser only)
+
+  async getMessages(): Promise<GlobalMessage[]> {
+    const response = await this.request.get(`${API_URL}/api/v1/messages`, {
+      timeout: 5000,
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(`Failed to get messages: ${response.status()} - ${body}`);
+    }
+
+    const data: GlobalMessagesResponse = await response.json();
+    return data.messages || [];
+  }
+
+  async createMessage(
+    content: string,
+    severity: MessageSeverity = 'info',
+    mediaType: MessageMediaType = 'text/markdown',
+  ): Promise<GlobalMessage> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(`${API_URL}/api/v1/messages`, {
+      timeout: 5000,
+      headers: {
+        'X-CSRF-Token': token,
+      },
+      data: {
+        message: {
+          content,
+          media_type: mediaType,
+          severity,
+        },
+      },
+    });
+
+    if (response.status() !== 201) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create message: ${response.status()} - ${body}`,
+      );
+    }
+
+    // API doesn't return the created message, so fetch to get the UUID
+    const messages = await this.getMessages();
+    const created = messages.find((m) => m.content === content);
+    if (!created) {
+      throw new Error('Created message not found after creation');
+    }
+    return created;
+  }
+
+  async deleteMessage(uuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/message/${uuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete message ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Service key methods (superuser only)
+
+  async getServiceKeys(): Promise<ServiceKey[]> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/superuser/keys`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get service keys: ${response.status()} - ${body}`,
+      );
+    }
+
+    const data: ServiceKeysResponse = await response.json();
+    return data.keys || [];
+  }
+
+  async createServiceKey(
+    service: string,
+    name?: string,
+    expiration?: number,
+  ): Promise<ServiceKey> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/superuser/keys`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          service,
+          name,
+          expiration: expiration ?? null,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create service key: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async updateServiceKey(
+    kid: string,
+    updates: {name?: string; expiration?: number},
+  ): Promise<ServiceKey> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/superuser/keys/${kid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: updates,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to update service key ${kid}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteServiceKey(kid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/superuser/keys/${kid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete service key ${kid}: ${response.status()} - ${body}`,
       );
     }
   }
