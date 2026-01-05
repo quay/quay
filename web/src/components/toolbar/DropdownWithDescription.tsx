@@ -30,23 +30,41 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
 
   useEffect(() => {
     if (props.wizarStep) {
-      if (props.selectedVal) {
+      // Wizard step mode: always default to 'Read' when a row is selected
+      if (props.selectedVal && props.selectedVal != 'None') {
         dropdownOnSelect(props.selectedVal, true);
+      } else if (props?.isItemSelected) {
+        // Row is selected but no permission set yet - default to 'Read'
+        dropdownOnSelect(defaultSelectedVal, true);
       }
       return;
     }
+    // Non-wizard mode: only show actual values, be careful about defaulting
+    // If we have a valid permission value, always use it first
+    if (props.selectedVal && props.selectedVal != 'None') {
+      if (props.selectedVal != dropdownToggle) {
+        dropdownOnSelect(props.selectedVal, props?.isUserEntry || false);
+      }
+      return;
+    }
+    // Only default to 'Read' when user manually selects a row (isUserEntry=true),
+    // not when rows are auto-selected during loading of existing permissions
     if (
       props?.isItemSelected &&
       (!props.selectedVal || props.selectedVal == 'None')
     ) {
-      dropdownOnSelect(defaultSelectedVal, props?.isUserEntry || false);
+      if (props?.isUserEntry) {
+        dropdownOnSelect(defaultSelectedVal, true);
+      }
     } else if (!props?.isItemSelected) {
       dropdownOnSelect(defaultUnSelectedVal, props?.isUserEntry || false);
     }
-    if (props.selectedVal && props.selectedVal != dropdownToggle) {
-      dropdownOnSelect(props.selectedVal, props?.isUserEntry || false);
-    }
-  }, [props?.isItemSelected, props.selectedVal]);
+  }, [
+    props?.isItemSelected,
+    props.selectedVal,
+    props.wizarStep,
+    props.isUserEntry,
+  ]);
 
   return (
     <Dropdown

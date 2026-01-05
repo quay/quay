@@ -255,6 +255,14 @@ test.describe(
         authenticatedPage.locator('#add-repository-bulk-select'),
       ).toContainText('1');
 
+      // Verify initial permission is displayed correctly as 'Read'
+      // This tests the fix for PROJQUAY-10084
+      await expect(
+        authenticatedPage.getByTestId(
+          `${repo1.name}-permission-dropdown-toggle`,
+        ),
+      ).toContainText('Read');
+
       // Change permission to Admin via dropdown - use first() since there could be multiple
       await authenticatedPage.locator('#toggle-descriptions').first().click();
       await authenticatedPage.getByRole('menuitem', {name: 'Admin'}).click();
@@ -279,6 +287,63 @@ test.describe(
       await expect(
         authenticatedPage.locator('#toggle-descriptions').first(),
       ).toContainText('Admin');
+    });
+
+    test('robot repository permissions: Write permission displays correctly (PROJQUAY-10084)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // This test verifies the fix for PROJQUAY-10084 where the New UI was
+      // incorrectly showing 'Read' permission instead of the actual permission (e.g., 'Write')
+      const org = await api.organization('writepermorg');
+      const repo = await api.repository(org.name, 'writerepo');
+      const robot = await api.robot(
+        org.name,
+        'writebot',
+        'Robot with Write permission',
+      );
+
+      // Add Write permission for robot on repo
+      await api.repositoryPermission(
+        org.name,
+        repo.name,
+        'user',
+        robot.fullName,
+        'write',
+      );
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Robotaccounts`,
+      );
+
+      // Wait for table to load
+      await expect(
+        authenticatedPage.getByTestId('robot-accounts-table'),
+      ).toBeVisible();
+
+      // Click on repository count to open permissions modal
+      await authenticatedPage.getByText('1 repository').click();
+
+      // Verify Write permission is displayed correctly (not defaulting to 'Read')
+      await expect(
+        authenticatedPage.getByTestId(
+          `${repo.name}-permission-dropdown-toggle`,
+        ),
+      ).toContainText('Write');
+
+      // Close modal
+      await authenticatedPage
+        .locator('footer')
+        .getByRole('button', {name: 'Close'})
+        .click();
+
+      // Reopen modal and verify permission is still Write
+      await authenticatedPage.getByText('1 repository').click();
+      await expect(
+        authenticatedPage.getByTestId(
+          `${repo.name}-permission-dropdown-toggle`,
+        ),
+      ).toContainText('Write');
     });
 
     test('robot wizard: org has 5 steps, user namespace has 3 steps', async ({
