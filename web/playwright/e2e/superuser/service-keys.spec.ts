@@ -162,7 +162,6 @@ test.describe(
     });
 
     test('shows error state when create fails', async ({superuserPage}) => {
-      // Mock API error for POST only (acceptable per MIGRATION.md)
       await superuserPage.route('**/api/v1/superuser/keys', async (route) => {
         if (route.request().method() === 'POST') {
           await route.fulfill({

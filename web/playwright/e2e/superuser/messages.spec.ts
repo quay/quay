@@ -70,7 +70,6 @@ test.describe(
     test('shows error state when messages fail to load', async ({
       superuserPage,
     }) => {
-      // Mock API error - acceptable per MIGRATION.md
       await superuserPage.route('**/api/v1/messages', async (route) => {
         await route.fulfill({
           status: 500,
@@ -87,7 +86,6 @@ test.describe(
     test('shows loading spinner while fetching messages', async ({
       superuserPage,
     }) => {
-      // Mock delayed response - acceptable per MIGRATION.md
       await superuserPage.route('**/api/v1/messages', async (route) => {
         await new Promise((r) => setTimeout(r, 2000));
         await route.fulfill({
