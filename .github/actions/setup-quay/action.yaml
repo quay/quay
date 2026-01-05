@@ -47,6 +47,11 @@ inputs:
     required: false
     default: 'false'
 
+  with-mailpit:
+    description: 'Start Mailpit email testing server'
+    required: false
+    default: 'true'
+
   logs-artifact-name:
     description: 'Name for debug logs artifact (uploaded on failure)'
     required: false
@@ -190,6 +195,13 @@ runs:
         DOCKER_USER="1001:0" docker compose up -d repomirror
         echo "Repomirror worker started"
 
+    - name: Start Mailpit
+      if: inputs.with-mailpit == 'true'
+      shell: bash
+      run: |
+        docker compose up -d mailpit
+        echo "Mailpit email server started (SMTP: localhost:1025, Web UI: localhost:8025)"
+
     - name: Collect debug logs on failure
       if: failure()
       shell: bash
@@ -208,6 +220,9 @@ runs:
         fi
         if [ "${{ inputs.with-repomirror }}" = "true" ]; then
           docker logs quay-repomirror > logs/repomirror.log 2>&1 || true
+        fi
+        if [ "${{ inputs.with-mailpit }}" = "true" ]; then
+          docker logs quay-mailpit > logs/mailpit.log 2>&1 || true
         fi
 
     - name: Upload debug logs on failure

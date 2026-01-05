@@ -1,4 +1,4 @@
-import {test as base, expect, uniqueName} from '../../fixtures';
+import {test as base, expect, uniqueName, mailpit} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
 
 /**
@@ -26,17 +26,33 @@ const test = base.extend<LogoutTestFixtures>({
     await use(username);
   },
 
-  logoutPage: async ({browser, superuserRequest, logoutUsername}, use) => {
+  logoutPage: async (
+    {browser, superuserRequest, logoutUsername, quayConfig},
+    use,
+  ) => {
     const username = logoutUsername;
     const password = 'testpassword123';
     const email = `${username}@example.com`;
+    const mailingEnabled = quayConfig?.features?.MAILING === true;
 
     // Create temporary user using superuser API
     const superApi = new ApiClient(superuserRequest);
     await superApi.createUser(username, password, email);
 
-    // Create new context and login as the temporary user
+    // Create new context for this user
     const context = await browser.newContext();
+
+    // Verify email if mailing is enabled
+    if (mailingEnabled) {
+      const confirmLink = await mailpit.waitForConfirmationLink(email);
+      if (confirmLink) {
+        const page = await context.newPage();
+        await page.goto(confirmLink);
+        await page.close();
+      }
+    }
+
+    // Login as the temporary user
     const api = new ApiClient(context.request);
     await api.signIn(username, password);
 
