@@ -91,3 +91,30 @@ export async function pushImage(
 export async function isContainerRuntimeAvailable(): Promise<boolean> {
   return (await detectContainerRuntime()) !== null;
 }
+
+/**
+ * Push a multi-architecture manifest list to the registry.
+ *
+ * Uses quay.io/prometheus/busybox:latest as the source image.
+ *
+ * @example
+ * ```typescript
+ * await pushMultiArchImage('myorg', 'myrepo', 'manifestlist', 'testuser', 'password');
+ * ```
+ */
+export async function pushMultiArchImage(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  const targetImage = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
+  const sourceImage = 'quay.io/prometheus/busybox:latest';
+
+  // Use skopeo to copy the entire multi-arch manifest list in one command
+  // --all flag copies all architectures and the manifest list
+  await execAsync(
+    `skopeo copy --all docker://${sourceImage} docker://${targetImage} --dest-tls-verify=false --dest-creds=${username}:${password}`,
+  );
+}

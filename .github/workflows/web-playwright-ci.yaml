@@ -53,6 +53,9 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: cd web && npx playwright install-deps
 
+      - name: Install skopeo for multi-arch image tests
+        run: sudo apt-get update && sudo apt-get install -y skopeo
+
       - name: Run Playwright tests
         run: cd web && npm run test:e2e
 
