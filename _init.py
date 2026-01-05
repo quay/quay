@@ -57,17 +57,4 @@ def _get_version_number_changelog():
         return ""
 
 
-def _get_git_sha():
-    if os.path.exists("GIT_HEAD"):
-        with open(os.path.join(ROOT_DIR, "GIT_HEAD")) as f:
-            return f.read()
-    else:
-        try:
-            return subprocess.check_output(["git", "rev-parse", "HEAD"]).strip()[0:8]
-        except (OSError, subprocess.CalledProcessError, Exception):
-            pass
-    return "unknown"
-
-
 __version__ = _get_version_number()
-__gitrev__ = _get_git_sha()
