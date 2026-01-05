@@ -59,7 +59,12 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
     } else if (!props?.isItemSelected) {
       dropdownOnSelect(defaultUnSelectedVal, props?.isUserEntry || false);
     }
-  }, [props?.isItemSelected, props.selectedVal]);
+  }, [
+    props?.isItemSelected,
+    props.selectedVal,
+    props.wizarStep,
+    props.isUserEntry,
+  ]);
 
   return (
     <Dropdown
