@@ -591,6 +591,8 @@ export type QuayFeature =
 export interface QuayConfig {
   features: Partial<Record<QuayFeature, boolean>>;
   config: Record<string, unknown>;
+  external_login?: Array<{id: string; title: string; icon?: string}>;
+  registry_state?: 'normal' | 'readonly';
 }
 
 /**

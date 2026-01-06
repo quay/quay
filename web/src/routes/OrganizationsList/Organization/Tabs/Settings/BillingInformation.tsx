@@ -177,6 +177,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
       <FormGroup fieldId="checkbox">
         <Checkbox
           id="checkbox"
+          data-testid="billing-receipts-checkbox"
           label="Send receipts via email"
           aria-label="Send receipts via email"
           isChecked={invoiceEmail}
@@ -190,6 +191,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
         <TextInput
           type="email"
           id="billing-settings-invoice-email"
+          data-testid="billing-invoice-email"
           value={invoiceEmailAddress}
           onChange={(_, val) => {
             setTouched(true);
@@ -229,6 +231,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
           <Button
             variant="primary"
             id="save-billing-settings"
+            data-testid="billing-save-button"
             isLoading={updateLoading}
             isDisabled={!touched || validated == 'error'}
             onClick={async (e) => {

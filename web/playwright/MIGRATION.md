@@ -672,7 +672,7 @@ Track migration progress from Cypress to Playwright.
 |--------|--------------|-----------------|-------|
 | ✅ | `repository-delete.cy.ts` | `repository/repository-delete.spec.ts` | |
 | ⬚ | `org-settings.cy.ts` | | |
-| ⬚ | `account-settings.cy.ts` | | |
+| ✅ | `account-settings.cy.ts` | `user/account-settings.spec.ts` | @user, @feature:BILLING, @feature:MAILING, @feature:CHANGE_TAG_EXPIRATION, consolidated 31→20 tests |
 | ⬚ | `autopruning.cy.ts` | | |
 | ✅ | `breadcrumbs.cy.ts` | `ui/breadcrumbs.spec.ts` | |
 | ⬚ | `builds.cy.ts` | | |
