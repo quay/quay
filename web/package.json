@@ -11,7 +11,7 @@
     "@patternfly/react-charts": "^7.1.1",
     "@patternfly/react-core": "^5.1.0",
     "@patternfly/react-icons": "^5.1.0",
-    "@patternfly/react-table": "^5.1.0",
+    "@patternfly/react-table": "^6.0.0",
     "@redhat-cloud-services/frontend-components": "^6.0.9",
     "@redhat-cloud-services/frontend-components-config-utilities": "^4.4.1",
     "@tanstack/react-query": "^4.13.5",
@@ -129,7 +129,7 @@
     "@patternfly/patternfly": "^5.0.4",
     "@patternfly/react-core": "^5.1.0",
     "@patternfly/react-icons": "^5.1.0",
-    "@patternfly/react-table": "^5.1.0",
+    "@patternfly/react-table": "^6.0.0",
     "node-forge": "1.3.2"
   }
 }
