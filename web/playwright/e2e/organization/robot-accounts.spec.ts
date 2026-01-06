@@ -456,5 +456,43 @@ test.describe(
         .first();
       await expect(paginationInfo).toContainText('1 - 1 of 1');
     });
+
+    test.describe(
+      'with ROBOTS_DISALLOW enabled',
+      {tag: '@config:ROBOTS_DISALLOW'},
+      () => {
+        // Skip ALL tests in this block if ROBOTS_DISALLOW is not enabled
+        test.beforeEach(async ({quayConfig}) => {
+          test.skip(
+            quayConfig?.config?.ROBOTS_DISALLOW !== true,
+            'ROBOTS_DISALLOW is not enabled',
+          );
+        });
+
+        test('empty state shows disabled message and hides create button', async ({
+          authenticatedPage,
+          api,
+        }) => {
+          // Create org with no robots
+          const org = await api.organization('robotdisallow');
+
+          await authenticatedPage.goto(
+            `/organization/${org.name}?tab=Robotaccounts`,
+          );
+
+          // Verify empty state message indicates robots are disabled
+          await expect(
+            authenticatedPage.getByText('Robot accounts have been disabled'),
+          ).toBeVisible();
+
+          // Verify create button is NOT visible in empty state
+          await expect(
+            authenticatedPage.getByRole('button', {
+              name: 'Create robot account',
+            }),
+          ).not.toBeVisible();
+        });
+      },
+    );
   },
 );

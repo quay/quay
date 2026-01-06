@@ -12,11 +12,14 @@ import React from 'react';
 import EntitySearch from 'src/components/EntitySearch';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {ITeamMember} from 'src/hooks/UseMembers';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {IRobot} from 'src/resources/RobotsResource';
 import {Entity} from 'src/resources/UserResource';
 
 export default function AddTeamToolbar(props: AddTeamToolbarProps) {
   const [error, setError] = useState<string>('');
+  const quayConfig = useQuayConfig();
+  const robotsDisallowed = quayConfig?.config?.ROBOTS_DISALLOW === true;
 
   const searchRobotAccntOptions = [
     <React.Fragment key="searchRobot">
@@ -34,16 +37,20 @@ export default function AddTeamToolbar(props: AddTeamToolbarProps) {
           );
         })}
       </SelectGroup>
-      <Divider component="li" key={5} />
-      <SelectOption
-        data-testid="create-new-robot-accnt-btn"
-        key="Create robot account2"
-        component="button"
-        onClick={() => props.setDrawerExpanded(true)}
-        isFocused
-      >
-        <DesktopIcon /> &nbsp; Create robot account
-      </SelectOption>
+      {!robotsDisallowed && (
+        <>
+          <Divider component="li" key={5} />
+          <SelectOption
+            data-testid="create-new-robot-accnt-btn"
+            key="Create robot account2"
+            component="button"
+            onClick={() => props.setDrawerExpanded(true)}
+            isFocused
+          >
+            <DesktopIcon /> &nbsp; Create robot account
+          </SelectOption>
+        </>
+      )}
     </React.Fragment>,
   ];
 

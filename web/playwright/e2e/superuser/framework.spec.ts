@@ -17,7 +17,7 @@ test.describe(
       for (const {path, heading} of pages) {
         await superuserPage.goto(path);
         await expect(
-          superuserPage.getByRole('heading', {name: heading}),
+          superuserPage.getByRole('heading', {name: heading, exact: true}),
         ).toBeVisible();
       }
     });

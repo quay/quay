@@ -24,6 +24,7 @@ import {RepoMember, RepoRole} from 'src/resources/RepositoryResource';
 import {Entity, EntityKind, getEntityKind} from 'src/resources/UserResource';
 import {roles} from './Types';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import React from 'react';
 import {ITeams} from 'src/hooks/UseTeams';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
@@ -35,6 +36,8 @@ export default function AddPermissions(props: AddPermissionsProps) {
     useState<boolean>(false);
   const {usernames} = useOrganizations();
   const isUserOrganization = usernames.includes(props.org);
+  const quayConfig = useQuayConfig();
+  const robotsDisallowed = quayConfig?.config?.ROBOTS_DISALLOW === true;
 
   const {
     setPermissions,
@@ -100,17 +103,19 @@ export default function AddPermissions(props: AddPermissionsProps) {
           <UsersIcon /> &nbsp; Create team
         </SelectOption>
       </Conditional>
-      <SelectOption
-        data-testid="create-new-robot-accnt-btn"
-        key="create-robot-account"
-        component="button"
-        onClick={() =>
-          props.setIsCreateRobotModalOpen(!props.isCreateRobotModalOpen)
-        }
-        isFocused
-      >
-        <DesktopIcon /> &nbsp; Create robot account
-      </SelectOption>
+      {!robotsDisallowed && (
+        <SelectOption
+          data-testid="create-new-robot-accnt-btn"
+          key="create-robot-account"
+          component="button"
+          onClick={() =>
+            props.setIsCreateRobotModalOpen(!props.isCreateRobotModalOpen)
+          }
+          isFocused
+        >
+          <DesktopIcon /> &nbsp; Create robot account
+        </SelectOption>
+      )}
     </React.Fragment>,
   ];
 

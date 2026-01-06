@@ -25,6 +25,7 @@ import {useUI} from 'src/contexts/UIContext';
 import FormError from 'src/components/errors/FormError';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
 import {useFetchTeams} from 'src/hooks/UseTeams';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {Entity} from 'src/resources/UserResource';
 import {useQueryClient} from '@tanstack/react-query';
 import './Mirroring.css';
@@ -64,18 +65,24 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   // Fetch robot accounts and teams
   const {robots} = useFetchRobotAccounts(namespace);
   const {teams} = useFetchTeams(namespace);
+  const quayConfig = useQuayConfig();
+  const robotsDisallowed = quayConfig?.config?.ROBOTS_DISALLOW === true;
 
   // Create dropdown options
   const robotOptions = [
     <React.Fragment key="dropdown-options">
-      <SelectOption
-        key="create-robot"
-        component="button"
-        onClick={() => formHook.setIsCreateRobotModalOpen(true)}
-      >
-        <DesktopIcon /> &nbsp; Create robot account
-      </SelectOption>
-      <Divider component="li" key="divider" />
+      {!robotsDisallowed && (
+        <>
+          <SelectOption
+            key="create-robot"
+            component="button"
+            onClick={() => formHook.setIsCreateRobotModalOpen(true)}
+          >
+            <DesktopIcon /> &nbsp; Create robot account
+          </SelectOption>
+          <Divider component="li" key="divider" />
+        </>
+      )}
       <SelectGroup label="Robot accounts" key="robot-accounts">
         {robots?.map(({name}) => (
           <SelectOption

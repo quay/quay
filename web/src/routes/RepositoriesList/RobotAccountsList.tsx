@@ -51,6 +51,7 @@ import {useRobotRepoPermissions} from 'src/hooks/useRobotAccounts';
 import RobotTokensModal from 'src/components/modals/RobotTokensModal';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {RobotFederationModal} from 'src/components/modals/RobotFederationModal';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 
@@ -113,6 +114,8 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     useState<boolean>(false);
 
   const {addAlert} = useUI();
+  const quayConfig = useQuayConfig();
+  const robotsDisallowed = quayConfig?.config?.ROBOTS_DISALLOW === true;
 
   const {robotAccountsForOrg} = useRobotAccounts({
     name: props.organizationName,
@@ -488,15 +491,21 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       <Empty
         title="There are no viewable robot accounts for this repository"
         icon={CubesIcon}
-        body="Either no robot accounts exist yet or you may not have permission to view any. If you have the permissions, you may create robot accounts in this repository."
+        body={
+          robotsDisallowed
+            ? 'Robot accounts have been disabled. Please contact your administrator.'
+            : 'Either no robot accounts exist yet or you may not have permission to view any. If you have the permissions, you may create robot accounts in this repository.'
+        }
         button={
-          <ToolbarButton
-            id=""
-            buttonValue="Create robot account"
-            Modal={createRobotModal}
-            isModalOpen={isCreateRobotModalOpen}
-            setModalOpen={setCreateRobotModalOpen}
-          />
+          !robotsDisallowed ? (
+            <ToolbarButton
+              id=""
+              buttonValue="Create robot account"
+              Modal={createRobotModal}
+              isModalOpen={isCreateRobotModalOpen}
+              setModalOpen={setCreateRobotModalOpen}
+            />
+          ) : null
         }
       />
     );
@@ -538,6 +547,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           pageModal={createRobotModal}
           isModalOpen={isCreateRobotModalOpen}
           setModalOpen={setCreateRobotModalOpen}
+          hideCreateButton={robotsDisallowed}
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
           kebabItems={kebabItems}
