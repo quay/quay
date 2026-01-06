@@ -88,7 +88,7 @@ py-bitbucket @ git+https://github.com/quay/py-bitbucket.git@3ba167408d92eb4ba2ca
 PyGithub==2.1.1
 PyJWT==2.8.0
 pymemcache==3.0.0
-PyMySQL==1.1.1
+PyMySQL==1.1.2
 pyOpenSSL==25.1.0
 pyparsing==2.4.6
 pyrsistent==0.18.0
