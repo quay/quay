@@ -90,7 +90,7 @@ PyJWT==2.8.0
 pymemcache==3.0.0
 PyMySQL==1.1.1
 pyOpenSSL==25.1.0
-pyparsing==2.4.6
+pyparsing==2.4.7
 pyrsistent==0.18.0
 python-dateutil==2.8.1
 python-editor==1.0.4
