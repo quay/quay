@@ -1331,4 +1331,81 @@ export class ApiClient {
       );
     }
   }
+
+  /**
+   * Create a quota for a user namespace using superuser API.
+   * This is different from organization quotas and requires superuser privileges.
+   */
+  async createUserQuotaSuperuser(
+    namespace: string,
+    limitBytes: number,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/superuser/users/${namespace}/quota`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          limit_bytes: limitBytes,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create quota for user ${namespace}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
+   * Get quotas for a user namespace using superuser API.
+   */
+  async getUserQuotaSuperuser(namespace: string): Promise<Quota[]> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/superuser/users/${namespace}/quota`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get quota for user ${namespace}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a quota for a user namespace using superuser API.
+   */
+  async deleteUserQuotaSuperuser(
+    namespace: string,
+    quotaId: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/superuser/users/${namespace}/quota/${quotaId}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete quota for user ${namespace}: ${response.status()} - ${body}`,
+      );
+    }
+  }
 }

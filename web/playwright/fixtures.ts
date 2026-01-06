@@ -551,6 +551,37 @@ export class TestApi {
   }
 
   /**
+   * Create a quota for a user namespace using superuser API.
+   * Automatically deleted after test.
+   *
+   * @param username - Username for the user namespace
+   * @param limitBytes - Quota limit in bytes (default: 10 GiB)
+   */
+  async userQuota(
+    username: string,
+    limitBytes = 10737418240, // 10 GiB default
+  ): Promise<CreatedQuota> {
+    await this.client.createUserQuotaSuperuser(username, limitBytes);
+
+    // Fetch quota to get the ID
+    const quotas = await this.client.getUserQuotaSuperuser(username);
+    if (quotas.length === 0) {
+      throw new Error(`Failed to create quota for user ${username}`);
+    }
+    const quotaId = quotas[0].id;
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteUserQuotaSuperuser(username, quotaId);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {orgName: username, quotaId, limitBytes};
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
