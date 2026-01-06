@@ -261,6 +261,28 @@ export class TestApi {
   }
 
   /**
+   * Add a member to a team.
+   * Automatically removed after test.
+   */
+  async teamMember(
+    orgName: string,
+    teamName: string,
+    memberName: string,
+  ): Promise<{orgName: string; teamName: string; memberName: string}> {
+    await this.client.addTeamMember(orgName, teamName, memberName);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.removeTeamMember(orgName, teamName, memberName);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {orgName, teamName, memberName};
+  }
+
+  /**
    * Create a robot account in an organization.
    * Automatically deleted after test.
    */
@@ -895,8 +917,5 @@ export function uniqueName(prefix: string): string {
 // Mailpit: Re-export from utils for backward compatibility
 // ============================================================================
 
-export {
-  mailpit,
-  MailpitMessage,
-  MailpitMessagesResponse,
-} from './utils/mailpit';
+export {mailpit} from './utils/mailpit';
+export type {MailpitMessage, MailpitMessagesResponse} from './utils/mailpit';
