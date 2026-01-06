@@ -87,7 +87,7 @@ pyasn1-modules==0.3.0
 py-bitbucket @ git+https://github.com/quay/py-bitbucket.git@3ba167408d92eb4ba2cae78c0047b8f1e8821c67
 PyGithub==2.1.1
 PyJWT==2.8.0
-pymemcache==3.0.0
+pymemcache==3.5.2
 PyMySQL==1.1.1
 pyOpenSSL==25.1.0
 pyparsing==2.4.6
