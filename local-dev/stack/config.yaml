@@ -84,6 +84,10 @@ USE_CDN: false
 FEATURE_QUOTA_MANAGEMENT: true
 FEATURE_EDIT_QUOTA: true
 FEATURE_AUTO_PRUNE: true
+DEFAULT_NAMESPACE_AUTOPRUNE_POLICY:
+  method: number_of_tags
+  value: 100
+FEATURE_IMAGE_EXPIRY_TRIGGER: true
 BROWSER_API_CALLS_XHR_ONLY: False
 # CORS_ORIGIN: "https://stage.foo.redhat.com:1337 http://localhost:9000/"
 CORS_ORIGIN:
