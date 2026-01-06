@@ -55,7 +55,6 @@ class V2Protocol(RegistryProtocol):
             Failures.UNAUTHENTICATED: 401,
             Failures.INVALID_AUTHENTICATION: 401,
             Failures.INVALID_REGISTRY: 400,
-            Failures.APP_REPOSITORY: 405,
             Failures.ANONYMOUS_NOT_ALLOWED: 401,
             Failures.INVALID_REPOSITORY: 400,
             Failures.SLASH_REPOSITORY: 400,

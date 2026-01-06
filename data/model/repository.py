@@ -10,7 +10,6 @@ from peewee import JOIN, SQL, Case, IntegrityError, fn
 
 import data
 from data.database import (
-    ApprTag,
     BlobUpload,
     DeletedRepository,
     ExternalNotificationEvent,

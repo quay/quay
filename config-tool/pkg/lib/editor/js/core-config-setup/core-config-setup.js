@@ -299,9 +299,6 @@ angular.module("quay-config")
           if (!("FEATURE_REQUIRE_TEAM_INVITE" in config)) {
             config["FEATURE_REQUIRE_TEAM_INVITE"] = true;
           }
-          if (!("FEATURE_APP_REGISTRY" in config)) {
-            config["FEATURE_APP_REGISTRY"] = false;
-          }
           if (!("FEATURE_RESTRICTED_V1_PUSH" in config)) {
             config["FEATURE_RESTRICTED_V1_PUSH"] = true;
           }

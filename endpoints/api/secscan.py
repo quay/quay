@@ -14,7 +14,6 @@ from data.secscan_model.datatypes import ScanLookupStatus
 from endpoints.api import (
     RepositoryParamResource,
     deprecated,
-    disallow_for_app_repositories,
     nickname,
     parse_args,
     path_param,
@@ -95,7 +94,6 @@ class RepositoryManifestSecurity(RepositoryParamResource):
     @anon_allowed
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoManifestSecurity")
-    @disallow_for_app_repositories
     @parse_args()
     @query_param(
         "vulnerabilities", "Include vulnerabilities informations", type=truthy_bool, default=False

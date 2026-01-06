@@ -24,8 +24,6 @@ TEST_CACHE_CONFIG = {
     "catalog_page_cache_ttl": "240s",
     "namespace_geo_restrictions_cache_ttl": "240s",
     "active_repo_tags_cache_ttl": "240s",
-    "appr_applications_list_cache_ttl": "3600s",
-    "appr_show_package_cache_ttl": "3600s",
 }
 
 

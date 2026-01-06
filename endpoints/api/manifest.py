@@ -19,7 +19,6 @@ from endpoints.api import (
     RepositoryParamResource,
     abort,
     api,
-    disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
     format_date,
@@ -141,7 +140,6 @@ class RepositoryManifest(RepositoryParamResource):
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoManifest")
-    @disallow_for_app_repositories
     @parse_args()
     @query_param(
         "include_modelcard",
@@ -213,7 +211,6 @@ class RepositoryManifestLabels(RepositoryParamResource):
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("listManifestLabels")
-    @disallow_for_app_repositories
     @parse_args()
     @query_param(
         "filter",
@@ -238,7 +235,6 @@ class RepositoryManifestLabels(RepositoryParamResource):
 
     @require_repo_write(allow_for_superuser=True)
     @nickname("addManifestLabel")
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @validate_json_request("AddLabel")
@@ -316,7 +312,6 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getManifestLabel")
-    @disallow_for_app_repositories
     def get(self, namespace_name, repository_name, manifestref, labelid):
         """
         Retrieves the label with the specific ID under the manifest.
@@ -337,7 +332,6 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
 
     @require_repo_write(allow_for_superuser=True)
     @nickname("deleteManifestLabel")
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     def delete(self, namespace_name, repository_name, manifestref, labelid):
@@ -383,7 +377,6 @@ class RepositoryManifestPullStatistics(RepositoryParamResource):
     """
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
-    @disallow_for_app_repositories
     @nickname("getManifestPullStatistics")
     def get(self, namespace_name, repository_name, manifestref):
         """
