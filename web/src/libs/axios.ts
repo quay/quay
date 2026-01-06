@@ -90,8 +90,16 @@ axiosIns.interceptors.response.use(
           GlobalAuthState.bearerToken =
             await window.insights.chrome.auth.getToken();
         } else {
-          // Redirect to login page for standalone
-          window.location.href = '/signin';
+          // Redirect to login page for standalone, but only if not already there
+          // This prevents infinite redirect loops when API calls fail on auth pages
+          const currentPath = window.location.pathname;
+          const isOnAuthPage =
+            currentPath === '/signin' ||
+            currentPath === '/createaccount' ||
+            currentPath.startsWith('/oauth');
+          if (!isOnAuthPage) {
+            window.location.href = '/signin';
+          }
         }
       }
     }
