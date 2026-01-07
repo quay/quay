@@ -721,6 +721,9 @@ type TestFixtures = {
   // Pre-authenticated page as readonly user
   readonlyPage: Page;
 
+  // Fresh unauthenticated page for anonymous user tests
+  unauthenticatedPage: Page;
+
   // Pre-authenticated API request context as regular user
   authenticatedRequest: APIRequestContext;
 
@@ -865,6 +868,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const page = await readonlyContext.newPage();
     await use(page);
     await page.close();
+  },
+
+  unauthenticatedPage: async ({browser}, use) => {
+    // Create a fresh browser context without any authentication
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await use(page);
+    await page.close();
+    await context.close();
   },
 
   authenticatedRequest: async ({userContext}, use) => {
