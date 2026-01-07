@@ -177,7 +177,7 @@ dev = [
     "bencode-py==4.0.0",
     "mockldap @ git+https://github.com/quay/mockldap.git@136253ca136fc7898944a4b37893a99440f7335e",
     "flask-testing @ git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a",
-    "black==22.10.0",
+    "black==24.4.2",
     "flake8==7.3.0",
     "boto3-stubs==1.14.9.0",
     "fakeredis==2.26.2",
