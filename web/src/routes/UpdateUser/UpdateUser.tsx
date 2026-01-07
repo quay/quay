@@ -199,6 +199,7 @@ export default function UpdateUser() {
               <FormGroup label="Username" fieldId="username">
                 <TextInput
                   id="username"
+                  data-testid="update-user-username"
                   value={username}
                   onChange={(_event, value) => handleUsernameChange(value)}
                   validated={
@@ -236,6 +237,7 @@ export default function UpdateUser() {
               <Button
                 type="submit"
                 variant="primary"
+                data-testid="update-user-confirm-username-btn"
                 isDisabled={
                   usernameState === 'existing' ||
                   usernameState === 'error' ||
@@ -269,6 +271,7 @@ export default function UpdateUser() {
                 <FormGroup label="Given Name" fieldId="given-name">
                   <TextInput
                     id="given-name"
+                    data-testid="update-user-given-name"
                     placeholder="Given Name"
                     value={metadata.given_name}
                     onChange={(_event, value) =>
@@ -280,6 +283,7 @@ export default function UpdateUser() {
                 <FormGroup label="Family Name" fieldId="family-name">
                   <TextInput
                     id="family-name"
+                    data-testid="update-user-family-name"
                     placeholder="Family Name"
                     value={metadata.family_name}
                     onChange={(_event, value) =>
@@ -291,6 +295,7 @@ export default function UpdateUser() {
                 <FormGroup label="Company" fieldId="company">
                   <TextInput
                     id="company"
+                    data-testid="update-user-company"
                     placeholder="Company name"
                     value={metadata.company}
                     onChange={(_event, value) =>
@@ -302,6 +307,7 @@ export default function UpdateUser() {
                 <FormGroup label="Location" fieldId="location">
                   <TextInput
                     id="location"
+                    data-testid="update-user-location"
                     placeholder="Location"
                     value={metadata.location}
                     onChange={(_event, value) =>
@@ -316,6 +322,7 @@ export default function UpdateUser() {
                   <Button
                     type="submit"
                     variant="primary"
+                    data-testid="update-user-save-details-btn"
                     isDisabled={
                       !metadata.given_name &&
                       !metadata.family_name &&
@@ -327,6 +334,7 @@ export default function UpdateUser() {
                   </Button>
                   <Button
                     variant="secondary"
+                    data-testid="update-user-skip-btn"
                     onClick={() =>
                       handleUpdateUser({
                         company: '',
