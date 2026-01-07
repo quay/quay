@@ -109,6 +109,15 @@ export interface CreatedServiceKey {
 }
 
 /**
+ * Created quota info
+ */
+export interface CreatedQuota {
+  orgName: string;
+  quotaId: string;
+  limitBytes: number;
+}
+
+/**
  * API client with auto-cleanup tracking.
  *
  * All resources created via this client are automatically
@@ -249,6 +258,28 @@ export class TestApi {
     });
 
     return {orgName, name};
+  }
+
+  /**
+   * Add a member to a team.
+   * Automatically removed after test.
+   */
+  async teamMember(
+    orgName: string,
+    teamName: string,
+    memberName: string,
+  ): Promise<{orgName: string; teamName: string; memberName: string}> {
+    await this.client.addTeamMember(orgName, teamName, memberName);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.removeTeamMember(orgName, teamName, memberName);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {orgName, teamName, memberName};
   }
 
   /**
@@ -489,6 +520,68 @@ export class TestApi {
   }
 
   /**
+   * Create a quota for an organization.
+   * Automatically deleted after test.
+   *
+   * @param orgName - Organization name
+   * @param limitBytes - Quota limit in bytes (default: 10 GiB)
+   */
+  async quota(
+    orgName: string,
+    limitBytes = 10737418240, // 10 GiB default
+  ): Promise<CreatedQuota> {
+    await this.client.createOrganizationQuota(orgName, limitBytes);
+
+    // Fetch quota to get the ID
+    const quotas = await this.client.getOrganizationQuota(orgName);
+    if (quotas.length === 0) {
+      throw new Error(`Failed to create quota for ${orgName}`);
+    }
+    const quotaId = quotas[0].id;
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOrganizationQuota(orgName, quotaId);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {orgName, quotaId, limitBytes};
+  }
+
+  /**
+   * Create a quota for a user namespace using superuser API.
+   * Automatically deleted after test.
+   *
+   * @param username - Username for the user namespace
+   * @param limitBytes - Quota limit in bytes (default: 10 GiB)
+   */
+  async userQuota(
+    username: string,
+    limitBytes = 10737418240, // 10 GiB default
+  ): Promise<CreatedQuota> {
+    await this.client.createUserQuotaSuperuser(username, limitBytes);
+
+    // Fetch quota to get the ID
+    const quotas = await this.client.getUserQuotaSuperuser(username);
+    if (quotas.length === 0) {
+      throw new Error(`Failed to create quota for user ${username}`);
+    }
+    const quotaId = quotas[0].id;
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteUserQuotaSuperuser(username, quotaId);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {orgName: username, quotaId, limitBytes};
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
@@ -529,6 +622,8 @@ export type QuayFeature =
 export interface QuayConfig {
   features: Partial<Record<QuayFeature, boolean>>;
   config: Record<string, unknown>;
+  external_login?: Array<{id: string; title: string; icon?: string}>;
+  registry_state?: 'normal' | 'readonly';
 }
 
 /**
@@ -855,8 +950,5 @@ export function uniqueName(prefix: string): string {
 // Mailpit: Re-export from utils for backward compatibility
 // ============================================================================
 
-export {
-  mailpit,
-  MailpitMessage,
-  MailpitMessagesResponse,
-} from './utils/mailpit';
+export {mailpit} from './utils/mailpit';
+export type {MailpitMessage, MailpitMessagesResponse} from './utils/mailpit';

@@ -159,6 +159,7 @@ export const CliConfiguration = () => {
                 variant="secondary"
                 onClick={() => toggleEncryptedPasswordModal(true)}
                 id="cli-password-button"
+                data-testid="cli-password-button"
               >
                 Generate encrypted password
               </Button>
@@ -214,6 +215,7 @@ export const CliConfiguration = () => {
               variant="secondary"
               onClick={() => setCreateTokenModalOpen(true)}
               id="create-app-token-button"
+              data-testid="create-app-token-button"
             >
               Create application token
             </Button>

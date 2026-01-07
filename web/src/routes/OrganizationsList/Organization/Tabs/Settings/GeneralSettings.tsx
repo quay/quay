@@ -607,6 +607,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       <ActionGroup>
         <Button
           id="save-org-settings"
+          data-testid="settings-save-button"
           variant="primary"
           type="submit"
           onClick={handleSubmit(onSubmit)}

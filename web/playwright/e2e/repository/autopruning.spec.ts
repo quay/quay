@@ -346,10 +346,12 @@ test.describe(
         .getByText('Repository Auto-Prune Policies')
         .click();
 
-      // Verify namespace policy is displayed
+      // Verify namespace policy is displayed (use role selector to avoid matching Registry heading with same testid)
       await expect(
-        authenticatedPage.getByTestId('namespace-auto-prune-policy-heading'),
-      ).toContainText('Namespace Auto-Pruning Policies');
+        authenticatedPage.getByRole('heading', {
+          name: 'Namespace Auto-Pruning Policies',
+        }),
+      ).toBeVisible();
       await expect(
         authenticatedPage.getByTestId('namespace-autoprune-policy-method'),
       ).toContainText('Number of Tags');

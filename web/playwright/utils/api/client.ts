@@ -120,6 +120,19 @@ export interface ServiceKeysResponse {
   keys: ServiceKey[];
 }
 
+// Quota types
+export interface QuotaLimit {
+  id: string;
+  type: 'Warning' | 'Reject';
+  limit_percent: number;
+}
+
+export interface Quota {
+  id: string;
+  limit_bytes: number;
+  limits: QuotaLimit[];
+}
+
 export class ApiClient {
   private request: APIRequestContext;
   private csrfToken: string | null = null;
@@ -1162,6 +1175,236 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to delete service key ${kid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Quota methods
+
+  async getOrganizationQuota(orgName: string): Promise<Quota[]> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/organization/${orgName}/quota`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (response.status() === 404) {
+      return [];
+    }
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get quota for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async createOrganizationQuota(
+    orgName: string,
+    limitBytes: number,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/quota`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          limit_bytes: limitBytes,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create quota for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async updateOrganizationQuota(
+    orgName: string,
+    quotaId: string,
+    limitBytes: number,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/organization/${orgName}/quota/${quotaId}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          limit_bytes: limitBytes,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to update quota for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async deleteOrganizationQuota(
+    orgName: string,
+    quotaId: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/quota/${quotaId}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete quota for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async createQuotaLimit(
+    orgName: string,
+    quotaId: string,
+    type: 'Warning' | 'Reject',
+    thresholdPercent: number,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/quota/${quotaId}/limit`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          type,
+          threshold_percent: thresholdPercent,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create quota limit for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async deleteQuotaLimit(
+    orgName: string,
+    quotaId: string,
+    limitId: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete quota limit for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
+   * Create a quota for a user namespace using superuser API.
+   * This is different from organization quotas and requires superuser privileges.
+   */
+  async createUserQuotaSuperuser(
+    namespace: string,
+    limitBytes: number,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/superuser/users/${namespace}/quota`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          limit_bytes: limitBytes,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create quota for user ${namespace}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
+   * Get quotas for a user namespace using superuser API.
+   */
+  async getUserQuotaSuperuser(namespace: string): Promise<Quota[]> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/superuser/users/${namespace}/quota`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get quota for user ${namespace}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a quota for a user namespace using superuser API.
+   */
+  async deleteUserQuotaSuperuser(
+    namespace: string,
+    quotaId: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/superuser/users/${namespace}/quota/${quotaId}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete quota for user ${namespace}: ${response.status()} - ${body}`,
       );
     }
   }
