@@ -37,8 +37,8 @@ RUN set -ex\
 
 # Build-python installs the requirements for the python code.
 FROM base AS build-python
-COPY --from=ghcr.io/astral-sh/uv:0.9.17@sha256:5cb6b54d2bc3fe2eb9a8483db958a0b9eebf9edff68adedb369df8e7b98711a2   /uv /bin/uv
 ENV PYTHONDONTWRITEBYTECODE 1
+RUN pip install --no-cache-dir uv==0.9.17
 RUN set -ex\
 	; dnf -y --setopt=tsflags=nodocs install \
 		gcc-c++ \
@@ -154,7 +154,7 @@ RUN set -ex\
 FROM base AS final
 LABEL maintainer "quay-devel@redhat.com"
 
-COPY --from=ghcr.io/astral-sh/uv:0.9.17@sha256:5cb6b54d2bc3fe2eb9a8483db958a0b9eebf9edff68adedb369df8e7b98711a2   /uv /bin/uv
+RUN pip install --no-cache-dir uv==0.9.17
 
 ENV QUAYDIR /quay-registry
 ENV QUAYCONF /quay-registry/conf
