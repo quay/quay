@@ -133,6 +133,15 @@ export interface Quota {
   limits: QuotaLimit[];
 }
 
+// Proxy cache types
+export interface ProxyCacheConfig {
+  upstream_registry: string;
+  expiration_s?: number;
+  insecure?: boolean;
+  upstream_registry_username?: string;
+  upstream_registry_password?: string;
+}
+
 export class ApiClient {
   private request: APIRequestContext;
   private csrfToken: string | null = null;
@@ -1405,6 +1414,80 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to delete quota for user ${namespace}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Proxy cache methods
+
+  async getProxyCacheConfig(orgName: string): Promise<ProxyCacheConfig | null> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/organization/${orgName}/proxycache`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (response.status() === 404) {
+      return null;
+    }
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get proxy cache config for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async createProxyCacheConfig(
+    orgName: string,
+    config: ProxyCacheConfig,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/proxycache`,
+      {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          upstream_registry: config.upstream_registry,
+          expiration_s: config.expiration_s ?? 86400,
+          insecure: config.insecure ?? false,
+          upstream_registry_username: config.upstream_registry_username,
+          upstream_registry_password: config.upstream_registry_password,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create proxy cache config for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async deleteProxyCacheConfig(orgName: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/proxycache`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete proxy cache config for ${orgName}: ${response.status()} - ${body}`,
       );
     }
   }

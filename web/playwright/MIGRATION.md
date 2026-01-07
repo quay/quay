@@ -692,7 +692,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `org-oauth.cy.ts` | | |
 | ✅ | `overview.cy.ts` | `ui/overview.spec.ts` | |
 | ⬚ | `packages-report.cy.ts` | | |
-| ⬚ | `proxy-cache.cy.ts` | | @feature:PROXY_CACHE |
+| ✅ | `proxy-cache.cy.ts` | `organization/proxy-cache.spec.ts` | @feature:PROXY_CACHE, consolidated 4→3 tests |
 | ✅ | `quota.cy.ts` | `organization/quota.spec.ts` | @feature:QUOTA_MANAGEMENT, @feature:EDIT_QUOTA, consolidated 27→7 tests |
 | ✅ | `repositories-list.cy.ts` | `repository/repositories-list.spec.ts` | Consolidated 11→6 tests |
 | ✅ | `repository-autopruning.cy.ts` | `repository/autopruning.spec.ts` | @feature:AUTO_PRUNE, consolidated 17→6 tests |
