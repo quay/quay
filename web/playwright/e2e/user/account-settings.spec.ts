@@ -1,4 +1,4 @@
-import {test, expect, skipUnlessAuthType} from '../../fixtures';
+import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 
 test.describe('Account Settings', {tag: ['@user']}, () => {
@@ -145,13 +145,8 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
     });
   });
 
-  test.describe('CLI Configuration', () => {
-    test('shows error for wrong password', async ({
-      authenticatedPage,
-      quayConfig,
-    }) => {
-      test.skip(...skipUnlessAuthType(quayConfig, 'Database'));
-
+  test.describe('CLI Configuration', {tag: ['@auth:Database']}, () => {
+    test('shows error for wrong password', async ({authenticatedPage}) => {
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
 
       // Navigate to CLI tab
@@ -174,10 +169,7 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
 
     test('generates encrypted password with all credential formats', async ({
       authenticatedPage,
-      quayConfig,
     }) => {
-      test.skip(...skipUnlessAuthType(quayConfig, 'Database'));
-
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
 
       // Navigate to CLI tab
@@ -231,12 +223,10 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
       authenticatedPage,
       quayConfig,
     }) => {
-      // This test requires Database auth AND OIDC external login
-      // Skip if no external login configured
+      // This test also requires OIDC external login (Database auth is handled by describe tag)
       const hasOIDC =
         quayConfig?.external_login && quayConfig.external_login.length > 0;
       test.skip(!hasOIDC, 'No external login configured');
-      test.skip(...skipUnlessAuthType(quayConfig, 'Database'));
 
       // This test would require creating a user without a password set
       // For now, we verify the component renders correctly by checking the UI structure
@@ -273,13 +263,10 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
     });
   });
 
-  test.describe('Password Change', () => {
+  test.describe('Password Change', {tag: ['@auth:Database']}, () => {
     test('password change modal validates input', async ({
       authenticatedPage,
-      quayConfig,
     }) => {
-      test.skip(...skipUnlessAuthType(quayConfig, 'Database'));
-
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
 
       // Click change password link
@@ -329,14 +316,11 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
     });
   });
 
-  test.describe('Account Type Change', () => {
+  test.describe('Account Type Change', {tag: ['@auth:Database']}, () => {
     test('account type modal shows organization membership warning', async ({
       authenticatedPage,
-      quayConfig,
       api,
     }) => {
-      test.skip(...skipUnlessAuthType(quayConfig, 'Database'));
-
       // Create an organization to ensure user has memberships
       const org = await api.organization('conversiontest');
       const team = await api.team(org.name, 'members', 'member');
@@ -419,13 +403,10 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
     });
   });
 
-  test.describe('Delete Account', () => {
+  test.describe('Delete Account', {tag: ['@auth:Database']}, () => {
     test('delete account modal requires confirmation', async ({
       authenticatedPage,
-      quayConfig,
     }) => {
-      test.skip(...skipUnlessAuthType(quayConfig, 'Database'));
-
       await authenticatedPage.goto(`/user/${username}?tab=Settings`);
 
       // Click delete account button
