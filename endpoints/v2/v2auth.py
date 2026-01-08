@@ -242,6 +242,11 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
         msg = "Namespace %s has been disabled. Please contact a system administrator." % namespace
         raise NamespaceDisabled(message=msg)
 
+    # Cache proxy cache config check to avoid repeated database lookups
+    is_proxy_cache_org = features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(
+        namespace
+    )
+
     final_actions = []
 
     repository_ref = registry_model.lookup_repository(namespace, reponame)
@@ -274,8 +279,16 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
 
                     # Check for different repository states.
                     if repository_ref.state == RepositoryState.NORMAL:
-                        # In NORMAL mode, if the user has permission, then they can push.
-                        final_actions.append("push")
+                        # Check if namespace is a proxy cache org - no pushing allowed
+                        if is_proxy_cache_org:
+                            logger.debug(
+                                "Push denied to proxy cache organization %s/%s",
+                                namespace,
+                                reponame,
+                            )
+                        else:
+                            # In NORMAL mode, if the user has permission, then they can push.
+                            final_actions.append("push")
                     elif repository_ref.state == RepositoryState.MIRROR:
                         # In MIRROR mode, only the mirroring robot can push.
                         mirror = model.repo_mirror.get_mirror(repository_ref.id)
@@ -313,7 +326,14 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                 logger.debug("Restricted users cannot create repository %s/%s", namespace, reponame)
 
             else:
-                if (
+                # Block repository creation in proxy cache organizations
+                if is_proxy_cache_org:
+                    logger.debug(
+                        "Repository creation denied in proxy cache organization %s/%s",
+                        namespace,
+                        reponame,
+                    )
+                elif (
                     app.config.get("CREATE_NAMESPACE_ON_PUSH", False)
                     and model.user.get_namespace_user(namespace) is None
                 ):
@@ -333,7 +353,11 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                         except model.DataModelException as ex:
                             raise Unsupported(message="Cannot create organization")
 
-                if CreateRepositoryPermission(namespace).can() and user is not None:
+                if (
+                    not is_proxy_cache_org
+                    and CreateRepositoryPermission(namespace).can()
+                    and user is not None
+                ):
                     if (
                         features.RESTRICTED_USERS
                         and usermanager.is_restricted_user(user.username)
@@ -369,7 +393,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
             user = get_authenticated_user()
 
         can_pullthru = False
-        if features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace):
+        if is_proxy_cache_org:
             can_pullthru = OrganizationMemberPermission(namespace).can() and user is not None
 
         if (
@@ -394,7 +418,14 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
 
-            if repository_ref and repository_ref.state in (
+            # Block admin scope for proxy cache orgs
+            if is_proxy_cache_org:
+                logger.debug(
+                    "No permission to administer repository in proxy cache org %s/%s",
+                    namespace,
+                    reponame,
+                )
+            elif repository_ref and repository_ref.state in (
                 RepositoryState.MIRROR,
                 RepositoryState.READ_ONLY,
             ):
@@ -408,9 +439,13 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
     # Final sanity checks.
     if "push" in final_actions:
         assert repository_ref.state != RepositoryState.READ_ONLY
+        # Ensure not pushing to proxy cache org
+        assert not is_proxy_cache_org
 
     if "*" in final_actions:
         assert repository_ref.state == RepositoryState.NORMAL
+        # Ensure not admin in proxy cache org
+        assert not is_proxy_cache_org
 
     return scopeResult(
         actions=final_actions,
