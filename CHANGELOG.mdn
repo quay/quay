@@ -11,6 +11,8 @@
 - [8338dbdf](https://github.com/quay/quay/commit/8338dbdfe76e28cfda044437e838d1b8557ce1d7): route /buildlogs to backend for React UI (PROJQUAY-6767) ([#4792](https://github.com/quay/quay/issues/4792))
 ### [Redhat-3.16] Fix(Web)
 - [69183b68](https://github.com/quay/quay/commit/69183b68b3922452b233bf6d5ef76895e361257b): prevent signin page redirect loop (PROJQUAY-10090) ([#4782](https://github.com/quay/quay/issues/4782))
+### [Redhat-3.16] Fix(Pushgateway)
+- fix Pushgateway does not start on Quay 3.16.0 (PROJQUAY-10083)
 
 <a name="v3.16.0"></a>
 ## [v3.16.0] - 2025-12-04
@@ -3030,7 +3032,7 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Dev
 - [d3cc640f](https://github.com/quay/quay/commit/d3cc640fef64d673ae0c8ff9aef84aad13562c45): Update Clair for dev (PROJQUAY-4461) ([#1528](https://github.com/quay/quay/issues/1528))
 - [04af141a](https://github.com/quay/quay/commit/04af141a49fa231157d91f20f04ab498e307228d): Add pre-commit script to run black (PROJQUAY-4039) ([#1432](https://github.com/quay/quay/issues/1432))
-### Doc 
+### Doc
 - [34cd7d09](https://github.com/quay/quay/commit/34cd7d09188cabe90af78ed6ef7b3cb048cfe309): update Instructions for Deploying on OpenShift ([#1537](https://github.com/quay/quay/issues/1537))
 ### Dockerfile
 - [f0f31e0b](https://github.com/quay/quay/commit/f0f31e0b7a864c5322c6d7981d9f4afa4ad8e8e3): use nodejs ubi8 image to build frontends ([#1355](https://github.com/quay/quay/issues/1355))
