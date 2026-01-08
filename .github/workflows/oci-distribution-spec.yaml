@@ -43,9 +43,9 @@ jobs:
         psql "postgresql://postgres_user:postgres_password@localhost:5432/postgres_db" \
           --command="create extension if not exists pg_trgm;"
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         repository: opencontainers/distribution-spec
         ref: v1.1.0-rc1

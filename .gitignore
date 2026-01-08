@@ -13,7 +13,6 @@ stack_local
 test/data/registry/
 GIT_HEAD
 .idea
-.python-version
 .pylintrc
 .coverage
 .coverage.*
@@ -127,3 +126,6 @@ web/.playwright/
 # marketplace
 local-dev/stack/quay-marketplace-api.crt
 local-dev/stack/quay-marketplace-api.key
+
+# UV
+*.egg-info

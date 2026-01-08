@@ -2,7 +2,7 @@ SHELL := /bin/bash
 DOCKER ?= docker
 DOCKER_COMPOSE ?= $(DOCKER) compose
 
-export PATH := ./venv/bin:$(PATH)
+export PATH := ./.venv/bin:$(PATH)
 
 SHA  := $(shell git rev-parse --short HEAD )
 REPO := quay.io/quay/quay
@@ -20,30 +20,30 @@ show-modified:
 all: clean test build
 
 unit-test:
-	TEST=true PYTHONPATH="." py.test \
+	TEST=true PYTHONPATH="." pytest \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	-m 'not e2e' --timeout=3600 --verbose -x --ignore=buildman/ \
 	./
 
 e2e-test:
-	TEST=true PYTHONPATH="." py.test \
+	TEST=true PYTHONPATH="." pytest \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	-m 'e2e' --timeout=3600 --verbose -x --ignore=buildman/ \
 	./
 
 integration-test:
-	TEST=true PYTHONPATH="." py.test \
+	TEST=true PYTHONPATH="." pytest \
 	--verbose --ignore=buildman/ \
 	test/integration/*
 
 registry-test:
-	TEST=true PYTHONPATH="." py.test  \
+	TEST=true PYTHONPATH="." pytest  \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	-n auto -m 'not e2e' --timeout=3600 --verbose -x \
 	test/registry/registry_tests.py
 
 buildman-test:
-	TEST=true PYTHONPATH="." py.test \
+	TEST=true PYTHONPATH="." pytest \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	-m 'not e2e' --timeout=3600 --verbose -x \
 	./buildman/
@@ -55,7 +55,7 @@ full-db-test: ensure-test-db
 	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "anothercrazykey!"}' \
 	alembic upgrade head
 	TEST=true PYTHONPATH=. \
-	SKIP_DB_SCHEMA=true py.test -m 'not e2e' --timeout=7200 \
+	SKIP_DB_SCHEMA=true pytest -m 'not e2e' --timeout=7200 \
 	--verbose -x --ignore=endpoints/appr/test/ \
 	./
 
@@ -95,7 +95,7 @@ test_postgres:
 	$(DOCKER) exec -it $(CONTAINER) bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	$(DOCKER) exec -it $(CONTAINER) bash -c "psql -U $(PG_USER) -d quay -c 'CREATE EXTENSION pg_trgm;'"
 	$(TEST_ENV) alembic upgrade head
-	$(TEST_ENV) py.test --timeout=7200 --verbose --ignore=endpoints/appr/test/ -x $(TESTS)
+	$(TEST_ENV) pytest --timeout=7200 --verbose --ignore=endpoints/appr/test/ -x $(TESTS)
 	$(DOCKER) rm -f $(CONTAINER) || true
 
 WEBPACK := node_modules/.bin/webpack
@@ -171,7 +171,7 @@ build-image-local-dev-frontend:
 .PHONY: build-image-quay
 build-images:: build-image-quay
 build-image-quay: .build-image-quay-stamp
-.build-image-quay-stamp: Dockerfile requirements.txt
+.build-image-quay-stamp: Dockerfile uv.lock
 	$(DOCKER_COMPOSE) build quay
 	touch $@
 

@@ -1,4 +1,4 @@
 #!/bin/bash
 cd ${QUAYDIR:-"/"}
 
-python ${QUAYPATH:-"."}/boot.py
+python3 ${QUAYPATH:-"."}/boot.py

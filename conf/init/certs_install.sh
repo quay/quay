@@ -6,7 +6,7 @@ QUAYCONFIG=${QUAYCONFIG:-"$QUAYCONF/stack"}
 CERTDIR=${CERTDIR:-"$QUAYCONFIG/extra_ca_certs"}
 SYSTEM_CERTDIR=${SYSTEM_CERTDIR:-"/etc/pki/ca-trust/source/anchors"}
 if grep -q 'VERSION_ID="8' /etc/os-release; then
-    PYTHONUSERBASE_SITE_PACKAGE=${PYTHONUSERBASE_SITE_PACKAGE:-"$(python -m site --user-site)"}
+    PYTHONUSERBASE_SITE_PACKAGE=${PYTHONUSERBASE_SITE_PACKAGE:-"$(python3 -m site --user-site)"}
 else
     PYTHONUSERBASE_SITE_PACKAGE=/opt/app-root/lib/python3.12/site-packages
 fi
