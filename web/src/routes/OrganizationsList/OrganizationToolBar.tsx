@@ -8,6 +8,7 @@ import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {Kebab} from 'src/components/toolbar/Kebab';
 import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
+import {ManageColumnsButton, ColumnConfig} from 'src/components/ManageColumns';
 
 import * as React from 'react';
 import {useState} from 'react';
@@ -66,6 +67,10 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
             ) : null}
             {props.deleteKebabIsOpen ? props.deleteModal : null}
           </ToolbarItem>
+          <ManageColumnsButton
+            columns={props.columns}
+            onSave={props.onSaveColumns}
+          />
           <ToolbarPagination
             itemsList={props.organizationsList}
             perPage={props.perPage}
@@ -114,4 +119,6 @@ type OrganizationToolBarProps = {
   paginatedOrganizationsList: any[];
   onSelectOrganization: (Org, rowIndex, isSelecting) => void;
   isExternalAuth: boolean;
+  columns: ColumnConfig[];
+  onSaveColumns: (columns: ColumnConfig[]) => void;
 };

@@ -12,7 +12,7 @@ import {
 import {CubesIcon} from '@patternfly/react-icons';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useMemo} from 'react';
 import {useRecoilState, useRecoilValue} from 'recoil';
 import {
   searchOrgsFilterState,
@@ -38,7 +38,8 @@ import {
 import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
 import {formatSize} from 'src/libs/utils';
 import {IOrganization} from 'src/resources/OrganizationResource';
-import ColumnNames from './ColumnNames';
+import ColumnNames, {organizationDefaultColumns} from './ColumnNames';
+import {useColumnManagement} from 'src/hooks/useColumnManagement';
 import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {OrganizationToolBar} from './OrganizationToolBar';
 import OrgTableData from './OrganizationsListTableData';
@@ -171,6 +172,31 @@ export default function OrganizationsList() {
     deleteUsers,
     userEmailMap,
   } = useOrganizations();
+
+  // Column management for table column visibility
+  const {columns, isColumnVisible, saveColumns} = useColumnManagement({
+    storageKey: 'organizations-list',
+    defaultColumns: organizationDefaultColumns,
+  });
+
+  // Filter columns shown in modal based on user permissions and feature flags
+  const visibleColumns = useMemo(() => {
+    return columns.filter((col) => {
+      if (col.id === 'adminEmail') {
+        return isSuperUser && quayConfig?.features?.MAILING;
+      }
+      if (col.id === 'options') {
+        return isSuperUser && !isReadOnlySuperUser;
+      }
+      if (col.id === 'size') {
+        return (
+          quayConfig?.features?.QUOTA_MANAGEMENT &&
+          quayConfig?.features?.EDIT_QUOTA
+        );
+      }
+      return true;
+    });
+  }, [columns, isSuperUser, isReadOnlySuperUser, quayConfig?.features]);
 
   const searchFilter = useRecoilValue(searchOrgsFilterState);
 
@@ -530,27 +556,42 @@ export default function OrganizationsList() {
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
           isExternalAuth={!!isExternalAuth}
+          columns={visibleColumns}
+          onSaveColumns={saveColumns}
         />
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
               <Th />
-              <Th sort={getSortableSort(1)} modifier="wrap">
-                {ColumnNames.name}
-              </Th>
-              {isSuperUser && quayConfig?.features?.MAILING && (
-                <Th>{ColumnNames.adminEmail}</Th>
+              {isColumnVisible('name') && (
+                <Th sort={getSortableSort(1)} modifier="wrap">
+                  {ColumnNames.name}
+                </Th>
               )}
-              <Th>{ColumnNames.repoCount}</Th>
-              <Th>{ColumnNames.teamsCount}</Th>
-              <Th>{ColumnNames.membersCount}</Th>
-              <Th>{ColumnNames.robotsCount}</Th>
-              <Th>{ColumnNames.lastModified}</Th>
-              {quayConfig?.features?.QUOTA_MANAGEMENT &&
+              {isColumnVisible('adminEmail') &&
+                isSuperUser &&
+                quayConfig?.features?.MAILING && (
+                  <Th>{ColumnNames.adminEmail}</Th>
+                )}
+              {isColumnVisible('repoCount') && <Th>{ColumnNames.repoCount}</Th>}
+              {isColumnVisible('teamsCount') && (
+                <Th>{ColumnNames.teamsCount}</Th>
+              )}
+              {isColumnVisible('membersCount') && (
+                <Th>{ColumnNames.membersCount}</Th>
+              )}
+              {isColumnVisible('robotsCount') && (
+                <Th>{ColumnNames.robotsCount}</Th>
+              )}
+              {isColumnVisible('lastModified') && (
+                <Th>{ColumnNames.lastModified}</Th>
+              )}
+              {isColumnVisible('size') &&
+                quayConfig?.features?.QUOTA_MANAGEMENT &&
                 quayConfig?.features?.EDIT_QUOTA && <Th>{ColumnNames.size}</Th>}
-              {isSuperUser && !isReadOnlySuperUser && (
-                <Th>{ColumnNames.options}</Th>
-              )}
+              {isColumnVisible('options') &&
+                isSuperUser &&
+                !isReadOnlySuperUser && <Th>{ColumnNames.options}</Th>}
             </Tr>
           </Thead>
           <Tbody>
@@ -579,6 +620,7 @@ export default function OrganizationsList() {
                   selectedOrganization={selectedOrganization}
                   setSelectedOrganization={setSelectedOrganization}
                   avatar={org.avatar}
+                  isColumnVisible={isColumnVisible}
                 ></OrgTableData>
               </Tr>
             ))}

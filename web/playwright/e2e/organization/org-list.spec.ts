@@ -721,5 +721,217 @@ test.describe(
         );
       },
     );
+
+    test.describe('column management', () => {
+      test.afterEach(async ({authenticatedPage}) => {
+        // Clear column management localStorage keys
+        await authenticatedPage.evaluate(() => {
+          localStorage.removeItem('quay-columns-organizations-list');
+        });
+      });
+
+      test('opens manage columns modal and shows column sections', async ({
+        authenticatedPage,
+      }) => {
+        await authenticatedPage.goto('/organization');
+
+        // Wait for table to load
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]').first(),
+        ).toBeVisible();
+
+        // Click manage columns button
+        await authenticatedPage.getByTestId('manage-columns-button').click();
+
+        // Verify modal opens
+        const modal = authenticatedPage.locator('.pf-v5-c-modal-box');
+        await expect(modal).toBeVisible();
+        await expect(modal.locator('.pf-v5-c-modal-box__title')).toContainText(
+          'Manage columns',
+        );
+
+        // Verify column sections
+        await expect(
+          modal.getByRole('heading', {name: 'Default columns'}),
+        ).toBeVisible();
+        await expect(
+          modal.getByRole('heading', {name: 'Additional columns'}),
+        ).toBeVisible();
+
+        // Verify default columns are listed
+        await expect(modal.locator('[id="column-name"]')).toBeVisible();
+        await expect(modal.locator('[id="column-repoCount"]')).toBeVisible();
+        await expect(modal.locator('[id="column-teamsCount"]')).toBeVisible();
+        await expect(modal.locator('[id="column-membersCount"]')).toBeVisible();
+        await expect(modal.locator('[id="column-robotsCount"]')).toBeVisible();
+        await expect(modal.locator('[id="column-lastModified"]')).toBeVisible();
+
+        // Verify Name column checkbox is disabled (required)
+        await expect(modal.locator('[name="column-name"]')).toBeDisabled();
+        await expect(modal.getByText('(Required)')).toBeVisible();
+
+        // Close modal
+        await authenticatedPage.getByTestId('manage-columns-cancel').click();
+        await expect(modal).not.toBeVisible();
+      });
+
+      test('toggles column visibility', async ({authenticatedPage}) => {
+        await authenticatedPage.goto('/organization');
+
+        // Wait for table to load
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]').first(),
+        ).toBeVisible();
+
+        // Verify Teams column is visible initially
+        await expect(
+          authenticatedPage.locator('th').getByText('Teams'),
+        ).toBeVisible();
+
+        // Open manage columns modal and hide Teams column
+        await authenticatedPage.getByTestId('manage-columns-button').click();
+        const modal = authenticatedPage.locator('.pf-v5-c-modal-box');
+        await modal.locator('[name="column-teamsCount"]').click();
+        await authenticatedPage.getByTestId('manage-columns-save').click();
+
+        // Verify modal closed
+        await expect(modal).not.toBeVisible();
+
+        // Verify Teams column is now hidden
+        await expect(
+          authenticatedPage.locator('th').getByText('Teams'),
+        ).not.toBeVisible();
+
+        // Re-enable the column
+        await authenticatedPage.getByTestId('manage-columns-button').click();
+        await modal.locator('[name="column-teamsCount"]').click();
+        await authenticatedPage.getByTestId('manage-columns-save').click();
+
+        // Verify Teams column is visible again
+        await expect(
+          authenticatedPage.locator('th').getByText('Teams'),
+        ).toBeVisible();
+      });
+
+      test('persists column preferences across page reloads', async ({
+        authenticatedPage,
+      }) => {
+        await authenticatedPage.goto('/organization');
+
+        // Wait for table to load
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]').first(),
+        ).toBeVisible();
+
+        // Hide Members column
+        await authenticatedPage.getByTestId('manage-columns-button').click();
+        const modal = authenticatedPage.locator('.pf-v5-c-modal-box');
+        await modal.locator('[name="column-membersCount"]').click();
+        await authenticatedPage.getByTestId('manage-columns-save').click();
+
+        // Verify column is hidden
+        await expect(
+          authenticatedPage.locator('th').getByText('Members'),
+        ).not.toBeVisible();
+
+        // Reload the page
+        await authenticatedPage.reload();
+
+        // Wait for table to load again
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]').first(),
+        ).toBeVisible();
+
+        // Verify column is still hidden after reload
+        await expect(
+          authenticatedPage.locator('th').getByText('Members'),
+        ).not.toBeVisible();
+      });
+
+      test('restores default columns', async ({authenticatedPage}) => {
+        await authenticatedPage.goto('/organization');
+
+        // Wait for table to load
+        await expect(
+          authenticatedPage.locator('td[data-label="Name"]').first(),
+        ).toBeVisible();
+
+        // Hide multiple columns
+        await authenticatedPage.getByTestId('manage-columns-button').click();
+        const modal = authenticatedPage.locator('.pf-v5-c-modal-box');
+        await modal.locator('[name="column-teamsCount"]').click();
+        await modal.locator('[name="column-robotsCount"]').click();
+        await authenticatedPage.getByTestId('manage-columns-save').click();
+
+        // Verify columns are hidden
+        await expect(
+          authenticatedPage.locator('th').getByText('Teams'),
+        ).not.toBeVisible();
+        await expect(
+          authenticatedPage.locator('th').getByText('Robots'),
+        ).not.toBeVisible();
+
+        // Open modal and restore defaults
+        await authenticatedPage.getByTestId('manage-columns-button').click();
+        await authenticatedPage.getByTestId('manage-columns-restore').click();
+        await authenticatedPage.getByTestId('manage-columns-save').click();
+
+        // Verify all default columns are visible again
+        await expect(
+          authenticatedPage.locator('th').getByText('Teams'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.locator('th').getByText('Robots'),
+        ).toBeVisible();
+      });
+    });
+
+    test.describe('superuser column management', () => {
+      test.afterEach(async ({superuserPage}) => {
+        await superuserPage.evaluate(() => {
+          localStorage.removeItem('quay-columns-organizations-list');
+        });
+      });
+
+      test('can toggle superuser-only columns', async ({superuserPage}) => {
+        await superuserPage.goto('/organization');
+
+        // Wait for table to load
+        await expect(
+          superuserPage.locator('td[data-label="Name"]').first(),
+        ).toBeVisible();
+
+        // Verify Settings column is visible for superusers
+        await expect(
+          superuserPage.locator('th').getByText('Settings'),
+        ).toBeVisible();
+
+        // Open manage columns modal
+        await superuserPage.getByTestId('manage-columns-button').click();
+        const modal = superuserPage.locator('.pf-v5-c-modal-box');
+
+        // Verify superuser columns are in additional section
+        await expect(modal.locator('[id="column-options"]')).toBeVisible();
+
+        // Toggle Settings column off
+        await modal.locator('[name="column-options"]').click();
+        await superuserPage.getByTestId('manage-columns-save').click();
+
+        // Verify Settings column is now hidden
+        await expect(
+          superuserPage.locator('th').getByText('Settings'),
+        ).not.toBeVisible();
+
+        // Re-enable the column
+        await superuserPage.getByTestId('manage-columns-button').click();
+        await modal.locator('[name="column-options"]').click();
+        await superuserPage.getByTestId('manage-columns-save').click();
+
+        // Verify Settings column is visible again
+        await expect(
+          superuserPage.locator('th').getByText('Settings'),
+        ).toBeVisible();
+      });
+    });
   },
 );
