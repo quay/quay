@@ -36,6 +36,9 @@ import {useQuayState} from 'src/hooks/UseQuayState';
 import ManifestListSize from 'src/components/Table/ManifestListSize';
 import {useTagPullStatistics} from 'src/hooks/UseTags';
 import TagExpiration from './TagsTableExpiration';
+import {useManifestTracks, TrackEntry} from './useManifestTracks';
+import ManifestTrack from './ManifestTrack';
+import './Tags.css';
 
 function SubRow(props: SubRowProps) {
   return (
@@ -94,6 +97,27 @@ function SubRow(props: SubRowProps) {
       ) : (
         <Td />
       )}
+      {/* Track cells with continuing lines for expanded content */}
+      {Array.from({length: props.trackCount}).map((_, trackIdx) => {
+        const parentLineClass = props.getLineClass(trackIdx, props.parentRowIndex);
+        const trackEntry = props.getTrackEntry(trackIdx, props.parentRowIndex);
+        // Show middle line if parent row has start or middle (line continues through expanded content)
+        const showLine = parentLineClass === 'start' || parentLineClass === 'middle';
+        return (
+          <Td key={`subrow-track-${trackIdx}`} className="image-track-cell">
+            {showLine && trackEntry ? (
+              <div className="image-track">
+                <div
+                  className="image-track-line middle"
+                  style={{borderColor: trackEntry.color}}
+                />
+              </div>
+            ) : (
+              <div className="image-track" />
+            )}
+          </Td>
+        );
+      })}
       <Td
         colSpan={
           (props.config?.features?.IMAGE_PULL_STATS ? 4 : 2) +
@@ -113,13 +137,13 @@ function TagsTableRow(props: RowProps) {
   const location = useLocation();
 
   // Calculate colspan dynamically based on whether actions column and pull stats columns are shown
-  // Columns: expand(1) + select(1) + tag(1) + security(0-1) + size(1) + lastModified(1) + expires(1) + manifest(1) + pull(1) + pullStats(0-2) + actions(0-1)
-  // Expanded row content spans all except first two (expand + select)
+  // Columns: expand(1) + select(1) + tag(1) + security(0-1) + size(1) + lastModified(1) + expires(1) + manifest(1) + tracks(0-5) + pull(1) + pullStats(0-2) + actions(0-1)
+  // Expanded row content spans columns from select to manifest (not including tracks)
   const hasActions = !inReadOnlyMode && props.repoDetails?.can_write;
   const hasPullStats = config?.features?.IMAGE_PULL_STATS;
   const hasSecurity = config?.features?.SECURITY_SCANNER;
-  const expandedColspan =
-    7 + (hasPullStats ? 2 : 0) + (hasActions ? 1 : 0) - (hasSecurity ? 0 : 1);
+  // Span: select(1) + tag(1) + security(0-1) + size(1) + lastModified(1) + expires(1) + manifest(1) = 6 or 7
+  const expandedColspan = 6 + (hasSecurity ? 1 : 0);
 
   // Fetch pull statistics for this specific tag
   const {
@@ -217,6 +241,24 @@ function TagsTableRow(props: RowProps) {
         <Td dataLabel={ColumnNames.digest}>
           {tag.manifest_digest.substring(0, 19)}
         </Td>
+        {/* Track cells for manifest visualization */}
+        {Array.from({length: props.trackCount}).map((_, trackIdx) => {
+          const trackEntry = props.getTrackEntry(trackIdx, rowIndex);
+          const lineClass = props.getLineClass(trackIdx, rowIndex);
+          return (
+            <Td key={`track-${trackIdx}`} className="image-track-cell">
+              <ManifestTrack
+                trackEntry={trackEntry}
+                lineClass={lineClass}
+                rowIndex={rowIndex}
+                onClick={() =>
+                  trackEntry &&
+                  props.selectTagsByManifest(trackEntry.manifest_digest)
+                }
+              />
+            </Td>
+          );
+        })}
         <Conditional if={config?.features?.IMAGE_PULL_STATS}>
           <Td dataLabel={ColumnNames.lastPulled}>
             {isLoadingPullStats ? (
@@ -271,16 +313,20 @@ function TagsTableRow(props: RowProps) {
         </Conditional>
       </Tr>
       {tag.manifest_list
-        ? tag.manifest_list.manifests.map((manifest, rowIndex) => (
+        ? tag.manifest_list.manifests.map((manifest, manifestRowIndex) => (
             <SubRow
-              key={rowIndex}
+              key={manifestRowIndex}
               org={props.org}
               repo={props.repo}
               tag={tag}
-              rowIndex={rowIndex}
+              rowIndex={manifestRowIndex}
               manifest={manifest}
               isTagExpanded={props.isTagExpanded}
               config={config}
+              trackCount={props.trackCount}
+              parentRowIndex={rowIndex}
+              getTrackEntry={props.getTrackEntry}
+              getLineClass={props.getLineClass}
             />
           ))
         : null}
@@ -350,9 +396,30 @@ function TagsTableRow(props: RowProps) {
               )}
             </div>
           </Td>
-          <Conditional if={props.repoDetails?.can_write && !inReadOnlyMode}>
-            <Td />
-          </Conditional>
+          {/* Track cells with continuing lines for expanded content */}
+          {Array.from({length: props.trackCount}).map((_, trackIdx) => {
+            const parentLineClass = props.getLineClass(trackIdx, rowIndex);
+            const trackEntry = props.getTrackEntry(trackIdx, rowIndex);
+            // Show middle line if parent row has start or middle (line continues through expanded content)
+            const showLine =
+              parentLineClass === 'start' || parentLineClass === 'middle';
+            return (
+              <Td key={`expanded-track-${trackIdx}`} className="image-track-cell">
+                {showLine && trackEntry ? (
+                  <div className="image-track">
+                    <div
+                      className="image-track-line middle"
+                      style={{borderColor: trackEntry.color}}
+                    />
+                  </div>
+                ) : (
+                  <div className="image-track" />
+                )}
+              </Td>
+            );
+          })}
+          {/* Remaining columns: pull + pullStats + actions */}
+          <Td colSpan={(hasPullStats ? 3 : 1) + (hasActions ? 1 : 0)} />
         </Tr>
       )}
     </Tbody>
@@ -374,6 +441,23 @@ export default function TagsTable(props: TableProps) {
         : otherExpandedtagNames;
     });
   const isTagExpanded = (tag: Tag) => expandedTags.includes(tag.name);
+
+  // Calculate manifest tracks for visual grouping of tags with same digest
+  // Use allTags to track manifests across all pages
+  const {tracks, getTrackEntry, getLineClass, trackCount} = useManifestTracks(
+    props.allTags,
+  );
+
+  // Calculate page offset for global row index (page is 1-indexed)
+  const pageOffset = (props.page - 1) * props.perPage;
+
+  // Handler to select all tags sharing a manifest digest
+  const selectTagsByManifest = (manifestDigest: string) => {
+    const tagsWithManifest = props.allTags.filter(
+      (t) => t.manifest_digest === manifestDigest,
+    );
+    tagsWithManifest.forEach((t) => props.selectTag(t, undefined, true));
+  };
 
   return (
     <>
@@ -404,6 +488,10 @@ export default function TagsTable(props: TableProps) {
             <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
               Manifest
             </Th>
+            {/* Track header columns for manifest visualization */}
+            {Array.from({length: trackCount}).map((_, idx) => (
+              <Th key={`track-header-${idx}`} className="image-track-header" />
+            ))}
             <Conditional if={config?.features?.IMAGE_PULL_STATS}>
               <Th modifier="wrap" sort={props.getSortableSort?.(8)}>
                 Last Pulled
@@ -416,13 +504,13 @@ export default function TagsTable(props: TableProps) {
             <Th />
           </Tr>
         </Thead>
-        {props.tags.map((tag: Tag, rowIndex: number) => (
+        {props.tags.map((tag: Tag, localRowIndex: number) => (
           <TagsTableRow
-            key={rowIndex}
+            key={localRowIndex}
             org={props.org}
             repo={props.repo}
             tag={tag}
-            rowIndex={rowIndex}
+            rowIndex={pageOffset + localRowIndex}
             selectedTags={props.selectedTags}
             isTagExpanded={isTagExpanded}
             setTagExpanded={setTagExpanded}
@@ -431,6 +519,10 @@ export default function TagsTable(props: TableProps) {
             repoDetails={props.repoDetails}
             labelCache={props.labelCache}
             setLabelCache={props.setLabelCache}
+            trackCount={trackCount}
+            getTrackEntry={getTrackEntry}
+            getLineClass={getLineClass}
+            selectTagsByManifest={selectTagsByManifest}
           />
         ))}
       </Table>
@@ -447,6 +539,9 @@ interface TableProps {
   org: string;
   repo: string;
   tags: Tag[];
+  allTags: Tag[];
+  page: number;
+  perPage: number;
   loading: boolean;
   selectAllTags: (isSelecting: boolean) => void;
   selectedTags: string[];
@@ -471,6 +566,13 @@ interface RowProps {
   repoDetails: RepositoryDetails;
   labelCache?: Record<string, Label[]>;
   setLabelCache?: (cache: Record<string, Label[]>) => void;
+  trackCount: number;
+  getTrackEntry: (trackIndex: number, rowIndex: number) => TrackEntry | null;
+  getLineClass: (
+    trackIndex: number,
+    rowIndex: number,
+  ) => 'start' | 'middle' | 'end' | '';
+  selectTagsByManifest: (manifestDigest: string) => void;
 }
 
 interface SubRowProps {
@@ -483,6 +585,14 @@ interface SubRowProps {
   config: {
     features?: {
       IMAGE_PULL_STATS?: boolean;
+      SECURITY_SCANNER?: boolean;
     };
   } | null;
+  trackCount: number;
+  parentRowIndex: number;
+  getTrackEntry: (trackIndex: number, rowIndex: number) => TrackEntry | null;
+  getLineClass: (
+    trackIndex: number,
+    rowIndex: number,
+  ) => 'start' | 'middle' | 'end' | '';
 }

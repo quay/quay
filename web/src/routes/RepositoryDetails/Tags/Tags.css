@@ -33,3 +33,111 @@
     border-radius: var(--pf-v5-global--BorderRadius--sm);
     margin-right: var(--pf-v5-global--spacer--xs);
 }
+
+/* Image track styles for manifest visualization */
+.image-track-header {
+    width: 24px;
+    min-width: 24px;
+    max-width: 24px;
+    padding: 0 !important;
+}
+
+.image-track-cell {
+    width: 24px;
+    min-width: 24px;
+    max-width: 24px;
+    padding: 0 !important;
+    position: relative;
+    vertical-align: middle;
+}
+
+.image-track {
+    width: 24px;
+    height: 100%;
+    min-height: 48px;
+    position: relative;
+}
+
+.image-track-dot {
+    display: inline-block;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 5px;
+    width: 14px;
+    height: 14px;
+    background: white;
+    z-index: 300;
+    border: 3px solid;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.15s ease-in-out;
+    box-sizing: border-box;
+}
+
+.image-track-dot:hover {
+    transform: translateY(-50%) scale(1.15);
+}
+
+.image-track-dot:focus {
+    outline: 2px solid var(--pf-v5-global--primary-color--100, #0066cc);
+    outline-offset: 2px;
+}
+
+.image-track-line {
+    position: absolute;
+    left: 11px;
+    width: 0;
+    display: none;
+    border-left: 3px solid;
+    z-index: 200;
+}
+
+/* Start position: line goes from dot center down past bottom of cell */
+.image-track-line.start {
+    top: calc(50% + 7px);
+    bottom: -50%;
+    display: block;
+}
+
+/* Middle position: line spans beyond cell boundaries to connect */
+.image-track-line.middle {
+    top: -50%;
+    bottom: -50%;
+    display: block;
+}
+
+/* End position: line goes from past top of cell to dot center */
+.image-track-line.end {
+    top: -50%;
+    bottom: calc(50% + 7px);
+    display: block;
+}
+
+/* Expanded row track cell - needs special handling to fill cell height */
+.expanded-row .image-track-cell {
+    position: relative;
+}
+
+/* Position the line relative to the cell, not the inner div */
+.expanded-row .image-track {
+    position: static;
+    height: auto;
+    min-height: auto;
+}
+
+.expanded-row .image-track-line.middle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 11px;
+}
+
+/* Responsive: hide tracks on smaller screens */
+@media (max-width: 1000px) {
+    .image-track,
+    .image-track-header,
+    .image-track-cell {
+        display: none;
+    }
+}

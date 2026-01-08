@@ -306,3 +306,26 @@ export function extractTextFromReactNode(node: React.ReactNode): string {
   // Fallback for unknown types
   return '';
 }
+
+// Track colors for manifest visualization
+// Using D3 category10-like colors to match Angular implementation
+const TRACK_COLORS = [
+  '#1f77b4', // blue
+  '#ff7f0e', // orange
+  '#2ca02c', // green
+  '#d62728', // red
+  '#9467bd', // purple
+  '#8c564b', // brown
+  '#e377c2', // pink
+  '#7f7f7f', // gray
+  '#bcbd22', // olive
+  '#17becf', // cyan
+];
+
+/**
+ * Get a color for a manifest track based on its index.
+ * Colors cycle through D3-like category colors.
+ */
+export function getTrackColor(index: number): string {
+  return TRACK_COLORS[index % TRACK_COLORS.length];
+}
