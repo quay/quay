@@ -741,6 +741,9 @@ type TestFixtures = {
 
   // Auto-fixture: skips tests based on @feature: tags (runs automatically)
   _autoSkipByFeature: void;
+
+  // Auto-fixture: skips tests based on @auth: tags (runs automatically)
+  _autoSkipByAuth: void;
 };
 
 /**
@@ -936,6 +939,43 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         const [shouldSkip, reason] = skipUnlessFeature(
           quayConfig,
           ...featureTags,
+        );
+        testInfo.skip(shouldSkip, reason);
+      }
+
+      await use();
+    },
+    {auto: true},
+  ],
+
+  // =========================================================================
+  // Auto-fixture: Skip tests based on @auth: tags
+  // =========================================================================
+
+  /**
+   * Automatically skip tests that have @auth:X tags when the
+   * Quay auth type doesn't match.
+   *
+   * @example
+   * ```typescript
+   * test.describe('Password Change', {tag: ['@auth:Database']}, () => {
+   *   test('changes password', async ({authenticatedPage}) => {
+   *     // Auto-skipped if auth type is not Database!
+   *   });
+   * });
+   * ```
+   */
+  _autoSkipByAuth: [
+    async ({quayConfig}, use, testInfo) => {
+      // Extract auth types from @auth:X tags
+      const authTags = testInfo.tags
+        .filter((tag) => tag.startsWith('@auth:'))
+        .map((tag) => tag.replace('@auth:', '') as QuayAuthType);
+
+      if (authTags.length > 0) {
+        const [shouldSkip, reason] = skipUnlessAuthType(
+          quayConfig,
+          ...authTags,
         );
         testInfo.skip(shouldSkip, reason);
       }

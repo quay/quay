@@ -519,7 +519,7 @@ test.describe(
             }),
           ).toBeVisible();
           await expect(
-            readonlyPage.getByRole('link', {name: otherOrg.name}),
+            readonlyPage.getByRole('link', {name: otherOrg.name, exact: true}),
           ).toBeVisible();
 
           // Settings column header should NOT exist for read-only superusers
