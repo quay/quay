@@ -4,9 +4,13 @@
 
 
 <a name="v3.16.1"></a>
-## [v3.16.1] - 2026-01-06
+## [v3.16.1] - 2026-01-08
 ### [Redhat-3.16] Deps
 - [c1129abb](https://github.com/quay/quay/commit/c1129abb242f6e4caa604a8fe99e9342ab2edeb9): updated node-forge version to 1.3.2 (PROJQUAY-10108) ([#4778](https://github.com/quay/quay/issues/4778))
+### [Redhat-3.16] Fix(Nginx)
+- [8338dbdf](https://github.com/quay/quay/commit/8338dbdfe76e28cfda044437e838d1b8557ce1d7): route /buildlogs to backend for React UI (PROJQUAY-6767) ([#4792](https://github.com/quay/quay/issues/4792))
+### [Redhat-3.16] Fix(Web)
+- [69183b68](https://github.com/quay/quay/commit/69183b68b3922452b233bf6d5ef76895e361257b): prevent signin page redirect loop (PROJQUAY-10090) ([#4782](https://github.com/quay/quay/issues/4782))
 
 <a name="v3.16.0"></a>
 ## [v3.16.0] - 2025-12-04
