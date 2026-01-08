@@ -30,7 +30,7 @@
     "react": "^18.2.0",
     "react-hook-form": "^7.60.0",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^6.15.0",
+    "react-router-dom": "^6.30.3",
     "recoil": "^0.7.7",
     "recoil-persist": "^4.2.0",
     "rehype-raw": "^7.0.0",
