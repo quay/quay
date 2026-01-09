@@ -1418,6 +1418,80 @@ export class ApiClient {
     }
   }
 
+  // Build methods
+
+  /**
+   * Start a Dockerfile build for a repository.
+   * This creates a simple build from a Dockerfile content.
+   */
+  async startDockerfileBuild(
+    namespace: string,
+    repo: string,
+    dockerfileContent: string = 'FROM scratch\n',
+  ): Promise<{id: string}> {
+    const token = await this.fetchToken();
+
+    // Step 1: Get a file drop URL
+    const fileDropResponse = await this.request.post(
+      `${API_URL}/api/v1/filedrop/`,
+      {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          mimeType: 'application/octet-stream',
+        },
+      },
+    );
+
+    if (!fileDropResponse.ok()) {
+      const body = await fileDropResponse.text();
+      throw new Error(`Failed to get file drop URL: ${fileDropResponse.status()} - ${body}`);
+    }
+
+    const fileDropData = await fileDropResponse.json();
+    const fileId = fileDropData.file_id;
+    const uploadUrl = fileDropData.url;
+
+    // Step 2: Upload the Dockerfile content
+    const uploadResponse = await this.request.put(uploadUrl, {
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+      data: dockerfileContent,
+    });
+
+    if (!uploadResponse.ok()) {
+      const body = await uploadResponse.text();
+      throw new Error(`Failed to upload Dockerfile: ${uploadResponse.status()} - ${body}`);
+    }
+
+    // Step 3: Start the build
+    const buildResponse = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/build/`,
+      {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          file_id: fileId,
+        },
+      },
+    );
+
+    if (!buildResponse.ok()) {
+      const body = await buildResponse.text();
+      throw new Error(
+        `Failed to start build for ${namespace}/${repo}: ${buildResponse.status()} - ${body}`,
+      );
+    }
+
+    return buildResponse.json();
+  }
+
   // Proxy cache methods
 
   async getProxyCacheConfig(orgName: string): Promise<ProxyCacheConfig | null> {

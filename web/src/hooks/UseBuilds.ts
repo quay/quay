@@ -38,6 +38,20 @@ export function useBuilds(
   };
 }
 
+export function useRecentBuilds(org: string, repo: string, limit: number = 3) {
+  const {data, isError, error, isLoading} = useQuery(
+    ['recentbuilds', org, repo, String(limit)],
+    () => fetchBuilds(org, repo, null, limit),
+  );
+
+  return {
+    builds: data,
+    isError,
+    error,
+    isLoading,
+  };
+}
+
 export function useBuild(
   org: string,
   repo: string,

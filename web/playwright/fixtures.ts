@@ -118,6 +118,15 @@ export interface CreatedQuota {
 }
 
 /**
+ * Created build info
+ */
+export interface CreatedBuild {
+  namespace: string;
+  repoName: string;
+  buildId: string;
+}
+
+/**
  * API client with auto-cleanup tracking.
  *
  * All resources created via this client are automatically
@@ -579,6 +588,34 @@ export class TestApi {
     });
 
     return {orgName: username, quotaId, limitBytes};
+  }
+
+  /**
+   * Start a Dockerfile build for a repository.
+   * Creates a simple build that will appear in the Recent Builds section.
+   * No cleanup needed as builds are tied to the repository lifecycle.
+   *
+   * @param namespace - Organization or username that owns the repository
+   * @param repoName - Repository name
+   * @param dockerfileContent - Optional Dockerfile content (defaults to 'FROM scratch')
+   */
+  async build(
+    namespace: string,
+    repoName: string,
+    dockerfileContent = 'FROM scratch\n',
+  ): Promise<CreatedBuild> {
+    const result = await this.client.startDockerfileBuild(
+      namespace,
+      repoName,
+      dockerfileContent,
+    );
+
+    // No cleanup needed - builds are deleted when the repository is deleted
+    return {
+      namespace,
+      repoName,
+      buildId: result.id,
+    };
   }
 
   /**
