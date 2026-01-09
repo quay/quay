@@ -18,7 +18,7 @@
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^12.1.4",
     "@testing-library/user-event": "^14.4.3",
-    "@types/jest": "^29.5.3",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.6.5",
     "@types/react": "^18.2.0",
     "axios": "^1.12.0",
