@@ -137,6 +137,16 @@ def get_namespace_quota_limit(quota, limit_id):
         return None
 
 
+def get_namespaces_with_quotas():
+    namespaces_with_quotas = (
+        UserOrganizationQuota.select(User.id, User.username, UserOrganizationQuota.limit_bytes)
+        .join(User)
+        .dicts()
+    )
+
+    return list(namespaces_with_quotas)
+
+
 def create_namespace_quota_limit(quota, quota_type, percent_of_limit):
     if not percent_of_limit > 0 or not percent_of_limit <= 100:
         raise InvalidNamespaceQuotaLimit("Quota limit threshold must be between 1 and 100")
