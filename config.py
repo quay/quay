@@ -644,6 +644,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether users can view and change their tag expiration.
     FEATURE_CHANGE_TAG_EXPIRATION = True
 
+    # Feature Flag: Whether tag immutability enforcement is enabled.
+    FEATURE_IMMUTABLE_TAGS = True
+
     # Defines a secret for enabling the health-check endpoint's debug information.
     ENABLE_HEALTH_DEBUG_SECRET = None
 
