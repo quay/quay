@@ -85,6 +85,7 @@ export default function TeamsAndMembershipList() {
               buttonId={TableModeType.Teams}
               isSelected={tableMode == TableModeType.Teams}
               onChange={onTableModeChange}
+              data-testid="teams-tab"
             />
             <ToggleGroupItem
               text="Members View"
@@ -92,6 +93,7 @@ export default function TeamsAndMembershipList() {
               isSelected={tableMode == TableModeType.Members}
               onChange={onTableModeChange}
               isDisabled={!organization.is_admin}
+              data-testid="members-tab"
             />
             <ToggleGroupItem
               text="Collaborators View"
@@ -99,6 +101,7 @@ export default function TeamsAndMembershipList() {
               isSelected={tableMode == TableModeType.Collaborators}
               onChange={onTableModeChange}
               isDisabled={!organization.is_admin}
+              data-testid="collaborators-tab"
             />
           </ToggleGroup>
         </ToolbarItem>
