@@ -46,7 +46,7 @@
     "react-lightweight-tooltip": "1.x",
     "react-modal": "3.x",
     "react-redux": "5.x",
-    "react-router-dom": "4.x",
+    "react-router-dom": "7.x",
     "react-tagsinput": "3.19.x",
     "react-transition-group": "2.3.x",
     "react-virtualized": "9.x",
