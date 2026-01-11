@@ -303,3 +303,25 @@ def timed_blueprint(bp, get_app=None):
 
     bp.after_request(_time_after_request())
     return bp
+
+
+# LDAP Pool connections
+ldappool_connections_max = Gauge(
+    "quay_ldappool_connections_max", "max number of LDAPpool connections configured"
+)
+ldappool_connect_calls = Counter(
+    "quay_ldappool_connect_calls",
+    "number of connect() calls made by LDAPpool",
+)
+ldappool_auth_calls_success = Counter(
+    "quay_ldappool_auth_calls_success",
+    "number of successful authentication calls made by LDAPpool",
+)
+ldappool_auth_calls_failure = Counter(
+    "quay_ldappool_auth_calls_failure",
+    "number of failed authentication calls made by LDAPpool",
+)
+ldappool_close_calls = Counter(
+    "quay_ldappool_close_calls",
+    "number of close() calls made by LDAPpool",
+)

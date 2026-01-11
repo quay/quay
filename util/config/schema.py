@@ -1701,6 +1701,63 @@ CONFIG_SCHEMA = {
             "description": "Comma separated list of urls to exclude from tracing",
             "x-example": "api/v1/.*,v2/([^/]+(/[^/]+)+)/(tags|blobs),v2/_catalog,v2/auth",
         },
+        "FEATURE_LDAPPOOL": {
+            "type": "boolean",
+            "description": "Whether to enable LDAP connection pooling on quay. Defaults to False",
+            "x-example": False,
+        },
+        "LDAP_POOL_MAX": {
+            "type": "number",
+            "description": "Maximum connections per worker in pool. Defaults to 50",
+            "x-example": 50,
+            "x-reference": None,
+        },
+        "LDAP_POOL_PARAMS": {
+            "type": "object",
+            "description": "LDAP pool connection parameters",
+            "properties": {
+                "referrals": {
+                    "type": "boolean",
+                    "description": "Follow LDAP referrals. Defaults to False as the authentication is not reliable by RFC definition",
+                    "x-example": False,
+                },
+                "network_timeout": {
+                    "type": "number",
+                    "description": "Connection timeout in seconds. Defaults to 10.0",
+                    "x-example": 10.0,
+                },
+                "timeout": {
+                    "type": "number",
+                    "description": "LDAP Statement timeout in seconds. Defaults to 10.0",
+                    "x-example": 10.0,
+                },
+                "keepalive_idle": {
+                    "type": "integer",
+                    "description": "Keepalive idle setting for LDAP connections. Defaults to 10",
+                    "x-example": 10,
+                },
+                "keepalive_interval": {
+                    "type": "integer",
+                    "description": "Keepalive interval setting for LDAP connections. Defaults to 5",
+                    "x-example": 5,
+                },
+                "keepalive_probes": {
+                    "type": "integer",
+                    "description": "Keepalive probes before considering connection stale. Defaults to 3",
+                    "x-example": 3,
+                },
+                "allow_tls_fallback": {
+                    "type": "boolean",
+                    "description": "Allow TLS fallback on LDAP connections. Defaults to False",
+                    "x-example": False,
+                },
+                "lock_timeout": {
+                    "type": "number",
+                    "description": "Locking timeout in seconds. Do not set unless instructed by Support. Defaults to 15.0 seconds",
+                    "x-example": 15.0,
+                },
+            },
+        },
     },
     "DEBUG": {
         "type": "boolean",
