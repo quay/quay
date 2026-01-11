@@ -7,7 +7,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.2
 	github.com/aws/aws-sdk-go v1.50.20
 	github.com/creasty/defaults v1.7.0
-	github.com/dave/jennifer v1.7.0
+	github.com/dave/jennifer v1.7.1
 	github.com/go-ldap/ldap/v3 v3.4.11
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.7.1
