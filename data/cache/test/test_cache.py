@@ -113,7 +113,9 @@ def test_memcache_handle_large_value():
             call_args = mock_warning.call_args[0]
 
             assert any("foo" in arg for arg in call_args if isinstance(arg, str))
-            assert not any(large_value in arg for arg in call_args if isinstance(arg, str))
+            assert not any(
+                large_value in arg for arg in call_args if isinstance(arg, str)
+            )
 
 
 def test_memcache_should_cache():
@@ -191,7 +193,6 @@ def test_redis_cache():
         ),
     ],
 )
-
 def test_redis_cache_config(cache_config, expected_exception):
     mock_cluster = MagicMock(spec=RedisCluster)
     with patch.dict(REDIS_DRIVERS, {"rediscluster": mock_cluster}):
@@ -204,6 +205,8 @@ def test_redis_cache_config(cache_config, expected_exception):
             if cache_config["engine"] == "rediscluster":
                 mock_cluster.assert_called_once()
                 call_kwargs = mock_cluster.call_args[1]
-                assert all(isinstance(n, ClusterNode) for n in call_kwargs["startup_nodes"])
+                assert all(
+                    isinstance(n, ClusterNode) for n in call_kwargs["startup_nodes"]
+                )
             else:
                 assert isinstance(rc, REDIS_DRIVERS[cache_config["engine"]])
