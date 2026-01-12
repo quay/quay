@@ -112,8 +112,9 @@ describe('Org List Page', () => {
   it('Pagination', () => {
     cy.visit('/organization');
 
+    // Wait for table to load before checking pagination
+    cy.get('td[data-label="Name"]', {timeout: 30000}).should('have.length', 20);
     cy.contains('1 - 20 of 30').should('exist');
-    cy.get('td[data-label="Name"]').should('have.length', 20);
 
     // cycle through the pages
     cy.get('button[aria-label="Go to next page"]').first().click();

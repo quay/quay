@@ -629,15 +629,15 @@ describe('Repository Details Page', () => {
 
     // remove AM/PM suffixes because the TimePicker adds those automatically
     cy.contains('Change Expiration').click();
+    // Wait for success message before checking table
+    cy.contains(`Successfully set expiration for tag latest to ${oneMonthFormatLong}`).should(
+      'exist',
+    );
     cy.get('tbody:contains("latest")')
       .first()
       .within(() => {
         cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
       });
-
-    cy.contains(
-      `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
-    ).should('exist');
 
     // Reset back to Never
     cy.get('tbody:contains("latest")')
@@ -697,14 +697,15 @@ describe('Repository Details Page', () => {
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
+    // Wait for success message before checking table
+    cy.contains(
+      `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
+    ).should('exist');
     cy.get('tbody:contains("latest")')
       .first()
       .within(() => {
         cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
       });
-    cy.contains(
-      `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
-    ).should('exist');
   });
 
   it('changes multiple tag expirations', () => {
@@ -745,14 +746,15 @@ describe('Repository Details Page', () => {
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
+    // Wait for success message before checking table
+    cy.contains(
+      `Successfully updated tag expirations to ${oneMonthFormatLong}`,
+    ).should('exist');
     cy.get('tbody:contains("latest")')
       .first()
       .within(() => {
         cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
       });
-    cy.contains(
-      `Successfully updated tag expirations to ${oneMonthFormatLong}`,
-    ).should('exist');
   });
 
   it('alerts on failure to change expiration', () => {
@@ -841,7 +843,7 @@ describe('Tag history Tab', () => {
   it('renders history list', () => {
     cy.visit('/repository/user1/hello-world');
     cy.contains('Tag history').click();
-    cy.get('#tag-history-table > tr').each(($e) => {
+    cy.get('#tag-history-table > tr').each(($e, index) => {
       cy.wrap($e).within(() => {
         const expectedValues = tagHistoryRows[index];
         cy.get(`[data-label="tag-change"]`).should(
