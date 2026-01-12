@@ -6,6 +6,7 @@ which allow manifest lists/indexes to have optional architectures that can be mi
 """
 
 import json
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -277,10 +278,14 @@ class TestSparseIndexEnabled:
         [
             pytest.param(["amd64"], "arm64", True, id="arm64_optional_when_amd64_required"),
             pytest.param(["amd64"], "ppc64le", True, id="ppc64le_optional_when_amd64_required"),
-            pytest.param(["amd64", "arm64"], "s390x", True, id="s390x_optional_when_amd64_arm64_required"),
+            pytest.param(
+                ["amd64", "arm64"], "s390x", True, id="s390x_optional_when_amd64_arm64_required"
+            ),
             pytest.param(["amd64"], "amd64", False, id="amd64_required"),
             pytest.param(["arm64"], "arm64", False, id="arm64_required"),
-            pytest.param(["amd64", "arm64", "ppc64le"], "ppc64le", False, id="ppc64le_in_required_list"),
+            pytest.param(
+                ["amd64", "arm64", "ppc64le"], "ppc64le", False, id="ppc64le_in_required_list"
+            ),
         ],
     )
     def test_architecture_required_matrix(self, required_archs, manifest_arch, should_skip):
@@ -518,15 +523,16 @@ class TestDockerSchema2ManifestListIntegration:
             }
         )
 
-        manifest_list = DockerSchema2ManifestList(
-            Bytes.for_string_or_unicode(manifest_list_bytes)
-        )
-        manifests = manifest_list.manifests(retriever)
+        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
 
-        assert len(manifests) == 3
-        for manifest in manifests:
-            assert manifest.manifest_obj is not None
-            assert isinstance(manifest.manifest_obj, DockerSchema2Manifest)
+        # Explicitly test with sparse index disabled (default behavior)
+        with patch("data.model.config.app_config", {"FEATURE_SPARSE_INDEX": False}):
+            manifests = manifest_list.manifests(retriever)
+
+            assert len(manifests) == 3
+            for manifest in manifests:
+                assert manifest.manifest_obj is not None
+                assert isinstance(manifest.manifest_obj, DockerSchema2Manifest)
 
     def test_manifest_list_with_missing_optional_arch(self, manifest_list_bytes):
         """Test manifest list with sparse index allowing missing optional architectures."""
@@ -537,9 +543,7 @@ class TestDockerSchema2ManifestListIntegration:
             }
         )
 
-        manifest_list = DockerSchema2ManifestList(
-            Bytes.for_string_or_unicode(manifest_list_bytes)
-        )
+        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
 
         config = {
             "FEATURE_SPARSE_INDEX": True,
@@ -565,9 +569,7 @@ class TestDockerSchema2ManifestListIntegration:
             }
         )
 
-        manifest_list = DockerSchema2ManifestList(
-            Bytes.for_string_or_unicode(manifest_list_bytes)
-        )
+        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
 
         config = {
             "FEATURE_SPARSE_INDEX": True,
@@ -591,9 +593,7 @@ class TestDockerSchema2ManifestListIntegration:
             }
         )
 
-        manifest_list = DockerSchema2ManifestList(
-            Bytes.for_string_or_unicode(manifest_list_bytes)
-        )
+        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
 
         config = {
             "FEATURE_SPARSE_INDEX": True,
@@ -710,8 +710,6 @@ class TestDebugLogging:
 
     def test_logs_debug_message_for_skipped_manifest(self, caplog):
         """Test that debug message is logged when manifest is skipped."""
-        import logging
-
         manifest_data = create_manifest_data(
             digest="sha256:testdigest",
             architecture="arm64",

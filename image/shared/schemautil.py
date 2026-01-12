@@ -145,9 +145,8 @@ class LazyManifestLoader(object):
 
         if len(manifest_bytes) != size:
             raise ManifestException(
-                "Size of manifest does not match that retrieved: %s vs %s",
-                len(manifest_bytes),
-                size,
+                "Size of manifest does not match that retrieved: %s vs %s"
+                % (len(manifest_bytes), size)
             )
 
         content_type = self._manifest_data[self._media_type_key]
