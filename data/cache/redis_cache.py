@@ -1,5 +1,5 @@
 from redis import RedisError, StrictRedis
-from redis.cluster import RedisCluster
+from redis.cluster import ClusterNode, RedisCluster
 
 
 class ReadEndpointSupportedRedis(object):
@@ -85,5 +85,17 @@ def redis_cache_from_config(cache_config):
     redis_config = cache_config.get("redis_config", None)
     if not redis_config:
         raise ValueError("Invalid Redis config for %s" % driver)
+
+    if driver == "rediscluster":
+        redis_config = redis_config.copy()
+        if "startup_nodes" in redis_config:
+            # redis-py expects a different format from redis-py-cluster hence this conversion is required
+            redis_config["startup_nodes"] = [
+                ClusterNode(host=node["host"], port=int(node["port"]))
+                for node in redis_config["startup_nodes"]
+            ]
+        if "readonly_mode" in redis_config:
+            # `readonly_mode` was renamed to `read_from_replicas` in redis-py
+            redis_config["read_from_replicas"] = redis_config.pop("readonly_mode")
 
     return driver_cls(**redis_config)
