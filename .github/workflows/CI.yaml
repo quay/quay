@@ -191,7 +191,7 @@ jobs:
         cache: 'pip'
         cache-dependency-path: |
           requirements.txt
-          requirements-dev.txt        
+          requirements-dev.txt
 
     - name: Install dependencies
       run: |
@@ -336,7 +336,7 @@ jobs:
         cache: 'pip'
         cache-dependency-path: |
           requirements.txt
-          requirements-dev.txt        
+          requirements-dev.txt
 
     - name: Install dependencies
       run: |
