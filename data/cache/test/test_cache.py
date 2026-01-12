@@ -206,3 +206,21 @@ def test_redis_cache_config(cache_config, expected_exception):
                 assert all(isinstance(n, ClusterNode) for n in call_kwargs["startup_nodes"])
             else:
                 assert isinstance(rc, REDIS_DRIVERS[cache_config["engine"]])
+
+def test_redis_cluster_readonly_mode_backwards_compat():
+    """Test that legacy readonly_mode is converted to read_from_replicas."""
+    cache_config = {
+        "engine": "rediscluster",
+        "redis_config": {
+            "startup_nodes": [{"host": "127.0.0.1", "port": "6379"}],
+            "readonly_mode": True,
+        },
+    }
+    mock_cluster = MagicMock(spec=RedisCluster)
+    with patch.dict(REDIS_DRIVERS, {"rediscluster": mock_cluster}):
+        redis_cache_from_config(cache_config)
+        mock_cluster.assert_called_once()
+        call_kwargs = mock_cluster.call_args[1]
+        assert "readonly_mode" not in call_kwargs
+        assert call_kwargs["read_from_replicas"] is True
+
