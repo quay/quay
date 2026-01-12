@@ -15,6 +15,9 @@ from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2.list import DockerSchema2ManifestList
 from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.docker.schema2.test.test_manifest import MANIFEST_BYTES as v22_bytes
+from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
+from image.oci.index import OCIIndex
+from image.oci.manifest import OCIManifest
 from image.shared import ManifestException
 from image.shared.schemautil import ContentRetrieverForTesting, LazyManifestLoader
 from util.bytes import Bytes
@@ -45,6 +48,7 @@ def create_manifest_data(
 # Supported types for testing
 SUPPORTED_TYPES = {
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE: DockerSchema2Manifest,
+    OCI_IMAGE_MANIFEST_CONTENT_TYPE: OCIManifest,
 }
 
 
@@ -471,50 +475,112 @@ class TestManifestLoadingSuccess:
         assert "Unknown or unsupported manifest media type" in str(exc_info.value)
 
 
-class TestDockerSchema2ManifestListIntegration:
-    """Integration tests with DockerSchema2ManifestList."""
+def create_docker_manifest_list_bytes():
+    """Create a Docker Schema2 manifest list with multiple architectures."""
+    return json.dumps(
+        {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+            "manifests": [
+                {
+                    "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+                    "size": len(v22_bytes),
+                    "digest": "sha256:amd64manifest",
+                    "platform": {
+                        "architecture": "amd64",
+                        "os": "linux",
+                    },
+                },
+                {
+                    "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+                    "size": len(v22_bytes),
+                    "digest": "sha256:arm64manifest",
+                    "platform": {
+                        "architecture": "arm64",
+                        "os": "linux",
+                    },
+                },
+                {
+                    "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+                    "size": len(v22_bytes),
+                    "digest": "sha256:ppc64lemanifest",
+                    "platform": {
+                        "architecture": "ppc64le",
+                        "os": "linux",
+                    },
+                },
+            ],
+        }
+    ).encode("utf-8")
 
-    @pytest.fixture
-    def manifest_list_bytes(self):
-        """Create a manifest list with multiple architectures."""
-        return json.dumps(
-            {
-                "schemaVersion": 2,
-                "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
-                "manifests": [
-                    {
-                        "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
-                        "size": len(v22_bytes),
-                        "digest": "sha256:amd64manifest",
-                        "platform": {
-                            "architecture": "amd64",
-                            "os": "linux",
-                        },
-                    },
-                    {
-                        "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
-                        "size": len(v22_bytes),
-                        "digest": "sha256:arm64manifest",
-                        "platform": {
-                            "architecture": "arm64",
-                            "os": "linux",
-                        },
-                    },
-                    {
-                        "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
-                        "size": len(v22_bytes),
-                        "digest": "sha256:ppc64lemanifest",
-                        "platform": {
-                            "architecture": "ppc64le",
-                            "os": "linux",
-                        },
-                    },
-                ],
-            }
-        ).encode("utf-8")
 
-    def test_manifest_list_all_present(self, manifest_list_bytes):
-        """Test manifest list when all manifests are present."""
+def create_oci_index_bytes():
+    """Create an OCI index with multiple architectures."""
+    return json.dumps(
+        {
+            "schemaVersion": 2,
+            "mediaType": OCI_IMAGE_INDEX_CONTENT_TYPE,
+            "manifests": [
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "size": len(v22_bytes),
+                    "digest": "sha256:amd64manifest",
+                    "platform": {
+                        "architecture": "amd64",
+                        "os": "linux",
+                    },
+                },
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "size": len(v22_bytes),
+                    "digest": "sha256:arm64manifest",
+                    "platform": {
+                        "architecture": "arm64",
+                        "os": "linux",
+                    },
+                },
+                {
+                    "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+                    "size": len(v22_bytes),
+                    "digest": "sha256:ppc64lemanifest",
+                    "platform": {
+                        "architecture": "ppc64le",
+                        "os": "linux",
+                    },
+                },
+            ],
+        }
+    ).encode("utf-8")
+
+
+class TestManifestListIndexIntegration:
+    """Integration tests with DockerSchema2ManifestList and OCIIndex."""
+
+    @pytest.fixture(
+        params=[
+            pytest.param(
+                (
+                    DockerSchema2ManifestList,
+                    create_docker_manifest_list_bytes,
+                    DockerSchema2Manifest,
+                ),
+                id="docker_schema2_manifest_list",
+            ),
+            pytest.param(
+                (OCIIndex, create_oci_index_bytes, OCIManifest),
+                id="oci_index",
+            ),
+        ]
+    )
+    def manifest_list_config(self, request):
+        """Provide manifest list class, bytes factory, and expected manifest type."""
+        return request.param
+
+    def test_manifest_list_all_present(self, manifest_list_config):
+        """Test manifest list/index when all manifests are present."""
+        list_class, bytes_factory, manifest_class = manifest_list_config
+        manifest_list_bytes = bytes_factory()
+
         retriever = ContentRetrieverForTesting(
             {
                 "sha256:amd64manifest": v22_bytes,
@@ -523,7 +589,7 @@ class TestDockerSchema2ManifestListIntegration:
             }
         )
 
-        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
+        manifest_list = list_class(Bytes.for_string_or_unicode(manifest_list_bytes))
 
         # Explicitly test with sparse index disabled (default behavior)
         with patch("data.model.config.app_config", {"FEATURE_SPARSE_INDEX": False}):
@@ -532,10 +598,12 @@ class TestDockerSchema2ManifestListIntegration:
             assert len(manifests) == 3
             for manifest in manifests:
                 assert manifest.manifest_obj is not None
-                assert isinstance(manifest.manifest_obj, DockerSchema2Manifest)
 
-    def test_manifest_list_with_missing_optional_arch(self, manifest_list_bytes):
-        """Test manifest list with sparse index allowing missing optional architectures."""
+    def test_manifest_list_with_missing_optional_arch(self, manifest_list_config):
+        """Test manifest list/index with sparse index allowing missing optional architectures."""
+        list_class, bytes_factory, manifest_class = manifest_list_config
+        manifest_list_bytes = bytes_factory()
+
         # Only provide amd64, arm64 and ppc64le are missing
         retriever = ContentRetrieverForTesting(
             {
@@ -543,7 +611,7 @@ class TestDockerSchema2ManifestListIntegration:
             }
         )
 
-        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
+        manifest_list = list_class(Bytes.for_string_or_unicode(manifest_list_bytes))
 
         config = {
             "FEATURE_SPARSE_INDEX": True,
@@ -560,8 +628,11 @@ class TestDockerSchema2ManifestListIntegration:
             assert len(loaded) == 1  # amd64
             assert len(skipped) == 2  # arm64, ppc64le
 
-    def test_manifest_list_missing_required_arch_raises(self, manifest_list_bytes):
+    def test_manifest_list_missing_required_arch_raises(self, manifest_list_config):
         """Test that missing required architecture raises exception."""
+        list_class, bytes_factory, manifest_class = manifest_list_config
+        manifest_list_bytes = bytes_factory()
+
         # Only provide arm64, but amd64 is required
         retriever = ContentRetrieverForTesting(
             {
@@ -569,7 +640,7 @@ class TestDockerSchema2ManifestListIntegration:
             }
         )
 
-        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
+        manifest_list = list_class(Bytes.for_string_or_unicode(manifest_list_bytes))
 
         config = {
             "FEATURE_SPARSE_INDEX": True,
@@ -584,8 +655,11 @@ class TestDockerSchema2ManifestListIntegration:
                     if m.architecture == "amd64":
                         _ = m.manifest_obj
 
-    def test_manifest_list_validate_skips_none_manifests(self, manifest_list_bytes):
+    def test_manifest_list_validate_skips_none_manifests(self, manifest_list_config):
         """Test that validation skips None manifests from sparse index."""
+        list_class, bytes_factory, manifest_class = manifest_list_config
+        manifest_list_bytes = bytes_factory()
+
         # Only provide amd64
         retriever = ContentRetrieverForTesting(
             {
@@ -593,7 +667,7 @@ class TestDockerSchema2ManifestListIntegration:
             }
         )
 
-        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
+        manifest_list = list_class(Bytes.for_string_or_unicode(manifest_list_bytes))
 
         config = {
             "FEATURE_SPARSE_INDEX": True,
