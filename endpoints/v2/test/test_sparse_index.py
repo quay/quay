@@ -553,8 +553,8 @@ def create_oci_index_bytes():
     ).encode("utf-8")
 
 
-class TestManifestListIndexIntegration:
-    """Integration tests with DockerSchema2ManifestList and OCIIndex."""
+class TestManifestListIndex:
+    """Unit tests for sparse index with DockerSchema2ManifestList and OCIIndex."""
 
     @pytest.fixture(
         params=[
