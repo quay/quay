@@ -2,7 +2,6 @@ from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
-from rediscluster.nodemanager import NodeManager
 
 from data.cache import (
     InMemoryDataModelCache,
@@ -191,12 +190,19 @@ def test_redis_cache():
         ),
     ],
 )
+
 def test_redis_cache_config(cache_config, expected_exception):
-    with patch("rediscluster.nodemanager.NodeManager.initialize", MagicMock):
+    mock_cluster = MagicMock(spec=RedisCluster)
+    with patch.dict(REDIS_DRIVERS, {"rediscluster": mock_cluster}):
         if expected_exception is not None:
             with pytest.raises(expected_exception[0]) as e:
                 rc = redis_cache_from_config(cache_config)
             assert str(e.value) == expected_exception[1]
         else:
             rc = redis_cache_from_config(cache_config)
-            assert isinstance(rc, REDIS_DRIVERS[cache_config["engine"]])
+            if cache_config["engine"] == "rediscluster":
+                mock_cluster.assert_called_once()
+                call_kwargs = mock_cluster.call_args[1]
+                assert all(isinstance(n, ClusterNode) for n in call_kwargs["startup_nodes"])
+            else:
+                assert isinstance(rc, REDIS_DRIVERS[cache_config["engine"]])

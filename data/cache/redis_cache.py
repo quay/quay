@@ -1,5 +1,5 @@
 from redis import RedisError, StrictRedis
-from rediscluster import RedisCluster
+from redis.cluster import RedisCluster
 
 
 class ReadEndpointSupportedRedis(object):
@@ -71,11 +71,10 @@ def redis_cache_from_config(cache_config):
           readonly_mode: true
 
     rediscluster uses the same client as redis internally for commands.
-    Anything that can be set in StricRedis() can also be set under the redis_config structure.
+    Anything that can be set in StrictRedis() can also be set under the redis_config structure.
 
-    NOTE: Known issue - To allow read from replicas in redis cluster mode, set read_from_replicas instead
-          of readonly_mode.
-          Ref: https://github.com/Grokzen/redis-py-cluster/issues/339
+    NOTE: redis-py 4.1+ has built-in cluster support. Use read_from_replicas=True to allow
+          reading from replicas in cluster mode.
     """
     driver = cache_config.get("engine", None)
     if driver is None or driver.lower() not in REDIS_DRIVERS.keys():
