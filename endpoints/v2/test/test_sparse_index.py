@@ -545,7 +545,7 @@ class TestDockerSchema2ManifestListIntegration:
             "FEATURE_SPARSE_INDEX": True,
             "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],  # Only amd64 is required
         }
-        with patch("image.docker.schema2.list.config.app_config", config):
+        with patch("data.model.config.app_config", config):
             manifests = manifest_list.manifests(retriever)
             assert len(manifests) == 3
 
@@ -573,7 +573,7 @@ class TestDockerSchema2ManifestListIntegration:
             "FEATURE_SPARSE_INDEX": True,
             "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
         }
-        with patch("image.docker.schema2.list.config.app_config", config):
+        with patch("data.model.config.app_config", config):
             manifests = manifest_list.manifests(retriever)
 
             # Should raise when accessing the amd64 manifest
@@ -599,7 +599,7 @@ class TestDockerSchema2ManifestListIntegration:
             "FEATURE_SPARSE_INDEX": True,
             "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
         }
-        with patch("image.docker.schema2.list.config.app_config", config):
+        with patch("data.model.config.app_config", config):
             # Validation should not raise even though some manifests are None
             manifest_list.validate(retriever)
 
