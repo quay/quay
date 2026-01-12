@@ -16,7 +16,9 @@ import {
   TextArea,
   TextContent,
   TextVariants,
+  Tooltip,
 } from '@patternfly/react-core';
+import {MagicIcon} from '@patternfly/react-icons';
 import {Table, Th, Td} from '@patternfly/react-table';
 import {useEffect, useState} from 'react';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
@@ -29,6 +31,8 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import React from 'react';
 import ActivityHeatmap from 'src/components/ActivityHeatmap/ActivityHeatmap';
+import GenerateAIDescriptionModal from 'src/components/modals/GenerateAIDescriptionModal';
+import {useAISettings} from 'src/hooks/UseAIDescription';
 import './Information.css';
 
 interface InformationProps {
@@ -97,6 +101,10 @@ export default function Information(props: InformationProps) {
     repoDetails?.description || '',
   );
   const [isEditing, setIsEditing] = useState(false);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+
+  // Check if AI is available for this org
+  const {data: aiSettings} = useAISettings(organization, !inReadOnlyMode);
 
   // Sync description state with repoDetails when it changes
   useEffect(() => {
@@ -146,6 +154,20 @@ export default function Information(props: InformationProps) {
     setDescription(repoDetails?.description || '');
     setIsEditing(false);
   };
+
+  const handleAIDescriptionApply = (aiDescription: string) => {
+    setDescription(aiDescription);
+    setIsEditing(true);
+    addAlert({
+      variant: AlertVariant.Success,
+      title: 'AI description applied. Review and save to keep changes.',
+    });
+  };
+
+  // Check if AI generation is available
+  const aiAvailable =
+    aiSettings?.description_generator_enabled &&
+    aiSettings?.credentials_verified;
 
   const serverHostname = config?.config?.SERVER_HOSTNAME || 'quay.io';
   const podmanPullCommand = `podman pull ${serverHostname}/${organization}/${repository}`;
@@ -255,15 +277,33 @@ export default function Information(props: InformationProps) {
                     </TextContent>
                   )}
                   {repoDetails?.can_write && !inReadOnlyMode && (
-                    <TextContent>
+                    <div
+                      style={{
+                        marginTop: '1rem',
+                        display: 'flex',
+                        gap: '1rem',
+                        alignItems: 'center',
+                      }}
+                    >
                       <Text
                         component={TextVariants.a}
                         onClick={() => setIsEditing(true)}
-                        style={{cursor: 'pointer', marginTop: '1rem'}}
+                        style={{cursor: 'pointer'}}
                       >
                         Edit description
                       </Text>
-                    </TextContent>
+                      {aiAvailable && (
+                        <Tooltip content="Generate description using AI">
+                          <Button
+                            variant="link"
+                            icon={<MagicIcon />}
+                            onClick={() => setIsAIModalOpen(true)}
+                          >
+                            Generate with AI
+                          </Button>
+                        </Tooltip>
+                      )}
+                    </div>
                   )}
                 </>
               )}
@@ -307,6 +347,15 @@ export default function Information(props: InformationProps) {
           </Card>
         </GridItem>
       </Grid>
+
+      {/* AI Description Generation Modal */}
+      <GenerateAIDescriptionModal
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        onApply={handleAIDescriptionApply}
+        organization={organization}
+        repository={repository}
+      />
     </PageSection>
   );
 }
