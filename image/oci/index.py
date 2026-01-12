@@ -290,6 +290,8 @@ class OCIIndex(ManifestListInterface):
         """
         Returns the manifests in the list.
         """
+        from data.model import config
+
         manifests = self._parsed[INDEX_MANIFESTS_KEY]
         supported_types = {}
         supported_types[OCI_IMAGE_MANIFEST_CONTENT_TYPE] = OCIManifest
@@ -302,6 +304,7 @@ class OCIIndex(ManifestListInterface):
                 INDEX_DIGEST_KEY,
                 INDEX_SIZE_KEY,
                 INDEX_MEDIATYPE_KEY,
+                app_config=config.app_config,
             )
             for m in manifests
         ]

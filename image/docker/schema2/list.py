@@ -259,6 +259,8 @@ class DockerSchema2ManifestList(ManifestListInterface):
         """
         Returns the manifests in the list.
         """
+        from data.model import config
+
         manifests = self._parsed[DOCKER_SCHEMA2_MANIFESTLIST_MANIFESTS_KEY]
         supported_types = {}
         supported_types[DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE] = DockerSchema1Manifest
@@ -271,6 +273,7 @@ class DockerSchema2ManifestList(ManifestListInterface):
                 DOCKER_SCHEMA2_MANIFESTLIST_DIGEST_KEY,
                 DOCKER_SCHEMA2_MANIFESTLIST_SIZE_KEY,
                 DOCKER_SCHEMA2_MANIFESTLIST_MEDIATYPE_KEY,
+                app_config=config.app_config,
             )
             for m in manifests
         ]

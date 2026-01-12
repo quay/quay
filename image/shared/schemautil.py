@@ -1,7 +1,6 @@
 import json
 import logging
 
-from data.model import config
 from image.shared import ManifestException
 from image.shared.interfaces import ContentRetriever
 from util.bytes import Bytes
@@ -73,6 +72,7 @@ class LazyManifestLoader(object):
         digest_key,
         size_key,
         media_type_key,
+        app_config=None,
     ):
         self._manifest_data = manifest_data
         self._content_retriever = content_retriever
@@ -82,6 +82,7 @@ class LazyManifestLoader(object):
         self._size_key = size_key
         self._media_type_key = media_type_key
         self._supported_types = supported_types
+        self._app_config = app_config or {}
 
     @property
     def architecture(self):
@@ -93,11 +94,11 @@ class LazyManifestLoader(object):
 
     def _is_sparse_index_enabled(self):
         """Check if sparse index feature is enabled."""
-        return config.app_config.get("FEATURE_SPARSE_INDEX", False)
+        return self._app_config.get("FEATURE_SPARSE_INDEX", False)
 
     def _get_required_archs(self):
         """Get the list of required architectures for sparse index."""
-        return config.app_config.get("SPARSE_INDEX_REQUIRED_ARCHS", [])
+        return self._app_config.get("SPARSE_INDEX_REQUIRED_ARCHS", [])
 
     def _is_architecture_required(self):
         """
