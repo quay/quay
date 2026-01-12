@@ -984,9 +984,9 @@ class OrganizationProxyCacheConfig(ApiResource):
                     "create_proxy_cache_config",
                     orgname,
                     {
-                        "upstream_registry": data["upstream_registry"]
-                        if data["upstream_registry"]
-                        else None
+                        "upstream_registry": (
+                            data["upstream_registry"] if data["upstream_registry"] else None
+                        )
                     },
                 )
                 return "Created", 201

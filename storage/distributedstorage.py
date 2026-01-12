@@ -59,9 +59,11 @@ class DistributedStorage(StoragePaths):
         setattr(
             DistributedStorage,
             "validate",
-            _call_endtoend(BaseStorage.validate, requires_write=True)
-            if self.validate_endtoend
-            else _location_aware(BaseStorage.validate, requires_write=True),
+            (
+                _call_endtoend(BaseStorage.validate, requires_write=True)
+                if self.validate_endtoend
+                else _location_aware(BaseStorage.validate, requires_write=True)
+            ),
         )
 
     @property

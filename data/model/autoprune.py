@@ -733,7 +733,10 @@ def execute_policies_for_repo(
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):
     try:
-        query = Repository.select(Repository.name, Repository.id,).where(
+        query = Repository.select(
+            Repository.name,
+            Repository.id,
+        ).where(
             Repository.state == RepositoryState.NORMAL,
             Repository.namespace_user == namespace_id,
         )

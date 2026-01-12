@@ -1,6 +1,7 @@
 """
 Access usage logs for organizations or repositories.
 """
+
 from datetime import datetime, timedelta
 
 from flask import abort, request

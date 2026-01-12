@@ -165,8 +165,8 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
 
         realm_for_build = self._find_realm_key(self.manager._orchestrator, BUILD_UUID)
 
-        raw_realm_data = await (
-            self.manager._orchestrator.get_key(slash_join("realm", realm_for_build))
+        raw_realm_data = await self.manager._orchestrator.get_key(
+            slash_join("realm", realm_for_build)
         )
         realm_data = json.loads(raw_realm_data)
         realm_data["realm"] = REALM_ID
@@ -175,11 +175,11 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertEqual(self.register_component_callback.call_count, 0)
 
         # Fire off a realm changed with the same data.
-        await (
-            self.manager._realm_callback(
-                KeyChange(
-                    KeyEvent.CREATE, slash_join(REALM_PREFIX, REALM_ID), json.dumps(realm_data)
-                )
+        await self.manager._realm_callback(
+            KeyChange(
+                KeyEvent.CREATE,
+                slash_join(REALM_PREFIX, REALM_ID),
+                json.dumps(realm_data),
             )
         )
 
@@ -214,7 +214,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertIsNotNone(self.manager._build_uuid_to_info.get(BUILD_UUID))
 
         # Finish the job
-        await (self.manager.job_completed(self.mock_job, BuildJobResult.COMPLETE, test_component))
+        await self.manager.job_completed(self.mock_job, BuildJobResult.COMPLETE, test_component)
 
         # Ensure that the executor kills the job.
         self.assertEqual(self.test_executor.stop_builder.call_count, 1)
@@ -228,20 +228,18 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         # Prepare a job to be taken by another manager
         test_component = await self._setup_job_for_managers()
 
-        await (
-            self.manager._realm_callback(
-                KeyChange(
-                    KeyEvent.DELETE,
-                    slash_join(REALM_PREFIX, REALM_ID),
-                    json.dumps(
-                        {
-                            "realm": REALM_ID,
-                            "token": "beef",
-                            "execution_id": "123",
-                            "job_queue_item": self.mock_job.job_item,
-                        }
-                    ),
-                )
+        await self.manager._realm_callback(
+            KeyChange(
+                KeyEvent.DELETE,
+                slash_join(REALM_PREFIX, REALM_ID),
+                json.dumps(
+                    {
+                        "realm": REALM_ID,
+                        "token": "beef",
+                        "execution_id": "123",
+                        "job_queue_item": self.mock_job.job_item,
+                    }
+                ),
             )
         )
 
@@ -255,13 +253,11 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertIsNotNone(self.manager._build_uuid_to_info.get(BUILD_UUID))
 
         # Delete the job once it has "completed".
-        await (
-            self.manager._job_callback(
-                KeyChange(
-                    KeyEvent.DELETE,
-                    self.mock_job_key,
-                    json.dumps({"had_heartbeat": False, "job_queue_item": self.mock_job.job_item}),
-                )
+        await self.manager._job_callback(
+            KeyChange(
+                KeyEvent.DELETE,
+                self.mock_job_key,
+                json.dumps({"had_heartbeat": False, "job_queue_item": self.mock_job.job_item}),
             )
         )
 
@@ -276,13 +272,11 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertIn(JOB_PREFIX, callback_keys)
 
         # Send a signal to the callback that the job has been created.
-        await (
-            self.manager._job_callback(
-                KeyChange(
-                    KeyEvent.CREATE,
-                    self.mock_job_key,
-                    json.dumps({"had_heartbeat": False, "job_queue_item": self.mock_job.job_item}),
-                )
+        await self.manager._job_callback(
+            KeyChange(
+                KeyEvent.CREATE,
+                self.mock_job_key,
+                json.dumps({"had_heartbeat": False, "job_queue_item": self.mock_job.job_item}),
             )
         )
 
@@ -296,13 +290,11 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertIn(JOB_PREFIX, callback_keys)
 
         # Send a signal to the callback that a worker has expired
-        await (
-            self.manager._job_callback(
-                KeyChange(
-                    KeyEvent.EXPIRE,
-                    self.mock_job_key,
-                    json.dumps({"had_heartbeat": True, "job_queue_item": self.mock_job.job_item}),
-                )
+        await self.manager._job_callback(
+            KeyChange(
+                KeyEvent.EXPIRE,
+                self.mock_job_key,
+                json.dumps({"had_heartbeat": True, "job_queue_item": self.mock_job.job_item}),
             )
         )
 
@@ -317,13 +309,11 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         callback_keys = [key for key in self.manager._orchestrator.callbacks]
         self.assertIn(JOB_PREFIX, callback_keys)
 
-        await (
-            self.manager._job_callback(
-                KeyChange(
-                    KeyEvent.EXPIRE,
-                    self.mock_job_key,
-                    json.dumps({"had_heartbeat": True, "job_queue_item": self.mock_job.job_item}),
-                )
+        await self.manager._job_callback(
+            KeyChange(
+                KeyEvent.EXPIRE,
+                self.mock_job_key,
+                json.dumps({"had_heartbeat": True, "job_queue_item": self.mock_job.job_item}),
             )
         )
 
@@ -339,13 +329,11 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertIn(JOB_PREFIX, callback_keys)
 
         # Send a signal to the callback that a worker has expired
-        await (
-            self.manager._job_callback(
-                KeyChange(
-                    KeyEvent.DELETE,
-                    self.mock_job_key,
-                    json.dumps({"had_heartbeat": False, "job_queue_item": self.mock_job.job_item}),
-                )
+        await self.manager._job_callback(
+            KeyChange(
+                KeyEvent.DELETE,
+                self.mock_job_key,
+                json.dumps({"had_heartbeat": False, "job_queue_item": self.mock_job.job_item}),
             )
         )
 
@@ -362,13 +350,11 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertIn(JOB_PREFIX, callback_keys)
 
         # Send a signal to the callback that a worker has expired
-        await (
-            self.manager._job_callback(
-                KeyChange(
-                    KeyEvent.EXPIRE,
-                    self.mock_job_key,
-                    json.dumps({"had_heartbeat": False, "job_queue_item": self.mock_job.job_item}),
-                )
+        await self.manager._job_callback(
+            KeyChange(
+                KeyEvent.EXPIRE,
+                self.mock_job_key,
+                json.dumps({"had_heartbeat": False, "job_queue_item": self.mock_job.job_item}),
             )
         )
 
@@ -377,10 +363,8 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
 
         # Ensure the job was marked as incomplete, with an update_phase to True (so the DB record and
         # logs are updated as well)
-        await (
-            self.job_complete_callback.assert_called_once_with(
-                ANY, BuildJobResult.INCOMPLETE, "MockExecutor", update_phase=True
-            )
+        await self.job_complete_callback.assert_called_once_with(
+            ANY, BuildJobResult.INCOMPLETE, "MockExecutor", update_phase=True
         )
 
     @async_test
@@ -394,20 +378,18 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         test_component = await self._setup_job_for_managers()
 
         # Send a signal to the callback that a realm has expired
-        await (
-            self.manager._realm_callback(
-                KeyChange(
-                    KeyEvent.EXPIRE,
-                    self.mock_job_key,
-                    json.dumps(
-                        {
-                            "realm": REALM_ID,
-                            "execution_id": "foobar",
-                            "executor_name": "MockExecutor",
-                            "job_queue_item": {"body": '{"build_uuid": "fakeid"}'},
-                        }
-                    ),
-                )
+        await self.manager._realm_callback(
+            KeyChange(
+                KeyEvent.EXPIRE,
+                self.mock_job_key,
+                json.dumps(
+                    {
+                        "realm": REALM_ID,
+                        "execution_id": "foobar",
+                        "executor_name": "MockExecutor",
+                        "job_queue_item": {"body": '{"build_uuid": "fakeid"}'},
+                    }
+                ),
             )
         )
 
@@ -480,7 +462,11 @@ class TestEphemeral(EphemeralBuilderTestCase):
             self.manager.initialize(
                 {
                     "EXECUTORS": [
-                        {"NAME": "primary", "EXECUTOR": "test", "MINIMUM_RETRY_THRESHOLD": 42},
+                        {
+                            "NAME": "primary",
+                            "EXECUTOR": "test",
+                            "MINIMUM_RETRY_THRESHOLD": 42,
+                        },
                         {
                             "NAME": "primary",
                             "EXECUTOR": "anotherexecutor",
@@ -498,7 +484,11 @@ class TestEphemeral(EphemeralBuilderTestCase):
         self.manager.initialize(
             {
                 "EXECUTORS": [
-                    {"NAME": "primary", "EXECUTOR": "test", "MINIMUM_RETRY_THRESHOLD": 42},
+                    {
+                        "NAME": "primary",
+                        "EXECUTOR": "test",
+                        "MINIMUM_RETRY_THRESHOLD": 42,
+                    },
                     {
                         "NAME": "secondary",
                         "EXECUTOR": "anotherexecutor",
@@ -709,17 +699,15 @@ class TestEphemeral(EphemeralBuilderTestCase):
         self.assertIsNotNone(executor.job_started)
 
         # Register the realm so the build information is added.
-        await (
-            self.manager._register_realm(
-                {
-                    "realm": str(uuid.uuid4()),
-                    "token": str(uuid.uuid4()),
-                    "execution_id": executor.job_started,
-                    "executor_name": "TestExecutor",
-                    "build_uuid": build_job.build_uuid,
-                    "job_queue_item": build_job.job_item,
-                }
-            )
+        await self.manager._register_realm(
+            {
+                "realm": str(uuid.uuid4()),
+                "token": str(uuid.uuid4()),
+                "execution_id": executor.job_started,
+                "executor_name": "TestExecutor",
+                "build_uuid": build_job.build_uuid,
+                "job_queue_item": build_job.job_item,
+            }
         )
 
         # Stop the build job.

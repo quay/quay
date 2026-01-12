@@ -1,4 +1,4 @@
-""" DBA Operator Migration Generator
+"""DBA Operator Migration Generator
 
 This module supports instrumenting, harvesting, and writing migrations for the
 [DBA operator](https://github.com/quay/dba-operator) from the Alembic migrations.

@@ -203,8 +203,6 @@ def test_redis_cache_config(cache_config, expected_exception):
             if cache_config["engine"] == "rediscluster":
                 mock_cluster.assert_called_once()
                 call_kwargs = mock_cluster.call_args[1]
-                assert all(
-                    isinstance(n, ClusterNode) for n in call_kwargs["startup_nodes"]
-                )
+                assert all(isinstance(n, ClusterNode) for n in call_kwargs["startup_nodes"])
             else:
                 assert isinstance(rc, REDIS_DRIVERS[cache_config["engine"]])
