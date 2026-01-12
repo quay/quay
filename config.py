@@ -1,5 +1,5 @@
 import os.path
-from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 import requests
@@ -959,4 +959,4 @@ class DefaultConfig(ImmutableConfig):
 
     # List of architectures that are required to be present in manifest indexes when
     # FEATURE_SPARSE_INDEX is enabled.
-    SPARSE_INDEX_REQUIRED_ARCHS: ClassVar[List[str]] = []
+    SPARSE_INDEX_REQUIRED_ARCHS: List[str] = []
