@@ -594,8 +594,7 @@ describe('Repository Details Page', () => {
 
     // Start
     cy.visit('/repository/user1/hello-world');
-    const latestRow = cy.get('tbody:contains("latest")');
-    latestRow.first().within(() => {
+    cy.get('tbody:contains("latest")').first().within(() => {
       cy.get('#tag-actions-kebab').click();
     });
     cy.contains('Change expiration').click();
@@ -628,8 +627,7 @@ describe('Repository Details Page', () => {
 
     // remove AM/PM suffixes because the TimePicker adds those automatically
     cy.contains('Change Expiration').click();
-    const latestRowUpdated = cy.get('tbody:contains("latest")');
-    latestRowUpdated.first().within(() => {
+    cy.get('tbody:contains("latest")').first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
 
@@ -638,15 +636,14 @@ describe('Repository Details Page', () => {
     ).should('exist');
 
     // Reset back to Never
-    latestRow.first().within(() => {
+    cy.get('tbody:contains("latest")').first().within(() => {
       cy.get('#tag-actions-kebab').click();
     });
     cy.contains('Change expiration').click();
     cy.contains('Clear').click();
     cy.contains('Change Expiration').click();
 
-    const latestRowUpdatedNever = cy.get('tbody:contains("latest")');
-    latestRowUpdatedNever.first().within(() => {
+    cy.get('tbody:contains("latest")').first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
     });
     cy.contains(`Successfully set expiration for tag latest to never`).should(
@@ -676,8 +673,7 @@ describe('Repository Details Page', () => {
 
     // Start
     cy.visit('/repository/user1/hello-world');
-    const latestRow = cy.get('tbody:contains("latest")');
-    latestRow.first().within(() => {
+    cy.get('tbody:contains("latest")').first().within(() => {
       cy.contains('Never').click();
     });
     cy.get('#edit-expiration-tags')
@@ -691,8 +687,7 @@ describe('Repository Details Page', () => {
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
-    const latestRowUpdated = cy.get('tbody:contains("latest")');
-    latestRowUpdated.first().within(() => {
+    cy.get('tbody:contains("latest")').first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
     cy.contains(
@@ -738,8 +733,7 @@ describe('Repository Details Page', () => {
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
-    const latestRowUpdated = cy.get('tbody:contains("latest")');
-    latestRowUpdated.first().within(() => {
+    cy.get('tbody:contains("latest")').first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
     cy.contains(
@@ -767,8 +761,7 @@ describe('Repository Details Page', () => {
       statusCode: 500,
     }).as('getServerFailure');
     cy.visit('/repository/user1/hello-world');
-    const latestRow = cy.get('tbody:contains("latest")');
-    latestRow.first().within(() => {
+    cy.get('tbody:contains("latest")').first().within(() => {
       cy.contains('Never').click();
     });
     cy.get('[aria-label="Toggle date picker"]').click();
@@ -777,8 +770,7 @@ describe('Repository Details Page', () => {
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
-    const latestRowUpdated = cy.get('tbody:contains("latest")');
-    latestRowUpdated.first().within(() => {
+    cy.get('tbody:contains("latest")').first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
     });
     cy.contains(`Could not set expiration for tag latest`).should('exist');
