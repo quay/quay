@@ -591,6 +591,7 @@ class OCIModel(RegistryDataInterface):
                 manifest_id,
                 is_reversion=is_reversion,
                 expiration_seconds=expiration_seconds,
+                raise_on_error=True,
             )
 
             return Tag.for_tag(tag, self._legacy_image_id_handler)
@@ -636,6 +637,16 @@ class OCIModel(RegistryDataInterface):
         """
         with db_disallow_replica_use():
             return oci.tag.change_tag_expiration(tag._db_id, expiration_date)
+
+    def change_tag_immutability(self, tag, immutable):
+        """
+        Sets the immutability status of the tag.
+
+        Returns a tuple of (previous_immutable_status, success).
+        """
+        with db_disallow_replica_use():
+            repo_ref = tag.repository
+            return oci.tag.set_tag_immutable(repo_ref.id, tag.name, immutable)
 
     def reset_security_status(self, manifest_or_legacy_image):
         """

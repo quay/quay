@@ -2,10 +2,11 @@ import pytest
 from playhouse.test_utils import assert_query_count
 
 from data.database import Manifest
+from data.model.oci.tag import set_tag_immutable
 from data.registry_model import registry_model
 from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RestoreTag
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.test.shared import client_with_identity
+from endpoints.test.shared import client_with_identity, toggle_feature
 from test.fixtures import *
 
 
@@ -136,3 +137,187 @@ def test_list_repo_tags_filter(repo_namespace, repo_name, query_count, app):
     with client_with_identity("devtable", app) as cl:
         params["filter_tag_name"] = "random"
         resp = conduct_api_call(cl, ListRepositoryTags, "get", params, None, expected_code=400)
+
+
+# Tag Immutability Tests
+
+
+def test_set_tag_immutable_with_write_permission(app):
+    """Test setting tag immutable with write permission via RepositoryTag PUT."""
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/simple",
+            "tag": "latest",
+        }
+
+        request_body = {"immutable": True}
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 201)
+
+        # Verify it's now immutable via data model
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
+        assert tag_ref.immutable is True
+
+
+def test_remove_immutability_requires_admin(app):
+    """Test that removing immutability requires admin permission."""
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+
+    # First make the tag immutable via data layer
+    set_tag_immutable(repo_ref.id, "latest", True)
+
+    # devtable is admin on their own repo, so they can remove it
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/simple",
+            "tag": "latest",
+        }
+
+        request_body = {"immutable": False}
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 201)
+
+        # Verify it's now not immutable
+        tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
+        assert tag_ref.immutable is False
+
+
+def test_remove_immutability_denied_for_non_admin(app):
+    """Test that users with write but not admin permission cannot remove immutability."""
+    # Use devtable/shared where 'public' user has write permission but not admin
+    repo_ref = registry_model.lookup_repository("devtable", "shared")
+
+    # Make the tag immutable via data layer
+    set_tag_immutable(repo_ref.id, "latest", True)
+
+    # 'public' user has write permission on devtable/shared but is not admin
+    # This tests the AdministerRepositoryPermission check, not @require_repo_write
+    with client_with_identity("public", app) as cl:
+        params = {
+            "repository": "devtable/shared",
+            "tag": "latest",
+        }
+
+        request_body = {"immutable": False}
+
+        # User with write but not admin should get 403 from the admin permission check
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 403)
+
+    # Verify tag is still immutable
+    resp_check = registry_model.get_repo_tag(repo_ref, "latest")
+    assert resp_check.immutable is True
+
+
+def test_list_repo_tags_includes_immutable(app):
+    """Test that tag list includes immutable field."""
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
+
+            for tag in tags:
+                assert "immutable" in tag
+                assert isinstance(tag["immutable"], bool)
+
+
+def test_delete_immutable_tag_returns_409(app):
+    """Test DELETE on immutable tag returns 409."""
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+
+        # Make the tag immutable
+        set_tag_immutable(repo_ref.id, "latest", True)
+
+        with client_with_identity("devtable", app) as cl:
+            params = {
+                "repository": "devtable/simple",
+                "tag": "latest",
+            }
+
+            resp = conduct_api_call(cl, RepositoryTag, "delete", params, None, 409)
+            assert resp.json["error_type"] == "tag_immutable"
+            assert resp.json["title"] == "tag_immutable"
+
+
+def test_retarget_immutable_tag_returns_409(app):
+    """Test PUT (retarget) on immutable tag returns 409."""
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
+
+        # Make the tag immutable
+        set_tag_immutable(repo_ref.id, "latest", True)
+
+        with client_with_identity("devtable", app) as cl:
+            params = {
+                "repository": "devtable/simple",
+                "tag": "latest",
+            }
+
+            request_body = {"manifest_digest": tag_ref.manifest.digest}
+
+            resp = conduct_api_call(cl, RepositoryTag, "put", params, request_body, 409)
+            assert resp.json["error_type"] == "tag_immutable"
+            assert resp.json["title"] == "tag_immutable"
+
+
+def test_restore_immutable_tag_returns_409(app):
+    """Test restoring immutable tag returns 409."""
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
+
+        # Make the tag immutable
+        set_tag_immutable(repo_ref.id, "latest", True)
+
+        with client_with_identity("devtable", app) as cl:
+            params = {
+                "repository": "devtable/simple",
+                "tag": "latest",
+            }
+
+            request_body = {"manifest_digest": tag_ref.manifest.digest}
+
+            resp = conduct_api_call(cl, RestoreTag, "post", params, request_body, 409)
+            assert resp.json["error_type"] == "tag_immutable"
+            assert resp.json["title"] == "tag_immutable"
+
+
+def test_set_immutability_not_found(app):
+    """Test 404 for setting immutability on non-existent tag."""
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/simple",
+            "tag": "nonexistent",
+        }
+
+        request_body = {"immutable": True}
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 404)
+
+
+def test_set_immutability_idempotent(app):
+    """Test setting same immutability status is idempotent."""
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/simple",
+            "tag": "latest",
+        }
+
+        # Set to immutable
+        request_body = {"immutable": True}
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 201)
+
+        # Verify it's immutable
+        tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
+        assert tag_ref.immutable is True
+
+        # Set to immutable again - should be idempotent
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 201)
+
+        # Still immutable
+        tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
+        assert tag_ref.immutable is True

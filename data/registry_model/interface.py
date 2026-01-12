@@ -260,6 +260,14 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
+    def change_tag_immutability(self, tag, immutable):
+        """
+        Sets the immutability status of the tag.
+
+        Returns a tuple of (previous_immutable_status, success).
+        """
+
+    @abstractmethod
     def reset_security_status(self, manifest_or_legacy_image):
         """
         Resets the security status for the given manifest or legacy image, ensuring that it will get
