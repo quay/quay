@@ -157,7 +157,8 @@ def create_manifest(
     repository_id: int,
     manifest: ManifestInterface | ManifestListInterface,
     raise_on_error: Literal[True] = ...,
-) -> Manifest: ...
+) -> Manifest:
+    ...
 
 
 @overload
@@ -165,7 +166,8 @@ def create_manifest(
     repository_id: int,
     manifest: ManifestInterface | ManifestListInterface,
     raise_on_error: Literal[False],
-) -> Optional[Manifest]: ...
+) -> Optional[Manifest]: 
+    ...
 
 
 def create_manifest(
