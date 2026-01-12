@@ -18,7 +18,7 @@ ENV PATH=/app/bin/:$PATH \
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
-	; dnf -y module enable nginx:1.24 \
+	; dnf -y module enable nginx:1.29 \
 	; dnf update -y \
 	; dnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
