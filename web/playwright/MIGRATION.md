@@ -724,4 +724,4 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `team-sync.cy.ts` | | @config:OIDC |
 | ✅ | `theme-switcher.cy.ts` | `ui/theme-switcher.spec.ts` | |
 | ✅ | `update-user.cy.ts` | `user/update-user.spec.ts` | @feature:USER_METADATA, consolidated 7→3 tests (OAuth tests TODO) |
-| ⬚ | `usage-logs.cy.ts` | | |
+| ✅ | `usage-logs.cy.ts` | `usage-logs.spec.ts`, `superuser/usage-logs.spec.ts` | @logs, @feature:SUPERUSERS_FULL_ACCESS, consolidated 13→10 tests |
