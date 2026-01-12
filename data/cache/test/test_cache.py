@@ -113,9 +113,7 @@ def test_memcache_handle_large_value():
             call_args = mock_warning.call_args[0]
 
             assert any("foo" in arg for arg in call_args if isinstance(arg, str))
-            assert not any(
-                large_value in arg for arg in call_args if isinstance(arg, str)
-            )
+            assert not any(large_value in arg for arg in call_args if isinstance(arg, str))
 
 
 def test_memcache_should_cache():
