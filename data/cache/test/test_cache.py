@@ -2,6 +2,7 @@ from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
+from redis.cluster import ClusterNode, RedisCluster
 
 from data.cache import (
     InMemoryDataModelCache,
