@@ -630,9 +630,9 @@ describe('Repository Details Page', () => {
     // remove AM/PM suffixes because the TimePicker adds those automatically
     cy.contains('Change Expiration').click();
     // Wait for success message before checking table
-    cy.contains(`Successfully set expiration for tag latest to ${oneMonthFormatLong}`).should(
-      'exist',
-    );
+    cy.contains(
+      `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
+    ).should('exist');
     cy.get('tbody:contains("latest")')
       .first()
       .within(() => {
