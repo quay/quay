@@ -14,13 +14,61 @@ import pytest
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2.list import DockerSchema2ManifestList
 from image.docker.schema2.manifest import DockerSchema2Manifest
-from image.docker.schema2.test.test_manifest import MANIFEST_BYTES as v22_bytes
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from image.oci.index import OCIIndex
 from image.oci.manifest import OCIManifest
 from image.shared import ManifestException
 from image.shared.schemautil import ContentRetrieverForTesting, LazyManifestLoader
 from util.bytes import Bytes
+
+# Docker Schema2 manifest bytes for testing (defined locally to avoid import chain)
+DOCKER_SCHEMA2_MANIFEST_BYTES = json.dumps(
+    {
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+        "config": {
+            "mediaType": "application/vnd.docker.container.image.v1+json",
+            "size": 1234,
+            "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+        },
+        "layers": [
+            {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 1234,
+                "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+            },
+            {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 32654,
+                "digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f",
+            },
+        ],
+    }
+).encode("utf-8")
+
+# OCI manifest bytes for testing
+OCI_MANIFEST_BYTES = json.dumps(
+    {
+        "schemaVersion": 2,
+        "config": {
+            "mediaType": "application/vnd.oci.image.config.v1+json",
+            "size": 7023,
+            "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+        },
+        "layers": [
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 32654,
+                "digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0",
+            },
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 16724,
+                "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",
+            },
+        ],
+    }
+).encode("utf-8")
 
 
 # Sample manifest data for testing
@@ -328,9 +376,9 @@ class TestManifestLoadingCaching:
         """Test that manifest_obj is cached after first access."""
         manifest_data = create_manifest_data(
             digest="sha256:e6",
-            size=len(v22_bytes),
+            size=len(DOCKER_SCHEMA2_MANIFEST_BYTES),
         )
-        retriever = ContentRetrieverForTesting({"sha256:e6": v22_bytes})
+        retriever = ContentRetrieverForTesting({"sha256:e6": DOCKER_SCHEMA2_MANIFEST_BYTES})
 
         loader = LazyManifestLoader(
             manifest_data,
@@ -384,9 +432,9 @@ class TestManifestLoadingCaching:
         """Test that _load_attempted flag is set after first access."""
         manifest_data = create_manifest_data(
             digest="sha256:e6",
-            size=len(v22_bytes),
+            size=len(DOCKER_SCHEMA2_MANIFEST_BYTES),
         )
-        retriever = ContentRetrieverForTesting({"sha256:e6": v22_bytes})
+        retriever = ContentRetrieverForTesting({"sha256:e6": DOCKER_SCHEMA2_MANIFEST_BYTES})
 
         loader = LazyManifestLoader(
             manifest_data,
@@ -409,10 +457,10 @@ class TestManifestLoadingSuccess:
         """Test successful manifest loading."""
         manifest_data = create_manifest_data(
             digest="sha256:e6",
-            size=len(v22_bytes),
+            size=len(DOCKER_SCHEMA2_MANIFEST_BYTES),
             architecture="amd64",
         )
-        retriever = ContentRetrieverForTesting({"sha256:e6": v22_bytes})
+        retriever = ContentRetrieverForTesting({"sha256:e6": DOCKER_SCHEMA2_MANIFEST_BYTES})
 
         loader = LazyManifestLoader(
             manifest_data,
@@ -435,7 +483,7 @@ class TestManifestLoadingSuccess:
             size=100,  # Wrong size
             architecture="amd64",
         )
-        retriever = ContentRetrieverForTesting({"sha256:e6": v22_bytes})
+        retriever = ContentRetrieverForTesting({"sha256:e6": DOCKER_SCHEMA2_MANIFEST_BYTES})
 
         loader = LazyManifestLoader(
             manifest_data,
@@ -455,10 +503,10 @@ class TestManifestLoadingSuccess:
         """Test that unsupported media type raises exception."""
         manifest_data = create_manifest_data(
             digest="sha256:e6",
-            size=len(v22_bytes),
+            size=len(DOCKER_SCHEMA2_MANIFEST_BYTES),
             media_type="application/vnd.unknown.manifest+json",
         )
-        retriever = ContentRetrieverForTesting({"sha256:e6": v22_bytes})
+        retriever = ContentRetrieverForTesting({"sha256:e6": DOCKER_SCHEMA2_MANIFEST_BYTES})
 
         loader = LazyManifestLoader(
             manifest_data,
@@ -484,7 +532,7 @@ def create_docker_manifest_list_bytes():
             "manifests": [
                 {
                     "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
-                    "size": len(v22_bytes),
+                    "size": len(DOCKER_SCHEMA2_MANIFEST_BYTES),
                     "digest": "sha256:amd64manifest",
                     "platform": {
                         "architecture": "amd64",
@@ -493,7 +541,7 @@ def create_docker_manifest_list_bytes():
                 },
                 {
                     "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
-                    "size": len(v22_bytes),
+                    "size": len(DOCKER_SCHEMA2_MANIFEST_BYTES),
                     "digest": "sha256:arm64manifest",
                     "platform": {
                         "architecture": "arm64",
@@ -502,7 +550,7 @@ def create_docker_manifest_list_bytes():
                 },
                 {
                     "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
-                    "size": len(v22_bytes),
+                    "size": len(DOCKER_SCHEMA2_MANIFEST_BYTES),
                     "digest": "sha256:ppc64lemanifest",
                     "platform": {
                         "architecture": "ppc64le",
@@ -523,7 +571,7 @@ def create_oci_index_bytes():
             "manifests": [
                 {
                     "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
-                    "size": len(v22_bytes),
+                    "size": len(OCI_MANIFEST_BYTES),
                     "digest": "sha256:amd64manifest",
                     "platform": {
                         "architecture": "amd64",
@@ -532,7 +580,7 @@ def create_oci_index_bytes():
                 },
                 {
                     "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
-                    "size": len(v22_bytes),
+                    "size": len(OCI_MANIFEST_BYTES),
                     "digest": "sha256:arm64manifest",
                     "platform": {
                         "architecture": "arm64",
@@ -541,7 +589,7 @@ def create_oci_index_bytes():
                 },
                 {
                     "mediaType": OCI_IMAGE_MANIFEST_CONTENT_TYPE,
-                    "size": len(v22_bytes),
+                    "size": len(OCI_MANIFEST_BYTES),
                     "digest": "sha256:ppc64lemanifest",
                     "platform": {
                         "architecture": "ppc64le",
@@ -563,29 +611,30 @@ class TestManifestListIndex:
                     DockerSchema2ManifestList,
                     create_docker_manifest_list_bytes,
                     DockerSchema2Manifest,
+                    DOCKER_SCHEMA2_MANIFEST_BYTES,
                 ),
                 id="docker_schema2_manifest_list",
             ),
             pytest.param(
-                (OCIIndex, create_oci_index_bytes, OCIManifest),
+                (OCIIndex, create_oci_index_bytes, OCIManifest, OCI_MANIFEST_BYTES),
                 id="oci_index",
             ),
         ]
     )
     def manifest_list_config(self, request):
-        """Provide manifest list class, bytes factory, and expected manifest type."""
+        """Provide manifest list class, bytes factory, expected manifest type, and child manifest bytes."""
         return request.param
 
     def test_manifest_list_all_present(self, manifest_list_config):
         """Test manifest list/index when all manifests are present."""
-        list_class, bytes_factory, manifest_class = manifest_list_config
+        list_class, bytes_factory, manifest_class, child_manifest_bytes = manifest_list_config
         manifest_list_bytes = bytes_factory()
 
         retriever = ContentRetrieverForTesting(
             {
-                "sha256:amd64manifest": v22_bytes,
-                "sha256:arm64manifest": v22_bytes,
-                "sha256:ppc64lemanifest": v22_bytes,
+                "sha256:amd64manifest": child_manifest_bytes,
+                "sha256:arm64manifest": child_manifest_bytes,
+                "sha256:ppc64lemanifest": child_manifest_bytes,
             }
         )
 
@@ -601,13 +650,13 @@ class TestManifestListIndex:
 
     def test_manifest_list_with_missing_optional_arch(self, manifest_list_config):
         """Test manifest list/index with sparse index allowing missing optional architectures."""
-        list_class, bytes_factory, manifest_class = manifest_list_config
+        list_class, bytes_factory, manifest_class, child_manifest_bytes = manifest_list_config
         manifest_list_bytes = bytes_factory()
 
         # Only provide amd64, arm64 and ppc64le are missing
         retriever = ContentRetrieverForTesting(
             {
-                "sha256:amd64manifest": v22_bytes,
+                "sha256:amd64manifest": child_manifest_bytes,
             }
         )
 
@@ -630,13 +679,13 @@ class TestManifestListIndex:
 
     def test_manifest_list_missing_required_arch_raises(self, manifest_list_config):
         """Test that missing required architecture raises exception."""
-        list_class, bytes_factory, manifest_class = manifest_list_config
+        list_class, bytes_factory, manifest_class, child_manifest_bytes = manifest_list_config
         manifest_list_bytes = bytes_factory()
 
         # Only provide arm64, but amd64 is required
         retriever = ContentRetrieverForTesting(
             {
-                "sha256:arm64manifest": v22_bytes,
+                "sha256:arm64manifest": child_manifest_bytes,
             }
         )
 
@@ -657,13 +706,13 @@ class TestManifestListIndex:
 
     def test_manifest_list_validate_skips_none_manifests(self, manifest_list_config):
         """Test that validation skips None manifests from sparse index."""
-        list_class, bytes_factory, manifest_class = manifest_list_config
+        list_class, bytes_factory, manifest_class, child_manifest_bytes = manifest_list_config
         manifest_list_bytes = bytes_factory()
 
         # Only provide amd64
         retriever = ContentRetrieverForTesting(
             {
-                "sha256:amd64manifest": v22_bytes,
+                "sha256:amd64manifest": child_manifest_bytes,
             }
         )
 
