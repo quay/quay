@@ -207,6 +207,7 @@ def test_redis_cache_config(cache_config, expected_exception):
             else:
                 assert isinstance(rc, REDIS_DRIVERS[cache_config["engine"]])
 
+
 def test_redis_cluster_readonly_mode_backwards_compat():
     """Test that legacy readonly_mode is converted to read_from_replicas."""
     cache_config = {
@@ -223,4 +224,3 @@ def test_redis_cluster_readonly_mode_backwards_compat():
         call_kwargs = mock_cluster.call_args[1]
         assert "readonly_mode" not in call_kwargs
         assert call_kwargs["read_from_replicas"] is True
-
