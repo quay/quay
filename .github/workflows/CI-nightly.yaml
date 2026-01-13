@@ -74,20 +74,20 @@ jobs:
         -w /
         -e GH_REPOSITORY
         -e GH_REF
-        ubuntu:20.04
+        ubuntu:24.04
         /bin/bash -ec '
         export DEBIAN_FRONTEND=noninteractive;
         apt-get -y update;
-        apt-get -y install libgpgme-dev libldap2-dev libsasl2-dev swig python3.9-dev python3-pip findutils git;
+        apt-get -y install libgpgme-dev libldap2-dev libsasl2-dev swig python3.12-dev python3-pip findutils git;
         apt-get -y install libffi-dev libssl-dev libjpeg-dev libpq-dev libxml2-dev libxslt-dev;
         apt-get -y install rustc cargo pkg-config;
         git clone ${GH_REPOSITORY} build;
         cd build && git checkout ${GH_REF};
         cat requirements-dev.txt | grep tox | xargs pip install;
 
-        tox -e py39-unit;
-        tox -e py39-e2e;
-        tox -e py39-registry;'
+        tox -e py312-unit;
+        tox -e py312-e2e;
+        tox -e py312-registry;'
       env:
         GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
         GH_REF: ${{ github.ref }}
@@ -107,7 +107,7 @@ jobs:
         command_timeout: 100m
         script: |
           apt-get update -y
-          apt-get -y install build-essential libgpgme-dev libldap2-dev libsasl2-dev swig python3.9-dev python3-pip findutils git
+          apt-get -y install build-essential libgpgme-dev libldap2-dev libsasl2-dev swig python3.12-dev python3-pip findutils git
           apt-get -y install libffi-dev libssl-dev libjpeg-dev libpq-dev libxml2-dev libxslt-dev
           apt-get -y install rustc cargo pkg-config
           rm -rf build
@@ -121,13 +121,13 @@ jobs:
           fi
 
           #Unit
-          tox -e py39-unit
+          tox -e py312-unit
 
           #e2e
-          tox -e py39-e2e
+          tox -e py312-e2e
 
           #registry
-          tox -e py39-registry
+          tox -e py312-registry
 
     - name: Cleanup ZVSI
       if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
