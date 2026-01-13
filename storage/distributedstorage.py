@@ -38,6 +38,8 @@ def _call_endtoend(unbound_func, requires_write=False):
             storage_func = getattr(storage, unbound_func.__name__)
             storage_func(*args, **kwargs)
 
+    return wrapper
+
 
 class DistributedStorage(StoragePaths):
     def __init__(
