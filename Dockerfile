@@ -3,9 +3,8 @@ FROM registry.access.redhat.com/ubi9/python-312:latest as base
 # final container here.
 USER root
 
-ENV PATH=/app/bin/:$PATH \
+ENV PATH=/app/bin/:$HOME/.local/bin/:$PATH \
     PYTHON_VERSION=3.12 \
-    PATH=$HOME/.local/bin/:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=UTF-8 \
     LC_ALL=en_US.UTF-8 \
