@@ -27,7 +27,7 @@ packages = [
     "pymemcache",
     "PyYAML",
     "redis",
-    "rehash",
+    "resumablesha256",
     "six",
     "SQLAlchemy",
     "stripe",

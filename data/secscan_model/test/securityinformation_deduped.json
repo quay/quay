@@ -3952,11 +3952,11 @@
                 "CVEIds": []
             },
             {
-                "Name": "rehash",
+                "Name": "resumablesha256",
                 "VersionFormat": "",
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
-                "Version": "1.0.0",
+                "Version": "1.0",
                 "Vulnerabilities": [],
                 "BaseScores": [],
                 "CVEIds": []

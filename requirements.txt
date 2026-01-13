@@ -91,7 +91,6 @@ PyYAML==6.0.2
 raven==6.10.0
 recaptcha2==0.1
 redis==7.1.0
-rehash==1.0.1
 requests==2.32.3
 requests-aws4auth==1.2.3
 requests-file==1.5.1
