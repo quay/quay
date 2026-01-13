@@ -1427,7 +1427,7 @@ export class ApiClient {
   async startDockerfileBuild(
     namespace: string,
     repo: string,
-    dockerfileContent: string = 'FROM scratch\n',
+    dockerfileContent = 'FROM scratch\n',
   ): Promise<{id: string}> {
     const token = await this.fetchToken();
 
@@ -1447,7 +1447,9 @@ export class ApiClient {
 
     if (!fileDropResponse.ok()) {
       const body = await fileDropResponse.text();
-      throw new Error(`Failed to get file drop URL: ${fileDropResponse.status()} - ${body}`);
+      throw new Error(
+        `Failed to get file drop URL: ${fileDropResponse.status()} - ${body}`,
+      );
     }
 
     const fileDropData = await fileDropResponse.json();
@@ -1465,7 +1467,9 @@ export class ApiClient {
 
     if (!uploadResponse.ok()) {
       const body = await uploadResponse.text();
-      throw new Error(`Failed to upload Dockerfile: ${uploadResponse.status()} - ${body}`);
+      throw new Error(
+        `Failed to upload Dockerfile: ${uploadResponse.status()} - ${body}`,
+      );
     }
 
     // Step 3: Start the build

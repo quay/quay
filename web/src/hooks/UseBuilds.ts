@@ -38,7 +38,7 @@ export function useBuilds(
   };
 }
 
-export function useRecentBuilds(org: string, repo: string, limit: number = 3) {
+export function useRecentBuilds(org: string, repo: string, limit = 3) {
   const {data, isError, error, isLoading} = useQuery(
     ['recentbuilds', org, repo, String(limit)],
     () => fetchBuilds(org, repo, null, limit),
@@ -86,6 +86,7 @@ export function useStartBuild(
     {
       onSuccess: (data) => {
         queryClient.invalidateQueries(['repobuilds', org, repo]);
+        queryClient.invalidateQueries(['recentbuilds', org, repo]);
         onSuccess(data);
       },
       onError: onError,
@@ -107,6 +108,7 @@ export function useCancelBuild(
   const {mutate} = useMutation(async () => cancelBuild(org, repo, buildId), {
     onSuccess: (data) => {
       queryClient.invalidateQueries(['repobuilds', org, repo]);
+      queryClient.invalidateQueries(['recentbuilds', org, repo]);
       onSuccess(data);
     },
     onError: onError,
@@ -138,6 +140,7 @@ export function useStartDockerfileBuild(
     {
       onSuccess: (data) => {
         queryClient.invalidateQueries(['repobuilds', org, repo]);
+        queryClient.invalidateQueries(['recentbuilds', org, repo]);
         onSuccess(data);
       },
       onError: onError,

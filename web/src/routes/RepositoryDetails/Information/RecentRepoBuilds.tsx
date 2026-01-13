@@ -115,7 +115,7 @@ export default function RecentRepoBuilds({
             </div>
 
             {/* View Build History Link */}
-            {canAdmin && (
+            {canWrite && (
               <div className="view-build-history-link">
                 <Link to={`${location.pathname}?tab=builds`}>
                   View Build History

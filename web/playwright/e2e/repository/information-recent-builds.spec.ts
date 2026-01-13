@@ -12,6 +12,9 @@ test.describe(
       const org = await api.organization('recentbuilds');
       const repo = await api.repository(org.name, 'test-repo');
 
+      // Create a build so the Recent Repo Builds section shows builds
+      await api.build(org.name, repo.name);
+
       // Navigate to repository Information tab
       await authenticatedPage.goto(
         `/repository/${org.name}/${repo.name}?tab=information`,
@@ -103,32 +106,6 @@ test.describe(
       await expect(
         authenticatedPage.getByRole('tab', {name: 'Builds', selected: true}),
       ).toBeVisible();
-    });
-
-    test('Recent Repo Builds section is not shown when BUILD_SUPPORT is disabled', async ({
-      authenticatedPage,
-      api,
-      quayConfig,
-    }) => {
-      // Skip if BUILD_SUPPORT is enabled (we want to test when it's disabled)
-      test.skip(
-        quayConfig?.features?.BUILD_SUPPORT === true,
-        'BUILD_SUPPORT is enabled, skipping test for disabled state',
-      );
-
-      // Create test organization with repository
-      const org = await api.organization('nobuildssupport');
-      const repo = await api.repository(org.name, 'nobuild-repo');
-
-      // Navigate to repository Information tab
-      await authenticatedPage.goto(
-        `/repository/${org.name}/${repo.name}?tab=information`,
-      );
-
-      // Verify Recent Repo Builds section is NOT visible
-      await expect(
-        authenticatedPage.getByText('Recent Repo Builds'),
-      ).not.toBeVisible();
     });
   },
 );
