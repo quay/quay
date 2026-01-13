@@ -633,30 +633,32 @@ describe('Repository Details Page', () => {
     cy.contains(
       `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
     ).should('exist');
-    cy.get('tbody:contains("latest")')
-      .first()
-      .within(() => {
-        cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
-      });
+    // Wait for table to re-render and verify expiration
+    cy.get('tbody', {timeout: 30000}).should('exist');
+    cy.get('[data-label="Tag"]')
+      .contains('latest')
+      .parents('tr')
+      .find('[data-label="Expires"]')
+      .should('have.text', ' a month');
 
     // Reset back to Never
-    cy.get('tbody:contains("latest")')
-      .first()
-      .within(() => {
-        cy.get('#tag-actions-kebab').click();
-      });
+    cy.get('[data-label="Tag"]')
+      .contains('latest')
+      .parents('tr')
+      .find('#tag-actions-kebab')
+      .click();
     cy.contains('Change expiration').click();
     cy.contains('Clear').click();
     cy.contains('Change Expiration').click();
 
-    cy.get('tbody:contains("latest")')
-      .first()
-      .within(() => {
-        cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
-      });
     cy.contains(`Successfully set expiration for tag latest to never`).should(
       'exist',
     );
+    cy.get('[data-label="Tag"]')
+      .contains('latest')
+      .parents('tr')
+      .find('[data-label="Expires"]')
+      .should('have.text', 'Never');
   });
 
   it('changes expiration through tag row', () => {
@@ -681,11 +683,11 @@ describe('Repository Details Page', () => {
 
     // Start
     cy.visit('/repository/user1/hello-world');
-    cy.get('tbody:contains("latest")')
-      .first()
-      .within(() => {
-        cy.contains('Never').click();
-      });
+    cy.get('[data-label="Tag"]')
+      .contains('latest')
+      .parents('tr')
+      .contains('Never')
+      .click();
     cy.get('#edit-expiration-tags')
       .first()
       .within(() => {
@@ -701,11 +703,12 @@ describe('Repository Details Page', () => {
     cy.contains(
       `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
     ).should('exist');
-    cy.get('tbody:contains("latest")')
-      .first()
-      .within(() => {
-        cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
-      });
+    cy.get('tbody', {timeout: 30000}).should('exist');
+    cy.get('[data-label="Tag"]')
+      .contains('latest')
+      .parents('tr')
+      .find('[data-label="Expires"]')
+      .should('have.text', ' a month');
   });
 
   it('changes multiple tag expirations', () => {
@@ -750,11 +753,12 @@ describe('Repository Details Page', () => {
     cy.contains(
       `Successfully updated tag expirations to ${oneMonthFormatLong}`,
     ).should('exist');
-    cy.get('tbody:contains("latest")')
-      .first()
-      .within(() => {
-        cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
-      });
+    cy.get('tbody', {timeout: 30000}).should('exist');
+    cy.get('[data-label="Tag"]')
+      .contains('latest')
+      .parents('tr')
+      .find('[data-label="Expires"]')
+      .should('have.text', ' a month');
   });
 
   it('alerts on failure to change expiration', () => {
