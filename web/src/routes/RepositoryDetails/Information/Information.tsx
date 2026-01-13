@@ -29,6 +29,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import React from 'react';
 import ActivityHeatmap from 'src/components/ActivityHeatmap/ActivityHeatmap';
+import RecentRepoBuilds from './RecentRepoBuilds';
 import './Information.css';
 
 interface InformationProps {
@@ -172,9 +173,24 @@ export default function Information(props: InformationProps) {
           </Card>
         </GridItem>
 
-        {/* Pull Commands */}
+        {/* Right Column: Recent Builds + Pull Commands */}
         <GridItem span={12} md={7}>
-          <Card>
+          {/* Recent Repo Builds - only if BUILD_SUPPORT is enabled */}
+          {config?.features?.BUILD_SUPPORT && (
+            <RecentRepoBuilds
+              organization={organization}
+              repository={repository}
+              canWrite={repoDetails?.can_write || false}
+              canAdmin={repoDetails?.can_admin || false}
+            />
+          )}
+
+          {/* Pull Commands - add margin-top if builds section is shown */}
+          <Card
+            style={
+              config?.features?.BUILD_SUPPORT ? {marginTop: '1rem'} : undefined
+            }
+          >
             <CardTitle>Pull Commands</CardTitle>
             <CardBody>
               <Grid hasGutter>

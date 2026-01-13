@@ -14,3 +14,74 @@
   border: 1px solid var(--pf-v5-global--BorderColor--100);
   padding: var(--pf-v5-global--spacer--md);
 }
+
+/* Recent Repo Builds section */
+.recent-builds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.recent-build-item-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.recent-build-item-link:hover {
+  text-decoration: none;
+}
+
+.recent-build-item {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 0;
+}
+
+.recent-build-timing {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--pf-v5-global--link--Color);
+  white-space: nowrap;
+  min-width: 160px;
+}
+
+.recent-build-timing:hover {
+  text-decoration: underline;
+}
+
+.recent-build-timing svg {
+  width: 16px;
+  height: 16px;
+}
+
+.recent-build-description {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--pf-v5-global--link--Color);
+}
+
+.recent-build-description:hover {
+  text-decoration: underline;
+}
+
+.recent-builds-empty {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.view-build-history-link {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.view-build-history-link a {
+  color: var(--pf-v5-global--link--Color);
+  text-decoration: none;
+}
+
+.view-build-history-link a:hover {
+  text-decoration: underline;
+}

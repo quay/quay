@@ -277,6 +277,7 @@ export default function Build() {
         </CardBody>
       </Card>
       <Modal
+        title="Cancel Build"
         variant={ModalVariant.small}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
