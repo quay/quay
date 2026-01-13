@@ -21,7 +21,7 @@ from data.database import (
     db_transaction,
     get_epoch_timestamp_ms,
 )
-from data.model import config, user
+from data.model import ImmutableTagException, config, user
 from data.model.notification import delete_tag_notifications_for_tag
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -457,6 +457,12 @@ def retarget_tag(
         # as expired.
         existing_tag = get_tag(manifest.repository_id, tag_name)
         if existing_tag is not None:
+            # Check if the existing tag is immutable
+            if features.IMMUTABLE_TAGS and existing_tag.immutable:
+                if raise_on_error:
+                    raise ImmutableTagException(tag_name, "overwrite", manifest.repository_id)
+                return None
+
             _, okay = set_tag_end_ms(existing_tag, now_ms)
 
             # TODO: should we retry here and/or use a for-update?
@@ -482,10 +488,14 @@ def delete_tag(repository_id, tag_name):
     Deletes the alive tag with the given name in the specified repository and returns the deleted
     tag.
     If the tag did not exist, returns None.
+    Raises ImmutableTagException if the tag is immutable.
     """
     tag = get_tag(repository_id, tag_name)
     if tag is None:
         return None
+
+    if features.IMMUTABLE_TAGS and tag.immutable:
+        raise ImmutableTagException(tag_name, "delete", repository_id)
 
     return _delete_tag(tag, get_epoch_timestamp_ms())
 
@@ -521,13 +531,27 @@ def delete_tags_for_manifest(manifest):
     """
     Deletes all tags pointing to the given manifest.
 
-    Returns the list of tags deleted.
+    Returns the list of tags deleted. Immutable tags are skipped.
     """
     query = Tag.select().where(Tag.manifest == manifest)
     query = filter_to_alive_tags(query)
 
     tags = list(query)
     now_ms = get_epoch_timestamp_ms()
+
+    # Filter out immutable tags
+    if features.IMMUTABLE_TAGS:
+        mutable_tags = []
+        for tag in tags:
+            if tag.immutable:
+                logger.info(
+                    "Skipping deletion of immutable tag '%s' in repository %s",
+                    tag.name,
+                    manifest.repository_id,
+                )
+            else:
+                mutable_tags.append(tag)
+        tags = mutable_tags
 
     with db_transaction():
         for tag in tags:
@@ -702,7 +726,7 @@ def get_tags_within_timemachine_window(repo_id, tag_name, manifest_id, timemachi
 
     now_ms = get_epoch_timestamp_ms()
     return (
-        Tag.select(Tag.id)
+        Tag.select(Tag.id, Tag.immutable)
         .where(Tag.name == tag_name)
         .where(Tag.repository == repo_id)
         .where(Tag.manifest == manifest_id)
@@ -738,6 +762,15 @@ def remove_tag_from_timemachine(
         if alive_tag is None:
             return False
 
+        # Check if the tag is immutable - skip deletion if so
+        if features.IMMUTABLE_TAGS and alive_tag.immutable:
+            logger.info(
+                "Skipping permanent deletion of immutable tag '%s' in repository %s",
+                tag_name,
+                repo_id,
+            )
+            return False
+
         with db_transaction():
             # Clear pull statistics for permanently deleted tag
             if features.IMAGE_PULL_STATS:
@@ -769,9 +802,27 @@ def remove_tag_from_timemachine(
                     TagPullStatistics.tag_name == tag_name,
                 ).execute()
 
-            for tag in get_tags_within_timemachine_window(
-                repo_id, tag_name, manifest_id, time_machine_ms
-            ):
+            # Collect all tags first to check immutability before any updates
+            tags_to_update = list(
+                get_tags_within_timemachine_window(repo_id, tag_name, manifest_id, time_machine_ms)
+            )
+
+            # Filter out immutable tags and log
+            if features.IMMUTABLE_TAGS:
+                mutable_tags = []
+                for tag in tags_to_update:
+                    if tag.immutable:
+                        logger.info(
+                            "Skipping permanent deletion of immutable tag '%s' in repository %s",
+                            tag_name,
+                            repo_id,
+                        )
+                    else:
+                        mutable_tags.append(tag)
+                tags_to_update = mutable_tags
+
+            # Update all mutable tags
+            for tag in tags_to_update:
                 Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment).where(
                     Tag.id == tag
                 ).execute()
@@ -914,3 +965,44 @@ def fetch_repo_tags_for_image_expiry_expiry_event(repo_id, days, notified_tags):
         raise Exception(
             f"Error fetching repository tags repository id: {repo_id} with error as: {str(err)}"
         )
+
+
+def is_tag_immutable(repository_id: int, tag_name: str) -> bool | None:
+    """
+    Returns whether the tag with the given name is immutable.
+
+    Returns None if the tag does not exist.
+    """
+    tag = get_tag(repository_id, tag_name)
+    if tag is None:
+        return None
+    return tag.immutable
+
+
+def set_tag_immutable(
+    repository_id: int, tag_name: str, immutable: bool
+) -> tuple[bool | None, bool]:
+    """
+    Sets the immutability status of a tag.
+
+    Returns (previous_immutable, success) tuple.
+    """
+    tag = get_tag(repository_id, tag_name)
+    if tag is None:
+        return (None, False)
+
+    previous_immutable = tag.immutable
+
+    if previous_immutable == immutable:
+        return (previous_immutable, True)
+
+    updated = (
+        Tag.update(immutable=immutable)
+        .where(Tag.id == tag.id)
+        .where(Tag.immutable == previous_immutable)  # optimistic locking
+        .execute()
+    )
+    if updated != 1:
+        return (None, False)
+
+    return (previous_immutable, True)
