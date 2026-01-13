@@ -65,11 +65,7 @@ peewee==3.13.1
 pillow==10.3.0
 ply==3.11
 prometheus_client==0.7.1
-<<<<<<< HEAD
 protobuf==5.29.5
-=======
-protobuf==5.28.2
->>>>>>> 723102e64 (build: move quay to python 3.12 (PROJQUAY-8800) (#3780))
 psutil==5.9.0
 psycopg2==2.9.9
 pyasn1==0.4.8
