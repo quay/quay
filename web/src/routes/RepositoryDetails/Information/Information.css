@@ -34,8 +34,7 @@
 .recent-build-item {
   display: flex;
   align-items: center;
-  gap: 4rem;
-  flex-wrap: wrap;
+  gap: 1.5rem;
   padding: 0.75rem 0;
 }
 
@@ -45,6 +44,7 @@
   gap: 0.5rem;
   color: var(--pf-v5-global--link--Color);
   white-space: nowrap;
+  min-width: 160px;
 }
 
 .recent-build-timing:hover {
