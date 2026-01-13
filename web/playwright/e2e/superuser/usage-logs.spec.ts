@@ -6,9 +6,7 @@ test.describe(
   () => {
     // Access control tests are covered by framework.spec.ts
 
-    test('displays usage logs page with chart and table', async ({
-      superuserPage,
-    }) => {
+    test('displays usage logs page with columns', async ({superuserPage}) => {
       await superuserPage.goto('/usage-logs');
 
       // Verify page header
@@ -19,51 +17,109 @@ test.describe(
       // Verify date range pickers exist
       await expect(superuserPage.getByText('From:')).toBeVisible();
       await expect(superuserPage.getByText('To:')).toBeVisible();
+
+      // Verify table columns (superuser has Namespace column)
       await expect(
-        superuserPage.getByLabel('Date picker').first(),
+        superuserPage.getByRole('columnheader', {name: 'Date & Time'}),
+      ).toBeVisible();
+      await expect(
+        superuserPage.getByRole('columnheader', {name: 'Description'}),
+      ).toBeVisible();
+      await expect(
+        superuserPage.getByRole('columnheader', {name: 'Namespace'}),
+      ).toBeVisible();
+      await expect(
+        superuserPage.getByRole('columnheader', {name: 'Performed by'}),
+      ).toBeVisible();
+      await expect(
+        superuserPage.getByRole('columnheader', {name: 'IP Address'}),
       ).toBeVisible();
 
-      // Verify chart area is visible (either chart with data or "No data" message)
-      // The Hide Chart button is always visible regardless of data
-      await expect(
-        superuserPage.getByRole('button', {name: 'Hide Chart'}),
-      ).toBeVisible();
+      // Verify table is present
+      await expect(superuserPage.getByTestId('usage-logs-table')).toBeVisible();
 
-      // Toggle chart visibility - hide
-      await superuserPage.getByRole('button', {name: 'Hide Chart'}).click();
+      // Verify chart toggle exists
       await expect(
-        superuserPage.getByRole('button', {name: 'Show Chart'}),
+        superuserPage.getByTestId('usage-logs-chart-toggle'),
       ).toBeVisible();
+    });
 
-      // Toggle chart visibility - show again
-      await superuserPage.getByRole('button', {name: 'Show Chart'}).click();
+    test('toggles chart visibility', async ({superuserPage}) => {
+      await superuserPage.goto('/usage-logs');
+
+      // Wait for page to load
+      await expect(superuserPage.getByTestId('usage-logs-table')).toBeVisible();
+
+      // Toggle chart off
+      await superuserPage.getByTestId('usage-logs-chart-toggle').click();
       await expect(
-        superuserPage.getByRole('button', {name: 'Hide Chart'}),
-      ).toBeVisible();
+        superuserPage.getByTestId('usage-logs-chart-toggle'),
+      ).toContainText('Show Chart');
 
-      // Verify table is present (may need to scroll and wait for async load)
-      const table = superuserPage.getByTestId('usage-logs-table');
-      await table.scrollIntoViewIfNeeded();
-      await expect(table).toBeVisible({timeout: 15000});
+      // Toggle chart back on
+      await superuserPage.getByTestId('usage-logs-chart-toggle').click();
+      await expect(
+        superuserPage.getByTestId('usage-logs-chart-toggle'),
+      ).toContainText('Hide Chart');
     });
 
     test('filters logs in the table', async ({superuserPage}) => {
       await superuserPage.goto('/usage-logs');
 
-      // Wait for table to load (may need to scroll and wait for async load)
-      const table = superuserPage.getByTestId('usage-logs-table');
-      await table.scrollIntoViewIfNeeded();
-      await expect(table).toBeVisible({timeout: 15000});
+      // Wait for table to load
+      await expect(superuserPage.getByTestId('usage-logs-table')).toBeVisible();
 
-      // Verify filter input exists and can be used
-      const filterInput = superuserPage.getByPlaceholder('Filter logs');
-      await expect(filterInput).toBeVisible();
+      // Wait for filter input to be available
+      await expect(superuserPage.getByPlaceholder('Filter logs')).toBeVisible();
 
-      // Type in filter (test that it's functional)
-      await filterInput.fill('create');
-      // Filter is applied immediately - no button to click
+      // Filter by some text (any text that might appear in logs)
+      await superuserPage.getByPlaceholder('Filter logs').fill('user');
+
+      // Verify filter was applied (input has value)
+      await expect(superuserPage.getByPlaceholder('Filter logs')).toHaveValue(
+        'user',
+      );
+
       // The table should still be visible
       await expect(superuserPage.getByTestId('usage-logs-table')).toBeVisible();
+    });
+
+    test('shows Splunk error when logs are not implemented', async ({
+      superuserPage,
+    }) => {
+      await superuserPage.route('**/api/v1/superuser/logs*', async (route) => {
+        await route.fulfill({
+          status: 501,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            message:
+              'Method not implemented, Splunk does not support log lookups',
+          }),
+        });
+      });
+      await superuserPage.route(
+        '**/api/v1/superuser/aggregatelogs*',
+        async (route) => {
+          await route.fulfill({
+            status: 501,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              message:
+                'Method not implemented, Splunk does not support log lookups',
+            }),
+          });
+        },
+      );
+
+      await superuserPage.goto('/usage-logs');
+
+      await expect(
+        superuserPage
+          .getByText(
+            'Method not implemented, Splunk does not support log lookups',
+          )
+          .first(),
+      ).toBeVisible();
     });
   },
 );

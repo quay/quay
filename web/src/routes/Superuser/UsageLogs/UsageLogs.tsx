@@ -117,6 +117,7 @@ export default function UsageLogs() {
                 <Button
                   variant="secondary"
                   onClick={() => setChartHidden(!chartHidden)}
+                  data-testid="usage-logs-chart-toggle"
                 >
                   {chartHidden ? 'Show Chart' : 'Hide Chart'}
                 </Button>
