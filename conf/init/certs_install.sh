@@ -68,7 +68,12 @@ done
 # to /etc/pki after because of permission issues
 
 mkdir -p /tmp/extracted
-rm -rf /etc/pki/ca-trust/extracted
-update-ca-trust extract -o /tmp/extracted
-chmod ug+w -R /tmp/extracted
-mv /tmp/extracted /etc/pki/ca-trust
+if update-ca-trust extract -o /tmp/extracted; then
+    chmod -R ug+w /tmp/extracted
+    rm -rf /etc/pki/ca-trust/extracted
+    mv /tmp/extracted /etc/pki/ca-trust
+else
+    echo "ERROR: update-ca-trust extract failed" >&2
+    rm -rf /tmp/extracted
+    exit 1
+fi
