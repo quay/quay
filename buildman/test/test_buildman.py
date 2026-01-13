@@ -363,7 +363,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
 
         # Ensure the job was marked as incomplete, with an update_phase to True (so the DB record and
         # logs are updated as well)
-        await self.job_complete_callback.assert_called_once_with(
+        self.job_complete_callback._delegate.assert_called_once_with(
             ANY, BuildJobResult.INCOMPLETE, "MockExecutor", update_phase=True
         )
 
