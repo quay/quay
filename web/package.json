@@ -123,6 +123,7 @@
     "@patternfly/patternfly": "^5.0.4",
     "@patternfly/react-core": "^5.1.0",
     "@patternfly/react-icons": "^5.1.0",
-    "@patternfly/react-table": "^5.1.0"
+    "@patternfly/react-table": "^5.1.0",
+    "node-forge": "^1.3.2"
   }
 }
