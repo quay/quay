@@ -13,6 +13,7 @@ from collections import defaultdict, namedtuple
 from datetime import datetime
 from random import SystemRandom
 
+import resumablesha256 as rehash
 import toposort
 
 from enum import IntEnum, Enum, unique
@@ -26,8 +27,6 @@ from playhouse.pool import (
 )
 
 from sqlalchemy.engine.url import make_url
-
-import rehash
 from cachetools.func import lru_cache
 
 from data.fields import (
