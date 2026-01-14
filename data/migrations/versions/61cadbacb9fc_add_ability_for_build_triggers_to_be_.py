@@ -51,13 +51,13 @@ def upgrade(op, tables, tester):
         ["disabled_reason_id"],
         unique=False,
     )
-    op.create_foreign_key(
-        op.f("fk_repositorybuildtrigger_disabled_reason_id_disablereason"),
-        "repositorybuildtrigger",
-        "disablereason",
-        ["disabled_reason_id"],
-        ["id"],
-    )
+    with op.batch_alter_table("repositorybuildtrigger") as batch_op:
+        batch_op.create_foreign_key(
+            op.f("fk_repositorybuildtrigger_disabled_reason_id_disablereason"),
+            "disablereason",
+            ["disabled_reason_id"],
+            ["id"],
+        )
     # ### end Alembic commands ###
 
     # ### population of test data ### #
@@ -76,8 +76,9 @@ def downgrade(op, tables, tester):
         type_="foreignkey",
     )
     op.drop_index("repositorybuildtrigger_disabled_reason_id", table_name="repositorybuildtrigger")
-    op.drop_column("repositorybuildtrigger", "enabled")
-    op.drop_column("repositorybuildtrigger", "disabled_reason_id")
+    with op.batch_alter_table("repositorybuildtrigger") as batch_op:
+        batch_op.drop_column("enabled")
+        batch_op.drop_column("disabled_reason_id")
     op.drop_table("disablereason")
     # ### end Alembic commands ###
 
