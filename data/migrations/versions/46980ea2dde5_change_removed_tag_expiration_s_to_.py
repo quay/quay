@@ -15,9 +15,11 @@ import sqlalchemy as sa
 
 def upgrade(op, tables, tester):
     # Alter the column to use BIGINT data type
-    op.alter_column("user", "removed_tag_expiration_s", type_=sa.BigInteger)
+    with op.batch_alter_table("user") as batch_op:
+        batch_op.alter_column("removed_tag_expiration_s", type_=sa.BigInteger)
 
 
 def downgrade(op, tables, tester):
     # Alter the column to use INT data type, this might fail if there are already values that are bigger than INT but we do not intend to support downgrades anyway
-    op.alter_column("user", "removed_tag_expiration_s", type_=sa.Integer)
+    with op.batch_alter_table("user") as batch_op:
+        batch_op.alter_column("removed_tag_expiration_s", type_=sa.Integer)
