@@ -2074,6 +2074,11 @@ class RepoMirrorConfig(BaseModel):
     external_registry_password = EncryptedCharField(max_length=9000, null=True)
     external_registry_config = JSONField(default={})
 
+    # Architecture filter for multi-arch images. JSON array of architecture strings.
+    # Empty array or null means mirror all architectures.
+    # Example: ["amd64", "arm64"]
+    architecture_filter = JSONField(default=[], null=True)
+
     # Worker Queueing
     sync_interval = IntegerField()  # seconds between syncs
     sync_start_date = DateTimeField(null=True)  # next start time
