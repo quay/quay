@@ -141,7 +141,11 @@ class LazyManifestLoader(object):
                     self.architecture,
                 )
                 return None
-            raise ManifestException("Could not find child manifest with digest `%s`" % digest)
+            required_archs = self._get_required_archs()
+            raise ManifestException(
+                f"Required architecture '{self.architecture}' manifest not found. "
+                f"Digest: {digest}. Required architectures: {required_archs}"
+            )
 
         if len(manifest_bytes) != size:
             raise ManifestException(
