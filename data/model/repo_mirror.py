@@ -638,6 +638,7 @@ def set_architecture_filter(repository, architectures):
     Returns:
         True if the update was successful, False otherwise.
     """
+    validate_architecture_filter(architectures)
     mirror = get_mirror(repository)
     return bool(update_with_transaction(mirror, architecture_filter=architectures))
 
