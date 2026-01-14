@@ -14,8 +14,6 @@ from test.registry.protocols import (
     layer_bytes_for_contents,
 )
 
-import bencode
-import rehash
 from werkzeug.datastructures import Accept
 
 from app import app as original_app
