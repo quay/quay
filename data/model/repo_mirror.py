@@ -24,7 +24,8 @@ MAX_SYNC_RETRIES = 3
 
 # Valid architectures for multi-arch image filtering
 # These match the GOARCH values used by OCI/Docker
-VALID_ARCHITECTURES = {"amd64", "arm64", "ppc64le", "s390x", "386", "riscv64"}
+# For now we only care about the most common arches for openshift
+VALID_ARCHITECTURES = {"amd64", "arm64", "ppc64le", "s390x"}
 
 # We need to increase the MAX_SYNC_DURATION because for certain very big images, 2 hours might not be enough
 # Previous value: 2 hours
