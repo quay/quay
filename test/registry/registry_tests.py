@@ -3,16 +3,6 @@ import binascii
 import hashlib
 import tarfile
 from io import BytesIO
-from test.fixtures import *
-from test.registry.fixtures import *
-from test.registry.liveserverfixture import *
-from test.registry.protocol_fixtures import *
-from test.registry.protocols import (
-    Failures,
-    Image,
-    ProtocolOptions,
-    layer_bytes_for_contents,
-)
 
 from werkzeug.datastructures import Accept
 
@@ -24,6 +14,16 @@ from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci.index import OCIIndexBuilder
+from test.fixtures import *
+from test.registry.fixtures import *
+from test.registry.liveserverfixture import *
+from test.registry.protocol_fixtures import *
+from test.registry.protocols import (
+    Failures,
+    Image,
+    ProtocolOptions,
+    layer_bytes_for_contents,
+)
 from util.security.registry_jwt import decode_bearer_header
 from util.timedeltastring import convert_to_timedelta
 
