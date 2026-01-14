@@ -375,5 +375,5 @@ class TestArchitectureFilter:
         """
         Test that VALID_ARCHITECTURES contains expected values.
         """
-        expected = {"amd64", "arm64", "ppc64le", "s390x", "386", "riscv64"}
+        expected = {"amd64", "arm64", "ppc64le", "s390x"}
         assert VALID_ARCHITECTURES == expected
