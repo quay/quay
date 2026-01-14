@@ -706,7 +706,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `security-report.cy.ts` | | @feature:SECURITY_SCANNER |
 | ⬚ | `security-scanner-feature-toggle.cy.ts` | | @feature:SECURITY_SCANNER |
 | ⬚ | `service-status.cy.ts` | | |
-| ⬚ | `signin.cy.ts` | | |
+| ✅ | `signin.cy.ts` | `auth/signin.spec.ts` | @feature:MAILING, @auth:Database, @feature:SUPERUSERS_FULL_ACCESS, consolidated 30→18 tests |
 | ⬚ | `superuser-build-logs.cy.ts` | | Superuser required |
 | ✅ | `superuser-change-log.cy.ts` | `superuser/change-log.spec.ts` | Superuser required, 7→2 tests (access control in framework.spec.ts) |
 | ✅ | `superuser-framework.cy.ts` | `superuser/framework.spec.ts` | Superuser required, consolidated 7→4 tests |
