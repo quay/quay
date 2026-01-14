@@ -323,6 +323,10 @@ def _create_manifest(
 
                 return None
 
+            # Skip manifests that were not loaded (e.g., due to sparse index configuration).
+            if child_manifest is None:
+                continue
+
             # Retrieve its labels.
             labels = child_manifest.get_manifest_labels(retriever)
             if labels is None and isinstance(child_manifest, ManifestInterface):

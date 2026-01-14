@@ -3,12 +3,13 @@ from calendar import timegm
 from datetime import datetime, timedelta
 
 import pytest
-from mock import patch
+from mock import MagicMock, patch
 from playhouse.test_utils import assert_query_count
 
 from app import storage
 from data import model
 from data.database import ImageStorageLocation, ManifestChild, Repository, Tag, User
+from data.model import ImmutableTagException
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.tag import (
@@ -28,6 +29,7 @@ from data.model.oci.tag import (
     get_most_recent_tag_lifetime_start,
     get_tag,
     get_tag_by_manifest_id,
+    is_tag_immutable,
     list_alive_tags,
     list_repository_tag_history,
     lookup_alive_tags_shallow,
@@ -35,6 +37,7 @@ from data.model.oci.tag import (
     remove_tag_from_timemachine,
     retarget_tag,
     set_tag_expiration_for_manifest,
+    set_tag_immutable,
 )
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.model.repository import create_repository, get_repository
@@ -726,3 +729,287 @@ def _create_manifest_list(repository):
     assert created_tuple is not None
 
     return retarget_tag("manifestlist", created_tuple.manifest)
+
+
+# =============================================================================
+# Immutable Tag Tests
+# =============================================================================
+
+
+class TestImmutableTagException:
+    def test_exception_message(self):
+        """Test that ImmutableTagException has correct message format."""
+        exc = ImmutableTagException("latest", "delete", 123)
+        assert exc.tag_name == "latest"
+        assert exc.operation == "delete"
+        assert exc.repository_id == 123
+        assert str(exc) == "Cannot delete immutable tag 'latest'"
+
+    def test_exception_message_overwrite(self):
+        """Test exception message for overwrite operation."""
+        exc = ImmutableTagException("v1.0", "overwrite")
+        assert str(exc) == "Cannot overwrite immutable tag 'v1.0'"
+
+
+class TestDeleteTagImmutable:
+    def test_delete_tag_immutable_raises_exception(self, initialized_db):
+        """Test that deleting an immutable tag raises ImmutableTagException."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create a real tag (not a temporary hidden one)
+        tag = retarget_tag("v1.0", manifest.id)
+
+        # Mark tag as immutable
+        Tag.update(immutable=True).where(Tag.id == tag.id).execute()
+
+        with pytest.raises(ImmutableTagException) as exc_info:
+            delete_tag(repo.id, tag.name)
+
+        assert exc_info.value.tag_name == tag.name
+        assert exc_info.value.operation == "delete"
+        assert exc_info.value.repository_id == repo.id
+
+    @patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False})
+    def test_delete_tag_mutable_works(self, initialized_db):
+        """Test that deleting a mutable tag works normally."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create a real tag (not a temporary hidden one)
+        tag = retarget_tag("v1.0", manifest.id)
+
+        # Tag is mutable by default
+        assert not tag.immutable
+
+        deleted = delete_tag(repo.id, tag.name)
+        assert deleted is not None
+        assert get_tag(repo.id, tag.name) is None
+
+
+class TestRetargetTagImmutable:
+    def test_retarget_tag_immutable_raises_exception(self, initialized_db):
+        """Test that overwriting an immutable tag raises ImmutableTagException."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest_1, _ = create_manifest_for_testing(repo, "1")
+        manifest_2, _ = create_manifest_for_testing(repo, "2")
+
+        tag = retarget_tag("mytag", manifest_1.id)
+
+        # Mark tag as immutable
+        Tag.update(immutable=True).where(Tag.id == tag.id).execute()
+
+        with pytest.raises(ImmutableTagException) as exc_info:
+            retarget_tag("mytag", manifest_2.id, raise_on_error=True)
+
+        assert exc_info.value.tag_name == "mytag"
+        assert exc_info.value.operation == "overwrite"
+
+    def test_retarget_tag_immutable_returns_none(self, initialized_db):
+        """Test that overwriting an immutable tag returns None when raise_on_error=False."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest_1, _ = create_manifest_for_testing(repo, "1")
+        manifest_2, _ = create_manifest_for_testing(repo, "2")
+
+        tag = retarget_tag("mytag", manifest_1.id)
+
+        # Mark tag as immutable
+        Tag.update(immutable=True).where(Tag.id == tag.id).execute()
+
+        result = retarget_tag("mytag", manifest_2.id, raise_on_error=False)
+        assert result is None
+
+        # Verify original tag still exists and points to original manifest
+        current_tag = get_tag(repo.id, "mytag")
+        assert current_tag is not None
+        assert current_tag.manifest_id == manifest_1.id
+
+    def test_retarget_tag_new_tag_alongside_immutable(self, initialized_db):
+        """Test that creating a new tag works when immutable tags exist."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest_1, _ = create_manifest_for_testing(repo, "1")
+        manifest_2, _ = create_manifest_for_testing(repo, "2")
+
+        tag_1 = retarget_tag("immutable-tag", manifest_1.id)
+
+        # Mark first tag as immutable
+        Tag.update(immutable=True).where(Tag.id == tag_1.id).execute()
+
+        # Creating a new tag with different name should work
+        tag_2 = retarget_tag("new-tag", manifest_2.id)
+        assert tag_2 is not None
+        assert tag_2.name == "new-tag"
+
+
+class TestRemoveTagFromTimemachineImmutable:
+    def test_remove_alive_immutable_tag_returns_false(self, initialized_db):
+        """Test that permanently deleting an alive immutable tag returns False and logs."""
+        repo = get_repository("devtable", "history")
+        tag = get_tag(repo.id, "latest")
+        assert tag is not None
+
+        # Mark tag as immutable
+        Tag.update(immutable=True).where(Tag.id == tag.id).execute()
+
+        # Should return False instead of raising exception
+        result = remove_tag_from_timemachine(repo.id, "latest", tag.manifest_id, is_alive=True)
+        assert result is False
+
+        # Tag should still exist
+        assert get_tag(repo.id, "latest") is not None
+
+    def test_remove_expired_immutable_tag_is_skipped(self, initialized_db):
+        """Test that permanently deleting an expired immutable tag skips it."""
+        repo = get_repository("devtable", "history")
+        results, _ = list_repository_tag_history(repo.id, 1, 100, specific_tag_name="latest")
+        assert len(results) >= 2
+
+        # Get the expired tag and mark it as immutable
+        expired_tag = results[1]
+        now_ms = get_epoch_timestamp_ms()
+        Tag.update(
+            lifetime_end_ms=now_ms - 100,
+            immutable=True,
+        ).where(Tag.id == expired_tag.id).execute()
+
+        # Should succeed but skip the immutable tag
+        result = remove_tag_from_timemachine(repo.id, "latest", expired_tag.manifest_id)
+        # Returns False because no mutable tags were updated
+        assert result is False
+
+
+class TestIsTagImmutable:
+    def test_is_tag_immutable_returns_true(self, initialized_db):
+        """Test that is_tag_immutable returns True for immutable tags."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create a real tag (not a temporary hidden one)
+        tag = retarget_tag("v1.0", manifest.id)
+
+        Tag.update(immutable=True).where(Tag.id == tag.id).execute()
+
+        result = is_tag_immutable(repo.id, tag.name)
+        assert result is True
+
+    def test_is_tag_immutable_returns_false(self, initialized_db):
+        """Test that is_tag_immutable returns False for mutable tags."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create a real tag (not a temporary hidden one)
+        tag = retarget_tag("v1.0", manifest.id)
+
+        result = is_tag_immutable(repo.id, tag.name)
+        assert result is False
+
+    def test_is_tag_immutable_returns_none_for_nonexistent(self, initialized_db):
+        """Test that is_tag_immutable returns None for non-existent tags."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+
+        result = is_tag_immutable(repo.id, "nonexistent")
+        assert result is None
+
+
+class TestSetTagImmutable:
+    def test_set_tag_immutable_true(self, initialized_db):
+        """Test setting a tag as immutable."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create a real tag (not a temporary hidden one)
+        tag = retarget_tag("v1.0", manifest.id)
+
+        prev, success = set_tag_immutable(repo.id, tag.name, True)
+
+        assert prev is False
+        assert success is True
+
+        # Verify tag is now immutable
+        updated_tag = Tag.get_by_id(tag.id)
+        assert updated_tag.immutable is True
+
+    def test_set_tag_immutable_false(self, initialized_db):
+        """Test setting a tag as mutable."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create a real tag (not a temporary hidden one)
+        tag = retarget_tag("v1.0", manifest.id)
+
+        # First make it immutable
+        Tag.update(immutable=True).where(Tag.id == tag.id).execute()
+
+        prev, success = set_tag_immutable(repo.id, tag.name, False)
+
+        assert prev is True
+        assert success is True
+
+        # Verify tag is now mutable
+        updated_tag = Tag.get_by_id(tag.id)
+        assert updated_tag.immutable is False
+
+    def test_set_tag_immutable_nonexistent_tag(self, initialized_db):
+        """Test setting immutability on non-existent tag returns failure."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+
+        prev, success = set_tag_immutable(repo.id, "nonexistent", True)
+
+        assert prev is None
+        assert success is False
+
+    def test_set_tag_immutable_no_change(self, initialized_db):
+        """Test that setting same immutability value returns success without update."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create a real tag (not a temporary hidden one)
+        tag = retarget_tag("v1.0", manifest.id)
+
+        # Tag is already mutable (False)
+        prev, success = set_tag_immutable(repo.id, tag.name, False)
+
+        assert prev is False
+        assert success is True
+
+
+class TestFeatureFlagDisabled:
+    """Test that immutable tags can be deleted when feature flag is disabled."""
+
+    def test_delete_immutable_tag_when_feature_disabled(self, initialized_db):
+        """When FEATURE_IMMUTABLE_TAGS is False, deleting immutable tags succeeds."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+        tag = retarget_tag("v1.0", manifest)
+
+        Tag.update(immutable=True).where(Tag.id == tag.id).execute()
+
+        with patch("data.model.oci.tag.features", MagicMock(IMMUTABLE_TAGS=False)):
+            deleted = delete_tag(repo.id, "v1.0")
+            assert deleted is not None
+
+
+class TestDeleteTagsForManifestImmutable:
+    """Test delete_tags_for_manifest with immutable tags."""
+
+    def test_delete_tags_for_manifest_skips_immutable(self, initialized_db):
+        """Immutable tags are skipped when deleting tags for manifest."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create two tags pointing to same manifest
+        tag1 = retarget_tag("v1.0", manifest)
+        tag2 = retarget_tag("v2.0", manifest)
+
+        # Make one immutable
+        Tag.update(immutable=True).where(Tag.id == tag1.id).execute()
+
+        # Delete should skip immutable tag
+        deleted = delete_tags_for_manifest(manifest)
+
+        # Only v2.0 should be deleted
+        assert len(deleted) == 1
+        assert deleted[0].name == "v2.0"
+
+        # v1.0 should still exist
+        assert get_tag(repo.id, "v1.0") is not None

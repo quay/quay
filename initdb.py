@@ -451,6 +451,7 @@ def initialize_database():
     LogEntryKind.create(name="manifest_label_delete")
 
     LogEntryKind.create(name="change_tag_expiration")
+    LogEntryKind.create(name="change_tag_immutability")
     LogEntryKind.create(name="toggle_repo_trigger")
 
     LogEntryKind.create(name="create_app_specific_token")

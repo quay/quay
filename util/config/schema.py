@@ -743,6 +743,11 @@ CONFIG_SCHEMA = {
             "description": "Whether users and organizations are allowed to change the tag expiration for tags in their namespace. Defaults to True.",
             "x-example": False,
         },
+        "FEATURE_IMMUTABLE_TAGS": {
+            "type": "boolean",
+            "description": "Whether tag immutability enforcement is enabled. When enabled, immutable tags cannot be deleted or overwritten. Defaults to True.",
+            "x-example": True,
+        },
         "DEFAULT_TAG_EXPIRATION": {
             "type": "string",
             "description": "The default, configurable tag expiration time for time machine. Defaults to `2w`.",
@@ -1674,6 +1679,18 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "Whether to enable open telemetry tracing on quay",
             "x-example": False,
+        },
+        "FEATURE_SPARSE_INDEX": {
+            "type": "boolean",
+            "description": "Whether to allow sparse manifest indexes where not all architectures are required to be present. When enabled, manifests for architectures not in SPARSE_INDEX_REQUIRED_ARCHS will be skipped if they cannot be loaded. Defaults to False",
+            "x-example": False,
+        },
+        "SPARSE_INDEX_REQUIRED_ARCHS": {
+            "type": "array",
+            "description": "List of architectures that are required to be present in manifest indexes when FEATURE_SPARSE_INDEX is enabled. Manifests for architectures not in this list will be skipped if they cannot be loaded.",
+            "uniqueItems": True,
+            "items": {"type": "string"},
+            "x-example": ["amd64", "arm64"],
         },
         "OTEL_CONFIG": {
             "type": "object",

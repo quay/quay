@@ -7,14 +7,14 @@ services:
   quay-db:
     user: postgres
     container_name: quay-db
-    image: docker.io/library/postgres:12.1
+    image: docker.io/library/postgres:18
     environment:
       POSTGRES_USER: "quay"
       POSTGRES_PASSWORD: "quay"
       POSTGRES_DB: "quay"
     volumes:
       - "./local-dev/init/pg_bootstrap.sql:/docker-entrypoint-initdb.d/pg_bootstrap.sql"
-      - "quay-db-data:/var/lib/postgresql/data"
+      - "quay-db-data:/var/lib/postgresql"
     ports:
       - "5432:5432"
     healthcheck:
@@ -27,13 +27,13 @@ services:
   clair-db:
     user: postgres
     container_name: clair-db
-    image: docker.io/library/postgres:12.1
+    image: docker.io/library/postgres:18
     command: -c 'max_connections=300'
     environment:
       POSTGRES_USER: "clair"
       POSTGRES_DB: "clair"
     volumes:
-      - "clair-db-data:/var/lib/postgresql/data"
+      - "clair-db-data:/var/lib/postgresql"
     ports:
       - "5433:5432"
     healthcheck:

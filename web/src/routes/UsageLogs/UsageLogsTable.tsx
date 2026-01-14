@@ -226,6 +226,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                 onChange={(_event, value) => filterOnChange(value)}
                 onClear={() => filterOnChange('')}
                 id="log-filter-input"
+                data-testid="usage-logs-filter-input"
               />
             </SplitItem>
           </Split>

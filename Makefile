@@ -91,7 +91,7 @@ test_postgres:
 	$(DOCKER) rm -f $(CONTAINER) || true
 	$(DOCKER) run --name $(CONTAINER) \
 		-e POSTGRES_PASSWORD=$(PG_PASSWORD) -e POSTGRES_USER=$(PG_USER) \
-		-p $(PG_PORT):5432 -d postgres:12.1
+		-p $(PG_PORT):5432 -d postgres:18
 	$(DOCKER) exec -it $(CONTAINER) bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	$(DOCKER) exec -it $(CONTAINER) bash -c "psql -U $(PG_USER) -d quay -c 'CREATE EXTENSION pg_trgm;'"
 	$(TEST_ENV) alembic upgrade head

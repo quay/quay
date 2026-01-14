@@ -644,6 +644,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether users can view and change their tag expiration.
     FEATURE_CHANGE_TAG_EXPIRATION = True
 
+    # Feature Flag: Whether tag immutability enforcement is enabled.
+    FEATURE_IMMUTABLE_TAGS = True
+
     # Defines a secret for enabling the health-check endpoint's debug information.
     ENABLE_HEALTH_DEBUG_SECRET = None
 
@@ -952,3 +955,12 @@ class DefaultConfig(ImmutableConfig):
     # 2. Dict format: {"bucket_name": ["namespace1", "namespace2"]} - multiple namespaces share a bucket
     # Example: {"critical": ["redhat", "internal"], "customers": ["customer1", "customer2"]}
     TRACKED_NAMESPACES: Union[List[str], Dict[str, Union[List[str], str]]] = []
+
+    # Feature Flag: Whether to allow sparse manifest indexes where not all architectures are required.
+    # When enabled, manifests for architectures not in SPARSE_INDEX_REQUIRED_ARCHS will be skipped
+    # if they cannot be loaded.
+    FEATURE_SPARSE_INDEX = False
+
+    # List of architectures that are required to be present in manifest indexes when
+    # FEATURE_SPARSE_INDEX is enabled.
+    SPARSE_INDEX_REQUIRED_ARCHS: List[str] = []

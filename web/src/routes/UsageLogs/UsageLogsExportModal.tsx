@@ -48,6 +48,7 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
         variant="primary"
         onClick={handleModalToggle}
         isDisabled={!validateDate()}
+        data-testid="usage-logs-export-button"
       >
         Export
       </Button>
@@ -78,6 +79,7 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
               })
             }
             isDisabled={userInputValidated === 'error'}
+            data-testid="usage-logs-export-confirm-button"
           >
             {' '}
             Confirm
@@ -94,6 +96,7 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
         </Text>
         <TextInput
           id="export-logs-callback"
+          data-testid="usage-logs-export-email-input"
           value={callbackEmailOrUrl}
           type="text"
           onChange={(_event, callbackEmailOrUrl) => {

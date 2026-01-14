@@ -1,8 +1,11 @@
 import json
+import logging
 
 from image.shared import ManifestException
 from image.shared.interfaces import ContentRetriever
 from util.bytes import Bytes
+
+logger = logging.getLogger(__name__)
 
 
 class ContentRetrieverForTesting(ContentRetriever):
@@ -57,6 +60,10 @@ def to_canonical_json(value, ensure_ascii=True, indent=None):
 class LazyManifestLoader(object):
     """Lazy loader for manifests referenced by another manifest list or index."""
 
+    # Platform key names used in manifest data
+    PLATFORM_KEY = "platform"
+    ARCHITECTURE_KEY = "architecture"
+
     def __init__(
         self,
         manifest_data,
@@ -65,21 +72,61 @@ class LazyManifestLoader(object):
         digest_key,
         size_key,
         media_type_key,
+        app_config=None,
     ):
         self._manifest_data = manifest_data
         self._content_retriever = content_retriever
         self._loaded_manifest = None
+        self._load_attempted = False
         self._digest_key = digest_key
         self._size_key = size_key
         self._media_type_key = media_type_key
         self._supported_types = supported_types
+        self._app_config = app_config or {}
+
+    @property
+    def architecture(self):
+        """Returns the architecture of this manifest from its platform data, or None if not set."""
+        platform = self._manifest_data.get(self.PLATFORM_KEY)
+        if platform:
+            return platform.get(self.ARCHITECTURE_KEY)
+        return None
+
+    def _is_sparse_index_enabled(self):
+        """Check if sparse index feature is enabled."""
+        return self._app_config.get("FEATURE_SPARSE_INDEX", False)
+
+    def _get_required_archs(self):
+        """Get the list of required architectures for sparse index."""
+        return self._app_config.get("SPARSE_INDEX_REQUIRED_ARCHS", [])
+
+    def _is_architecture_required(self):
+        """
+        Check if this manifest's architecture is in the required list.
+        Returns True if the architecture is required or if sparse index is not enabled.
+        """
+        if not self._is_sparse_index_enabled():
+            return True
+
+        required_archs = self._get_required_archs()
+        if not required_archs:
+            # If no required archs specified, all architectures are required
+            return True
+
+        arch = self.architecture
+        if arch is None:
+            # If no architecture specified in manifest, treat as required
+            return True
+
+        return arch in required_archs
 
     @property
     def manifest_obj(self):
-        if self._loaded_manifest is not None:
+        if self._load_attempted:
             return self._loaded_manifest
 
         self._loaded_manifest = self._load_manifest()
+        self._load_attempted = True
         return self._loaded_manifest
 
     def _load_manifest(self):
@@ -87,13 +134,19 @@ class LazyManifestLoader(object):
         size = self._manifest_data[self._size_key]
         manifest_bytes = self._content_retriever.get_manifest_bytes_with_digest(digest)
         if manifest_bytes is None:
+            if not self._is_architecture_required():
+                logger.debug(
+                    "Skipping manifest with digest `%s` for optional architecture `%s`",
+                    digest,
+                    self.architecture,
+                )
+                return None
             raise ManifestException("Could not find child manifest with digest `%s`" % digest)
 
         if len(manifest_bytes) != size:
             raise ManifestException(
-                "Size of manifest does not match that retrieved: %s vs %s",
-                len(manifest_bytes),
-                size,
+                "Size of manifest does not match that retrieved: %s vs %s"
+                % (len(manifest_bytes), size)
             )
 
         content_type = self._manifest_data[self._media_type_key]
