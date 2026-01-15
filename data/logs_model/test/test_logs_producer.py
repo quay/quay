@@ -5,8 +5,7 @@ from mock import patch, Mock
 
 import botocore
 
-from data.logs_model import configure
-
+from .mock_elasticsearch import *
 from .test_elasticsearch import (
     app_config,
     logs_model_config,
@@ -14,8 +13,7 @@ from .test_elasticsearch import (
     mock_elasticsearch,
     mock_db_model,
 )
-from .mock_elasticsearch import *
-
+from data.logs_model import configure
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +63,7 @@ def test_kafka_logs_producers(
     producer_config = kafka_logs_producer_config
     with patch("kafka.client_async.KafkaClient.check_version"), patch(
         "kafka.KafkaProducer.send"
-    ) as mock_send, patch("kafka.KafkaProducer._max_usable_produce_magic"):
+    ) as mock_send, patch("kafka.KafkaProducer.max_usable_produce_magic"):
         configure(producer_config)
         logs_model.log_action(
             "pull_repo",

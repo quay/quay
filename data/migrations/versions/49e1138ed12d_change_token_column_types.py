@@ -15,75 +15,55 @@ import sqlalchemy as sa
 def upgrade(op, tables, tester):
 
     # Adjust existing fields to be nullable.
-    op.alter_column("accesstoken", "code", nullable=True, existing_type=sa.String(length=255))
-    op.alter_column(
-        "oauthaccesstoken", "access_token", nullable=True, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "oauthauthorizationcode", "code", nullable=True, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "appspecificauthtoken", "token_code", nullable=True, existing_type=sa.String(length=255)
-    )
+    with op.batch_alter_table("accesstoken") as batch_op:
+        batch_op.alter_column("code", nullable=True, existing_type=sa.String(length=255))
+    with op.batch_alter_table("oauthaccesstoken") as batch_op:
+        batch_op.alter_column("access_token", nullable=True, existing_type=sa.String(length=255))
+    with op.batch_alter_table("oauthauthorizationcode") as batch_op:
+        batch_op.alter_column("code", nullable=True, existing_type=sa.String(length=255))
+    with op.batch_alter_table("appspecificauthtoken") as batch_op:
+        batch_op.alter_column("token_code", nullable=True, existing_type=sa.String(length=255))
 
     # Adjust new fields to be non-nullable.
-    op.alter_column(
-        "accesstoken", "token_name", nullable=False, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "accesstoken", "token_code", nullable=False, existing_type=sa.String(length=255)
-    )
+    with op.batch_alter_table("accesstoken") as batch_op:
+        batch_op.alter_column("token_name", nullable=False, existing_type=sa.String(length=255))
+        batch_op.alter_column("token_code", nullable=False, existing_type=sa.String(length=255))
 
-    op.alter_column(
-        "appspecificauthtoken", "token_name", nullable=False, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "appspecificauthtoken", "token_secret", nullable=False, existing_type=sa.String(length=255)
-    )
+    with op.batch_alter_table("appspecificauthtoken") as batch_op:
+        batch_op.alter_column("token_name", nullable=False, existing_type=sa.String(length=255))
+        batch_op.alter_column("token_secret", nullable=False, existing_type=sa.String(length=255))
 
-    op.alter_column(
-        "oauthaccesstoken", "token_name", nullable=False, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "oauthaccesstoken", "token_code", nullable=False, existing_type=sa.String(length=255)
-    )
+    with op.batch_alter_table("oauthaccesstoken") as batch_op:
+        batch_op.alter_column("token_name", nullable=False, existing_type=sa.String(length=255))
+        batch_op.alter_column("token_code", nullable=False, existing_type=sa.String(length=255))
 
-    op.alter_column(
-        "oauthauthorizationcode", "code_name", nullable=False, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "oauthauthorizationcode",
-        "code_credential",
-        nullable=False,
-        existing_type=sa.String(length=255),
-    )
+    with op.batch_alter_table("oauthauthorizationcode") as batch_op:
+        batch_op.alter_column("code_name", nullable=False, existing_type=sa.String(length=255))
+        batch_op.alter_column(
+            "code_credential",
+            nullable=False,
+            existing_type=sa.String(length=255),
+        )
 
 
 def downgrade(op, tables, tester):
 
-    op.alter_column("accesstoken", "token_name", nullable=True, existing_type=sa.String(length=255))
-    op.alter_column("accesstoken", "token_code", nullable=True, existing_type=sa.String(length=255))
+    with op.batch_alter_table("accesstoken") as batch_op:
+        batch_op.alter_column("token_name", nullable=True, existing_type=sa.String(length=255))
+        batch_op.alter_column("token_code", nullable=True, existing_type=sa.String(length=255))
 
-    op.alter_column(
-        "appspecificauthtoken", "token_name", nullable=True, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "appspecificauthtoken", "token_secret", nullable=True, existing_type=sa.String(length=255)
-    )
+    with op.batch_alter_table("appspecificauthtoken") as batch_op:
+        batch_op.alter_column("token_name", nullable=True, existing_type=sa.String(length=255))
+        batch_op.alter_column("token_secret", nullable=True, existing_type=sa.String(length=255))
 
-    op.alter_column(
-        "oauthaccesstoken", "token_name", nullable=True, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "oauthaccesstoken", "token_code", nullable=True, existing_type=sa.String(length=255)
-    )
+    with op.batch_alter_table("oauthaccesstoken") as batch_op:
+        batch_op.alter_column("token_name", nullable=True, existing_type=sa.String(length=255))
+        batch_op.alter_column("token_code", nullable=True, existing_type=sa.String(length=255))
 
-    op.alter_column(
-        "oauthauthorizationcode", "code_name", nullable=True, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "oauthauthorizationcode",
-        "code_credential",
-        nullable=True,
-        existing_type=sa.String(length=255),
-    )
+    with op.batch_alter_table("oauthauthorizationcode") as batch_op:
+        batch_op.alter_column("code_name", nullable=True, existing_type=sa.String(length=255))
+        batch_op.alter_column(
+            "code_credential",
+            nullable=True,
+            existing_type=sa.String(length=255),
+        )

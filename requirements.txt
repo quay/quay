@@ -1,4 +1,4 @@
-alembic==1.3.3
+alembic==1.13.1
 aniso8601 @ git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90
 APScheduler==3.6.3
 attrs==19.3.0
@@ -51,7 +51,7 @@ jmespath==0.9.4
 jsonpath-rw==1.4.0
 jsonpointer==2.0
 jsonschema==3.2.0
-kafka-python==1.4.7
+kafka-python==2.2.10
 keystoneauth1==3.18.0
 Mako==1.2.2
 MarkupSafe==2.1.3
@@ -71,9 +71,9 @@ oslo.utils==4.12.2
 packaging==21.3
 pbr==5.10.0
 peewee==3.13.1
-Pillow==9.3.0
+pillow==10.4.0
 ply==3.11
-prometheus-client==0.7.1
+prometheus_client==0.7.1
 protobuf==5.28.2
 psutil==5.9.0
 psycopg2-binary==2.9.3
@@ -102,22 +102,21 @@ raven==6.10.0
 recaptcha2==0.1
 redis==3.5.3
 redis-py-cluster==2.1.3
-rehash==1.0.0
 requests==2.31.0
 requests-aws4auth==0.9
 requests-file==1.4.3
 requests-oauthlib==1.3.0
 rfc3986==1.3.2
 s3transfer==0.7.0
-semantic-version==2.8.4
-six==1.14.0
-soupsieve==1.9.5
-splunk-sdk==1.7.3
-SQLAlchemy==1.4.31
-stevedore==1.31.0
+semantic-version==2.10.0
+six==1.17.0
+soupsieve==2.7
+splunk-sdk==2.1.0
+SQLAlchemy==1.4.49
+stevedore==5.1.0
 stringscore==0.1.0
 stripe==5.2.0
-supervisor==4.1.0
+supervisor==4.2.5
 supervisor-logging==0.0.9
 supervisor-stdout @ git+https://github.com/quay/supervisor-stdout.git@9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380
 text-unidecode==1.3
@@ -130,31 +129,27 @@ webencodings==0.5.1
 WebOb==1.8.6
 websocket-client==0.57.0
 Werkzeug==2.3.6
-wrapt==1.13.3
 xhtml2pdf==0.2.6
-zipp==2.1.0
-zope.event==4.5.0
-zope.interface==5.4.0
+resumablesha256==1.0
+deprecation==2.1.0
+
+# Leverage wheels for faster builds
+setuptools==71.1.0
+wheel==0.38.4
 
 # Indirect dependencies
 PyPDF3==1.0.6
 arabic-reshaper==3.0.0
 cssselect2==0.7.0
-lxml==4.9.2
+lxml==5.3.0
 python-bidi==0.4.2
 reportlab==3.6.13
 svglib==1.5.1
 tinycss2==1.2.1
-tqdm==4.65.0
-
-# Build dependencies
-Cython==3.0.11
-flit_core==3.7.1
-toml==0.10.2
-tomli==2.2.1
-pip==22.2.1
-setuptools==65.5.1
-setuptools-rust==1.7.0
-setuptools-scm[toml]==4.1.2
-typing_extensions==4.0.1
-wheel==0.38.4
+tqdm==4.66.1
+typing_extensions==4.8.0
+tzdata==2023.3
+wrapt==1.17.2
+zipp==3.19.2
+zope.event==5.0
+zope.interface==5.4.0
