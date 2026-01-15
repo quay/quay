@@ -42,14 +42,9 @@ def remove_location():
         storage_location = (
             ImageStorageLocation.select().where(ImageStorageLocation.name == location_name).get()
         )
-        temp_blob_remove_query = (
-            BlobUpload.select()
-            .join(ImageStorageLocation)
-            .where(ImageStorageLocation.id == storage_location.id)
-        )
-        for row in temp_blob_remove_query:
-            BlobUpload.delete().where(BlobUpload.id == row.id).execute()
-            print(f"Removed temporary blob with id {row.id}")
+
+        count = BlobUpload.delete().where(BlobUpload.location == storage_location.id).execute()
+        print(f"Removed {count} temporary blobs from blobupload table.")
 
         # Get all image placements for the location
         query = (
