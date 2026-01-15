@@ -129,7 +129,6 @@ webencodings==0.5.1
 WebOb==1.8.6
 websocket-client==0.57.0
 Werkzeug==2.3.6
-wrapt==1.13.3
 xhtml2pdf==0.2.6
 resumablesha256==1.0
 deprecation==2.1.0
