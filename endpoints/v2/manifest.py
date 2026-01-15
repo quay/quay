@@ -124,6 +124,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
         analytics_name="pull_repo_100x",
         analytics_sample=0.01,
         tag=manifest_ref,
+        mediaType=manifest_media_type,
     )
     image_pulls.labels("v2", "tag", 200).inc()
 
@@ -182,7 +183,9 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
         image_pulls.labels("v2", "manifest", 404).inc()
         raise ManifestUnknown(str(e))
 
-    track_and_log("pull_repo", repository_ref, manifest_digest=manifest_ref)
+    track_and_log(
+        "pull_repo", repository_ref, manifest_digest=manifest_ref, mediaType=manifest.media_type
+    )
     image_pulls.labels("v2", "manifest", 200).inc()
 
     # Track pull metrics if feature is enabled
@@ -474,7 +477,7 @@ def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
         if features.STORAGE_REPLICATION:
             _enqueue_blobs_for_replication(manifest, storage, namespace_name)
 
-        track_and_log("push_repo", repository_ref, tag=tag_name)
+        track_and_log("push_repo", repository_ref, tag=tag_name, mediaType=manifest.media_type)
         spawn_notification(repository_ref, "repo_push", {"updated_tags": [tag_name]})
         image_pushes.labels("v2", 201, manifest.media_type).inc()
 
