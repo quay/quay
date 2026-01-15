@@ -46,6 +46,11 @@ typing-extensions==4.12.2
 wheel==0.45.1
     # via -r requirements-build.in
 
+calver==2022.6.26 \
+    --hash=sha256:a1d7fcdd67797afc52ee36ffb8c8adf6643173864306547bfd1380cbce6310a0 \
+    --hash=sha256:e05493a3b17517ef1748fbe610da11f10485faa7c416b9d33fd4a52d74894f8b
+    # via -r requirements-build.in
+
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==80.9.0 \
     --hash=sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922 \
