@@ -150,8 +150,8 @@ CONFIG_SCHEMA = {
         },
         "SSL_PROTOCOLS": {
             "type": "array",
-            "description": "If specified, the nginx-defined list of SSL protocols to enabled and disabled",
-            "x-example": ["TLSv1.1", "TLSv1.2"],
+            "description": "If specified, the nginx-defined list of SSL protocols to enabled and disabled. TLSv1 and TLSv1.1 are deprecated.",
+            "x-example": ["TLSv1.2", "TLSv1.3"],
             "x-reference": "http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols",
         },
         # User-visible configuration.

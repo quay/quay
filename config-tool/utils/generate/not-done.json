@@ -125,9 +125,9 @@
       "description": "If set to true, build logs may be read by those with read access to the repo, rather than only write access or admin access. Defaults to False"
     },
     "SSL_PROTOCOLS": {
-      "x-example": ["TLSv1.1", "TLSv1.2"],
+      "x-example": ["TLSv1.2", "TLSv1.3"],
       "type": "array",
-      "description": "If specified, the nginx-defined list of SSL protocols to enabled and disabled",
+      "description": "If specified, the nginx-defined list of SSL protocols to enabled and disabled. TLSv1 and TLSv1.1 are deprecated.",
       "x-reference": "http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols"
     },
     "WEBHOOK_HOSTNAME_BLACKLIST": {
