@@ -2,8 +2,8 @@ import argparse
 import logging
 import sys
 
-from app import features
-from data.database import ImageStorageLocation, ImageStoragePlacement
+from app import app, features
+from data.database import BlobUpload, ImageStorageLocation, ImageStoragePlacement
 
 # This is a util function used to clean up a removed location from the database
 # This must be ran AFTER the location is removed from the config.yaml file, so that
@@ -38,6 +38,19 @@ def remove_location():
         return
 
     try:
+        # Remove all temporary uploads that might still be in the blobupload table
+        storage_location = (
+            ImageStorageLocation.select().where(ImageStorageLocation.name == location_name).get()
+        )
+        temp_blob_remove_query = (
+            BlobUpload.select()
+            .join(ImageStorageLocation)
+            .where(ImageStorageLocation.id == storage_location.id)
+        )
+        for row in temp_blob_remove_query:
+            BlobUpload.delete().where(BlobUpload.id == row.id).execute()
+            print(f"Removed temporary blob with id {row.id}")
+
         # Get all image placements for the location
         query = (
             ImageStoragePlacement.select()
@@ -61,6 +74,10 @@ def remove_location():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     if not features.STORAGE_REPLICATION:
-        print("Storage replication is not enabled")
+        print("Storage replication is not enabled. Exiting.")
+        sys.exit(1)
+    if not app.config.get("DISABLE_PUSHES") and app.config.get("REGISTRY_STATE") != "readonly":
+        print("Pushes are not disabled. Exiting.")
+        sys.exit(1)
     else:
         remove_location()
