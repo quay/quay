@@ -60,6 +60,7 @@ const response = {
     FEATURE_PROXY_CACHE: false,
     FEATURE_QUOTA_MANAGEMENT: false,
     FEATURE_REPO_MIRROR: false,
+    FEATURE_ORG_MIRROR: false,
     LOCAL_OAUTH_HANDLER: '/oauth/localapp',
     PREFERRED_URL_SCHEME: 'https',
     REGISTRY_TITLE: 'Mock Quay',
