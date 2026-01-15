@@ -19,12 +19,8 @@ import toposort
 from cachetools.func import lru_cache
 from peewee import *
 from peewee import Function, __exception_wrapper__  # type: ignore
-from playhouse.pool import (
-    PooledDatabase,
-    PooledMySQLDatabase,
-    PooledPostgresqlDatabase,
-    PooledSqliteDatabase,
-)
+from playhouse.apsw_ext import APSWDatabase
+from playhouse.pool import PooledDatabase, PooledMySQLDatabase, PooledPostgresqlDatabase
 from sqlalchemy.engine.url import make_url
 
 from data.decorators import deprecated_model
@@ -75,7 +71,7 @@ schemedriver = namedtuple("schemedriver", ["driver", "pooled_driver"])
 _SCHEME_DRIVERS = {
     "mysql": schemedriver(MySQLDatabase, PooledMySQLDatabase),
     "mysql+pymysql": schemedriver(MySQLDatabase, PooledMySQLDatabase),
-    "sqlite": schemedriver(SqliteDatabase, PooledSqliteDatabase),
+    "sqlite": schemedriver(APSWDatabase, APSWDatabase),  # APSW is thread-safe, no pooling needed
     "postgresql": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
     "postgresql+psycopg2": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
 }
@@ -229,16 +225,21 @@ class CallableProxy(Proxy):
 class RetryOperationalError(object):
     def execute_sql(self, sql, params=None, commit=True):
         """Execute SQL with SQLite-specific retry logic for database locks."""
-        # SQLite-specific retry logic with exponential backoff
-        if isinstance(self, (SqliteDatabase, PooledSqliteDatabase)):
+        # APSW provides thread-safe connections, so locking errors are rare.
+        # We still keep minimal retry logic as a safety net.
+        if isinstance(self, APSWDatabase):
             return self._execute_sql_sqlite_retry(sql, params, commit)
         else:
             # retain original logic for non-SQLite databases
             return self._execute_sql_original(sql, params, commit)
 
     def _execute_sql_sqlite_retry(self, sql, params=None, commit=True):
-        """SQLite-specific retry logic with exponential backoff for database locks."""
-        MAX_RETRIES = 5
+        """SQLite-specific retry logic with exponential backoff for database locks.
+
+        APSW provides thread-safe connections, so locking errors should be rare.
+        We use minimal retries as a safety net.
+        """
+        MAX_RETRIES = 2  # Reduced from 5 since APSW is thread-safe
         BASE_DELAY = 0.1
         MAX_DELAY = 30.0
 
@@ -256,8 +257,9 @@ class RetryOperationalError(object):
 
                     # Exponential backoff with jitter
                     delay = min(BASE_DELAY * (2**attempt) + uniform(0, 0.1), MAX_DELAY)
-                    logger.debug(
-                        "SQLite database lock detected, retrying in %.2fs (attempt %d/%d)",
+                    logger.warning(
+                        "APSW database lock detected (unexpected with thread-safe connections), "
+                        "retrying in %.2fs (attempt %d/%d)",
                         delay,
                         attempt + 1,
                         MAX_RETRIES,
@@ -537,6 +539,24 @@ def _db_from_url(
         driver_autocommit = db_kwargs["_driver_autocommit"]
         db_kwargs.pop("_driver_autocommit", None)
 
+    # For SQLite (using APSW), configure timeout and PRAGMAs.
+    # APSW uses setbusytimeout() instead of PRAGMA busy_timeout.
+    # Other PRAGMAs are applied via peewee's built-in mechanism.
+    if parsed_url.drivername == "sqlite":
+        db_kwargs["timeout"] = 10  # seconds, APSW uses setbusytimeout()
+        db_kwargs.setdefault("pragmas", {})
+        db_kwargs["pragmas"].update(
+            {
+                "journal_mode": "wal",
+                "wal_autocheckpoint": 1000,
+                "synchronous": "normal",
+            }
+        )
+        logger.info(
+            "Configured APSW SQLite settings for database: %s (thread-safe connections enabled)",
+            parsed_url.database,
+        )
+
     created = driver(parsed_url.database, **db_kwargs)
     if driver_autocommit:
         created.connect_params["autocommit"] = driver_autocommit
@@ -545,55 +565,6 @@ def _db_from_url(
     # https://github.com/coleifer/peewee/commit/36bd887ac07647c60dfebe610b34efabec675706
     if parsed_url.drivername.find("mysql") >= 0:
         created.compound_select_parentheses = 0
-
-    # Configure SQLite-specific PRAGMA statements for database locking optimization
-    if parsed_url.drivername == "sqlite":
-
-        def _configure_sqlite_pragmas(db_instance):
-            """Configure SQLite-specific PRAGMA statements to prevent database locks."""
-            try:
-                # Set busy timeout to 10 seconds to handle concurrent access
-                db_instance.execute_sql("PRAGMA busy_timeout = 10000;")
-                db_instance.execute_sql("PRAGMA journal_mode = WAL;")
-                db_instance.execute_sql(
-                    "PRAGMA wal_autocheckpoint = 1000;"
-                )  # Set WAL checkpointing to 1000 pages
-                db_instance.execute_sql(
-                    "PRAGMA synchronous = NORMAL;"
-                )  # Balance durability/performance
-
-                # Verify the PRAGMA settings were applied
-                busy_timeout_result = db_instance.execute_sql("PRAGMA busy_timeout;")
-                journal_mode_result = db_instance.execute_sql("PRAGMA journal_mode;")
-
-                # Extract actual values from results
-                busy_timeout_value = (
-                    busy_timeout_result.fetchone()[0] if busy_timeout_result else "unknown"
-                )
-                journal_mode_value = (
-                    journal_mode_result.fetchone()[0] if journal_mode_result else "unknown"
-                )
-
-                logger.info(
-                    "Applied SQLite PRAGMA statements for database: %s - busy_timeout: %s, journal_mode: %s",
-                    parsed_url.database,
-                    busy_timeout_value,
-                    journal_mode_value,
-                )
-            except Exception as e:
-                logger.warning(
-                    "Failed to configure SQLite optimizations for %s: %s", parsed_url.database, e
-                )
-
-        # Override connect method to apply PRAGMA statements on each connection
-        original_connect = created.connect
-
-        def enhanced_connect(reuse_if_open=False):
-            result = original_connect(reuse_if_open)
-            _configure_sqlite_pragmas(created)
-            return result
-
-        created.connect = enhanced_connect
 
     return created
 
