@@ -78,6 +78,11 @@ ALTER TABLE IF EXISTS ONLY public.repomirrorrule DROP CONSTRAINT IF EXISTS fk_re
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_root_rule_id_repomirrorrule;
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_internal_robot_id_user;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorrepository DROP CONSTRAINT IF EXISTS fk_orgmirrorrepository_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorrepository DROP CONSTRAINT IF EXISTS fk_orgmirrorrepository_org_mirror_config_id_orgmirrorconfig;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_orgmirrorconfig_visibility_id_visibility;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_orgmirrorconfig_organization_id_user;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_orgmirrorconfig_internal_robot_id_user;
 ALTER TABLE IF EXISTS ONLY public.redhatsubscriptions DROP CONSTRAINT IF EXISTS fk_redhatsubscriptions;
 ALTER TABLE IF EXISTS ONLY public.quotarepositorysize DROP CONSTRAINT IF EXISTS fk_quotarepositorysize_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.quotanamespacesize DROP CONSTRAINT IF EXISTS fk_quotanamespacesize_namespace_user_id_user;
@@ -298,6 +303,15 @@ DROP INDEX IF EXISTS public.repomirrorconfig_root_rule_id;
 DROP INDEX IF EXISTS public.repomirrorconfig_repository_id;
 DROP INDEX IF EXISTS public.repomirrorconfig_mirror_type;
 DROP INDEX IF EXISTS public.repomirrorconfig_internal_robot_id;
+DROP INDEX IF EXISTS public.orgmirrorrepository_sync_status;
+DROP INDEX IF EXISTS public.orgmirrorrepository_repository_id;
+DROP INDEX IF EXISTS public.orgmirrorrepository_org_mirror_config_id;
+DROP INDEX IF EXISTS public.orgmirrorrepository_config_status;
+DROP INDEX IF EXISTS public.orgmirrorrepository_config_repo_name;
+DROP INDEX IF EXISTS public.orgmirrorconfig_sync_status;
+DROP INDEX IF EXISTS public.orgmirrorconfig_sync_start_date;
+DROP INDEX IF EXISTS public.orgmirrorconfig_organization_id;
+DROP INDEX IF EXISTS public.orgmirrorconfig_internal_robot_id;
 DROP INDEX IF EXISTS public.quotarepositorysize_size_bytes;
 DROP INDEX IF EXISTS public.quotarepositorysize_repository_id;
 DROP INDEX IF EXISTS public.quotanamespacesize_size_bytes;
@@ -542,6 +556,8 @@ ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXIST
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS pk_repository;
 ALTER TABLE IF EXISTS ONLY public.repomirrorrule DROP CONSTRAINT IF EXISTS pk_repomirrorrule;
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS pk_repomirrorconfig;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorrepository DROP CONSTRAINT IF EXISTS pk_orgmirrorrepository;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS pk_orgmirrorconfig;
 ALTER TABLE IF EXISTS ONLY public.redhatsubscriptions DROP CONSTRAINT IF EXISTS pk_redhatsubscriptions;
 ALTER TABLE IF EXISTS ONLY public.quotatype DROP CONSTRAINT IF EXISTS pk_quotatype;
 ALTER TABLE IF EXISTS ONLY public.quotarepositorysize DROP CONSTRAINT IF EXISTS pk_quotarepositorysizeid;
@@ -798,6 +814,10 @@ DROP SEQUENCE IF EXISTS public.repomirrorrule_id_seq;
 DROP TABLE IF EXISTS public.repomirrorrule;
 DROP SEQUENCE IF EXISTS public.repomirrorconfig_id_seq;
 DROP TABLE IF EXISTS public.repomirrorconfig;
+DROP TABLE IF EXISTS public.orgmirrorrepository;
+DROP SEQUENCE IF EXISTS public.orgmirrorrepository_id_seq;
+DROP TABLE IF EXISTS public.orgmirrorconfig;
+DROP SEQUENCE IF EXISTS public.orgmirrorconfig_id_seq;
 DROP SEQUENCE IF EXISTS public.redhatsubscriptions_id_seq;
 DROP TABLE IF EXISTS public.redhatsubscriptions;
 DROP SEQUENCE IF EXISTS public.quotatype_id_seq;
@@ -2973,6 +2993,103 @@ ALTER TABLE public.organizationrhskus_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.organizationrhskus_id_seq OWNED BY public.organizationrhskus.id;
+
+
+--
+-- Name: orgmirrorconfig; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.orgmirrorconfig (
+    id integer NOT NULL,
+    organization_id integer NOT NULL,
+    creation_date timestamp without time zone NOT NULL,
+    is_enabled boolean DEFAULT true NOT NULL,
+    mirror_type integer DEFAULT 1 NOT NULL,
+    external_registry_type integer NOT NULL,
+    external_registry_url character varying(2048) NOT NULL,
+    external_namespace character varying(255) NOT NULL,
+    external_registry_username character varying(4096),
+    external_registry_password character varying(9000),
+    external_registry_config text NOT NULL,
+    internal_robot_id integer NOT NULL,
+    repository_filters text NOT NULL,
+    visibility_id integer NOT NULL,
+    delete_stale_repos boolean DEFAULT false NOT NULL,
+    sync_interval integer NOT NULL,
+    sync_start_date timestamp without time zone,
+    sync_expiration_date timestamp without time zone,
+    sync_retries_remaining integer DEFAULT 3 NOT NULL,
+    sync_status integer DEFAULT 0 NOT NULL,
+    sync_transaction_id character varying(36),
+    skopeo_timeout bigint DEFAULT 300 NOT NULL
+);
+
+
+ALTER TABLE public.orgmirrorconfig OWNER TO quay;
+
+--
+-- Name: orgmirrorconfig_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.orgmirrorconfig_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.orgmirrorconfig_id_seq OWNER TO quay;
+
+--
+-- Name: orgmirrorconfig_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.orgmirrorconfig_id_seq OWNED BY public.orgmirrorconfig.id;
+
+
+--
+-- Name: orgmirrorrepository; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.orgmirrorrepository (
+    id integer NOT NULL,
+    org_mirror_config_id integer NOT NULL,
+    repository_name character varying(255) NOT NULL,
+    repository_id integer,
+    discovery_date timestamp without time zone NOT NULL,
+    sync_status integer DEFAULT 0 NOT NULL,
+    sync_start_date timestamp without time zone,
+    sync_expiration_date timestamp without time zone,
+    last_sync_date timestamp without time zone,
+    status_message text,
+    creation_date timestamp without time zone NOT NULL
+);
+
+
+ALTER TABLE public.orgmirrorrepository OWNER TO quay;
+
+--
+-- Name: orgmirrorrepository_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.orgmirrorrepository_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.orgmirrorrepository_id_seq OWNER TO quay;
+
+--
+-- Name: orgmirrorrepository_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.orgmirrorrepository_id_seq OWNED BY public.orgmirrorrepository.id;
 
 
 --
@@ -5351,6 +5468,20 @@ ALTER TABLE ONLY public.organizationrhskus ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: orgmirrorconfig id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.orgmirrorconfig ALTER COLUMN id SET DEFAULT nextval('public.orgmirrorconfig_id_seq'::regclass);
+
+
+--
+-- Name: orgmirrorrepository id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.orgmirrorrepository ALTER COLUMN id SET DEFAULT nextval('public.orgmirrorrepository_id_seq'::regclass);
+
+
+--
 -- Name: permissionprototype id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -6448,6 +6579,15 @@ COPY public.logentrykind (id, name) FROM stdin;
 118	federated_robot_token_exchange
 119	export_logs_success
 120	export_logs_failure
+121	org_mirror_enabled
+122	org_mirror_disabled
+123	org_mirror_config_changed
+124	org_mirror_sync_started
+125	org_mirror_sync_failed
+126	org_mirror_sync_success
+127	org_mirror_sync_now_requested
+128	org_mirror_sync_cancelled
+129	org_mirror_repo_created
 \.
 
 
@@ -8340,7 +8480,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 120, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 129, true);
 
 
 --
@@ -8467,6 +8607,20 @@ SELECT pg_catalog.setval('public.oauthauthorizationcode_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.organizationrhskus_id_seq', 1, false);
+
+
+--
+-- Name: orgmirrorconfig_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.orgmirrorconfig_id_seq', 1, false);
+
+
+--
+-- Name: orgmirrorrepository_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.orgmirrorrepository_id_seq', 1, false);
 
 
 --
@@ -9278,6 +9432,22 @@ ALTER TABLE ONLY public.oauthauthorizationcode
 
 ALTER TABLE ONLY public.organizationrhskus
     ADD CONSTRAINT pk_organizationrhskus PRIMARY KEY (id);
+
+
+--
+-- Name: orgmirrorconfig pk_orgmirrorconfig; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.orgmirrorconfig
+    ADD CONSTRAINT pk_orgmirrorconfig PRIMARY KEY (id);
+
+
+--
+-- Name: orgmirrorrepository pk_orgmirrorrepository; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.orgmirrorrepository
+    ADD CONSTRAINT pk_orgmirrorrepository PRIMARY KEY (id);
 
 
 --
@@ -10941,6 +11111,69 @@ CREATE UNIQUE INDEX organizationrhskus_subscription_id_org_id ON public.organiza
 --
 
 CREATE UNIQUE INDEX organizationrhskus_subscription_id_org_id_user_id ON public.organizationrhskus USING btree (subscription_id, org_id, user_id);
+
+
+--
+-- Name: orgmirrorconfig_internal_robot_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX orgmirrorconfig_internal_robot_id ON public.orgmirrorconfig USING btree (internal_robot_id);
+
+
+--
+-- Name: orgmirrorconfig_organization_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX orgmirrorconfig_organization_id ON public.orgmirrorconfig USING btree (organization_id);
+
+
+--
+-- Name: orgmirrorconfig_sync_start_date; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX orgmirrorconfig_sync_start_date ON public.orgmirrorconfig USING btree (sync_start_date);
+
+
+--
+-- Name: orgmirrorconfig_sync_status; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX orgmirrorconfig_sync_status ON public.orgmirrorconfig USING btree (sync_status);
+
+
+--
+-- Name: orgmirrorrepository_config_repo_name; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX orgmirrorrepository_config_repo_name ON public.orgmirrorrepository USING btree (org_mirror_config_id, repository_name);
+
+
+--
+-- Name: orgmirrorrepository_config_status; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX orgmirrorrepository_config_status ON public.orgmirrorrepository USING btree (org_mirror_config_id, sync_status);
+
+
+--
+-- Name: orgmirrorrepository_org_mirror_config_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX orgmirrorrepository_org_mirror_config_id ON public.orgmirrorrepository USING btree (org_mirror_config_id);
+
+
+--
+-- Name: orgmirrorrepository_repository_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX orgmirrorrepository_repository_id ON public.orgmirrorrepository USING btree (repository_id);
+
+
+--
+-- Name: orgmirrorrepository_sync_status; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX orgmirrorrepository_sync_status ON public.orgmirrorrepository USING btree (sync_status);
 
 
 --
@@ -12632,6 +12865,46 @@ ALTER TABLE ONLY public.organizationrhskus
 
 ALTER TABLE ONLY public.organizationrhskus
     ADD CONSTRAINT fk_organizationrhskus_userid FOREIGN KEY (user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: orgmirrorconfig fk_orgmirrorconfig_internal_robot_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.orgmirrorconfig
+    ADD CONSTRAINT fk_orgmirrorconfig_internal_robot_id_user FOREIGN KEY (internal_robot_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: orgmirrorconfig fk_orgmirrorconfig_organization_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.orgmirrorconfig
+    ADD CONSTRAINT fk_orgmirrorconfig_organization_id_user FOREIGN KEY (organization_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: orgmirrorconfig fk_orgmirrorconfig_visibility_id_visibility; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.orgmirrorconfig
+    ADD CONSTRAINT fk_orgmirrorconfig_visibility_id_visibility FOREIGN KEY (visibility_id) REFERENCES public.visibility(id);
+
+
+--
+-- Name: orgmirrorrepository fk_orgmirrorrepository_org_mirror_config_id_orgmirrorconfig; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.orgmirrorrepository
+    ADD CONSTRAINT fk_orgmirrorrepository_org_mirror_config_id_orgmirrorconfig FOREIGN KEY (org_mirror_config_id) REFERENCES public.orgmirrorconfig(id);
+
+
+--
+-- Name: orgmirrorrepository fk_orgmirrorrepository_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.orgmirrorrepository
+    ADD CONSTRAINT fk_orgmirrorrepository_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
 
 
 --

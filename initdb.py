@@ -438,6 +438,16 @@ def initialize_database():
     LogEntryKind.create(name="repo_mirror_sync_test_failed")
     LogEntryKind.create(name="repo_mirror_sync_test_started")
 
+    LogEntryKind.create(name="org_mirror_enabled")
+    LogEntryKind.create(name="org_mirror_disabled")
+    LogEntryKind.create(name="org_mirror_config_changed")
+    LogEntryKind.create(name="org_mirror_sync_started")
+    LogEntryKind.create(name="org_mirror_sync_failed")
+    LogEntryKind.create(name="org_mirror_sync_success")
+    LogEntryKind.create(name="org_mirror_sync_now_requested")
+    LogEntryKind.create(name="org_mirror_sync_cancelled")
+    LogEntryKind.create(name="org_mirror_repo_created")
+
     LogEntryKind.create(name="service_key_create")
     LogEntryKind.create(name="service_key_approve")
     LogEntryKind.create(name="service_key_delete")
@@ -1437,6 +1447,8 @@ WHITELISTED_EMPTY_MODELS = [
     "NamespaceGeoRestriction",
     "RepoMirrorConfig",
     "RepoMirrorRule",
+    "OrgMirrorConfig",
+    "OrgMirrorRepository",
     "ImageStorageSignature",
     "DerivedStorageForImage",
     "TorrentInfo",
