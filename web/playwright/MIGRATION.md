@@ -61,6 +61,7 @@ test.describe('Feature Name', { tag: ['@critical', '@repository'] }, () => {
 | Feature | `@repository` | `@repository` | Feature area |
 | Config | `@config:BILLING` | `@config:OIDC` | Required config |
 | Feature Flag | `@feature:PROXY_CACHE` | `@feature:REPO_MIRROR` | Required feature |
+| Container | `@container` | `@container` | Requires container runtime (auto-skip) |
 
 ### Running Tagged Tests
 
@@ -560,6 +561,55 @@ When a feature is disabled, the test output shows:
 ✓ validates email and saves org settings (2.3s)
 - billing email and receipt settings (skipped: Required feature(s) not enabled: BILLING)
 ✓ CLI token tab not visible (1.1s)
+```
+
+## Container-Dependent Tests
+
+For tests that require a container runtime (podman or docker), use the `@container` tag. Tests are automatically skipped when no container runtime is available.
+
+### Using @container Tag
+
+```typescript
+import { test, expect } from '../../fixtures';
+import { pushImage } from '../../utils/container';
+
+// Tag on describe block - all tests auto-skip if no container runtime
+test.describe('Image Push Tests', { tag: ['@container'] }, () => {
+  test('pushes image to registry', async ({ authenticatedPage, api }) => {
+    // Auto-skipped if podman/docker not available
+    const repo = await api.repository();
+    await pushImage(repo.namespace, repo.name, 'latest', username, password);
+    // ... test assertions
+  });
+});
+```
+
+### With beforeAll Setup
+
+When using `beforeAll` for shared container setup, check `cachedContainerAvailable`:
+
+```typescript
+test.describe('Multi-Arch Tests', { tag: ['@container'] }, () => {
+  let testRepo: { namespace: string; name: string };
+
+  test.beforeAll(async ({ userContext, cachedContainerAvailable }) => {
+    // Skip setup if no container runtime (tests auto-skip via @container tag)
+    if (!cachedContainerAvailable) return;
+
+    // Push images for tests...
+  });
+
+  test('verifies multi-arch manifest', async ({ authenticatedPage }) => {
+    // Auto-skipped if no container runtime
+  });
+});
+```
+
+### Test Output
+
+When no container runtime is available:
+```text
+- pushes image to registry (skipped: Container runtime (podman/docker) required)
 ```
 
 ## Common Gotchas

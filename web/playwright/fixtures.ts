@@ -36,6 +36,7 @@ import {
   ServiceKey,
   TeamRole,
 } from './utils/api';
+import {isContainerRuntimeAvailable} from './utils/container';
 
 // ============================================================================
 // TestApi: Auto-cleanup API client for tests
@@ -781,6 +782,12 @@ type TestFixtures = {
 
   // Auto-fixture: skips tests based on @auth: tags (runs automatically)
   _autoSkipByAuth: void;
+
+  // Container runtime availability (cached per worker)
+  containerAvailable: boolean;
+
+  // Auto-fixture: skips tests based on @container tag (runs automatically)
+  _autoSkipByContainer: void;
 };
 
 /**
@@ -798,6 +805,9 @@ type WorkerFixtures = {
 
   // Cached Quay config (fetched once per worker)
   cachedQuayConfig: QuayConfig;
+
+  // Cached container runtime availability (checked once per worker)
+  cachedContainerAvailable: boolean;
 };
 
 /**
@@ -874,6 +884,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       const config = (await response.json()) as QuayConfig;
       await context.close();
       await use(config);
+    },
+    {scope: 'worker'},
+  ],
+
+  cachedContainerAvailable: [
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      const available = await isContainerRuntimeAvailable();
+      await use(available);
     },
     {scope: 'worker'},
   ],
@@ -1017,6 +1036,42 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         testInfo.skip(shouldSkip, reason);
       }
 
+      await use();
+    },
+    {auto: true},
+  ],
+
+  // =========================================================================
+  // Container runtime availability
+  // =========================================================================
+
+  containerAvailable: async ({cachedContainerAvailable}, use) => {
+    await use(cachedContainerAvailable);
+  },
+
+  // =========================================================================
+  // Auto-fixture: Skip tests based on @container tag
+  // =========================================================================
+
+  /**
+   * Automatically skip tests that have @container tag when no
+   * container runtime (podman/docker) is available.
+   *
+   * @example
+   * ```typescript
+   * test.describe('Push Tests', {tag: ['@container']}, () => {
+   *   test('pushes image', async ({authenticatedPage}) => {
+   *     // Auto-skipped if no container runtime available!
+   *   });
+   * });
+   * ```
+   */
+  _autoSkipByContainer: [
+    async ({containerAvailable}, use, testInfo) => {
+      const hasContainerTag = testInfo.tags.includes('@container');
+      if (hasContainerTag && !containerAvailable) {
+        testInfo.skip(true, 'Container runtime (podman/docker) required');
+      }
       await use();
     },
     {auto: true},
