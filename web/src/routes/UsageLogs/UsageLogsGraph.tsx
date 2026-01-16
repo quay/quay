@@ -16,6 +16,50 @@ import {AxiosError} from 'axios';
 
 import './css/UsageLogs.scss';
 
+/**
+ * Parse a date string in MM/DD/YYYY format as a UTC date at midnight.
+ * This is needed because the API returns aggregated logs with UTC timestamps,
+ * so the chart domain must also use UTC to ensure data points fall within bounds.
+ */
+function parseAsUTCDate(dateStr: string): Date {
+  // dateStr is in format MM/DD/YYYY
+  const [month, day, year] = dateStr.split('/').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/**
+ * Get the end of day in UTC for a date string in MM/DD/YYYY format.
+ * This ensures the domain end includes the full last day.
+ */
+function parseAsUTCEndOfDay(dateStr: string): Date {
+  const [month, day, year] = dateStr.split('/').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+}
+
+/**
+ * Format a date for the x-axis tick labels.
+ * Uses consistent "MMM DD" format (e.g., "Jan 02") in UTC.
+ */
+function formatAxisDate(date: Date): string {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  const month = months[date.getUTCMonth()];
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${month} ${day}`;
+}
+
 interface UsageLogsGraphProps {
   starttime: string;
   endtime: string;
@@ -164,7 +208,10 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
               />
             }
             domain={{
-              x: [new Date(props.starttime), new Date(props.endtime)],
+              x: [
+                parseAsUTCDate(props.starttime),
+                parseAsUTCEndOfDay(props.endtime),
+              ],
               y: [0, maxRange],
             }}
             legendAllowWrap
@@ -192,7 +239,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
             width={1200}
             scale={{x: 'time', y: 'linear'}}
           >
-            <ChartAxis fixLabelOverlap />
+            <ChartAxis fixLabelOverlap tickFormat={formatAxisDate} />
             <ChartAxis dependentAxis showGrid />
             <ChartGroup offset={11}>
               {Object.keys(logData).map((logKind, index) => (
