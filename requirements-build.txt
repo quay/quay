@@ -116,6 +116,12 @@ tomli==2.2.1
     # via
     #   -r requirements-build.in
     #   setuptools-scm
+trove-classifiers==2025.9.11.17 \
+    --hash=sha256:5d392f2d244deb1866556457d6f3516792124a23d1c3a463a2e8668a5d1c15dd \
+    --hash=sha256:931ca9841a5e9c9408bc2ae67b50d28acf85bef56219b56860876dd1f2d024dd
+    # via
+    #   -r requirements-build.in
+    #   hatchling
 typing-extensions==4.12.2
     # via
     #   -r requirements-build.in
