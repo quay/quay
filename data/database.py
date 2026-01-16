@@ -873,6 +873,8 @@ class User(BaseModel):
                     TagNotificationSuccess,
                     TagPullStatistics,
                     ManifestPullStatistics,
+                    OrgMirrorConfig,
+                    OrgMirrorRepository,
                 }
                 | appr_classes
                 | v22_classes
@@ -1097,6 +1099,7 @@ class Repository(BaseModel):
                 TagNotificationSuccess,
                 TagPullStatistics,
                 ManifestPullStatistics,
+                OrgMirrorRepository,
             }
             | appr_classes
             | v22_classes
@@ -2092,6 +2095,134 @@ class RepoMirrorConfig(BaseModel):
 
     # Skopeo timeout
     skopeo_timeout = BigIntegerField()
+
+
+# ============================================================================
+# Organization-Level Mirroring Models
+# ============================================================================
+
+
+@unique
+class SourceRegistryType(IntEnum):
+    """
+    Types of source registries for organization mirroring.
+    """
+
+    HARBOR = 1
+    QUAY = 2
+
+
+@unique
+class OrgMirrorStatus(IntEnum):
+    """
+    Possible statuses of organization-level mirroring.
+    Same values as RepoMirrorStatus for consistency.
+    """
+
+    CANCEL = -2
+    FAIL = -1
+    NEVER_RUN = 0
+    SUCCESS = 1
+    SYNCING = 2
+    SYNC_NOW = 3
+
+
+@unique
+class OrgMirrorRepoStatus(IntEnum):
+    """
+    Possible statuses of individual repositories discovered by organization mirroring.
+    Same values as RepoMirrorStatus for consistency.
+    Note: Filtered-out repos are not tracked (no OrgMirrorRepository entry created).
+    """
+
+    CANCEL = -2  # Sync cancelled
+    FAIL = -1  # Sync failed
+    NEVER_RUN = 0  # Discovered but never synced
+    SUCCESS = 1  # Last sync succeeded
+    SYNCING = 2  # Currently syncing
+    SYNC_NOW = 3  # Priority sync requested
+
+
+class OrgMirrorConfig(BaseModel):
+    """
+    Represents an organization-level mirror configuration that syncs all repositories
+    from a source namespace to a target Quay organization.
+    """
+
+    # One config per organization (unique constraint)
+    organization = QuayUserField(allows_robots=False, null=False, index=True, unique=True)
+    creation_date = DateTimeField(default=datetime.utcnow)
+    is_enabled = BooleanField(default=True)
+
+    # Mirror type (supports PULL only)
+    mirror_type = ClientEnumField(RepoMirrorType, default=RepoMirrorType.PULL)
+
+    # External registry configuration
+    external_registry_type = ClientEnumField(SourceRegistryType)
+    external_registry_url = CharField(max_length=2048)  # e.g., "https://harbor.example.com"
+    external_namespace = CharField(max_length=255)  # e.g., "my-project" for Harbor
+
+    # Credentials for external registry
+    external_registry_username = EncryptedCharField(max_length=4096, null=True)
+    external_registry_password = EncryptedCharField(max_length=9000, null=True)
+    external_registry_config = JSONField(default={})  # TLS settings, proxy, etc.
+
+    # Robot account for creating repos and pushing images in target org
+    internal_robot = QuayUserField(allows_robots=True, backref="orgmirrorpullrobot")
+
+    # Repository filtering - list of glob patterns (e.g., ["ubuntu", "debian*"])
+    # Empty list means mirror all repositories
+    repository_filters = JSONField(default=[])
+
+    # Visibility for created repositories
+    visibility = EnumField(Visibility)
+
+    # If True, delete mirror repos when they no longer exist in source
+    # Default False: stale repos remain in mirror
+    delete_stale_repos = BooleanField(default=False)
+
+    # Worker scheduling
+    sync_interval = IntegerField()  # seconds between syncs
+    sync_start_date = DateTimeField(null=True)  # next scheduled sync
+    sync_expiration_date = DateTimeField(null=True)  # max duration for current sync
+    sync_retries_remaining = IntegerField(default=3)
+    sync_status = ClientEnumField(OrgMirrorStatus, default=OrgMirrorStatus.NEVER_RUN)
+    sync_transaction_id = CharField(default=uuid_generator, max_length=36)
+
+    # Skopeo timeout for individual image syncs
+    skopeo_timeout = BigIntegerField(default=300)
+
+
+class OrgMirrorRepository(BaseModel):
+    """
+    Tracks individual repositories discovered by organization-level mirroring.
+    """
+
+    org_mirror_config = ForeignKeyField(OrgMirrorConfig, backref="discovered_repos")
+    repository_name = CharField(max_length=255)  # Name without namespace prefix
+
+    # Link to created Quay repository (null until created)
+    repository = ForeignKeyField(Repository, null=True, backref="org_mirror_entry")
+
+    # Discovery and sync tracking
+    discovery_date = DateTimeField(default=datetime.utcnow)
+    sync_status = ClientEnumField(OrgMirrorRepoStatus, default=OrgMirrorRepoStatus.NEVER_RUN)
+    sync_start_date = DateTimeField(null=True)
+    sync_expiration_date = DateTimeField(null=True)
+    last_sync_date = DateTimeField(null=True)
+    status_message = TextField(null=True)  # Error message or skip reason
+
+    creation_date = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            # Repository name must be unique within an org mirror config
+            (("org_mirror_config", "repository_name"), True),
+            # Composite index for efficient status counting per org mirror config
+            (("org_mirror_config", "sync_status"), False),
+        )
 
 
 @unique
