@@ -269,6 +269,7 @@ local-dev-up-with-clair: local-dev-up
 .PHONY: local-dev-up-with-repomirror
 local-dev-up-with-repomirror: local-dev-up
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d repomirror
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d orgmirror
 
 .PHONY: local-dev-up-static
 local-dev-up-static: local-dev-clean

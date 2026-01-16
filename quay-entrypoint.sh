@@ -131,6 +131,30 @@ case "$QUAYENTRY" in
         done
         exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
         ;;
+    "orgmirror-nomigrate")
+        echo ""; echo "Startup timestamp: "; date; echo ""
+        echo "Entering organization mirroring mode"
+        export QUAY_SERVICES="${QUAY_SERVICES}${QUAY_SERVICES:+,}orgmirrorworker,pushgateway"
+        echo "Running services ${QUAY_SERVICES}"
+        for f in "${QUAYCONF}"/init/*.sh; do
+            if [ "$f" != "/quay-registry/conf/init/runmigration.sh" ]; then
+                echo "Running init script '$f'"
+                ENSURE_NO_MIGRATION=true "$f" || exit
+            fi
+        done
+        exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
+        ;;
+    "orgmirror")
+        echo ""; echo "Startup timestamp: "; date; echo ""
+        echo "Entering organization mirroring mode"
+        export QUAY_SERVICES="${QUAY_SERVICES}${QUAY_SERVICES:+,}orgmirrorworker,pushgateway"
+        echo "Running services ${QUAY_SERVICES}"
+        for f in "${QUAYCONF}"/init/*.sh; do
+            echo "Running init script '$f'"
+            "$f" || exit
+        done
+        exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
+        ;;
     *)
         echo "Running '$QUAYENTRY'"
         eval exec "$@"

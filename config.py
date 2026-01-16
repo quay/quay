@@ -43,6 +43,7 @@ CLIENT_WHITELIST = [
     "BRANDING",
     "DOCUMENTATION_ROOT",
     "FEATURE_REPO_MIRROR",
+    "FEATURE_ORG_MIRROR",
     "FEATURE_QUOTA_MANAGEMENT",
     "FEATURE_EDIT_QUOTA",
     "FEATURE_PROXY_CACHE",
@@ -551,6 +552,43 @@ class DefaultConfig(ImmutableConfig):
 
     # Require HTTPS and verify certificates of Quay registry during mirror.
     REPO_MIRROR_TLS_VERIFY = True
+
+    # Organization-level mirror
+    FEATURE_ORG_MIRROR = True
+
+    # Worker configuration
+    # The number of seconds between organization mirror sync intervals
+    ORG_MIRROR_INTERVAL = 30
+
+    # The maximum number of organization mirrors to process per worker iteration
+    ORG_MIRROR_BATCH_SIZE = 100
+
+    # The maximum duration in seconds for a single organization mirror sync operation
+    ORG_MIRROR_MAX_SYNC_DURATION = 3600  # 1 hour
+
+    # Discovery configuration
+    # The default timeout in seconds for skopeo operations during organization mirroring
+    ORG_MIRROR_DEFAULT_SKOPEO_TIMEOUT = 300  # 5 minutes
+
+    # The timeout in seconds for discovering repositories from external registries
+    ORG_MIRROR_DISCOVERY_TIMEOUT = 600  # 10 minutes
+
+    # The maximum number of repositories that can be discovered per organization (safety limit)
+    ORG_MIRROR_MAX_REPOS_PER_ORG = 10000
+
+    # Retry configuration
+    # The maximum number of retry attempts for failed organization mirror syncs
+    ORG_MIRROR_MAX_RETRIES = 3
+
+    # The interval in seconds between retry attempts for failed syncs
+    ORG_MIRROR_RETRY_INTERVAL = 300  # 5 minutes
+
+    # Rate limiting
+    # The maximum number of repositories to create per worker iteration (rate limiting)
+    ORG_MIRROR_REPO_CREATION_RATE_LIMIT = 10
+
+    # The number of repositories to create in each batch during organization mirroring
+    ORG_MIRROR_REPO_CREATION_BATCH_SIZE = 5
 
     # Replaces the SERVER_HOSTNAME as the destination for mirroring.
     REPO_MIRROR_SERVER_HOSTNAME: Optional[str] = None
