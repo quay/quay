@@ -1,7 +1,9 @@
 import datetime
 import logging
+import time
 import uuid
 from calendar import timegm
+from random import uniform
 
 from peewee import fn
 
@@ -34,6 +36,8 @@ from util.timedeltastring import convert_to_timedelta
 logger = logging.getLogger(__name__)
 
 GC_CANDIDATE_COUNT = 500  # repositories
+RETARGET_TAG_MAX_RETRIES = 5
+RETARGET_TAG_BASE_DELAY = 0.05  # seconds
 
 
 class RetargetTagException(Exception):
@@ -452,35 +456,59 @@ def retarget_tag(
 
     now_ms = now_ms or get_epoch_timestamp_ms()
 
-    with db_transaction():
-        # Lookup an existing tag in the repository with the same name and, if present, mark it
-        # as expired.
-        existing_tag = get_tag(manifest.repository_id, tag_name)
-        if existing_tag is not None:
-            # Check if the existing tag is immutable
-            if features.IMMUTABLE_TAGS and existing_tag.immutable:
-                if raise_on_error:
-                    raise ImmutableTagException(tag_name, "overwrite", manifest.repository_id)
-                return None
+    for attempt in range(RETARGET_TAG_MAX_RETRIES):
+        if attempt > 0:
+            delay = RETARGET_TAG_BASE_DELAY * (attempt + 1) + uniform(0, 0.02)
+            time.sleep(delay)
+            logger.debug(
+                "Retrying retarget_tag for tag '%s' (attempt %d/%d)",
+                tag_name,
+                attempt + 1,
+                RETARGET_TAG_MAX_RETRIES,
+            )
 
-            _, okay = set_tag_end_ms(existing_tag, now_ms)
+        with db_transaction():
+            # Lookup an existing tag in the repository with the same name and, if present, mark it
+            # as expired. Re-fetch on each attempt to get fresh lifetime_end_ms.
+            existing_tag = get_tag(manifest.repository_id, tag_name)
+            if existing_tag is not None:
+                # Check if the existing tag is immutable
+                if features.IMMUTABLE_TAGS and existing_tag.immutable:
+                    if raise_on_error:
+                        raise ImmutableTagException(tag_name, "overwrite", manifest.repository_id)
+                    return None
 
-            # TODO: should we retry here and/or use a for-update?
-            if not okay:
-                return None
+                _, okay = set_tag_end_ms(existing_tag, now_ms)
 
-        # Create a new tag pointing to the manifest with a lifetime start of now.
-        created = Tag.create(
-            name=tag_name,
-            repository=manifest.repository_id,
-            lifetime_start_ms=now_ms,
-            lifetime_end_ms=(now_ms + expiration_seconds * 1000) if expiration_seconds else None,
-            reversion=is_reversion,
-            manifest=manifest,
-            tag_kind=Tag.tag_kind.get_id("tag"),
+                if not okay:
+                    continue  # Retry on optimistic lock failure
+
+            # Create a new tag pointing to the manifest with a lifetime start of now.
+            created = Tag.create(
+                name=tag_name,
+                repository=manifest.repository_id,
+                lifetime_start_ms=now_ms,
+                lifetime_end_ms=(
+                    (now_ms + expiration_seconds * 1000) if expiration_seconds else None
+                ),
+                reversion=is_reversion,
+                manifest=manifest,
+                tag_kind=Tag.tag_kind.get_id("tag"),
+            )
+
+            return created
+
+    # All retries exhausted
+    logger.warning(
+        "Failed to retarget tag '%s' after %d attempts due to concurrent modifications",
+        tag_name,
+        RETARGET_TAG_MAX_RETRIES,
+    )
+    if raise_on_error:
+        raise RetargetTagException(
+            f"Failed to retarget tag after {RETARGET_TAG_MAX_RETRIES} attempts"
         )
-
-        return created
+    return None
 
 
 def delete_tag(repository_id, tag_name):
