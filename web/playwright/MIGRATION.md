@@ -671,7 +671,7 @@ Track migration progress from Cypress to Playwright.
 | Status | Cypress File | Playwright File | Notes |
 |--------|--------------|-----------------|-------|
 | ✅ | `repository-delete.cy.ts` | `repository/repository-delete.spec.ts` | |
-| ⬚ | `org-settings.cy.ts` | | |
+| ✅ | `org-settings.cy.ts` | `organization/settings.spec.ts` | @organization, @feature:USER_METADATA, @feature:BILLING, consolidated 4→3 tests (tag expiration in account-settings) |
 | ✅ | `account-settings.cy.ts` | `user/account-settings.spec.ts` | @user, @feature:BILLING, @feature:MAILING, @feature:CHANGE_TAG_EXPIRATION, consolidated 31→20 tests |
 | ⬚ | `autopruning.cy.ts` | | |
 | ✅ | `breadcrumbs.cy.ts` | `ui/breadcrumbs.spec.ts` | |
@@ -683,7 +683,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `footer.cy.ts` | | |
 | ⬚ | `fresh-login-oidc.cy.ts` | | @config:OIDC |
 | ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
-| ✅ | `manage-team-members.cy.ts` | `organization/team-members.spec.ts` | Consolidated 7→5 tests |
+| ⬚ | `manage-team-members.cy.ts` | | Migration pending: team-members.spec.ts doesn't exist |
 | ⬚ | `marketplace.cy.ts` | | @config:BILLING |
 | ✅ | `mirroring.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated 18→5 tests |
 | ✅ | `notification-drawer.cy.ts` | `ui/notification-drawer.spec.ts` | @container |
@@ -711,7 +711,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `superuser-change-log.cy.ts` | `superuser/change-log.spec.ts` | Superuser required, 7→2 tests (access control in framework.spec.ts) |
 | ✅ | `superuser-framework.cy.ts` | `superuser/framework.spec.ts` | Superuser required, consolidated 7→4 tests |
 | ✅ | `superuser-messages.cy.ts` | `superuser/messages.spec.ts` | Superuser required, consolidated 14→6 tests |
-| ✅ | `superuser-org-actions.cy.ts` | `superuser/org-actions.spec.ts` | Superuser required |
+| ⬚ | `superuser-org-actions.cy.ts` | | Migration pending: org-actions.spec.ts doesn't exist |
 | ✅ | `superuser-service-keys.cy.ts` | `superuser/service-keys.spec.ts` | Superuser required, 17→5 tests consolidated |
 | ⬚ | `superuser-usage-logs.cy.ts` | | Superuser required |
 | ✅ | `superuser-user-management.cy.ts` | `superuser/user-management.spec.ts` | Superuser required, 29→10 tests consolidated |
