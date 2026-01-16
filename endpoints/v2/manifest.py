@@ -8,6 +8,7 @@ from app import app, model_cache, pullmetrics, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.database import db_disallow_replica_use
 from data.model import (
+    ImmutableTagException,
     ManifestDoesNotExist,
     QuotaExceededException,
     RepositoryDoesNotExist,
@@ -40,6 +41,7 @@ from endpoints.v2.errors import (
     NameUnknown,
     QuotaExceeded,
     TagExpired,
+    TagImmutable,
 )
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -458,7 +460,11 @@ def delete_manifest_by_tag(namespace_name, repo_name, manifest_ref):
         if tag is None:
             raise ManifestUnknown()
 
-        deleted_tag = registry_model.delete_tag(model_cache, repository_ref, manifest_ref)
+        try:
+            deleted_tag = registry_model.delete_tag(model_cache, repository_ref, manifest_ref)
+        except ImmutableTagException as ite:
+            raise TagImmutable(detail={"message": f"tag '{ite.tag_name}' is immutable"}) from ite
+
         if not deleted_tag:
             raise ManifestUnknown()
 
@@ -520,6 +526,8 @@ def _write_manifest(
         raise ManifestInvalid(detail={"message": str(cme)})
     except RetargetTagException as rte:
         raise ManifestInvalid(detail={"message": str(rte)})
+    except ImmutableTagException as ite:
+        raise TagImmutable(detail={"message": f"tag '{ite.tag_name}' is immutable"}) from ite
     except QuotaExceededException as qee:
         raise QuotaExceeded()
 
