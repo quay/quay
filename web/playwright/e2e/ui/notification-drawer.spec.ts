@@ -1,5 +1,5 @@
 import {test, expect} from '../../fixtures';
-import {pushImage, isContainerRuntimeAvailable} from '../../utils/container';
+import {pushImage} from '../../utils/container';
 import {TEST_USERS} from '../../global-setup';
 
 test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
@@ -7,10 +7,6 @@ test.describe('Notification Drawer', {tag: ['@ui', '@container']}, () => {
     authenticatedPage,
     api,
   }) => {
-    // Check container runtime availability
-    const runtimeAvailable = await isContainerRuntimeAvailable();
-    test.skip(!runtimeAvailable, 'Container runtime (podman/docker) required');
-
     const namespace = TEST_USERS.user.username;
 
     // 1. Create repository
