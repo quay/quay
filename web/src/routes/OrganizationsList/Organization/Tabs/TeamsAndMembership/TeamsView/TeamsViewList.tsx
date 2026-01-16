@@ -312,7 +312,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
                   <Td modifier="center">
                     {team.is_synced && (
                       <Tooltip content="Team is synchronized with a backing group">
-                        <SyncIcon data-test-id="sync-icon" />
+                        <SyncIcon data-testid="sync-icon" />
                       </Tooltip>
                     )}
                   </Td>
