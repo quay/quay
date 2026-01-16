@@ -15,7 +15,8 @@ from data.database import (
     User,
     Visibility,
 )
-from data.model.org_mirror import get_org_mirror_config
+from data.model import DataModelException
+from data.model.org_mirror import create_org_mirror_config, get_org_mirror_config
 from data.model.user import create_robot, create_user_noverify, lookup_robot
 from test.fixtures import *
 
@@ -162,3 +163,152 @@ class TestGetOrgMirrorConfig:
         assert result1.external_namespace == "project-a"
         assert result2.id == config2.id
         assert result2.external_namespace == "project-b"
+
+
+class TestCreateOrgMirrorConfig:
+    """Tests for create_org_mirror_config function."""
+
+    def test_create_org_mirror_config_success(self, initialized_db):
+        """
+        Test successful creation of an organization mirror configuration.
+        """
+        org, robot = _create_org_and_robot("create_test1")
+        visibility = Visibility.get(name="private")
+        sync_start = datetime.utcnow()
+
+        config = create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=visibility,
+            sync_interval=3600,
+            sync_start_date=sync_start,
+        )
+
+        assert config is not None
+        assert config.organization == org
+        assert config.internal_robot == robot
+        assert config.external_registry_type == SourceRegistryType.HARBOR
+        assert config.external_registry_url == "https://harbor.example.com"
+        assert config.external_namespace == "my-project"
+        assert config.visibility == visibility
+        assert config.sync_interval == 3600
+        assert config.is_enabled is True
+        assert config.sync_status == OrgMirrorStatus.NEVER_RUN
+        assert config.skopeo_timeout == 300  # Default value
+
+    def test_create_org_mirror_config_with_optional_fields(self, initialized_db):
+        """
+        Test creating config with all optional fields.
+        """
+        org, robot = _create_org_and_robot("create_test2")
+        visibility = Visibility.get(name="public")
+        sync_start = datetime.utcnow()
+        filters = ["ubuntu*", "nginx"]
+        registry_config = {"verify_tls": True, "proxy": {"https_proxy": "https://proxy.example.com"}}
+
+        config = create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.QUAY,
+            external_registry_url="https://quay.io",
+            external_namespace="some-org",
+            visibility=visibility,
+            sync_interval=7200,
+            sync_start_date=sync_start,
+            is_enabled=False,
+            external_registry_username="myuser",
+            external_registry_password="mypassword",
+            external_registry_config=registry_config,
+            repository_filters=filters,
+            skopeo_timeout=600,
+        )
+
+        assert config is not None
+        assert config.is_enabled is False
+        assert config.external_registry_type == SourceRegistryType.QUAY
+        assert config.repository_filters == filters
+        assert config.skopeo_timeout == 600
+        assert config.external_registry_config == registry_config
+
+    def test_create_org_mirror_config_robot_wrong_namespace(self, initialized_db):
+        """
+        Creating config with a robot from a different namespace should raise an error.
+        """
+        org1, robot1 = _create_org_and_robot("create_test3a")
+        org2, _ = _create_org_and_robot("create_test3b")
+        visibility = Visibility.get(name="private")
+
+        with pytest.raises(DataModelException) as excinfo:
+            create_org_mirror_config(
+                organization=org2,  # Different org
+                internal_robot=robot1,  # Robot from org1
+                external_registry_type=SourceRegistryType.HARBOR,
+                external_registry_url="https://harbor.example.com",
+                external_namespace="my-project",
+                visibility=visibility,
+                sync_interval=3600,
+                sync_start_date=datetime.utcnow(),
+            )
+
+        assert "belong to the organization" in str(excinfo.value)
+
+    def test_create_org_mirror_config_already_exists(self, initialized_db):
+        """
+        Creating a second config for the same org should raise an error.
+        """
+        org, robot = _create_org_and_robot("create_test4")
+        visibility = Visibility.get(name="private")
+
+        # Create first config
+        create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=visibility,
+            sync_interval=3600,
+            sync_start_date=datetime.utcnow(),
+        )
+
+        # Try to create a second config
+        with pytest.raises(DataModelException) as excinfo:
+            create_org_mirror_config(
+                organization=org,
+                internal_robot=robot,
+                external_registry_type=SourceRegistryType.QUAY,
+                external_registry_url="https://quay.io",
+                external_namespace="other-project",
+                visibility=visibility,
+                sync_interval=7200,
+                sync_start_date=datetime.utcnow(),
+            )
+
+        assert "already exists" in str(excinfo.value)
+
+    def test_create_org_mirror_config_can_retrieve_after_create(self, initialized_db):
+        """
+        After creating a config, it should be retrievable with get_org_mirror_config.
+        """
+        org, robot = _create_org_and_robot("create_test5")
+        visibility = Visibility.get(name="private")
+
+        created = create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=visibility,
+            sync_interval=3600,
+            sync_start_date=datetime.utcnow(),
+        )
+
+        retrieved = get_org_mirror_config(org)
+
+        assert retrieved is not None
+        assert retrieved.id == created.id
+        assert retrieved.external_registry_url == created.external_registry_url

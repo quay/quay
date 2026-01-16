@@ -16,11 +16,13 @@ import features
 from auth import scopes
 from auth.permissions import AdministerOrganizationPermission
 from data import model
+from data.database import SourceRegistryType, Visibility
 from data.encryption import DecryptionFailureException
-from data.model import InvalidOrganizationException
+from data.model import DataModelException, InvalidOrganizationException
 from endpoints.api import (
     allow_if_superuser_with_full_access,
     ApiResource,
+    log_action,
     nickname,
     path_param,
     require_scope,
@@ -28,6 +30,7 @@ from endpoints.api import (
     show_if,
     validate_json_request,
 )
+from util.names import parse_robot_username
 from flask_restful import abort
 
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
@@ -229,6 +232,13 @@ class OrgMirrorConfig(ApiResource):
         assert isinstance(dt, datetime)
         return dt.isoformat() + "Z"
 
+    def _string_to_dt(self, string):
+        """Convert ISO 8601 string to datetime."""
+        if string is None:
+            return None
+        assert isinstance(string, str)
+        return datetime.strptime(string, "%Y-%m-%dT%H:%M:%SZ")
+
     @require_scope(scopes.ORG_ADMIN)
     @nickname("createOrgMirrorConfig")
     @validate_json_request("CreateOrgMirrorConfig")
@@ -237,7 +247,100 @@ class OrgMirrorConfig(ApiResource):
         Create organization mirror configuration.
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        # Check if mirror config already exists
+        existing = model.org_mirror.get_org_mirror_config(org)
+        if existing:
+            raise InvalidRequest(
+                message="Mirror configuration already exists for this organization"
+            )
+
+        data = request.get_json()
+
+        # Validate and look up robot account
+        robot_username = data.get("robot_username")
+        try:
+            robot = model.user.lookup_robot(robot_username)
+        except model.InvalidRobotException:
+            raise InvalidRequest(message=f"Invalid robot account: {robot_username}")
+
+        # Verify robot belongs to the organization
+        namespace, _ = parse_robot_username(robot_username)
+        if namespace != orgname:
+            raise InvalidRequest(
+                message="Robot account must belong to the organization"
+            )
+
+        # Parse external registry type
+        registry_type_str = data.get("external_registry_type", "").upper()
+        try:
+            external_registry_type = SourceRegistryType[registry_type_str]
+        except KeyError:
+            raise InvalidRequest(
+                message=f"Invalid external_registry_type: {data.get('external_registry_type')}"
+            )
+
+        # Parse visibility
+        visibility_str = data.get("visibility", "").lower()
+        try:
+            visibility = Visibility.get(name=visibility_str)
+        except Visibility.DoesNotExist:
+            raise InvalidRequest(message=f"Invalid visibility: {data.get('visibility')}")
+
+        # Parse sync_start_date
+        try:
+            sync_start_date = self._string_to_dt(data.get("sync_start_date"))
+        except (ValueError, AssertionError):
+            raise InvalidRequest(message="Invalid sync_start_date format. Use ISO 8601: YYYY-MM-DDTHH:MM:SSZ")
+
+        # Validate sync_interval
+        sync_interval = data.get("sync_interval")
+        if sync_interval < 60:
+            raise InvalidRequest(message="sync_interval must be at least 60 seconds")
+
+        # Validate skopeo_timeout
+        skopeo_timeout = data.get("skopeo_timeout", 300)
+        if skopeo_timeout < 30 or skopeo_timeout > 3600:
+            raise InvalidRequest(message="skopeo_timeout must be between 30 and 3600 seconds")
+
+        # Create the mirror config
+        try:
+            mirror = model.org_mirror.create_org_mirror_config(
+                organization=org,
+                internal_robot=robot,
+                external_registry_type=external_registry_type,
+                external_registry_url=data.get("external_registry_url"),
+                external_namespace=data.get("external_namespace"),
+                visibility=visibility,
+                sync_interval=sync_interval,
+                sync_start_date=sync_start_date,
+                is_enabled=data.get("is_enabled", True),
+                external_registry_username=data.get("external_registry_username"),
+                external_registry_password=data.get("external_registry_password"),
+                external_registry_config=data.get("external_registry_config", {}),
+                repository_filters=data.get("repository_filters", []),
+                skopeo_timeout=skopeo_timeout,
+            )
+        except DataModelException as e:
+            raise InvalidRequest(message=str(e))
+
+        # Log the action
+        log_action(
+            "org_mirror_enabled",
+            orgname,
+            {
+                "external_registry_type": registry_type_str.lower(),
+                "external_registry_url": data.get("external_registry_url"),
+                "external_namespace": data.get("external_namespace"),
+            },
+        )
+
+        return "", 201
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("updateOrgMirrorConfig")
