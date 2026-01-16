@@ -251,6 +251,7 @@ from data.model import (
     oauth,
     organization,
     organization_skus,
+    org_mirror,
     permission,
     proxy_cache,
     pull_statistics,
