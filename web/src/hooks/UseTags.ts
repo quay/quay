@@ -2,6 +2,7 @@ import {BulkOperationError, ResourceError} from 'src/resources/ErrorHandling';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {
   bulkSetExpiration,
+  bulkSetTagImmutability,
   createTag,
   permanentlyDeleteTag,
   bulkDeleteTags,
@@ -66,6 +67,26 @@ export function useSetExpiration(org: string, repo: string) {
     errorSetExpiration: errorSetExpiration,
     errorSetExpirationDetails:
       errorSetExpirationDetails as BulkOperationError<ResourceError>,
+  };
+}
+
+export function useSetTagImmutability(org: string, repo: string) {
+  const {
+    mutate: mutateSetImmutability,
+    isSuccess: successSetImmutability,
+    isError: errorSetImmutability,
+    error: errorSetImmutabilityDetails,
+  } = useMutation(
+    async ({tags, immutable}: {tags: string[]; immutable: boolean}) =>
+      bulkSetTagImmutability(org, repo, tags, immutable),
+  );
+
+  return {
+    setImmutability: mutateSetImmutability,
+    successSetImmutability: successSetImmutability,
+    errorSetImmutability: errorSetImmutability,
+    errorSetImmutabilityDetails:
+      errorSetImmutabilityDetails as BulkOperationError<ResourceError>,
   };
 }
 

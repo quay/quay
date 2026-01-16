@@ -29,6 +29,7 @@ import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import EditExpirationModal from './TagsActionsEditExpirationModal';
+import ImmutabilityModal from './TagsActionsImmutabilityModal';
 import {FilterInput} from 'src/components/toolbar/FilterInput';
 
 export function TagsToolbar(props: ToolBarProps) {
@@ -44,8 +45,21 @@ export function TagsToolbar(props: ToolBarProps) {
   const [expandedView, setExpandedView] = useRecoilState(expandedViewState);
   const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] =
     useState(false);
+  const [isImmutabilityModalOpen, setIsImmutabilityModalOpen] = useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Filter selected tags to get only mutable ones for bulk immutability
+  const selectedMutableTags = selectedTags.filter((tagName) => {
+    const tag = props.TagList.find((t) => t.name === tagName);
+    return tag && !tag.immutable;
+  });
+
+  // Filter selected tags to get immutable ones for delete warning
+  const selectedImmutableTags = selectedTags.filter((tagName) => {
+    const tag = props.TagList.find((t) => t.name === tagName);
+    return tag && tag.immutable;
+  });
   const kebabItems: ReactElement[] = [
     <DropdownItem
       key="set-expiration"
@@ -72,6 +86,30 @@ export function TagsToolbar(props: ToolBarProps) {
       Remove
     </DropdownItem>,
   ];
+
+  // Add immutability action if feature is enabled
+  if (quayConfig?.features?.IMMUTABLE_TAGS) {
+    kebabItems.splice(
+      1, // Insert after "Set expiration"
+      0,
+      <DropdownItem
+        key="make-immutable"
+        onClick={() => {
+          setKebabOpen(!isKebabOpen);
+          setIsImmutabilityModalOpen(true);
+        }}
+        isDisabled={selectedMutableTags.length <= 0}
+        tooltipProps={
+          selectedTags.length > 0 && selectedMutableTags.length === 0
+            ? {content: 'All selected tags are already immutable'}
+            : undefined
+        }
+        data-testid="bulk-make-immutable-action"
+      >
+        Make immutable
+      </DropdownItem>,
+    );
+  }
 
   if (
     quayConfig?.config?.PERMANENTLY_DELETE_TAGS &&
@@ -166,6 +204,7 @@ export function TagsToolbar(props: ToolBarProps) {
               setKebabOpen={setKebabOpen}
               kebabItems={kebabItems}
               useActions={true}
+              data-testid="bulk-actions-kebab"
             />
           ) : null}
         </ToolbarItem>
@@ -181,7 +220,8 @@ export function TagsToolbar(props: ToolBarProps) {
       <DeleteModal
         modalOptions={modalOptions}
         setModalOptions={setModalOptions}
-        tags={selectedTags}
+        tags={selectedMutableTags}
+        immutableTags={selectedImmutableTags}
         onComplete={() => {
           setSelectedTags([]);
         }}
@@ -196,6 +236,18 @@ export function TagsToolbar(props: ToolBarProps) {
         isOpen={isEditExpirationModalOpen}
         setIsOpen={setIsEditExpirationModalOpen}
         tags={selectedTags}
+        loadTags={props.loadTags}
+        onComplete={() => {
+          setSelectedTags([]);
+        }}
+      />
+      <ImmutabilityModal
+        org={props.organization}
+        repo={props.repository}
+        isOpen={isImmutabilityModalOpen}
+        setIsOpen={setIsImmutabilityModalOpen}
+        tags={selectedMutableTags}
+        currentlyImmutable={false}
         loadTags={props.loadTags}
         onComplete={() => {
           setSelectedTags([]);
