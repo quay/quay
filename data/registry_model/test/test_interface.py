@@ -865,6 +865,82 @@ def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci
     assert yet_another_tag.lifetime_end_ms is not None
 
 
+def test_manifest_list_expiration_multiple_tags(oci_model):
+    """
+    Test that when a manifest list is pushed with multiple tags,
+    all tags get the expiration from child manifest labels.
+
+    This verifies the fix for PROJQUAY-7245.
+    """
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+
+    # Create a config blob with expiry label for child manifest
+    config_json = json.dumps(
+        {
+            "config": {
+                "Labels": {
+                    "quay.expires-after": "1w",
+                },
+            },
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+            ],
+        }
+    )
+
+    app_config = {"TESTING": True}
+    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
+        config_blob = upload.commit_to_blob(app_config)
+
+    # Create a child manifest with the expiry label
+    child_builder = DockerSchema2ManifestBuilder()
+    child_builder.set_config_digest(config_blob.digest, config_blob.compressed_size)
+    # Use a valid SHA256 digest (64 hex chars)
+    layer_digest = "sha256:" + hashlib.sha256(b"child_layer_content").hexdigest()
+    child_builder.add_layer(layer_digest, 1234, urls=["http://example/layer"])
+    child_manifest = child_builder.build()
+
+    # Create the child manifest in the registry (hidden, no tag)
+    child_created, _ = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, child_manifest, "temp_child_tag", storage
+    )
+    assert child_created is not None
+
+    # Build a manifest list referencing the child manifest
+    list_builder = DockerSchema2ManifestListBuilder()
+    list_builder.add_manifest(child_manifest, "amd64", "linux")
+    manifest_list = list_builder.build()
+
+    # Push the manifest list with the first tag
+    manifest1, tag1 = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest_list, "multi-arch-v1", storage
+    )
+    assert manifest1 is not None
+    assert tag1 is not None
+    assert tag1.lifetime_end_ms is not None, "First tag should have expiration set"
+
+    # Push the same manifest list with a second tag
+    manifest2, tag2 = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest_list, "multi-arch-v2", storage
+    )
+    assert manifest2 is not None
+    assert manifest2.digest == manifest1.digest, "Should be the same manifest"
+    assert tag2 is not None
+    assert tag2.lifetime_end_ms is not None, "Second tag should also have expiration set"
+
+    # Also test retarget_tag (used by Quay's tag API)
+    tag3 = oci_model.retarget_tag(
+        repository_ref, "multi-arch-v3", manifest1, storage, docker_v2_signing_key
+    )
+    assert tag3 is not None
+    assert tag3.lifetime_end_ms is not None, "Third tag via retarget_tag should have expiration"
+
+
 def _populate_blob(digest):
     location = ImageStorageLocation.get(name="local_us")
     store_blob_record_and_temp_link("devtable", "simple", digest, location, 1, 120)

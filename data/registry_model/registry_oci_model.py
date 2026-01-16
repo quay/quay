@@ -7,6 +7,7 @@ from peewee import fn
 from data import database, model
 from data.cache import cache_key
 from data.database import (
+    ManifestChild,
     Repository,
     RepositoryKind,
     RepositoryState,
@@ -82,6 +83,57 @@ class OCIModel(RegistryDataInterface):
             return (None, None)
 
         return Manifest.for_manifest(manifest, self._legacy_image_id_handler), layer_index
+
+    def _get_expiry_label_for_manifest(self, manifest):
+        """
+        Gets the quay.expires-after label for a manifest.
+
+        For manifest lists, this intersects labels from all child manifests,
+        matching the behavior during initial manifest creation.
+
+        Returns the label dict {"key": ..., "value": ...} or None if not found.
+        """
+        # First check labels directly on the manifest
+        label_dict = next(
+            (
+                label.asdict()
+                for label in self.list_manifest_labels(manifest, key_prefix="quay")
+                if label.key == LABEL_EXPIRY_KEY
+            ),
+            None,
+        )
+
+        if label_dict is not None:
+            return label_dict
+
+        # For manifest lists, check child manifest labels
+        if manifest.is_manifest_list:
+            child_manifests = ManifestChild.select(ManifestChild.child_manifest).where(
+                ManifestChild.manifest == manifest._db_id
+            )
+
+            child_label_dicts = []
+            for child in child_manifests:
+                child_manifest = Manifest.for_manifest(
+                    child.child_manifest, self._legacy_image_id_handler
+                )
+                child_labels = {
+                    label.key: label.value
+                    for label in self.list_manifest_labels(child_manifest, key_prefix="quay")
+                }
+                child_label_dicts.append(child_labels)
+
+            if child_label_dicts:
+                # Intersect labels across all children (same logic as manifest.py)
+                labels_to_apply = child_label_dicts[0].items()
+                for child_label_dict in child_label_dicts[1:]:
+                    labels_to_apply = labels_to_apply & child_label_dict.items()
+                labels_to_apply = dict(labels_to_apply)
+
+                if LABEL_EXPIRY_KEY in labels_to_apply:
+                    return {"key": LABEL_EXPIRY_KEY, "value": labels_to_apply[LABEL_EXPIRY_KEY]}
+
+        return None
 
     def get_tag_legacy_image_id(self, repository_ref, tag_name, storage):
         """
@@ -453,17 +505,7 @@ class OCIModel(RegistryDataInterface):
             #       If we were to define more of these "special" labels in the future, we should use the handlers from
             #       data/registry_model/label_handlers.py
             if not created_manifest.newly_created:
-                label_dict = next(
-                    (
-                        label.asdict()
-                        for label in self.list_manifest_labels(
-                            wrapped_manifest,
-                            key_prefix="quay",
-                        )
-                        if label.key == LABEL_EXPIRY_KEY
-                    ),
-                    None,
-                )
+                label_dict = self._get_expiry_label_for_manifest(wrapped_manifest)
             else:
                 label_dict = next(
                     (
@@ -565,17 +607,7 @@ class OCIModel(RegistryDataInterface):
 
                     manifest_id = created.manifest.id
 
-            label_dict = next(
-                (
-                    label.asdict()
-                    for label in self.list_manifest_labels(
-                        manifest,
-                        key_prefix="quay",
-                    )
-                    if label.key == LABEL_EXPIRY_KEY
-                ),
-                None,
-            )
+            label_dict = self._get_expiry_label_for_manifest(manifest)
 
             expiration_seconds = None
 
