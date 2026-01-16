@@ -306,6 +306,15 @@ def v2_support_enabled():
         response = make_response("true", 401)
 
     response.headers.extend(get_auth_headers())
+
+    # Add sparse manifest capability headers
+    sparse_enabled = bool(features.SPARSE_INDEX) if hasattr(features, "SPARSE_INDEX") else False
+    response.headers["X-Sparse-Manifest-Support"] = "true" if sparse_enabled else "false"
+    if sparse_enabled:
+        required_archs = app.config.get("SPARSE_INDEX_REQUIRED_ARCHS", [])
+        if required_archs:
+            response.headers["X-Required-Architectures"] = ",".join(required_archs)
+
     return response
 
 

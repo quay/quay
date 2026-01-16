@@ -15,6 +15,7 @@ from endpoints.api import api
 from endpoints.api.appspecifictokens import *
 from endpoints.api.billing import *
 from endpoints.api.build import *
+from endpoints.api.capabilities import *
 from endpoints.api.discovery import *
 from endpoints.api.globalmessages import *  # type: ignore[no-redef]
 from endpoints.api.logs import *  # type: ignore[no-redef]
@@ -457,6 +458,10 @@ SECURITY_TESTS: List[
         "reader",
         201,
     ),
+    (RegistryCapabilities, "GET", None, None, None, 200),
+    (RegistryCapabilities, "GET", None, None, "devtable", 200),
+    (RegistryCapabilities, "GET", None, None, "freshuser", 200),
+    (RegistryCapabilities, "GET", None, None, "reader", 200),
     (DiscoveryResource, "GET", None, None, None, 200),
     (DiscoveryResource, "GET", None, None, "devtable", 200),
     (DiscoveryResource, "GET", None, None, "freshuser", 200),
