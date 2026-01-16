@@ -19,6 +19,7 @@ import axios from 'axios';
 import axiosIns from 'src/libs/axios';
 import {LoadingPage} from 'src/components/LoadingPage';
 import SystemStatusBanner from 'src/components/SystemStatusBanner';
+import {UIProvider} from 'src/contexts/UIContext';
 
 // Lazy load route components for better performance
 const OrganizationsList = lazy(
@@ -111,23 +112,6 @@ function PluginMain() {
 
   return (
     <Page style={{height: '100vh'}}>
-      {!user && (
-        <Banner variant="gold">
-          <Flex
-            spaceItems={{default: 'spaceItemsSm'}}
-            justifyContent={{default: 'justifyContentCenter'}}
-          >
-            <FlexItem>
-              <InfoCircleIcon />
-            </FlexItem>
-            <FlexItem>
-              We are currently experiencing authentication issues with RH SSO.
-              Our team is actively investigating this issue and working to
-              restore authentication.
-            </FlexItem>
-          </Flex>
-        </Banner>
-      )}
       {quayConfig?.config?.UI_V2_FEEDBACK_FORM && (
         <Banner variant="blue">
           <Flex
@@ -193,9 +177,11 @@ export default function PluginMainRoot() {
 
   return (
     <RecoilRoot>
-      <QueryClientProvider client={queryClient}>
-        <PluginMain />
-      </QueryClientProvider>
+      <UIProvider>
+        <QueryClientProvider client={queryClient}>
+          <PluginMain />
+        </QueryClientProvider>
+      </UIProvider>
     </RecoilRoot>
   );
 }
