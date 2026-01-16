@@ -204,7 +204,7 @@ class TestSparseIndexDisabled:
         with pytest.raises(ManifestException) as exc_info:
             _ = loader.manifest_obj
 
-        assert "Could not find child manifest" in str(exc_info.value)
+        assert "manifest not found" in str(exc_info.value)
 
     def test_missing_manifest_raises_without_config(self):
         """When config is not set, missing manifest raises exception (default behavior)."""
@@ -224,7 +224,7 @@ class TestSparseIndexDisabled:
         with pytest.raises(ManifestException) as exc_info:
             _ = loader.manifest_obj
 
-        assert "Could not find child manifest" in str(exc_info.value)
+        assert "manifest not found" in str(exc_info.value)
 
 
 class TestSparseIndexEnabled:
@@ -278,7 +278,8 @@ class TestSparseIndexEnabled:
         with pytest.raises(ManifestException) as exc_info:
             _ = loader.manifest_obj
 
-        assert "Could not find child manifest" in str(exc_info.value)
+        assert "manifest not found" in str(exc_info.value)
+        assert "Required architectures:" in str(exc_info.value)
 
     def test_empty_required_archs_treats_all_as_required(self):
         """When SPARSE_INDEX_REQUIRED_ARCHS is empty, all architectures are required."""
@@ -640,8 +641,11 @@ class TestManifestListIndex:
 
         manifest_list = list_class(Bytes.for_string_or_unicode(manifest_list_bytes))
 
+        # Import the config module before patching
+        from data.model import config as model_config
+
         # Explicitly test with sparse index disabled (default behavior)
-        with patch("data.model.config.app_config", {"FEATURE_SPARSE_INDEX": False}):
+        with patch.object(model_config, "app_config", {"FEATURE_SPARSE_INDEX": False}):
             manifests = manifest_list.manifests(retriever)
 
             assert len(manifests) == 3
@@ -662,11 +666,14 @@ class TestManifestListIndex:
 
         manifest_list = list_class(Bytes.for_string_or_unicode(manifest_list_bytes))
 
-        config = {
+        # Import the config module before patching
+        from data.model import config as model_config
+
+        app_config = {
             "FEATURE_SPARSE_INDEX": True,
             "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],  # Only amd64 is required
         }
-        with patch("data.model.config.app_config", config):
+        with patch.object(model_config, "app_config", app_config):
             manifests = manifest_list.manifests(retriever)
             assert len(manifests) == 3
 
@@ -691,11 +698,14 @@ class TestManifestListIndex:
 
         manifest_list = list_class(Bytes.for_string_or_unicode(manifest_list_bytes))
 
-        config = {
+        # Import the config module before patching
+        from data.model import config as model_config
+
+        app_config = {
             "FEATURE_SPARSE_INDEX": True,
             "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
         }
-        with patch("data.model.config.app_config", config):
+        with patch.object(model_config, "app_config", app_config):
             manifests = manifest_list.manifests(retriever)
 
             # Should raise when accessing the amd64 manifest
@@ -718,11 +728,14 @@ class TestManifestListIndex:
 
         manifest_list = list_class(Bytes.for_string_or_unicode(manifest_list_bytes))
 
-        config = {
+        # Import the config module before patching
+        from data.model import config as model_config
+
+        app_config = {
             "FEATURE_SPARSE_INDEX": True,
             "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
         }
-        with patch("data.model.config.app_config", config):
+        with patch.object(model_config, "app_config", app_config):
             # Validation should not raise even though some manifests are None
             manifest_list.validate(retriever)
 
@@ -859,3 +872,174 @@ class TestDebugLogging:
         assert "Skipping manifest with digest" in caplog.text
         assert "sha256:testdigest" in caplog.text
         assert "arm64" in caplog.text
+
+
+class TestSparsePushScenarios:
+    """Tests for sparse manifest push acceptance scenarios."""
+
+    def test_sparse_manifest_push_accepted_when_enabled(self):
+        """Test manifest list push succeeds with missing optional architectures when enabled."""
+        manifest_list_bytes = create_docker_manifest_list_bytes()
+
+        # Only provide amd64, arm64 and ppc64le are missing
+        retriever = ContentRetrieverForTesting(
+            {
+                "sha256:amd64manifest": DOCKER_SCHEMA2_MANIFEST_BYTES,
+            }
+        )
+
+        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
+
+        # Import the config module before patching
+        from data.model import config as model_config
+
+        app_config = {
+            "FEATURE_SPARSE_INDEX": True,
+            "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
+        }
+        with patch.object(model_config, "app_config", app_config):
+            # Validation should succeed (simulates push acceptance)
+            manifest_list.validate(retriever)
+
+            # Check that we can access all manifests without error
+            manifests = manifest_list.manifests(retriever)
+            assert len(manifests) == 3
+
+            # amd64 should be loaded, arm64/ppc64le should be None
+            for m in manifests:
+                if m.architecture == "amd64":
+                    assert m.manifest_obj is not None
+                else:
+                    assert m.manifest_obj is None
+
+    def test_sparse_manifest_push_rejected_when_disabled(self):
+        """Test manifest list push fails with missing architectures when disabled."""
+        manifest_list_bytes = create_docker_manifest_list_bytes()
+
+        # Only provide amd64, arm64 and ppc64le are missing
+        retriever = ContentRetrieverForTesting(
+            {
+                "sha256:amd64manifest": DOCKER_SCHEMA2_MANIFEST_BYTES,
+            }
+        )
+
+        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
+
+        # Import the config module before patching
+        from data.model import config as model_config
+
+        app_config = {
+            "FEATURE_SPARSE_INDEX": False,
+        }
+        with patch.object(model_config, "app_config", app_config):
+            # Accessing manifests should fail because arm64/ppc64le are missing
+            # and all are required when sparse index is disabled
+            manifests = manifest_list.manifests(retriever)
+            with pytest.raises(ManifestException) as exc_info:
+                for m in manifests:
+                    _ = m.manifest_obj  # This triggers the load
+
+            assert "manifest not found" in str(exc_info.value)
+
+    def test_required_architecture_must_exist(self):
+        """Test push fails when required architecture is missing."""
+        manifest_list_bytes = create_docker_manifest_list_bytes()
+
+        # Provide arm64 and ppc64le, but NOT amd64 (required)
+        retriever = ContentRetrieverForTesting(
+            {
+                "sha256:arm64manifest": DOCKER_SCHEMA2_MANIFEST_BYTES,
+                "sha256:ppc64lemanifest": DOCKER_SCHEMA2_MANIFEST_BYTES,
+            }
+        )
+
+        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
+
+        # Import the config module before patching
+        from data.model import config as model_config
+
+        app_config = {
+            "FEATURE_SPARSE_INDEX": True,
+            "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],  # amd64 is required but missing
+        }
+        with patch.object(model_config, "app_config", app_config):
+            # Accessing manifests should fail because amd64 is required but missing
+            manifests = manifest_list.manifests(retriever)
+            with pytest.raises(ManifestException) as exc_info:
+                for m in manifests:
+                    _ = m.manifest_obj  # This triggers the load
+
+            assert "amd64" in str(exc_info.value)
+            assert "manifest not found" in str(exc_info.value)
+
+    def test_digest_preserved_for_sparse_manifest(self):
+        """Test manifest list digest matches original after sparse push."""
+        manifest_list_bytes = create_docker_manifest_list_bytes()
+
+        # Only provide amd64
+        retriever = ContentRetrieverForTesting(
+            {
+                "sha256:amd64manifest": DOCKER_SCHEMA2_MANIFEST_BYTES,
+            }
+        )
+
+        manifest_list = DockerSchema2ManifestList(Bytes.for_string_or_unicode(manifest_list_bytes))
+
+        # Record the original digest before any operations
+        original_digest = manifest_list.digest
+
+        # Import the config module before patching
+        from data.model import config as model_config
+
+        app_config = {
+            "FEATURE_SPARSE_INDEX": True,
+            "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
+        }
+        with patch.object(model_config, "app_config", app_config):
+            # Validate (simulates push acceptance)
+            manifest_list.validate(retriever)
+
+            # Access manifests to trigger loading
+            manifests = manifest_list.manifests(retriever)
+            for m in manifests:
+                _ = m.manifest_obj
+
+            # Verify digest is unchanged after accessing manifests
+            assert manifest_list.digest == original_digest
+
+            # Verify bytes are unchanged
+            assert manifest_list.bytes.as_encoded_str() == manifest_list_bytes
+
+    def test_oci_sparse_index_push_accepted_when_enabled(self):
+        """Test OCI index push succeeds with missing optional architectures when enabled."""
+        oci_index_bytes = create_oci_index_bytes()
+
+        # Only provide amd64
+        retriever = ContentRetrieverForTesting(
+            {
+                "sha256:amd64manifest": OCI_MANIFEST_BYTES,
+            }
+        )
+
+        oci_index = OCIIndex(Bytes.for_string_or_unicode(oci_index_bytes))
+
+        # Import the config module before patching
+        from data.model import config as model_config
+
+        app_config = {
+            "FEATURE_SPARSE_INDEX": True,
+            "SPARSE_INDEX_REQUIRED_ARCHS": ["amd64"],
+        }
+        with patch.object(model_config, "app_config", app_config):
+            # Validation should succeed
+            oci_index.validate(retriever)
+
+            # Check manifests
+            manifests = oci_index.manifests(retriever)
+            assert len(manifests) == 3
+
+            # amd64 should be loaded, others should be None
+            loaded = [m for m in manifests if m.manifest_obj is not None]
+            skipped = [m for m in manifests if m.manifest_obj is None]
+            assert len(loaded) == 1
+            assert len(skipped) == 2
