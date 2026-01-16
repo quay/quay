@@ -111,23 +111,6 @@ function PluginMain() {
 
   return (
     <Page style={{height: '100vh'}}>
-      {!user && (
-        <Banner variant="gold">
-          <Flex
-            spaceItems={{default: 'spaceItemsSm'}}
-            justifyContent={{default: 'justifyContentCenter'}}
-          >
-            <FlexItem>
-              <InfoCircleIcon />
-            </FlexItem>
-            <FlexItem>
-              We are currently experiencing authentication issues with RH SSO.
-              Our team is actively investigating this issue and working to
-              restore authentication.
-            </FlexItem>
-          </Flex>
-        </Banner>
-      )}
       {quayConfig?.config?.UI_V2_FEEDBACK_FORM && (
         <Banner variant="blue">
           <Flex
