@@ -359,7 +359,20 @@ class OrgMirrorConfig(ApiResource):
         Delete organization mirror configuration.
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        deleted = model.org_mirror.delete_org_mirror_config(org)
+        if not deleted:
+            raise NotFound()
+
+        # Log the action
+        log_action("org_mirror_disabled", orgname, {})
+
+        return "", 204
 
 
 @resource("/v1/organization/<orgname>/mirror/sync-now")

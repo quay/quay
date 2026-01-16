@@ -9,6 +9,7 @@ from peewee import IntegrityError, JOIN
 
 from data.database import (
     OrgMirrorConfig,
+    OrgMirrorRepository,
     OrgMirrorStatus,
     SourceRegistryType,
     User,
@@ -121,3 +122,29 @@ def create_org_mirror_config(
             raise DataModelException(
                 "Mirror configuration already exists for this organization"
             )
+
+
+def delete_org_mirror_config(org):
+    """
+    Delete the organization-level mirror configuration and all associated discovered repositories.
+
+    Args:
+        org: A User object representing the organization.
+
+    Returns:
+        True if the configuration was deleted, False if no configuration existed.
+    """
+    config = get_org_mirror_config(org)
+    if config is None:
+        return False
+
+    with db_transaction():
+        # Delete all associated discovered repositories first
+        OrgMirrorRepository.delete().where(
+            OrgMirrorRepository.org_mirror_config == config
+        ).execute()
+
+        # Delete the config
+        config.delete_instance()
+
+    return True

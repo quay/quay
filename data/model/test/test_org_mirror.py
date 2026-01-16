@@ -10,13 +10,19 @@ import pytest
 from data import model
 from data.database import (
     OrgMirrorConfig,
+    OrgMirrorRepository,
+    OrgMirrorRepoStatus,
     OrgMirrorStatus,
     SourceRegistryType,
     User,
     Visibility,
 )
 from data.model import DataModelException
-from data.model.org_mirror import create_org_mirror_config, get_org_mirror_config
+from data.model.org_mirror import (
+    create_org_mirror_config,
+    delete_org_mirror_config,
+    get_org_mirror_config,
+)
 from data.model.user import create_robot, create_user_noverify, lookup_robot
 from test.fixtures import *
 
@@ -312,3 +318,153 @@ class TestCreateOrgMirrorConfig:
         assert retrieved is not None
         assert retrieved.id == created.id
         assert retrieved.external_registry_url == created.external_registry_url
+
+
+class TestDeleteOrgMirrorConfig:
+    """Tests for delete_org_mirror_config function."""
+
+    def test_delete_org_mirror_config_success(self, initialized_db):
+        """
+        Test successful deletion of an organization mirror configuration.
+        """
+        org, robot = _create_org_and_robot("delete_test1")
+        config = _create_org_mirror_config(org, robot)
+
+        # Verify config exists
+        assert get_org_mirror_config(org) is not None
+
+        # Delete the config
+        result = delete_org_mirror_config(org)
+
+        assert result is True
+        assert get_org_mirror_config(org) is None
+
+    def test_delete_org_mirror_config_not_found(self, initialized_db):
+        """
+        Deleting a config that doesn't exist should return False.
+        """
+        org, _ = _create_org_and_robot("delete_test2")
+
+        # No config exists for this org
+        result = delete_org_mirror_config(org)
+
+        assert result is False
+
+    def test_delete_org_mirror_config_with_discovered_repos(self, initialized_db):
+        """
+        Deleting a config should also delete all associated discovered repositories.
+        """
+        org, robot = _create_org_and_robot("delete_test3")
+        config = _create_org_mirror_config(org, robot)
+
+        # Create some discovered repositories
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo1",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo2",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo3",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+        )
+
+        # Verify discovered repos exist
+        repo_count = OrgMirrorRepository.select().where(
+            OrgMirrorRepository.org_mirror_config == config
+        ).count()
+        assert repo_count == 3
+
+        # Delete the config
+        result = delete_org_mirror_config(org)
+
+        assert result is True
+        assert get_org_mirror_config(org) is None
+
+        # Verify discovered repos are also deleted
+        repo_count = OrgMirrorRepository.select().where(
+            OrgMirrorRepository.org_mirror_config == config
+        ).count()
+        assert repo_count == 0
+
+    def test_delete_org_mirror_config_does_not_affect_other_orgs(self, initialized_db):
+        """
+        Deleting a config for one org should not affect other orgs' configs.
+        """
+        org1, robot1 = _create_org_and_robot("delete_test4a")
+        org2, robot2 = _create_org_and_robot("delete_test4b")
+
+        config1 = _create_org_mirror_config(org1, robot1, external_namespace="project-a")
+        config2 = _create_org_mirror_config(org2, robot2, external_namespace="project-b")
+
+        # Add discovered repos to both configs
+        OrgMirrorRepository.create(
+            org_mirror_config=config1,
+            repository_name="repo1",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config2,
+            repository_name="repo2",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        # Delete config1
+        result = delete_org_mirror_config(org1)
+
+        assert result is True
+        assert get_org_mirror_config(org1) is None
+
+        # Config2 should still exist
+        remaining = get_org_mirror_config(org2)
+        assert remaining is not None
+        assert remaining.id == config2.id
+
+        # Config2's discovered repos should still exist
+        repo_count = OrgMirrorRepository.select().where(
+            OrgMirrorRepository.org_mirror_config == config2
+        ).count()
+        assert repo_count == 1
+
+    def test_delete_org_mirror_config_can_recreate_after_delete(self, initialized_db):
+        """
+        After deleting a config, a new config can be created for the same org.
+        """
+        org, robot = _create_org_and_robot("delete_test5")
+        visibility = Visibility.get(name="private")
+
+        # Create first config
+        config1 = create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor1.example.com",
+            external_namespace="project1",
+            visibility=visibility,
+            sync_interval=3600,
+            sync_start_date=datetime.utcnow(),
+        )
+
+        # Delete it
+        delete_org_mirror_config(org)
+
+        # Create a new config
+        config2 = create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.QUAY,
+            external_registry_url="https://quay.io",
+            external_namespace="project2",
+            visibility=visibility,
+            sync_interval=7200,
+            sync_start_date=datetime.utcnow(),
+        )
+
+        assert config2 is not None
+        assert config2.external_registry_url == "https://quay.io"
+        assert config2.external_namespace == "project2"
