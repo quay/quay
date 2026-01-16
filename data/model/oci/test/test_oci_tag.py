@@ -13,6 +13,8 @@ from data.model import ImmutableTagException
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.tag import (
+    RETARGET_TAG_MAX_RETRIES,
+    RetargetTagException,
     change_tag_expiration,
     create_temporary_tag_if_necessary,
     create_temporary_tag_outside_timemachine,
@@ -36,6 +38,7 @@ from data.model.oci.tag import (
     lookup_unrecoverable_tags,
     remove_tag_from_timemachine,
     retarget_tag,
+    set_tag_end_ms,
     set_tag_expiration_for_manifest,
     set_tag_immutable,
 )
@@ -1013,3 +1016,106 @@ class TestDeleteTagsForManifestImmutable:
 
         # v1.0 should still exist
         assert get_tag(repo.id, "v1.0") is not None
+
+
+# =============================================================================
+# Retarget Tag Retry Tests
+# =============================================================================
+
+
+class TestRetargetTagRetry:
+    """Test retry behavior for retarget_tag on optimistic lock failures."""
+
+    def test_retarget_tag_retry_on_optimistic_lock_failure(self, initialized_db):
+        """Verify retry succeeds after initial optimistic lock failure."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest_1, _ = create_manifest_for_testing(repo, "1")
+        manifest_2, _ = create_manifest_for_testing(repo, "2")
+
+        # Create initial tag
+        tag = retarget_tag("mytag", manifest_1.id)
+        assert tag is not None
+
+        call_count = [0]
+        original_set_tag_end_ms = set_tag_end_ms
+
+        def mock_set_tag_end_ms(tag, end_ms):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                # Simulate concurrent modification by returning failure
+                return (None, False)
+            # Subsequent calls succeed
+            return original_set_tag_end_ms(tag, end_ms)
+
+        with patch("data.model.oci.tag.set_tag_end_ms", side_effect=mock_set_tag_end_ms):
+            with patch("data.model.oci.tag.time.sleep"):  # Skip actual sleep
+                result = retarget_tag("mytag", manifest_2.id)
+
+        assert result is not None
+        assert result.manifest_id == manifest_2.id
+        assert call_count[0] == 2  # First failed, second succeeded
+
+    def test_retarget_tag_max_retries_exhausted(self, initialized_db):
+        """Verify returns None after max retries exhausted."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest_1, _ = create_manifest_for_testing(repo, "1")
+        manifest_2, _ = create_manifest_for_testing(repo, "2")
+
+        # Create initial tag
+        tag = retarget_tag("mytag", manifest_1.id)
+        assert tag is not None
+
+        call_count = [0]
+
+        def mock_set_tag_end_ms(tag, end_ms):
+            call_count[0] += 1
+            # Always fail to simulate persistent contention
+            return (None, False)
+
+        with patch("data.model.oci.tag.set_tag_end_ms", side_effect=mock_set_tag_end_ms):
+            with patch("data.model.oci.tag.time.sleep"):  # Skip actual sleep
+                result = retarget_tag("mytag", manifest_2.id, raise_on_error=False)
+
+        assert result is None
+        assert call_count[0] == RETARGET_TAG_MAX_RETRIES
+
+    def test_retarget_tag_max_retries_raise_on_error(self, initialized_db):
+        """Verify raises exception when raise_on_error=True after max retries."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest_1, _ = create_manifest_for_testing(repo, "1")
+        manifest_2, _ = create_manifest_for_testing(repo, "2")
+
+        # Create initial tag
+        tag = retarget_tag("mytag", manifest_1.id)
+        assert tag is not None
+
+        def mock_set_tag_end_ms(tag, end_ms):
+            # Always fail to simulate persistent contention
+            return (None, False)
+
+        with patch("data.model.oci.tag.set_tag_end_ms", side_effect=mock_set_tag_end_ms):
+            with patch("data.model.oci.tag.time.sleep"):  # Skip actual sleep
+                with pytest.raises(RetargetTagException) as exc_info:
+                    retarget_tag("mytag", manifest_2.id, raise_on_error=True)
+
+        assert f"after {RETARGET_TAG_MAX_RETRIES} attempts" in str(exc_info.value)
+
+    def test_retarget_tag_no_retry_for_new_tag(self, initialized_db):
+        """Verify no retry needed when creating a new tag (no existing tag)."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        call_count = [0]
+        original_set_tag_end_ms = set_tag_end_ms
+
+        def mock_set_tag_end_ms(tag, end_ms):
+            call_count[0] += 1
+            return original_set_tag_end_ms(tag, end_ms)
+
+        with patch("data.model.oci.tag.set_tag_end_ms", side_effect=mock_set_tag_end_ms):
+            result = retarget_tag("newtag", manifest.id)
+
+        assert result is not None
+        assert result.name == "newtag"
+        # set_tag_end_ms should not be called since there's no existing tag
+        assert call_count[0] == 0
