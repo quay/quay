@@ -19,6 +19,7 @@ import axios from 'axios';
 import axiosIns from 'src/libs/axios';
 import {LoadingPage} from 'src/components/LoadingPage';
 import SystemStatusBanner from 'src/components/SystemStatusBanner';
+import {UIProvider} from 'src/contexts/UIContext';
 
 // Lazy load route components for better performance
 const OrganizationsList = lazy(
@@ -176,9 +177,11 @@ export default function PluginMainRoot() {
 
   return (
     <RecoilRoot>
-      <QueryClientProvider client={queryClient}>
-        <PluginMain />
-      </QueryClientProvider>
+      <UIProvider>
+        <QueryClientProvider client={queryClient}>
+          <PluginMain />
+        </QueryClientProvider>
+      </UIProvider>
     </RecoilRoot>
   );
 }
