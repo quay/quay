@@ -52,7 +52,7 @@
     "angular-mocks": "1.6.4",
     "css-loader": "0.25.0",
     "file-loader": "^6.2.0",
-    "html-loader": "^0.4.5",
+    "html-loader": "^5.0.0",
     "jasmine-core": "^2.5.2",
     "jasmine-ts": "0.0.3",
     "karma": "^6.4.4",
