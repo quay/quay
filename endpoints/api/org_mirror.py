@@ -11,6 +11,7 @@ import logging
 from datetime import datetime
 
 from flask import request
+from flask_restful import abort
 
 import features
 from auth import scopes
@@ -20,8 +21,8 @@ from data.database import SourceRegistryType, Visibility
 from data.encryption import DecryptionFailureException
 from data.model import DataModelException, InvalidOrganizationException
 from endpoints.api import (
-    allow_if_superuser_with_full_access,
     ApiResource,
+    allow_if_superuser_with_full_access,
     log_action,
     nickname,
     path_param,
@@ -30,10 +31,8 @@ from endpoints.api import (
     show_if,
     validate_json_request,
 )
-from util.names import parse_robot_username
-from flask_restful import abort
-
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
+from util.names import parse_robot_username
 
 
 def require_org_admin(orgname):
@@ -44,6 +43,7 @@ def require_org_admin(orgname):
     permission = AdministerOrganizationPermission(orgname)
     if not (permission.can() or allow_if_superuser_with_full_access()):
         raise Unauthorized()
+
 
 logger = logging.getLogger(__name__)
 
@@ -256,9 +256,7 @@ class OrgMirrorConfig(ApiResource):
         # Check if mirror config already exists
         existing = model.org_mirror.get_org_mirror_config(org)
         if existing:
-            raise InvalidRequest(
-                message="Mirror configuration already exists for this organization"
-            )
+            raise InvalidRequest("Mirror configuration already exists for this organization")
 
         data = request.get_json()
 
@@ -267,14 +265,12 @@ class OrgMirrorConfig(ApiResource):
         try:
             robot = model.user.lookup_robot(robot_username)
         except model.InvalidRobotException:
-            raise InvalidRequest(message=f"Invalid robot account: {robot_username}")
+            raise InvalidRequest(f"Invalid robot account: {robot_username}")
 
         # Verify robot belongs to the organization
         namespace, _ = parse_robot_username(robot_username)
         if namespace != orgname:
-            raise InvalidRequest(
-                message="Robot account must belong to the organization"
-            )
+            raise InvalidRequest("Robot account must belong to the organization")
 
         # Parse external registry type
         registry_type_str = data.get("external_registry_type", "").upper()
@@ -282,7 +278,7 @@ class OrgMirrorConfig(ApiResource):
             external_registry_type = SourceRegistryType[registry_type_str]
         except KeyError:
             raise InvalidRequest(
-                message=f"Invalid external_registry_type: {data.get('external_registry_type')}"
+                f"Invalid external_registry_type: {data.get('external_registry_type')}"
             )
 
         # Parse visibility
@@ -290,23 +286,25 @@ class OrgMirrorConfig(ApiResource):
         try:
             visibility = Visibility.get(name=visibility_str)
         except Visibility.DoesNotExist:
-            raise InvalidRequest(message=f"Invalid visibility: {data.get('visibility')}")
+            raise InvalidRequest(f"Invalid visibility: {data.get('visibility')}")
 
         # Parse sync_start_date
         try:
             sync_start_date = self._string_to_dt(data.get("sync_start_date"))
         except (ValueError, AssertionError):
-            raise InvalidRequest(message="Invalid sync_start_date format. Use ISO 8601: YYYY-MM-DDTHH:MM:SSZ")
+            raise InvalidRequest(
+                "Invalid sync_start_date format. Use ISO 8601: YYYY-MM-DDTHH:MM:SSZ"
+            )
 
         # Validate sync_interval
         sync_interval = data.get("sync_interval")
         if sync_interval < 60:
-            raise InvalidRequest(message="sync_interval must be at least 60 seconds")
+            raise InvalidRequest("sync_interval must be at least 60 seconds")
 
         # Validate skopeo_timeout
         skopeo_timeout = data.get("skopeo_timeout", 300)
         if skopeo_timeout < 30 or skopeo_timeout > 3600:
-            raise InvalidRequest(message="skopeo_timeout must be between 30 and 3600 seconds")
+            raise InvalidRequest("skopeo_timeout must be between 30 and 3600 seconds")
 
         # Create the mirror config
         try:
@@ -327,7 +325,7 @@ class OrgMirrorConfig(ApiResource):
                 skopeo_timeout=skopeo_timeout,
             )
         except DataModelException as e:
-            raise InvalidRequest(message=str(e))
+            raise InvalidRequest(str(e))
 
         # Log the action
         log_action(
@@ -350,7 +348,111 @@ class OrgMirrorConfig(ApiResource):
         Update organization mirror configuration.
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        # Check if mirror config exists
+        existing = model.org_mirror.get_org_mirror_config(org)
+        if not existing:
+            raise NotFound()
+
+        data = request.get_json()
+
+        # Build update kwargs with validated values
+        update_kwargs = {}
+
+        # Handle is_enabled
+        if "is_enabled" in data:
+            update_kwargs["is_enabled"] = data["is_enabled"]
+
+        # Handle external_registry_url
+        if "external_registry_url" in data:
+            update_kwargs["external_registry_url"] = data["external_registry_url"]
+
+        # Handle external_namespace
+        if "external_namespace" in data:
+            update_kwargs["external_namespace"] = data["external_namespace"]
+
+        # Handle robot_username
+        if "robot_username" in data:
+            robot_username = data["robot_username"]
+            try:
+                robot = model.user.lookup_robot(robot_username)
+            except model.InvalidRobotException:
+                raise InvalidRequest(f"Invalid robot account: {robot_username}")
+
+            # Verify robot belongs to the organization
+            namespace, _ = parse_robot_username(robot_username)
+            if namespace != orgname:
+                raise InvalidRequest("Robot account must belong to the organization")
+            update_kwargs["internal_robot"] = robot
+
+        # Handle visibility
+        if "visibility" in data:
+            visibility_str = data["visibility"].lower()
+            try:
+                visibility = Visibility.get(name=visibility_str)
+            except Visibility.DoesNotExist:
+                raise InvalidRequest(f"Invalid visibility: {data['visibility']}")
+            update_kwargs["visibility"] = visibility
+
+        # Handle sync_interval
+        if "sync_interval" in data:
+            sync_interval = data["sync_interval"]
+            if sync_interval < 60:
+                raise InvalidRequest("sync_interval must be at least 60 seconds")
+            update_kwargs["sync_interval"] = sync_interval
+
+        # Handle sync_start_date
+        if "sync_start_date" in data:
+            try:
+                sync_start_date = self._string_to_dt(data["sync_start_date"])
+            except (ValueError, AssertionError):
+                raise InvalidRequest(
+                    "Invalid sync_start_date format. Use ISO 8601: YYYY-MM-DDTHH:MM:SSZ"
+                )
+            update_kwargs["sync_start_date"] = sync_start_date
+
+        # Handle external_registry_username
+        if "external_registry_username" in data:
+            update_kwargs["external_registry_username"] = data["external_registry_username"]
+
+        # Handle external_registry_password
+        if "external_registry_password" in data:
+            update_kwargs["external_registry_password"] = data["external_registry_password"]
+
+        # Handle external_registry_config
+        if "external_registry_config" in data:
+            update_kwargs["external_registry_config"] = data["external_registry_config"]
+
+        # Handle repository_filters
+        if "repository_filters" in data:
+            update_kwargs["repository_filters"] = data["repository_filters"]
+
+        # Handle skopeo_timeout
+        if "skopeo_timeout" in data:
+            skopeo_timeout = data["skopeo_timeout"]
+            if skopeo_timeout < 30 or skopeo_timeout > 3600:
+                raise InvalidRequest("skopeo_timeout must be between 30 and 3600 seconds")
+            update_kwargs["skopeo_timeout"] = skopeo_timeout
+
+        # Update the mirror config
+        try:
+            model.org_mirror.update_org_mirror_config(org, **update_kwargs)
+        except DataModelException as e:
+            raise InvalidRequest(str(e))
+
+        # Log the action
+        log_action(
+            "org_mirror_config_changed",
+            orgname,
+            {"updated_fields": list(data.keys())},
+        )
+
+        return "", 200
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("deleteOrgMirrorConfig")

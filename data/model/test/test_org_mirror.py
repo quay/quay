@@ -22,6 +22,7 @@ from data.model.org_mirror import (
     create_org_mirror_config,
     delete_org_mirror_config,
     get_org_mirror_config,
+    update_org_mirror_config,
 )
 from data.model.user import create_robot, create_user_noverify, lookup_robot
 from test.fixtures import *
@@ -155,12 +156,8 @@ class TestGetOrgMirrorConfig:
         org1, robot1 = _create_org_and_robot("org_mirror_test6a")
         org2, robot2 = _create_org_and_robot("org_mirror_test6b")
 
-        config1 = _create_org_mirror_config(
-            org1, robot1, external_namespace="project-a"
-        )
-        config2 = _create_org_mirror_config(
-            org2, robot2, external_namespace="project-b"
-        )
+        config1 = _create_org_mirror_config(org1, robot1, external_namespace="project-a")
+        config2 = _create_org_mirror_config(org2, robot2, external_namespace="project-b")
 
         result1 = get_org_mirror_config(org1)
         result2 = get_org_mirror_config(org2)
@@ -213,7 +210,10 @@ class TestCreateOrgMirrorConfig:
         visibility = Visibility.get(name="public")
         sync_start = datetime.utcnow()
         filters = ["ubuntu*", "nginx"]
-        registry_config = {"verify_tls": True, "proxy": {"https_proxy": "https://proxy.example.com"}}
+        registry_config = {
+            "verify_tls": True,
+            "proxy": {"https_proxy": "https://proxy.example.com"},
+        }
 
         config = create_org_mirror_config(
             organization=org,
@@ -375,9 +375,11 @@ class TestDeleteOrgMirrorConfig:
         )
 
         # Verify discovered repos exist
-        repo_count = OrgMirrorRepository.select().where(
-            OrgMirrorRepository.org_mirror_config == config
-        ).count()
+        repo_count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+        )
         assert repo_count == 3
 
         # Delete the config
@@ -387,9 +389,11 @@ class TestDeleteOrgMirrorConfig:
         assert get_org_mirror_config(org) is None
 
         # Verify discovered repos are also deleted
-        repo_count = OrgMirrorRepository.select().where(
-            OrgMirrorRepository.org_mirror_config == config
-        ).count()
+        repo_count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+        )
         assert repo_count == 0
 
     def test_delete_org_mirror_config_does_not_affect_other_orgs(self, initialized_db):
@@ -426,9 +430,11 @@ class TestDeleteOrgMirrorConfig:
         assert remaining.id == config2.id
 
         # Config2's discovered repos should still exist
-        repo_count = OrgMirrorRepository.select().where(
-            OrgMirrorRepository.org_mirror_config == config2
-        ).count()
+        repo_count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config2)
+            .count()
+        )
         assert repo_count == 1
 
     def test_delete_org_mirror_config_can_recreate_after_delete(self, initialized_db):
@@ -468,3 +474,203 @@ class TestDeleteOrgMirrorConfig:
         assert config2 is not None
         assert config2.external_registry_url == "https://quay.io"
         assert config2.external_namespace == "project2"
+
+
+class TestUpdateOrgMirrorConfig:
+    """Tests for update_org_mirror_config function."""
+
+    def test_update_org_mirror_config_success(self, initialized_db):
+        """
+        Test successful update of an organization mirror configuration.
+        """
+        org, robot = _create_org_and_robot("update_test1")
+        config = _create_org_mirror_config(org, robot)
+        original_url = config.external_registry_url
+
+        # Update the config
+        updated = update_org_mirror_config(
+            org,
+            external_registry_url="https://new-harbor.example.com",
+            sync_interval=7200,
+        )
+
+        assert updated is not None
+        assert updated.id == config.id
+        assert updated.external_registry_url == "https://new-harbor.example.com"
+        assert updated.sync_interval == 7200
+        # Original fields should remain unchanged
+        assert updated.external_namespace == "my-project"
+
+    def test_update_org_mirror_config_not_found(self, initialized_db):
+        """
+        Updating a config that doesn't exist should return None.
+        """
+        org, _ = _create_org_and_robot("update_test2")
+
+        result = update_org_mirror_config(org, sync_interval=7200)
+
+        assert result is None
+
+    def test_update_org_mirror_config_is_enabled(self, initialized_db):
+        """
+        Test updating the is_enabled field.
+        """
+        org, robot = _create_org_and_robot("update_test3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Disable mirroring
+        updated = update_org_mirror_config(org, is_enabled=False)
+
+        assert updated is not None
+        assert updated.is_enabled is False
+
+        # Re-enable mirroring
+        updated = update_org_mirror_config(org, is_enabled=True)
+
+        assert updated.is_enabled is True
+
+    def test_update_org_mirror_config_visibility(self, initialized_db):
+        """
+        Test updating the visibility field.
+        """
+        org, robot = _create_org_and_robot("update_test4")
+        private_visibility = Visibility.get(name="private")
+        public_visibility = Visibility.get(name="public")
+        config = _create_org_mirror_config(org, robot, visibility=private_visibility)
+
+        # Update to public
+        updated = update_org_mirror_config(org, visibility=public_visibility)
+
+        assert updated is not None
+        assert updated.visibility.name == "public"
+
+    def test_update_org_mirror_config_robot(self, initialized_db):
+        """
+        Test updating the internal robot.
+        """
+        org, robot1 = _create_org_and_robot("update_test5")
+        # Create a second robot for the same org
+        robot2, _ = create_robot("mirrorbot2", org)
+        config = _create_org_mirror_config(org, robot1)
+
+        # Update to use the second robot
+        updated = update_org_mirror_config(org, internal_robot=robot2)
+
+        assert updated is not None
+        assert updated.internal_robot.id == robot2.id
+
+    def test_update_org_mirror_config_robot_wrong_namespace(self, initialized_db):
+        """
+        Updating config with a robot from a different namespace should raise an error.
+        """
+        org1, robot1 = _create_org_and_robot("update_test6a")
+        org2, robot2 = _create_org_and_robot("update_test6b")
+        config = _create_org_mirror_config(org1, robot1)
+
+        with pytest.raises(DataModelException) as excinfo:
+            update_org_mirror_config(org1, internal_robot=robot2)
+
+        assert "belong to the organization" in str(excinfo.value)
+
+    def test_update_org_mirror_config_filters(self, initialized_db):
+        """
+        Test updating repository filters.
+        """
+        org, robot = _create_org_and_robot("update_test7")
+        config = _create_org_mirror_config(org, robot, repository_filters=["ubuntu*"])
+
+        # Update filters
+        new_filters = ["debian*", "alpine", "nginx*"]
+        updated = update_org_mirror_config(org, repository_filters=new_filters)
+
+        assert updated is not None
+        assert updated.repository_filters == new_filters
+
+    def test_update_org_mirror_config_external_registry_config(self, initialized_db):
+        """
+        Test updating external_registry_config.
+        """
+        org, robot = _create_org_and_robot("update_test8")
+        config = _create_org_mirror_config(org, robot)
+
+        new_config = {
+            "verify_tls": False,
+            "proxy": {"https_proxy": "https://newproxy.example.com"},
+        }
+        updated = update_org_mirror_config(org, external_registry_config=new_config)
+
+        assert updated is not None
+        assert updated.external_registry_config == new_config
+
+    def test_update_org_mirror_config_multiple_fields(self, initialized_db):
+        """
+        Test updating multiple fields at once.
+        """
+        org, robot = _create_org_and_robot("update_test9")
+        config = _create_org_mirror_config(org, robot)
+        new_start_date = datetime.utcnow() + timedelta(hours=1)
+
+        updated = update_org_mirror_config(
+            org,
+            is_enabled=False,
+            external_registry_url="https://updated.example.com",
+            external_namespace="updated-project",
+            sync_interval=14400,
+            sync_start_date=new_start_date,
+            skopeo_timeout=600,
+        )
+
+        assert updated is not None
+        assert updated.is_enabled is False
+        assert updated.external_registry_url == "https://updated.example.com"
+        assert updated.external_namespace == "updated-project"
+        assert updated.sync_interval == 14400
+        assert updated.skopeo_timeout == 600
+
+    def test_update_org_mirror_config_credentials(self, initialized_db):
+        """
+        Test updating external registry credentials.
+        """
+        org, robot = _create_org_and_robot("update_test10")
+        config = _create_org_mirror_config(org, robot)
+
+        updated = update_org_mirror_config(
+            org,
+            external_registry_username="newuser",
+            external_registry_password="newpassword",
+        )
+
+        assert updated is not None
+        # Verify credentials were updated (they're encrypted)
+        assert updated.external_registry_username is not None
+        assert updated.external_registry_password is not None
+
+    def test_update_org_mirror_config_preserves_unchanged_fields(self, initialized_db):
+        """
+        Updating specific fields should not affect other fields.
+        """
+        org, robot = _create_org_and_robot("update_test11")
+        public_visibility = Visibility.get(name="public")
+        filters = ["redis*", "mysql*"]
+        config = _create_org_mirror_config(
+            org,
+            robot,
+            external_registry_url="https://original.example.com",
+            external_namespace="original-project",
+            visibility=public_visibility,
+            sync_interval=3600,
+            repository_filters=filters,
+            skopeo_timeout=300,
+        )
+
+        # Only update sync_interval
+        updated = update_org_mirror_config(org, sync_interval=7200)
+
+        assert updated is not None
+        assert updated.sync_interval == 7200
+        # All other fields should be unchanged
+        assert updated.external_registry_url == "https://original.example.com"
+        assert updated.external_namespace == "original-project"
+        assert updated.visibility.name == "public"
+        assert updated.repository_filters == filters
+        assert updated.skopeo_timeout == 300
