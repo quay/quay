@@ -63,7 +63,7 @@
     "angular-mocks": "1.8.3",
     "css-loader": "6.8.1",
     "html-loader": "^0.4.5",
-    "jasmine-core": "^2.5.2",
+    "jasmine-core": "^6.0.0",
     "jasmine-ts": "0.0.3",
     "karma": "^6.4.1",
     "karma-chrome-launcher": "^2.1.1",
