@@ -99,7 +99,7 @@
       "yargs": {
         "os-locale": {
           "execa": {
-            "cross-spawn": "^6.0.6"
+            "cross-spawn": "^7.0.0"
           }
         }
       }
