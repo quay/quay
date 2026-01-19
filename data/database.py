@@ -838,6 +838,8 @@ class User(BaseModel):
                     NamespaceAutoPrunePolicy,
                     AutoPruneTaskStatus,
                     RepositoryAutoPrunePolicy,
+                    NamespaceImmutabilityPolicy,
+                    RepositoryImmutabilityPolicy,
                     OauthAssignedToken,
                     TagNotificationSuccess,
                     TagPullStatistics,
@@ -1065,6 +1067,7 @@ class Repository(BaseModel):
                 QuotaNamespaceSize,
                 QuotaRepositorySize,
                 RepositoryAutoPrunePolicy,
+                RepositoryImmutabilityPolicy,
                 TagNotificationSuccess,
                 TagPullStatistics,
                 ManifestPullStatistics,
@@ -2303,6 +2306,19 @@ class AutoPruneTaskStatus(BaseModel):
 
 class RepositoryAutoPrunePolicy(BaseModel):
     uuid = CharField(default=uuid_generator, max_length=36, index=True, null=False)
+    repository = ForeignKeyField(Repository, index=True, null=False)
+    namespace = QuayUserField(index=True, null=False)
+    policy = JSONField(null=False, default={})
+
+
+class NamespaceImmutabilityPolicy(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, unique=True, null=False)
+    namespace = QuayUserField(index=True, null=False)
+    policy = JSONField(null=False, default={})
+
+
+class RepositoryImmutabilityPolicy(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, unique=True, null=False)
     repository = ForeignKeyField(Repository, index=True, null=False)
     namespace = QuayUserField(index=True, null=False)
     policy = JSONField(null=False, default={})
