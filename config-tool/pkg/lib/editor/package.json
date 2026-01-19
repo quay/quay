@@ -88,5 +88,10 @@
   },
   "optionalDependencies": {
     "cypress": "^13.2.0"
+  },
+  "overrides": {
+    "request": {
+      "qs": "^6.14.0"
+    }
   }
 }

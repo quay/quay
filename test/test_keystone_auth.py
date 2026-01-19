@@ -2,7 +2,6 @@ import json
 import os
 import unittest
 from contextlib import contextmanager
-from test.helpers import liveserver_app
 from typing import Optional
 
 import requests
@@ -10,6 +9,7 @@ from flask import Flask, abort, make_response, request
 
 from data.users.keystone import get_keystone_users
 from initdb import finished_database_for_testing, setup_database_for_testing
+from test.helpers import liveserver_app
 
 _PORT_NUMBER = 5001
 
@@ -216,6 +216,12 @@ def _create_app(requires_email=True):
                                             "region": "RegionOne",
                                             "interface": "admin",
                                             "id": "29beb2f1567642eb810b042b6719ea88",
+                                        },
+                                        {
+                                            "url": server_url + "/v3/identity",
+                                            "region": "RegionOne",
+                                            "interface": "public",
+                                            "id": "29beb2f1567642eb810b042b6719ea89",
                                         },
                                     ],
                                     "type": "identity",
