@@ -464,6 +464,10 @@ def initialize_database():
     LogEntryKind.create(name="change_tag_immutability")
     LogEntryKind.create(name="toggle_repo_trigger")
 
+    LogEntryKind.create(name="create_immutability_policy")
+    LogEntryKind.create(name="update_immutability_policy")
+    LogEntryKind.create(name="delete_immutability_policy")
+
     LogEntryKind.create(name="create_app_specific_token")
     LogEntryKind.create(name="revoke_app_specific_token")
 

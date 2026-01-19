@@ -760,6 +760,7 @@ import endpoints.api.capabilities
 import endpoints.api.discovery
 import endpoints.api.error
 import endpoints.api.globalmessages
+import endpoints.api.immutability_policy
 import endpoints.api.logs
 import endpoints.api.manifest
 import endpoints.api.mirror
