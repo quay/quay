@@ -53,8 +53,8 @@ jobs:
 
       - name: Use Quay Initialize API to create the 1st Super User
         run: |
-          curl -k -X POST $quay_route/api/v1/user/initialize --header 'Content-Type: application/json' \
-          --data '{ "username": "'quay'", "password": "'password'", "email": "'quayqe@redhat.com'", "access_token": true }' | jq '.access_token' | tr -d '"' | tr -d '\n' > quay_oauth2_token
+          curl -X POST ${{ steps.setup-quay.outputs.quay-url }}/api/v1/user/initialize --header 'Content-Type: application/json' \
+          --data '{ "username": "quay", "password": "password", "email": "quayqe@redhat.com", "access_token": true }' | jq '.access_token' | tr -d '"' | tr -d '\n' > quay_oauth2_token
 
       - name: Install Cypress Test Dependencies
         run: |
@@ -66,7 +66,7 @@ jobs:
         run: |
           curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
           sudo apt-get install -y nodejs
-          npm install --global yarn
+          sudo npm install --global yarn
 
       - name: Install Google Chrome Stable
         run: |
