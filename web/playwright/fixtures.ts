@@ -652,7 +652,8 @@ export type QuayFeature =
   | 'USER_METADATA'
   | 'MAILING'
   | 'IMAGE_EXPIRY_TRIGGER'
-  | 'SUPERUSERS_FULL_ACCESS';
+  | 'SUPERUSERS_FULL_ACCESS'
+  | 'IMMUTABLE_TAGS';
 
 /**
  * Quay configuration from /config endpoint

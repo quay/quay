@@ -10,6 +10,7 @@ import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-ico
 import AddTagModal from './TagsActionsAddTagModal';
 import EditLabelsModal from './TagsActionsLabelsModal';
 import EditExpirationModal from './TagsActionsEditExpirationModal';
+import ImmutabilityModal from './TagsActionsImmutabilityModal';
 import {DeleteModal, ModalOptions} from './DeleteModal';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -27,6 +28,7 @@ export default function TagActions(props: TagActionsProps) {
     isOpen: false,
     force: false,
   });
+  const [isImmutabilityModalOpen, setIsImmutabilityModalOpen] = useState(false);
   const setSelectedTags = useSetRecoilState(selectedTagsState);
 
   const dropdownItems = [
@@ -54,6 +56,12 @@ export default function TagActions(props: TagActionsProps) {
         setIsOpen(false);
         setIsEditExpirationModalOpen(true);
       }}
+      isDisabled={props.isImmutable}
+      tooltipProps={
+        props.isImmutable
+          ? {content: 'Cannot change expiration of immutable tag'}
+          : undefined
+      }
     >
       Change expiration
     </DropdownItem>,
@@ -66,11 +74,41 @@ export default function TagActions(props: TagActionsProps) {
           isOpen: true,
         });
       }}
-      style={{color: 'red'}}
+      isDisabled={props.isImmutable}
+      tooltipProps={
+        props.isImmutable ? {content: 'Cannot delete immutable tag'} : undefined
+      }
+      style={{color: props.isImmutable ? undefined : 'red'}}
     >
       Remove
     </DropdownItem>,
   ];
+
+  // Add immutability toggle action if feature is enabled
+  if (quayConfig?.features?.IMMUTABLE_TAGS) {
+    // Only show "Remove immutability" if user has admin permission
+    const showRemoveImmutability =
+      props.isImmutable && props.repoDetails?.can_admin;
+    const showMakeImmutable = !props.isImmutable;
+
+    if (showMakeImmutable || showRemoveImmutability) {
+      // Insert before the delete action (at position -2 to be before delete items)
+      dropdownItems.splice(
+        -1, // Insert before last item (Remove)
+        0,
+        <DropdownItem
+          key="toggle-immutability"
+          onClick={() => {
+            setIsOpen(false);
+            setIsImmutabilityModalOpen(true);
+          }}
+          data-testid="toggle-immutability-action"
+        >
+          {props.isImmutable ? 'Remove immutability' : 'Make immutable'}
+        </DropdownItem>,
+      );
+    }
+  }
 
   if (
     quayConfig?.config?.PERMANENTLY_DELETE_TAGS &&
@@ -86,7 +124,13 @@ export default function TagActions(props: TagActionsProps) {
             isOpen: true,
           });
         }}
-        style={{color: 'red'}}
+        isDisabled={props.isImmutable}
+        tooltipProps={
+          props.isImmutable
+            ? {content: 'Cannot permanently delete immutable tag'}
+            : undefined
+        }
+        style={{color: props.isImmutable ? undefined : 'red'}}
       >
         Permanently delete
       </DropdownItem>,
@@ -158,6 +202,16 @@ export default function TagActions(props: TagActionsProps) {
         repoDetails={props.repoDetails}
         onComplete={() => setSelectedTags([])}
       />
+      <ImmutabilityModal
+        org={props.org}
+        repo={props.repo}
+        isOpen={isImmutabilityModalOpen}
+        setIsOpen={setIsImmutabilityModalOpen}
+        tags={props.tags}
+        currentlyImmutable={props.isImmutable || false}
+        loadTags={props.loadTags}
+        onComplete={() => setSelectedTags([])}
+      />
     </>
   );
 }
@@ -170,4 +224,5 @@ interface TagActionsProps {
   manifest: string;
   loadTags: () => void;
   repoDetails: RepositoryDetails;
+  isImmutable?: boolean;
 }

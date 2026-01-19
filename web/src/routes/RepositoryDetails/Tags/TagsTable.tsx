@@ -22,6 +22,7 @@ import {expandedViewState} from 'src/atoms/TagListState';
 import ColumnNames from './ColumnNames';
 import {
   DownloadIcon,
+  LockIcon,
   ShieldAltIcon,
   TagIcon,
   CubeIcon,
@@ -179,6 +180,18 @@ function TagsTableRow(props: RowProps) {
               />
             </Tooltip>
           )}
+          {config?.features?.IMMUTABLE_TAGS && tag.immutable && (
+            <Tooltip content="This tag is immutable and cannot be modified or deleted">
+              <LockIcon
+                style={{
+                  marginLeft: '8px',
+                  color: 'var(--pf-v5-global--info-color--100)',
+                }}
+                aria-label="Immutable tag"
+                data-testid="immutable-tag-icon"
+              />
+            </Tooltip>
+          )}
         </Td>
         <Conditional if={config?.features?.SECURITY_SCANNER}>
           <Td dataLabel={ColumnNames.security}>
@@ -266,6 +279,7 @@ function TagsTableRow(props: RowProps) {
               expiration={tag.expiration}
               loadTags={props.loadTags}
               repoDetails={props.repoDetails}
+              isImmutable={tag.immutable}
             />
           </Td>
         </Conditional>
