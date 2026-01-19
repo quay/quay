@@ -1,0 +1,98 @@
+name: Quay QE API Tests
+on:
+  pull_request:
+    branches:
+      - "*"
+    paths:
+      - "endpoints/**"
+      - ".github/actions/setup-quay/**"
+  issue_comment:
+    types: [created]
+
+jobs:
+  cypress:
+    name: Quay QE API Tests
+    runs-on: ubuntu-22.04
+    # Only run on PR comments containing "/quay-qe-api-test" or on pull_request events
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/quay-qe-api-test'))
+    steps:
+      - name: React to comment
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            })
+
+      - name: Checkout PR code
+        uses: actions/checkout@v6
+        with:
+          # For issue_comment trigger, checkout the PR head ref
+          ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
+
+      - name: Checkout quay-tests repo
+        uses: actions/checkout@v6
+        with:
+          repository: quay/quay-tests
+          path: quay-tests
+          token: ${{ secrets.QUAY_TESTS_ACCESS_TOKEN }}
+
+      - name: Setup Quay
+        id: setup-quay
+        uses: ./.github/actions/setup-quay
+        with:
+          logs-artifact-name: 'quay-debug'
+
+      - name: Install Cypress Test Dependencies
+        run: |
+          apt-get update && apt-get install -y curl gnupg software-properties-common wget xz-utils git jq python3 python3-pip unzip
+          apt-get install -y libgtk-3-0 libgbm-dev libgbm1 libnotify-dev libnss3 libxss1 libasound2 libxtst6 xauth xvfb libx11-xcb1 libdbus-glib-1-2 libxt6
+          ln -s /usr/bin/python3 /usr/bin/python
+
+      - name: Install Node.js and Yarn
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+          npm install --global yarn
+
+      - name: Install Google Chrome Stable
+        run: |
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          apt-get install -y ./google-chrome-stable_current_amd64.deb
+
+      - name: Install Terraform
+        run: |
+          wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
+          apt-get update && apt-get install -y terraform
+
+      - name: Install ORAS CLI
+        run: |
+          VERSION="1.2.2"
+          curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
+          tar -zxf oras_${VERSION}_linux_amd64.tar.gz -C /usr/local/bin/ oras
+
+      - name: Run Cypress tests
+        run: |
+          cd quay-api-tests
+          export CYPRESS_QUAY_ENDPOINT="${{ steps.setup-quay.outputs.quay-url }}"
+          export CYPRESS_QUAY_USER="quay"
+          export CYPRESS_QUAY_PASSWORD="password"
+          yarn install
+          NO_COLOR=1 yarn run cypress run --spec "cypress/e2e/quay_api_testing_all.cy.js" --browser chrome --headless --reporter cypress-multi-reporters --reporter-options configFile=reporter-config.json > quay_api_testing_report
+
+      - name: Upload Cypress Test Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quay-api-test-report
+          path: quay-tests/quay-api-tests/quay_api_testing_report
+          retention-days: 30
