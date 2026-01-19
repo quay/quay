@@ -1,6 +1,9 @@
+import json
 import logging
+import time
 from collections import defaultdict
 from contextlib import contextmanager
+from random import uniform
 
 from peewee import fn
 
@@ -17,6 +20,7 @@ from data.database import (
 )
 from data.model import DataModelException, QuotaExceededException, namespacequota, oci
 from data.model.oci.retriever import RepositoryContentRetriever
+from data.model.oci.tag import RetargetTagException
 from data.readreplica import ReadOnlyModeException
 from data.registry_model.datatype import FromDictionaryException
 from data.registry_model.datatypes import (
@@ -40,10 +44,15 @@ from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
 from image.shared import ManifestException
+from image.shared.schemas import parse_manifest_from_bytes
 from util.bytes import Bytes
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
+
+SIGNATURE_TAG_SUFFIX = ".sig"
+SIGNATURE_RETARGET_MAX_RETRIES = 5
+SIGNATURE_RETARGET_BASE_DELAY = 0.05
 
 
 class OCIModel(RegistryDataInterface):
@@ -430,6 +439,151 @@ class OCIModel(RegistryDataInterface):
         Returns a reference to the (created manifest, tag) or (None, None) on error, unless
         raise_on_error is set to True, in which case a CreateManifestException may also be
         raised.
+
+        For signature tags (ending in .sig), this method implements retry logic with layer
+        merging to handle concurrent cosign signature operations. When multiple cosign sign
+        operations run concurrently, they each create manifests with only their own signature
+        layer. This retry logic merges layers from the existing manifest into the incoming
+        manifest on retry, ensuring all signature layers are preserved.
+        """
+        is_signature_tag = tag_name.endswith(SIGNATURE_TAG_SUFFIX)
+
+        if is_signature_tag:
+            return self._create_manifest_and_retarget_signature_tag(
+                repository_ref,
+                manifest_interface_instance,
+                tag_name,
+                storage,
+                raise_on_error=raise_on_error,
+                verify_quota=verify_quota,
+            )
+
+        return self._create_manifest_and_retarget_tag_impl(
+            repository_ref,
+            manifest_interface_instance,
+            tag_name,
+            storage,
+            raise_on_error=raise_on_error,
+            verify_quota=verify_quota,
+        )
+
+    def _create_manifest_and_retarget_signature_tag(
+        self,
+        repository_ref,
+        manifest_interface_instance,
+        tag_name,
+        storage,
+        raise_on_error=False,
+        verify_quota=False,
+    ):
+        """
+        Creates a manifest and retargets a signature tag with retry logic and layer merging.
+
+        This method handles the race condition that occurs when multiple cosign sign operations
+        run concurrently on the same image. Each cosign operation creates a manifest with only
+        its own signature layer, potentially overwriting previous signatures.
+
+        On every attempt (including the first), this method checks for an existing manifest
+        and merges its layers with the incoming manifest's layers before creating a new
+        merged manifest.
+        """
+        for attempt in range(SIGNATURE_RETARGET_MAX_RETRIES):
+            if attempt > 0:
+                delay = SIGNATURE_RETARGET_BASE_DELAY * (attempt + 1) + uniform(0, 0.02)
+                time.sleep(delay)
+                logger.debug(
+                    "Retrying signature tag retarget for '%s' (attempt %d/%d)",
+                    tag_name,
+                    attempt + 1,
+                    SIGNATURE_RETARGET_MAX_RETRIES,
+                )
+
+            current_manifest_instance = manifest_interface_instance
+
+            existing_tag = oci.tag.get_tag(repository_ref._db_id, tag_name)
+            if existing_tag is not None:
+                merged = self._merge_signature_layers(
+                    existing_tag.manifest,
+                    manifest_interface_instance,
+                )
+                if merged is not None:
+                    current_manifest_instance = merged
+                    logger.debug(
+                        "Merged signature layers for tag '%s' (attempt %d/%d)",
+                        tag_name,
+                        attempt + 1,
+                        SIGNATURE_RETARGET_MAX_RETRIES,
+                    )
+
+            result = self._create_manifest_and_retarget_tag_impl(
+                repository_ref,
+                current_manifest_instance,
+                tag_name,
+                storage,
+                raise_on_error=False,
+                verify_quota=verify_quota,
+            )
+
+            if result[0] is not None:
+                return result
+
+        logger.warning(
+            "Failed to retarget signature tag '%s' after %d attempts",
+            tag_name,
+            SIGNATURE_RETARGET_MAX_RETRIES,
+        )
+
+        if raise_on_error:
+            raise RetargetTagException(
+                f"Failed to retarget signature tag after {SIGNATURE_RETARGET_MAX_RETRIES} attempts"
+            )
+        return (None, None)
+
+    def _merge_signature_layers(self, existing_manifest_row, incoming_manifest_interface):
+        """
+        Merge layers from an existing manifest into an incoming manifest for signatures.
+
+        Returns a new manifest interface instance with merged layers, or None on error.
+        """
+        try:
+            existing_bytes = existing_manifest_row.manifest_bytes
+            incoming_bytes = incoming_manifest_interface.bytes
+
+            existing_parsed = json.loads(existing_bytes)
+            incoming_parsed = json.loads(incoming_bytes.as_unicode())
+
+            existing_layers = existing_parsed.get("layers", [])
+            incoming_layers = incoming_parsed.get("layers", [])
+
+            incoming_digests = {layer.get("digest") for layer in incoming_layers}
+
+            merged_layers = list(incoming_layers)
+            for layer in existing_layers:
+                if layer.get("digest") not in incoming_digests:
+                    merged_layers.append(layer)
+
+            if len(merged_layers) == len(incoming_layers):
+                return incoming_manifest_interface
+
+            merged_parsed = {**incoming_parsed, "layers": merged_layers}
+            merged_bytes = Bytes.for_string_or_unicode(json.dumps(merged_parsed, indent=3))
+
+            return parse_manifest_from_bytes(merged_bytes, incoming_manifest_interface.media_type)
+        except (json.JSONDecodeError, ManifestException, AttributeError) as e:
+            logger.warning("Failed to merge signature layers: %s", e)
+            return None
+
+    def _create_manifest_and_retarget_tag_impl(
+        self,
+        repository_ref,
+        manifest_interface_instance,
+        tag_name,
+        storage,
+        raise_on_error=False,
+        verify_quota=False,
+    ):
+        """
+        Internal implementation of create_manifest_and_retarget_tag.
         """
         with db_disallow_replica_use():
             # Get or create the manifest itself.

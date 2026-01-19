@@ -1140,3 +1140,286 @@ def test_tag_names_for_manifest(initialized_db, registry_model):
                 found_tag = registry_model.get_repo_tag(repo_ref, found_name)
                 assert registry_model.get_manifest_for_tag(found_tag) == manifest
     assert verified_tag
+
+
+class TestSignatureTagLayerMerging:
+    """Tests for the signature tag layer merging functionality."""
+
+    def _create_oci_manifest_with_layers(self, oci_model, repository_ref, layer_digests):
+        """Helper to create an OCI manifest with specified layer digests."""
+        from image.oci.manifest import OCIManifest
+
+        config_json = json.dumps(
+            {
+                "config": {},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [],
+            }
+        )
+
+        app_config = {"TESTING": True}
+        with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
+            upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
+            config_blob = upload.commit_to_blob(app_config)
+
+        layers = []
+        for digest in layer_digests:
+            layers.append(
+                {
+                    "mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
+                    "size": 100,
+                    "digest": digest,
+                }
+            )
+
+        manifest_dict = {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "size": len(config_json),
+                "digest": config_blob.digest,
+            },
+            "layers": layers,
+        }
+
+        manifest_bytes = Bytes.for_string_or_unicode(json.dumps(manifest_dict))
+        return OCIManifest(manifest_bytes)
+
+    def test_merge_signature_layers_basic(self, oci_model):
+        """Test that _merge_signature_layers correctly merges layers from two manifests."""
+        from unittest.mock import MagicMock
+
+        config_digest = "sha256:" + "a" * 64
+        layer1_digest = "sha256:" + "1" * 64
+        layer2_digest = "sha256:" + "2" * 64
+        layer3_digest = "sha256:" + "3" * 64
+
+        existing_manifest_row = MagicMock()
+        existing_manifest_row.manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "config": {
+                    "mediaType": "application/vnd.oci.image.config.v1+json",
+                    "size": 100,
+                    "digest": config_digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
+                        "size": 100,
+                        "digest": layer1_digest,
+                    },
+                    {
+                        "mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
+                        "size": 100,
+                        "digest": layer2_digest,
+                    },
+                ],
+            }
+        )
+
+        incoming_manifest_dict = {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "size": 100,
+                "digest": config_digest,
+            },
+            "layers": [
+                {
+                    "mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
+                    "size": 100,
+                    "digest": layer3_digest,
+                },
+            ],
+        }
+        incoming_manifest_bytes = Bytes.for_string_or_unicode(json.dumps(incoming_manifest_dict))
+
+        incoming_manifest = MagicMock()
+        incoming_manifest.bytes = incoming_manifest_bytes
+        incoming_manifest.media_type = "application/vnd.oci.image.manifest.v1+json"
+
+        merged = oci_model._merge_signature_layers(existing_manifest_row, incoming_manifest)
+
+        assert merged is not None
+        merged_dict = json.loads(merged.bytes.as_unicode())
+        merged_digests = {layer["digest"] for layer in merged_dict["layers"]}
+
+        assert layer1_digest in merged_digests
+        assert layer2_digest in merged_digests
+        assert layer3_digest in merged_digests
+        assert len(merged_dict["layers"]) == 3
+
+    def test_merge_signature_layers_deduplicates(self, oci_model):
+        """Test that _merge_signature_layers doesn't add duplicate layers."""
+        from unittest.mock import MagicMock
+
+        config_digest = "sha256:" + "a" * 64
+        layer1_digest = "sha256:" + "1" * 64
+        layer2_digest = "sha256:" + "2" * 64
+
+        existing_manifest_row = MagicMock()
+        existing_manifest_row.manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "config": {
+                    "mediaType": "application/vnd.oci.image.config.v1+json",
+                    "size": 100,
+                    "digest": config_digest,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
+                        "size": 100,
+                        "digest": layer1_digest,
+                    },
+                    {
+                        "mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
+                        "size": 100,
+                        "digest": layer2_digest,
+                    },
+                ],
+            }
+        )
+
+        incoming_manifest_dict = {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "size": 100,
+                "digest": config_digest,
+            },
+            "layers": [
+                {
+                    "mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
+                    "size": 100,
+                    "digest": layer1_digest,
+                },
+            ],
+        }
+        incoming_manifest_bytes = Bytes.for_string_or_unicode(json.dumps(incoming_manifest_dict))
+
+        incoming_manifest = MagicMock()
+        incoming_manifest.bytes = incoming_manifest_bytes
+        incoming_manifest.media_type = "application/vnd.oci.image.manifest.v1+json"
+
+        merged = oci_model._merge_signature_layers(existing_manifest_row, incoming_manifest)
+
+        assert merged is not None
+        merged_dict = json.loads(merged.bytes.as_unicode())
+
+        assert len(merged_dict["layers"]) == 2
+        digests = [layer["digest"] for layer in merged_dict["layers"]]
+        assert digests.count(layer1_digest) == 1
+        assert layer2_digest in digests
+
+    def test_merge_signature_layers_no_new_layers(self, oci_model):
+        """Test that when incoming has all existing layers, original manifest is returned."""
+        from unittest.mock import MagicMock
+
+        existing_manifest_row = MagicMock()
+        existing_manifest_row.manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "config": {
+                    "mediaType": "application/vnd.oci.image.config.v1+json",
+                    "size": 100,
+                    "digest": "sha256:config",
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
+                        "size": 100,
+                        "digest": "sha256:layer1",
+                    },
+                ],
+            }
+        )
+
+        incoming_manifest_dict = {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "size": 100,
+                "digest": "sha256:config",
+            },
+            "layers": [
+                {
+                    "mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
+                    "size": 100,
+                    "digest": "sha256:layer1",
+                },
+                {
+                    "mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
+                    "size": 100,
+                    "digest": "sha256:layer2",
+                },
+            ],
+        }
+        incoming_manifest_bytes = Bytes.for_string_or_unicode(json.dumps(incoming_manifest_dict))
+
+        incoming_manifest = MagicMock()
+        incoming_manifest.bytes = incoming_manifest_bytes
+        incoming_manifest.media_type = "application/vnd.oci.image.manifest.v1+json"
+
+        merged = oci_model._merge_signature_layers(existing_manifest_row, incoming_manifest)
+
+        assert merged is incoming_manifest
+
+    def test_merge_signature_layers_handles_invalid_json(self, oci_model):
+        """Test that _merge_signature_layers handles invalid JSON gracefully."""
+        from unittest.mock import MagicMock
+
+        existing_manifest_row = MagicMock()
+        existing_manifest_row.manifest_bytes = "not valid json"
+
+        incoming_manifest = MagicMock()
+        incoming_manifest.bytes = Bytes.for_string_or_unicode('{"valid": "json"}')
+        incoming_manifest.media_type = "application/vnd.oci.image.manifest.v1+json"
+
+        merged = oci_model._merge_signature_layers(existing_manifest_row, incoming_manifest)
+
+        assert merged is None
+
+    def test_signature_tag_uses_retry_logic(self, oci_model):
+        """Test that signature tags (.sig) use the retry logic path."""
+        repository_ref = oci_model.lookup_repository("devtable", "simple")
+        latest_tag = oci_model.get_repo_tag(repository_ref, "latest")
+        manifest = oci_model.get_manifest_for_tag(latest_tag).get_parsed_manifest()
+
+        builder = DockerSchema1ManifestBuilder("devtable", "simple", "sha256-abc123.sig")
+        builder.add_layer(manifest.blob_digests[0], '{"id": "%s"}' % "someid")
+        sample_manifest = builder.build(docker_v2_signing_key)
+        assert sample_manifest is not None
+
+        another_manifest, tag = oci_model.create_manifest_and_retarget_tag(
+            repository_ref, sample_manifest, "sha256-abc123.sig", storage
+        )
+        assert another_manifest is not None
+        assert tag is not None
+        assert tag.name == "sha256-abc123.sig"
+
+    def test_non_signature_tag_uses_regular_path(self, oci_model):
+        """Test that non-signature tags use the regular implementation."""
+        repository_ref = oci_model.lookup_repository("devtable", "simple")
+        latest_tag = oci_model.get_repo_tag(repository_ref, "latest")
+        manifest = oci_model.get_manifest_for_tag(latest_tag).get_parsed_manifest()
+
+        builder = DockerSchema1ManifestBuilder("devtable", "simple", "regular-tag")
+        builder.add_layer(manifest.blob_digests[0], '{"id": "%s"}' % "someid")
+        sample_manifest = builder.build(docker_v2_signing_key)
+        assert sample_manifest is not None
+
+        another_manifest, tag = oci_model.create_manifest_and_retarget_tag(
+            repository_ref, sample_manifest, "regular-tag", storage
+        )
+        assert another_manifest is not None
+        assert tag is not None
+        assert tag.name == "regular-tag"
