@@ -196,6 +196,7 @@ def list_repository_tag_history(
             Manifest.media_type,
             Manifest.layers_compressed_size,
             Manifest.config_media_type,
+            can_use_read_replica=True
         )
         .join(Manifest)
         .where(Tag.repository == repository_id)
