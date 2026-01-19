@@ -25,6 +25,7 @@ from data.model.repo_mirror import (
 )
 from data.model.user import retrieve_robot_token
 from data.registry_model import registry_model
+from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
 from notifications import spawn_notification
 from util.audit import wrap_repository
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
@@ -508,7 +509,7 @@ def push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
                 if isinstance(manifest_bytes, str)
                 else manifest_bytes
             ),
-            headers={"Content-Type": media_type},
+            headers={"Content-Type": media_type or OCI_IMAGE_INDEX_CONTENT_TYPE},
             auth=(robot_username, robot_token),
             verify=dest_tls_verify,
             timeout=60,
