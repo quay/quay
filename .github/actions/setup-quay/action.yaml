@@ -27,6 +27,11 @@ inputs:
     required: false
     default: ''
 
+  extra-config:
+    description: 'Inline YAML config to merge into config.yaml'
+    required: false
+    default: ''
+
   health-check-timeout:
     description: 'Health check timeout in seconds'
     required: false
@@ -128,7 +133,7 @@ runs:
         mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
         echo "LDAP configuration merged"
 
-    - name: Merge extra config
+    - name: Merge extra config file
       if: inputs.extra-config-file != ''
       shell: bash
       run: |
@@ -146,6 +151,26 @@ runs:
           "${BASE_CONFIG}" "${EXTRA_CONFIG}" > "${BASE_CONFIG}.tmp"
         mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
         echo "Config merged successfully"
+
+    - name: Merge inline extra config
+      if: inputs.extra-config != ''
+      shell: bash
+      env:
+        EXTRA_CONFIG_CONTENT: ${{ inputs.extra-config }}
+      run: |
+        set -euo pipefail
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        INLINE_CONFIG=$(mktemp --suffix=.yaml)
+
+        printf '%s\n' "${EXTRA_CONFIG_CONTENT}" > "${INLINE_CONFIG}"
+
+        echo "Merging inline config into ${BASE_CONFIG}..."
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${INLINE_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        rm -f "${INLINE_CONFIG}"
+        echo "Inline config merged successfully"
 
     - name: Start database services
       shell: bash
