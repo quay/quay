@@ -54,13 +54,13 @@ jobs:
       - name: Use Quay Initialize API to create the 1st Super User
         run: |
           curl -X POST ${{ steps.setup-quay.outputs.quay-url }}/api/v1/user/initialize --header 'Content-Type: application/json' \
-          --data '{ "username": "quay", "password": "password", "email": "quayqe@redhat.com", "access_token": true }' | jq '.access_token' | tr -d '"' | tr -d '\n' > quay_oauth2_token
+          --data '{ "username": "quay", "password": "password", "email": "quayqe@redhat.com", "access_token": true }'
 
       - name: Install Cypress Test Dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y curl gnupg software-properties-common wget xz-utils git jq python3 python3-pip unzip
           sudo apt-get install -y libgtk-3-0 libgbm-dev libgbm1 libnotify-dev libnss3 libxss1 libasound2 libxtst6 xauth xvfb libx11-xcb1 libdbus-glib-1-2 libxt6
-          sudo ln -s /usr/bin/python3 /usr/bin/python
+          sudo ln -sf /usr/bin/python3 /usr/bin/python
 
       - name: Install Node.js and Yarn
         run: |
@@ -101,4 +101,3 @@ jobs:
           name: quay-api-test-report
           path: quay-tests/quay-api-tests/quay_api_testing_report
           retention-days: 30
-          
