@@ -766,3 +766,313 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
     mirror = RepoMirrorConfig.get_by_id(mirror.id)
     assert 1 == len(skopeo_calls)
     assert 3 == mirror.sync_retries_remaining
+
+
+# Sample manifest list for architecture filtering tests
+SAMPLE_MANIFEST_LIST = json.dumps(
+    {
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+        "manifests": [
+            {
+                "digest": "sha256:amd64digest",
+                "size": 1234,
+                "platform": {"architecture": "amd64", "os": "linux"},
+            },
+            {
+                "digest": "sha256:arm64digest",
+                "size": 1234,
+                "platform": {"architecture": "arm64", "os": "linux"},
+            },
+            {
+                "digest": "sha256:ppc64ledigest",
+                "size": 1234,
+                "platform": {"architecture": "ppc64le", "os": "linux"},
+            },
+        ],
+    }
+)
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.push_sparse_manifest_list")
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_mirror_with_architecture_filter(run_skopeo_mock, push_manifest_mock, initialized_db, app):
+    """
+    Test that architecture filtering copies only specified architectures.
+    """
+    mirror, repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+    mirror.architecture_filter = ["amd64", "arm64"]
+    mirror.save()
+
+    push_manifest_mock.return_value = True
+
+    skopeo_calls = [
+        # list-tags call
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
+        },
+        # inspect --raw call for manifest list
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "inspect",
+                "--raw",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository:latest",
+            ],
+            "results": SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, ""),
+        },
+        # copy by digest for amd64
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "copy",
+                "--preserve-digests",
+                "--remove-signatures",
+                "--src-tls-verify=False",
+                "--dest-tls-verify=True",
+                "--dest-creds",
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
+                "docker://registry.example.com/namespace/repository@sha256:amd64digest",
+                "docker://localhost:5000/mirror/repo@sha256:amd64digest",
+            ],
+            "results": SkopeoResults(True, [], "copied amd64", ""),
+        },
+        # copy by digest for arm64
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "copy",
+                "--preserve-digests",
+                "--remove-signatures",
+                "--src-tls-verify=False",
+                "--dest-tls-verify=True",
+                "--dest-creds",
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
+                "docker://registry.example.com/namespace/repository@sha256:arm64digest",
+                "docker://localhost:5000/mirror/repo@sha256:arm64digest",
+            ],
+            "results": SkopeoResults(True, [], "copied arm64", ""),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        try:
+            skopeo_call = skopeo_calls.pop(0)
+            assert args == skopeo_call["args"]
+            return skopeo_call["results"]
+        except Exception as e:
+            skopeo_calls.append(skopeo_call)
+            raise e
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    assert [] == skopeo_calls
+    push_manifest_mock.assert_called_once()
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_mirror_without_architecture_filter_uses_all(run_skopeo_mock, initialized_db, app):
+    """
+    Test that without architecture filter, the standard --all copy is used.
+    """
+    mirror, repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+    # Ensure no architecture filter is set
+    mirror.architecture_filter = []
+    mirror.save()
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
+        },
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "copy",
+                "--all",
+                "--remove-signatures",
+                "--src-tls-verify=False",
+                "--dest-tls-verify=True",
+                "--dest-creds",
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/repo:latest",
+            ],
+            "results": SkopeoResults(True, [], "stdout", "stderr"),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        try:
+            skopeo_call = skopeo_calls.pop(0)
+            assert args == skopeo_call["args"]
+            return skopeo_call["results"]
+        except Exception as e:
+            skopeo_calls.append(skopeo_call)
+            raise e
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    assert [] == skopeo_calls
+
+
+SAMPLE_SINGLE_MANIFEST = json.dumps(
+    {
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+        "config": {"mediaType": "application/vnd.docker.container.image.v1+json"},
+        "layers": [],
+    }
+)
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_mirror_single_arch_image_with_filter(run_skopeo_mock, initialized_db, app):
+    """
+    Test that single-arch images fall back to standard copy when architecture filter is set.
+    """
+    mirror, repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+    mirror.architecture_filter = ["amd64"]
+    mirror.save()
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
+        },
+        # inspect --raw returns single manifest (not manifest list)
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "inspect",
+                "--raw",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository:latest",
+            ],
+            "results": SkopeoResults(True, [], SAMPLE_SINGLE_MANIFEST, ""),
+        },
+        # Falls back to standard copy with --all
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "copy",
+                "--all",
+                "--remove-signatures",
+                "--src-tls-verify=False",
+                "--dest-tls-verify=True",
+                "--dest-creds",
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/repo:latest",
+            ],
+            "results": SkopeoResults(True, [], "copied", ""),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        try:
+            skopeo_call = skopeo_calls.pop(0)
+            assert args == skopeo_call["args"]
+            return skopeo_call["results"]
+        except Exception as e:
+            skopeo_calls.append(skopeo_call)
+            raise e
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    assert [] == skopeo_calls
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_mirror_no_matching_architectures(run_skopeo_mock, initialized_db, app):
+    """
+    Test that mirroring fails gracefully when no architectures match.
+    """
+    mirror, repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+    # Request an architecture that doesn't exist in the manifest list
+    mirror.architecture_filter = ["s390x"]
+    mirror.save()
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
+        },
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "inspect",
+                "--raw",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository:latest",
+            ],
+            "results": SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, ""),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        try:
+            skopeo_call = skopeo_calls.pop(0)
+            assert args == skopeo_call["args"]
+            return skopeo_call["results"]
+        except Exception as e:
+            skopeo_calls.append(skopeo_call)
+            raise e
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    # All expected calls should have been made
+    assert [] == skopeo_calls
+    # Mirror should fail due to no matching architectures
+    mirror = RepoMirrorConfig.get_by_id(mirror.id)
+    assert mirror.sync_status == RepoMirrorStatus.FAIL
