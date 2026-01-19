@@ -175,6 +175,14 @@ def test_get_mirror(app):
         ("root_rule", {"rule_kind": "tag_glob_csv"}, 400),
         ("root_rule", {"rule_kind": "tag_glob_csv", "rule_value": []}, 400),
         ("root_rule", {"rule_kind": "incorrect", "rule_value": ["3.1", "3.1*"]}, 400),
+        ("architecture_filter", ["amd64"], 201),
+        ("architecture_filter", ["amd64", "arm64"], 201),
+        ("architecture_filter", ["amd64", "arm64", "ppc64le", "s390x"], 201),
+        ("architecture_filter", [], 201),
+        ("architecture_filter", None, 201),
+        ("architecture_filter", ["invalid_arch"], 400),
+        ("architecture_filter", ["amd64", "invalid"], 400),
+        ("architecture_filter", "amd64", 400),
     ],
 )
 def test_change_config(key, value, expected_status, app):
@@ -206,6 +214,10 @@ def test_change_config(key, value, expected_status, app):
             assert resp.json["external_registry_config"]["unsigned_images"] == value
         elif key in ("http_proxy", "https_proxy", "no_proxy"):
             assert resp.json["external_registry_config"]["proxy"][key] == value
+        elif key == "architecture_filter":
+            # None is normalized to [] in the API response
+            expected_value = value if value is not None else []
+            assert resp.json[key] == expected_value
         else:
             assert resp.json[key] == value
     else:
@@ -217,6 +229,9 @@ def test_change_config(key, value, expected_status, app):
             assert resp.json["external_registry_config"][key] != value
         elif key in ("http_proxy", "https_proxy", "no_proxy"):
             assert resp.json["external_registry_config"]["proxy"][key] != value
+        elif key == "architecture_filter":
+            # On failure, architecture_filter should remain at default []
+            assert resp.json[key] == []
         else:
             assert resp.json[key] != value
 
@@ -276,3 +291,91 @@ def test_cancel_repo_mirroring(app):
         assert model.repo_mirror.check_repo_mirror_sync_status(mirror) == -2
         resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
         assert resp["sync_retries_remaining"] == 0
+
+
+def test_get_mirror_includes_architecture_filter(app):
+    """
+    Verify GET response includes architecture_filter field.
+    """
+    mirror = _setup_mirror()
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+
+    assert "architecture_filter" in resp
+    assert resp["architecture_filter"] == []
+
+
+def test_set_and_get_architecture_filter(app):
+    """
+    Verify architecture_filter can be set and retrieved correctly.
+    """
+    mirror = _setup_mirror()
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+
+        # Set architecture filter
+        request_body = {"architecture_filter": ["amd64", "arm64"]}
+        conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, 201)
+
+        # Verify it was set correctly
+        resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+        assert resp["architecture_filter"] == ["amd64", "arm64"]
+
+        # Clear architecture filter
+        request_body = {"architecture_filter": []}
+        conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, 201)
+
+        # Verify it was cleared
+        resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+        assert resp["architecture_filter"] == []
+
+
+def test_create_mirror_with_architecture_filter(app):
+    """
+    Verify architecture_filter can be set during mirror creation.
+    """
+    mirror_bot, _ = model.user.create_robot(
+        "archfiltermirrorbot", model.user.get_namespace_user("devtable")
+    )
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        request_body = {
+            "external_reference": "quay.io/foobar/barbaz",
+            "sync_interval": 100,
+            "skopeo_timeout_interval": 300,
+            "sync_start_date": "2019-08-20T17:51:00Z",
+            "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest", "foo", "bar"]},
+            "robot_username": "devtable+archfiltermirrorbot",
+            "architecture_filter": ["amd64", "s390x"],
+        }
+        conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 201)
+
+        # Verify the architecture_filter was set
+        resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+        assert resp["architecture_filter"] == ["amd64", "s390x"]
+
+
+def test_create_mirror_with_invalid_architecture_filter(app):
+    """
+    Verify creating mirror with invalid architecture_filter fails.
+    """
+    mirror_bot, _ = model.user.create_robot(
+        "invalidarchbot", model.user.get_namespace_user("devtable")
+    )
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        request_body = {
+            "external_reference": "quay.io/foobar/barbaz",
+            "sync_interval": 100,
+            "skopeo_timeout_interval": 300,
+            "sync_start_date": "2019-08-20T17:51:00Z",
+            "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+            "robot_username": "devtable+invalidarchbot",
+            "architecture_filter": ["invalid_arch"],
+        }
+        conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 400)
