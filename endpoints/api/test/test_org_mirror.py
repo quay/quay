@@ -3,6 +3,7 @@
 Unit tests for organization-level mirror API endpoints.
 """
 
+import logging
 from datetime import datetime
 
 import pytest
@@ -14,6 +15,8 @@ from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
 
+logger = logging.getLogger(__name__)
+
 
 def _cleanup_org_mirror_config(orgname):
     """Helper to clean up any existing org mirror config."""
@@ -22,8 +25,9 @@ def _cleanup_org_mirror_config(orgname):
         config = model.org_mirror.get_org_mirror_config(org)
         if config:
             config.delete_instance()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception("Failed to cleanup org mirror config for org '%s': %s", orgname, e)
+        raise
 
 
 class TestCreateOrgMirrorConfig:
@@ -206,9 +210,7 @@ class TestCreateOrgMirrorConfig:
                 "sync_start_date": "2025-01-01T00:00:00Z",
             }
             # Schema validation should catch this first
-            resp = conduct_api_call(
-                cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
-            )
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400)
 
     def test_create_org_mirror_config_invalid_visibility(self, app):
         """
@@ -228,9 +230,7 @@ class TestCreateOrgMirrorConfig:
                 "sync_start_date": "2025-01-01T00:00:00Z",
             }
             # Schema validation should catch this first
-            resp = conduct_api_call(
-                cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
-            )
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400)
 
     def test_create_org_mirror_config_sync_interval_too_small(self, app):
         """
@@ -250,9 +250,7 @@ class TestCreateOrgMirrorConfig:
                 "sync_start_date": "2025-01-01T00:00:00Z",
             }
             # Schema validation should catch this first
-            resp = conduct_api_call(
-                cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
-            )
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400)
 
     def test_create_org_mirror_config_invalid_date_format(self, app):
         """
@@ -331,9 +329,7 @@ class TestCreateOrgMirrorConfig:
                 "sync_start_date": "2025-01-01T00:00:00Z",
                 "skopeo_timeout": 10,  # Too small (min 30)
             }
-            resp = conduct_api_call(
-                cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
-            )
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400)
 
         # Test too large
         with client_with_identity("devtable", app) as cl:
@@ -348,9 +344,7 @@ class TestCreateOrgMirrorConfig:
                 "sync_start_date": "2025-01-01T00:00:00Z",
                 "skopeo_timeout": 5000,  # Too large (max 3600)
             }
-            resp = conduct_api_call(
-                cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
-            )
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400)
 
 
 class TestDeleteOrgMirrorConfig:

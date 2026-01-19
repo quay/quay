@@ -83,9 +83,14 @@ def create_org_mirror_config(
     Raises:
         DataModelException: If robot doesn't belong to the organization or config already exists
     """
-    assert internal_robot.robot
+    if not internal_robot.robot:
+        raise DataModelException("Robot account must belong to the organization")
 
-    namespace, _ = parse_robot_username(internal_robot.username)
+    parsed = parse_robot_username(internal_robot.username)
+    if parsed is None:
+        raise DataModelException("Robot account must belong to the organization")
+
+    namespace, _ = parsed
     if namespace != organization.username:
         raise DataModelException("Robot account must belong to the organization")
 
@@ -118,8 +123,10 @@ def create_org_mirror_config(
 
             return mirror
 
-        except IntegrityError:
-            raise DataModelException("Mirror configuration already exists for this organization")
+        except IntegrityError as e:
+            raise DataModelException(
+                "Mirror configuration already exists for this organization"
+            ) from e
 
 
 def update_org_mirror_config(
@@ -171,8 +178,14 @@ def update_org_mirror_config(
 
     # Validate robot belongs to organization if provided
     if internal_robot is not None:
-        assert internal_robot.robot
-        namespace, _ = parse_robot_username(internal_robot.username)
+        if not internal_robot.robot:
+            raise DataModelException("Robot account must belong to the organization")
+
+        parsed = parse_robot_username(internal_robot.username)
+        if parsed is None:
+            raise DataModelException("Robot account must belong to the organization")
+
+        namespace, _ = parsed
         if namespace != org.username:
             raise DataModelException("Robot account must belong to the organization")
 

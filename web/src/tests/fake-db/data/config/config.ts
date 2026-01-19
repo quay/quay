@@ -121,6 +121,7 @@ const response = {
     REPOSITORY_ACTION_COUNTER: true,
     REPOSITORY_GARBAGE_COLLECTION: true,
     REPO_MIRROR: false,
+    ORG_MIRROR: false,
     REQUIRE_ENCRYPTED_BASIC_AUTH: false,
     REQUIRE_TEAM_INVITE: true,
     RESTRICTED_V1_PUSH: false,
