@@ -1,30 +1,18 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
-import {
-  pushMultiArchImage,
-  pushImage,
-  isContainerRuntimeAvailable,
-} from '../../utils/container';
+import {pushMultiArchImage, pushImage} from '../../utils/container';
 
 test.describe(
   'Tag Details - Multi-Architecture Manifest Layers',
-  {tag: ['@tags', '@layers']},
+  {tag: ['@tags', '@layers', '@container']},
   () => {
     // Shared test data created once per describe block
     let testRepo: {namespace: string; name: string; fullName: string};
-    let hasContainerRuntime = false;
 
-    test.beforeAll(async ({userContext}) => {
-      // Check if container runtime is available for pushing images
-      hasContainerRuntime = await isContainerRuntimeAvailable();
-
-      if (!hasContainerRuntime) {
-        console.log(
-          'Skipping multi-arch layer tests: no container runtime available',
-        );
-        return;
-      }
+    test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+      // Skip setup if no container runtime (tests auto-skip via @container tag)
+      if (!cachedContainerAvailable) return;
 
       // Use the pre-authenticated userContext (already logged in as test user)
       const api = new ApiClient(userContext.request);
@@ -69,13 +57,6 @@ test.describe(
       } catch {
         // Ignore cleanup errors
       }
-    });
-
-    test.beforeEach(async () => {
-      test.skip(
-        !hasContainerRuntime,
-        'Skipping: no container runtime available to push test images',
-      );
     });
 
     test('displays layers for multi-architecture manifest child', async ({

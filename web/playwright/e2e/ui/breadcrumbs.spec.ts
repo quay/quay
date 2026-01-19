@@ -5,7 +5,7 @@
  */
 
 import {test, expect} from '../../fixtures';
-import {pushImage, isContainerRuntimeAvailable} from '../../utils/container';
+import {pushImage} from '../../utils/container';
 import {TEST_USERS} from '../../global-setup';
 
 test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
@@ -105,18 +105,11 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
     });
   });
 
-  test.describe('Tag breadcrumbs', () => {
+  test.describe('Tag breadcrumbs', {tag: ['@container']}, () => {
     test('tag page shows correct breadcrumbs', async ({
       authenticatedPage,
       api,
     }) => {
-      // Check if container runtime is available
-      const hasRuntime = await isContainerRuntimeAvailable();
-      test.skip(
-        !hasRuntime,
-        'No container runtime available for pushing images',
-      );
-
       const tagName = 'latest';
       const org = await api.organization('breadcrumborg');
       const repo = await api.repository(org.name, 'breadcrumbrepo');
