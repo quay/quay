@@ -162,6 +162,45 @@ export interface ProxyCacheConfig {
   upstream_registry_password?: string;
 }
 
+// Security scan types
+export type SecurityScanStatus =
+  | 'scanned'
+  | 'queued'
+  | 'failed'
+  | 'unsupported';
+
+export interface SecurityVulnerability {
+  Severity: 'Critical' | 'High' | 'Medium' | 'Low' | 'Negligible' | 'Unknown';
+  Name: string;
+  Link: string;
+  FixedBy: string;
+  Description: string;
+  NamespaceName: string;
+  Metadata?: Record<string, unknown>;
+}
+
+export interface SecurityFeature {
+  Name: string;
+  Version: string;
+  VersionFormat: string;
+  NamespaceName: string;
+  AddedBy: string;
+  Vulnerabilities?: SecurityVulnerability[];
+}
+
+export interface SecurityScanResponse {
+  status: SecurityScanStatus;
+  data: {
+    Layer: {
+      Name: string;
+      ParentName: string;
+      NamespaceName: string;
+      IndexedByVersion: number;
+      Features: SecurityFeature[];
+    };
+  };
+}
+
 export class ApiClient {
   private request: APIRequestContext;
   private csrfToken: string | null = null;
@@ -1717,5 +1756,98 @@ export class ApiClient {
         `Failed to set immutability for tag ${tag} in ${namespace}/${repo}: ${response.status()} - ${body}`,
       );
     }
+  }
+
+  // Security scan methods
+
+  /**
+   * Get security scan results for a manifest.
+   * Uses GET /api/v1/repository/{namespace}/{repo}/manifest/{digest}/security
+   */
+  async getSecurityScan(
+    namespace: string,
+    repo: string,
+    digest: string,
+  ): Promise<SecurityScanResponse> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/manifest/${digest}/security?vulnerabilities=true`,
+      {timeout: 10000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get security scan for ${namespace}/${repo}@${digest}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Wait for security scan to complete by polling until status is 'scanned'.
+   *
+   * @param namespace - Repository namespace
+   * @param repo - Repository name
+   * @param digest - Manifest digest
+   * @param maxWaitMs - Maximum time to wait (default: 120 seconds)
+   * @param pollIntervalMs - Polling interval (default: 3 seconds)
+   * @returns SecurityScanResponse when status is 'scanned'
+   * @throws Error if scan fails, times out, or status is 'unsupported'
+   */
+  async waitForSecurityScan(
+    namespace: string,
+    repo: string,
+    digest: string,
+    maxWaitMs = 120000,
+    pollIntervalMs = 3000,
+  ): Promise<SecurityScanResponse> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitMs) {
+      // Try to get scan, handling 404 as "not indexed yet"
+      const scanResponse = await this.request.get(
+        `${API_URL}/api/v1/repository/${namespace}/${repo}/manifest/${digest}/security?vulnerabilities=true`,
+        {timeout: 10000},
+      );
+
+      // 404 means Clair hasn't indexed the manifest yet - retry
+      if (scanResponse.status() === 404) {
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+        continue;
+      }
+
+      if (!scanResponse.ok()) {
+        const body = await scanResponse.text();
+        throw new Error(
+          `Failed to get security scan for ${namespace}/${repo}@${digest}: ${scanResponse.status()} - ${body}`,
+        );
+      }
+
+      const response: SecurityScanResponse = await scanResponse.json();
+
+      if (response.status === 'scanned') {
+        return response;
+      }
+
+      if (response.status === 'failed') {
+        throw new Error(
+          `Security scan failed for ${namespace}/${repo}@${digest}`,
+        );
+      }
+
+      if (response.status === 'unsupported') {
+        throw new Error(
+          `Security scan unsupported for ${namespace}/${repo}@${digest}`,
+        );
+      }
+
+      // status === 'queued', wait and retry
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+
+    throw new Error(
+      `Timeout waiting for security scan: ${namespace}/${repo}@${digest} (waited ${maxWaitMs}ms)`,
+    );
   }
 }

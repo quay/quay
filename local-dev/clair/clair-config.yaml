@@ -1,0 +1,8 @@
+# Extra config to enable security scanning for Playwright tests
+# This file is merged into local-dev/stack/config.yaml by setup-quay action
+FEATURE_SECURITY_SCANNER: true
+FEATURE_SECURITY_NOTIFICATIONS: true
+SECURITY_SCANNER_V4_ENDPOINT: http://quay-clair:6060
+SECURITY_SCANNER_V4_NAMESPACE_WHITELIST:
+  - admin
+  - testuser

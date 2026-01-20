@@ -178,6 +178,26 @@ runs:
         docker compose up -d redis quay-db
         docker exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 
+    - name: Start Clair
+      if: inputs.with-clair == 'true'
+      shell: bash
+      run: |
+        # Merge Clair config into Quay config
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        CLAIR_CONFIG="local-dev/clair/clair-config.yaml"
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${CLAIR_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "Clair configuration merged"
+
+        # Start Clair services
+        docker compose up -d clair-db
+        docker exec clair-db bash -c 'while ! pg_isready; do echo "waiting for clair postgres"; sleep 2; done'
+        DOCKER_USER="1001:0" docker compose up -d clair
+        echo "Waiting for Clair to initialize..."
+        sleep 30
+
     - name: Start Quay container
       shell: bash
       run: |
@@ -202,16 +222,6 @@ runs:
           docker logs quay-quay 2>&1 | tail -100
           exit 1
         fi
-
-    - name: Start Clair
-      if: inputs.with-clair == 'true'
-      shell: bash
-      run: |
-        docker compose up -d clair-db
-        docker exec clair-db bash -c 'while ! pg_isready; do echo "waiting for clair postgres"; sleep 2; done'
-        DOCKER_USER="1001:0" docker compose up -d clair
-        echo "Waiting for Clair to initialize..."
-        sleep 30
 
     - name: Start Repomirror
       if: inputs.with-repomirror == 'true'

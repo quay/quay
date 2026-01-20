@@ -753,7 +753,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `repository-state.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated into mirroring tests |
 | ⬚ | `repository-visibility.cy.ts` | | |
 | ✅ | `robot-accounts.cy.ts` | `organization/robot-accounts.spec.ts` | Consolidated 12→4 tests |
-| ⬚ | `security-report.cy.ts` | | @feature:SECURITY_SCANNER |
+| ✅ | `security-report.cy.ts` | `repository/security-report.spec.ts` | @feature:SECURITY_SCANNER, consolidated 10→7 tests, real Clair scanning |
 | ⬚ | `security-scanner-feature-toggle.cy.ts` | | @feature:SECURITY_SCANNER |
 | ⬚ | `service-status.cy.ts` | | |
 | ✅ | `signin.cy.ts` | `auth/signin.spec.ts` | @feature:MAILING, @auth:Database, @feature:SUPERUSERS_FULL_ACCESS, consolidated 30→18 tests |

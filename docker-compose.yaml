@@ -31,6 +31,7 @@ services:
     command: -c 'max_connections=300'
     environment:
       POSTGRES_USER: "clair"
+      POSTGRES_PASSWORD: "clair"
       POSTGRES_DB: "clair"
     volumes:
       - "clair-db-data:/var/lib/postgresql"
@@ -160,19 +161,23 @@ services:
       - redis
       - quay
 
-  # clair is configured to share it's network
-  # namespace with quay. this allows quay to serve
-  # layers to clair over localhost.
+  # clair uses extra_hosts to reach quay via localhost
+  # (host-gateway maps localhost to the host machine's IP)
   clair:
     user: ${DOCKER_USER:-nobody:0}
     container_name: quay-clair
     image: quay.io/projectquay/clair:4.7.2
+    extra_hosts:
+      - "localhost:host-gateway"
     volumes:
       - "./local-dev/clair:/src/clair/"
     environment:
       CLAIR_CONF: "/src/clair/config.yaml"
       CLAIR_MODE: "combo"
-    network_mode: "service:quay"
+    depends_on:
+      - clair-db
+    ports:
+      - "6060:6060"
     cpus: 2
     command:
       ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
