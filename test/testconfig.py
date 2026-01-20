@@ -105,6 +105,7 @@ class TestConfig(DefaultConfig):
     }
 
     FEATURE_REPO_MIRROR = True
+    FEATURE_ORG_MIRROR = True
     FEATURE_GENERAL_OCI_SUPPORT = True
     OCI_NAMESPACE_WHITELIST: List[str] = []
 

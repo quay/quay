@@ -22,6 +22,7 @@ from endpoints.api.logs import *  # type: ignore[no-redef]
 from endpoints.api.manifest import *
 from endpoints.api.mirror import *  # type: ignore[no-redef]
 from endpoints.api.namespacequota import *
+from endpoints.api.org_mirror import *  # type: ignore[no-redef]
 from endpoints.api.organization import *  # type: ignore[assignment,no-redef]
 from endpoints.api.permission import *  # type: ignore[no-redef]
 from endpoints.api.policy import *
@@ -6992,6 +6993,46 @@ SECURITY_TESTS: List[
         "devtable",
         404,
     ),
+    # OrgMirrorConfig GET
+    (OrgMirrorConfig, "GET", ORG_PARAMS, None, None, 401),
+    (OrgMirrorConfig, "GET", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorConfig, "GET", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorConfig, "GET", ORG_PARAMS, None, "devtable", 404),
+    # OrgMirrorConfig POST (JSON validation happens before auth check)
+    (OrgMirrorConfig, "POST", ORG_PARAMS, {}, None, 400),
+    (OrgMirrorConfig, "POST", ORG_PARAMS, {}, "freshuser", 400),
+    (OrgMirrorConfig, "POST", ORG_PARAMS, {}, "reader", 400),
+    (OrgMirrorConfig, "POST", ORG_PARAMS, {}, "devtable", 400),
+    # OrgMirrorConfig PUT
+    (OrgMirrorConfig, "PUT", ORG_PARAMS, {}, None, 401),
+    (OrgMirrorConfig, "PUT", ORG_PARAMS, {}, "freshuser", 403),
+    (OrgMirrorConfig, "PUT", ORG_PARAMS, {}, "reader", 403),
+    (OrgMirrorConfig, "PUT", ORG_PARAMS, {}, "devtable", 404),
+    # OrgMirrorConfig DELETE
+    (OrgMirrorConfig, "DELETE", ORG_PARAMS, None, None, 401),
+    (OrgMirrorConfig, "DELETE", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorConfig, "DELETE", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorConfig, "DELETE", ORG_PARAMS, None, "devtable", 404),
+    # OrgMirrorSyncNow POST
+    (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, None, 401),
+    (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, "devtable", 501),
+    # OrgMirrorSyncCancel POST
+    (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, None, 401),
+    (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, "devtable", 501),
+    # OrgMirrorVerify POST
+    (OrgMirrorVerify, "POST", ORG_PARAMS, None, None, 401),
+    (OrgMirrorVerify, "POST", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorVerify, "POST", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorVerify, "POST", ORG_PARAMS, None, "devtable", 501),
+    # OrgMirrorRepositories GET
+    (OrgMirrorRepositories, "GET", ORG_PARAMS, None, None, 401),
+    (OrgMirrorRepositories, "GET", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorRepositories, "GET", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorRepositories, "GET", ORG_PARAMS, None, "devtable", 501),
 ]
 
 

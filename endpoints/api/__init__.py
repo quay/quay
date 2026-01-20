@@ -764,6 +764,7 @@ import endpoints.api.logs
 import endpoints.api.manifest
 import endpoints.api.mirror
 import endpoints.api.namespacequota
+import endpoints.api.org_mirror
 import endpoints.api.organization
 import endpoints.api.permission
 import endpoints.api.policy

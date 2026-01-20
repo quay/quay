@@ -125,6 +125,9 @@ SECURITY_NOTIFICATIONS: FeatureNameValue
 # Repository mirror
 REPO_MIRROR: FeatureNameValue
 
+# Organization-level repository mirror
+ORG_MIRROR: FeatureNameValue
+
 # Site key and secret key for using recaptcha.
 RECAPTCHA: FeatureNameValue
 

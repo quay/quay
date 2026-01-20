@@ -249,6 +249,7 @@ from data.model import (
     namespacequota,
     notification,
     oauth,
+    org_mirror,
     organization,
     organization_skus,
     permission,
