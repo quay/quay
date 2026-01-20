@@ -38,6 +38,7 @@ from data.model.oci.tag import (
     retarget_tag,
     set_tag_expiration_for_manifest,
     set_tag_immutable,
+    set_tags_immutability_for_manifest,
 )
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.model.repository import create_repository, get_repository
@@ -1013,3 +1014,95 @@ class TestDeleteTagsForManifestImmutable:
 
         # v1.0 should still exist
         assert get_tag(repo.id, "v1.0") is not None
+
+
+class TestSetTagsImmutabilityForManifest:
+    def test_sets_all_alive_tags_immutable(self, initialized_db):
+        """Test that all alive tags for a manifest are set immutable."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create multiple tags pointing to same manifest
+        tag1 = retarget_tag("v1.0", manifest.id)
+        tag2 = retarget_tag("v2.0", manifest.id)
+
+        # Verify tags are not immutable
+        assert not tag1.immutable
+        assert not tag2.immutable
+
+        # Set all tags for manifest as immutable
+        count = set_tags_immutability_for_manifest(manifest.id, True)
+
+        # Verify count and immutability
+        assert count == 2
+        assert Tag.get_by_id(tag1.id).immutable is True
+        assert Tag.get_by_id(tag2.id).immutable is True
+
+    def test_does_not_update_expired_tags(self, initialized_db):
+        """Test that expired tags are not updated."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create a tag and then expire it
+        tag = retarget_tag("v1.0", manifest.id)
+        now_ms = get_epoch_timestamp_ms()
+        Tag.update(lifetime_end_ms=now_ms - 1000).where(Tag.id == tag.id).execute()
+
+        # Set immutability for manifest
+        count = set_tags_immutability_for_manifest(manifest.id, True)
+
+        # Expired tag should not be updated
+        assert count == 0
+        assert Tag.get_by_id(tag.id).immutable is False
+
+    def test_does_not_update_hidden_tags(self, initialized_db):
+        """Test that hidden (temp) tags are not updated."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # Create a temporary (hidden) tag
+        temp_tag = create_temporary_tag_if_necessary(manifest, 3600)
+        assert temp_tag.hidden
+
+        # Set immutability for manifest
+        count = set_tags_immutability_for_manifest(manifest.id, True)
+
+        # Hidden tag should not be updated
+        assert count == 0
+        assert Tag.get_by_id(temp_tag.id).immutable is False
+
+    def test_returns_count_of_updated_tags(self, initialized_db):
+        """Test return value is count of updated tags."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        # No tags initially
+        count = set_tags_immutability_for_manifest(manifest.id, True)
+        assert count == 0
+
+        # Add one tag
+        tag1 = retarget_tag("v1.0", manifest.id)
+        count = set_tags_immutability_for_manifest(manifest.id, True)
+        assert count == 1
+
+        # Add another tag
+        Tag.update(immutable=False).where(Tag.id == tag1.id).execute()
+        retarget_tag("v2.0", manifest.id)
+        count = set_tags_immutability_for_manifest(manifest.id, True)
+        assert count == 2
+
+    def test_can_set_immutable_false(self, initialized_db):
+        """Test that immutability can be removed from tags."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        tag = retarget_tag("v1.0", manifest.id)
+
+        # First make immutable
+        set_tags_immutability_for_manifest(manifest.id, True)
+        assert Tag.get_by_id(tag.id).immutable is True
+
+        # Then remove immutability
+        count = set_tags_immutability_for_manifest(manifest.id, False)
+        assert count == 1
+        assert Tag.get_by_id(tag.id).immutable is False

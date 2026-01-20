@@ -215,6 +215,68 @@ def test_manifest_label_handlers(registry_model):
     assert updated_tag.lifetime_end_ts == (updated_tag.lifetime_start_ts + (60 * 60 * 2))
 
 
+def test_immutable_label_handler(registry_model):
+    """Test that quay.immutable=true label sets tag as immutable."""
+    repo = model.repository.get_repository("devtable", "simple")
+    repository_ref = RepositoryReference.for_repo_obj(repo)
+    found_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    found_manifest = registry_model.get_manifest_for_tag(found_tag)
+
+    # Ensure tag is not immutable
+    assert not found_tag.immutable
+
+    # Create label with quay.immutable=true
+    registry_model.create_manifest_label(found_manifest, "quay.immutable", "true", "api")
+
+    # Ensure tag is now immutable
+    updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert updated_tag.immutable
+
+
+@pytest.mark.parametrize(
+    "label_value",
+    ["True", "TRUE", " true ", " TRUE "],
+)
+def test_immutable_label_case_insensitive(registry_model, label_value):
+    """Test quay.immutable label works with various case formats."""
+    repo = model.repository.get_repository("devtable", "simple")
+    repository_ref = RepositoryReference.for_repo_obj(repo)
+    found_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    found_manifest = registry_model.get_manifest_for_tag(found_tag)
+
+    # Ensure tag is not immutable initially
+    assert not found_tag.immutable
+
+    # Create label with various case/whitespace formats
+    registry_model.create_manifest_label(found_manifest, "quay.immutable", label_value, "api")
+
+    # Ensure tag is now immutable
+    updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert updated_tag.immutable
+
+
+@pytest.mark.parametrize(
+    "label_value",
+    ["false", "False", "FALSE", "0", "no", "", "anything", "yes"],
+)
+def test_immutable_label_false_does_not_set(registry_model, label_value):
+    """Test quay.immutable with non-true values does NOT set immutability."""
+    repo = model.repository.get_repository("devtable", "simple")
+    repository_ref = RepositoryReference.for_repo_obj(repo)
+    found_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    found_manifest = registry_model.get_manifest_for_tag(found_tag)
+
+    # Ensure tag is not immutable initially
+    assert not found_tag.immutable
+
+    # Create label with non-true value
+    registry_model.create_manifest_label(found_manifest, "quay.immutable", label_value, "api")
+
+    # Ensure tag is still NOT immutable
+    updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert not updated_tag.immutable
+
+
 def test_batch_labels(registry_model):
     repo = model.repository.get_repository("devtable", "history")
     repository_ref = RepositoryReference.for_repo_obj(repo)

@@ -612,6 +612,24 @@ def set_tag_expiration_for_manifest(manifest_id, expiration_datetime):
     return tags
 
 
+def set_tags_immutability_for_manifest(manifest_id, immutable):
+    """
+    Sets immutability on all alive tags pointing to the manifest.
+
+    Returns the count of updated tags.
+    """
+    now_ms = get_epoch_timestamp_ms()
+    return (
+        Tag.update(immutable=immutable)
+        .where(
+            Tag.manifest == manifest_id,
+            Tag.hidden == False,
+            (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
+        )
+        .execute()
+    )
+
+
 def change_tag_expiration(tag_id, expiration_datetime):
     """
     Changes the expiration of the specified tag to the given expiration datetime.

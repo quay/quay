@@ -722,6 +722,13 @@ class OCIModel(RegistryDataInterface):
         with db_disallow_replica_use():
             oci.tag.set_tag_expiration_sec_for_manifest(manifest._db_id, expiration_sec)
 
+    def set_tags_immutability_for_manifest(self, manifest, immutable):
+        """
+        Sets the immutability status of all alive tags pointing to the given manifest.
+        """
+        with db_disallow_replica_use():
+            oci.tag.set_tags_immutability_for_manifest(manifest._db_id, immutable)
+
     def get_schema1_parsed_manifest(
         self, manifest, namespace_name, repo_name, tag_name, storage, raise_on_error=False
     ):
