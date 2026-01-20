@@ -118,3 +118,54 @@ export async function pushMultiArchImage(
     `skopeo copy --all docker://${sourceImage} docker://${targetImage} --dest-tls-verify=false --dest-creds=${username}:${password}`,
   );
 }
+
+/**
+ * Push an image with known vulnerabilities to the registry.
+ *
+ * @example
+ * ```typescript
+ * await pushVulnerableImage('myorg', 'myrepo', 'vulns', 'testuser', 'password');
+ * ```
+ */
+export async function pushVulnerableImage(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  const runtime = await detectContainerRuntime();
+  if (!runtime) {
+    throw new Error('No container runtime available (podman or docker)');
+  }
+
+  const targetImage = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
+  const tlsFlag = runtime === 'podman' ? '--tls-verify=false' : '';
+
+  // Use UBI8 8.1 - an older image with known CVEs that Clair will detect
+  const sourceImage = 'registry.access.redhat.com/ubi8/ubi:8.1';
+
+  // Login to registry
+  await execAsync(
+    `${runtime} login ${REGISTRY_HOST} -u ${username} -p ${password} ${tlsFlag}`.trim(),
+  );
+
+  // Only pull if not already cached locally
+  try {
+    await execAsync(`${runtime} image inspect ${sourceImage} >/dev/null 2>&1`);
+  } catch {
+    // Image not found locally, pull it
+    await execAsync(`${runtime} pull ${sourceImage}`);
+  }
+
+  await execAsync(`${runtime} tag ${sourceImage} ${targetImage}`);
+
+  // Push to registry (--remove-signatures needed for signed images like UBI)
+  const sigFlag = runtime === 'podman' ? '--remove-signatures' : '';
+  await execAsync(
+    `${runtime} push ${targetImage} ${tlsFlag} ${sigFlag}`.trim(),
+  );
+
+  // Cleanup local target image (keep source cached for speed)
+  await execAsync(`${runtime} rmi ${targetImage}`);
+}
