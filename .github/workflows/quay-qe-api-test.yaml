@@ -18,10 +18,10 @@ jobs:
       (github.event_name == 'pull_request') ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.pull_request &&
-       contains(github.event.comment.body, '/quay-qe-api-test')) &&
-          (github.event.comment.author_association == 'MEMBER' ||
-           github.event.comment.author_association == 'OWNER' ||          
-           github.event.comment.author_association == 'COLLABORATOR')) 
+       contains(github.event.comment.body, '/quay-qe-api-test') &&
+       (github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'OWNER' ||          
+        github.event.comment.author_association == 'COLLABORATOR'))
     steps:
       - name: React to comment
         if: github.event_name == 'issue_comment'
@@ -41,12 +41,12 @@ jobs:
           # For issue_comment trigger, checkout the PR head ref
           ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
 
-      - name: Checkout quay-tests repo
-        uses: actions/checkout@v6
-        with:
-          repository: quay/quay-tests
-          path: quay-tests
-          token: ${{ secrets.QUAY_TESTS_ACCESS_TOKEN }}
+      # - name: Checkout quay-tests repo
+      #   uses: actions/checkout@v6
+      #   with:
+      #     repository: quay/quay-tests
+      #     path: quay-tests
+      #     token: ${{ secrets.QUAY_TESTS_ACCESS_TOKEN }}
 
       - name: Setup Quay
         id: setup-quay
@@ -54,47 +54,49 @@ jobs:
         with:
           extra-config: |
             FEATURE_USER_INITIALIZE: true
+            FEATURE_USER_METADATA: false
+            FEATURE_MAILING: false
           logs-artifact-name: 'quay-debug'
 
       - name: Use Quay Initialize API to create the 1st Super User
         run: |
           curl -X POST ${{ steps.setup-quay.outputs.quay-url }}/api/v1/user/initialize --header 'Content-Type: application/json' \
-          --data '{ "username": "quay", "password": "password", "email": "quayqe@redhat.com", "access_token": true }'
+          --data '{ "username": "admin", "password": "password", "email": "quayqe@redhat.com", "access_token": true }'
 
-      - name: Install Cypress Test Dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y curl gnupg software-properties-common wget xz-utils git jq python3 python3-pip unzip
-          sudo apt-get install -y libgtk-3-0 libgbm-dev libgbm1 libnotify-dev libnss3 libxss1 libasound2 libxtst6 xauth xvfb libx11-xcb1 libdbus-glib-1-2 libxt6
-          sudo ln -sf /usr/bin/python3 /usr/bin/python
+      # - name: Install Cypress Test Dependencies
+      #   run: |
+      #     sudo apt-get update && sudo apt-get install -y curl gnupg software-properties-common wget xz-utils git jq python3 python3-pip unzip
+      #     sudo apt-get install -y libgtk-3-0 libgbm-dev libgbm1 libnotify-dev libnss3 libxss1 libasound2 libxtst6 xauth xvfb libx11-xcb1 libdbus-glib-1-2 libxt6
+      #     sudo ln -sf /usr/bin/python3 /usr/bin/python
 
-      - name: Install Node.js and Yarn
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
-          sudo apt-get install -y nodejs
-          sudo npm install --global yarn
+      # - name: Install Node.js and Yarn
+      #   run: |
+      #     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+      #     sudo apt-get install -y nodejs
+      #     sudo npm install --global yarn
 
-      - name: Install Google Chrome Stable
-        run: |
-          sudo wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
+      # - name: Install Google Chrome Stable
+      #   run: |
+      #     sudo wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+      #     sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
 
-      - name: Install Terraform
-        run: |
-          sudo wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-          sudo apt-get update && sudo apt-get install -y terraform
+      # - name: Install Terraform
+      #   run: |
+      #     sudo wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+      #     echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+      #     sudo apt-get update && sudo apt-get install -y terraform
 
-      - name: Install ORAS CLI
-        run: |
-          VERSION="1.2.2"
-          curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
-          sudo tar -zxf oras_${VERSION}_linux_amd64.tar.gz -C /usr/local/bin/ oras
+      # - name: Install ORAS CLI
+      #   run: |
+      #     VERSION="1.2.2"
+      #     curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
+      #     sudo tar -zxf oras_${VERSION}_linux_amd64.tar.gz -C /usr/local/bin/ oras
 
       - name: Run Cypress tests
         run: |
           cd quay-tests/quay-api-tests
           export CYPRESS_QUAY_ENDPOINT="${{ steps.setup-quay.outputs.quay-url }}"
-          export CYPRESS_QUAY_USER="quay"
+          export CYPRESS_QUAY_USER="admin"
           export CYPRESS_QUAY_PASSWORD="password"
           yarn install
           NO_COLOR=1 yarn run cypress run --spec "cypress/e2e/quay_api_testing_all.cy.js" --browser chrome --headless --reporter cypress-multi-reporters --reporter-options configFile=reporter-config.json > quay_api_testing_report
