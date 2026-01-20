@@ -3,12 +3,15 @@
 Business logic for organization-level mirror configuration.
 """
 
+import fnmatch
 from datetime import datetime
+from typing import List, Optional, Tuple
 
 from peewee import JOIN, IntegrityError
 
 from data.database import (
     OrgMirrorConfig,
+    OrgMirrorRepoStatus,
     OrgMirrorRepository,
     OrgMirrorStatus,
     SourceRegistryType,
@@ -244,3 +247,113 @@ def delete_org_mirror_config(org):
         config.delete_instance()
 
     return True
+
+
+def matches_repository_filter(repository_name: str, filters: Optional[List[str]]) -> bool:
+    """
+    Check if a repository name matches any of the glob patterns.
+
+    Args:
+        repository_name: Name of the repository to check
+        filters: List of glob patterns (e.g., ["ubuntu", "debian*", "alpine-*"])
+
+    Returns:
+        True if the repository matches any filter, or if filters is empty/None
+    """
+    if not filters:
+        return True  # Empty filters = match all
+
+    return any(fnmatch.fnmatch(repository_name, pattern) for pattern in filters)
+
+
+def get_or_create_org_mirror_repo(
+    config: OrgMirrorConfig,
+    repository_name: str,
+) -> Tuple[OrgMirrorRepository, bool]:
+    """
+    Get or create an OrgMirrorRepository entry for a discovered repository.
+
+    Args:
+        config: The OrgMirrorConfig instance
+        repository_name: Name of the repository (without namespace prefix)
+
+    Returns:
+        Tuple of (OrgMirrorRepository instance, created: bool)
+    """
+    try:
+        return (
+            OrgMirrorRepository.get(
+                (OrgMirrorRepository.org_mirror_config == config)
+                & (OrgMirrorRepository.repository_name == repository_name)
+            ),
+            False,
+        )
+    except OrgMirrorRepository.DoesNotExist:
+        return (
+            OrgMirrorRepository.create(
+                org_mirror_config=config,
+                repository_name=repository_name,
+                discovery_date=datetime.utcnow(),
+                sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+                creation_date=datetime.utcnow(),
+            ),
+            True,
+        )
+
+
+def get_org_mirror_repos(
+    config: OrgMirrorConfig,
+    page: int = 1,
+    limit: int = 100,
+    status_filter: Optional[OrgMirrorRepoStatus] = None,
+) -> Tuple[List[OrgMirrorRepository], int]:
+    """
+    Get a paginated list of discovered repositories for an organization mirror config.
+
+    Args:
+        config: The OrgMirrorConfig instance
+        page: Page number (1-indexed)
+        limit: Number of items per page
+        status_filter: Optional filter by sync status
+
+    Returns:
+        Tuple of (list of OrgMirrorRepository instances, total count)
+    """
+    query = OrgMirrorRepository.select().where(OrgMirrorRepository.org_mirror_config == config)
+
+    if status_filter is not None:
+        query = query.where(OrgMirrorRepository.sync_status == status_filter)
+
+    total = query.count()
+    ordered_query = query.order_by(OrgMirrorRepository.repository_name)  # type: ignore[func-returns-value]
+    repos = list(ordered_query.paginate(page, limit))
+
+    return repos, total
+
+
+def sync_discovered_repos(
+    config: OrgMirrorConfig,
+    discovered_names: List[str],
+) -> Tuple[int, int]:
+    """
+    Sync the discovered repository list with the database.
+
+    Creates new OrgMirrorRepository entries for newly discovered repos.
+    Does NOT delete repos that are no longer in the source (that's a separate operation).
+
+    Args:
+        config: The OrgMirrorConfig instance
+        discovered_names: List of repository names discovered from source
+
+    Returns:
+        Tuple of (total_count, newly_created_count)
+    """
+    newly_created = 0
+
+    with db_transaction():
+        for repo_name in discovered_names:
+            _, created = get_or_create_org_mirror_repo(config, repo_name)
+            if created:
+                newly_created += 1
+
+    return len(discovered_names), newly_created

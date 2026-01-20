@@ -10,6 +10,7 @@ Quay organization.
 import logging
 from datetime import datetime
 
+import requests
 from flask import request
 from flask_restful import abort
 
@@ -33,6 +34,7 @@ from endpoints.api import (
 )
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from util.names import parse_robot_username
+from util.orgmirror import get_registry_adapter
 
 
 def require_org_admin(orgname):
@@ -531,12 +533,20 @@ class OrgMirrorVerify(ApiResource):
         _not_implemented()
 
 
+MAX_PAGE_LIMIT = 500
+DEFAULT_PAGE_LIMIT = 100
+
+
 @resource("/v1/organization/<orgname>/mirror/repositories")
 @path_param("orgname", "The name of the organization")
 @show_if(features.ORG_MIRROR)
 class OrgMirrorRepositories(ApiResource):
     """
-    Resource for listing discovered repositories.
+    Resource for listing discovered repositories from the source registry.
+
+    This endpoint fetches repositories from the configured source registry,
+    applies glob filters, persists them to the database, and returns a
+    paginated list with sync status information.
     """
 
     @require_scope(scopes.ORG_ADMIN)
@@ -544,6 +554,148 @@ class OrgMirrorRepositories(ApiResource):
     def get(self, orgname):
         """
         List all discovered repositories from source namespace.
+
+        Query Parameters:
+            page (int): Page number, default 1
+            limit (int): Items per page, default 100, max 500
+            refresh (bool): If true, fetch fresh data from source registry
+
+        Returns:
+            JSON object with:
+                - repositories: List of repository objects
+                - page: Current page number
+                - limit: Items per page
+                - total: Total number of matching repositories
+                - has_next: Whether there are more pages
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        mirror = model.org_mirror.get_org_mirror_config(org)
+        if not mirror:
+            raise NotFound()
+
+        # Parse pagination parameters
+        page = request.args.get("page", 1, type=int)
+        limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
+        limit = min(limit, MAX_PAGE_LIMIT)  # Cap at max
+        refresh = request.args.get("refresh", "false").lower() == "true"
+
+        if page < 1:
+            page = 1
+        if limit < 1:
+            limit = DEFAULT_PAGE_LIMIT
+
+        # Check if we need to refresh from source registry
+        logger.info(f"SHAON - Checking if we need to refresh from source registry for org {orgname} and refresh is {refresh}")
+        if refresh:
+            self._refresh_from_source(mirror)
+
+        # Fetch from database with pagination
+        logger.info(f"SHAON - Fetching repositories from database for org {orgname} with page {page} and limit {limit}")
+        repos, total = model.org_mirror.get_org_mirror_repos(mirror, page, limit)
+        logger.info(f"SHAON - Found {total} repositories in database for org {orgname}")
+
+        return {
+            "repositories": [
+                {
+                    "name": r.repository_name,
+                    "sync_status": r.sync_status.name,
+                    "discovery_date": self._dt_to_string(r.discovery_date),
+                    "last_sync_date": self._dt_to_string(r.last_sync_date),
+                    "status_message": r.status_message,
+                    "quay_repository": (
+                        f"{orgname}/{r.repository_name}" if r.repository_id else None
+                    ),
+                }
+                for r in repos
+            ],
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "has_next": (page * limit) < total,
+        }
+
+    def _refresh_from_source(self, mirror):
+        """
+        Fetch repositories from source registry and update the database.
+
+        Args:
+            mirror: OrgMirrorConfig instance
+
+        Raises:
+            InvalidRequest: On connection or API errors
+        """
+        # Decrypt credentials
+        try:
+            username = (
+                mirror.external_registry_username.decrypt()
+                if mirror.external_registry_username
+                else None
+            )
+            password = (
+                mirror.external_registry_password.decrypt()
+                if mirror.external_registry_password
+                else None
+            )
+        except DecryptionFailureException as e:
+            logger.warning("Failed to decrypt credentials for mirror config: %s", e)
+            raise InvalidRequest("Failed to decrypt source registry credentials")
+
+        # Create adapter for the source registry type
+        try:
+            adapter = get_registry_adapter(
+                registry_type=mirror.external_registry_type,
+                url=mirror.external_registry_url,
+                namespace=mirror.external_namespace,
+                username=username,
+                password=password,
+                config=mirror.external_registry_config,
+            )
+        except ValueError as e:
+            raise InvalidRequest(str(e))
+
+        # Fetch repositories from source
+        logger.info(f"SHAON - Fetching repositories from source registry for org {mirror.organization.username}")
+        try:
+            all_repos = adapter.list_repositories()
+        except requests.exceptions.Timeout:
+            raise InvalidRequest("Connection to source registry timed out")
+        except requests.exceptions.SSLError as e:
+            raise InvalidRequest(f"SSL error connecting to source registry: {e}")
+        except requests.exceptions.ConnectionError as e:
+            raise InvalidRequest(f"Failed to connect to source registry: {e}")
+        except requests.exceptions.HTTPError as e:
+            raise InvalidRequest(f"Source registry returned error: {e}")
+        except requests.exceptions.RequestException as e:
+            raise InvalidRequest(f"Failed to fetch repositories: {e}")
+
+        logger.info(f"SHAON - Found {len(all_repos)} repositories from source registry for org {mirror.organization.username}")
+
+        # Apply glob filters
+        filters = mirror.repository_filters
+        if filters:
+            all_repos = [
+                r
+                for r in all_repos
+                if model.org_mirror.matches_repository_filter(r, filters)
+            ]
+
+        # Sync to database
+        model.org_mirror.sync_discovered_repos(mirror, all_repos)
+
+        logger.info(
+            "Refreshed %d repositories from source registry for org %s",
+            len(all_repos),
+            mirror.organization.username,
+        )
+
+    def _dt_to_string(self, dt):
+        """Convert DateTime to ISO 8601 formatted string."""
+        if dt is None:
+            return None
+        return dt.isoformat() + "Z"
