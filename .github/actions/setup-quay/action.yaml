@@ -57,11 +57,6 @@ inputs:
     required: false
     default: 'true'
 
-  logs-artifact-name:
-    description: 'Name for debug logs artifact (uploaded on failure)'
-    required: false
-    default: 'quay-debug-logs'
-
 outputs:
   quay-url:
     description: 'URL where Quay is accessible'
@@ -226,34 +221,3 @@ runs:
       run: |
         docker compose up -d mailpit
         echo "Mailpit email server started (SMTP: localhost:1025, Web UI: localhost:8025)"
-
-    - name: Collect debug logs on failure
-      if: failure()
-      shell: bash
-      run: |
-        mkdir -p logs/
-        docker ps -a > logs/container-status.txt 2>&1 || true
-        docker logs quay-quay > logs/quay.log 2>&1 || true
-        docker logs quay-db > logs/quay-db.log 2>&1 || true
-        docker logs quay-redis > logs/redis.log 2>&1 || true
-        if [ "${{ inputs.with-clair }}" = "true" ]; then
-          docker logs quay-clair > logs/clair.log 2>&1 || true
-          docker logs clair-db > logs/clair-db.log 2>&1 || true
-        fi
-        if [ "${{ inputs.with-ldap }}" = "true" ]; then
-          docker logs quay-ldap > logs/ldap.log 2>&1 || true
-        fi
-        if [ "${{ inputs.with-repomirror }}" = "true" ]; then
-          docker logs quay-repomirror > logs/repomirror.log 2>&1 || true
-        fi
-        if [ "${{ inputs.with-mailpit }}" = "true" ]; then
-          docker logs quay-mailpit > logs/mailpit.log 2>&1 || true
-        fi
-
-    - name: Upload debug logs on failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ inputs.logs-artifact-name }}
-        path: logs/
-        retention-days: 7
