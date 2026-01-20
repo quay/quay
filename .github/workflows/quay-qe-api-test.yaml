@@ -52,6 +52,8 @@ jobs:
         id: setup-quay
         uses: ./.github/actions/setup-quay
         with:
+          extra-config: |
+            FEATURE_USER_INITIALIZE: true
           logs-artifact-name: 'quay-debug'
 
       - name: Use Quay Initialize API to create the 1st Super User
