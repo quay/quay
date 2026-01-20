@@ -111,6 +111,15 @@ common_properties = {
         "minimum": 300,
         "description": "Number of seconds mirroring job will run before timing out.",
     },
+    "architecture_filter": {
+        "type": ["array", "null"],
+        "items": {"type": "string"},
+        "description": (
+            "List of architectures to mirror from multi-arch images. "
+            "Empty array or null means mirror all architectures. "
+            "Valid values: amd64, arm64, ppc64le, s390x."
+        ),
+    },
 }
 
 
@@ -225,6 +234,7 @@ class RepoMirrorResource(RepositoryParamResource):
                 "sync_status",
                 "root_rule",
                 "robot_username",
+                "architecture_filter",
             ],
             "properties": common_properties,
         },
@@ -277,6 +287,7 @@ class RepoMirrorResource(RepositoryParamResource):
             "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": rules},
             "robot_username": robot,
             "skopeo_timeout_interval": timeout,
+            "architecture_filter": mirror.architecture_filter or [],
         }
 
     @require_repo_admin(allow_for_superuser=True)
@@ -322,10 +333,21 @@ class RepoMirrorResource(RepositoryParamResource):
         )
         del data["robot_username"]
 
+        # Extract architecture_filter before passing data to enable_mirroring_for_repository
+        arch_filter = data.pop("architecture_filter", None)
+
         mirror = model.repo_mirror.enable_mirroring_for_repository(
             repo, root_rule=rule, internal_robot=robot, **data
         )
         if mirror:
+            # Set architecture filter if provided
+            if arch_filter is not None:
+                try:
+                    model.repo_mirror.validate_architecture_filter(arch_filter)
+                    model.repo_mirror.set_architecture_filter(repo, arch_filter)
+                except ValidationError as e:
+                    return {"detail": str(e)}, 400
+
             track_and_log(
                 "repo_mirror_config_changed",
                 wrap_repository(repo),
@@ -428,6 +450,21 @@ class RepoMirrorResource(RepositoryParamResource):
                     wrap_repository(repo),
                     changed="skopeo_timeout_interval",
                     to=values["skopeo_timeout_interval"],
+                )
+
+        if "architecture_filter" in values:
+            arch_filter = values["architecture_filter"]
+            try:
+                model.repo_mirror.validate_architecture_filter(arch_filter)
+            except ValidationError as e:
+                return {"detail": str(e)}, 400
+
+            if model.repo_mirror.set_architecture_filter(repo, arch_filter or []):
+                track_and_log(
+                    "repo_mirror_config_changed",
+                    wrap_repository(repo),
+                    changed="architecture_filter",
+                    to=arch_filter,
                 )
 
         if "external_registry_username" in values and "external_registry_password" in values:
