@@ -471,3 +471,132 @@ describe('Pull Statistics', () => {
     });
   });
 });
+
+// Sparse Manifest Tests
+describe('Sparse Manifest Display', () => {
+  const createSparseTag = (): Tag => {
+    return {
+      name: 'sparse-tag',
+      is_manifest_list: true,
+      last_modified: 'Thu, 02 Jun 2022 19:12:32 -0000',
+      size: 0,
+      manifest_digest: 'sha256:fd0922d',
+      reversion: false,
+      start_ts: 1654197152,
+      manifest_list: {
+        schemaVersion: 2,
+        mediaType: 'application/vnd.docker.distribution.manifest.list.v2+json',
+        manifests: [
+          {
+            mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+            size: 1000,
+            digest: 'sha256:present123',
+            platform: {os: 'linux', architecture: 'amd64'},
+            security: null,
+            layers: [],
+            is_present: true,
+          },
+          {
+            mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+            size: 1000,
+            digest: 'sha256:missing456',
+            platform: {os: 'linux', architecture: 'arm64'},
+            security: null,
+            layers: [],
+            is_present: false,
+          },
+        ],
+      },
+      is_sparse: true,
+      child_manifest_count: 2,
+      present_child_count: 1,
+      child_manifests_presence: {
+        'sha256:present123': true,
+        'sha256:missing456': false,
+      },
+    };
+  };
+
+  const createNonSparseTag = (): Tag => {
+    return {
+      name: 'complete-tag',
+      is_manifest_list: true,
+      last_modified: 'Thu, 02 Jun 2022 19:12:32 -0000',
+      size: 0,
+      manifest_digest: 'sha256:complete123',
+      reversion: false,
+      start_ts: 1654197152,
+      manifest_list: {
+        schemaVersion: 2,
+        mediaType: 'application/vnd.docker.distribution.manifest.list.v2+json',
+        manifests: [
+          {
+            mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+            size: 1000,
+            digest: 'sha256:present1',
+            platform: {os: 'linux', architecture: 'amd64'},
+            security: null,
+            layers: [],
+            is_present: true,
+          },
+          {
+            mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+            size: 1000,
+            digest: 'sha256:present2',
+            platform: {os: 'linux', architecture: 'arm64'},
+            security: null,
+            layers: [],
+            is_present: true,
+          },
+        ],
+      },
+      is_sparse: false,
+      child_manifest_count: 2,
+      present_child_count: 2,
+      child_manifests_presence: {
+        'sha256:present1': true,
+        'sha256:present2': true,
+      },
+    };
+  };
+
+  test('Should show sparse label for sparse manifest list', async () => {
+    const mockResponse = createTagResponse();
+    mockResponse.tags.push(createSparseTag());
+    (getTags as jest.Mock).mockResolvedValue(mockResponse);
+    (getSecurityDetails as jest.Mock).mockResolvedValue(
+      createSecurityDetailsResponse(),
+    );
+
+    renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
+    expect(await screen.findByText('sparse-tag')).toBeTruthy();
+    expect(await screen.findByTestId('sparse-manifest-label')).toBeTruthy();
+    expect(screen.getByText('Sparse (1/2)')).toBeTruthy();
+  });
+
+  test('Should not show sparse label for complete manifest list', async () => {
+    const mockResponse = createTagResponse();
+    mockResponse.tags.push(createNonSparseTag());
+    (getTags as jest.Mock).mockResolvedValue(mockResponse);
+    (getSecurityDetails as jest.Mock).mockResolvedValue(
+      createSecurityDetailsResponse(),
+    );
+
+    renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
+    expect(await screen.findByText('complete-tag')).toBeTruthy();
+    expect(screen.queryByTestId('sparse-manifest-label')).toBeNull();
+  });
+
+  test('Should not show sparse label for non-manifest-list tag', async () => {
+    const mockResponse = createTagResponse();
+    mockResponse.tags.push(createTag());
+    (getTags as jest.Mock).mockResolvedValue(mockResponse);
+    (getSecurityDetails as jest.Mock).mockResolvedValue(
+      createSecurityDetailsResponse(),
+    );
+
+    renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
+    expect(await screen.findByText('latest')).toBeTruthy();
+    expect(screen.queryByTestId('sparse-manifest-label')).toBeNull();
+  });
+});

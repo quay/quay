@@ -669,3 +669,46 @@ def test_get_or_create_manifest_with_subject(initialized_db):
 
     referrer = referrers[0]
     assert referrer.digest == oci_manifest2.digest
+
+
+def test_is_manifest_present_with_content(initialized_db):
+    """Test is_manifest_present returns True for manifests with content."""
+    from data.model.oci.manifest import is_manifest_present
+
+    # Create a manifest with content
+    repository = create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(repository)
+
+    # A manifest created normally should have content and be present
+    assert is_manifest_present(manifest) is True
+
+
+def test_is_manifest_present_with_empty_content(initialized_db):
+    """Test is_manifest_present returns False for sparse manifests (empty content)."""
+    from data.database import Manifest as ManifestTable
+    from data.model.oci.manifest import is_manifest_present
+
+    # Create a manifest with content first
+    repository = create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(repository)
+
+    # Simulate a sparse manifest by setting manifest_bytes to empty string
+    ManifestTable.update(manifest_bytes="").where(ManifestTable.id == manifest.id).execute()
+
+    # Reload the manifest
+    manifest = ManifestTable.get(ManifestTable.id == manifest.id)
+
+    # A sparse manifest should not be present
+    assert is_manifest_present(manifest) is False
+
+
+def test_is_manifest_present_with_none_bytes(initialized_db):
+    """Test is_manifest_present returns False when manifest_bytes is None."""
+    from data.model.oci.manifest import is_manifest_present
+
+    # Create a mock manifest-like object with None bytes
+    class MockManifest:
+        manifest_bytes = None
+
+    mock_manifest = MockManifest()
+    assert is_manifest_present(mock_manifest) is False

@@ -89,7 +89,17 @@ export default function TagsList(props: TagsProps) {
         tag.manifest_digest,
         true, // include_modelcard
       );
-      tag.manifest_list = JSON.parse(manifestResp.manifest_data);
+      const manifestList = JSON.parse(manifestResp.manifest_data);
+      // Map is_present onto each child manifest using child_manifests_presence
+      if (manifestList.manifests && tag.child_manifests_presence) {
+        manifestList.manifests = manifestList.manifests.map(
+          (m: {digest: string}) => ({
+            ...m,
+            is_present: tag.child_manifests_presence?.[m.digest] ?? true,
+          }),
+        );
+      }
+      tag.manifest_list = manifestList;
     };
 
     let page = 1;
