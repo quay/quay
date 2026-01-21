@@ -7,7 +7,39 @@ from app import model_cache
 from data.database import ProxyCacheConfig, User
 from proxy import Proxy, UpstreamRegistryError
 
+@pytest.mark.e2e
+class TestProxySSLVerifyE2E():
+    def test_insecure_false_with_valid_cert_succeeds(self):
+        config = ProxyCacheConfig(
+            upstream_registry="docker.io",
+            organization=User(username="cache-org", organization=True),
+            insecure=False
+        )
+        try:
+            proxy = Proxy(config, "library/postgres")
+        except UpstreamRegistryError as e:
+             assert False, f"did not expect code to raise exception, got {e}"
+    
+    def test_insecure_true_with_invalid_ssl_succeeds(self):
+        config = ProxyCacheConfig(
+            upstream_registry="docker.io",
+            organization=User(username="cache-org", organization=True),
+            insecure=True
+        )
+        try:
+            proxy = Proxy(config, "library/postgres")
+        except UpstreamRegistryError as e:
+             assert False, f"did not expect code to raise exception, got {e}"
 
+    def test_insecure_false_with_invalid_ssl_fails(self):
+        config = ProxyCacheConfig(
+            upstream_registry="expired.badssl.com",
+            organization=User(username="cache-org", organization=True),
+            insecure=False
+        )
+        with pytest.raises(UpstreamRegistryError):
+            proxy = Proxy(config, "library/postgres")
+        
 @pytest.mark.e2e
 class TestProxyE2E(unittest.TestCase):
     media_type = "application/vnd.docker.distribution.manifest.v2+json"
