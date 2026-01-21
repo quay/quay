@@ -966,7 +966,9 @@ class TestVerifyOrgMirrorConnection:
         # Verify connection (quay.io/projectquay is a public org that exists)
         with client_with_identity("devtable", app) as cl:
             params = {"orgname": "buynlarge"}
-            result = conduct_api_call(cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200).json
+            result = conduct_api_call(
+                cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200
+            ).json
             assert result["success"] is True
             assert "successful" in result["message"].lower()
 
@@ -996,7 +998,9 @@ class TestVerifyOrgMirrorConnection:
         # Verify connection should fail
         with client_with_identity("devtable", app) as cl:
             params = {"orgname": "buynlarge"}
-            result = conduct_api_call(cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200).json
+            result = conduct_api_call(
+                cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200
+            ).json
             assert result["success"] is False
             assert "not found" in result["message"].lower()
 
@@ -1078,10 +1082,173 @@ class TestVerifyOrgMirrorConnection:
         # Verify connection should fail due to connection error
         with client_with_identity("devtable", app) as cl:
             params = {"orgname": "buynlarge"}
-            result = conduct_api_call(cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200).json
+            result = conduct_api_call(
+                cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200
+            ).json
             assert result["success"] is False
             # Should contain connection error message
             assert "error" in result["message"].lower() or "connection" in result["message"].lower()
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+
+class TestSyncNow:
+    """Tests for POST /v1/organization/<orgname>/mirror/sync-now endpoint."""
+
+    def test_sync_now_success(self, app):
+        """
+        Test triggering immediate sync successfully.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create a config first
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_type": "harbor",
+                "external_registry_url": "https://harbor.example.com",
+                "external_namespace": "my-project",
+                "robot_username": "buynlarge+coolrobot",
+                "visibility": "private",
+                "sync_interval": 3600,
+                "sync_start_date": "2025-01-01T00:00:00Z",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+        # Trigger sync-now
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            conduct_api_call(cl, org_mirror.OrgMirrorSyncNow, "POST", params, None, 204)
+
+        # Verify status changed to SYNC_NOW
+        org = model.organization.get_organization("buynlarge")
+        config = model.org_mirror.get_org_mirror_config(org)
+        from data.database import OrgMirrorStatus
+
+        assert config.sync_status == OrgMirrorStatus.SYNC_NOW
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_sync_now_no_config(self, app):
+        """
+        Test sync-now returns 404 when no config exists.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            conduct_api_call(cl, org_mirror.OrgMirrorSyncNow, "POST", params, None, 404)
+
+    def test_sync_now_fails_when_syncing(self, app):
+        """
+        Test sync-now returns error when already syncing.
+        """
+        from data.database import OrgMirrorStatus, SourceRegistryType, Visibility
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create a config in SYNCING state
+        org = model.organization.get_organization("buynlarge")
+        robot = model.user.lookup_robot("buynlarge+coolrobot")
+        config = model.org_mirror.create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="project",
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date=datetime.now(),
+            is_enabled=True,
+        )
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.save()
+
+        # Try to trigger sync-now - should fail
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            conduct_api_call(cl, org_mirror.OrgMirrorSyncNow, "POST", params, None, 400)
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+
+class TestSyncCancel:
+    """Tests for POST /v1/organization/<orgname>/mirror/sync-cancel endpoint."""
+
+    def test_sync_cancel_success(self, app):
+        """
+        Test cancelling ongoing sync successfully.
+        """
+        from data.database import OrgMirrorStatus, SourceRegistryType, Visibility
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create a config in SYNCING state
+        org = model.organization.get_organization("buynlarge")
+        robot = model.user.lookup_robot("buynlarge+coolrobot")
+        config = model.org_mirror.create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="project",
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date=datetime.now(),
+            is_enabled=True,
+        )
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.save()
+
+        # Cancel sync
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            conduct_api_call(cl, org_mirror.OrgMirrorSyncCancel, "POST", params, None, 204)
+
+        # Verify status changed to CANCEL
+        config = model.org_mirror.get_org_mirror_config(org)
+        assert config.sync_status == OrgMirrorStatus.CANCEL
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_sync_cancel_no_config(self, app):
+        """
+        Test sync-cancel returns 404 when no config exists.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            conduct_api_call(cl, org_mirror.OrgMirrorSyncCancel, "POST", params, None, 404)
+
+    def test_sync_cancel_fails_when_not_syncing(self, app):
+        """
+        Test sync-cancel returns error when not syncing.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create a config in NEVER_RUN state
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_type": "harbor",
+                "external_registry_url": "https://harbor.example.com",
+                "external_namespace": "my-project",
+                "robot_username": "buynlarge+coolrobot",
+                "visibility": "private",
+                "sync_interval": 3600,
+                "sync_start_date": "2025-01-01T00:00:00Z",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+        # Try to cancel - should fail since not syncing
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            conduct_api_call(cl, org_mirror.OrgMirrorSyncCancel, "POST", params, None, 400)
 
         # Clean up
         _cleanup_org_mirror_config("buynlarge")

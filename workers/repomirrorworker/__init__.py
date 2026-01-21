@@ -14,8 +14,8 @@ from app import app
 from data import database
 from data.database import (
     OrgMirrorConfig,
-    OrgMirrorRepoStatus,
     OrgMirrorRepository,
+    OrgMirrorRepoStatus,
     OrgMirrorStatus,
     RepoMirrorConfig,
     RepoMirrorStatus,
@@ -50,16 +50,13 @@ from notifications import spawn_notification
 from util.audit import wrap_repository
 from util.orgmirror import get_registry_adapter
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
-<<<<<<< HEAD
 from workers.repomirrorworker.manifest_utils import (
     filter_manifests_by_architecture,
     get_available_architectures,
     get_manifest_media_type,
     is_manifest_list,
 )
-=======
 from workers.repomirrorworker.org_mirror_model import org_mirror_model
->>>>>>> bf4af37c (feat(mirror): extend repomirrorworker for org-level mirroring (PROJQUAY-1266))
 from workers.repomirrorworker.repo_mirror_model import repo_mirror_model as model
 
 logger = logging.getLogger(__name__)
@@ -863,9 +860,7 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
     # Apply glob filters
     filters = claimed_config.repository_filters
     if filters:
-        filtered_repos = [
-            r for r in all_repos if matches_repository_filter(r, filters)
-        ]
+        filtered_repos = [r for r in all_repos if matches_repository_filter(r, filters)]
         logger.info(
             "Filtered %d repositories to %d for org mirror config %s",
             len(all_repos),
@@ -1094,7 +1089,9 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
         return OrgMirrorRepoStatus.FAIL
 
-    dest_server = app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+    dest_server = (
+        app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+    )
     skopeo_timeout = config.skopeo_timeout
 
     for tag in tags:

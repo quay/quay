@@ -76,9 +76,7 @@ class OrgMirrorModel:
         # 4^log10(total) gives us a scalable batch size
         batch_size = int(4 ** log10(max(10, max_id - min_id)))
 
-        iterator = yield_random_entries(
-            batch_query, OrgMirrorConfig.id, batch_size, max_id, min_id
-        )
+        iterator = yield_random_entries(batch_query, OrgMirrorConfig.id, batch_size, max_id, min_id)
 
         return (iterator, OrgMirrorConfigToken(max_id + 1))
 

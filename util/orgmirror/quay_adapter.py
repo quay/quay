@@ -83,9 +83,7 @@ class QuayAdapter(RegistryAdapter):
                         f"Namespace '{self.namespace}' not found on Quay registry"
                     )
                 elif response.status_code == 401:
-                    raise QuayDiscoveryException(
-                        "Authentication failed: invalid credentials"
-                    )
+                    raise QuayDiscoveryException("Authentication failed: invalid credentials")
                 elif response.status_code == 403:
                     raise QuayDiscoveryException(
                         f"Access forbidden to namespace '{self.namespace}'"
@@ -115,21 +113,15 @@ class QuayAdapter(RegistryAdapter):
                 f"SSL certificate verification failed for {self.base_url}", cause=e
             )
         except ProxyError as e:
-            raise QuayDiscoveryException(
-                "Failed to connect through proxy", cause=e
-            )
+            raise QuayDiscoveryException("Failed to connect through proxy", cause=e)
         except ConnectionError as e:
             raise QuayDiscoveryException(
                 f"Failed to connect to Quay registry at {self.base_url}", cause=e
             )
         except Timeout as e:
-            raise QuayDiscoveryException(
-                f"Connection to {self.base_url} timed out", cause=e
-            )
+            raise QuayDiscoveryException(f"Connection to {self.base_url} timed out", cause=e)
         except RequestException as e:
-            raise QuayDiscoveryException(
-                "Unexpected error during repository discovery", cause=e
-            )
+            raise QuayDiscoveryException("Unexpected error during repository discovery", cause=e)
 
         logger.info(
             "Discovered %d repositories from Quay namespace %s",

@@ -12,7 +12,6 @@ from datetime import datetime
 
 import requests
 from flask import request
-from flask_restful import abort
 
 import features
 from auth import scopes
@@ -48,11 +47,6 @@ def require_org_admin(orgname):
 
 
 logger = logging.getLogger(__name__)
-
-
-def _not_implemented():
-    """Return 501 Not Implemented response."""
-    abort(501, message="This endpoint is not yet implemented")
 
 
 @resource("/v1/organization/<orgname>/mirror")
@@ -492,9 +486,34 @@ class OrgMirrorSyncNow(ApiResource):
     def post(self, orgname):
         """
         Trigger immediate discovery and sync for the organization.
+
+        Sets sync_status to SYNC_NOW and sync_start_date to now for
+        immediate pickup by the repomirrorworker.
+
+        Returns 204 on success, 404 if config not found or already syncing.
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        mirror = model.org_mirror.get_org_mirror_config(org)
+        if not mirror:
+            raise NotFound()
+
+        updated = model.org_mirror.update_sync_status_to_sync_now(mirror)
+        if not updated:
+            raise InvalidRequest("Cannot trigger sync: mirror is currently syncing")
+
+        log_action(
+            "org_mirror_sync_now_requested",
+            orgname,
+            {},
+        )
+
+        return "", 204
 
 
 @resource("/v1/organization/<orgname>/mirror/sync-cancel")
@@ -510,9 +529,34 @@ class OrgMirrorSyncCancel(ApiResource):
     def post(self, orgname):
         """
         Cancel ongoing discovery or sync operation.
+
+        Sets sync_status to CANCEL on the config and all in-progress
+        repository syncs. The worker will stop processing on next check.
+
+        Returns 204 on success, 404 if config not found or not syncing.
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        mirror = model.org_mirror.get_org_mirror_config(org)
+        if not mirror:
+            raise NotFound()
+
+        updated = model.org_mirror.update_sync_status_to_cancel(mirror)
+        if not updated:
+            raise InvalidRequest("Cannot cancel: mirror is not currently syncing")
+
+        log_action(
+            "org_mirror_sync_cancelled",
+            orgname,
+            {},
+        )
+
+        return "", 204
 
 
 @resource("/v1/organization/<orgname>/mirror/verify")
@@ -725,9 +769,7 @@ class OrgMirrorRepositories(ApiResource):
         filters = mirror.repository_filters
         if filters:
             all_repos = [
-                r
-                for r in all_repos
-                if model.org_mirror.matches_repository_filter(r, filters)
+                r for r in all_repos if model.org_mirror.matches_repository_filter(r, filters)
             ]
 
         # Sync to database

@@ -3,10 +3,11 @@
 Unit tests for organization mirroring registry adapters.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 import responses
 from requests.exceptions import ConnectionError, SSLError, Timeout
-from unittest.mock import patch, MagicMock
 
 from data.database import SourceRegistryType
 from util.orgmirror import get_registry_adapter
@@ -966,5 +967,6 @@ class TestRetryBehavior:
 
         # The adapter should be an HTTPAdapter
         from requests.adapters import HTTPAdapter
+
         assert isinstance(adapter.session.adapters["https://"], HTTPAdapter)
         assert isinstance(adapter.session.adapters["http://"], HTTPAdapter)

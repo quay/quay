@@ -184,7 +184,13 @@ def test_get_repo(has_tag_manifest, initialized_db, app):
         params = {"repository": "devtable/simple"}
         response = conduct_api_call(cl, Repository, "GET", params).json
         assert response["kind"] == "image"
-        assert response["state"] in ["NORMAL", "MIRROR", "ORG_MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
+        assert response["state"] in [
+            "NORMAL",
+            "MIRROR",
+            "ORG_MIRROR",
+            "READ_ONLY",
+            "MARKED_FOR_DELETION",
+        ]
 
 
 @pytest.mark.parametrize(

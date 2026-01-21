@@ -19,6 +19,7 @@ from data.database import (
 )
 from data.model import DataModelException
 from data.model.org_mirror import (
+    MAX_SYNC_RETRIES,
     claim_org_mirror_repo,
     create_org_mirror_config,
     delete_org_mirror_config,
@@ -29,7 +30,6 @@ from data.model.org_mirror import (
     get_org_mirror_config,
     release_org_mirror_repo,
     update_org_mirror_config,
-    MAX_SYNC_RETRIES,
 )
 from data.model.user import create_robot, create_user_noverify, lookup_robot
 from test.fixtures import *
@@ -1197,3 +1197,229 @@ class TestExpireOrgMirrorRepo:
         assert expired.sync_status == OrgMirrorRepoStatus.NEVER_RUN
         assert expired.sync_expiration_date is None
         assert expired.sync_retries_remaining == MAX_SYNC_RETRIES
+
+
+class TestUpdateSyncStatusToSyncNow:
+    """Tests for update_sync_status_to_sync_now function."""
+
+    def test_sync_now_updates_status(self, initialized_db):
+        """
+        Should update status to SYNC_NOW and set sync_start_date to now.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Start with NEVER_RUN status
+        assert config.sync_status == OrgMirrorStatus.NEVER_RUN
+
+        before = datetime.utcnow()
+        result = update_sync_status_to_sync_now(config)
+        after = datetime.utcnow()
+
+        assert result is not None
+        assert result.sync_status == OrgMirrorStatus.SYNC_NOW
+        assert result.sync_start_date >= before
+        assert result.sync_start_date <= after
+        assert result.sync_expiration_date is None
+        assert result.sync_retries_remaining >= 1
+
+    def test_sync_now_fails_when_syncing(self, initialized_db):
+        """
+        Should return None if config is already SYNCING.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Set to SYNCING
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.save()
+
+        result = update_sync_status_to_sync_now(config)
+
+        assert result is None
+
+    def test_sync_now_restores_retries(self, initialized_db):
+        """
+        Should restore retries to at least 1 if zero.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Exhaust retries
+        config.sync_retries_remaining = 0
+        config.sync_status = OrgMirrorStatus.FAIL
+        config.save()
+
+        result = update_sync_status_to_sync_now(config)
+
+        assert result is not None
+        assert result.sync_retries_remaining >= 1
+
+    def test_sync_now_also_updates_repos(self, initialized_db):
+        """
+        Should update all repos (except SYNCING) to SYNC_NOW status.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test4")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create repos in various states
+        syncing_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="syncing-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+        never_run_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="never-run-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+        fail_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="fail-repo",
+            sync_status=OrgMirrorRepoStatus.FAIL,
+        )
+        success_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="success-repo",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+
+        before = datetime.utcnow()
+        result = update_sync_status_to_sync_now(config)
+        after = datetime.utcnow()
+
+        assert result is not None
+        assert result.sync_status == OrgMirrorStatus.SYNC_NOW
+
+        # Verify repos are updated appropriately
+        syncing_repo = OrgMirrorRepository.get_by_id(syncing_repo.id)
+        never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
+        fail_repo = OrgMirrorRepository.get_by_id(fail_repo.id)
+        success_repo = OrgMirrorRepository.get_by_id(success_repo.id)
+
+        # SYNCING repo should be left alone
+        assert syncing_repo.sync_status == OrgMirrorRepoStatus.SYNCING
+
+        # All other repos should be set to SYNC_NOW with updated start date
+        assert never_run_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert never_run_repo.sync_start_date >= before
+        assert never_run_repo.sync_start_date <= after
+
+        assert fail_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert success_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+
+
+class TestUpdateSyncStatusToCancel:
+    """Tests for update_sync_status_to_cancel function."""
+
+    def test_cancel_when_syncing(self, initialized_db):
+        """
+        Should cancel when status is SYNCING.
+        """
+        from data.model.org_mirror import update_sync_status_to_cancel
+
+        org, robot = _create_org_and_robot("cancel_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Set to SYNCING
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        result = update_sync_status_to_cancel(config)
+
+        assert result is not None
+        assert result.sync_status == OrgMirrorStatus.CANCEL
+        assert result.sync_expiration_date is None
+        assert result.sync_retries_remaining == 0
+
+    def test_cancel_when_sync_now(self, initialized_db):
+        """
+        Should cancel when status is SYNC_NOW.
+        """
+        from data.model.org_mirror import update_sync_status_to_cancel
+
+        org, robot = _create_org_and_robot("cancel_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Set to SYNC_NOW
+        config.sync_status = OrgMirrorStatus.SYNC_NOW
+        config.save()
+
+        result = update_sync_status_to_cancel(config)
+
+        assert result is not None
+        assert result.sync_status == OrgMirrorStatus.CANCEL
+
+    def test_cancel_fails_when_not_syncing(self, initialized_db):
+        """
+        Should return None if not in a cancellable state.
+        """
+        from data.model.org_mirror import update_sync_status_to_cancel
+
+        org, robot = _create_org_and_robot("cancel_test3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Status is NEVER_RUN (not cancellable)
+        assert config.sync_status == OrgMirrorStatus.NEVER_RUN
+
+        result = update_sync_status_to_cancel(config)
+
+        assert result is None
+
+    def test_cancel_also_cancels_repos(self, initialized_db):
+        """
+        Should cancel repos that are NOT SYNCING.
+        Repos actively being synced (SYNCING) are left alone to complete.
+        """
+        from data.model.org_mirror import update_sync_status_to_cancel
+
+        org, robot = _create_org_and_robot("cancel_test4")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create repos in various states
+        syncing_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="syncing-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+        sync_now_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="sync-now-repo",
+            sync_status=OrgMirrorRepoStatus.SYNC_NOW,
+        )
+        never_run_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="never-run-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        # Set config to SYNCING
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.save()
+
+        result = update_sync_status_to_cancel(config)
+
+        assert result is not None
+        assert result.sync_status == OrgMirrorStatus.CANCEL
+
+        # Verify repos are cancelled appropriately
+        syncing_repo = OrgMirrorRepository.get_by_id(syncing_repo.id)
+        sync_now_repo = OrgMirrorRepository.get_by_id(sync_now_repo.id)
+        never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
+
+        # SYNCING repos are left alone to complete
+        assert syncing_repo.sync_status == OrgMirrorRepoStatus.SYNCING
+        # All other repos are cancelled
+        assert sync_now_repo.sync_status == OrgMirrorRepoStatus.CANCEL
+        assert never_run_repo.sync_status == OrgMirrorRepoStatus.CANCEL

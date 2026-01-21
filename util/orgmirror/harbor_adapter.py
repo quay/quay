@@ -84,9 +84,7 @@ class HarborAdapter(RegistryAdapter):
                         f"Project '{self.namespace}' not found on Harbor registry"
                     )
                 elif response.status_code == 401:
-                    raise HarborDiscoveryException(
-                        "Authentication failed: invalid credentials"
-                    )
+                    raise HarborDiscoveryException("Authentication failed: invalid credentials")
                 elif response.status_code == 403:
                     raise HarborDiscoveryException(
                         f"Access forbidden to project '{self.namespace}'"
@@ -124,21 +122,15 @@ class HarborAdapter(RegistryAdapter):
                 f"SSL certificate verification failed for {self.base_url}", cause=e
             )
         except ProxyError as e:
-            raise HarborDiscoveryException(
-                "Failed to connect through proxy", cause=e
-            )
+            raise HarborDiscoveryException("Failed to connect through proxy", cause=e)
         except ConnectionError as e:
             raise HarborDiscoveryException(
                 f"Failed to connect to Harbor registry at {self.base_url}", cause=e
             )
         except Timeout as e:
-            raise HarborDiscoveryException(
-                f"Connection to {self.base_url} timed out", cause=e
-            )
+            raise HarborDiscoveryException(f"Connection to {self.base_url} timed out", cause=e)
         except RequestException as e:
-            raise HarborDiscoveryException(
-                "Unexpected error during repository discovery", cause=e
-            )
+            raise HarborDiscoveryException("Unexpected error during repository discovery", cause=e)
 
         logger.info(
             "Discovered %d repositories from Harbor project %s",
