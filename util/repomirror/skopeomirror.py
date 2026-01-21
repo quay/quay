@@ -91,6 +91,65 @@ class SkopeoMirror(object):
 
         return SkopeoResults(result.success, all_tags, result.stdout, result.stderr)
 
+    def inspect_raw(
+        self,
+        image: str,
+        timeout: int,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        verify_tls: bool = True,
+        proxy: Optional[dict[str, str]] = None,
+        verbose_logs: bool = False,
+    ) -> SkopeoResults:
+        """
+        Fetch the raw manifest (or manifest list) for an image.
+        Uses: skopeo inspect --raw docker://image
+        """
+        args = ["/usr/bin/skopeo"]
+        if verbose_logs:
+            args = args + ["--debug"]
+        args = args + ["inspect", "--raw", "--tls-verify=%s" % verify_tls]
+        args = args + self.external_registry_credentials("--creds", username, password)
+        args = args + [image]
+        return self.run_skopeo(args, proxy or {}, timeout)
+
+    def copy_by_digest(
+        self,
+        src_image_with_digest: str,
+        dest_image_with_digest: str,
+        timeout: int,
+        src_tls_verify: bool = True,
+        dest_tls_verify: bool = True,
+        src_username: Optional[str] = None,
+        src_password: Optional[str] = None,
+        dest_username: Optional[str] = None,
+        dest_password: Optional[str] = None,
+        proxy: Optional[dict[str, str]] = None,
+        verbose_logs: bool = False,
+        unsigned_images: bool = False,
+    ) -> SkopeoResults:
+        """
+        Copy a specific manifest by digest (no --all flag).
+        """
+        args = ["/usr/bin/skopeo"]
+        if verbose_logs:
+            args = args + ["--debug"]
+        if unsigned_images:
+            args = args + ["--insecure-policy"]
+        args = args + [
+            "copy",
+            "--preserve-digests",
+            "--remove-signatures",
+            "--src-tls-verify=%s" % src_tls_verify,
+            "--dest-tls-verify=%s" % dest_tls_verify,
+        ]
+        args = args + self.external_registry_credentials(
+            "--dest-creds", dest_username, dest_password
+        )
+        args = args + self.external_registry_credentials("--src-creds", src_username, src_password)
+        args = args + [quote(src_image_with_digest), quote(dest_image_with_digest)]
+        return self.run_skopeo(args, proxy or {}, timeout)
+
     def external_registry_credentials(
         self, arg: str, username: Optional[str], password: Optional[str]
     ) -> list[str]:
