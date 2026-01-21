@@ -526,7 +526,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 ManifestSecurityStatus.delete().where(
                     ManifestSecurityStatus.manifest == candidate
                 ).execute()
-                ManifestSecurityStatus.create(
+                ManifestSecurityStatus.insert(
                     manifest=candidate,
                     repository=candidate.repository,
                     error_json=report["err"],
@@ -534,7 +534,16 @@ class V4SecurityScanner(SecurityScannerInterface):
                     indexer_hash=state,
                     indexer_version=IndexerVersion.V4,
                     metadata_json={},
-                )
+                ).on_conflict(
+                    preserve=[
+                        ManifestSecurityStatus.repository,
+                        ManifestSecurityStatus.error_json,
+                        ManifestSecurityStatus.index_status,
+                        ManifestSecurityStatus.indexer_hash,
+                        ManifestSecurityStatus.indexer_version,
+                        ManifestSecurityStatus.metadata_json,
+                    ],
+                ).execute()
 
     def lookup_notification_page(self, notification_id, page_index=None):
         try:
