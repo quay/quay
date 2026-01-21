@@ -12,10 +12,30 @@ from prometheus_client import Gauge
 import features
 from app import app
 from data import database
-from data.database import RepoMirrorConfig, RepoMirrorStatus
+from data.database import (
+    OrgMirrorConfig,
+    OrgMirrorRepoStatus,
+    OrgMirrorRepository,
+    OrgMirrorStatus,
+    RepoMirrorConfig,
+    RepoMirrorStatus,
+    Repository,
+    RepositoryState,
+    Visibility,
+)
 from data.encryption import DecryptionFailureException
 from data.logs_model import logs_model
+from data.model import repository as repository_model
 from data.model.oci.tag import delete_tag, lookup_alive_tags_shallow, retarget_tag
+from data.model.org_mirror import (
+    claim_org_mirror_config,
+    claim_org_mirror_repo,
+    matches_repository_filter,
+    release_org_mirror_config,
+    release_org_mirror_repo,
+    schedule_org_mirror_repos_for_sync,
+    sync_discovered_repos,
+)
 from data.model.repo_mirror import (
     change_retries_remaining,
     change_sync_status,
@@ -28,13 +48,18 @@ from data.registry_model import registry_model
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
 from notifications import spawn_notification
 from util.audit import wrap_repository
+from util.orgmirror import get_registry_adapter
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
+<<<<<<< HEAD
 from workers.repomirrorworker.manifest_utils import (
     filter_manifests_by_architecture,
     get_available_architectures,
     get_manifest_media_type,
     is_manifest_list,
 )
+=======
+from workers.repomirrorworker.org_mirror_model import org_mirror_model
+>>>>>>> bf4af37c (feat(mirror): extend repomirrorworker for org-level mirroring (PROJQUAY-1266))
 from workers.repomirrorworker.repo_mirror_model import repo_mirror_model as model
 
 logger = logging.getLogger(__name__)
@@ -43,6 +68,16 @@ logger = logging.getLogger(__name__)
 unmirrored_repositories = Gauge(
     "quay_repository_rows_unmirrored",
     "number of repositories in the database that have not yet been mirrored",
+)
+
+unmirrored_org_repositories = Gauge(
+    "quay_org_mirror_repositories_unmirrored",
+    "number of org-level mirror repositories in the database that have not yet been mirrored",
+)
+
+pending_org_mirror_discovery = Gauge(
+    "quay_org_mirror_configs_pending_discovery",
+    "number of org-level mirror configs pending repository discovery",
 )
 
 # Used only for testing - should not be set in production
@@ -673,3 +708,624 @@ def emit_log(mirror, log_kind, verb, message, tag=None, tags=None, stdout=None, 
         "repo_mirror_sync_success",
     ):
         spawn_notification(wrap_repository(mirror.repository), log_kind, {"message": message})
+
+
+# ==============================================================================
+# Organization-level Mirror Functions
+# ==============================================================================
+
+
+def process_org_mirror_discovery(token=None):
+    """
+    Performs repository discovery for org-level mirrors whose sync time is due.
+
+    This is Phase 1 of org-level mirroring:
+    1. Find eligible OrgMirrorConfig entries
+    2. For each config, fetch repository list from source registry
+    3. Apply glob filters and populate OrgMirrorRepository table
+    4. Schedule discovered repos for sync
+
+    Args:
+        token: Optional OrgMirrorConfigToken to resume from previous run
+
+    Returns:
+        Next OrgMirrorConfigToken or None if done
+    """
+    if not features.ORG_MIRROR:
+        logger.debug("Organization mirror disabled; skipping process_org_mirror_discovery")
+        return None
+
+    iterator, next_token = org_mirror_model.configs_to_discover(start_token=token)
+    if not iterator:
+        logger.debug("Found no additional organization mirror configs for discovery")
+        return next_token
+
+    with database.UseThenDisconnect(app.config):
+        for org_mirror_config, abt, num_remaining in iterator:
+            try:
+                perform_org_mirror_discovery(org_mirror_config)
+            except PreemptedException:
+                logger.info(
+                    "Another worker pre-empted us for org mirror config: %s",
+                    org_mirror_config.id,
+                )
+                abt.set()
+            except Exception as e:
+                logger.exception("Organization Mirror discovery failed: %s" % e)
+                # Continue to next config instead of returning
+                continue
+
+            pending_org_mirror_discovery.set(num_remaining)
+
+    return next_token
+
+
+def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
+    """
+    Perform repository discovery for a single org-level mirror config.
+
+    Fetches repository list from source registry, applies filters,
+    and populates OrgMirrorRepository table.
+
+    Args:
+        org_mirror_config: The OrgMirrorConfig to discover repos for
+
+    Raises:
+        PreemptedException: If another worker claimed this config first
+    """
+    # Claim the config for this worker
+    claimed_config = claim_org_mirror_config(org_mirror_config)
+    if not claimed_config:
+        raise PreemptedException
+
+    org_name = claimed_config.organization.username
+
+    logger.info(
+        "Starting repository discovery for org mirror: %s (config_id=%s)",
+        org_name,
+        claimed_config.id,
+    )
+
+    # Emit log for discovery start
+    _emit_org_config_log(
+        claimed_config,
+        "org_mirror_sync_started",
+        "start",
+        f"Starting repository discovery for organization '{org_name}'",
+    )
+
+    # Get credentials for source registry
+    username = None
+    password = None
+    try:
+        if claimed_config.external_registry_username:
+            username = claimed_config.external_registry_username.decrypt()
+        if claimed_config.external_registry_password:
+            password = claimed_config.external_registry_password.decrypt()
+    except DecryptionFailureException as e:
+        logger.error(
+            "Failed to decrypt credentials for org mirror config %s: %s",
+            claimed_config.id,
+            e,
+        )
+        _emit_org_config_log(
+            claimed_config,
+            "org_mirror_sync_failed",
+            "end",
+            f"Failed to decrypt source registry credentials: {e}",
+        )
+        release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        return
+
+    # Create registry adapter
+    try:
+        adapter = get_registry_adapter(
+            registry_type=claimed_config.external_registry_type,
+            url=claimed_config.external_registry_url,
+            namespace=claimed_config.external_namespace,
+            username=username,
+            password=password,
+            config=claimed_config.external_registry_config,
+        )
+    except ValueError as e:
+        logger.error(
+            "Failed to create registry adapter for org mirror config %s: %s",
+            claimed_config.id,
+            e,
+        )
+        _emit_org_config_log(
+            claimed_config,
+            "org_mirror_sync_failed",
+            "end",
+            f"Failed to create registry adapter: {e}",
+        )
+        release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        return
+
+    # Fetch repositories from source
+    try:
+        all_repos = adapter.list_repositories()
+    except Exception as e:
+        logger.error(
+            "Failed to list repositories from source registry for org mirror config %s: %s",
+            claimed_config.id,
+            e,
+        )
+        _emit_org_config_log(
+            claimed_config,
+            "org_mirror_sync_failed",
+            "end",
+            f"Failed to fetch repositories from source: {e}",
+        )
+        release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        return
+
+    # Apply glob filters
+    filters = claimed_config.repository_filters
+    if filters:
+        filtered_repos = [
+            r for r in all_repos if matches_repository_filter(r, filters)
+        ]
+        logger.info(
+            "Filtered %d repositories to %d for org mirror config %s",
+            len(all_repos),
+            len(filtered_repos),
+            claimed_config.id,
+        )
+    else:
+        filtered_repos = all_repos
+
+    # Sync to database
+    total_count, newly_created = sync_discovered_repos(claimed_config, filtered_repos)
+
+    logger.info(
+        "Discovery complete for org mirror %s: %d repos discovered, %d newly created",
+        org_name,
+        total_count,
+        newly_created,
+    )
+
+    # Schedule newly discovered repos for sync
+    scheduled_count = schedule_org_mirror_repos_for_sync(claimed_config)
+
+    logger.info(
+        "Scheduled %d repositories for sync for org mirror %s",
+        scheduled_count,
+        org_name,
+    )
+
+    # Emit success log
+    _emit_org_config_log(
+        claimed_config,
+        "org_mirror_sync_success",
+        "end",
+        f"Discovery completed: {total_count} repos discovered, {newly_created} new, {scheduled_count} scheduled for sync",
+    )
+
+    # Release the config
+    release_org_mirror_config(
+        claimed_config,
+        OrgMirrorStatus.SUCCESS,
+        repos_discovered=total_count,
+        repos_created=newly_created,
+    )
+
+
+def _emit_org_config_log(
+    config: OrgMirrorConfig,
+    log_kind: str,
+    verb: str,
+    message: str,
+):
+    """
+    Emit an audit log for an org mirror config operation.
+
+    Args:
+        config: The OrgMirrorConfig
+        log_kind: The log kind (e.g., 'org_mirror_sync_started')
+        verb: The verb for the action
+        message: Human-readable message
+    """
+    org = config.organization
+    logs_model.log_action(
+        log_kind,
+        namespace_name=org.username,
+        performer=config.internal_robot,
+        ip=None,
+        metadata={
+            "message": message,
+            "org_mirror_config_id": config.id,
+            "external_registry_url": config.external_registry_url,
+            "external_namespace": config.external_namespace,
+        },
+    )
+
+
+def process_org_mirrors(skopeo, token=None):
+    """
+    Performs mirroring of org-level mirror repositories whose last sync time is greater than
+    sync interval.
+
+    If a token is provided, scanning will begin where the token indicates it previously completed.
+
+    Args:
+        skopeo: SkopeoMirror instance for image operations
+        token: Optional OrgMirrorToken to resume from previous run
+
+    Returns:
+        Next OrgMirrorToken or None if done
+    """
+    if not features.ORG_MIRROR:
+        logger.debug("Organization mirror disabled; skipping process_org_mirrors")
+        return None
+
+    iterator, next_token = org_mirror_model.repositories_to_mirror(start_token=token)
+    if not iterator:
+        logger.debug("Found no additional organization mirror repositories to sync")
+        return next_token
+
+    with database.UseThenDisconnect(app.config):
+        for org_mirror_repo, abt, num_remaining in iterator:
+            try:
+                perform_org_mirror_repo(skopeo, org_mirror_repo)
+            except PreemptedException:
+                logger.info(
+                    "Another org mirror worker pre-empted us for repository: %s",
+                    org_mirror_repo.id,
+                )
+                abt.set()
+            except Exception as e:
+                logger.exception("Organization Mirror service unavailable: %s" % e)
+                return None
+
+            unmirrored_org_repositories.set(num_remaining)
+
+    return next_token
+
+
+def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepository):
+    """
+    Perform mirror sync for a single org-level mirror repository.
+
+    Syncs all tags from the external repository to the internal Quay repository.
+
+    Args:
+        skopeo: SkopeoMirror instance for image operations
+        org_mirror_repo: The OrgMirrorRepository to sync
+
+    Returns:
+        OrgMirrorRepoStatus indicating the result
+    """
+    verbose_logs = os.getenv("DEBUGLOG", "false").lower() == "true"
+
+    # Claim the repo for this worker
+    claimed_repo = claim_org_mirror_repo(org_mirror_repo)
+    if not claimed_repo:
+        raise PreemptedException
+
+    # Get parent config for credentials and settings
+    config = claimed_repo.org_mirror_config
+    org = config.organization
+
+    # Build external reference
+    external_reference = _build_external_reference(config, claimed_repo.repository_name)
+
+    emit_org_mirror_log(
+        config,
+        claimed_repo,
+        "org_mirror_sync_started",
+        "start",
+        f"Starting sync for '{external_reference}'",
+    )
+
+    # Ensure the local repository exists
+    local_repo = _ensure_local_repository(config, claimed_repo)
+    if not local_repo:
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_failed",
+            "end",
+            f"Failed to create local repository for '{claimed_repo.repository_name}'",
+        )
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        return OrgMirrorRepoStatus.FAIL
+
+    # Fetch all tags from remote
+    tags = []
+    try:
+        tags = _get_all_tags_for_org_mirror(skopeo, config, external_reference)
+    except RepoMirrorSkopeoException as e:
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_failed",
+            "end",
+            f"Failed to list tags for '{external_reference}': {e.message}",
+            stdout=e.stdout,
+            stderr=e.stderr,
+        )
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        return OrgMirrorRepoStatus.FAIL
+    except Exception:
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_failed",
+            "end",
+            f"Internal error listing tags for '{external_reference}'",
+            stderr=traceback.format_exc(),
+        )
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        return OrgMirrorRepoStatus.FAIL
+
+    if not tags:
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_success",
+            "end",
+            f"No tags found for '{external_reference}'",
+        )
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.SUCCESS)
+        return OrgMirrorRepoStatus.SUCCESS
+
+    # Sync each tag
+    overall_status = OrgMirrorRepoStatus.SUCCESS
+    failed_tags = []
+
+    try:
+        username = (
+            config.external_registry_username.decrypt()
+            if config.external_registry_username
+            else None
+        )
+        password = (
+            config.external_registry_password.decrypt()
+            if config.external_registry_password
+            else None
+        )
+    except DecryptionFailureException:
+        logger.exception(
+            "Failed to decrypt credentials for org mirror %s/%s",
+            org.username,
+            claimed_repo.repository_name,
+        )
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        return OrgMirrorRepoStatus.FAIL
+
+    dest_server = app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+    skopeo_timeout = config.skopeo_timeout
+
+    for tag in tags:
+        src_image = f"docker://{external_reference}:{tag}"
+        dest_image = f"docker://{dest_server}/{org.username}/{claimed_repo.repository_name}:{tag}"
+
+        with database.CloseForLongOperation(app.config):
+            result = skopeo.copy(
+                src_image,
+                dest_image,
+                timeout=skopeo_timeout,
+                src_tls_verify=config.external_registry_config.get("verify_tls", True),
+                dest_tls_verify=app.config.get("REPO_MIRROR_TLS_VERIFY", True),
+                src_username=username,
+                src_password=password,
+                dest_username=config.internal_robot.username,
+                dest_password=retrieve_robot_token(config.internal_robot),
+                proxy=config.external_registry_config.get("proxy", {}),
+                verbose_logs=verbose_logs,
+                unsigned_images=config.external_registry_config.get("unsigned_images", False),
+            )
+
+        if not result.success:
+            overall_status = OrgMirrorRepoStatus.FAIL
+            failed_tags.append(tag)
+            logger.info("Org mirror: Source '%s' failed to sync.", src_image)
+        else:
+            logger.info("Org mirror: Source '%s' successful sync.", src_image)
+
+    if overall_status == OrgMirrorRepoStatus.FAIL:
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_failed",
+            "end",
+            f"Sync failed for '{external_reference}': {len(failed_tags)}/{len(tags)} tags failed",
+            tags=", ".join(failed_tags),
+        )
+    else:
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_success",
+            "end",
+            f"Successfully synced '{external_reference}': {len(tags)} tags",
+            tags=", ".join(tags),
+        )
+
+    release_org_mirror_repo(claimed_repo, overall_status)
+    return overall_status
+
+
+def _build_external_reference(config: OrgMirrorConfig, repository_name: str) -> str:
+    """
+    Build the external registry reference for an org mirror repository.
+
+    Args:
+        config: The OrgMirrorConfig containing registry URL and namespace
+        repository_name: The repository name
+
+    Returns:
+        Full external reference (e.g., "registry.example.com/namespace/repo")
+    """
+    url = config.external_registry_url.rstrip("/")
+    # Remove protocol prefix if present
+    if url.startswith("https://"):
+        url = url[8:]
+    elif url.startswith("http://"):
+        url = url[7:]
+
+    return f"{url}/{config.external_namespace}/{repository_name}"
+
+
+def _ensure_local_repository(
+    config: OrgMirrorConfig,
+    org_mirror_repo: OrgMirrorRepository,
+) -> Optional[Repository]:
+    """
+    Ensure the local Quay repository exists for the org mirror repo.
+
+    Creates the repository if it doesn't exist, using the visibility from the config.
+
+    Args:
+        config: The OrgMirrorConfig
+        org_mirror_repo: The OrgMirrorRepository
+
+    Returns:
+        The Repository instance or None if creation failed
+    """
+    org = config.organization
+    repo_name = org_mirror_repo.repository_name
+
+    # Check if repo already linked
+    if org_mirror_repo.repository:
+        return org_mirror_repo.repository
+
+    # Try to find existing repository
+    try:
+        existing_repo = Repository.get(
+            (Repository.namespace_user == org) & (Repository.name == repo_name)
+        )
+        # Link it to the org mirror repo
+        org_mirror_repo.repository = existing_repo
+        org_mirror_repo.save()
+        return existing_repo
+    except Repository.DoesNotExist:
+        pass
+
+    # Create new repository
+    try:
+        visibility_name = config.visibility.name
+        new_repo = repository_model.create_repository(
+            org.username,
+            repo_name,
+            config.internal_robot,
+            visibility=visibility_name,
+            repo_kind="image",
+        )
+        if new_repo:
+            # Set repository state to ORG_MIRROR for org-level mirroring
+            repo_db = Repository.get(Repository.id == new_repo.id)
+            repo_db.state = RepositoryState.ORG_MIRROR
+            repo_db.save()
+
+            # Link to org mirror repo
+            org_mirror_repo.repository = repo_db
+            org_mirror_repo.save()
+
+            logger.info(
+                "Created mirror repository %s/%s for org mirror",
+                org.username,
+                repo_name,
+            )
+            return repo_db
+    except Exception:
+        logger.exception("Failed to create repository %s/%s", org.username, repo_name)
+
+    return None
+
+
+def _get_all_tags_for_org_mirror(
+    skopeo: SkopeoMirror,
+    config: OrgMirrorConfig,
+    external_reference: str,
+) -> list[str]:
+    """
+    Get all tags from the external registry for an org mirror repository.
+
+    Args:
+        skopeo: SkopeoMirror instance
+        config: The OrgMirrorConfig containing credentials
+        external_reference: The full external reference
+
+    Returns:
+        List of tag names
+
+    Raises:
+        RepoMirrorSkopeoException: If skopeo fails to list tags
+    """
+    verbose_logs = os.getenv("DEBUGLOG", "false").lower() == "true"
+
+    username = (
+        config.external_registry_username.decrypt() if config.external_registry_username else None
+    )
+    password = (
+        config.external_registry_password.decrypt() if config.external_registry_password else None
+    )
+
+    skopeo_timeout = config.skopeo_timeout
+
+    with database.CloseForLongOperation(app.config):
+        result = skopeo.tags(
+            f"docker://{external_reference}",
+            timeout=skopeo_timeout,
+            username=username,
+            password=password,
+            verbose_logs=verbose_logs,
+            verify_tls=config.external_registry_config.get("verify_tls", True),
+            proxy=config.external_registry_config.get("proxy", {}),
+        )
+
+    if not result.success:
+        raise RepoMirrorSkopeoException(
+            f"skopeo list-tags failed: {_skopeo_inspect_failure(result)}",
+            result.stdout,
+            result.stderr,
+        )
+
+    return result.tags
+
+
+def emit_org_mirror_log(
+    config: OrgMirrorConfig,
+    org_mirror_repo: OrgMirrorRepository,
+    log_kind: str,
+    verb: str,
+    message: str,
+    tag: Optional[str] = None,
+    tags: Optional[str] = None,
+    stdout: Optional[str] = None,
+    stderr: Optional[str] = None,
+):
+    """
+    Emit a log entry for organization-level mirror operations.
+
+    Args:
+        config: The OrgMirrorConfig
+        org_mirror_repo: The OrgMirrorRepository being processed
+        log_kind: The type of log entry
+        verb: Action verb (start, end, etc.)
+        message: Log message
+        tag: Optional single tag
+        tags: Optional comma-separated list of tags
+        stdout: Optional stdout from skopeo
+        stderr: Optional stderr from skopeo
+    """
+    org = config.organization
+    repo_name = org_mirror_repo.repository_name
+
+    logs_model.log_action(
+        log_kind,
+        namespace_name=org.username,
+        repository_name=repo_name,
+        metadata={
+            "verb": verb,
+            "namespace": org.username,
+            "repo": repo_name,
+            "message": message,
+            "tag": tag,
+            "tags": tags,
+            "stdout": stdout,
+            "stderr": stderr,
+        },
+    )

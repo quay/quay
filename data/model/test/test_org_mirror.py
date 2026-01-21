@@ -19,10 +19,17 @@ from data.database import (
 )
 from data.model import DataModelException
 from data.model.org_mirror import (
+    claim_org_mirror_repo,
     create_org_mirror_config,
     delete_org_mirror_config,
+    expire_org_mirror_repo,
+    get_eligible_org_mirror_repos,
+    get_max_id_for_org_mirror_repo,
+    get_min_id_for_org_mirror_repo,
     get_org_mirror_config,
+    release_org_mirror_repo,
     update_org_mirror_config,
+    MAX_SYNC_RETRIES,
 )
 from data.model.user import create_robot, create_user_noverify, lookup_robot
 from test.fixtures import *
@@ -674,3 +681,519 @@ class TestUpdateOrgMirrorConfig:
         assert updated.visibility.name == "public"
         assert updated.repository_filters == filters
         assert updated.skopeo_timeout == 300
+
+
+class TestGetEligibleOrgMirrorRepos:
+    """Tests for get_eligible_org_mirror_repos function."""
+
+    def test_no_repos_returns_empty(self, initialized_db):
+        """
+        When no OrgMirrorRepository entries exist, return empty result.
+        """
+        result = list(get_eligible_org_mirror_repos())
+        assert result == []
+
+    def test_ready_candidates_returned(self, initialized_db):
+        """
+        Repos with sync_start_date in the past and retries remaining should be returned.
+        """
+        org, robot = _create_org_and_robot("eligible_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create a ready repo (past due, retries remaining, not syncing)
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="ready-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            sync_expiration_date=None,
+        )
+
+        result = list(get_eligible_org_mirror_repos())
+
+        assert len(result) == 1
+        assert result[0].repository_name == "ready-repo"
+
+    def test_sync_now_candidates_returned(self, initialized_db):
+        """
+        Repos with SYNC_NOW status and no expiration should be returned.
+        """
+        org, robot = _create_org_and_robot("eligible_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create a SYNC_NOW repo
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="sync-now-repo",
+            sync_status=OrgMirrorRepoStatus.SYNC_NOW,
+            sync_start_date=None,
+            sync_retries_remaining=3,
+            sync_expiration_date=None,
+        )
+
+        result = list(get_eligible_org_mirror_repos())
+
+        assert len(result) == 1
+        assert result[0].repository_name == "sync-now-repo"
+
+    def test_expired_syncing_candidates_returned(self, initialized_db):
+        """
+        Repos that were syncing but whose expiration has passed (stalled worker) should be returned.
+        """
+        org, robot = _create_org_and_robot("eligible_test3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create an expired syncing repo
+        past_time = datetime.utcnow() - timedelta(hours=2)
+        expired_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="expired-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            sync_expiration_date=expired_time,  # Expired
+        )
+
+        result = list(get_eligible_org_mirror_repos())
+
+        assert len(result) == 1
+        assert result[0].repository_name == "expired-repo"
+
+    def test_currently_syncing_not_returned(self, initialized_db):
+        """
+        Repos currently syncing with valid expiration should not be returned.
+        """
+        org, robot = _create_org_and_robot("eligible_test4")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create a currently syncing repo with future expiration
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        future_time = datetime.utcnow() + timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="syncing-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            sync_expiration_date=future_time,  # Not expired yet
+        )
+
+        result = list(get_eligible_org_mirror_repos())
+
+        assert len(result) == 0
+
+    def test_no_retries_remaining_not_returned(self, initialized_db):
+        """
+        Repos with zero retries remaining should not be returned.
+        """
+        org, robot = _create_org_and_robot("eligible_test5")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create a repo with no retries left
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="no-retries-repo",
+            sync_status=OrgMirrorRepoStatus.FAIL,
+            sync_start_date=past_time,
+            sync_retries_remaining=0,  # No retries
+            sync_expiration_date=None,
+        )
+
+        result = list(get_eligible_org_mirror_repos())
+
+        assert len(result) == 0
+
+    def test_disabled_config_repos_not_returned(self, initialized_db):
+        """
+        Repos from disabled OrgMirrorConfig should not be returned.
+        """
+        org, robot = _create_org_and_robot("eligible_test6")
+        config = _create_org_mirror_config(org, robot, is_enabled=False)  # Disabled
+
+        # Create a ready repo
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="disabled-config-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            sync_expiration_date=None,
+        )
+
+        result = list(get_eligible_org_mirror_repos())
+
+        assert len(result) == 0
+
+    def test_future_start_date_not_returned(self, initialized_db):
+        """
+        Repos with sync_start_date in the future should not be returned.
+        """
+        org, robot = _create_org_and_robot("eligible_test7")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create a repo scheduled for the future
+        future_time = datetime.utcnow() + timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="future-repo",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+            sync_start_date=future_time,  # Not yet due
+            sync_retries_remaining=3,
+            sync_expiration_date=None,
+        )
+
+        result = list(get_eligible_org_mirror_repos())
+
+        assert len(result) == 0
+
+    def test_ordered_by_sync_start_date(self, initialized_db):
+        """
+        Results should be ordered by sync_start_date ascending.
+        """
+        org, robot = _create_org_and_robot("eligible_test8")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create repos with different start dates
+        now = datetime.utcnow()
+        repo3 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-3",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=now - timedelta(hours=1),  # Most recent
+            sync_retries_remaining=3,
+        )
+        repo1 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-1",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=now - timedelta(hours=3),  # Oldest
+            sync_retries_remaining=3,
+        )
+        repo2 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-2",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=now - timedelta(hours=2),  # Middle
+            sync_retries_remaining=3,
+        )
+
+        result = list(get_eligible_org_mirror_repos())
+
+        assert len(result) == 3
+        assert result[0].repository_name == "repo-1"
+        assert result[1].repository_name == "repo-2"
+        assert result[2].repository_name == "repo-3"
+
+    def test_multiple_orgs_eligible_repos(self, initialized_db):
+        """
+        Eligible repos from multiple organizations should all be returned.
+        """
+        org1, robot1 = _create_org_and_robot("eligible_test9a")
+        org2, robot2 = _create_org_and_robot("eligible_test9b")
+        config1 = _create_org_mirror_config(org1, robot1, is_enabled=True)
+        config2 = _create_org_mirror_config(org2, robot2, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+
+        repo1 = OrgMirrorRepository.create(
+            org_mirror_config=config1,
+            repository_name="org1-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+        repo2 = OrgMirrorRepository.create(
+            org_mirror_config=config2,
+            repository_name="org2-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        result = list(get_eligible_org_mirror_repos())
+
+        assert len(result) == 2
+        repo_names = {r.repository_name for r in result}
+        assert repo_names == {"org1-repo", "org2-repo"}
+
+
+class TestGetMinMaxIdForOrgMirrorRepo:
+    """Tests for get_min_id_for_org_mirror_repo and get_max_id_for_org_mirror_repo functions."""
+
+    def test_empty_table_returns_none(self, initialized_db):
+        """
+        When no OrgMirrorRepository entries exist, both functions return None.
+        """
+        # Ensure no repos exist from previous tests by checking result type
+        min_id = get_min_id_for_org_mirror_repo()
+        max_id = get_max_id_for_org_mirror_repo()
+
+        # Both should be None or integers (depending on test isolation)
+        assert min_id is None or isinstance(min_id, int)
+        assert max_id is None or isinstance(max_id, int)
+
+    def test_single_repo_min_equals_max(self, initialized_db):
+        """
+        With a single repo, min and max should be equal.
+        """
+        org, robot = _create_org_and_robot("minmax_test1")
+        config = _create_org_mirror_config(org, robot)
+
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="single-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        min_id = get_min_id_for_org_mirror_repo()
+        max_id = get_max_id_for_org_mirror_repo()
+
+        assert min_id is not None
+        assert max_id is not None
+        assert min_id <= max_id
+
+    def test_multiple_repos_correct_min_max(self, initialized_db):
+        """
+        With multiple repos, min and max should return correct IDs.
+        """
+        org, robot = _create_org_and_robot("minmax_test2")
+        config = _create_org_mirror_config(org, robot)
+
+        repo1 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-a",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+        repo2 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-b",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+        repo3 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-c",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        min_id = get_min_id_for_org_mirror_repo()
+        max_id = get_max_id_for_org_mirror_repo()
+
+        assert min_id is not None
+        assert max_id is not None
+        assert min_id < max_id
+        assert min_id <= repo1.id
+        assert max_id >= repo3.id
+
+
+class TestClaimOrgMirrorRepo:
+    """Tests for claim_org_mirror_repo function."""
+
+    def test_claim_success(self, initialized_db):
+        """
+        Successfully claiming an unclaimed repo should return the updated repo.
+        """
+        org, robot = _create_org_and_robot("claim_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="claim-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            sync_expiration_date=None,
+        )
+        original_transaction_id = repo.sync_transaction_id
+
+        claimed = claim_org_mirror_repo(repo)
+
+        assert claimed is not None
+        assert claimed.id == repo.id
+        assert claimed.sync_status == OrgMirrorRepoStatus.SYNCING
+        assert claimed.sync_expiration_date is not None
+        assert claimed.sync_expiration_date > datetime.utcnow()
+        assert claimed.sync_transaction_id != original_transaction_id
+
+    def test_claim_already_syncing_returns_none(self, initialized_db):
+        """
+        Trying to claim a repo already being synced with valid expiration should return None.
+        """
+        org, robot = _create_org_and_robot("claim_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        future_time = datetime.utcnow() + timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="syncing-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            sync_expiration_date=future_time,  # Valid expiration
+        )
+
+        claimed = claim_org_mirror_repo(repo)
+
+        assert claimed is None
+
+    def test_claim_expired_syncing_succeeds(self, initialized_db):
+        """
+        Claiming a repo that was syncing but expired should succeed after reset.
+        """
+        org, robot = _create_org_and_robot("claim_test3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=2)
+        expired_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="expired-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=past_time,
+            sync_retries_remaining=1,
+            sync_expiration_date=expired_time,  # Expired
+        )
+
+        claimed = claim_org_mirror_repo(repo)
+
+        assert claimed is not None
+        assert claimed.sync_status == OrgMirrorRepoStatus.SYNCING
+        assert claimed.sync_expiration_date > datetime.utcnow()
+
+    def test_claim_concurrent_prevention(self, initialized_db):
+        """
+        Two concurrent claims should result in only one success.
+        """
+        org, robot = _create_org_and_robot("claim_test4")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="concurrent-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            sync_expiration_date=None,
+        )
+
+        # First claim succeeds
+        claimed1 = claim_org_mirror_repo(repo)
+        assert claimed1 is not None
+
+        # Second claim with stale transaction_id should fail
+        # (repo still has old transaction_id)
+        claimed2 = claim_org_mirror_repo(repo)
+        assert claimed2 is None
+
+
+class TestReleaseOrgMirrorRepo:
+    """Tests for release_org_mirror_repo function."""
+
+    def test_release_success(self, initialized_db):
+        """
+        Releasing after successful sync should schedule next sync.
+        """
+        org, robot = _create_org_and_robot("release_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True, sync_interval=3600)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="release-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+
+        released = release_org_mirror_repo(repo, OrgMirrorRepoStatus.SUCCESS)
+
+        assert released is not None
+        assert released.sync_status == OrgMirrorRepoStatus.SUCCESS
+        assert released.sync_expiration_date is None
+        assert released.sync_start_date > datetime.utcnow()  # Scheduled for future
+        assert released.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert released.last_sync_date is not None
+
+    def test_release_fail_decrements_retries(self, initialized_db):
+        """
+        Releasing after failed sync should decrement retries.
+        """
+        org, robot = _create_org_and_robot("release_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True, sync_interval=3600)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="fail-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+
+        released = release_org_mirror_repo(repo, OrgMirrorRepoStatus.FAIL)
+
+        assert released is not None
+        assert released.sync_status == OrgMirrorRepoStatus.FAIL
+        assert released.sync_retries_remaining == 2  # Decremented
+
+    def test_release_fail_exhausted_retries_schedules_next(self, initialized_db):
+        """
+        When retries are exhausted after failure, should schedule next sync anyway.
+        """
+        org, robot = _create_org_and_robot("release_test3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True, sync_interval=3600)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="exhausted-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=past_time,
+            sync_retries_remaining=1,  # Last retry
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+
+        released = release_org_mirror_repo(repo, OrgMirrorRepoStatus.FAIL)
+
+        assert released is not None
+        assert released.sync_status == OrgMirrorRepoStatus.FAIL
+        assert released.sync_retries_remaining == MAX_SYNC_RETRIES  # Reset
+        assert released.sync_start_date > datetime.utcnow()  # Scheduled for future
+
+
+class TestExpireOrgMirrorRepo:
+    """Tests for expire_org_mirror_repo function."""
+
+    def test_expire_resets_repo(self, initialized_db):
+        """
+        Expiring a stalled repo should reset its state.
+        """
+        org, robot = _create_org_and_robot("expire_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=2)
+        expired_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="stalled-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=past_time,
+            sync_retries_remaining=1,
+            sync_expiration_date=expired_time,
+        )
+
+        expired = expire_org_mirror_repo(repo)
+
+        assert expired is not None
+        assert expired.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+        assert expired.sync_expiration_date is None
+        assert expired.sync_retries_remaining == MAX_SYNC_RETRIES

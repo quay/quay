@@ -127,6 +127,8 @@ def upgrade(op, tables, tester):
             sa.Column("sync_status", sa.Integer(), nullable=False, server_default="0"),
             sa.Column("sync_start_date", sa.DateTime(), nullable=True),
             sa.Column("sync_expiration_date", sa.DateTime(), nullable=True),
+            sa.Column("sync_retries_remaining", sa.Integer(), nullable=False, server_default="3"),
+            sa.Column("sync_transaction_id", sa.String(length=36), nullable=True),
             sa.Column("last_sync_date", sa.DateTime(), nullable=True),
             sa.Column("status_message", sa.Text(), nullable=True),
             sa.Column("creation_date", sa.DateTime(), nullable=False),
@@ -239,6 +241,8 @@ def upgrade(op, tables, tester):
             ("repository_name", tester.TestDataType.String),
             ("discovery_date", tester.TestDataType.DateTime),
             ("sync_status", tester.TestDataType.Constant(0)),  # NEVER_RUN
+            ("sync_retries_remaining", tester.TestDataType.Integer),
+            ("sync_transaction_id", tester.TestDataType.String),
             ("creation_date", tester.TestDataType.DateTime),
         ],
     )

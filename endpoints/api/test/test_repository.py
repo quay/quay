@@ -100,7 +100,7 @@ def test_list_repos(initialized_db, app):
         response = conduct_api_call(cl, RepositoryList, "GET", params).json
         repo_states = {r["state"] for r in response["repositories"]}
         for state in repo_states:
-            assert state in ["NORMAL", "MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
+            assert state in ["NORMAL", "MIRROR", "ORG_MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
 
 
 def test_list_starred_app_repos(initialized_db, app):
@@ -184,7 +184,7 @@ def test_get_repo(has_tag_manifest, initialized_db, app):
         params = {"repository": "devtable/simple"}
         response = conduct_api_call(cl, Repository, "GET", params).json
         assert response["kind"] == "image"
-        assert response["state"] in ["NORMAL", "MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
+        assert response["state"] in ["NORMAL", "MIRROR", "ORG_MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
 
 
 @pytest.mark.parametrize(
@@ -193,6 +193,7 @@ def test_get_repo(has_tag_manifest, initialized_db, app):
         (database.RepositoryState.NORMAL, True),
         (database.RepositoryState.READ_ONLY, False),
         (database.RepositoryState.MIRROR, False),
+        (database.RepositoryState.ORG_MIRROR, False),
     ],
 )
 def test_get_repo_state_can_write(state, can_write, initialized_db, app):

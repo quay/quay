@@ -36,6 +36,7 @@ FIELD_ARGS = {"trigger_uuid": "1234", "field_name": "foobar"}
     "state",
     [
         RepositoryState.MIRROR,
+        RepositoryState.ORG_MIRROR,
         RepositoryState.READ_ONLY,
     ],
 )

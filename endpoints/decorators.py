@@ -14,6 +14,7 @@ from app import app, ip_resolver, model_cache, usermanager
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from data.database import RepositoryState
 from data.model import InvalidProxyCacheConfigException, PushesDisabledException
+from data.model.org_mirror import get_org_mirroring_robot
 from data.model.repo_mirror import get_mirror, get_mirroring_robot
 from data.model.repository import get_repository, get_repository_state
 from data.readreplica import ReadOnlyModeException
@@ -413,6 +414,26 @@ def check_repository_state(f):
                     "this to an administrator."
                 ) % (namespace_name, repo_name)
                 raise Exception(msg)
+
+        if repository.state == RepositoryState.ORG_MIRROR:
+            robot = get_org_mirroring_robot(repository)
+
+            if robot is None:
+                abort(
+                    500,
+                    "Repository %s/%s is set as an org mirror but no robot is assigned."
+                    % (namespace_name, repo_name),
+                )
+
+            elif user.id != robot.id:
+                abort(
+                    405,
+                    "Repository %s/%s is an org mirror. Org-mirrored repositories cannot be modified directly."
+                    % (namespace_name, repo_name),
+                )
+
+            elif user.id == robot.id:
+                pass  # User is designated robot for this org mirror repo.
 
         return f(namespace_name, repo_name, *args, **kwargs)
 
