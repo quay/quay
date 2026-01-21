@@ -938,3 +938,150 @@ class TestUpdateOrgMirrorConfig:
 
         # Clean up
         _cleanup_org_mirror_config("buynlarge")
+
+
+class TestVerifyOrgMirrorConnection:
+    """Tests for POST /v1/organization/<orgname>/mirror/verify endpoint."""
+
+    def test_verify_connection_success(self, app):
+        """
+        Test successful connection verification.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create config
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_type": "quay",
+                "external_registry_url": "https://quay.io",
+                "external_namespace": "projectquay",
+                "robot_username": "buynlarge+coolrobot",
+                "visibility": "private",
+                "sync_interval": 3600,
+                "sync_start_date": "2025-01-01T00:00:00Z",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+        # Verify connection (quay.io/projectquay is a public org that exists)
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            result = conduct_api_call(cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200).json
+            assert result["success"] is True
+            assert "successful" in result["message"].lower()
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_verify_connection_namespace_not_found(self, app):
+        """
+        Test verify connection with non-existent namespace.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create config with a non-existent namespace
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_type": "quay",
+                "external_registry_url": "https://quay.io",
+                "external_namespace": "this-namespace-definitely-does-not-exist-12345",
+                "robot_username": "buynlarge+coolrobot",
+                "visibility": "private",
+                "sync_interval": 3600,
+                "sync_start_date": "2025-01-01T00:00:00Z",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+        # Verify connection should fail
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            result = conduct_api_call(cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200).json
+            assert result["success"] is False
+            assert "not found" in result["message"].lower()
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_verify_connection_no_config(self, app):
+        """
+        Test verify connection when no mirror config exists.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            conduct_api_call(cl, org_mirror.OrgMirrorVerify, "POST", params, None, 404)
+
+    def test_verify_connection_org_not_found(self, app):
+        """
+        Test verify connection when organization doesn't exist.
+        """
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "nonexistent-org-12345"}
+            conduct_api_call(cl, org_mirror.OrgMirrorVerify, "POST", params, None, 404)
+
+    def test_verify_connection_unauthorized(self, app):
+        """
+        Test verify connection without admin permission.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create a config directly via data model to avoid identity persistence issues
+        org = model.organization.get_organization("buynlarge")
+        robot = model.user.lookup_robot("buynlarge+coolrobot")
+        from data.database import SourceRegistryType, Visibility
+
+        model.org_mirror.create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.QUAY,
+            external_registry_url="https://quay.io",
+            external_namespace="projectquay",
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date=datetime.now(),
+            is_enabled=True,
+        )
+
+        # Verify config was created
+        assert model.org_mirror.get_org_mirror_config(org) is not None
+
+        # Try to verify as non-admin user (reader has member role, not admin)
+        with client_with_identity("reader", app) as cl:
+            params = {"orgname": "buynlarge"}
+            conduct_api_call(cl, org_mirror.OrgMirrorVerify, "POST", params, None, 403)
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_verify_connection_invalid_url(self, app):
+        """
+        Test verify connection with invalid/unreachable URL.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create config with invalid URL
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_type": "quay",
+                "external_registry_url": "https://invalid-registry-that-does-not-exist.example.com",
+                "external_namespace": "someorg",
+                "robot_username": "buynlarge+coolrobot",
+                "visibility": "private",
+                "sync_interval": 3600,
+                "sync_start_date": "2025-01-01T00:00:00Z",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+        # Verify connection should fail due to connection error
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            result = conduct_api_call(cl, org_mirror.OrgMirrorVerify, "POST", params, None, 200).json
+            assert result["success"] is False
+            # Should contain connection error message
+            assert "error" in result["message"].lower() or "connection" in result["message"].lower()
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")

@@ -528,9 +528,60 @@ class OrgMirrorVerify(ApiResource):
     def post(self, orgname):
         """
         Verify connection to source registry.
+
+        Tests connectivity, authentication, and TLS configuration without
+        triggering a full sync operation. Useful for validating configuration
+        before enabling mirroring.
+
+        Returns:
+            JSON object with:
+                - success: Boolean indicating if connection was successful
+                - message: Human-readable status message
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        mirror = model.org_mirror.get_org_mirror_config(org)
+        if not mirror:
+            raise NotFound()
+
+        # Decrypt credentials
+        try:
+            username = (
+                mirror.external_registry_username.decrypt()
+                if mirror.external_registry_username
+                else None
+            )
+            password = (
+                mirror.external_registry_password.decrypt()
+                if mirror.external_registry_password
+                else None
+            )
+        except DecryptionFailureException as e:
+            logger.warning("Failed to decrypt credentials for mirror config: %s", e)
+            return {"success": False, "message": "Failed to decrypt source registry credentials"}
+
+        # Create adapter for the source registry type
+        try:
+            adapter = get_registry_adapter(
+                registry_type=mirror.external_registry_type,
+                url=mirror.external_registry_url,
+                namespace=mirror.external_namespace,
+                username=username,
+                password=password,
+                config=mirror.external_registry_config,
+            )
+        except ValueError as e:
+            return {"success": False, "message": str(e)}
+
+        # Test connection
+        success, message = adapter.test_connection()
+
+        return {"success": success, "message": message}
 
 
 MAX_PAGE_LIMIT = 500
@@ -591,14 +642,11 @@ class OrgMirrorRepositories(ApiResource):
             limit = DEFAULT_PAGE_LIMIT
 
         # Check if we need to refresh from source registry
-        logger.info(f"SHAON - Checking if we need to refresh from source registry for org {orgname} and refresh is {refresh}")
         if refresh:
             self._refresh_from_source(mirror)
 
         # Fetch from database with pagination
-        logger.info(f"SHAON - Fetching repositories from database for org {orgname} with page {page} and limit {limit}")
         repos, total = model.org_mirror.get_org_mirror_repos(mirror, page, limit)
-        logger.info(f"SHAON - Found {total} repositories in database for org {orgname}")
 
         return {
             "repositories": [
@@ -660,7 +708,6 @@ class OrgMirrorRepositories(ApiResource):
             raise InvalidRequest(str(e))
 
         # Fetch repositories from source
-        logger.info(f"SHAON - Fetching repositories from source registry for org {mirror.organization.username}")
         try:
             all_repos = adapter.list_repositories()
         except requests.exceptions.Timeout:
@@ -673,8 +720,6 @@ class OrgMirrorRepositories(ApiResource):
             raise InvalidRequest(f"Source registry returned error: {e}")
         except requests.exceptions.RequestException as e:
             raise InvalidRequest(f"Failed to fetch repositories: {e}")
-
-        logger.info(f"SHAON - Found {len(all_repos)} repositories from source registry for org {mirror.organization.username}")
 
         # Apply glob filters
         filters = mirror.repository_filters
