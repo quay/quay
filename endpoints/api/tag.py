@@ -10,7 +10,10 @@ import features
 from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
 from auth.permissions import AdministerRepositoryPermission
+from data.database import Manifest as ManifestTable
+from data.database import ManifestChild
 from data.model import ImmutableTagException
+from data.model.oci.manifest import is_manifest_present
 from data.model.oci.tag import RetargetTagException
 from data.model.pull_statistics import (
     get_manifest_pull_statistics,
@@ -40,6 +43,40 @@ from util.names import TAG_ERROR, TAG_REGEX
 from util.parsing import truthy_bool
 
 
+def _get_sparse_manifest_info(manifest_id, repository_id):
+    """
+    Get sparse manifest info for a manifest list.
+
+    Returns a tuple of (is_sparse, child_manifest_count, present_child_count, child_presence_map).
+    The child_presence_map is a dict mapping child manifest digests to their presence status.
+    """
+    # Query child manifests and check their presence
+    child_manifests = (
+        ManifestChild.select(ManifestChild, ManifestTable)
+        .join(ManifestTable, on=(ManifestChild.child_manifest == ManifestTable.id))
+        .where(
+            ManifestChild.manifest == manifest_id,
+            ManifestChild.repository == repository_id,
+        )
+    )
+
+    child_manifest_count = 0
+    present_child_count = 0
+    child_presence_map = {}
+
+    for child in child_manifests:
+        child_manifest_count += 1
+        child_digest = child.child_manifest.digest
+        is_present = is_manifest_present(child.child_manifest)
+        child_presence_map[child_digest] = is_present
+        if is_present:
+            present_child_count += 1
+
+    is_sparse = present_child_count < child_manifest_count
+
+    return is_sparse, child_manifest_count, present_child_count, child_presence_map
+
+
 def _tag_dict(tag):
     tag_info = {
         "name": tag.name,
@@ -66,6 +103,16 @@ def _tag_dict(tag):
     if tag.lifetime_end_ts is not None:
         expiration = format_date(datetime.utcfromtimestamp(tag.lifetime_end_ts))
         tag_info["expiration"] = expiration
+
+    # Add sparse manifest info for manifest lists
+    if tag.manifest.is_manifest_list:
+        is_sparse, child_count, present_count, presence_map = _get_sparse_manifest_info(
+            tag.manifest._db_id, tag.repository.id
+        )
+        tag_info["is_sparse"] = is_sparse
+        tag_info["child_manifest_count"] = child_count
+        tag_info["present_child_count"] = present_count
+        tag_info["child_manifests_presence"] = presence_map
 
     return tag_info
 
