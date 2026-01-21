@@ -2,12 +2,15 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.1 (Debian 12.1-1.pgdg100+1)
--- Dumped by pg_dump version 12.1 (Debian 12.1-1.pgdg100+1)
+\restrict 97bFbRkax7KQ9dCarATTECnUjaj3yrx03WezcRZS94T9hV2bAEcFmbH51eaiblK
+
+-- Dumped from database version 18.1 (Debian 18.1-1.pgdg13+2)
+-- Dumped by pg_dump version 18.1 (Debian 18.1-1.pgdg13+2)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -53,6 +56,8 @@ ALTER TABLE IF EXISTS ONLY public.repositorypermission DROP CONSTRAINT IF EXISTS
 ALTER TABLE IF EXISTS ONLY public.repositorynotification DROP CONSTRAINT IF EXISTS fk_repositorynotification_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repositorynotification DROP CONSTRAINT IF EXISTS fk_repositorynotification_method_id_externalnotificationmethod;
 ALTER TABLE IF EXISTS ONLY public.repositorynotification DROP CONSTRAINT IF EXISTS fk_repositorynotification_event_id_externalnotificationevent;
+ALTER TABLE IF EXISTS ONLY public.repositoryimmutabilitypolicy DROP CONSTRAINT IF EXISTS fk_repositoryimmutabilitypolicy_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repositoryimmutabilitypolicy DROP CONSTRAINT IF EXISTS fk_repositoryimmutabilitypolicy_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS fk_repositorybuildtrigger_write_token_id_accesstoken;
 ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS fk_repositorybuildtrigger_service_id_buildtriggerservice;
 ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS fk_repositorybuildtrigger_repository_id_repository;
@@ -67,8 +72,6 @@ ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF E
 ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF EXISTS fk_repositoryautoprunepolicy_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.repositoryauthorizedemail DROP CONSTRAINT IF EXISTS fk_repositoryauthorizedemail_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXISTS fk_repositoryactioncount_repository_id_repository;
-ALTER TABLE IF EXISTS ONLY public.tagpullstatistics DROP CONSTRAINT IF EXISTS fk_tagpullstatistics_repository_id_repository;
-ALTER TABLE IF EXISTS ONLY public.manifestpullstatistics DROP CONSTRAINT IF EXISTS fk_manifestpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_visibility_id_visibility;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_namespace_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_kind_id_repositorykind;
@@ -78,11 +81,6 @@ ALTER TABLE IF EXISTS ONLY public.repomirrorrule DROP CONSTRAINT IF EXISTS fk_re
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_root_rule_id_repomirrorrule;
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_internal_robot_id_user;
-ALTER TABLE IF EXISTS ONLY public.orgmirrorrepository DROP CONSTRAINT IF EXISTS fk_orgmirrorrepository_repository_id_repository;
-ALTER TABLE IF EXISTS ONLY public.orgmirrorrepository DROP CONSTRAINT IF EXISTS fk_orgmirrorrepository_org_mirror_config_id_orgmirrorconfig;
-ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_orgmirrorconfig_visibility_id_visibility;
-ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_orgmirrorconfig_organization_id_user;
-ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_orgmirrorconfig_internal_robot_id_user;
 ALTER TABLE IF EXISTS ONLY public.redhatsubscriptions DROP CONSTRAINT IF EXISTS fk_redhatsubscriptions;
 ALTER TABLE IF EXISTS ONLY public.quotarepositorysize DROP CONSTRAINT IF EXISTS fk_quotarepositorysize_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.quotanamespacesize DROP CONSTRAINT IF EXISTS fk_quotanamespacesize_namespace_user_id_user;
@@ -96,6 +94,11 @@ ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS 
 ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS fk_permissionprototype_delegate_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS fk_permissionprototype_delegate_team_id_team;
 ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS fk_permissionprototype_activating_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorrepository DROP CONSTRAINT IF EXISTS fk_orgmirrorrepository_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorrepository DROP CONSTRAINT IF EXISTS fk_orgmirrorrepository_org_mirror_config_id_orgmirrorconfig;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_orgmirrorconfig_visibility_id_visibility;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_orgmirrorconfig_organization_id_user;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_orgmirrorconfig_internal_robot_id_user;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS fk_organizationrhskus_userid;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS fk_organizationrhskus_orgid;
 ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS fk_oauthauthorizationcode_application_id_oauthapplication;
@@ -106,6 +109,7 @@ ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS fk_
 ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS fk_oauthaccesstoken_application_id_oauthapplication;
 ALTER TABLE IF EXISTS ONLY public.notification DROP CONSTRAINT IF EXISTS fk_notification_target_id_user;
 ALTER TABLE IF EXISTS ONLY public.notification DROP CONSTRAINT IF EXISTS fk_notification_kind_id_notificationkind;
+ALTER TABLE IF EXISTS ONLY public.namespaceimmutabilitypolicy DROP CONSTRAINT IF EXISTS fk_namespaceimmutabilitypolicy_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.namespacegeorestriction DROP CONSTRAINT IF EXISTS fk_namespacegeorestriction_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.namespaceautoprunepolicy DROP CONSTRAINT IF EXISTS fk_namespaceautoprunepolicy_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.messages DROP CONSTRAINT IF EXISTS fk_messages_media_type_id_mediatype;
@@ -195,6 +199,7 @@ DROP INDEX IF EXISTS public.team_name;
 DROP INDEX IF EXISTS public.tagtorepositorytag_tag_id;
 DROP INDEX IF EXISTS public.tagtorepositorytag_repository_tag_id;
 DROP INDEX IF EXISTS public.tagtorepositorytag_repository_id;
+DROP INDEX IF EXISTS public.tagpullstatistics_repository_id_tag_name;
 DROP INDEX IF EXISTS public.tagmanifesttomanifest_tag_manifest_id;
 DROP INDEX IF EXISTS public.tagmanifesttomanifest_manifest_id;
 DROP INDEX IF EXISTS public.tagmanifesttomanifest_broken;
@@ -257,6 +262,9 @@ DROP INDEX IF EXISTS public.repositorynotification_repository_id;
 DROP INDEX IF EXISTS public.repositorynotification_method_id;
 DROP INDEX IF EXISTS public.repositorynotification_event_id;
 DROP INDEX IF EXISTS public.repositorykind_name;
+DROP INDEX IF EXISTS public.repositoryimmutabilitypolicy_uuid;
+DROP INDEX IF EXISTS public.repositoryimmutabilitypolicy_repository_id;
+DROP INDEX IF EXISTS public.repositoryimmutabilitypolicy_namespace_id;
 DROP INDEX IF EXISTS public.repositorybuildtrigger_write_token_id;
 DROP INDEX IF EXISTS public.repositorybuildtrigger_uuid;
 DROP INDEX IF EXISTS public.repositorybuildtrigger_service_id;
@@ -303,15 +311,6 @@ DROP INDEX IF EXISTS public.repomirrorconfig_root_rule_id;
 DROP INDEX IF EXISTS public.repomirrorconfig_repository_id;
 DROP INDEX IF EXISTS public.repomirrorconfig_mirror_type;
 DROP INDEX IF EXISTS public.repomirrorconfig_internal_robot_id;
-DROP INDEX IF EXISTS public.orgmirrorrepository_sync_status;
-DROP INDEX IF EXISTS public.orgmirrorrepository_repository_id;
-DROP INDEX IF EXISTS public.orgmirrorrepository_org_mirror_config_id;
-DROP INDEX IF EXISTS public.orgmirrorrepository_config_status;
-DROP INDEX IF EXISTS public.orgmirrorrepository_config_repo_name;
-DROP INDEX IF EXISTS public.orgmirrorconfig_sync_status;
-DROP INDEX IF EXISTS public.orgmirrorconfig_sync_start_date;
-DROP INDEX IF EXISTS public.orgmirrorconfig_organization_id;
-DROP INDEX IF EXISTS public.orgmirrorconfig_internal_robot_id;
 DROP INDEX IF EXISTS public.quotarepositorysize_size_bytes;
 DROP INDEX IF EXISTS public.quotarepositorysize_repository_id;
 DROP INDEX IF EXISTS public.quotanamespacesize_size_bytes;
@@ -338,6 +337,15 @@ DROP INDEX IF EXISTS public.permissionprototype_org_id;
 DROP INDEX IF EXISTS public.permissionprototype_delegate_user_id;
 DROP INDEX IF EXISTS public.permissionprototype_delegate_team_id;
 DROP INDEX IF EXISTS public.permissionprototype_activating_user_id;
+DROP INDEX IF EXISTS public.orgmirrorrepository_sync_status;
+DROP INDEX IF EXISTS public.orgmirrorrepository_repository_id;
+DROP INDEX IF EXISTS public.orgmirrorrepository_org_mirror_config_id;
+DROP INDEX IF EXISTS public.orgmirrorrepository_config_status;
+DROP INDEX IF EXISTS public.orgmirrorrepository_config_repo_name;
+DROP INDEX IF EXISTS public.orgmirrorconfig_sync_status;
+DROP INDEX IF EXISTS public.orgmirrorconfig_sync_start_date;
+DROP INDEX IF EXISTS public.orgmirrorconfig_organization_id;
+DROP INDEX IF EXISTS public.orgmirrorconfig_internal_robot_id;
 DROP INDEX IF EXISTS public.organizationrhskus_subscription_id_org_id_user_id;
 DROP INDEX IF EXISTS public.organizationrhskus_subscription_id_org_id;
 DROP INDEX IF EXISTS public.organizationrhskus_subscription_id;
@@ -358,6 +366,8 @@ DROP INDEX IF EXISTS public.notification_target_id;
 DROP INDEX IF EXISTS public.notification_lookup_path;
 DROP INDEX IF EXISTS public.notification_kind_id;
 DROP INDEX IF EXISTS public.notification_created;
+DROP INDEX IF EXISTS public.namespaceimmutabilitypolicy_uuid;
+DROP INDEX IF EXISTS public.namespaceimmutabilitypolicy_namespace_id;
 DROP INDEX IF EXISTS public.namespacegeorestriction_restricted_region_iso_code;
 DROP INDEX IF EXISTS public.namespacegeorestriction_namespace_id_restricted_region_iso_code;
 DROP INDEX IF EXISTS public.namespacegeorestriction_namespace_id;
@@ -373,6 +383,7 @@ DROP INDEX IF EXISTS public.manifestsecuritystatus_last_indexed;
 DROP INDEX IF EXISTS public.manifestsecuritystatus_indexer_version;
 DROP INDEX IF EXISTS public.manifestsecuritystatus_indexer_hash;
 DROP INDEX IF EXISTS public.manifestsecuritystatus_index_status;
+DROP INDEX IF EXISTS public.manifestpullstatistics_repository_id_manifest_digest;
 DROP INDEX IF EXISTS public.manifestlegacyimage_repository_id;
 DROP INDEX IF EXISTS public.manifestlegacyimage_manifest_id;
 DROP INDEX IF EXISTS public.manifestlegacyimage_image_id;
@@ -529,6 +540,7 @@ ALTER TABLE IF EXISTS ONLY public.teammemberinvite DROP CONSTRAINT IF EXISTS pk_
 ALTER TABLE IF EXISTS ONLY public.teammember DROP CONSTRAINT IF EXISTS pk_teammember;
 ALTER TABLE IF EXISTS ONLY public.team DROP CONSTRAINT IF EXISTS pk_team;
 ALTER TABLE IF EXISTS ONLY public.tagtorepositorytag DROP CONSTRAINT IF EXISTS pk_tagtorepositorytag;
+ALTER TABLE IF EXISTS ONLY public.tagpullstatistics DROP CONSTRAINT IF EXISTS pk_tagpullstatistics;
 ALTER TABLE IF EXISTS ONLY public.tagmanifesttomanifest DROP CONSTRAINT IF EXISTS pk_tagmanifesttomanifest;
 ALTER TABLE IF EXISTS ONLY public.tagmanifestlabelmap DROP CONSTRAINT IF EXISTS pk_tagmanifestlabelmap;
 ALTER TABLE IF EXISTS ONLY public.tagmanifestlabel DROP CONSTRAINT IF EXISTS pk_tagmanifestlabel;
@@ -548,6 +560,7 @@ ALTER TABLE IF EXISTS ONLY public.repositorysearchscore DROP CONSTRAINT IF EXIST
 ALTER TABLE IF EXISTS ONLY public.repositorypermission DROP CONSTRAINT IF EXISTS pk_repositorypermission;
 ALTER TABLE IF EXISTS ONLY public.repositorynotification DROP CONSTRAINT IF EXISTS pk_repositorynotification;
 ALTER TABLE IF EXISTS ONLY public.repositorykind DROP CONSTRAINT IF EXISTS pk_repositorykind;
+ALTER TABLE IF EXISTS ONLY public.repositoryimmutabilitypolicy DROP CONSTRAINT IF EXISTS pk_repositoryimmutabilitypolicyid;
 ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS pk_repositorybuildtrigger;
 ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS pk_repositorybuild;
 ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF EXISTS pk_repositoryautoprunepolicyid;
@@ -556,8 +569,6 @@ ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXIST
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS pk_repository;
 ALTER TABLE IF EXISTS ONLY public.repomirrorrule DROP CONSTRAINT IF EXISTS pk_repomirrorrule;
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS pk_repomirrorconfig;
-ALTER TABLE IF EXISTS ONLY public.orgmirrorrepository DROP CONSTRAINT IF EXISTS pk_orgmirrorrepository;
-ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS pk_orgmirrorconfig;
 ALTER TABLE IF EXISTS ONLY public.redhatsubscriptions DROP CONSTRAINT IF EXISTS pk_redhatsubscriptions;
 ALTER TABLE IF EXISTS ONLY public.quotatype DROP CONSTRAINT IF EXISTS pk_quotatype;
 ALTER TABLE IF EXISTS ONLY public.quotarepositorysize DROP CONSTRAINT IF EXISTS pk_quotarepositorysizeid;
@@ -570,6 +581,8 @@ ALTER TABLE IF EXISTS ONLY public.quayrelease DROP CONSTRAINT IF EXISTS pk_quayr
 ALTER TABLE IF EXISTS ONLY public.quayregion DROP CONSTRAINT IF EXISTS pk_quayregion;
 ALTER TABLE IF EXISTS ONLY public.proxycacheconfig DROP CONSTRAINT IF EXISTS pk_proxy_cache_config;
 ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS pk_permissionprototype;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorrepository DROP CONSTRAINT IF EXISTS pk_orgmirrorrepository;
+ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS pk_orgmirrorconfig;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS pk_organizationrhskus;
 ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS pk_oauthauthorizationcode;
 ALTER TABLE IF EXISTS ONLY public.oauthassignedtoken DROP CONSTRAINT IF EXISTS pk_oauthassignedtoken;
@@ -577,11 +590,13 @@ ALTER TABLE IF EXISTS ONLY public.oauthapplication DROP CONSTRAINT IF EXISTS pk_
 ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS pk_oauthaccesstoken;
 ALTER TABLE IF EXISTS ONLY public.notificationkind DROP CONSTRAINT IF EXISTS pk_notificationkind;
 ALTER TABLE IF EXISTS ONLY public.notification DROP CONSTRAINT IF EXISTS pk_notification;
+ALTER TABLE IF EXISTS ONLY public.namespaceimmutabilitypolicy DROP CONSTRAINT IF EXISTS pk_namespaceimmutabilitypolicyid;
 ALTER TABLE IF EXISTS ONLY public.namespacegeorestriction DROP CONSTRAINT IF EXISTS pk_namespacegeorestriction;
 ALTER TABLE IF EXISTS ONLY public.namespaceautoprunepolicy DROP CONSTRAINT IF EXISTS pk_namespaceautoprunepolicyid;
 ALTER TABLE IF EXISTS ONLY public.messages DROP CONSTRAINT IF EXISTS pk_messages;
 ALTER TABLE IF EXISTS ONLY public.mediatype DROP CONSTRAINT IF EXISTS pk_mediatype;
 ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXISTS pk_manifestsecuritystatus;
+ALTER TABLE IF EXISTS ONLY public.manifestpullstatistics DROP CONSTRAINT IF EXISTS pk_manifestpullstatistics;
 ALTER TABLE IF EXISTS ONLY public.manifestlegacyimage DROP CONSTRAINT IF EXISTS pk_manifestlegacyimage;
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS pk_manifestlabel;
 ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS pk_manifestchild;
@@ -639,6 +654,7 @@ ALTER TABLE IF EXISTS public.teammemberinvite ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.teammember ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.team ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagtorepositorytag ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tagpullstatistics ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagnotificationsuccess ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagmanifesttomanifest ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagmanifestlabelmap ALTER COLUMN id DROP DEFAULT;
@@ -658,6 +674,7 @@ ALTER TABLE IF EXISTS public.repositorysearchscore ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repositorypermission ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repositorynotification ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repositorykind ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositoryimmutabilitypolicy ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repositorybuildtrigger ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repositorybuild ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repositoryautoprunepolicy ALTER COLUMN id DROP DEFAULT;
@@ -678,6 +695,8 @@ ALTER TABLE IF EXISTS public.quayrelease ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.quayregion ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.proxycacheconfig ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.permissionprototype ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.orgmirrorrepository ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.orgmirrorconfig ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.organizationrhskus ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthauthorizationcode ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthassignedtoken ALTER COLUMN id DROP DEFAULT;
@@ -685,11 +704,13 @@ ALTER TABLE IF EXISTS public.oauthapplication ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthaccesstoken ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.notificationkind ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.notification ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.namespaceimmutabilitypolicy ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.namespacegeorestriction ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.namespaceautoprunepolicy ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.messages ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.mediatype ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.manifestsecuritystatus ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.manifestpullstatistics ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.manifestlegacyimage ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.manifestlabel ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.manifestchild ALTER COLUMN id DROP DEFAULT;
@@ -760,6 +781,8 @@ DROP SEQUENCE IF EXISTS public.team_id_seq;
 DROP TABLE IF EXISTS public.team;
 DROP SEQUENCE IF EXISTS public.tagtorepositorytag_id_seq;
 DROP TABLE IF EXISTS public.tagtorepositorytag;
+DROP SEQUENCE IF EXISTS public.tagpullstatistics_id_seq;
+DROP TABLE IF EXISTS public.tagpullstatistics;
 DROP SEQUENCE IF EXISTS public.tagnotificationsuccess_id_seq;
 DROP TABLE IF EXISTS public.tagnotificationsuccess;
 DROP SEQUENCE IF EXISTS public.tagmanifesttomanifest_id_seq;
@@ -798,6 +821,8 @@ DROP SEQUENCE IF EXISTS public.repositorynotification_id_seq;
 DROP TABLE IF EXISTS public.repositorynotification;
 DROP SEQUENCE IF EXISTS public.repositorykind_id_seq;
 DROP TABLE IF EXISTS public.repositorykind;
+DROP SEQUENCE IF EXISTS public.repositoryimmutabilitypolicy_id_seq;
+DROP TABLE IF EXISTS public.repositoryimmutabilitypolicy;
 DROP SEQUENCE IF EXISTS public.repositorybuildtrigger_id_seq;
 DROP TABLE IF EXISTS public.repositorybuildtrigger;
 DROP SEQUENCE IF EXISTS public.repositorybuild_id_seq;
@@ -814,10 +839,6 @@ DROP SEQUENCE IF EXISTS public.repomirrorrule_id_seq;
 DROP TABLE IF EXISTS public.repomirrorrule;
 DROP SEQUENCE IF EXISTS public.repomirrorconfig_id_seq;
 DROP TABLE IF EXISTS public.repomirrorconfig;
-DROP TABLE IF EXISTS public.orgmirrorrepository;
-DROP SEQUENCE IF EXISTS public.orgmirrorrepository_id_seq;
-DROP TABLE IF EXISTS public.orgmirrorconfig;
-DROP SEQUENCE IF EXISTS public.orgmirrorconfig_id_seq;
 DROP SEQUENCE IF EXISTS public.redhatsubscriptions_id_seq;
 DROP TABLE IF EXISTS public.redhatsubscriptions;
 DROP SEQUENCE IF EXISTS public.quotatype_id_seq;
@@ -842,6 +863,10 @@ DROP SEQUENCE IF EXISTS public.proxycacheconfig_id_seq;
 DROP TABLE IF EXISTS public.proxycacheconfig;
 DROP SEQUENCE IF EXISTS public.permissionprototype_id_seq;
 DROP TABLE IF EXISTS public.permissionprototype;
+DROP SEQUENCE IF EXISTS public.orgmirrorrepository_id_seq;
+DROP TABLE IF EXISTS public.orgmirrorrepository;
+DROP SEQUENCE IF EXISTS public.orgmirrorconfig_id_seq;
+DROP TABLE IF EXISTS public.orgmirrorconfig;
 DROP SEQUENCE IF EXISTS public.organizationrhskus_id_seq;
 DROP TABLE IF EXISTS public.organizationrhskus;
 DROP SEQUENCE IF EXISTS public.oauthauthorizationcode_id_seq;
@@ -856,6 +881,8 @@ DROP SEQUENCE IF EXISTS public.notificationkind_id_seq;
 DROP TABLE IF EXISTS public.notificationkind;
 DROP SEQUENCE IF EXISTS public.notification_id_seq;
 DROP TABLE IF EXISTS public.notification;
+DROP SEQUENCE IF EXISTS public.namespaceimmutabilitypolicy_id_seq;
+DROP TABLE IF EXISTS public.namespaceimmutabilitypolicy;
 DROP SEQUENCE IF EXISTS public.namespacegeorestriction_id_seq;
 DROP TABLE IF EXISTS public.namespacegeorestriction;
 DROP SEQUENCE IF EXISTS public.namespaceautoprunepolicy_id_seq;
@@ -866,6 +893,8 @@ DROP SEQUENCE IF EXISTS public.mediatype_id_seq;
 DROP TABLE IF EXISTS public.mediatype;
 DROP SEQUENCE IF EXISTS public.manifestsecuritystatus_id_seq;
 DROP TABLE IF EXISTS public.manifestsecuritystatus;
+DROP SEQUENCE IF EXISTS public.manifestpullstatistics_id_seq;
+DROP TABLE IF EXISTS public.manifestpullstatistics;
 DROP SEQUENCE IF EXISTS public.manifestlegacyimage_id_seq;
 DROP TABLE IF EXISTS public.manifestlegacyimage;
 DROP SEQUENCE IF EXISTS public.manifestlabel_id_seq;
@@ -1002,7 +1031,7 @@ CREATE SEQUENCE public.accesstoken_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.accesstoken_id_seq OWNER TO quay;
+ALTER SEQUENCE public.accesstoken_id_seq OWNER TO quay;
 
 --
 -- Name: accesstoken_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1036,7 +1065,7 @@ CREATE SEQUENCE public.accesstokenkind_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.accesstokenkind_id_seq OWNER TO quay;
+ALTER SEQUENCE public.accesstokenkind_id_seq OWNER TO quay;
 
 --
 -- Name: accesstokenkind_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1084,7 +1113,7 @@ CREATE SEQUENCE public.apprblob_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.apprblob_id_seq OWNER TO quay;
+ALTER SEQUENCE public.apprblob_id_seq OWNER TO quay;
 
 --
 -- Name: apprblob_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1119,7 +1148,7 @@ CREATE SEQUENCE public.apprblobplacement_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.apprblobplacement_id_seq OWNER TO quay;
+ALTER SEQUENCE public.apprblobplacement_id_seq OWNER TO quay;
 
 --
 -- Name: apprblobplacement_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1153,7 +1182,7 @@ CREATE SEQUENCE public.apprblobplacementlocation_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.apprblobplacementlocation_id_seq OWNER TO quay;
+ALTER SEQUENCE public.apprblobplacementlocation_id_seq OWNER TO quay;
 
 --
 -- Name: apprblobplacementlocation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1189,7 +1218,7 @@ CREATE SEQUENCE public.apprmanifest_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.apprmanifest_id_seq OWNER TO quay;
+ALTER SEQUENCE public.apprmanifest_id_seq OWNER TO quay;
 
 --
 -- Name: apprmanifest_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1224,7 +1253,7 @@ CREATE SEQUENCE public.apprmanifestblob_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.apprmanifestblob_id_seq OWNER TO quay;
+ALTER SEQUENCE public.apprmanifestblob_id_seq OWNER TO quay;
 
 --
 -- Name: apprmanifestblob_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1261,7 +1290,7 @@ CREATE SEQUENCE public.apprmanifestlist_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.apprmanifestlist_id_seq OWNER TO quay;
+ALTER SEQUENCE public.apprmanifestlist_id_seq OWNER TO quay;
 
 --
 -- Name: apprmanifestlist_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1300,7 +1329,7 @@ CREATE SEQUENCE public.apprmanifestlistmanifest_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.apprmanifestlistmanifest_id_seq OWNER TO quay;
+ALTER SEQUENCE public.apprmanifestlistmanifest_id_seq OWNER TO quay;
 
 --
 -- Name: apprmanifestlistmanifest_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1343,7 +1372,7 @@ CREATE SEQUENCE public.apprtag_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.apprtag_id_seq OWNER TO quay;
+ALTER SEQUENCE public.apprtag_id_seq OWNER TO quay;
 
 --
 -- Name: apprtag_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1377,7 +1406,7 @@ CREATE SEQUENCE public.apprtagkind_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.apprtagkind_id_seq OWNER TO quay;
+ALTER SEQUENCE public.apprtagkind_id_seq OWNER TO quay;
 
 --
 -- Name: apprtagkind_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1418,7 +1447,7 @@ CREATE SEQUENCE public.appspecificauthtoken_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.appspecificauthtoken_id_seq OWNER TO quay;
+ALTER SEQUENCE public.appspecificauthtoken_id_seq OWNER TO quay;
 
 --
 -- Name: appspecificauthtoken_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1454,7 +1483,7 @@ CREATE SEQUENCE public.autoprunetaskstatus_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.autoprunetaskstatus_id_seq OWNER TO quay;
+ALTER SEQUENCE public.autoprunetaskstatus_id_seq OWNER TO quay;
 
 --
 -- Name: autoprunetaskstatus_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1498,7 +1527,7 @@ CREATE SEQUENCE public.blobupload_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.blobupload_id_seq OWNER TO quay;
+ALTER SEQUENCE public.blobupload_id_seq OWNER TO quay;
 
 --
 -- Name: blobupload_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1532,7 +1561,7 @@ CREATE SEQUENCE public.buildtriggerservice_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.buildtriggerservice_id_seq OWNER TO quay;
+ALTER SEQUENCE public.buildtriggerservice_id_seq OWNER TO quay;
 
 --
 -- Name: buildtriggerservice_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1570,7 +1599,7 @@ CREATE SEQUENCE public.deletednamespace_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.deletednamespace_id_seq OWNER TO quay;
+ALTER SEQUENCE public.deletednamespace_id_seq OWNER TO quay;
 
 --
 -- Name: deletednamespace_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1607,7 +1636,7 @@ CREATE SEQUENCE public.deletedrepository_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.deletedrepository_id_seq OWNER TO quay;
+ALTER SEQUENCE public.deletedrepository_id_seq OWNER TO quay;
 
 --
 -- Name: deletedrepository_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1644,7 +1673,7 @@ CREATE SEQUENCE public.derivedstorageforimage_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.derivedstorageforimage_id_seq OWNER TO quay;
+ALTER SEQUENCE public.derivedstorageforimage_id_seq OWNER TO quay;
 
 --
 -- Name: derivedstorageforimage_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1678,7 +1707,7 @@ CREATE SEQUENCE public.disablereason_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.disablereason_id_seq OWNER TO quay;
+ALTER SEQUENCE public.disablereason_id_seq OWNER TO quay;
 
 --
 -- Name: disablereason_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1718,7 +1747,7 @@ CREATE SEQUENCE public.emailconfirmation_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.emailconfirmation_id_seq OWNER TO quay;
+ALTER SEQUENCE public.emailconfirmation_id_seq OWNER TO quay;
 
 --
 -- Name: emailconfirmation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1752,7 +1781,7 @@ CREATE SEQUENCE public.externalnotificationevent_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.externalnotificationevent_id_seq OWNER TO quay;
+ALTER SEQUENCE public.externalnotificationevent_id_seq OWNER TO quay;
 
 --
 -- Name: externalnotificationevent_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1786,7 +1815,7 @@ CREATE SEQUENCE public.externalnotificationmethod_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.externalnotificationmethod_id_seq OWNER TO quay;
+ALTER SEQUENCE public.externalnotificationmethod_id_seq OWNER TO quay;
 
 --
 -- Name: externalnotificationmethod_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1823,7 +1852,7 @@ CREATE SEQUENCE public.federatedlogin_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.federatedlogin_id_seq OWNER TO quay;
+ALTER SEQUENCE public.federatedlogin_id_seq OWNER TO quay;
 
 --
 -- Name: federatedlogin_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1869,7 +1898,7 @@ CREATE SEQUENCE public.image_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.image_id_seq OWNER TO quay;
+ALTER SEQUENCE public.image_id_seq OWNER TO quay;
 
 --
 -- Name: image_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1908,7 +1937,7 @@ CREATE SEQUENCE public.imagestorage_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.imagestorage_id_seq OWNER TO quay;
+ALTER SEQUENCE public.imagestorage_id_seq OWNER TO quay;
 
 --
 -- Name: imagestorage_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1942,7 +1971,7 @@ CREATE SEQUENCE public.imagestoragelocation_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.imagestoragelocation_id_seq OWNER TO quay;
+ALTER SEQUENCE public.imagestoragelocation_id_seq OWNER TO quay;
 
 --
 -- Name: imagestoragelocation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -1977,7 +2006,7 @@ CREATE SEQUENCE public.imagestorageplacement_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.imagestorageplacement_id_seq OWNER TO quay;
+ALTER SEQUENCE public.imagestorageplacement_id_seq OWNER TO quay;
 
 --
 -- Name: imagestorageplacement_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2014,7 +2043,7 @@ CREATE SEQUENCE public.imagestoragesignature_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.imagestoragesignature_id_seq OWNER TO quay;
+ALTER SEQUENCE public.imagestoragesignature_id_seq OWNER TO quay;
 
 --
 -- Name: imagestoragesignature_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2048,7 +2077,7 @@ CREATE SEQUENCE public.imagestoragesignaturekind_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.imagestoragesignaturekind_id_seq OWNER TO quay;
+ALTER SEQUENCE public.imagestoragesignaturekind_id_seq OWNER TO quay;
 
 --
 -- Name: imagestoragesignaturekind_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2082,7 +2111,7 @@ CREATE SEQUENCE public.imagestoragetransformation_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.imagestoragetransformation_id_seq OWNER TO quay;
+ALTER SEQUENCE public.imagestoragetransformation_id_seq OWNER TO quay;
 
 --
 -- Name: imagestoragetransformation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2120,7 +2149,7 @@ CREATE SEQUENCE public.label_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.label_id_seq OWNER TO quay;
+ALTER SEQUENCE public.label_id_seq OWNER TO quay;
 
 --
 -- Name: label_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2155,7 +2184,7 @@ CREATE SEQUENCE public.labelsourcetype_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.labelsourcetype_id_seq OWNER TO quay;
+ALTER SEQUENCE public.labelsourcetype_id_seq OWNER TO quay;
 
 --
 -- Name: labelsourcetype_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2213,7 +2242,7 @@ CREATE SEQUENCE public.logentry2_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.logentry2_id_seq OWNER TO quay;
+ALTER SEQUENCE public.logentry2_id_seq OWNER TO quay;
 
 --
 -- Name: logentry2_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2252,7 +2281,7 @@ CREATE SEQUENCE public.logentry3_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.logentry3_id_seq OWNER TO quay;
+ALTER SEQUENCE public.logentry3_id_seq OWNER TO quay;
 
 --
 -- Name: logentry3_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2274,7 +2303,7 @@ CREATE SEQUENCE public.logentry_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.logentry_id_seq OWNER TO quay;
+ALTER SEQUENCE public.logentry_id_seq OWNER TO quay;
 
 --
 -- Name: logentry_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2308,7 +2337,7 @@ CREATE SEQUENCE public.logentrykind_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.logentrykind_id_seq OWNER TO quay;
+ALTER SEQUENCE public.logentrykind_id_seq OWNER TO quay;
 
 --
 -- Name: logentrykind_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2342,7 +2371,7 @@ CREATE SEQUENCE public.loginservice_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.loginservice_id_seq OWNER TO quay;
+ALTER SEQUENCE public.loginservice_id_seq OWNER TO quay;
 
 --
 -- Name: loginservice_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2385,7 +2414,7 @@ CREATE SEQUENCE public.manifest_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.manifest_id_seq OWNER TO quay;
+ALTER SEQUENCE public.manifest_id_seq OWNER TO quay;
 
 --
 -- Name: manifest_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2420,7 +2449,7 @@ CREATE SEQUENCE public.manifestblob_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.manifestblob_id_seq OWNER TO quay;
+ALTER SEQUENCE public.manifestblob_id_seq OWNER TO quay;
 
 --
 -- Name: manifestblob_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2456,7 +2485,7 @@ CREATE SEQUENCE public.manifestchild_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.manifestchild_id_seq OWNER TO quay;
+ALTER SEQUENCE public.manifestchild_id_seq OWNER TO quay;
 
 --
 -- Name: manifestchild_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2492,7 +2521,7 @@ CREATE SEQUENCE public.manifestlabel_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.manifestlabel_id_seq OWNER TO quay;
+ALTER SEQUENCE public.manifestlabel_id_seq OWNER TO quay;
 
 --
 -- Name: manifestlabel_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2528,13 +2557,50 @@ CREATE SEQUENCE public.manifestlegacyimage_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.manifestlegacyimage_id_seq OWNER TO quay;
+ALTER SEQUENCE public.manifestlegacyimage_id_seq OWNER TO quay;
 
 --
 -- Name: manifestlegacyimage_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
 --
 
 ALTER SEQUENCE public.manifestlegacyimage_id_seq OWNED BY public.manifestlegacyimage.id;
+
+
+--
+-- Name: manifestpullstatistics; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.manifestpullstatistics (
+    id integer NOT NULL,
+    repository_id integer NOT NULL,
+    manifest_digest character varying(255) NOT NULL,
+    manifest_pull_count bigint NOT NULL,
+    last_manifest_pull_date timestamp without time zone NOT NULL
+);
+
+
+ALTER TABLE public.manifestpullstatistics OWNER TO quay;
+
+--
+-- Name: manifestpullstatistics_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.manifestpullstatistics_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.manifestpullstatistics_id_seq OWNER TO quay;
+
+--
+-- Name: manifestpullstatistics_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.manifestpullstatistics_id_seq OWNED BY public.manifestpullstatistics.id;
 
 
 --
@@ -2569,7 +2635,7 @@ CREATE SEQUENCE public.manifestsecuritystatus_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.manifestsecuritystatus_id_seq OWNER TO quay;
+ALTER SEQUENCE public.manifestsecuritystatus_id_seq OWNER TO quay;
 
 --
 -- Name: manifestsecuritystatus_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2603,7 +2669,7 @@ CREATE SEQUENCE public.mediatype_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.mediatype_id_seq OWNER TO quay;
+ALTER SEQUENCE public.mediatype_id_seq OWNER TO quay;
 
 --
 -- Name: mediatype_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2640,7 +2706,7 @@ CREATE SEQUENCE public.messages_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.messages_id_seq OWNER TO quay;
+ALTER SEQUENCE public.messages_id_seq OWNER TO quay;
 
 --
 -- Name: messages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2676,7 +2742,7 @@ CREATE SEQUENCE public.namespaceautoprunepolicy_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.namespaceautoprunepolicy_id_seq OWNER TO quay;
+ALTER SEQUENCE public.namespaceautoprunepolicy_id_seq OWNER TO quay;
 
 --
 -- Name: namespaceautoprunepolicy_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2714,13 +2780,49 @@ CREATE SEQUENCE public.namespacegeorestriction_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.namespacegeorestriction_id_seq OWNER TO quay;
+ALTER SEQUENCE public.namespacegeorestriction_id_seq OWNER TO quay;
 
 --
 -- Name: namespacegeorestriction_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
 --
 
 ALTER SEQUENCE public.namespacegeorestriction_id_seq OWNED BY public.namespacegeorestriction.id;
+
+
+--
+-- Name: namespaceimmutabilitypolicy; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.namespaceimmutabilitypolicy (
+    id integer NOT NULL,
+    uuid character varying(36) NOT NULL,
+    namespace_id integer NOT NULL,
+    policy text NOT NULL
+);
+
+
+ALTER TABLE public.namespaceimmutabilitypolicy OWNER TO quay;
+
+--
+-- Name: namespaceimmutabilitypolicy_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.namespaceimmutabilitypolicy_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.namespaceimmutabilitypolicy_id_seq OWNER TO quay;
+
+--
+-- Name: namespaceimmutabilitypolicy_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.namespaceimmutabilitypolicy_id_seq OWNED BY public.namespaceimmutabilitypolicy.id;
 
 
 --
@@ -2754,7 +2856,7 @@ CREATE SEQUENCE public.notification_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.notification_id_seq OWNER TO quay;
+ALTER SEQUENCE public.notification_id_seq OWNER TO quay;
 
 --
 -- Name: notification_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2788,7 +2890,7 @@ CREATE SEQUENCE public.notificationkind_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.notificationkind_id_seq OWNER TO quay;
+ALTER SEQUENCE public.notificationkind_id_seq OWNER TO quay;
 
 --
 -- Name: notificationkind_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2830,7 +2932,7 @@ CREATE SEQUENCE public.oauthaccesstoken_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.oauthaccesstoken_id_seq OWNER TO quay;
+ALTER SEQUENCE public.oauthaccesstoken_id_seq OWNER TO quay;
 
 --
 -- Name: oauthaccesstoken_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2872,7 +2974,7 @@ CREATE SEQUENCE public.oauthapplication_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.oauthapplication_id_seq OWNER TO quay;
+ALTER SEQUENCE public.oauthapplication_id_seq OWNER TO quay;
 
 --
 -- Name: oauthapplication_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2911,7 +3013,7 @@ CREATE SEQUENCE public.oauthassignedtoken_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.oauthassignedtoken_id_seq OWNER TO quay;
+ALTER SEQUENCE public.oauthassignedtoken_id_seq OWNER TO quay;
 
 --
 -- Name: oauthassignedtoken_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2949,7 +3051,7 @@ CREATE SEQUENCE public.oauthauthorizationcode_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.oauthauthorizationcode_id_seq OWNER TO quay;
+ALTER SEQUENCE public.oauthauthorizationcode_id_seq OWNER TO quay;
 
 --
 -- Name: oauthauthorizationcode_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -2986,7 +3088,7 @@ CREATE SEQUENCE public.organizationrhskus_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.organizationrhskus_id_seq OWNER TO quay;
+ALTER SEQUENCE public.organizationrhskus_id_seq OWNER TO quay;
 
 --
 -- Name: organizationrhskus_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3040,7 +3142,7 @@ CREATE SEQUENCE public.orgmirrorconfig_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.orgmirrorconfig_id_seq OWNER TO quay;
+ALTER SEQUENCE public.orgmirrorconfig_id_seq OWNER TO quay;
 
 --
 -- Name: orgmirrorconfig_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3083,7 +3185,7 @@ CREATE SEQUENCE public.orgmirrorrepository_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.orgmirrorrepository_id_seq OWNER TO quay;
+ALTER SEQUENCE public.orgmirrorrepository_id_seq OWNER TO quay;
 
 --
 -- Name: orgmirrorrepository_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3122,7 +3224,7 @@ CREATE SEQUENCE public.permissionprototype_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.permissionprototype_id_seq OWNER TO quay;
+ALTER SEQUENCE public.permissionprototype_id_seq OWNER TO quay;
 
 --
 -- Name: permissionprototype_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3162,7 +3264,7 @@ CREATE SEQUENCE public.proxycacheconfig_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.proxycacheconfig_id_seq OWNER TO quay;
+ALTER SEQUENCE public.proxycacheconfig_id_seq OWNER TO quay;
 
 --
 -- Name: proxycacheconfig_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3196,7 +3298,7 @@ CREATE SEQUENCE public.quayregion_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.quayregion_id_seq OWNER TO quay;
+ALTER SEQUENCE public.quayregion_id_seq OWNER TO quay;
 
 --
 -- Name: quayregion_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3234,7 +3336,7 @@ CREATE SEQUENCE public.quayrelease_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.quayrelease_id_seq OWNER TO quay;
+ALTER SEQUENCE public.quayrelease_id_seq OWNER TO quay;
 
 --
 -- Name: quayrelease_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3268,7 +3370,7 @@ CREATE SEQUENCE public.quayservice_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.quayservice_id_seq OWNER TO quay;
+ALTER SEQUENCE public.quayservice_id_seq OWNER TO quay;
 
 --
 -- Name: quayservice_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3308,7 +3410,7 @@ CREATE SEQUENCE public.queueitem_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.queueitem_id_seq OWNER TO quay;
+ALTER SEQUENCE public.queueitem_id_seq OWNER TO quay;
 
 --
 -- Name: queueitem_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3344,7 +3446,7 @@ CREATE SEQUENCE public.quotalimits_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.quotalimits_id_seq OWNER TO quay;
+ALTER SEQUENCE public.quotalimits_id_seq OWNER TO quay;
 
 --
 -- Name: quotalimits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3381,7 +3483,7 @@ CREATE SEQUENCE public.quotanamespacesize_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.quotanamespacesize_id_seq OWNER TO quay;
+ALTER SEQUENCE public.quotanamespacesize_id_seq OWNER TO quay;
 
 --
 -- Name: quotanamespacesize_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3418,7 +3520,7 @@ CREATE SEQUENCE public.quotaregistrysize_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.quotaregistrysize_id_seq OWNER TO quay;
+ALTER SEQUENCE public.quotaregistrysize_id_seq OWNER TO quay;
 
 --
 -- Name: quotaregistrysize_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3455,7 +3557,7 @@ CREATE SEQUENCE public.quotarepositorysize_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.quotarepositorysize_id_seq OWNER TO quay;
+ALTER SEQUENCE public.quotarepositorysize_id_seq OWNER TO quay;
 
 --
 -- Name: quotarepositorysize_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3489,7 +3591,7 @@ CREATE SEQUENCE public.quotatype_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.quotatype_id_seq OWNER TO quay;
+ALTER SEQUENCE public.quotatype_id_seq OWNER TO quay;
 
 --
 -- Name: quotatype_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3524,7 +3626,7 @@ CREATE SEQUENCE public.redhatsubscriptions_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.redhatsubscriptions_id_seq OWNER TO quay;
+ALTER SEQUENCE public.redhatsubscriptions_id_seq OWNER TO quay;
 
 --
 -- Name: redhatsubscriptions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3574,7 +3676,7 @@ CREATE SEQUENCE public.repomirrorconfig_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repomirrorconfig_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repomirrorconfig_id_seq OWNER TO quay;
 
 --
 -- Name: repomirrorconfig_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3614,7 +3716,7 @@ CREATE SEQUENCE public.repomirrorrule_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repomirrorrule_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repomirrorrule_id_seq OWNER TO quay;
 
 --
 -- Name: repomirrorrule_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3655,7 +3757,7 @@ CREATE SEQUENCE public.repository_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repository_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repository_id_seq OWNER TO quay;
 
 --
 -- Name: repository_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3691,7 +3793,7 @@ CREATE SEQUENCE public.repositoryactioncount_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositoryactioncount_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositoryactioncount_id_seq OWNER TO quay;
 
 --
 -- Name: repositoryactioncount_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3728,7 +3830,7 @@ CREATE SEQUENCE public.repositoryauthorizedemail_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositoryauthorizedemail_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositoryauthorizedemail_id_seq OWNER TO quay;
 
 --
 -- Name: repositoryauthorizedemail_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3765,7 +3867,7 @@ CREATE SEQUENCE public.repositoryautoprunepolicy_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositoryautoprunepolicy_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositoryautoprunepolicy_id_seq OWNER TO quay;
 
 --
 -- Name: repositoryautoprunepolicy_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3810,7 +3912,7 @@ CREATE SEQUENCE public.repositorybuild_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositorybuild_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositorybuild_id_seq OWNER TO quay;
 
 --
 -- Name: repositorybuild_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3858,13 +3960,50 @@ CREATE SEQUENCE public.repositorybuildtrigger_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositorybuildtrigger_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositorybuildtrigger_id_seq OWNER TO quay;
 
 --
 -- Name: repositorybuildtrigger_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
 --
 
 ALTER SEQUENCE public.repositorybuildtrigger_id_seq OWNED BY public.repositorybuildtrigger.id;
+
+
+--
+-- Name: repositoryimmutabilitypolicy; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.repositoryimmutabilitypolicy (
+    id integer NOT NULL,
+    uuid character varying(36) NOT NULL,
+    repository_id integer NOT NULL,
+    namespace_id integer NOT NULL,
+    policy text NOT NULL
+);
+
+
+ALTER TABLE public.repositoryimmutabilitypolicy OWNER TO quay;
+
+--
+-- Name: repositoryimmutabilitypolicy_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.repositoryimmutabilitypolicy_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.repositoryimmutabilitypolicy_id_seq OWNER TO quay;
+
+--
+-- Name: repositoryimmutabilitypolicy_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.repositoryimmutabilitypolicy_id_seq OWNED BY public.repositoryimmutabilitypolicy.id;
 
 
 --
@@ -3892,7 +4031,7 @@ CREATE SEQUENCE public.repositorykind_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositorykind_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositorykind_id_seq OWNER TO quay;
 
 --
 -- Name: repositorykind_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3934,7 +4073,7 @@ CREATE SEQUENCE public.repositorynotification_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositorynotification_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositorynotification_id_seq OWNER TO quay;
 
 --
 -- Name: repositorynotification_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -3971,7 +4110,7 @@ CREATE SEQUENCE public.repositorypermission_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositorypermission_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositorypermission_id_seq OWNER TO quay;
 
 --
 -- Name: repositorypermission_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4007,7 +4146,7 @@ CREATE SEQUENCE public.repositorysearchscore_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositorysearchscore_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositorysearchscore_id_seq OWNER TO quay;
 
 --
 -- Name: repositorysearchscore_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4042,7 +4181,7 @@ CREATE SEQUENCE public.repositorysize_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositorysize_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositorysize_id_seq OWNER TO quay;
 
 --
 -- Name: repositorysize_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4082,7 +4221,7 @@ CREATE SEQUENCE public.repositorytag_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.repositorytag_id_seq OWNER TO quay;
+ALTER SEQUENCE public.repositorytag_id_seq OWNER TO quay;
 
 --
 -- Name: repositorytag_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4118,7 +4257,7 @@ CREATE SEQUENCE public.robotaccountmetadata_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.robotaccountmetadata_id_seq OWNER TO quay;
+ALTER SEQUENCE public.robotaccountmetadata_id_seq OWNER TO quay;
 
 --
 -- Name: robotaccountmetadata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4154,7 +4293,7 @@ CREATE SEQUENCE public.robotaccounttoken_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.robotaccounttoken_id_seq OWNER TO quay;
+ALTER SEQUENCE public.robotaccounttoken_id_seq OWNER TO quay;
 
 --
 -- Name: robotaccounttoken_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4188,7 +4327,7 @@ CREATE SEQUENCE public.role_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.role_id_seq OWNER TO quay;
+ALTER SEQUENCE public.role_id_seq OWNER TO quay;
 
 --
 -- Name: role_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4230,7 +4369,7 @@ CREATE SEQUENCE public.servicekey_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.servicekey_id_seq OWNER TO quay;
+ALTER SEQUENCE public.servicekey_id_seq OWNER TO quay;
 
 --
 -- Name: servicekey_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4267,7 +4406,7 @@ CREATE SEQUENCE public.servicekeyapproval_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.servicekeyapproval_id_seq OWNER TO quay;
+ALTER SEQUENCE public.servicekeyapproval_id_seq OWNER TO quay;
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4303,7 +4442,7 @@ CREATE SEQUENCE public.star_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.star_id_seq OWNER TO quay;
+ALTER SEQUENCE public.star_id_seq OWNER TO quay;
 
 --
 -- Name: star_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4346,7 +4485,7 @@ CREATE SEQUENCE public.tag_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.tag_id_seq OWNER TO quay;
+ALTER SEQUENCE public.tag_id_seq OWNER TO quay;
 
 --
 -- Name: tag_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4380,7 +4519,7 @@ CREATE SEQUENCE public.tagkind_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.tagkind_id_seq OWNER TO quay;
+ALTER SEQUENCE public.tagkind_id_seq OWNER TO quay;
 
 --
 -- Name: tagkind_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4416,7 +4555,7 @@ CREATE SEQUENCE public.tagmanifest_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.tagmanifest_id_seq OWNER TO quay;
+ALTER SEQUENCE public.tagmanifest_id_seq OWNER TO quay;
 
 --
 -- Name: tagmanifest_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4452,7 +4591,7 @@ CREATE SEQUENCE public.tagmanifestlabel_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.tagmanifestlabel_id_seq OWNER TO quay;
+ALTER SEQUENCE public.tagmanifestlabel_id_seq OWNER TO quay;
 
 --
 -- Name: tagmanifestlabel_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4491,7 +4630,7 @@ CREATE SEQUENCE public.tagmanifestlabelmap_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.tagmanifestlabelmap_id_seq OWNER TO quay;
+ALTER SEQUENCE public.tagmanifestlabelmap_id_seq OWNER TO quay;
 
 --
 -- Name: tagmanifestlabelmap_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4527,7 +4666,7 @@ CREATE SEQUENCE public.tagmanifesttomanifest_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.tagmanifesttomanifest_id_seq OWNER TO quay;
+ALTER SEQUENCE public.tagmanifesttomanifest_id_seq OWNER TO quay;
 
 --
 -- Name: tagmanifesttomanifest_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4563,13 +4702,51 @@ CREATE SEQUENCE public.tagnotificationsuccess_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.tagnotificationsuccess_id_seq OWNER TO quay;
+ALTER SEQUENCE public.tagnotificationsuccess_id_seq OWNER TO quay;
 
 --
 -- Name: tagnotificationsuccess_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
 --
 
 ALTER SEQUENCE public.tagnotificationsuccess_id_seq OWNED BY public.tagnotificationsuccess.id;
+
+
+--
+-- Name: tagpullstatistics; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.tagpullstatistics (
+    id integer NOT NULL,
+    repository_id integer NOT NULL,
+    tag_name character varying(255) NOT NULL,
+    tag_pull_count bigint NOT NULL,
+    last_tag_pull_date timestamp without time zone NOT NULL,
+    current_manifest_digest character varying(255)
+);
+
+
+ALTER TABLE public.tagpullstatistics OWNER TO quay;
+
+--
+-- Name: tagpullstatistics_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.tagpullstatistics_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.tagpullstatistics_id_seq OWNER TO quay;
+
+--
+-- Name: tagpullstatistics_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.tagpullstatistics_id_seq OWNED BY public.tagpullstatistics.id;
 
 
 --
@@ -4599,7 +4776,7 @@ CREATE SEQUENCE public.tagtorepositorytag_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.tagtorepositorytag_id_seq OWNER TO quay;
+ALTER SEQUENCE public.tagtorepositorytag_id_seq OWNER TO quay;
 
 --
 -- Name: tagtorepositorytag_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4636,7 +4813,7 @@ CREATE SEQUENCE public.team_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.team_id_seq OWNER TO quay;
+ALTER SEQUENCE public.team_id_seq OWNER TO quay;
 
 --
 -- Name: team_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4671,7 +4848,7 @@ CREATE SEQUENCE public.teammember_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.teammember_id_seq OWNER TO quay;
+ALTER SEQUENCE public.teammember_id_seq OWNER TO quay;
 
 --
 -- Name: teammember_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4709,7 +4886,7 @@ CREATE SEQUENCE public.teammemberinvite_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.teammemberinvite_id_seq OWNER TO quay;
+ALTER SEQUENCE public.teammemberinvite_id_seq OWNER TO quay;
 
 --
 -- Name: teammemberinvite_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4743,7 +4920,7 @@ CREATE SEQUENCE public.teamrole_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.teamrole_id_seq OWNER TO quay;
+ALTER SEQUENCE public.teamrole_id_seq OWNER TO quay;
 
 --
 -- Name: teamrole_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4781,7 +4958,7 @@ CREATE SEQUENCE public.teamsync_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.teamsync_id_seq OWNER TO quay;
+ALTER SEQUENCE public.teamsync_id_seq OWNER TO quay;
 
 --
 -- Name: teamsync_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4817,7 +4994,7 @@ CREATE SEQUENCE public.torrentinfo_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.torrentinfo_id_seq OWNER TO quay;
+ALTER SEQUENCE public.torrentinfo_id_seq OWNER TO quay;
 
 --
 -- Name: torrentinfo_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4853,7 +5030,7 @@ CREATE SEQUENCE public.uploadedblob_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.uploadedblob_id_seq OWNER TO quay;
+ALTER SEQUENCE public.uploadedblob_id_seq OWNER TO quay;
 
 --
 -- Name: uploadedblob_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4907,7 +5084,7 @@ CREATE SEQUENCE public.user_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.user_id_seq OWNER TO quay;
+ALTER SEQUENCE public.user_id_seq OWNER TO quay;
 
 --
 -- Name: user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4942,7 +5119,7 @@ CREATE SEQUENCE public.userorganizationquota_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.userorganizationquota_id_seq OWNER TO quay;
+ALTER SEQUENCE public.userorganizationquota_id_seq OWNER TO quay;
 
 --
 -- Name: userorganizationquota_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -4977,7 +5154,7 @@ CREATE SEQUENCE public.userprompt_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.userprompt_id_seq OWNER TO quay;
+ALTER SEQUENCE public.userprompt_id_seq OWNER TO quay;
 
 --
 -- Name: userprompt_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -5011,7 +5188,7 @@ CREATE SEQUENCE public.userpromptkind_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.userpromptkind_id_seq OWNER TO quay;
+ALTER SEQUENCE public.userpromptkind_id_seq OWNER TO quay;
 
 --
 -- Name: userpromptkind_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -5046,7 +5223,7 @@ CREATE SEQUENCE public.userregion_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.userregion_id_seq OWNER TO quay;
+ALTER SEQUENCE public.userregion_id_seq OWNER TO quay;
 
 --
 -- Name: userregion_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -5080,7 +5257,7 @@ CREATE SEQUENCE public.visibility_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.visibility_id_seq OWNER TO quay;
+ALTER SEQUENCE public.visibility_id_seq OWNER TO quay;
 
 --
 -- Name: visibility_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
@@ -5384,6 +5561,13 @@ ALTER TABLE ONLY public.manifestlegacyimage ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: manifestpullstatistics id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.manifestpullstatistics ALTER COLUMN id SET DEFAULT nextval('public.manifestpullstatistics_id_seq'::regclass);
+
+
+--
 -- Name: manifestsecuritystatus id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5416,6 +5600,13 @@ ALTER TABLE ONLY public.namespaceautoprunepolicy ALTER COLUMN id SET DEFAULT nex
 --
 
 ALTER TABLE ONLY public.namespacegeorestriction ALTER COLUMN id SET DEFAULT nextval('public.namespacegeorestriction_id_seq'::regclass);
+
+
+--
+-- Name: namespaceimmutabilitypolicy id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.namespaceimmutabilitypolicy ALTER COLUMN id SET DEFAULT nextval('public.namespaceimmutabilitypolicy_id_seq'::regclass);
 
 
 --
@@ -5622,6 +5813,13 @@ ALTER TABLE ONLY public.repositorybuildtrigger ALTER COLUMN id SET DEFAULT nextv
 
 
 --
+-- Name: repositoryimmutabilitypolicy id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.repositoryimmutabilitypolicy ALTER COLUMN id SET DEFAULT nextval('public.repositoryimmutabilitypolicy_id_seq'::regclass);
+
+
+--
 -- Name: repositorykind id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5755,6 +5953,13 @@ ALTER TABLE ONLY public.tagnotificationsuccess ALTER COLUMN id SET DEFAULT nextv
 
 
 --
+-- Name: tagpullstatistics id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagpullstatistics ALTER COLUMN id SET DEFAULT nextval('public.tagpullstatistics_id_seq'::regclass);
+
+
+--
 -- Name: tagtorepositorytag id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5875,7 +6080,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-1623f40582ed
+285f36ce97fd
 \.
 
 
@@ -6448,9 +6653,9 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 203	97	1	\N	\N	2023-11-07 19:54:19.160078	172.18.0.1	{"type": "quayauth", "useragent": "Mozilla/5.0"}
 204	76	6	1	\N	2024-11-26 13:28:52.179631	172.20.0.1	{"upstream_registry": "docker.io"}
 205	46	1	1	1	2025-08-14 17:34:11.334478	10.89.0.5	{"username": "user1", "repo": "hello-world", "tag": "latest", "manifest_digest": "sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"}
-206	42	1	1	1	2025-10-10 16:30:12.348000	172.18.0.1	{"repo": "hello-world", "namespace": "user1", "user-agent": "cosign/v2.0.0", "tag": "sha256-f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4.sig", "username": "user1", "resolved_ip": {"provider": "internet", "service": null, "sync_token": "1645662201", "country_iso_code": null, "aws_region": null}}
-207	42	1	1	1	2025-10-10 16:30:34.121000	172.18.0.1	{"repo": "hello-world", "namespace": "user1", "user-agent": "cosign/v2.0.0", "tag": "sha256-f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4.sbom", "username": "user1", "resolved_ip": {"provider": "internet", "service": null, "sync_token": "1645662201", "country_iso_code": null, "aws_region": null}}
-208	42	1	1	1	2025-10-10 16:30:51.238000	172.18.0.1	{"repo": "hello-world", "namespace": "user1", "user-agent": "cosign/v2.0.0", "tag": "sha256-f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4.att", "username": "user1", "resolved_ip": {"provider": "internet", "service": null, "sync_token": "1645662201", "country_iso_code": null, "aws_region": null}}
+206	42	1	1	1	2025-10-10 16:30:12.348	172.18.0.1	{"repo": "hello-world", "namespace": "user1", "user-agent": "cosign/v2.0.0", "tag": "sha256-f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4.sig", "username": "user1", "resolved_ip": {"provider": "internet", "service": null, "sync_token": "1645662201", "country_iso_code": null, "aws_region": null}}
+207	42	1	1	1	2025-10-10 16:30:34.121	172.18.0.1	{"repo": "hello-world", "namespace": "user1", "user-agent": "cosign/v2.0.0", "tag": "sha256-f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4.sbom", "username": "user1", "resolved_ip": {"provider": "internet", "service": null, "sync_token": "1645662201", "country_iso_code": null, "aws_region": null}}
+208	42	1	1	1	2025-10-10 16:30:51.238	172.18.0.1	{"repo": "hello-world", "namespace": "user1", "user-agent": "cosign/v2.0.0", "tag": "sha256-f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4.att", "username": "user1", "resolved_ip": {"provider": "internet", "service": null, "sync_token": "1645662201", "country_iso_code": null, "aws_region": null}}
 \.
 
 
@@ -6588,6 +6793,9 @@ COPY public.logentrykind (id, name) FROM stdin;
 127	org_mirror_sync_now_requested
 128	org_mirror_sync_cancelled
 129	org_mirror_repo_created
+130	create_immutability_policy
+131	update_immutability_policy
+132	delete_immutability_policy
 \.
 
 
@@ -6702,6 +6910,14 @@ COPY public.manifestlegacyimage (id, repository_id, manifest_id, image_id) FROM 
 
 
 --
+-- Data for Name: manifestpullstatistics; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.manifestpullstatistics (id, repository_id, manifest_digest, manifest_pull_count, last_manifest_pull_date) FROM stdin;
+\.
+
+
+--
 -- Data for Name: manifestsecuritystatus; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
@@ -6757,6 +6973,14 @@ COPY public.namespaceautoprunepolicy (id, uuid, namespace_id, policy) FROM stdin
 --
 
 COPY public.namespacegeorestriction (id, namespace_id, added, description, unstructured_json, restricted_region_iso_code) FROM stdin;
+\.
+
+
+--
+-- Data for Name: namespaceimmutabilitypolicy; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.namespaceimmutabilitypolicy (id, uuid, namespace_id, policy) FROM stdin;
 \.
 
 
@@ -6836,6 +7060,22 @@ COPY public.organizationrhskus (id, subscription_id, org_id, user_id, quantity) 
 
 
 --
+-- Data for Name: orgmirrorconfig; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.orgmirrorconfig (id, organization_id, creation_date, is_enabled, mirror_type, external_registry_type, external_registry_url, external_namespace, external_registry_username, external_registry_password, external_registry_config, internal_robot_id, repository_filters, visibility_id, delete_stale_repos, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, skopeo_timeout) FROM stdin;
+\.
+
+
+--
+-- Data for Name: orgmirrorrepository; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.orgmirrorrepository (id, org_mirror_config_id, repository_name, repository_id, discovery_date, sync_status, sync_start_date, sync_expiration_date, last_sync_date, status_message, creation_date) FROM stdin;
+\.
+
+
+--
 -- Data for Name: permissionprototype; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
@@ -6884,8 +7124,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2025-06-12 15:21:52.763851	t	2025-06-12 18:16:52.746494	5	a215428c-3447-421d-8e7a-ebda81380dfb
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2025-06-12 15:21:57.782723	t	2025-06-12 18:16:57.767285	5	1e4cfcd4-e84b-4e71-88f3-514fa201ef9c
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2026-01-21 14:11:18.51086	t	2026-01-21 17:06:18.469519	5	bc1aa914-ed3b-448f-955e-ab367f49b4ac
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2026-01-21 14:11:23.544782	t	2026-01-21 17:06:23.522137	5	031e6e19-67ee-4601-a574-906e3044b76f
 \.
 
 
@@ -6902,6 +7142,36 @@ COPY public.quotalimits (id, quota_id, quota_type_id, percent_of_limit) FROM std
 --
 
 COPY public.quotanamespacesize (id, namespace_user_id, size_bytes, backfill_start_ms, backfill_complete) FROM stdin;
+1	4	0	1769004373127	t
+2	5	0	1769004376313	t
+3	6	0	1769004376334	t
+4	7	0	1769004376377	t
+5	8	0	1769004376400	t
+6	9	0	1769004376423	t
+7	10	0	1769004376445	t
+8	11	0	1769004376467	t
+9	12	0	1769004376490	t
+10	13	0	1769004376513	t
+11	14	0	1769004376536	t
+12	15	0	1769004376559	t
+13	16	0	1769004376581	t
+14	17	0	1769004376603	t
+15	18	0	1769004376624	t
+16	19	0	1769004376645	t
+17	20	0	1769004376667	t
+18	21	0	1769004376689	t
+19	22	0	1769004376711	t
+20	23	0	1769004376731	t
+21	24	0	1769004376751	t
+22	25	0	1769004376772	t
+23	26	0	1769004376792	t
+24	27	0	1769004376814	t
+25	28	0	1769004376835	t
+26	32	3948	1769004376899	t
+27	33	0	1769004376940	t
+28	34	0	1769004376960	t
+29	1	52054	1769004376981	t
+30	29	0	1769004377040	t
 \.
 
 
@@ -6918,6 +7188,162 @@ COPY public.quotaregistrysize (id, size_bytes, running, queued, completed_ms) FR
 --
 
 COPY public.quotarepositorysize (id, repository_id, size_bytes, backfill_start_ms, backfill_complete) FROM stdin;
+1	4	0	1769004373163	t
+2	6	0	1769004373185	t
+3	7	0	1769004373206	t
+4	8	0	1769004373226	t
+5	9	0	1769004373247	t
+6	10	0	1769004373269	t
+7	11	0	1769004373291	t
+8	12	0	1769004373312	t
+9	13	0	1769004373332	t
+10	14	0	1769004373353	t
+11	15	0	1769004373376	t
+12	16	0	1769004373398	t
+13	17	0	1769004373419	t
+14	18	0	1769004373440	t
+15	19	0	1769004373461	t
+16	20	0	1769004373481	t
+17	21	0	1769004373502	t
+18	22	0	1769004373523	t
+19	23	0	1769004373545	t
+20	24	0	1769004373565	t
+21	25	0	1769004373584	t
+22	26	0	1769004373603	t
+23	27	0	1769004373622	t
+24	28	0	1769004373642	t
+25	29	0	1769004373665	t
+26	30	0	1769004373686	t
+27	31	0	1769004373708	t
+28	32	0	1769004373728	t
+29	33	0	1769004373749	t
+30	34	0	1769004373770	t
+31	35	0	1769004373792	t
+32	36	0	1769004373812	t
+33	37	0	1769004373832	t
+34	38	0	1769004373852	t
+35	39	0	1769004373872	t
+36	40	0	1769004373891	t
+37	41	0	1769004373911	t
+38	42	0	1769004373931	t
+39	43	0	1769004373953	t
+40	44	0	1769004373975	t
+41	45	0	1769004373996	t
+42	46	0	1769004374017	t
+43	47	0	1769004374038	t
+44	48	0	1769004374058	t
+45	49	0	1769004374078	t
+46	50	0	1769004374097	t
+47	51	0	1769004374118	t
+48	52	0	1769004374141	t
+49	53	0	1769004374163	t
+50	54	0	1769004374182	t
+51	55	0	1769004374203	t
+52	56	0	1769004374224	t
+53	57	0	1769004374245	t
+54	58	0	1769004374265	t
+55	59	0	1769004374286	t
+56	60	0	1769004374306	t
+57	61	0	1769004374328	t
+58	62	0	1769004374348	t
+59	63	0	1769004374368	t
+60	64	0	1769004374387	t
+61	65	0	1769004374406	t
+62	66	0	1769004374425	t
+63	67	0	1769004374444	t
+64	68	0	1769004374464	t
+65	69	0	1769004374484	t
+66	70	0	1769004374505	t
+67	71	0	1769004374526	t
+68	72	0	1769004374545	t
+69	73	0	1769004374565	t
+70	74	0	1769004374585	t
+71	75	0	1769004374606	t
+72	76	0	1769004374626	t
+73	77	0	1769004374645	t
+74	78	0	1769004374665	t
+75	79	0	1769004374686	t
+76	80	0	1769004374706	t
+77	81	0	1769004374727	t
+78	82	0	1769004374748	t
+79	83	0	1769004374769	t
+80	84	0	1769004374789	t
+81	85	0	1769004374809	t
+82	86	0	1769004374830	t
+83	87	0	1769004374851	t
+84	88	0	1769004374874	t
+85	89	0	1769004374897	t
+86	90	0	1769004374918	t
+87	91	0	1769004374940	t
+88	92	0	1769004374960	t
+89	93	0	1769004374979	t
+90	94	0	1769004375000	t
+91	95	0	1769004375021	t
+92	96	0	1769004375042	t
+93	97	0	1769004375062	t
+94	98	0	1769004375083	t
+95	99	0	1769004375106	t
+96	100	0	1769004375126	t
+97	101	0	1769004375150	t
+98	102	0	1769004375172	t
+99	103	0	1769004375193	t
+100	104	0	1769004375215	t
+101	105	0	1769004375235	t
+102	106	0	1769004375256	t
+103	107	0	1769004375276	t
+104	108	0	1769004375297	t
+105	109	0	1769004375319	t
+106	110	0	1769004375341	t
+107	111	0	1769004375363	t
+108	112	0	1769004375386	t
+109	113	0	1769004375409	t
+110	114	0	1769004375429	t
+111	115	0	1769004375451	t
+112	116	0	1769004375472	t
+113	117	0	1769004375494	t
+114	118	0	1769004375514	t
+115	119	0	1769004375535	t
+116	120	0	1769004375558	t
+117	121	0	1769004375579	t
+118	122	0	1769004375601	t
+119	123	0	1769004375623	t
+120	124	0	1769004375643	t
+121	125	0	1769004375664	t
+122	126	0	1769004375685	t
+123	127	0	1769004375707	t
+124	128	0	1769004375730	t
+125	129	0	1769004375754	t
+126	130	0	1769004375780	t
+127	131	0	1769004375804	t
+128	132	0	1769004375827	t
+129	133	0	1769004375851	t
+130	134	0	1769004375876	t
+131	135	0	1769004375897	t
+132	136	0	1769004375918	t
+133	137	0	1769004375939	t
+134	138	0	1769004375961	t
+135	139	0	1769004375983	t
+136	140	0	1769004376004	t
+137	141	0	1769004376025	t
+138	142	0	1769004376045	t
+139	143	0	1769004376067	t
+140	144	0	1769004376088	t
+141	145	0	1769004376109	t
+142	146	0	1769004376129	t
+143	147	0	1769004376150	t
+144	148	0	1769004376171	t
+145	149	0	1769004376193	t
+146	150	0	1769004376214	t
+147	151	0	1769004376234	t
+148	152	0	1769004376254	t
+149	153	0	1769004376274	t
+150	154	0	1769004376294	t
+151	157	0	1769004376357	t
+152	5	0	1769004376858	t
+153	156	0	1769004376880	t
+154	155	3948	1769004376921	t
+155	2	0	1769004377002	t
+156	1	52054	1769004377022	t
 \.
 
 
@@ -7316,6 +7742,14 @@ COPY public.repositorybuild (id, uuid, repository_id, access_token_id, resource_
 --
 
 COPY public.repositorybuildtrigger (id, uuid, service_id, repository_id, connected_user_id, config, write_token_id, pull_robot_id, disabled_reason_id, enabled, successive_failure_count, successive_internal_error_count, disabled_datetime, secure_auth_token, secure_private_key, fully_migrated) FROM stdin;
+\.
+
+
+--
+-- Data for Name: repositoryimmutabilitypolicy; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.repositoryimmutabilitypolicy (id, uuid, repository_id, namespace_id, policy) FROM stdin;
 \.
 
 
@@ -7984,6 +8418,14 @@ COPY public.tagnotificationsuccess (id, notification_id, tag_id, method_id) FROM
 
 
 --
+-- Data for Name: tagpullstatistics; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.tagpullstatistics (id, repository_id, tag_name, tag_pull_count, last_tag_pull_date, current_manifest_digest) FROM stdin;
+\.
+
+
+--
 -- Data for Name: tagtorepositorytag; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
@@ -8480,7 +8922,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 129, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 132, true);
 
 
 --
@@ -8526,6 +8968,13 @@ SELECT pg_catalog.setval('public.manifestlegacyimage_id_seq', 1, false);
 
 
 --
+-- Name: manifestpullstatistics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.manifestpullstatistics_id_seq', 1, false);
+
+
+--
 -- Name: manifestsecuritystatus_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
@@ -8558,6 +9007,13 @@ SELECT pg_catalog.setval('public.namespaceautoprunepolicy_id_seq', 3, true);
 --
 
 SELECT pg_catalog.setval('public.namespacegeorestriction_id_seq', 1, false);
+
+
+--
+-- Name: namespaceimmutabilitypolicy_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.namespaceimmutabilitypolicy_id_seq', 1, false);
 
 
 --
@@ -8676,7 +9132,7 @@ SELECT pg_catalog.setval('public.quotalimits_id_seq', 1, false);
 -- Name: quotanamespacesize_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.quotanamespacesize_id_seq', 1, false);
+SELECT pg_catalog.setval('public.quotanamespacesize_id_seq', 30, true);
 
 
 --
@@ -8690,7 +9146,7 @@ SELECT pg_catalog.setval('public.quotaregistrysize_id_seq', 1, true);
 -- Name: quotarepositorysize_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.quotarepositorysize_id_seq', 1, false);
+SELECT pg_catalog.setval('public.quotarepositorysize_id_seq', 156, true);
 
 
 --
@@ -8761,6 +9217,13 @@ SELECT pg_catalog.setval('public.repositorybuild_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.repositorybuildtrigger_id_seq', 1, false);
+
+
+--
+-- Name: repositoryimmutabilitypolicy_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.repositoryimmutabilitypolicy_id_seq', 1, false);
 
 
 --
@@ -8894,6 +9357,13 @@ SELECT pg_catalog.setval('public.tagmanifesttomanifest_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.tagnotificationsuccess_id_seq', 1, false);
+
+
+--
+-- Name: tagpullstatistics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.tagpullstatistics_id_seq', 1, false);
 
 
 --
@@ -9339,6 +9809,14 @@ ALTER TABLE ONLY public.manifestlegacyimage
 
 
 --
+-- Name: manifestpullstatistics pk_manifestpullstatistics; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.manifestpullstatistics
+    ADD CONSTRAINT pk_manifestpullstatistics PRIMARY KEY (id);
+
+
+--
 -- Name: manifestsecuritystatus pk_manifestsecuritystatus; Type: CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -9376,6 +9854,14 @@ ALTER TABLE ONLY public.namespaceautoprunepolicy
 
 ALTER TABLE ONLY public.namespacegeorestriction
     ADD CONSTRAINT pk_namespacegeorestriction PRIMARY KEY (id);
+
+
+--
+-- Name: namespaceimmutabilitypolicy pk_namespaceimmutabilitypolicyid; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.namespaceimmutabilitypolicy
+    ADD CONSTRAINT pk_namespaceimmutabilitypolicyid PRIMARY KEY (id);
 
 
 --
@@ -9611,6 +10097,14 @@ ALTER TABLE ONLY public.repositorybuildtrigger
 
 
 --
+-- Name: repositoryimmutabilitypolicy pk_repositoryimmutabilitypolicyid; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.repositoryimmutabilitypolicy
+    ADD CONSTRAINT pk_repositoryimmutabilitypolicyid PRIMARY KEY (id);
+
+
+--
 -- Name: repositorykind pk_repositorykind; Type: CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -9760,6 +10254,14 @@ ALTER TABLE ONLY public.tagmanifestlabelmap
 
 ALTER TABLE ONLY public.tagmanifesttomanifest
     ADD CONSTRAINT pk_tagmanifesttomanifest PRIMARY KEY (id);
+
+
+--
+-- Name: tagpullstatistics pk_tagpullstatistics; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagpullstatistics
+    ADD CONSTRAINT pk_tagpullstatistics PRIMARY KEY (id);
 
 
 --
@@ -10869,6 +11371,13 @@ CREATE INDEX manifestlegacyimage_repository_id ON public.manifestlegacyimage USI
 
 
 --
+-- Name: manifestpullstatistics_repository_id_manifest_digest; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX manifestpullstatistics_repository_id_manifest_digest ON public.manifestpullstatistics USING btree (repository_id, manifest_digest);
+
+
+--
 -- Name: manifestsecuritystatus_index_status; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -10971,6 +11480,20 @@ CREATE UNIQUE INDEX namespacegeorestriction_namespace_id_restricted_region_iso_c
 --
 
 CREATE INDEX namespacegeorestriction_restricted_region_iso_code ON public.namespacegeorestriction USING btree (restricted_region_iso_code);
+
+
+--
+-- Name: namespaceimmutabilitypolicy_namespace_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX namespaceimmutabilitypolicy_namespace_id ON public.namespaceimmutabilitypolicy USING btree (namespace_id);
+
+
+--
+-- Name: namespaceimmutabilitypolicy_uuid; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX namespaceimmutabilitypolicy_uuid ON public.namespaceimmutabilitypolicy USING btree (uuid);
 
 
 --
@@ -11681,6 +12204,27 @@ CREATE INDEX repositorybuildtrigger_write_token_id ON public.repositorybuildtrig
 
 
 --
+-- Name: repositoryimmutabilitypolicy_namespace_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX repositoryimmutabilitypolicy_namespace_id ON public.repositoryimmutabilitypolicy USING btree (namespace_id);
+
+
+--
+-- Name: repositoryimmutabilitypolicy_repository_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX repositoryimmutabilitypolicy_repository_id ON public.repositoryimmutabilitypolicy USING btree (repository_id);
+
+
+--
+-- Name: repositoryimmutabilitypolicy_uuid; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX repositoryimmutabilitypolicy_uuid ON public.repositoryimmutabilitypolicy USING btree (uuid);
+
+
+--
 -- Name: repositorykind_name; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -12112,6 +12656,13 @@ CREATE INDEX tagmanifesttomanifest_manifest_id ON public.tagmanifesttomanifest U
 --
 
 CREATE UNIQUE INDEX tagmanifesttomanifest_tag_manifest_id ON public.tagmanifesttomanifest USING btree (tag_manifest_id);
+
+
+--
+-- Name: tagpullstatistics_repository_id_tag_name; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX tagpullstatistics_repository_id_tag_name ON public.tagpullstatistics USING btree (repository_id, tag_name);
 
 
 --
@@ -12788,6 +13339,14 @@ ALTER TABLE ONLY public.namespacegeorestriction
 
 
 --
+-- Name: namespaceimmutabilitypolicy fk_namespaceimmutabilitypolicy_namespace_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.namespaceimmutabilitypolicy
+    ADD CONSTRAINT fk_namespaceimmutabilitypolicy_namespace_id_user FOREIGN KEY (namespace_id) REFERENCES public."user"(id);
+
+
+--
 -- Name: notification fk_notification_kind_id_notificationkind; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -13196,6 +13755,22 @@ ALTER TABLE ONLY public.repositorybuildtrigger
 
 
 --
+-- Name: repositoryimmutabilitypolicy fk_repositoryimmutabilitypolicy_namespace_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.repositoryimmutabilitypolicy
+    ADD CONSTRAINT fk_repositoryimmutabilitypolicy_namespace_id_user FOREIGN KEY (namespace_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: repositoryimmutabilitypolicy fk_repositoryimmutabilitypolicy_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.repositoryimmutabilitypolicy
+    ADD CONSTRAINT fk_repositoryimmutabilitypolicy_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
+
+
+--
 -- Name: repositorynotification fk_repositorynotification_event_id_externalnotificationevent; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -13494,3 +14069,6 @@ ALTER TABLE ONLY public.userregion
 --
 -- PostgreSQL database dump complete
 --
+
+\unrestrict 97bFbRkax7KQ9dCarATTECnUjaj3yrx03WezcRZS94T9hV2bAEcFmbH51eaiblK
+
