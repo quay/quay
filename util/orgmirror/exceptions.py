@@ -3,6 +3,8 @@
 Custom exceptions for registry adapters used in organization mirroring.
 """
 
+from typing import Optional
+
 
 class RegistryDiscoveryException(Exception):
     """
@@ -12,7 +14,7 @@ class RegistryDiscoveryException(Exception):
     authentication problems, or registry API errors.
     """
 
-    def __init__(self, message: str, cause: Exception = None):
+    def __init__(self, message: str, cause: Optional[Exception] = None):
         """
         Initialize the exception.
 

@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple
 
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+from requests.packages.urllib3.util.retry import Retry
 
 DEFAULT_TIMEOUT = 30
 DEFAULT_MAX_RETRIES = 3

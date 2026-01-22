@@ -2148,6 +2148,10 @@ class OrgMirrorConfig(BaseModel):
     # Empty list means mirror all repositories
     repository_filters = JSONField(default=[])
 
+    # Architecture filtering - list of architectures (e.g., ["amd64", "arm64"])
+    # Empty list means mirror all architectures
+    architecture_filter = JSONField(default=[])
+
     # Visibility for created repositories
     visibility = EnumField(Visibility)
 
