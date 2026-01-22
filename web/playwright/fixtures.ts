@@ -128,6 +128,15 @@ export interface CreatedBuild {
 }
 
 /**
+ * Created immutability policy info
+ */
+export interface CreatedImmutabilityPolicy {
+  uuid: string;
+  tagPattern: string;
+  tagPatternMatches: boolean;
+}
+
+/**
  * API client with auto-cleanup tracking.
  *
  * All resources created via this client are automatically
@@ -616,6 +625,84 @@ export class TestApi {
       namespace,
       repoName,
       buildId: result.id,
+    };
+  }
+
+  /**
+   * Create an immutability policy for an organization.
+   * Automatically deleted after test.
+   *
+   * @param orgName - Organization name
+   * @param tagPattern - Regex pattern to match tag names
+   * @param tagPatternMatches - If true, matching tags are immutable. If false, non-matching are immutable (default: true)
+   */
+  async orgImmutabilityPolicy(
+    orgName: string,
+    tagPattern: string,
+    tagPatternMatches = true,
+  ): Promise<CreatedImmutabilityPolicy & {orgName: string}> {
+    const result = await this.client.createOrgImmutabilityPolicy(orgName, {
+      tagPattern,
+      tagPatternMatches,
+    });
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOrgImmutabilityPolicy(orgName, result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      uuid: result.uuid,
+      tagPattern,
+      tagPatternMatches,
+      orgName,
+    };
+  }
+
+  /**
+   * Create an immutability policy for a repository.
+   * Automatically deleted after test.
+   *
+   * @param namespace - Organization or username that owns the repository
+   * @param repoName - Repository name
+   * @param tagPattern - Regex pattern to match tag names
+   * @param tagPatternMatches - If true, matching tags are immutable. If false, non-matching are immutable (default: true)
+   */
+  async repoImmutabilityPolicy(
+    namespace: string,
+    repoName: string,
+    tagPattern: string,
+    tagPatternMatches = true,
+  ): Promise<
+    CreatedImmutabilityPolicy & {namespace: string; repoName: string}
+  > {
+    const result = await this.client.createRepoImmutabilityPolicy(
+      namespace,
+      repoName,
+      {tagPattern, tagPatternMatches},
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepoImmutabilityPolicy(
+          namespace,
+          repoName,
+          result.uuid,
+        );
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      uuid: result.uuid,
+      tagPattern,
+      tagPatternMatches,
+      namespace,
+      repoName,
     };
   }
 

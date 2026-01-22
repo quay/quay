@@ -471,6 +471,66 @@ export function useLogDescriptions() {
     delete_repository_autoprune_policy: function (metadata: Metadata) {
       return `Deleted repository autoprune policy for repository: ${metadata.namespace}/${metadata.repo}`;
     },
+    create_immutability_policy: function (metadata: Metadata) {
+      const behavior =
+        String(metadata.tag_pattern_matches) === 'false'
+          ? 'NOT matching'
+          : 'matching';
+      if (metadata.repo) {
+        return (
+          <>
+            Created immutability policy for repository{' '}
+            {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}: tags{' '}
+            {behavior} {wrapVariable(metadata.tag_pattern)} are immutable
+          </>
+        );
+      }
+      return (
+        <>
+          Created immutability policy for namespace{' '}
+          {wrapVariable(metadata.namespace)}: tags {behavior}{' '}
+          {wrapVariable(metadata.tag_pattern)} are immutable
+        </>
+      );
+    },
+    update_immutability_policy: function (metadata: Metadata) {
+      const behavior =
+        String(metadata.tag_pattern_matches) === 'false'
+          ? 'NOT matching'
+          : 'matching';
+      if (metadata.repo) {
+        return (
+          <>
+            Updated immutability policy for repository{' '}
+            {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}: tags{' '}
+            {behavior} {wrapVariable(metadata.tag_pattern)} are immutable
+          </>
+        );
+      }
+      return (
+        <>
+          Updated immutability policy for namespace{' '}
+          {wrapVariable(metadata.namespace)}: tags {behavior}{' '}
+          {wrapVariable(metadata.tag_pattern)} are immutable
+        </>
+      );
+    },
+    delete_immutability_policy: function (metadata: Metadata) {
+      if (metadata.repo) {
+        return (
+          <>
+            Deleted immutability policy for repository{' '}
+            {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+          </>
+        );
+      }
+      return (
+        <>
+          Deleted immutability policy for namespace{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
     delete_tag: function (metadata: Metadata) {
       return (
         <>

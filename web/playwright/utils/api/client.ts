@@ -14,6 +14,13 @@ export type PrototypeRole = 'read' | 'write' | 'admin';
 export type MessageSeverity = 'info' | 'warning' | 'error';
 export type MessageMediaType = 'text/plain' | 'text/markdown';
 
+// Immutability policy types
+export interface ImmutabilityPolicy {
+  uuid?: string;
+  tagPattern: string;
+  tagPatternMatches: boolean;
+}
+
 // Tag types
 export interface TagInfo {
   name: string;
@@ -1715,6 +1722,224 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to set immutability for tag ${tag} in ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Immutability policy methods
+
+  /**
+   * Get immutability policies for an organization.
+   */
+  async getOrgImmutabilityPolicies(
+    orgName: string,
+  ): Promise<{policies: ImmutabilityPolicy[]}> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/organization/${orgName}/immutabilitypolicy/`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get immutability policies for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Create an immutability policy for an organization.
+   */
+  async createOrgImmutabilityPolicy(
+    orgName: string,
+    policy: Omit<ImmutabilityPolicy, 'uuid'>,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/immutabilitypolicy/`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: policy,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create immutability policy for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update an immutability policy for an organization.
+   */
+  async updateOrgImmutabilityPolicy(
+    orgName: string,
+    policyUuid: string,
+    policy: Omit<ImmutabilityPolicy, 'uuid'>,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/organization/${orgName}/immutabilitypolicy/${policyUuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: policy,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to update immutability policy ${policyUuid} for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
+   * Delete an immutability policy for an organization.
+   */
+  async deleteOrgImmutabilityPolicy(
+    orgName: string,
+    policyUuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/immutabilitypolicy/${policyUuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete immutability policy ${policyUuid} from ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
+   * Get immutability policies for a repository.
+   */
+  async getRepoImmutabilityPolicies(
+    namespace: string,
+    repo: string,
+  ): Promise<{policies: ImmutabilityPolicy[]}> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/immutabilitypolicy/`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get immutability policies for ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Create an immutability policy for a repository.
+   */
+  async createRepoImmutabilityPolicy(
+    namespace: string,
+    repo: string,
+    policy: Omit<ImmutabilityPolicy, 'uuid'>,
+  ): Promise<{uuid: string}> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/immutabilitypolicy/`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: policy,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create immutability policy for ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update an immutability policy for a repository.
+   */
+  async updateRepoImmutabilityPolicy(
+    namespace: string,
+    repo: string,
+    policyUuid: string,
+    policy: Omit<ImmutabilityPolicy, 'uuid'>,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/immutabilitypolicy/${policyUuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: policy,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to update immutability policy ${policyUuid} for ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
+   * Delete an immutability policy for a repository.
+   */
+  async deleteRepoImmutabilityPolicy(
+    namespace: string,
+    repo: string,
+    policyUuid: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/immutabilitypolicy/${policyUuid}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete immutability policy ${policyUuid} from ${namespace}/${repo}: ${response.status()} - ${body}`,
       );
     }
   }
