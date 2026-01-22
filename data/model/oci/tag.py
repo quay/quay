@@ -469,6 +469,20 @@ def retarget_tag(
             if not okay:
                 return None
 
+        # Check if tag should be immutable based on policies
+        immutable = False
+        if features.IMMUTABLE_TAGS:
+            from data.model import immutability
+
+            repo = (
+                Repository.select(Repository.namespace_user)
+                .where(Repository.id == manifest.repository_id)
+                .get()
+            )
+            immutable = immutability.evaluate_immutability_policies(
+                manifest.repository_id, repo.namespace_user_id, tag_name
+            )
+
         # Create a new tag pointing to the manifest with a lifetime start of now.
         created = Tag.create(
             name=tag_name,
@@ -478,6 +492,7 @@ def retarget_tag(
             reversion=is_reversion,
             manifest=manifest,
             tag_kind=Tag.tag_kind.get_id("tag"),
+            immutable=immutable,
         )
 
         return created
