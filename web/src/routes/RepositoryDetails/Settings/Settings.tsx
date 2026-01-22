@@ -9,6 +9,7 @@ import {RepositoryStateForm} from './RepositoryState';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import RepositoryAutoPruning from 'src/routes/RepositoryDetails/Settings/RepositoryAutoPruning';
+import RepositoryImmutabilityPolicies from 'src/routes/RepositoryDetails/Settings/RepositoryImmutabilityPolicies';
 import {useOrganization} from 'src/hooks/UseOrganization';
 
 export default function Settings(props: SettingsProps) {
@@ -38,6 +39,20 @@ export default function Settings(props: SettingsProps) {
                 organizationName={props.org}
                 repoName={props.repo}
                 isUser={isUserOrganization}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(config?.features?.IMMUTABLE_TAGS && props.repoDetails?.can_write
+      ? [
+          {
+            name: 'Immutability Policies',
+            id: 'repositoryimmutabilitypolicies',
+            content: (
+              <RepositoryImmutabilityPolicies
+                organizationName={props.org}
+                repoName={props.repo}
               />
             ),
           },
@@ -108,7 +123,7 @@ export default function Settings(props: SettingsProps) {
         </Tabs>
       </FlexItem>
       <FlexItem
-        alignSelf={{default: 'alignSelfCenter'}}
+        alignSelf={{default: 'alignSelfFlexStart'}}
         style={{padding: '20px', width: '100%'}}
       >
         {tabs.at(activeTabIndex).content}
