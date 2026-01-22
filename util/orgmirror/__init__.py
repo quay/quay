@@ -26,6 +26,7 @@ def get_registry_adapter(
     username: Optional[str] = None,
     password: Optional[str] = None,
     config: Optional[Dict] = None,
+    token: Optional[str] = None,
 ) -> RegistryAdapter:
     """
     Factory function to create the appropriate registry adapter.
@@ -35,17 +36,22 @@ def get_registry_adapter(
         url: Base URL of the source registry
         namespace: Namespace/project/organization in the source registry
         username: Username for authentication (optional)
-        password: Password for authentication (optional)
+        password: Password for authentication (optional, used as token for Quay)
         config: Additional configuration (verify_tls, proxy, etc.)
+        token: API token for authentication (optional, primarily for Quay)
 
     Returns:
         RegistryAdapter instance for the specified registry type
 
     Raises:
         ValueError: If the registry type is not supported
+
+    Note:
+        For Quay registries, either `token` or `password` can be used to pass
+        the API token. Quay's API v1 does not support basic authentication.
     """
     if registry_type == SourceRegistryType.QUAY:
-        return QuayAdapter(url, namespace, username, password, config)
+        return QuayAdapter(url, namespace, username, password, config, token=token)
     elif registry_type == SourceRegistryType.HARBOR:
         return HarborAdapter(url, namespace, username, password, config)
     else:

@@ -371,6 +371,78 @@ class TestQuayAdapter:
         """Test that QuayDiscoveryException inherits from RegistryDiscoveryException."""
         assert issubclass(QuayDiscoveryException, RegistryDiscoveryException)
 
+    def test_bearer_token_authentication_via_token_param(self):
+        """Test that token parameter sets Bearer authentication header."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="my-api-token",
+        )
+
+        assert "Authorization" in adapter.session.headers
+        assert adapter.session.headers["Authorization"] == "Bearer my-api-token"
+        # Basic auth should NOT be set
+        assert adapter.session.auth is None
+
+    def test_bearer_token_authentication_via_password(self):
+        """Test that password field is used as Bearer token when token param is not set."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            username="ignored-user",
+            password="my-api-token-from-password",
+        )
+
+        assert "Authorization" in adapter.session.headers
+        assert adapter.session.headers["Authorization"] == "Bearer my-api-token-from-password"
+        # Basic auth should NOT be set (password is used as Bearer token, not basic auth)
+        assert adapter.session.auth is None
+
+    def test_token_param_takes_precedence_over_password(self):
+        """Test that explicit token parameter takes precedence over password."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            username="user",
+            password="password-token",
+            token="explicit-token",
+        )
+
+        assert adapter.session.headers["Authorization"] == "Bearer explicit-token"
+
+    def test_no_auth_when_no_credentials(self):
+        """Test that no auth is set when no credentials are provided."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+        )
+
+        assert "Authorization" not in adapter.session.headers
+        assert adapter.session.auth is None
+
+    @responses.activate
+    def test_bearer_token_sent_in_request(self):
+        """Test that Bearer token is actually sent in HTTP requests."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="test-bearer-token",
+        )
+
+        adapter.list_repositories()
+
+        # Verify the Authorization header was sent
+        assert len(responses.calls) == 1
+        auth_header = responses.calls[0].request.headers.get("Authorization")
+        assert auth_header == "Bearer test-bearer-token"
+
 
 class TestHarborAdapter:
     """Tests for HarborAdapter."""
@@ -726,7 +798,20 @@ class TestGetRegistryAdapter:
         assert isinstance(adapter, QuayAdapter)
         assert adapter.base_url == "https://quay.io"
         assert adapter.namespace == "testorg"
-        assert adapter.auth == ("user", "pass")
+        # Quay uses Bearer token auth (password is used as token)
+        assert adapter.session.headers["Authorization"] == "Bearer pass"
+
+    def test_get_quay_adapter_with_token(self):
+        """Test creating a Quay adapter with explicit token parameter."""
+        adapter = get_registry_adapter(
+            registry_type=SourceRegistryType.QUAY,
+            url="https://quay.io",
+            namespace="testorg",
+            token="my-api-token",
+        )
+
+        assert isinstance(adapter, QuayAdapter)
+        assert adapter.session.headers["Authorization"] == "Bearer my-api-token"
 
     def test_get_harbor_adapter(self):
         """Test creating a Harbor adapter."""

@@ -1253,12 +1253,27 @@ def _get_all_tags_for_org_mirror(
     """
     verbose_logs = os.getenv("DEBUGLOG", "false").lower() == "true"
 
-    username = (
-        config.external_registry_username.decrypt() if config.external_registry_username else None
-    )
-    password = (
-        config.external_registry_password.decrypt() if config.external_registry_password else None
-    )
+    try:
+        username = (
+            config.external_registry_username.decrypt()
+            if config.external_registry_username
+            else None
+        )
+        password = (
+            config.external_registry_password.decrypt()
+            if config.external_registry_password
+            else None
+        )
+    except DecryptionFailureException as e:
+        logger.exception(
+            "Failed to decrypt credentials for org mirror when listing tags for %s",
+            external_reference,
+        )
+        raise RepoMirrorSkopeoException(
+            f"Failed to decrypt credentials: {e}",
+            stdout="",
+            stderr=str(e),
+        ) from e
 
     skopeo_timeout = config.skopeo_timeout
 

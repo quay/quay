@@ -8,6 +8,8 @@ Implements repository discovery using Quay's API v1.
 import logging
 from typing import Dict, List, Optional, Tuple
 
+import requests
+from requests.adapters import HTTPAdapter
 from requests.exceptions import (
     ConnectionError,
     HTTPError,
@@ -16,6 +18,7 @@ from requests.exceptions import (
     SSLError,
     Timeout,
 )
+from requests.packages.urllib3.util.retry import Retry
 
 from util.orgmirror.exceptions import QuayDiscoveryException
 from util.orgmirror.registry_adapter import DEFAULT_MAX_RETRIES, RegistryAdapter
@@ -31,9 +34,14 @@ class QuayAdapter(RegistryAdapter):
 
     API Details:
         Endpoint: GET /api/v1/repository?namespace=<namespace>
-        Authentication: Basic auth or Bearer token
+        Authentication: Bearer token (API token required)
         Response: {"repositories": [...], "next_page": "token"}
         Pagination: Uses next_page token until null/missing
+
+    Note:
+        Quay's API v1 does not support basic authentication. An API token
+        must be provided via the `token` parameter or the `password` field.
+        The username field is ignored for Quay authentication.
     """
 
     def __init__(
@@ -44,8 +52,42 @@ class QuayAdapter(RegistryAdapter):
         password: Optional[str] = None,
         config: Optional[Dict] = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
+        token: Optional[str] = None,
     ):
+        # Store token before calling super().__init__ since _create_session uses it
+        # Token can be passed explicitly or via password field (common pattern)
+        self._api_token = token or password
         super().__init__(url, namespace, username, password, config, max_retries)
+
+    def _create_session(self) -> requests.Session:
+        """
+        Create a requests session with Bearer token authentication.
+
+        Overrides base class to use Bearer token instead of basic auth,
+        as Quay's API v1 requires token authentication.
+
+        Returns:
+            Configured requests.Session instance
+        """
+        session = requests.Session()
+
+        retry_strategy = Retry(
+            total=self.max_retries,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["GET", "HEAD"],
+            raise_on_status=False,
+        )
+
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+
+        # Use Bearer token authentication for Quay API
+        if self._api_token:
+            session.headers["Authorization"] = f"Bearer {self._api_token}"
+
+        return session
 
     def list_repositories(self) -> List[str]:
         """
