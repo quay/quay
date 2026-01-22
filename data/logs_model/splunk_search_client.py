@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from splunklib import client, results
-from splunklib.binding import AuthenticationError
+from splunklib.binding import AuthenticationError  # type: ignore[import]
 
 logger = logging.getLogger(__name__)
 
@@ -337,9 +337,9 @@ class SplunkSearchClient:
         """
         result_args = {"output_mode": "json"}
         if max_count is not None:
-            result_args["count"] = max_count
+            result_args["count"] = max_count  # type: ignore[assignment]
         if offset > 0:
-            result_args["offset"] = offset
+            result_args["offset"] = offset  # type: ignore[assignment]
 
         result_list = []
         reader = results.JSONResultsReader(job.results(**result_args))
