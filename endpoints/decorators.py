@@ -20,11 +20,60 @@ from data.model.repository import get_repository, get_repository_state
 from data.readreplica import ReadOnlyModeException
 from data.registry_model import registry_model
 from data.registry_model.registry_proxy_model import ProxyModel
+from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from util.http import abort
 from util.names import ImplicitLibraryNamespaceNotAllowed, parse_namespace_repository
 from util.request import get_request_ip
 
 logger = logging.getLogger(__name__)
+
+
+def check_schema1_push_enabled(error_class=None):
+    """
+    Decorator which checks if schema1/v1 manifest push is enabled for the current namespace.
+
+    This is designed for v2 endpoints where we need to check the content type to determine
+    if it's a schema1 push. If FEATURE_RESTRICTED_V1_PUSH is enabled, only namespaces in
+    V1_PUSH_WHITELIST are allowed to push schema1 manifests.
+
+    Args:
+        error_class: Optional exception class to raise instead of abort. Should accept
+                     detail and http_status_code kwargs.
+    """
+
+    def wrapper(wrapped):
+        @wraps(wrapped)
+        def decorated(*args, **kwargs):
+            namespace_name = kwargs.get("namespace_name")
+
+            # Check if this is a schema1 push
+            # Use mimetype which strips parameters like charset
+            # content_type of None or "application/json" defaults to schema1
+            content_type = request.mimetype or request.content_type
+            is_schema1 = content_type in DOCKER_SCHEMA1_CONTENT_TYPES or content_type in (
+                None,
+                "application/json",
+            )
+
+            if is_schema1 and features.RESTRICTED_V2_SCHEMA1_PUSH:
+                whitelist = app.config.get("V1_PUSH_WHITELIST") or []
+                logger.debug("V1/schema1 push is restricted to whitelist: %s", whitelist)
+                if namespace_name not in whitelist:
+                    if error_class:
+                        raise error_class(
+                            detail={"message": "V1/schema1 manifest pushes have been disabled"},
+                            http_status_code=405,
+                        )
+                    abort(
+                        405,
+                        message="V1/schema1 manifest pushes have been disabled",
+                    )
+
+            return wrapped(*args, **kwargs)
+
+        return decorated
+
+    return wrapper
 
 
 def inject_registry_model():
