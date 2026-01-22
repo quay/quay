@@ -50,8 +50,8 @@ def mock_model():
     """Mock the data.model module."""
     model = Mock(
         log=Mock(get_log_entry_kinds=Mock(return_value=FAKE_LOG_ENTRY_KINDS)),
-        user=Mock(get_namespace_user=lambda name: FAKE_USERS.get(name)),
-        repository=Mock(get_repository=lambda ns, name: Mock(id=1) if name == "repo1" else None),
+        user=Mock(get_namespace_user=lambda _name: FAKE_USERS.get(_name)),
+        repository=Mock(get_repository=lambda _ns, _name: Mock(id=1) if _name == "repo1" else None),
     )
     with patch("data.logs_model.splunk_field_mapper.model", model):
         yield model
@@ -60,6 +60,7 @@ def mock_model():
 @pytest.fixture
 def field_mapper(mock_model):
     """Create a SplunkLogMapper instance with mocked model."""
+    _ = mock_model  # Fixture dependency for patch context
     return SplunkLogMapper()
 
 
@@ -142,7 +143,7 @@ class TestSplunkLogMapperMapLogs:
         assert logs[0].account_username is None
         assert logs[0].account_email is None
 
-    def test_map_logs_batch_lookups_users(self, field_mapper, mock_model):
+    def test_map_logs_batch_lookups_users(self, field_mapper):
         """Test that map_logs uses batch user lookups."""
         results = [
             {"kind": "push_repo", "account": "user1", "performer": "user2"},
@@ -271,7 +272,7 @@ class TestSplunkLogMapperParseMetadata:
 class TestSplunkLogMapperBatchLookupUsers:
     """Tests for _batch_lookup_users method."""
 
-    def test_batch_user_lookup(self, field_mapper, mock_model):
+    def test_batch_user_lookup(self, field_mapper):
         """Test that _batch_lookup_users returns user mapping."""
         result = field_mapper._batch_lookup_users(["user1", "user2"])
 
@@ -280,7 +281,7 @@ class TestSplunkLogMapperBatchLookupUsers:
         assert result["user1"].username == "user1"
         assert result["user2"].username == "user2"
 
-    def test_batch_user_lookup_handles_missing_user(self, field_mapper, mock_model):
+    def test_batch_user_lookup_handles_missing_user(self, field_mapper):
         """Test that _batch_lookup_users handles missing users."""
         result = field_mapper._batch_lookup_users(["user1", "nonexistent"])
 
@@ -289,7 +290,7 @@ class TestSplunkLogMapperBatchLookupUsers:
         assert result["user1"] is not None
         assert result["nonexistent"] is None
 
-    def test_batch_user_lookup_uses_cache(self, field_mapper, mock_model):
+    def test_batch_user_lookup_uses_cache(self, field_mapper):
         """Test that _batch_lookup_users caches results."""
         field_mapper._batch_lookup_users(["user1"])
         field_mapper._batch_lookup_users(["user1", "user2"])
@@ -297,7 +298,7 @@ class TestSplunkLogMapperBatchLookupUsers:
         assert "user1" in field_mapper._user_cache
         assert "user2" in field_mapper._user_cache
 
-    def test_batch_user_lookup_empty_list(self, field_mapper, mock_model):
+    def test_batch_user_lookup_empty_list(self, field_mapper):
         """Test that _batch_lookup_users handles empty list."""
         result = field_mapper._batch_lookup_users([])
         assert result == {}
@@ -306,26 +307,26 @@ class TestSplunkLogMapperBatchLookupUsers:
 class TestSplunkLogMapperBatchLookupRepositories:
     """Tests for _batch_lookup_repositories method."""
 
-    def test_batch_repository_lookup(self, field_mapper, mock_model):
+    def test_batch_repository_lookup(self, field_mapper):
         """Test that _batch_lookup_repositories returns repo ID mapping."""
         result = field_mapper._batch_lookup_repositories(["repo1"], "user1")
 
         assert "repo1" in result
         assert result["repo1"] == 1
 
-    def test_batch_repository_lookup_handles_missing_repo(self, field_mapper, mock_model):
+    def test_batch_repository_lookup_handles_missing_repo(self, field_mapper):
         """Test that _batch_lookup_repositories handles missing repos."""
         result = field_mapper._batch_lookup_repositories(["repo1", "nonexistent"], "user1")
 
         assert result["repo1"] == 1
         assert result["nonexistent"] is None
 
-    def test_batch_repository_lookup_empty_list(self, field_mapper, mock_model):
+    def test_batch_repository_lookup_empty_list(self, field_mapper):
         """Test that _batch_lookup_repositories handles empty list."""
         result = field_mapper._batch_lookup_repositories([], "user1")
         assert result == {}
 
-    def test_batch_repository_lookup_no_namespace(self, field_mapper, mock_model):
+    def test_batch_repository_lookup_no_namespace(self, field_mapper):
         """Test that _batch_lookup_repositories handles missing namespace."""
         result = field_mapper._batch_lookup_repositories(["repo1"], None)
         assert result == {}
@@ -368,7 +369,7 @@ class TestSplunkLogMapperHandlesDeletedUser:
 class TestSplunkLogMapperClearCache:
     """Tests for clear_cache method."""
 
-    def test_clear_cache(self, field_mapper, mock_model):
+    def test_clear_cache(self, field_mapper):
         """Test that clear_cache clears internal caches."""
         field_mapper._batch_lookup_users(["user1"])
         field_mapper._get_kind_id("push_repo")

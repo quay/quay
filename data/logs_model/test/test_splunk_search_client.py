@@ -18,7 +18,7 @@ from data.logs_model.splunk_search_client import (
 
 FAKE_SPLUNK_HOST = "fakesplunk.example.com"
 FAKE_SPLUNK_PORT = 8089
-FAKE_SPLUNK_TOKEN = "fake_bearer_token"
+FAKE_SPLUNK_TOKEN = "fake_bearer_token"  # noqa: S105
 FAKE_INDEX_PREFIX = "quay_logs"
 
 
@@ -115,7 +115,10 @@ class TestSplunkSearchClientConnection:
         """Test that _get_connection raises SplunkAuthenticationError on auth failure."""
         from io import BytesIO
 
-        from splunklib.binding import AuthenticationError, HTTPError  # type: ignore[import]
+        from splunklib.binding import (  # type: ignore[import]
+            AuthenticationError,
+            HTTPError,
+        )
 
         # Create a mock HTTP response that AuthenticationError expects
         mock_response = Mock()
@@ -289,6 +292,27 @@ class TestSplunkSearchClientSearch:
 
             assert "Search execution failed" in str(exc_info.value)
 
+    def test_search_handles_timeout(self, search_client, mock_splunk_service):
+        """Test that search raises SplunkSearchTimeoutError on timeout."""
+        mock_job = Mock()
+        mock_job.is_done = Mock(return_value=False)
+        mock_job.refresh = Mock()
+        mock_job.cancel = Mock()
+        mock_splunk_service.jobs.create = Mock(return_value=mock_job)
+
+        with (
+            patch.object(search_client, "_get_connection", return_value=mock_splunk_service),
+            patch("data.logs_model.splunk_search_client.time.time") as mock_time,
+            patch("data.logs_model.splunk_search_client.time.sleep"),
+        ):
+            mock_time.side_effect = [0, 0, 65]  # Start, check, timeout exceeded
+
+            with pytest.raises(SplunkSearchTimeoutError) as exc_info:
+                search_client.search("kind=push_repo")
+
+            assert "exceeded timeout" in str(exc_info.value)
+            mock_job.cancel.assert_called_once()
+
 
 class TestSplunkSearchClientSearchWithStats:
     """Tests for search_with_stats method."""
@@ -321,6 +345,27 @@ class TestSplunkSearchClientSearchWithStats:
                 search_client.search_with_stats("| stats count by kind")
 
             assert "Stats search execution failed" in str(exc_info.value)
+
+    def test_search_with_stats_handles_timeout(self, search_client, mock_splunk_service):
+        """Test that search_with_stats raises SplunkSearchTimeoutError on timeout."""
+        mock_job = Mock()
+        mock_job.is_done = Mock(return_value=False)
+        mock_job.refresh = Mock()
+        mock_job.cancel = Mock()
+        mock_splunk_service.jobs.create = Mock(return_value=mock_job)
+
+        with (
+            patch.object(search_client, "_get_connection", return_value=mock_splunk_service),
+            patch("data.logs_model.splunk_search_client.time.time") as mock_time,
+            patch("data.logs_model.splunk_search_client.time.sleep"),
+        ):
+            mock_time.side_effect = [0, 0, 65]  # Start, check, timeout exceeded
+
+            with pytest.raises(SplunkSearchTimeoutError) as exc_info:
+                search_client.search_with_stats("| stats count by kind")
+
+            assert "exceeded timeout" in str(exc_info.value)
+            mock_job.cancel.assert_called_once()
 
 
 class TestSplunkSearchClientCount:
@@ -444,3 +489,34 @@ class TestSplunkSearchClientHelpers:
 
             assert len(results) == 2
             assert all(isinstance(r, dict) for r in results)
+
+    def test_wait_for_job_completion_success(self, search_client):
+        """Test that _wait_for_job_completion returns when job completes."""
+        mock_job = Mock()
+        mock_job.is_done = Mock(side_effect=[False, False, True])
+        mock_job.refresh = Mock()
+
+        with patch("data.logs_model.splunk_search_client.time.sleep"):
+            search_client._wait_for_job_completion(mock_job, timeout=60)
+
+        assert mock_job.is_done.call_count == 3
+        assert mock_job.refresh.call_count == 2
+
+    def test_wait_for_job_completion_timeout(self, search_client):
+        """Test that _wait_for_job_completion raises timeout error."""
+        mock_job = Mock()
+        mock_job.is_done = Mock(return_value=False)
+        mock_job.refresh = Mock()
+        mock_job.cancel = Mock()
+
+        with (
+            patch("data.logs_model.splunk_search_client.time.time") as mock_time,
+            patch("data.logs_model.splunk_search_client.time.sleep"),
+        ):
+            mock_time.side_effect = [0, 0, 35]  # Start, check, timeout exceeded
+
+            with pytest.raises(SplunkSearchTimeoutError) as exc_info:
+                search_client._wait_for_job_completion(mock_job, timeout=30)
+
+            assert "exceeded timeout" in str(exc_info.value)
+            mock_job.cancel.assert_called_once()

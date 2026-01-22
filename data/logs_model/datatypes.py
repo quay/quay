@@ -152,18 +152,23 @@ class Log(
                 - repository: str (repository name)
                 - ip: str (IP address)
                 - metadata_json: dict or str (metadata)
-                - datetime: datetime or str (timestamp)
+                - datetime: datetime or str (timestamp, parsed to datetime)
             username_user_map: Dictionary mapping username to user object
 
         Returns:
             Log namedtuple instance
         """
+        from datetime import datetime as dt
+
+        from dateutil import parser as dateutil_parser
+
         account_organization = None
-        account_username = None
         account_email = None
         account_robot = None
 
+        # Preserve raw account name as default, override if lookup succeeds
         account_name = log_dict.get("account")
+        account_username = account_name
         if account_name and account_name in username_user_map:
             account = username_user_map[account_name]
             if account:
@@ -173,13 +178,14 @@ class Log(
                     account_email = account.email
                     account_robot = account.robot
                 except AttributeError:
-                    account_username = account_name
+                    pass  # keep account_username = account_name
 
         performer_robot = None
-        performer_username = None
         performer_email = None
 
+        # Preserve raw performer name as default, override if lookup succeeds
         performer_name = log_dict.get("performer")
+        performer_username = performer_name
         if performer_name and performer_name in username_user_map:
             performer = username_user_map[performer_name]
             if performer:
@@ -188,7 +194,7 @@ class Log(
                     performer_username = performer.username
                     performer_email = performer.email
                 except AttributeError:
-                    performer_username = performer_name
+                    pass  # keep performer_username = performer_name
 
         kind_name = log_dict.get("kind")
         kind_id = 0
@@ -204,10 +210,24 @@ class Log(
         else:
             metadata_json = "{}"
 
+        # Normalize datetime: parse strings to datetime objects
+        datetime_value = log_dict.get("datetime")
+        if datetime_value is None:
+            normalized_datetime = None
+        elif isinstance(datetime_value, dt):
+            normalized_datetime = datetime_value
+        elif isinstance(datetime_value, str):
+            try:
+                normalized_datetime = dateutil_parser.parse(datetime_value)
+            except (ValueError, TypeError):
+                normalized_datetime = None
+        else:
+            normalized_datetime = None
+
         return Log(
             metadata_json,
             log_dict.get("ip"),
-            log_dict.get("datetime"),
+            normalized_datetime,
             performer_email,
             performer_username,
             performer_robot,

@@ -170,10 +170,11 @@ class SplunkSearchClient:
         service = self._get_connection()
 
         spl_query = self._build_search_query(query)
-        max_count = max_count or self._max_results
+        if max_count is None:
+            max_count = self._max_results
 
         search_kwargs = {
-            "exec_mode": "blocking",
+            "exec_mode": "normal",
             "count": max_count,
             "offset": offset,
         }
@@ -184,6 +185,8 @@ class SplunkSearchClient:
 
         try:
             job = service.jobs.create(spl_query, **search_kwargs)
+            self._wait_for_job_completion(job, self._search_timeout)
+
             result_list = self._get_results_from_job(job, max_count, offset)
 
             total_count = int(job["resultCount"])
@@ -195,6 +198,8 @@ class SplunkSearchClient:
                 offset=offset,
                 has_more=has_more,
             )
+        except SplunkSearchTimeoutError:
+            raise
         except SplunkSearchError:
             raise
         except Exception as e:
@@ -223,12 +228,13 @@ class SplunkSearchClient:
 
         Raises:
             SplunkSearchError: If search execution fails
+            SplunkSearchTimeoutError: If search exceeds timeout
         """
         service = self._get_connection()
 
         spl_query = self._build_search_query(query)
 
-        search_kwargs = {"exec_mode": "blocking"}
+        search_kwargs = {"exec_mode": "normal"}
         if earliest_time:
             search_kwargs["earliest_time"] = earliest_time
         if latest_time:
@@ -236,7 +242,10 @@ class SplunkSearchClient:
 
         try:
             job = service.jobs.create(spl_query, **search_kwargs)
+            self._wait_for_job_completion(job, self._search_timeout)
             return self._get_results_from_job(job)
+        except SplunkSearchTimeoutError:
+            raise
         except SplunkSearchError:
             raise
         except Exception as e:
@@ -278,19 +287,7 @@ class SplunkSearchClient:
 
         try:
             job = service.jobs.create(count_query, **search_kwargs)
-            start_time = time.time()
-
-            while not job.is_done():
-                time.sleep(0.5)
-                job.refresh()
-                if (time.time() - start_time) > timeout:
-                    try:
-                        job.cancel()
-                    except Exception:
-                        pass
-                    raise SplunkSearchTimeoutError(
-                        f"Count query exceeded timeout of {timeout} seconds"
-                    )
+            self._wait_for_job_completion(job, timeout)
 
             result_list = self._get_results_from_job(job)
             if result_list and "count" in result_list[0]:
@@ -317,6 +314,29 @@ class SplunkSearchClient:
         if self._index_prefix:
             return f"search index={self._index_prefix} {query}"
         return f"search {query}"
+
+    def _wait_for_job_completion(self, job, timeout: int) -> None:
+        """
+        Wait for a Splunk search job to complete, with timeout.
+
+        Args:
+            job: Splunk search job
+            timeout: Maximum time in seconds to wait
+
+        Raises:
+            SplunkSearchTimeoutError: If job doesn't complete within timeout
+        """
+        start_time = time.time()
+
+        while not job.is_done():
+            time.sleep(0.5)
+            job.refresh()
+            if (time.time() - start_time) > timeout:
+                try:
+                    job.cancel()
+                except Exception:
+                    pass
+                raise SplunkSearchTimeoutError(f"Search exceeded timeout of {timeout} seconds")
 
     def _get_results_from_job(
         self,

@@ -54,6 +54,8 @@ class SplunkLogMapper:
         Returns:
             List of Log objects
         """
+        _ = namespace_name  # Reserved for future use (e.g., repository lookups)
+
         if not splunk_results:
             return []
 
@@ -91,6 +93,8 @@ class SplunkLogMapper:
         Returns:
             Log object or None if mapping fails
         """
+        _ = id_user_map  # Reserved for future use (alternative lookup method)
+
         usernames = []
         account = result.get("account")
         performer = result.get("performer")
