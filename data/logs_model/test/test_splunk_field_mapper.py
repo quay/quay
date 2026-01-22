@@ -45,12 +45,20 @@ FAKE_USERS = {
 }
 
 
+def _mock_get_namespace_users_by_usernames(usernames):
+    """Mock batch user lookup."""
+    return {name: FAKE_USERS.get(name) for name in usernames}
+
+
 @pytest.fixture
 def mock_model():
     """Mock the data.model module."""
     model = Mock(
         log=Mock(get_log_entry_kinds=Mock(return_value=FAKE_LOG_ENTRY_KINDS)),
-        user=Mock(get_namespace_user=lambda _name: FAKE_USERS.get(_name)),
+        user=Mock(
+            get_namespace_user=lambda _name: FAKE_USERS.get(_name),
+            get_namespace_users_by_usernames=_mock_get_namespace_users_by_usernames,
+        ),
         repository=Mock(get_repository=lambda _ns, _name: Mock(id=1) if _name == "repo1" else None),
     )
     with patch("data.logs_model.splunk_field_mapper.model", model):

@@ -249,6 +249,8 @@ class SplunkLogMapper:
         """
         Batch lookup users by username.
 
+        Uses a single query with IN clause for efficiency.
+
         Args:
             usernames: List of usernames to look up
 
@@ -267,14 +269,21 @@ class SplunkLogMapper:
             else:
                 usernames_to_lookup.append(username)
 
-        for username in usernames_to_lookup:
+        if usernames_to_lookup:
             try:
-                user = model.user.get_namespace_user(username)
-                self._user_cache[username] = user
-                username_user_map[username] = user
+                batch_results = model.user.get_namespace_users_by_usernames(usernames_to_lookup)
+                for username, user in batch_results.items():
+                    self._user_cache[username] = user
+                    username_user_map[username] = user
             except Exception:
-                self._user_cache[username] = None
-                username_user_map[username] = None
+                logger.exception(
+                    "Failed to batch lookup users, falling back to None: usernames=%s",
+                    usernames_to_lookup,
+                )
+                # Fallback: mark all as None on batch query failure
+                for username in usernames_to_lookup:
+                    self._user_cache[username] = None
+                    username_user_map[username] = None
 
         return username_user_map
 
