@@ -139,6 +139,85 @@ class Log(
             log.kind_id,
         )
 
+    @classmethod
+    def for_splunk_log(cls, log_dict, username_user_map):
+        """
+        Create a Log from a Splunk search result dictionary.
+
+        Args:
+            log_dict: Dictionary containing Splunk log fields:
+                - kind: str (log entry kind name)
+                - account: str (namespace username)
+                - performer: str (performer username)
+                - repository: str (repository name)
+                - ip: str (IP address)
+                - metadata_json: dict or str (metadata)
+                - datetime: datetime or str (timestamp)
+            username_user_map: Dictionary mapping username to user object
+
+        Returns:
+            Log namedtuple instance
+        """
+        account_organization = None
+        account_username = None
+        account_email = None
+        account_robot = None
+
+        account_name = log_dict.get("account")
+        if account_name and account_name in username_user_map:
+            account = username_user_map[account_name]
+            if account:
+                try:
+                    account_organization = account.organization
+                    account_username = account.username
+                    account_email = account.email
+                    account_robot = account.robot
+                except AttributeError:
+                    account_username = account_name
+
+        performer_robot = None
+        performer_username = None
+        performer_email = None
+
+        performer_name = log_dict.get("performer")
+        if performer_name and performer_name in username_user_map:
+            performer = username_user_map[performer_name]
+            if performer:
+                try:
+                    performer_robot = performer.robot
+                    performer_username = performer.username
+                    performer_email = performer.email
+                except AttributeError:
+                    performer_username = performer_name
+
+        kind_name = log_dict.get("kind")
+        kind_id = 0
+        if kind_name:
+            kinds = _kinds()
+            kind_id = kinds.get(kind_name, 0)
+
+        metadata = log_dict.get("metadata_json", {})
+        if isinstance(metadata, str):
+            metadata_json = metadata
+        elif isinstance(metadata, dict):
+            metadata_json = json.dumps(metadata)
+        else:
+            metadata_json = "{}"
+
+        return Log(
+            metadata_json,
+            log_dict.get("ip"),
+            log_dict.get("datetime"),
+            performer_email,
+            performer_username,
+            performer_robot,
+            account_organization,
+            account_username,
+            account_email,
+            account_robot,
+            kind_id,
+        )
+
     def to_dict(self, avatar, include_namespace=False):
         view = {
             "kind": _kinds()[self.kind_id],
