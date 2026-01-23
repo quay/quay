@@ -103,6 +103,9 @@ jobs:
           QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
           QUAY_HOSTNAME="${QUAY_URL#http://}"
 
+          echo "Waiting 5 minutes for Quay UI to be fully ready..."
+          sleep 300
+
           docker run --rm \
             --network host \
             -e CYPRESS_QUAY_ENDPOINT="${QUAY_URL}" \
