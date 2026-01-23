@@ -173,6 +173,24 @@ runs:
         docker compose up -d redis quay-db
         docker exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 
+    - name: Copy built static assets to host volume
+      shell: bash
+      run: |
+        echo "Copying built static assets from Docker image to host volume..."
+
+        # Start local-dev-react to copy React/PatternFly assets
+        docker compose up -d local-dev-react
+        sleep 5  # Wait for copy to complete
+        docker compose stop local-dev-react
+
+        # Copy Angular assets from built image
+        docker run --rm \
+          -v ${{ github.workspace }}:/host \
+          ${{ inputs.image-tag }} \
+          sh -c 'cp -r /quay-registry/static/* /host/static/ 2>/dev/null || true'
+
+        echo "Static assets copied successfully"
+
     - name: Start Quay container
       shell: bash
       run: |
