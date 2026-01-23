@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from mock import MagicMock, patch
+from peewee import IntegrityError
 from playhouse.test_utils import assert_query_count
 
 from app import storage
@@ -13,6 +14,7 @@ from data.model import ImmutableTagException
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.tag import (
+    RetargetTagException,
     change_tag_expiration,
     create_temporary_tag_if_necessary,
     create_temporary_tag_outside_timemachine,
@@ -1106,3 +1108,57 @@ class TestSetTagsImmutabilityForManifest:
         count = set_tags_immutability_for_manifest(manifest.id, False)
         assert count == 1
         assert Tag.get_by_id(tag.id).immutable is False
+
+
+class TestRetargetTagRaceConditions:
+    """Tests for race condition handling in retarget_tag."""
+
+    def test_optimistic_lock_failure_returns_none(self, initialized_db):
+        """Test that retarget_tag returns None when optimistic lock fails.
+
+        This simulates another process modifying the tag after we read it but
+        before we expire it.
+        """
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest_1, _ = create_manifest_for_testing(repo, "1")
+        manifest_2, _ = create_manifest_for_testing(repo, "2")
+
+        tag = retarget_tag("mytag", manifest_1.id)
+        assert tag is not None
+
+        def mock_execute_returns_zero(self):
+            return 0
+
+        with patch.object(
+            type(Tag.update(lifetime_end_ms=0).where(Tag.id == 0)),
+            "execute",
+            mock_execute_returns_zero,
+        ):
+            result = retarget_tag("mytag", manifest_2.id)
+
+        assert result is None
+
+    def test_integrity_error_returns_none(self, initialized_db):
+        """Test that retarget_tag returns None when IntegrityError is raised.
+
+        This simulates another process creating the same tag concurrently.
+        """
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        with patch.object(Tag, "create", side_effect=IntegrityError("duplicate")):
+            result = retarget_tag("newtag", manifest.id, raise_on_error=False)
+
+        assert result is None
+
+    def test_integrity_error_raises_exception(self, initialized_db):
+        """Test that retarget_tag raises RetargetTagException when raise_on_error=True."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        with patch.object(Tag, "create", side_effect=IntegrityError("duplicate")):
+            with pytest.raises(RetargetTagException) as exc_info:
+                retarget_tag("newtag", manifest.id, raise_on_error=True)
+
+        assert "newtag" in str(exc_info.value)
+        assert "created by another process" in str(exc_info.value)
