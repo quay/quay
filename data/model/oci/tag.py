@@ -3,7 +3,7 @@ import logging
 import uuid
 from calendar import timegm
 
-from peewee import fn
+from peewee import IntegrityError, fn
 
 import features
 from data.database import (
@@ -16,6 +16,7 @@ from data.database import (
     Tag,
     TagPullStatistics,
     User,
+    db_for_update,
     db_random_func,
     db_regex_search,
     db_transaction,
@@ -453,20 +454,37 @@ def retarget_tag(
     now_ms = now_ms or get_epoch_timestamp_ms()
 
     with db_transaction():
-        # Lookup an existing tag in the repository with the same name and, if present, mark it
-        # as expired.
-        existing_tag = get_tag(manifest.repository_id, tag_name)
+        # Use FOR UPDATE to lock the existing active tag row (if any)
+        # This serializes concurrent operations on the same tag
+        try:
+            existing_tag = db_for_update(
+                Tag.select(Tag, Manifest)
+                .join(Manifest)
+                .where(Tag.repository == manifest.repository_id)
+                .where(Tag.name == tag_name)
+                .where((Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms))
+                .where(Tag.hidden == False)
+            ).get()
+        except Tag.DoesNotExist:
+            existing_tag = None
         if existing_tag is not None:
-            # Check if the existing tag is immutable
             if features.IMMUTABLE_TAGS and existing_tag.immutable:
                 if raise_on_error:
                     raise ImmutableTagException(tag_name, "overwrite", manifest.repository_id)
                 return None
 
-            _, okay = set_tag_end_ms(existing_tag, now_ms)
+            # Inline the expiration UPDATE (no separate transaction)
+            delete_tag_notifications_for_tag(existing_tag)
 
-            # TODO: should we retry here and/or use a for-update?
-            if not okay:
+            # Expire the existing tag
+            updated = (
+                Tag.update(lifetime_end_ms=now_ms)
+                .where(Tag.id == existing_tag.id)
+                .where(Tag.lifetime_end_ms == existing_tag.lifetime_end_ms)
+                .execute()
+            )
+            if updated != 1:
+                # Optimistic lock failed - tag was modified by another process
                 return None
 
         # Check if tag should be immutable based on policies
@@ -483,19 +501,30 @@ def retarget_tag(
                 manifest.repository_id, repo.namespace_user_id, tag_name
             )
 
-        # Create a new tag pointing to the manifest with a lifetime start of now.
-        created = Tag.create(
-            name=tag_name,
-            repository=manifest.repository_id,
-            lifetime_start_ms=now_ms,
-            lifetime_end_ms=(now_ms + expiration_seconds * 1000) if expiration_seconds else None,
-            reversion=is_reversion,
-            manifest=manifest,
-            tag_kind=Tag.tag_kind.get_id("tag"),
-            immutable=immutable,
-        )
-
-        return created
+        # Create new tag - partial unique index prevents duplicates
+        try:
+            created = Tag.create(
+                name=tag_name,
+                repository=manifest.repository_id,
+                lifetime_start_ms=now_ms,
+                lifetime_end_ms=(
+                    (now_ms + expiration_seconds * 1000) if expiration_seconds else None
+                ),
+                reversion=is_reversion,
+                manifest=manifest,
+                tag_kind=Tag.tag_kind.get_id("tag"),
+                immutable=immutable,
+            )
+            return created
+        except IntegrityError:
+            # Another process created an active tag - caller should retry if needed
+            logger.warning(
+                "Race condition creating tag '%s': active tag already exists",
+                tag_name,
+            )
+            if raise_on_error:
+                raise RetargetTagException(f"Tag '{tag_name}' was created by another process")
+            return None
 
 
 def delete_tag(repository_id, tag_name):
