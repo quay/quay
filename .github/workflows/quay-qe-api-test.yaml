@@ -14,8 +14,6 @@ jobs:
   cypress:
     name: Quay QE API Tests
     runs-on: ubuntu-22.04
-    container:
-      image: quay.io/quay-qetest/ci-test-image:latest
     # Only run on PR comments containing "/quay-qe-api-test" or on pull_request events
     if: |
       (github.event_name == 'pull_request') ||
@@ -54,13 +52,15 @@ jobs:
             FEATURE_MAILING: false
             FEATURE_SUPERUSER_CONFIGDUMP: true
             PERMANENTLY_DELETE_TAGS: true
-          logs-artifact-name: 'quay-debug'
 
       - name: Use Quay Initialize API to create the 1st Super User
         run: |
           response=$(curl -X POST ${{ steps.setup-quay.outputs.quay-url }}/api/v1/user/initialize --header 'Content-Type: application/json' \
           --data '{ "username": "admin", "password": "password", "email": "quayqe@redhat.com", "access_token": true }')
           echo "Initialization response: $response"
+
+      - name: Create test results directory
+        run: mkdir -p ${{ github.workspace }}/test-results
 
       # - name: Install Cypress Test Dependencies
       #   run: |
@@ -93,19 +93,33 @@ jobs:
 
       - name: Run Cypress tests
         run: |
-          cd /quay-tests/quay-api-tests
-          export CYPRESS_QUAY_ENDPOINT="${{ steps.setup-quay.outputs.quay-url }}"
           QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
-          export CYPRESS_QUAY_HOSTNAME="${QUAY_URL#http://}"
-          export CYPRESS_QUAY_USER="admin"
-          export CYPRESS_QUAY_PASSWORD="password"
-          yarn install
-          NO_COLOR=1 yarn run cypress run --spec "cypress/e2e/quay_api_testing_all.cy.js" --browser chrome --headless --reporter cypress-multi-reporters --reporter-options configFile=reporter-config.json > quay_api_testing_report
+          QUAY_HOSTNAME="${QUAY_URL#http://}"
+
+          docker run --rm \
+            --network host \
+            -e CYPRESS_QUAY_ENDPOINT="${QUAY_URL}" \
+            -e CYPRESS_QUAY_HOSTNAME="${QUAY_HOSTNAME}" \
+            -e CYPRESS_QUAY_USER="admin" \
+            -e CYPRESS_QUAY_PASSWORD="password" \
+            -v ${{ github.workspace }}/test-results:/test-results \
+            quay.io/quay-qetest/ci-test-image:latest \
+            bash -c "
+              cd /quay-tests/quay-api-tests && \
+              yarn install && \
+              NO_COLOR=1 yarn run cypress run \
+                --spec 'cypress/e2e/quay_api_testing_all.cy.js' \
+                --browser chrome \
+                --headless \
+                --reporter cypress-multi-reporters \
+                --reporter-options configFile=reporter-config.json \
+                > /test-results/quay_api_testing_report
+            "
 
       - name: Upload Cypress Test Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: quay-api-test-report
-          path: /quay-tests/quay-api-tests/quay_api_testing_report
+          path: ${{ github.workspace }}/test-results/quay_api_testing_report
           retention-days: 30
