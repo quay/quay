@@ -13,6 +13,8 @@ jobs:
   cypress:
     name: Quay QE API Tests
     runs-on: ubuntu-22.04
+    container:
+      image: quay.io/quay-qetest/ci-test-image:latest
     # Only run on PR comments containing "/quay-qe-api-test" or on pull_request events
     if: |
       (github.event_name == 'pull_request') ||
@@ -56,6 +58,8 @@ jobs:
             FEATURE_USER_INITIALIZE: true
             FEATURE_USER_METADATA: false
             FEATURE_MAILING: false
+            FEATURE_SUPERUSER_CONFIGDUMP: true
+            PERMANENTLY_DELETE_TAGS: true
           logs-artifact-name: 'quay-debug'
 
       - name: Use Quay Initialize API to create the 1st Super User
@@ -96,6 +100,8 @@ jobs:
         run: |
           cd quay-tests/quay-api-tests
           export CYPRESS_QUAY_ENDPOINT="${{ steps.setup-quay.outputs.quay-url }}"
+          QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
+          export CYPRESS_QUAY_HOSTNAME="${QUAY_URL#http://}"
           export CYPRESS_QUAY_USER="admin"
           export CYPRESS_QUAY_PASSWORD="password"
           yarn install
