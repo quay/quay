@@ -52,6 +52,7 @@ jobs:
             FEATURE_MAILING: false
             FEATURE_SUPERUSER_CONFIGDUMP: true
             PERMANENTLY_DELETE_TAGS: true
+          logs-artifact-name: 'quay-debug'
 
       - name: Use Quay Initialize API to create the 1st Super User
         run: |
