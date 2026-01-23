@@ -64,7 +64,10 @@ jobs:
           echo "Initialization response: $response"
 
       - name: Create test results directory
-        run: mkdir -p ${{ github.workspace }}/test-results
+        run: |
+          mkdir -p ${{ github.workspace }}/test-results
+          mkdir -p ${{ github.workspace }}/cypress-videos
+          mkdir -p ${{ github.workspace }}/cypress-screenshots
 
       # - name: Install Cypress Test Dependencies
       #   run: |
@@ -107,6 +110,8 @@ jobs:
             -e CYPRESS_QUAY_USER="admin" \
             -e CYPRESS_QUAY_PASSWORD="password" \
             -v ${{ github.workspace }}/test-results:/test-results \
+            -v ${{ github.workspace }}/cypress-videos:/quay-tests/quay-api-tests/cypress/videos \
+            -v ${{ github.workspace }}/cypress-screenshots:/quay-tests/quay-api-tests/cypress/screenshots \
             quay.io/quay-qetest/ci-test-image:latest \
             bash -c "
               cd /quay-tests/quay-api-tests && \
@@ -127,3 +132,21 @@ jobs:
           name: quay-api-test-report
           path: ${{ github.workspace }}/test-results/quay_api_testing_report
           retention-days: 30
+
+      - name: Upload Cypress Videos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-videos
+          path: ${{ github.workspace }}/cypress-videos
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload Cypress Screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-screenshots
+          path: ${{ github.workspace }}/cypress-screenshots
+          retention-days: 30
+          if-no-files-found: ignore
