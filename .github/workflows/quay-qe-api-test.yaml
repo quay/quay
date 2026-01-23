@@ -6,6 +6,7 @@ on:
     paths:
       - "endpoints/**"
       - ".github/actions/setup-quay/**"
+      - ".github/workflows/quay-qe-api-test.yaml"
   issue_comment:
     types: [created]
 
