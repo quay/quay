@@ -43,13 +43,6 @@ jobs:
           # For issue_comment trigger, checkout the PR head ref
           ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
 
-      # - name: Checkout quay-tests repo
-      #   uses: actions/checkout@v6
-      #   with:
-      #     repository: quay/quay-tests
-      #     path: quay-tests
-      #     token: ${{ secrets.QUAY_TESTS_ACCESS_TOKEN }}
-
       - name: Setup Quay
         id: setup-quay
         uses: ./.github/actions/setup-quay
@@ -64,8 +57,9 @@ jobs:
 
       - name: Use Quay Initialize API to create the 1st Super User
         run: |
-          curl -X POST ${{ steps.setup-quay.outputs.quay-url }}/api/v1/user/initialize --header 'Content-Type: application/json' \
-          --data '{ "username": "admin", "password": "password", "email": "quayqe@redhat.com", "access_token": true }'
+          response=$(curl -X POST ${{ steps.setup-quay.outputs.quay-url }}/api/v1/user/initialize --header 'Content-Type: application/json' \
+          --data '{ "username": "admin", "password": "password", "email": "quayqe@redhat.com", "access_token": true }')
+          echo "Initialization response: $response"
 
       - name: Debug - List directory structure
         run: |
@@ -111,7 +105,7 @@ jobs:
 
       - name: Run Cypress tests
         run: |
-          cd quay-tests/quay-api-tests
+          cd /quay-tests/quay-api-tests
           export CYPRESS_QUAY_ENDPOINT="${{ steps.setup-quay.outputs.quay-url }}"
           QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
           export CYPRESS_QUAY_HOSTNAME="${QUAY_URL#http://}"
@@ -125,5 +119,5 @@ jobs:
         if: always()
         with:
           name: quay-api-test-report
-          path: quay-tests/quay-api-tests/quay_api_testing_report
+          path: /quay-tests/quay-api-tests/quay_api_testing_report
           retention-days: 30
