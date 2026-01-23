@@ -431,9 +431,7 @@ def check_repository_state(f):
                     "Repository %s/%s is an org mirror. Org-mirrored repositories cannot be modified directly."
                     % (namespace_name, repo_name),
                 )
-
-            elif user.id == robot.id:
-                pass  # User is designated robot for this org mirror repo.
+            # else: user.id == robot.id - User is designated robot for this org mirror repo.
 
         return f(namespace_name, repo_name, *args, **kwargs)
 

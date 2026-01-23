@@ -186,7 +186,7 @@ class TestOrgMirrorModelRepositoriesToMirror:
 
         # Create an eligible repo
         past_time = datetime.utcnow() - timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="test-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -210,7 +210,7 @@ class TestOrgMirrorModelRepositoriesToMirror:
 
         # Create a repo
         past_time = datetime.utcnow() - timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="resume-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -261,7 +261,7 @@ class TestOrgMirrorModelRepositoriesToMirror:
         config = _create_org_mirror_config(org, robot, is_enabled=True)
 
         # Create a SYNC_NOW repo
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="sync-now-repo",
             sync_status=OrgMirrorRepoStatus.SYNC_NOW,

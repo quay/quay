@@ -103,7 +103,7 @@ class TestV2AuthOrgMirror:
         robot, _ = create_robot("orgmirrorbot", devtable)
 
         # Create org mirror repo
-        repo, config, org_mirror_repo = _create_org_mirror_repo("devtable", "orgmirrored", robot)
+        _repo, _config, _org_mirror_repo = _create_org_mirror_repo("devtable", "orgmirrored", robot)
 
         # Request push scope as the robot
         params = {
@@ -144,7 +144,9 @@ class TestV2AuthOrgMirror:
         robot, _ = create_robot("orgmirrorbot2", devtable)
 
         # Create org mirror repo
-        repo, config, org_mirror_repo = _create_org_mirror_repo("devtable", "orgmirrored2", robot)
+        _repo, _config, _org_mirror_repo = _create_org_mirror_repo(
+            "devtable", "orgmirrored2", robot
+        )
 
         # Request push scope as devtable (owner, but not the robot)
         params = {
@@ -185,7 +187,7 @@ class TestV2AuthOrgMirror:
         other_robot, _ = create_robot("otherrobot", devtable)
 
         # Create org mirror repo with mirror_robot
-        repo, config, org_mirror_repo = _create_org_mirror_repo(
+        _repo, _config, _org_mirror_repo = _create_org_mirror_repo(
             "devtable", "orgmirrored3", mirror_robot
         )
 
@@ -226,7 +228,7 @@ class TestV2AuthOrgMirror:
         robot, _ = create_robot("publicorgmirrorbot", public_user)
 
         # Create org mirror repo with public visibility
-        repo, config, org_mirror_repo = _create_org_mirror_repo(
+        repo, _config, _org_mirror_repo = _create_org_mirror_repo(
             "public", "publicorgmirrored", robot
         )
 
@@ -267,7 +269,9 @@ class TestV2AuthOrgMirror:
         robot, _ = create_robot("orgmirrorbot4", devtable)
 
         # Create org mirror repo
-        repo, config, org_mirror_repo = _create_org_mirror_repo("devtable", "orgmirrored4", robot)
+        _repo, _config, _org_mirror_repo = _create_org_mirror_repo(
+            "devtable", "orgmirrored4", robot
+        )
 
         # Request admin scope as devtable
         params = {

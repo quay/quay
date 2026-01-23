@@ -724,8 +724,8 @@ def claim_org_mirror_config(org_mirror_config: OrgMirrorConfig) -> Optional[OrgM
 def release_org_mirror_config(
     org_mirror_config: OrgMirrorConfig,
     sync_status: OrgMirrorStatus,
-    repos_discovered: int = 0,
-    repos_created: int = 0,
+    _repos_discovered: int = 0,
+    _repos_created: int = 0,
 ) -> Optional[OrgMirrorConfig]:
     """
     Release an org mirror config after discovery and update its status.
@@ -736,8 +736,8 @@ def release_org_mirror_config(
     Args:
         org_mirror_config: The OrgMirrorConfig to release
         sync_status: The result status (SUCCESS, FAIL, etc.)
-        repos_discovered: Number of repos discovered (for logging)
-        repos_created: Number of new repos created (for logging)
+        _repos_discovered: Number of repos discovered (reserved for future use)
+        _repos_created: Number of new repos created (reserved for future use)
 
     Returns:
         Updated OrgMirrorConfig if release successful, None otherwise

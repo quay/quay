@@ -901,8 +901,8 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
     release_org_mirror_config(
         claimed_config,
         OrgMirrorStatus.SUCCESS,
-        repos_discovered=total_count,
-        repos_created=newly_created,
+        _repos_discovered=total_count,
+        _repos_created=newly_created,
     )
 
 
