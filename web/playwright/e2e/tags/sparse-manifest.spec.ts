@@ -130,7 +130,8 @@ test.describe(
     test('shows missing label for missing child manifests in expanded view', async ({
       authenticatedPage,
     }) => {
-      // Mock both tag list and manifest endpoints
+      // We need to intercept both the tag API and manifest API
+      // Mock tag API to add sparse info
       await authenticatedPage.route(
         `**/api/v1/repository/${testRepo.namespace}/${testRepo.name}/tag/**`,
         async (route) => {
@@ -141,15 +142,12 @@ test.describe(
             json.tags = json.tags.map(
               (tag: {is_manifest_list?: boolean; name: string}) => {
                 if (tag.is_manifest_list) {
+                  // Will fill in child_manifests_presence after we get the digests
                   return {
                     ...tag,
                     is_sparse: true,
                     child_manifest_count: 2,
                     present_child_count: 1,
-                    child_manifests_presence: {
-                      'sha256:amd64present': true,
-                      'sha256:arm64missing': false,
-                    },
                   };
                 }
                 return tag;
@@ -161,25 +159,25 @@ test.describe(
         },
       );
 
-      // Mock manifest endpoint to include is_present info
+      // Mock manifest endpoint to add is_present info
       await authenticatedPage.route(
         `**/api/v1/repository/${testRepo.namespace}/${testRepo.name}/manifest/**`,
         async (route) => {
           const response = await route.fetch();
           const json = await response.json();
 
-          // If this is a manifest list, modify child manifests
           if (json.manifest_data) {
             try {
               const manifestData = JSON.parse(json.manifest_data);
-              if (manifestData.manifests) {
+              if (
+                manifestData.manifests &&
+                manifestData.manifests.length >= 1
+              ) {
+                // Mark first as present, rest as missing
                 manifestData.manifests = manifestData.manifests.map(
-                  (
-                    m: {digest: string; platform?: {architecture: string}},
-                    idx: number,
-                  ) => ({
+                  (m: {digest: string}, idx: number) => ({
                     ...m,
-                    is_present: idx === 0, // First one present, rest missing
+                    is_present: idx === 0,
                   }),
                 );
                 json.manifest_data = JSON.stringify(manifestData);
@@ -200,15 +198,15 @@ test.describe(
         authenticatedPage.getByRole('link', {name: 'multiarch'}),
       ).toBeVisible();
 
-      // Expand the manifest list row
-      const expandButton = authenticatedPage
-        .getByRole('row')
-        .filter({
-          has: authenticatedPage.getByRole('link', {name: 'multiarch'}),
-        })
-        .getByRole('button', {name: /expand/i})
-        .first();
+      // Find the row with multiarch tag and click the expand toggle
+      // PatternFly table uses a button with aria-label "Details" or similar for expand
+      const tagRow = authenticatedPage.getByTestId('table-entry').filter({
+        has: authenticatedPage.getByRole('link', {name: 'multiarch'}),
+      });
 
+      // The expand button in PatternFly table is a button within the first Td
+      const expandButton = tagRow.locator('button').first();
+      await expect(expandButton).toBeVisible({timeout: 10000});
       await expandButton.click();
 
       // Wait for child rows to appear and check for missing label
@@ -222,7 +220,7 @@ test.describe(
     test('shows sparse alert banner on tag details page', async ({
       authenticatedPage,
     }) => {
-      // Mock tag endpoint
+      // Mock tag endpoint to add sparse info
       await authenticatedPage.route(
         `**/api/v1/repository/${testRepo.namespace}/${testRepo.name}/tag/**`,
         async (route) => {
@@ -238,10 +236,6 @@ test.describe(
                     is_sparse: true,
                     child_manifest_count: 2,
                     present_child_count: 1,
-                    child_manifests_presence: {
-                      'sha256:present': true,
-                      'sha256:missing': false,
-                    },
                   };
                 }
                 return tag;
@@ -307,7 +301,7 @@ test.describe(
     test('disables missing architectures in architecture selector', async ({
       authenticatedPage,
     }) => {
-      // Mock tag and manifest endpoints
+      // Mock tag endpoint
       await authenticatedPage.route(
         `**/api/v1/repository/${testRepo.namespace}/${testRepo.name}/tag/**`,
         async (route) => {
@@ -323,10 +317,6 @@ test.describe(
                     is_sparse: true,
                     child_manifest_count: 2,
                     present_child_count: 1,
-                    child_manifests_presence: {
-                      'sha256:amd64present': true,
-                      'sha256:arm64missing': false,
-                    },
                   };
                 }
                 return tag;
@@ -338,6 +328,7 @@ test.describe(
         },
       );
 
+      // Mock manifest endpoint to mark second architecture as missing
       await authenticatedPage.route(
         `**/api/v1/repository/${testRepo.namespace}/${testRepo.name}/manifest/**`,
         async (route) => {
@@ -377,16 +368,20 @@ test.describe(
         }),
       ).toBeVisible();
 
-      // Find and click the architecture selector
-      const archSelector = authenticatedPage.getByText(/linux on/i).first();
-      await expect(archSelector).toBeVisible();
-      await archSelector.click();
+      // Find and click the architecture selector using the data-testid
+      const archSelect = authenticatedPage.getByTestId('arch-select');
+      await expect(archSelect).toBeVisible();
+
+      // Click the toggle button within the select
+      const toggleButton = archSelect.locator('button');
+      await toggleButton.click();
 
       // Check for disabled option with Missing label
+      // The missing option should have the data-testid
       const missingOption = authenticatedPage.getByTestId(
         'missing-arch-option',
       );
-      await expect(missingOption.first()).toBeVisible();
+      await expect(missingOption.first()).toBeVisible({timeout: 5000});
 
       // Verify the missing option has the "Missing" label
       await expect(missingOption.first()).toContainText('Missing');
@@ -413,7 +408,7 @@ test.describe(
     test('shows N/A for security and size of missing architectures', async ({
       authenticatedPage,
     }) => {
-      // Mock both endpoints
+      // Mock tag API
       await authenticatedPage.route(
         `**/api/v1/repository/${testRepo.namespace}/${testRepo.name}/tag/**`,
         async (route) => {
@@ -428,10 +423,6 @@ test.describe(
                   is_sparse: true,
                   child_manifest_count: 2,
                   present_child_count: 1,
-                  child_manifests_presence: {
-                    'sha256:present': true,
-                    'sha256:missing': false,
-                  },
                 };
               }
               return tag;
@@ -442,6 +433,7 @@ test.describe(
         },
       );
 
+      // Mock manifest endpoint
       await authenticatedPage.route(
         `**/api/v1/repository/${testRepo.namespace}/${testRepo.name}/manifest/**`,
         async (route) => {
@@ -476,15 +468,13 @@ test.describe(
         authenticatedPage.getByRole('link', {name: 'multiarch'}),
       ).toBeVisible();
 
-      // Expand the manifest list row
-      const expandButton = authenticatedPage
-        .getByRole('row')
-        .filter({
-          has: authenticatedPage.getByRole('link', {name: 'multiarch'}),
-        })
-        .getByRole('button', {name: /expand/i})
-        .first();
+      // Find the row with multiarch tag and click expand
+      const tagRow = authenticatedPage.getByTestId('table-entry').filter({
+        has: authenticatedPage.getByRole('link', {name: 'multiarch'}),
+      });
 
+      const expandButton = tagRow.locator('button').first();
+      await expect(expandButton).toBeVisible({timeout: 10000});
       await expandButton.click();
 
       // Wait for expanded content and check for N/A text
