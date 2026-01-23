@@ -4,6 +4,7 @@ import tempfile
 
 import psutil
 
+import features
 from app import authentication, build_logs, instance_keys, storage
 from health.models_pre_oci import pre_oci_model as model
 
@@ -172,6 +173,76 @@ def _check_disk_space(for_warning):
     return _check_disk_space
 
 
+def _check_mirror_workers(app):
+    """
+    Returns the status of repository mirror workers.
+    
+    Checks if mirror feature is enabled and if mirrors are being processed.
+    """
+    if not features.REPO_MIRROR:
+        return (True, "Mirror feature is disabled")
+    
+    try:
+        from data.database import RepoMirrorConfig, RepoMirrorStatus, Repository, RepositoryState
+        from datetime import datetime, timedelta
+        
+        # Check if there are any enabled mirrors
+        enabled_mirrors = (
+            RepoMirrorConfig.select()
+            .join(Repository)
+            .where(
+                (Repository.state == RepositoryState.MIRROR) &
+                (RepoMirrorConfig.is_enabled == True)
+            )
+            .count()
+        )
+        
+        if enabled_mirrors == 0:
+            return (True, "No enabled mirrors configured")
+        
+        # Check for repositories stuck in SYNCING state for too long (>12 hours)
+        stale_threshold = datetime.utcnow() - timedelta(hours=12)
+        stuck_syncing = (
+            RepoMirrorConfig.select()
+            .join(Repository)
+            .where(
+                (Repository.state == RepositoryState.MIRROR) &
+                (RepoMirrorConfig.is_enabled == True) &
+                (RepoMirrorConfig.sync_status == RepoMirrorStatus.SYNCING) &
+                (RepoMirrorConfig.sync_start_date < stale_threshold)
+            )
+            .count()
+        )
+        
+        if stuck_syncing > 0:
+            return (False, f"{stuck_syncing} repositories stuck in SYNCING state for over 12 hours")
+        
+        # Check for high failure rate
+        failed_mirrors = (
+            RepoMirrorConfig.select()
+            .join(Repository)
+            .where(
+                (Repository.state == RepositoryState.MIRROR) &
+                (RepoMirrorConfig.is_enabled == True) &
+                (RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL) &
+                (RepoMirrorConfig.sync_retries_remaining == 0)
+            )
+            .count()
+        )
+        
+        if enabled_mirrors > 0:
+            failure_rate = failed_mirrors / enabled_mirrors
+            if failure_rate > 0.5:  # More than 50% failing
+                return (False, f"High mirror failure rate: {failure_rate*100:.1f}% ({failed_mirrors}/{enabled_mirrors})")
+        
+        return (True, f"{enabled_mirrors} mirrors configured, {failed_mirrors} failing")
+        
+    except Exception as ex:
+        logger.exception("Mirror worker check failed with exception %s", ex)
+        # Return True to avoid false alarms if there's a DB issue (handled elsewhere)
+        return (True, "Mirror check skipped due to exception: %s" % str(ex))
+
+
 _INSTANCE_SERVICES = {
     "registry_gunicorn": _check_gunicorn("v1/_internal_ping"),
     "web_gunicorn": _check_gunicorn("_internal_ping"),
@@ -184,6 +255,7 @@ _GLOBAL_SERVICES = {
     "redis": _check_redis,
     "storage": _check_storage,
     "auth": _check_auth,
+    "mirror_workers": _check_mirror_workers,
 }
 
 _WARNING_SERVICES = {
