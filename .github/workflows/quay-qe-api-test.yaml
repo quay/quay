@@ -61,19 +61,6 @@ jobs:
           --data '{ "username": "admin", "password": "password", "email": "quayqe@redhat.com", "access_token": true }')
           echo "Initialization response: $response"
 
-      - name: Debug - List directory structure
-        run: |
-          echo "=== Current working directory ==="
-          pwd
-          echo "=== Contents of current directory ==="
-          ls -la
-          echo "=== Search for quay-api-tests ==="
-          find / -name "quay-api-tests" -type d 2>/dev/null || echo "Not found in root"
-          echo "=== Check common locations ==="
-          ls -la /quay-tests/ 2>/dev/null || echo "/quay-tests not found"
-          ls -la /home/ 2>/dev/null || echo "/home not found"
-          ls -la /opt/ 2>/dev/null || echo "/opt not found"
-
       # - name: Install Cypress Test Dependencies
       #   run: |
       #     sudo apt-get update && sudo apt-get install -y curl gnupg software-properties-common wget xz-utils git jq python3 python3-pip unzip
