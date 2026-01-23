@@ -100,11 +100,11 @@ jobs:
 
       - name: Run Cypress tests
         run: |
-          QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
+          QUAY_URL="http://172.17.0.1:8080"
           QUAY_HOSTNAME="${QUAY_URL#http://}"
 
-          echo "Waiting 5 minutes for Quay UI to be fully ready..."
-          sleep 300
+          echo "Waiting 1 minutes for Quay UI to be fully ready..."
+          sleep 60
 
           docker run --rm \
             --network host \
