@@ -215,6 +215,68 @@ def test_manifest_label_handlers(registry_model):
     assert updated_tag.lifetime_end_ts == (updated_tag.lifetime_start_ts + (60 * 60 * 2))
 
 
+def test_immutable_label_handler(registry_model):
+    """Test that quay.immutable=true label sets tag as immutable."""
+    repo = model.repository.get_repository("devtable", "simple")
+    repository_ref = RepositoryReference.for_repo_obj(repo)
+    found_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    found_manifest = registry_model.get_manifest_for_tag(found_tag)
+
+    # Ensure tag is not immutable
+    assert not found_tag.immutable
+
+    # Create label with quay.immutable=true
+    registry_model.create_manifest_label(found_manifest, "quay.immutable", "true", "api")
+
+    # Ensure tag is now immutable
+    updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert updated_tag.immutable
+
+
+@pytest.mark.parametrize(
+    "label_value",
+    ["True", "TRUE", " true ", " TRUE "],
+)
+def test_immutable_label_case_insensitive(registry_model, label_value):
+    """Test quay.immutable label works with various case formats."""
+    repo = model.repository.get_repository("devtable", "simple")
+    repository_ref = RepositoryReference.for_repo_obj(repo)
+    found_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    found_manifest = registry_model.get_manifest_for_tag(found_tag)
+
+    # Ensure tag is not immutable initially
+    assert not found_tag.immutable
+
+    # Create label with various case/whitespace formats
+    registry_model.create_manifest_label(found_manifest, "quay.immutable", label_value, "api")
+
+    # Ensure tag is now immutable
+    updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert updated_tag.immutable
+
+
+@pytest.mark.parametrize(
+    "label_value",
+    ["false", "False", "FALSE", "0", "no", "", "anything", "yes"],
+)
+def test_immutable_label_false_does_not_set(registry_model, label_value):
+    """Test quay.immutable with non-true values does NOT set immutability."""
+    repo = model.repository.get_repository("devtable", "simple")
+    repository_ref = RepositoryReference.for_repo_obj(repo)
+    found_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    found_manifest = registry_model.get_manifest_for_tag(found_tag)
+
+    # Ensure tag is not immutable initially
+    assert not found_tag.immutable
+
+    # Create label with non-true value
+    registry_model.create_manifest_label(found_manifest, "quay.immutable", label_value, "api")
+
+    # Ensure tag is still NOT immutable
+    updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert not updated_tag.immutable
+
+
 def test_batch_labels(registry_model):
     repo = model.repository.get_repository("devtable", "history")
     repository_ref = RepositoryReference.for_repo_obj(repo)
@@ -863,6 +925,82 @@ def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci
         repository_ref, "yet_another_tag", some_other_manifest, storage, docker_v2_signing_key
     )
     assert yet_another_tag.lifetime_end_ms is not None
+
+
+def test_manifest_list_expiration_multiple_tags(oci_model):
+    """
+    Test that when a manifest list is pushed with multiple tags,
+    all tags get the expiration from child manifest labels.
+
+    This verifies the fix for PROJQUAY-7245.
+    """
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+
+    # Create a config blob with expiry label for child manifest
+    config_json = json.dumps(
+        {
+            "config": {
+                "Labels": {
+                    "quay.expires-after": "1w",
+                },
+            },
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+            ],
+        }
+    )
+
+    app_config = {"TESTING": True}
+    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
+        config_blob = upload.commit_to_blob(app_config)
+
+    # Create a child manifest with the expiry label
+    child_builder = DockerSchema2ManifestBuilder()
+    child_builder.set_config_digest(config_blob.digest, config_blob.compressed_size)
+    # Use a valid SHA256 digest (64 hex chars)
+    layer_digest = "sha256:" + hashlib.sha256(b"child_layer_content").hexdigest()
+    child_builder.add_layer(layer_digest, 1234, urls=["http://example/layer"])
+    child_manifest = child_builder.build()
+
+    # Create the child manifest in the registry (hidden, no tag)
+    child_created, _ = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, child_manifest, "temp_child_tag", storage
+    )
+    assert child_created is not None
+
+    # Build a manifest list referencing the child manifest
+    list_builder = DockerSchema2ManifestListBuilder()
+    list_builder.add_manifest(child_manifest, "amd64", "linux")
+    manifest_list = list_builder.build()
+
+    # Push the manifest list with the first tag
+    manifest1, tag1 = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest_list, "multi-arch-v1", storage
+    )
+    assert manifest1 is not None
+    assert tag1 is not None
+    assert tag1.lifetime_end_ms is not None, "First tag should have expiration set"
+
+    # Push the same manifest list with a second tag
+    manifest2, tag2 = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest_list, "multi-arch-v2", storage
+    )
+    assert manifest2 is not None
+    assert manifest2.digest == manifest1.digest, "Should be the same manifest"
+    assert tag2 is not None
+    assert tag2.lifetime_end_ms is not None, "Second tag should also have expiration set"
+
+    # Also test retarget_tag (used by Quay's tag API)
+    tag3 = oci_model.retarget_tag(
+        repository_ref, "multi-arch-v3", manifest1, storage, docker_v2_signing_key
+    )
+    assert tag3 is not None
+    assert tag3.lifetime_end_ms is not None, "Third tag via retarget_tag should have expiration"
 
 
 def _populate_blob(digest):

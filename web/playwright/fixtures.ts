@@ -36,6 +36,7 @@ import {
   ServiceKey,
   TeamRole,
 } from './utils/api';
+import {isContainerRuntimeAvailable} from './utils/container';
 
 // ============================================================================
 // TestApi: Auto-cleanup API client for tests
@@ -124,6 +125,15 @@ export interface CreatedBuild {
   namespace: string;
   repoName: string;
   buildId: string;
+}
+
+/**
+ * Created immutability policy info
+ */
+export interface CreatedImmutabilityPolicy {
+  uuid: string;
+  tagPattern: string;
+  tagPatternMatches: boolean;
 }
 
 /**
@@ -619,6 +629,84 @@ export class TestApi {
   }
 
   /**
+   * Create an immutability policy for an organization.
+   * Automatically deleted after test.
+   *
+   * @param orgName - Organization name
+   * @param tagPattern - Regex pattern to match tag names
+   * @param tagPatternMatches - If true, matching tags are immutable. If false, non-matching are immutable (default: true)
+   */
+  async orgImmutabilityPolicy(
+    orgName: string,
+    tagPattern: string,
+    tagPatternMatches = true,
+  ): Promise<CreatedImmutabilityPolicy & {orgName: string}> {
+    const result = await this.client.createOrgImmutabilityPolicy(orgName, {
+      tagPattern,
+      tagPatternMatches,
+    });
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOrgImmutabilityPolicy(orgName, result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      uuid: result.uuid,
+      tagPattern,
+      tagPatternMatches,
+      orgName,
+    };
+  }
+
+  /**
+   * Create an immutability policy for a repository.
+   * Automatically deleted after test.
+   *
+   * @param namespace - Organization or username that owns the repository
+   * @param repoName - Repository name
+   * @param tagPattern - Regex pattern to match tag names
+   * @param tagPatternMatches - If true, matching tags are immutable. If false, non-matching are immutable (default: true)
+   */
+  async repoImmutabilityPolicy(
+    namespace: string,
+    repoName: string,
+    tagPattern: string,
+    tagPatternMatches = true,
+  ): Promise<
+    CreatedImmutabilityPolicy & {namespace: string; repoName: string}
+  > {
+    const result = await this.client.createRepoImmutabilityPolicy(
+      namespace,
+      repoName,
+      {tagPattern, tagPatternMatches},
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepoImmutabilityPolicy(
+          namespace,
+          repoName,
+          result.uuid,
+        );
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      uuid: result.uuid,
+      tagPattern,
+      tagPatternMatches,
+      namespace,
+      repoName,
+    };
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
@@ -651,7 +739,8 @@ export type QuayFeature =
   | 'USER_METADATA'
   | 'MAILING'
   | 'IMAGE_EXPIRY_TRIGGER'
-  | 'SUPERUSERS_FULL_ACCESS';
+  | 'SUPERUSERS_FULL_ACCESS'
+  | 'IMMUTABLE_TAGS';
 
 /**
  * Quay configuration from /config endpoint
@@ -781,6 +870,12 @@ type TestFixtures = {
 
   // Auto-fixture: skips tests based on @auth: tags (runs automatically)
   _autoSkipByAuth: void;
+
+  // Container runtime availability (cached per worker)
+  containerAvailable: boolean;
+
+  // Auto-fixture: skips tests based on @container tag (runs automatically)
+  _autoSkipByContainer: void;
 };
 
 /**
@@ -798,6 +893,9 @@ type WorkerFixtures = {
 
   // Cached Quay config (fetched once per worker)
   cachedQuayConfig: QuayConfig;
+
+  // Cached container runtime availability (checked once per worker)
+  cachedContainerAvailable: boolean;
 };
 
 /**
@@ -874,6 +972,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       const config = (await response.json()) as QuayConfig;
       await context.close();
       await use(config);
+    },
+    {scope: 'worker'},
+  ],
+
+  cachedContainerAvailable: [
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      const available = await isContainerRuntimeAvailable();
+      await use(available);
     },
     {scope: 'worker'},
   ],
@@ -1017,6 +1124,42 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         testInfo.skip(shouldSkip, reason);
       }
 
+      await use();
+    },
+    {auto: true},
+  ],
+
+  // =========================================================================
+  // Container runtime availability
+  // =========================================================================
+
+  containerAvailable: async ({cachedContainerAvailable}, use) => {
+    await use(cachedContainerAvailable);
+  },
+
+  // =========================================================================
+  // Auto-fixture: Skip tests based on @container tag
+  // =========================================================================
+
+  /**
+   * Automatically skip tests that have @container tag when no
+   * container runtime (podman/docker) is available.
+   *
+   * @example
+   * ```typescript
+   * test.describe('Push Tests', {tag: ['@container']}, () => {
+   *   test('pushes image', async ({authenticatedPage}) => {
+   *     // Auto-skipped if no container runtime available!
+   *   });
+   * });
+   * ```
+   */
+  _autoSkipByContainer: [
+    async ({containerAvailable}, use, testInfo) => {
+      const hasContainerTag = testInfo.tags.includes('@container');
+      if (hasContainerTag && !containerAvailable) {
+        testInfo.skip(true, 'Container runtime (podman/docker) required');
+      }
       await use();
     },
     {auto: true},

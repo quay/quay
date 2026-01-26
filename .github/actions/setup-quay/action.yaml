@@ -27,6 +27,11 @@ inputs:
     required: false
     default: ''
 
+  extra-config:
+    description: 'Inline YAML config to merge into config.yaml'
+    required: false
+    default: ''
+
   health-check-timeout:
     description: 'Health check timeout in seconds'
     required: false
@@ -51,11 +56,6 @@ inputs:
     description: 'Start Mailpit email testing server'
     required: false
     default: 'true'
-
-  logs-artifact-name:
-    description: 'Name for debug logs artifact (uploaded on failure)'
-    required: false
-    default: 'quay-debug-logs'
 
 outputs:
   quay-url:
@@ -128,7 +128,7 @@ runs:
         mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
         echo "LDAP configuration merged"
 
-    - name: Merge extra config
+    - name: Merge extra config file
       if: inputs.extra-config-file != ''
       shell: bash
       run: |
@@ -146,6 +146,26 @@ runs:
           "${BASE_CONFIG}" "${EXTRA_CONFIG}" > "${BASE_CONFIG}.tmp"
         mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
         echo "Config merged successfully"
+
+    - name: Merge inline extra config
+      if: inputs.extra-config != ''
+      shell: bash
+      env:
+        EXTRA_CONFIG_CONTENT: ${{ inputs.extra-config }}
+      run: |
+        set -euo pipefail
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        INLINE_CONFIG=$(mktemp --suffix=.yaml)
+
+        printf '%s\n' "${EXTRA_CONFIG_CONTENT}" > "${INLINE_CONFIG}"
+
+        echo "Merging inline config into ${BASE_CONFIG}..."
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${INLINE_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        rm -f "${INLINE_CONFIG}"
+        echo "Inline config merged successfully"
 
     - name: Start database services
       shell: bash
@@ -201,34 +221,3 @@ runs:
       run: |
         docker compose up -d mailpit
         echo "Mailpit email server started (SMTP: localhost:1025, Web UI: localhost:8025)"
-
-    - name: Collect debug logs on failure
-      if: failure()
-      shell: bash
-      run: |
-        mkdir -p logs/
-        docker ps -a > logs/container-status.txt 2>&1 || true
-        docker logs quay-quay > logs/quay.log 2>&1 || true
-        docker logs quay-db > logs/quay-db.log 2>&1 || true
-        docker logs quay-redis > logs/redis.log 2>&1 || true
-        if [ "${{ inputs.with-clair }}" = "true" ]; then
-          docker logs quay-clair > logs/clair.log 2>&1 || true
-          docker logs clair-db > logs/clair-db.log 2>&1 || true
-        fi
-        if [ "${{ inputs.with-ldap }}" = "true" ]; then
-          docker logs quay-ldap > logs/ldap.log 2>&1 || true
-        fi
-        if [ "${{ inputs.with-repomirror }}" = "true" ]; then
-          docker logs quay-repomirror > logs/repomirror.log 2>&1 || true
-        fi
-        if [ "${{ inputs.with-mailpit }}" = "true" ]; then
-          docker logs quay-mailpit > logs/mailpit.log 2>&1 || true
-        fi
-
-    - name: Upload debug logs on failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ inputs.logs-artifact-name }}
-        path: logs/
-        retention-days: 7

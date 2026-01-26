@@ -15,12 +15,15 @@ from endpoints.api import api
 from endpoints.api.appspecifictokens import *
 from endpoints.api.billing import *
 from endpoints.api.build import *
+from endpoints.api.capabilities import *
 from endpoints.api.discovery import *
 from endpoints.api.globalmessages import *  # type: ignore[no-redef]
+from endpoints.api.immutability_policy import *
 from endpoints.api.logs import *  # type: ignore[no-redef]
 from endpoints.api.manifest import *
 from endpoints.api.mirror import *  # type: ignore[no-redef]
 from endpoints.api.namespacequota import *
+from endpoints.api.org_mirror import *  # type: ignore[no-redef]
 from endpoints.api.organization import *  # type: ignore[assignment,no-redef]
 from endpoints.api.permission import *  # type: ignore[no-redef]
 from endpoints.api.policy import *
@@ -65,6 +68,8 @@ TRIGGER_PARAMS = {"repository": "devtable/simple", "trigger_uuid": "someuuid"}
 MANIFEST_PARAMS = {"repository": "devtable/simple", "manifestref": "sha256:deadbeef"}
 TAG_PARAMS = {"repository": "devtable/simple", "tag": "latest"}
 EXPORTLOGS_PARAMS = {"callback_url": "http://foo"}
+ORG_IMMUTABILITY_POLICY_PARAMS = {"orgname": "buynlarge", "policy_uuid": "someuuid"}
+REPO_IMMUTABILITY_POLICY_PARAMS = {"repository": "devtable/simple", "policy_uuid": "someuuid"}
 
 
 SECURITY_TESTS: List[
@@ -457,6 +462,10 @@ SECURITY_TESTS: List[
         "reader",
         201,
     ),
+    (RegistryCapabilities, "GET", None, None, None, 200),
+    (RegistryCapabilities, "GET", None, None, "devtable", 200),
+    (RegistryCapabilities, "GET", None, None, "freshuser", 200),
+    (RegistryCapabilities, "GET", None, None, "reader", 200),
     (DiscoveryResource, "GET", None, None, None, 200),
     (DiscoveryResource, "GET", None, None, "devtable", 200),
     (DiscoveryResource, "GET", None, None, "freshuser", 200),
@@ -6984,6 +6993,173 @@ SECURITY_TESTS: List[
         "GET",
         MANIFEST_PARAMS,
         {},
+        "devtable",
+        404,
+    ),
+    # OrgMirrorConfig GET
+    (OrgMirrorConfig, "GET", ORG_PARAMS, None, None, 401),
+    (OrgMirrorConfig, "GET", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorConfig, "GET", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorConfig, "GET", ORG_PARAMS, None, "devtable", 404),
+    # OrgMirrorConfig POST (JSON validation happens before auth check)
+    (OrgMirrorConfig, "POST", ORG_PARAMS, {}, None, 400),
+    (OrgMirrorConfig, "POST", ORG_PARAMS, {}, "freshuser", 400),
+    (OrgMirrorConfig, "POST", ORG_PARAMS, {}, "reader", 400),
+    (OrgMirrorConfig, "POST", ORG_PARAMS, {}, "devtable", 400),
+    # OrgMirrorConfig PUT
+    (OrgMirrorConfig, "PUT", ORG_PARAMS, {}, None, 401),
+    (OrgMirrorConfig, "PUT", ORG_PARAMS, {}, "freshuser", 403),
+    (OrgMirrorConfig, "PUT", ORG_PARAMS, {}, "reader", 403),
+    (OrgMirrorConfig, "PUT", ORG_PARAMS, {}, "devtable", 404),
+    # OrgMirrorConfig DELETE
+    (OrgMirrorConfig, "DELETE", ORG_PARAMS, None, None, 401),
+    (OrgMirrorConfig, "DELETE", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorConfig, "DELETE", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorConfig, "DELETE", ORG_PARAMS, None, "devtable", 404),
+    # OrgMirrorSyncNow POST
+    (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, None, 401),
+    (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, "devtable", 501),
+    # OrgMirrorSyncCancel POST
+    (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, None, 401),
+    (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, "devtable", 501),
+    # OrgMirrorVerify POST
+    (OrgMirrorVerify, "POST", ORG_PARAMS, None, None, 401),
+    (OrgMirrorVerify, "POST", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorVerify, "POST", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorVerify, "POST", ORG_PARAMS, None, "devtable", 501),
+    # OrgMirrorRepositories GET
+    (OrgMirrorRepositories, "GET", ORG_PARAMS, None, None, 401),
+    (OrgMirrorRepositories, "GET", ORG_PARAMS, None, "freshuser", 403),
+    (OrgMirrorRepositories, "GET", ORG_PARAMS, None, "reader", 403),
+    (OrgMirrorRepositories, "GET", ORG_PARAMS, None, "devtable", 501),
+    # OrgImmutabilityPolicies GET
+    (OrgImmutabilityPolicies, "GET", ORG_PARAMS, None, None, 401),
+    (OrgImmutabilityPolicies, "GET", ORG_PARAMS, None, "freshuser", 403),
+    (OrgImmutabilityPolicies, "GET", ORG_PARAMS, None, "reader", 403),
+    (OrgImmutabilityPolicies, "GET", ORG_PARAMS, None, "devtable", 200),
+    # OrgImmutabilityPolicies POST
+    (OrgImmutabilityPolicies, "POST", ORG_PARAMS, {"tagPattern": "^v.*$"}, None, 401),
+    (OrgImmutabilityPolicies, "POST", ORG_PARAMS, {"tagPattern": "^v.*$"}, "freshuser", 403),
+    (OrgImmutabilityPolicies, "POST", ORG_PARAMS, {"tagPattern": "^v.*$"}, "reader", 403),
+    (OrgImmutabilityPolicies, "POST", ORG_PARAMS, {"tagPattern": "^v.*$"}, "devtable", 201),
+    # OrgImmutabilityPolicy GET
+    (OrgImmutabilityPolicy, "GET", ORG_IMMUTABILITY_POLICY_PARAMS, None, None, 401),
+    (OrgImmutabilityPolicy, "GET", ORG_IMMUTABILITY_POLICY_PARAMS, None, "freshuser", 403),
+    (OrgImmutabilityPolicy, "GET", ORG_IMMUTABILITY_POLICY_PARAMS, None, "reader", 403),
+    (OrgImmutabilityPolicy, "GET", ORG_IMMUTABILITY_POLICY_PARAMS, None, "devtable", 404),
+    # OrgImmutabilityPolicy PUT
+    (
+        OrgImmutabilityPolicy,
+        "PUT",
+        ORG_IMMUTABILITY_POLICY_PARAMS,
+        {"tagPattern": "^v.*$"},
+        None,
+        401,
+    ),
+    (
+        OrgImmutabilityPolicy,
+        "PUT",
+        ORG_IMMUTABILITY_POLICY_PARAMS,
+        {"tagPattern": "^v.*$"},
+        "freshuser",
+        403,
+    ),
+    (
+        OrgImmutabilityPolicy,
+        "PUT",
+        ORG_IMMUTABILITY_POLICY_PARAMS,
+        {"tagPattern": "^v.*$"},
+        "reader",
+        403,
+    ),
+    (
+        OrgImmutabilityPolicy,
+        "PUT",
+        ORG_IMMUTABILITY_POLICY_PARAMS,
+        {"tagPattern": "^v.*$"},
+        "devtable",
+        404,
+    ),
+    # OrgImmutabilityPolicy DELETE
+    (OrgImmutabilityPolicy, "DELETE", ORG_IMMUTABILITY_POLICY_PARAMS, None, None, 401),
+    (OrgImmutabilityPolicy, "DELETE", ORG_IMMUTABILITY_POLICY_PARAMS, None, "freshuser", 403),
+    (OrgImmutabilityPolicy, "DELETE", ORG_IMMUTABILITY_POLICY_PARAMS, None, "reader", 403),
+    (OrgImmutabilityPolicy, "DELETE", ORG_IMMUTABILITY_POLICY_PARAMS, None, "devtable", 404),
+    # RepositoryImmutabilityPolicies GET
+    (RepositoryImmutabilityPolicies, "GET", REPO_PARAMS, None, None, 401),
+    (RepositoryImmutabilityPolicies, "GET", REPO_PARAMS, None, "freshuser", 403),
+    (RepositoryImmutabilityPolicies, "GET", REPO_PARAMS, None, "reader", 403),
+    (RepositoryImmutabilityPolicies, "GET", REPO_PARAMS, None, "devtable", 404),
+    # RepositoryImmutabilityPolicies POST
+    (RepositoryImmutabilityPolicies, "POST", REPO_PARAMS, {"tagPattern": "^v.*$"}, None, 401),
+    (
+        RepositoryImmutabilityPolicies,
+        "POST",
+        REPO_PARAMS,
+        {"tagPattern": "^v.*$"},
+        "freshuser",
+        403,
+    ),
+    (RepositoryImmutabilityPolicies, "POST", REPO_PARAMS, {"tagPattern": "^v.*$"}, "reader", 403),
+    (RepositoryImmutabilityPolicies, "POST", REPO_PARAMS, {"tagPattern": "^v.*$"}, "devtable", 404),
+    # RepositoryImmutabilityPolicy GET
+    (RepositoryImmutabilityPolicy, "GET", REPO_IMMUTABILITY_POLICY_PARAMS, None, None, 401),
+    (RepositoryImmutabilityPolicy, "GET", REPO_IMMUTABILITY_POLICY_PARAMS, None, "freshuser", 403),
+    (RepositoryImmutabilityPolicy, "GET", REPO_IMMUTABILITY_POLICY_PARAMS, None, "reader", 403),
+    (RepositoryImmutabilityPolicy, "GET", REPO_IMMUTABILITY_POLICY_PARAMS, None, "devtable", 404),
+    # RepositoryImmutabilityPolicy PUT
+    (
+        RepositoryImmutabilityPolicy,
+        "PUT",
+        REPO_IMMUTABILITY_POLICY_PARAMS,
+        {"tagPattern": "^v.*$"},
+        None,
+        401,
+    ),
+    (
+        RepositoryImmutabilityPolicy,
+        "PUT",
+        REPO_IMMUTABILITY_POLICY_PARAMS,
+        {"tagPattern": "^v.*$"},
+        "freshuser",
+        403,
+    ),
+    (
+        RepositoryImmutabilityPolicy,
+        "PUT",
+        REPO_IMMUTABILITY_POLICY_PARAMS,
+        {"tagPattern": "^v.*$"},
+        "reader",
+        403,
+    ),
+    (
+        RepositoryImmutabilityPolicy,
+        "PUT",
+        REPO_IMMUTABILITY_POLICY_PARAMS,
+        {"tagPattern": "^v.*$"},
+        "devtable",
+        404,
+    ),
+    # RepositoryImmutabilityPolicy DELETE
+    (RepositoryImmutabilityPolicy, "DELETE", REPO_IMMUTABILITY_POLICY_PARAMS, None, None, 401),
+    (
+        RepositoryImmutabilityPolicy,
+        "DELETE",
+        REPO_IMMUTABILITY_POLICY_PARAMS,
+        None,
+        "freshuser",
+        403,
+    ),
+    (RepositoryImmutabilityPolicy, "DELETE", REPO_IMMUTABILITY_POLICY_PARAMS, None, "reader", 403),
+    (
+        RepositoryImmutabilityPolicy,
+        "DELETE",
+        REPO_IMMUTABILITY_POLICY_PARAMS,
+        None,
         "devtable",
         404,
     ),

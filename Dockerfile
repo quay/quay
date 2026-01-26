@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-312:latest as base
+FROM registry.access.redhat.com/ubi9/python-312-minimal:latest as base
 # Only set variables or install packages that need to end up in the
 # final container here.
 USER root
@@ -18,9 +18,9 @@ ENV PATH=/app/bin/:$PATH \
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
-	; dnf -y module enable nginx:1.24 \
-	; dnf update -y \
-	; dnf -y --setopt=tsflags=nodocs install \
+	; microdnf -y module enable nginx:1.24 \
+	; microdnf update -y \
+	; microdnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
 		memcached \
 		nginx \
@@ -32,14 +32,14 @@ RUN set -ex\
     python3-six \
 		skopeo \
 		findutils \
-	; dnf -y reinstall tzdata \
-	; dnf -y clean all && rm -rf /var/cache/yum
+	; microdnf -y reinstall tzdata \
+	; microdnf -y clean all && rm -rf /var/cache/yum
 
 # Build-python installs the requirements for the python code.
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE 1
 RUN set -ex\
-	; dnf -y --setopt=tsflags=nodocs install \
+	; microdnf -y --setopt=tsflags=nodocs install \
 		gcc-c++ \
 		git \
 		openldap-devel \
@@ -56,7 +56,7 @@ RUN set -ex\
 		libxml2-devel \
 		libxslt-devel \
 		freetype-devel \
-	; dnf -y clean all
+	; microdnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
@@ -95,9 +95,11 @@ RUN set -ex\
 	;
 
 # Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi8/nodejs-22 AS build-static
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal AS build-static
 ARG BUILD_ANGULAR=true
 WORKDIR /opt/app-root/src
+# This below line is a workaround because in UBI 9, the OpenSSL version does not support MD4 anymore which is required by the combination of webpack and terser-webpack-plugin.
+ENV NODE_OPTIONS=--openssl-legacy-provider
 COPY --chown=1001:0 package.json package-lock.json  ./
 RUN npm clean-install
 COPY --chown=1001:0 static/  ./static/
@@ -105,7 +107,7 @@ COPY --chown=1001:0 *.json *.js  ./
 RUN if [ "$BUILD_ANGULAR" = "true" ]; then npm run --quiet build; fi
 
 # Build React UI
-FROM registry.access.redhat.com/ubi8/nodejs-22:latest as build-ui
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest as build-ui
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/package-lock.json  ./
 RUN CYPRESS_INSTALL_BINARY=0 npm clean-install
@@ -113,10 +115,12 @@ COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.
-FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS pushgateway
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.11.1
 RUN set -ex\
+	; microdnf update -y \
+	; microdnf -y --setopt=tsflags=nodocs install tar gzip \
 	; ARCH=$(uname -m) ; echo $ARCH \
 	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
     ; TARBALL="pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz" \
@@ -127,13 +131,13 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
+FROM registry.access.redhat.com/ubi9/go-toolset as config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 ENV GOTOOLCHAIN=auto
 RUN GOPATH=/opt/app-root/src/go GOFIPS140=latest go install -tags=fips ./cmd/config-tool
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
+FROM registry.access.redhat.com/ubi9/ubi-minimal AS build-quaydir
 WORKDIR /quaydir
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly

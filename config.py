@@ -43,6 +43,7 @@ CLIENT_WHITELIST = [
     "BRANDING",
     "DOCUMENTATION_ROOT",
     "FEATURE_REPO_MIRROR",
+    "FEATURE_ORG_MIRROR",
     "FEATURE_QUOTA_MANAGEMENT",
     "FEATURE_EDIT_QUOTA",
     "FEATURE_PROXY_CACHE",
@@ -545,6 +546,9 @@ class DefaultConfig(ImmutableConfig):
 
     # Repository mirror
     FEATURE_REPO_MIRROR = False
+
+    # Organization-level repository mirror
+    FEATURE_ORG_MIRROR = False
 
     # The number of seconds between indexing intervals in the repository mirror
     REPO_MIRROR_INTERVAL = 30

@@ -438,6 +438,16 @@ def initialize_database():
     LogEntryKind.create(name="repo_mirror_sync_test_failed")
     LogEntryKind.create(name="repo_mirror_sync_test_started")
 
+    LogEntryKind.create(name="org_mirror_enabled")
+    LogEntryKind.create(name="org_mirror_disabled")
+    LogEntryKind.create(name="org_mirror_config_changed")
+    LogEntryKind.create(name="org_mirror_sync_started")
+    LogEntryKind.create(name="org_mirror_sync_failed")
+    LogEntryKind.create(name="org_mirror_sync_success")
+    LogEntryKind.create(name="org_mirror_sync_now_requested")
+    LogEntryKind.create(name="org_mirror_sync_cancelled")
+    LogEntryKind.create(name="org_mirror_repo_created")
+
     LogEntryKind.create(name="service_key_create")
     LogEntryKind.create(name="service_key_approve")
     LogEntryKind.create(name="service_key_delete")
@@ -453,6 +463,10 @@ def initialize_database():
     LogEntryKind.create(name="change_tag_expiration")
     LogEntryKind.create(name="change_tag_immutability")
     LogEntryKind.create(name="toggle_repo_trigger")
+
+    LogEntryKind.create(name="create_immutability_policy")
+    LogEntryKind.create(name="update_immutability_policy")
+    LogEntryKind.create(name="delete_immutability_policy")
 
     LogEntryKind.create(name="create_app_specific_token")
     LogEntryKind.create(name="revoke_app_specific_token")
@@ -1437,6 +1451,8 @@ WHITELISTED_EMPTY_MODELS = [
     "NamespaceGeoRestriction",
     "RepoMirrorConfig",
     "RepoMirrorRule",
+    "OrgMirrorConfig",
+    "OrgMirrorRepository",
     "ImageStorageSignature",
     "DerivedStorageForImage",
     "TorrentInfo",
@@ -1454,6 +1470,8 @@ WHITELISTED_EMPTY_MODELS = [
     "TagNotificationSuccess",
     "TagPullStatistics",
     "ManifestPullStatistics",
+    "NamespaceImmutabilityPolicy",
+    "RepositoryImmutabilityPolicy",
 ]
 
 

@@ -10,8 +10,9 @@ from app import app as realapp
 from app import instance_keys
 from auth.auth_context_type import ValidatedAuthContext
 from data import model
+from data.model.oci.tag import set_tag_immutable
 from data.registry_model import registry_model
-from endpoints.test.shared import conduct_call
+from endpoints.test.shared import conduct_call, toggle_feature
 from image.docker.schema2.test.test_config import (
     CONFIG_BYTES,
     CONFIG_DIGEST,
@@ -342,3 +343,100 @@ def test_fetch_manifest_by_tagname_tracks_pull_metrics(client, app):
         call_args = mock_event.track_tag_pull.call_args
         # Args: repository_ref, tag_name, manifest_digest
         assert call_args[0][1] == "latest"  # tag_name
+
+
+def test_delete_manifest_by_tag_immutable_returns_409(client, app):
+    """Test that DELETE on an immutable tag returns 409 with TAG_IMMUTABLE error."""
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+
+        # Make the tag immutable
+        set_tag_immutable(repo_ref.id, "latest", True)
+
+        params = {
+            "repository": "devtable/simple",
+            "manifest_ref": "latest",
+        }
+
+        user = model.user.get_user("devtable")
+        access = [
+            {
+                "type": "repository",
+                "name": "devtable/simple",
+                "actions": ["pull", "push"],
+            }
+        ]
+
+        context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+        token = generate_bearer_token(
+            realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+        )
+
+        headers = {
+            "Authorization": "Bearer %s" % token,
+        }
+
+        rv = conduct_call(
+            client,
+            "v2.delete_manifest_by_tag",
+            url_for,
+            "DELETE",
+            params,
+            expected_code=409,
+            headers=headers,
+        )
+
+        # Verify TAG_IMMUTABLE error in response
+        response_data = json.loads(rv.data)
+        assert "errors" in response_data
+        assert response_data["errors"][0]["code"] == "TAG_IMMUTABLE"
+
+
+def test_write_manifest_by_tagname_immutable_returns_409(client, app):
+    """Test that PUT manifest on an immutable tag returns 409 with TAG_IMMUTABLE error."""
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        manifest = registry_model.get_manifest_for_tag(tag)
+
+        # Make the tag immutable
+        set_tag_immutable(repo_ref.id, "latest", True)
+
+        params = {
+            "repository": "devtable/simple",
+            "manifest_ref": "latest",
+        }
+
+        user = model.user.get_user("devtable")
+        access = [
+            {
+                "type": "repository",
+                "name": "devtable/simple",
+                "actions": ["pull", "push"],
+            }
+        ]
+
+        context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+        token = generate_bearer_token(
+            realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+        )
+
+        headers = {
+            "Authorization": "Bearer %s" % token,
+        }
+
+        rv = conduct_call(
+            client,
+            "v2.write_manifest_by_tagname",
+            url_for,
+            "PUT",
+            params,
+            expected_code=409,
+            headers=headers,
+            raw_body=manifest.internal_manifest_bytes.as_encoded_str(),
+        )
+
+        # Verify TAG_IMMUTABLE error in response
+        response_data = json.loads(rv.data)
+        assert "errors" in response_data
+        assert response_data["errors"][0]["code"] == "TAG_IMMUTABLE"

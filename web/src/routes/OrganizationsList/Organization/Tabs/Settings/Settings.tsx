@@ -6,6 +6,7 @@ import AutoPruning from './AutoPruning';
 import {BillingInformation} from './BillingInformation';
 import {CliConfiguration} from './CLIConfiguration';
 import {GeneralSettings} from './GeneralSettings';
+import ImmutabilityPolicies from './ImmutabilityPolicies';
 import {ProxyCacheConfig} from './ProxyCacheConfig';
 import {QuotaManagement} from './QuotaManagement';
 
@@ -53,6 +54,12 @@ export default function Settings(props: SettingsProps) {
         />
       ),
       visible: quayConfig?.features?.AUTO_PRUNE,
+    },
+    {
+      name: 'Immutability Policies',
+      id: 'immutabilitypolicies',
+      content: () => <ImmutabilityPolicies org={props.organizationName} />,
+      visible: quayConfig?.features?.IMMUTABLE_TAGS,
     },
     {
       name: 'Proxy Cache',

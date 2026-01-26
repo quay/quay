@@ -157,6 +157,18 @@ export function DeleteModal(props: ModalProps) {
           />
           <div className="delete-modal-readonly-alert" />
         </Conditional>
+        <Conditional if={props.immutableTags && props.immutableTags.length > 0}>
+          <Alert
+            isInline
+            variant="warning"
+            title="Immutable tags will be skipped"
+            data-testid="immutable-tags-warning"
+          >
+            The following tags are immutable and will not be deleted:{' '}
+            {props.immutableTags?.join(', ')}
+          </Alert>
+          <div style={{marginBottom: '1rem'}} />
+        </Conditional>
         {props.tags?.map((tag) => (
           <span key={tag}>
             <Label>{tag}</Label>{' '}
@@ -181,4 +193,5 @@ type ModalProps = {
   org: string;
   repo: string;
   repoDetails: RepositoryDetails;
+  immutableTags?: string[];
 };

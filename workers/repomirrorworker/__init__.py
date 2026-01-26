@@ -6,6 +6,7 @@ import re
 import traceback
 from typing import Optional
 
+import requests
 from prometheus_client import Gauge
 
 import features
@@ -24,9 +25,16 @@ from data.model.repo_mirror import (
 )
 from data.model.user import retrieve_robot_token
 from data.registry_model import registry_model
+from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
 from notifications import spawn_notification
 from util.audit import wrap_repository
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
+from workers.repomirrorworker.manifest_utils import (
+    filter_manifests_by_architecture,
+    get_available_architectures,
+    get_manifest_media_type,
+    is_manifest_list,
+)
 from workers.repomirrorworker.repo_mirror_model import repo_mirror_model as model
 
 logger = logging.getLogger(__name__)
@@ -185,6 +193,17 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
 
         skopeo_timeout = mirror.skopeo_timeout
 
+        # Check for architecture filter
+        architecture_filter = mirror.architecture_filter or []
+        use_arch_filter = bool(architecture_filter)
+        if use_arch_filter:
+            logger.info(
+                "Architecture filter for %s/%s: %s",
+                mirror.repository.namespace_user.username,
+                mirror.repository.name,
+                architecture_filter,
+            )
+
         for tag in tags:
             src_image = "docker://%s:%s" % (mirror.external_reference, tag)
             dest_image = "docker://%s/%s/%s:%s" % (
@@ -193,23 +212,33 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 mirror.repository.name,
                 tag,
             )
-            with database.CloseForLongOperation(app.config):
-                result = skopeo.copy(
-                    src_image,
-                    dest_image,
-                    timeout=skopeo_timeout,
-                    src_tls_verify=mirror.external_registry_config.get("verify_tls", True),
-                    dest_tls_verify=app.config.get(
-                        "REPO_MIRROR_TLS_VERIFY", True
-                    ),  # TODO: is this a config choice or something else?
-                    src_username=username,
-                    src_password=password,
-                    dest_username=mirror.internal_robot.username,
-                    dest_password=retrieve_robot_token(mirror.internal_robot),
-                    proxy=mirror.external_registry_config.get("proxy", {}),
-                    verbose_logs=verbose_logs,
-                    unsigned_images=mirror.external_registry_config.get("unsigned_images", False),
+
+            if use_arch_filter:
+                # Use architecture-filtered copy
+                result = copy_filtered_architectures(
+                    skopeo, mirror, tag, architecture_filter, verbose_logs=verbose_logs
                 )
+            else:
+                # Use existing --all copy
+                with database.CloseForLongOperation(app.config):
+                    result = skopeo.copy(
+                        src_image,
+                        dest_image,
+                        timeout=skopeo_timeout,
+                        src_tls_verify=mirror.external_registry_config.get("verify_tls", True),
+                        dest_tls_verify=app.config.get(
+                            "REPO_MIRROR_TLS_VERIFY", True
+                        ),  # TODO: is this a config choice or something else?
+                        src_username=username,
+                        src_password=password,
+                        dest_username=mirror.internal_robot.username,
+                        dest_password=retrieve_robot_token(mirror.internal_robot),
+                        proxy=mirror.external_registry_config.get("proxy", {}),
+                        verbose_logs=verbose_logs,
+                        unsigned_images=mirror.external_registry_config.get(
+                            "unsigned_images", False
+                        ),
+                    )
 
             if check_repo_mirror_sync_status(mirror) == RepoMirrorStatus.CANCEL:
                 logger.info(
@@ -453,6 +482,171 @@ def delete_obsolete_tags(mirror, tags):
         delete_tag(mirror.repository, tag.name)
 
     return obsolete_tags
+
+
+def push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
+    """
+    Push original manifest list bytes directly to preserve digest.
+
+    Returns True on success, False on failure.
+    """
+    dest_server = (
+        app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+    )
+    namespace = mirror.repository.namespace_user.username
+    repo_name = mirror.repository.name
+    url = f"https://{dest_server}/v2/{namespace}/{repo_name}/manifests/{tag}"
+
+    robot_username = mirror.internal_robot.username
+    robot_token = retrieve_robot_token(mirror.internal_robot)
+    dest_tls_verify = app.config.get("REPO_MIRROR_TLS_VERIFY", True)
+
+    try:
+        response = requests.put(
+            url,
+            data=(
+                manifest_bytes.encode("utf-8")
+                if isinstance(manifest_bytes, str)
+                else manifest_bytes
+            ),
+            headers={"Content-Type": media_type or OCI_IMAGE_INDEX_CONTENT_TYPE},
+            auth=(robot_username, robot_token),
+            verify=dest_tls_verify,
+            timeout=60,
+        )
+        if response.status_code in (200, 201):
+            logger.info("Pushed sparse manifest list for %s/%s:%s", namespace, repo_name, tag)
+            return True
+        logger.error("Failed to push manifest list: %s %s", response.status_code, response.text)
+        return False
+    except requests.RequestException as e:
+        logger.exception("Request failed pushing manifest list: %s", e)
+        return False
+
+
+def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbose_logs=False):
+    """
+    Copy only specified architectures from a multi-arch image.
+
+    Returns tuple of (success, stdout, stderr).
+    """
+    from util.repomirror.skopeomirror import SkopeoResults
+
+    # Get credentials
+    username = (
+        mirror.external_registry_username.decrypt() if mirror.external_registry_username else None
+    )
+    password = (
+        mirror.external_registry_password.decrypt() if mirror.external_registry_password else None
+    )
+
+    dest_server = (
+        app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+    )
+    src_image_base = f"docker://{mirror.external_reference}"
+    src_image_tag = f"{src_image_base}:{tag}"
+    dest_image_base = (
+        f"docker://{dest_server}/{mirror.repository.namespace_user.username}/"
+        f"{mirror.repository.name}"
+    )
+
+    proxy = mirror.external_registry_config.get("proxy", {})
+    src_tls_verify = mirror.external_registry_config.get("verify_tls", True)
+    dest_tls_verify = app.config.get("REPO_MIRROR_TLS_VERIFY", True)
+    unsigned_images = mirror.external_registry_config.get("unsigned_images", False)
+
+    # Step 1: Inspect manifest
+    with database.CloseForLongOperation(app.config):
+        result = skopeo.inspect_raw(
+            src_image_tag,
+            mirror.skopeo_timeout,
+            username=username,
+            password=password,
+            verify_tls=src_tls_verify,
+            proxy=proxy,
+            verbose_logs=verbose_logs,
+        )
+
+    if not result.success:
+        logger.error("Failed to inspect manifest for %s: %s", src_image_tag, result.stderr)
+        return SkopeoResults(False, [], result.stdout, result.stderr)
+
+    manifest_bytes = result.stdout
+
+    # Step 2: Check if manifest list
+    if not is_manifest_list(manifest_bytes):
+        logger.info("Image %s is not a manifest list, using standard copy", src_image_tag)
+        with database.CloseForLongOperation(app.config):
+            result = skopeo.copy(
+                src_image_tag,
+                f"{dest_image_base}:{tag}",
+                timeout=mirror.skopeo_timeout,
+                src_tls_verify=src_tls_verify,
+                dest_tls_verify=dest_tls_verify,
+                src_username=username,
+                src_password=password,
+                dest_username=mirror.internal_robot.username,
+                dest_password=retrieve_robot_token(mirror.internal_robot),
+                proxy=proxy,
+                verbose_logs=verbose_logs,
+                unsigned_images=unsigned_images,
+            )
+        return result
+
+    # Step 3: Filter and validate architectures
+    available = get_available_architectures(manifest_bytes)
+    matching = [a for a in architecture_filter if a in available]
+    missing = [a for a in architecture_filter if a not in available]
+
+    if missing:
+        logger.warning("Architectures not in source %s: %s", src_image_tag, missing)
+    if not matching:
+        return SkopeoResults(
+            False,
+            [],
+            "",
+            f"No matching architectures. Requested: {architecture_filter}, Available: {available}",
+        )
+
+    filtered = filter_manifests_by_architecture(manifest_bytes, matching)
+    logger.info("Mirroring %d architectures for %s: %s", len(filtered), src_image_tag, matching)
+
+    # Step 4: Copy each architecture by digest
+    all_stdout, all_stderr = [], []
+    for entry in filtered:
+        digest = entry.get("digest")
+        arch = entry.get("platform", {}).get("architecture", "unknown")
+        logger.info("Copying architecture %s (%s)", arch, digest)
+
+        with database.CloseForLongOperation(app.config):
+            result = skopeo.copy_by_digest(
+                f"{src_image_base}@{digest}",
+                f"{dest_image_base}@{digest}",
+                timeout=mirror.skopeo_timeout,
+                src_tls_verify=src_tls_verify,
+                dest_tls_verify=dest_tls_verify,
+                src_username=username,
+                src_password=password,
+                dest_username=mirror.internal_robot.username,
+                dest_password=retrieve_robot_token(mirror.internal_robot),
+                proxy=proxy,
+                verbose_logs=verbose_logs,
+                unsigned_images=unsigned_images,
+            )
+        all_stdout.append(f"[{arch}] {result.stdout}")
+        all_stderr.append(f"[{arch}] {result.stderr}")
+        if not result.success:
+            logger.error("Failed to copy arch %s: %s", arch, result.stderr)
+            return SkopeoResults(False, [], "\n".join(all_stdout), "\n".join(all_stderr))
+
+    # Step 5: Push original manifest list
+    media_type = get_manifest_media_type(manifest_bytes)
+    if not push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
+        return SkopeoResults(
+            False, [], "\n".join(all_stdout), "Failed to push sparse manifest list"
+        )
+
+    return SkopeoResults(True, [], "\n".join(all_stdout), "\n".join(all_stderr))
 
 
 # TODO: better to call 'track_and_log()' https://jira.coreos.com/browse/QUAY-1821

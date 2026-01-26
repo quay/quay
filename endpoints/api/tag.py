@@ -9,6 +9,9 @@ from flask import abort, request
 import features
 from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
+from auth.permissions import AdministerRepositoryPermission
+from data.model import ImmutableTagException
+from data.model.oci.tag import RetargetTagException
 from data.model.pull_statistics import (
     get_manifest_pull_statistics,
     get_tag_pull_statistics,
@@ -32,7 +35,7 @@ from endpoints.api import (
     show_if,
     validate_json_request,
 )
-from endpoints.exception import InvalidRequest, NotFound
+from endpoints.exception import InvalidRequest, NotFound, TagImmutable, Unauthorized
 from util.names import TAG_ERROR, TAG_REGEX
 from util.parsing import truthy_bool
 
@@ -42,6 +45,9 @@ def _tag_dict(tag):
         "name": tag.name,
         "reversion": tag.reversion,
     }
+
+    if features.IMMUTABLE_TAGS:
+        tag_info["immutable"] = tag.immutable
 
     if tag.lifetime_start_ts and tag.lifetime_start_ts > 0:
         tag_info["start_ts"] = tag.lifetime_start_ts
@@ -139,6 +145,10 @@ class RepositoryTag(RepositoryParamResource):
                     "type": ["number", "null"],
                     "description": "(If specified) The expiration for the image",
                 },
+                "immutable": {
+                    "type": "boolean",
+                    "description": "(If specified) Whether the tag should be immutable. Write permission required to set, admin permission required to unset.",
+                },
             },
         },
     }
@@ -197,6 +207,37 @@ class RepositoryTag(RepositoryParamResource):
             else:
                 raise InvalidRequest("Could not update tag expiration; Tag has probably changed")
 
+        if "immutable" in request.get_json() and features.IMMUTABLE_TAGS:
+            tag_ref = registry_model.get_repo_tag(repo_ref, tag)
+            if tag_ref is None:
+                raise NotFound()
+
+            immutable = request.get_json()["immutable"]
+
+            # Removing immutability requires admin permission
+            if not immutable and tag_ref.immutable:
+                if not AdministerRepositoryPermission(namespace, repository).can():
+                    raise Unauthorized()
+
+            previous, ok = registry_model.change_tag_immutability(tag_ref, immutable)
+            if not ok:
+                raise InvalidRequest("Could not update tag immutability; Tag has probably changed")
+
+            username = get_authenticated_user().username
+            log_action(
+                "change_tag_immutability",
+                namespace,
+                {
+                    "username": username,
+                    "repo": repository,
+                    "tag": tag,
+                    "namespace": namespace,
+                    "immutable": immutable,
+                    "previous_immutable": previous,
+                },
+                repo_name=repository,
+            )
+
         if "manifest_digest" in request.get_json():
             existing_tag = registry_model.get_repo_tag(repo_ref, tag)
 
@@ -215,9 +256,14 @@ class RepositoryTag(RepositoryParamResource):
             )
             existing_manifest_digest = existing_manifest.digest if existing_manifest else None
 
-            if not registry_model.retarget_tag(
-                repo_ref, tag, manifest, storage, docker_v2_signing_key
-            ):
+            try:
+                if not registry_model.retarget_tag(
+                    repo_ref, tag, manifest, storage, docker_v2_signing_key
+                ):
+                    raise InvalidRequest("Could not move tag")
+            except ImmutableTagException as e:
+                raise TagImmutable(e.tag_name, e.operation) from e
+            except RetargetTagException:
                 raise InvalidRequest("Could not move tag")
 
             username = get_authenticated_user().username
@@ -252,7 +298,11 @@ class RepositoryTag(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        tag_ref = registry_model.delete_tag(model_cache, repo_ref, tag)
+        try:
+            tag_ref = registry_model.delete_tag(model_cache, repo_ref, tag)
+        except ImmutableTagException as e:
+            raise TagImmutable(e.tag_name, e.operation) from e
+
         if tag_ref is None:
             raise NotFound()
 
@@ -324,14 +374,19 @@ class RestoreTag(RepositoryParamResource):
         if manifest is None:
             raise NotFound()
 
-        if not registry_model.retarget_tag(
-            repo_ref,
-            tag,
-            manifest,
-            storage,
-            docker_v2_signing_key,
-            is_reversion=True,
-        ):
+        try:
+            if not registry_model.retarget_tag(
+                repo_ref,
+                tag,
+                manifest,
+                storage,
+                docker_v2_signing_key,
+                is_reversion=True,
+            ):
+                raise InvalidRequest("Could not restore tag")
+        except ImmutableTagException as e:
+            raise TagImmutable(e.tag_name, e.operation) from e
+        except RetargetTagException:
             raise InvalidRequest("Could not restore tag")
 
         log_action("revert_tag", namespace, log_data, repo_name=repository)

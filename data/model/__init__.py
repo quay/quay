@@ -204,6 +204,18 @@ class InvalidRepositoryException(DataModelException):
     pass
 
 
+class ImmutabilityPolicyDoesNotExist(DataModelException):
+    pass
+
+
+class InvalidImmutabilityPolicy(DataModelException):
+    pass
+
+
+class DuplicateImmutabilityPolicy(DataModelException):
+    pass
+
+
 class PushesDisabledException(Exception):
     pass
 
@@ -249,6 +261,7 @@ from data.model import (
     namespacequota,
     notification,
     oauth,
+    org_mirror,
     organization,
     organization_skus,
     permission,

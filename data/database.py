@@ -537,6 +537,24 @@ def _db_from_url(
         driver_autocommit = db_kwargs["_driver_autocommit"]
         db_kwargs.pop("_driver_autocommit", None)
 
+    # For SQLite, configure PRAGMAs using peewee's built-in mechanism.
+    # This is applied during _add_conn_hooks() before connect() returns,
+    # using the raw cursor, which avoids recursion issues (PROJQUAY-9799).
+    if parsed_url.drivername == "sqlite":
+        db_kwargs.setdefault("pragmas", {})
+        db_kwargs["pragmas"].update(
+            {
+                "busy_timeout": 10000,
+                "journal_mode": "wal",
+                "wal_autocheckpoint": 1000,
+                "synchronous": "normal",
+            }
+        )
+        logger.info(
+            "Configured SQLite PRAGMA settings for database: %s",
+            parsed_url.database,
+        )
+
     created = driver(parsed_url.database, **db_kwargs)
     if driver_autocommit:
         created.connect_params["autocommit"] = driver_autocommit
@@ -545,55 +563,6 @@ def _db_from_url(
     # https://github.com/coleifer/peewee/commit/36bd887ac07647c60dfebe610b34efabec675706
     if parsed_url.drivername.find("mysql") >= 0:
         created.compound_select_parentheses = 0
-
-    # Configure SQLite-specific PRAGMA statements for database locking optimization
-    if parsed_url.drivername == "sqlite":
-
-        def _configure_sqlite_pragmas(db_instance):
-            """Configure SQLite-specific PRAGMA statements to prevent database locks."""
-            try:
-                # Set busy timeout to 10 seconds to handle concurrent access
-                db_instance.execute_sql("PRAGMA busy_timeout = 10000;")
-                db_instance.execute_sql("PRAGMA journal_mode = WAL;")
-                db_instance.execute_sql(
-                    "PRAGMA wal_autocheckpoint = 1000;"
-                )  # Set WAL checkpointing to 1000 pages
-                db_instance.execute_sql(
-                    "PRAGMA synchronous = NORMAL;"
-                )  # Balance durability/performance
-
-                # Verify the PRAGMA settings were applied
-                busy_timeout_result = db_instance.execute_sql("PRAGMA busy_timeout;")
-                journal_mode_result = db_instance.execute_sql("PRAGMA journal_mode;")
-
-                # Extract actual values from results
-                busy_timeout_value = (
-                    busy_timeout_result.fetchone()[0] if busy_timeout_result else "unknown"
-                )
-                journal_mode_value = (
-                    journal_mode_result.fetchone()[0] if journal_mode_result else "unknown"
-                )
-
-                logger.info(
-                    "Applied SQLite PRAGMA statements for database: %s - busy_timeout: %s, journal_mode: %s",
-                    parsed_url.database,
-                    busy_timeout_value,
-                    journal_mode_value,
-                )
-            except Exception as e:
-                logger.warning(
-                    "Failed to configure SQLite optimizations for %s: %s", parsed_url.database, e
-                )
-
-        # Override connect method to apply PRAGMA statements on each connection
-        original_connect = created.connect
-
-        def enhanced_connect(reuse_if_open=False):
-            result = original_connect(reuse_if_open)
-            _configure_sqlite_pragmas(created)
-            return result
-
-        created.connect = enhanced_connect
 
     return created
 
@@ -869,10 +838,14 @@ class User(BaseModel):
                     NamespaceAutoPrunePolicy,
                     AutoPruneTaskStatus,
                     RepositoryAutoPrunePolicy,
+                    NamespaceImmutabilityPolicy,
+                    RepositoryImmutabilityPolicy,
                     OauthAssignedToken,
                     TagNotificationSuccess,
                     TagPullStatistics,
                     ManifestPullStatistics,
+                    OrgMirrorConfig,
+                    OrgMirrorRepository,
                 }
                 | appr_classes
                 | v22_classes
@@ -1094,9 +1067,11 @@ class Repository(BaseModel):
                 QuotaNamespaceSize,
                 QuotaRepositorySize,
                 RepositoryAutoPrunePolicy,
+                RepositoryImmutabilityPolicy,
                 TagNotificationSuccess,
                 TagPullStatistics,
                 ManifestPullStatistics,
+                OrgMirrorRepository,
             }
             | appr_classes
             | v22_classes
@@ -2074,6 +2049,11 @@ class RepoMirrorConfig(BaseModel):
     external_registry_password = EncryptedCharField(max_length=9000, null=True)
     external_registry_config = JSONField(default={})
 
+    # Architecture filter for multi-arch images. JSON array of architecture strings.
+    # Empty array or null means mirror all architectures.
+    # Example: ["amd64", "arm64"]
+    architecture_filter = JSONField(default=[], null=True)
+
     # Worker Queueing
     sync_interval = IntegerField()  # seconds between syncs
     sync_start_date = DateTimeField(null=True)  # next start time
@@ -2087,6 +2067,134 @@ class RepoMirrorConfig(BaseModel):
 
     # Skopeo timeout
     skopeo_timeout = BigIntegerField()
+
+
+# ============================================================================
+# Organization-Level Mirroring Models
+# ============================================================================
+
+
+@unique
+class SourceRegistryType(IntEnum):
+    """
+    Types of source registries for organization mirroring.
+    """
+
+    HARBOR = 1
+    QUAY = 2
+
+
+@unique
+class OrgMirrorStatus(IntEnum):
+    """
+    Possible statuses of organization-level mirroring.
+    Same values as RepoMirrorStatus for consistency.
+    """
+
+    CANCEL = -2
+    FAIL = -1
+    NEVER_RUN = 0
+    SUCCESS = 1
+    SYNCING = 2
+    SYNC_NOW = 3
+
+
+@unique
+class OrgMirrorRepoStatus(IntEnum):
+    """
+    Possible statuses of individual repositories discovered by organization mirroring.
+    Same values as RepoMirrorStatus for consistency.
+    Note: Filtered-out repos are not tracked (no OrgMirrorRepository entry created).
+    """
+
+    CANCEL = -2  # Sync cancelled
+    FAIL = -1  # Sync failed
+    NEVER_RUN = 0  # Discovered but never synced
+    SUCCESS = 1  # Last sync succeeded
+    SYNCING = 2  # Currently syncing
+    SYNC_NOW = 3  # Priority sync requested
+
+
+class OrgMirrorConfig(BaseModel):
+    """
+    Represents an organization-level mirror configuration that syncs all repositories
+    from a source namespace to a target Quay organization.
+    """
+
+    # One config per organization (unique constraint)
+    organization = QuayUserField(allows_robots=False, null=False, index=True, unique=True)
+    creation_date = DateTimeField(default=datetime.utcnow)
+    is_enabled = BooleanField(default=True)
+
+    # Mirror type (supports PULL only)
+    mirror_type = ClientEnumField(RepoMirrorType, default=RepoMirrorType.PULL)
+
+    # External registry configuration
+    external_registry_type = ClientEnumField(SourceRegistryType)
+    external_registry_url = CharField(max_length=2048)  # e.g., "https://harbor.example.com"
+    external_namespace = CharField(max_length=255)  # e.g., "my-project" for Harbor
+
+    # Credentials for external registry
+    external_registry_username = EncryptedCharField(max_length=4096, null=True)
+    external_registry_password = EncryptedCharField(max_length=9000, null=True)
+    external_registry_config = JSONField(default={})  # TLS settings, proxy, etc.
+
+    # Robot account for creating repos and pushing images in target org
+    internal_robot = QuayUserField(allows_robots=True, backref="orgmirrorpullrobot")
+
+    # Repository filtering - list of glob patterns (e.g., ["ubuntu", "debian*"])
+    # Empty list means mirror all repositories
+    repository_filters = JSONField(default=[])
+
+    # Visibility for created repositories
+    visibility = EnumField(Visibility)
+
+    # If True, delete mirror repos when they no longer exist in source
+    # Default False: stale repos remain in mirror
+    delete_stale_repos = BooleanField(default=False)
+
+    # Worker scheduling
+    sync_interval = IntegerField()  # seconds between syncs
+    sync_start_date = DateTimeField(null=True)  # next scheduled sync
+    sync_expiration_date = DateTimeField(null=True)  # max duration for current sync
+    sync_retries_remaining = IntegerField(default=3)
+    sync_status = ClientEnumField(OrgMirrorStatus, default=OrgMirrorStatus.NEVER_RUN)
+    sync_transaction_id = CharField(default=uuid_generator, max_length=36)
+
+    # Skopeo timeout for individual image syncs
+    skopeo_timeout = BigIntegerField(default=300)
+
+
+class OrgMirrorRepository(BaseModel):
+    """
+    Tracks individual repositories discovered by organization-level mirroring.
+    """
+
+    org_mirror_config = ForeignKeyField(OrgMirrorConfig, backref="discovered_repos")
+    repository_name = CharField(max_length=255)  # Name without namespace prefix
+
+    # Link to created Quay repository (null until created)
+    repository = ForeignKeyField(Repository, null=True, backref="org_mirror_entry")
+
+    # Discovery and sync tracking
+    discovery_date = DateTimeField(default=datetime.utcnow)
+    sync_status = ClientEnumField(OrgMirrorRepoStatus, default=OrgMirrorRepoStatus.NEVER_RUN)
+    sync_start_date = DateTimeField(null=True)
+    sync_expiration_date = DateTimeField(null=True)
+    last_sync_date = DateTimeField(null=True)
+    status_message = TextField(null=True)  # Error message or skip reason
+
+    creation_date = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            # Repository name must be unique within an org mirror config
+            (("org_mirror_config", "repository_name"), True),
+            # Composite index for efficient status counting per org mirror config
+            (("org_mirror_config", "sync_status"), False),
+        )
 
 
 @unique
@@ -2198,6 +2306,19 @@ class AutoPruneTaskStatus(BaseModel):
 
 class RepositoryAutoPrunePolicy(BaseModel):
     uuid = CharField(default=uuid_generator, max_length=36, index=True, null=False)
+    repository = ForeignKeyField(Repository, index=True, null=False)
+    namespace = QuayUserField(index=True, null=False)
+    policy = JSONField(null=False, default={})
+
+
+class NamespaceImmutabilityPolicy(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, unique=True, null=False)
+    namespace = QuayUserField(index=True, null=False)
+    policy = JSONField(null=False, default={})
+
+
+class RepositoryImmutabilityPolicy(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, unique=True, null=False)
     repository = ForeignKeyField(Repository, index=True, null=False)
     namespace = QuayUserField(index=True, null=False)
     policy = JSONField(null=False, default={})

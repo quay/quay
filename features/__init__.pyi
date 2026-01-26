@@ -125,6 +125,9 @@ SECURITY_NOTIFICATIONS: FeatureNameValue
 # Repository mirror
 REPO_MIRROR: FeatureNameValue
 
+# Organization-level repository mirror
+ORG_MIRROR: FeatureNameValue
+
 # Site key and secret key for using recaptcha.
 RECAPTCHA: FeatureNameValue
 
@@ -139,6 +142,9 @@ NONSUPERUSER_TEAM_SYNCING_SETUP: FeatureNameValue
 
 # Feature Flag: Whether users can view and change their tag expiration.
 CHANGE_TAG_EXPIRATION: FeatureNameValue
+
+# Feature Flag: Whether tag immutability is enabled.
+IMMUTABLE_TAGS: FeatureNameValue
 
 # Feature Flag: If enabled, users can create and use app specific tokens to login via the CLI.
 APP_SPECIFIC_TOKENS: FeatureNameValue

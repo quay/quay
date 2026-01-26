@@ -15,6 +15,7 @@ class TestTag:
             lifetime_start_ms=one_hour_ago_ms,
             lifetime_end_ts=one_minute_ago_ms // 1000,
             lifetime_end_ms=one_minute_ago_ms,
+            immutable=False,
         )
         assert tag.expired
 
@@ -29,6 +30,7 @@ class TestTag:
             lifetime_start_ms=one_hour_ago_ms,
             lifetime_end_ts=now_ms // 1000,
             lifetime_end_ms=now_ms,
+            immutable=False,
         )
         assert tag.expired
 
@@ -44,6 +46,7 @@ class TestTag:
             lifetime_start_ms=one_hour_ago_ms,
             lifetime_end_ts=one_hour_from_now_ms // 1000,
             lifetime_end_ms=one_hour_from_now_ms,
+            immutable=False,
         )
         assert not tag.expired
 
@@ -58,5 +61,6 @@ class TestTag:
             lifetime_start_ms=one_hour_ago_ms,
             lifetime_end_ts=None,
             lifetime_end_ms=None,
+            immutable=False,
         )
         assert not tag.expired

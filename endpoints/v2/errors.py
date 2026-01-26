@@ -121,6 +121,13 @@ class TagAlreadyExists(V2RegistryException):
         )
 
 
+class TagImmutable(V2RegistryException):
+    def __init__(self, detail=None):
+        super(TagImmutable, self).__init__(
+            "TAG_IMMUTABLE", "tag is immutable and cannot be overwritten", detail, 409
+        )
+
+
 class TagInvalid(V2RegistryException):
     def __init__(self, detail=None):
         super(TagInvalid, self).__init__("TAG_INVALID", "manifest tag did not match URI", detail)

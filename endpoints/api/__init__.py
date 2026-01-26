@@ -756,13 +756,16 @@ def deprecated():
 import endpoints.api.appspecifictokens
 import endpoints.api.billing
 import endpoints.api.build
+import endpoints.api.capabilities
 import endpoints.api.discovery
 import endpoints.api.error
 import endpoints.api.globalmessages
+import endpoints.api.immutability_policy
 import endpoints.api.logs
 import endpoints.api.manifest
 import endpoints.api.mirror
 import endpoints.api.namespacequota
+import endpoints.api.org_mirror
 import endpoints.api.organization
 import endpoints.api.permission
 import endpoints.api.policy

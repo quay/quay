@@ -9,6 +9,7 @@ export type {
   GetPrototypesResponse,
   GlobalMessage,
   GlobalMessagesResponse,
+  ImmutabilityPolicy,
   MessageMediaType,
   MessageSeverity,
   MirrorConfig,

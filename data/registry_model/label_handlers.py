@@ -1,11 +1,13 @@
 import logging
 
+import features
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
 
 
 LABEL_EXPIRY_KEY = "quay.expires-after"
+LABEL_IMMUTABLE_KEY = "quay.immutable"
 
 
 def _expires_after(label_dict, manifest, model):
@@ -23,8 +25,22 @@ def _expires_after(label_dict, manifest, model):
     model.set_tags_expiration_for_manifest(manifest, total_seconds)
 
 
+def _immutable(label_dict, manifest, model):
+    """
+    Sets immutability on manifest tags based on the quay.immutable label.
+    """
+    if not features.IMMUTABLE_TAGS:
+        return
+
+    value = label_dict.get("value", "").strip().lower()
+    if value == "true":
+        logger.debug("Labeling manifest %s as immutable", manifest)
+        model.set_tags_immutability_for_manifest(manifest, True)
+
+
 _LABEL_HANDLERS = {
     LABEL_EXPIRY_KEY: _expires_after,
+    LABEL_IMMUTABLE_KEY: _immutable,
 }
 
 

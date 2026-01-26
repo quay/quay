@@ -223,6 +223,7 @@ export function Signin() {
   const errMessage = (
     <Alert
       id="form-error-alert"
+      data-testid="signin-error-alert"
       isInline
       actionClose={<AlertActionCloseButton onClose={() => setErr(null)} />}
       variant="danger"
@@ -301,6 +302,7 @@ export function Signin() {
                   isRequired
                   type="email"
                   id="recovery-email"
+                  data-testid="signin-recovery-email"
                   name="recovery-email"
                   value={recoveryEmail}
                   onChange={(_event, v) => setRecoveryEmail(v)}
@@ -318,6 +320,7 @@ export function Signin() {
                 variant="primary"
                 type="submit"
                 isBlock
+                data-testid="signin-send-recovery"
                 isDisabled={
                   !recoveryEmail ||
                   !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recoveryEmail) ||
@@ -336,6 +339,7 @@ export function Signin() {
         <button
           type="button"
           className="signin-link-button"
+          data-testid="signin-back-to-login"
           onClick={() => handleViewChange('signin')}
         >
           Back to Sign In
@@ -410,6 +414,7 @@ export function Signin() {
                 Don&apos;t have an account?{' '}
                 <Link
                   to="/createaccount"
+                  data-testid="signin-create-account-link"
                   style={{color: 'var(--pf-v5-global--link--Color)'}}
                 >
                   Create account
@@ -420,7 +425,9 @@ export function Signin() {
 
             {showInvitationMessage() && (
               <>
-                <span>Invitation required to sign up</span>
+                <span data-testid="signin-invitation-message">
+                  Invitation required to sign up
+                </span>
                 <br />
               </>
             )}
@@ -429,6 +436,7 @@ export function Signin() {
               <button
                 type="button"
                 className="signin-link-button"
+                data-testid="signin-forgot-password-link"
                 onClick={() => handleViewChange('forgotPassword')}
               >
                 Forgot Password?
