@@ -10,7 +10,7 @@ require (
 	github.com/dave/jennifer v1.7.0
 	github.com/go-ldap/ldap/v3 v3.4.11
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/go-sql-driver/mysql v1.7.1
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/jojomi/go-spew v1.1.1-0.20180323180114-b94c73b27dc1
@@ -25,6 +25,7 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
