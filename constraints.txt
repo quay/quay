@@ -1,2 +1,8 @@
-# This file is used to workaround a bootstrapping issue when generating build requirements
+# This file is used to workaround bootstrapping issues when generating build requirements
+
+# setuptools_scm constraint for older Python versions
 setuptools_scm < 8.2.0; python_version < "3.10"
+
+# urllib3 2.x declares Python 3.14 classifier which requires newer trove-classifiers
+# This ensures hatchling can build urllib3 from source in hermetic builds
+trove-classifiers >= 2024.10.12; python_version >= "3.12"
