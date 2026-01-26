@@ -634,3 +634,207 @@ class TestYieldLogRotationContext:
         result = list(splunk_model.yield_log_rotation_context(cutoff_date, min_logs))
 
         assert result == []
+
+
+class TestSplunkLogsModelConfiguration:
+    """Tests for SplunkLogsModel configuration parsing."""
+
+    def test_init_stores_splunk_config(self, splunk_config, mock_model):
+        """Test that __init__ stores splunk_config."""
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                model_instance = SplunkLogsModel(producer="splunk", splunk_config=splunk_config)
+
+                assert model_instance._splunk_config == splunk_config
+                assert model_instance._producer == "splunk"
+
+    def test_init_stores_hec_config(self, mock_model):
+        """Test that __init__ stores splunk_hec_config."""
+        hec_config = {
+            "host": "hec.splunk.example",
+            "hec_token": "hec_token_123",
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                model_instance = SplunkLogsModel(
+                    producer="splunk_hec", splunk_hec_config=hec_config
+                )
+
+                assert model_instance._splunk_hec_config == hec_config
+                assert model_instance._producer == "splunk_hec"
+
+    def test_get_search_client_with_splunk_config(self, splunk_config, mock_model):
+        """Test that _get_search_client uses splunk_config directly."""
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkLogsProducer") as mock_producer:
+                with patch(
+                    "data.logs_model.splunk_logs_model.SplunkSearchClient"
+                ) as mock_search_client:
+                    mock_producer.return_value = Mock()
+                    mock_search_client.return_value = Mock()
+
+                    model_instance = SplunkLogsModel(producer="splunk", splunk_config=splunk_config)
+                    search_client = model_instance._get_search_client()
+
+                    mock_search_client.assert_called_once_with(**splunk_config)
+                    assert search_client is not None
+
+    def test_get_search_client_with_hec_config_fallback(self, mock_model):
+        """Test that _get_search_client falls back to HEC host/token when search_* not provided."""
+        hec_config = {
+            "host": "hec.splunk.example",
+            "hec_token": "hec_token_123",
+            "url_scheme": "https",
+            "verify_ssl": True,
+            "index": "quay_logs",
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
+                with patch(
+                    "data.logs_model.splunk_logs_model.SplunkSearchClient"
+                ) as mock_search_client:
+                    mock_producer.return_value = Mock()
+                    mock_search_client.return_value = Mock()
+
+                    model_instance = SplunkLogsModel(
+                        producer="splunk_hec", splunk_hec_config=hec_config
+                    )
+                    model_instance._get_search_client()
+
+                    # Should use HEC host and token as fallback
+                    call_kwargs = mock_search_client.call_args[1]
+                    assert call_kwargs["host"] == "hec.splunk.example"
+                    assert call_kwargs["bearer_token"] == "hec_token_123"
+                    assert call_kwargs["port"] == 8089  # Default search port
+                    assert call_kwargs["index_prefix"] == "quay_logs"
+
+    def test_get_search_client_with_hec_config_explicit_search_options(self, mock_model):
+        """Test that _get_search_client uses explicit search_* options from HEC config."""
+        hec_config = {
+            "host": "hec.splunk.example",
+            "hec_token": "hec_token_123",
+            "search_host": "mgmt.splunk.example",
+            "search_port": 9089,
+            "search_token": "search_token_456",
+            "search_timeout": 120,
+            "max_results": 20000,
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
+                with patch(
+                    "data.logs_model.splunk_logs_model.SplunkSearchClient"
+                ) as mock_search_client:
+                    mock_producer.return_value = Mock()
+                    mock_search_client.return_value = Mock()
+
+                    model_instance = SplunkLogsModel(
+                        producer="splunk_hec", splunk_hec_config=hec_config
+                    )
+                    model_instance._get_search_client()
+
+                    # Should use explicit search_* options
+                    call_kwargs = mock_search_client.call_args[1]
+                    assert call_kwargs["host"] == "mgmt.splunk.example"
+                    assert call_kwargs["port"] == 9089
+                    assert call_kwargs["bearer_token"] == "search_token_456"
+                    assert call_kwargs["search_timeout"] == 120
+                    assert call_kwargs["max_results"] == 20000
+
+    def test_get_export_batch_size_from_splunk_config(self, splunk_config, mock_model):
+        """Test that _get_export_batch_size reads from splunk_config."""
+        splunk_config["export_batch_size"] = 2000
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                model_instance = SplunkLogsModel(producer="splunk", splunk_config=splunk_config)
+
+                batch_size = model_instance._get_export_batch_size()
+
+                assert batch_size == 2000
+
+    def test_get_export_batch_size_from_hec_config(self, mock_model):
+        """Test that _get_export_batch_size reads from splunk_hec_config."""
+        hec_config = {
+            "host": "hec.splunk.example",
+            "hec_token": "hec_token_123",
+            "export_batch_size": 3000,
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                model_instance = SplunkLogsModel(
+                    producer="splunk_hec", splunk_hec_config=hec_config
+                )
+
+                batch_size = model_instance._get_export_batch_size()
+
+                assert batch_size == 3000
+
+    def test_get_export_batch_size_default(self, splunk_config, mock_model):
+        """Test that _get_export_batch_size returns default when not configured."""
+        # No export_batch_size in config
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                model_instance = SplunkLogsModel(producer="splunk", splunk_config=splunk_config)
+
+                batch_size = model_instance._get_export_batch_size()
+
+                assert batch_size == 5000  # Default value
+
+    def test_backward_compatible_config_without_new_options(self, mock_model):
+        """Test that existing configs without new options still work."""
+        # Minimal config without any of the new options
+        minimal_config = {
+            "host": "splunk.example.com",
+            "port": 8089,
+            "bearer_token": "token123",
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkLogsProducer") as mock_producer:
+                with patch(
+                    "data.logs_model.splunk_logs_model.SplunkSearchClient"
+                ) as mock_search_client:
+                    mock_producer.return_value = Mock()
+                    mock_search_client.return_value = Mock()
+
+                    model_instance = SplunkLogsModel(
+                        producer="splunk", splunk_config=minimal_config
+                    )
+
+                    # Should not raise any errors
+                    search_client = model_instance._get_search_client()
+                    assert search_client is not None
+
+                    # Export batch size should use default
+                    batch_size = model_instance._get_export_batch_size()
+                    assert batch_size == 5000
+
+    def test_yield_logs_for_export_uses_configured_batch_size(
+        self, mock_model, mock_search_client, mock_field_mapper
+    ):
+        """Test that yield_logs_for_export uses the configured batch size."""
+        splunk_config = {
+            "host": "splunk.example.com",
+            "port": 8089,
+            "bearer_token": "token123",
+            "export_batch_size": 1000,  # Custom batch size
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                model_instance = SplunkLogsModel(producer="splunk", splunk_config=splunk_config)
+                model_instance._search_client = mock_search_client
+                model_instance._field_mapper = mock_field_mapper
+
+                start = datetime(2024, 1, 1)
+                end = datetime(2024, 1, 31)
+
+                # Consume the generator
+                list(model_instance.yield_logs_for_export(start, end))
+
+                # Verify the batch size was used
+                call_kwargs = mock_search_client.search.call_args[1]
+                assert call_kwargs["max_count"] == 1000

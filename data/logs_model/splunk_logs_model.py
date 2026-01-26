@@ -35,6 +35,8 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         self._search_client: Optional[SplunkSearchClient] = None
         self._field_mapper: Optional[SplunkLogMapper] = None
         self._splunk_config = splunk_config
+        self._splunk_hec_config = splunk_hec_config
+        self._producer = producer
 
         if producer == "splunk":
             if splunk_config is None:
@@ -53,19 +55,41 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         """
         Get or create the Splunk search client.
 
+        For 'splunk' producer, uses splunk_config directly.
+        For 'splunk_hec' producer, builds search config from HEC config,
+        using search_host/search_port/search_token if provided, otherwise
+        falling back to HEC host/port/token.
+
         Returns:
             SplunkSearchClient instance
 
         Raises:
-            Exception: If splunk_config is not available
+            Exception: If no valid config is available
         """
         if self._search_client is not None:
             return self._search_client
 
-        if self._splunk_config is None:
-            raise Exception("Splunk search requires splunk_config (not available for HEC producer)")
+        if self._producer == "splunk" and self._splunk_config is not None:
+            self._search_client = SplunkSearchClient(**self._splunk_config)
+        elif self._producer == "splunk_hec" and self._splunk_hec_config is not None:
+            # Build search client config from HEC config
+            # Use search_* options if provided, otherwise fall back to HEC values
+            hec_config = self._splunk_hec_config
+            search_config = {
+                "host": hec_config.get("search_host", hec_config.get("host")),
+                "port": hec_config.get("search_port", 8089),
+                "bearer_token": hec_config.get("search_token", hec_config.get("hec_token")),
+                "url_scheme": hec_config.get("url_scheme", "https"),
+                "verify_ssl": hec_config.get("verify_ssl", True),
+                "ssl_ca_path": hec_config.get("ssl_ca_path"),
+                "index_prefix": hec_config.get("index"),
+                "search_timeout": hec_config.get("search_timeout", 60),
+                "max_results": hec_config.get("max_results", 10000),
+            }
+            self._search_client = SplunkSearchClient(**search_config)
+        else:
+            raise Exception("Splunk search requires splunk_config or splunk_hec_config")
 
-        self._search_client = SplunkSearchClient(**self._splunk_config)
         return self._search_client
 
     def _get_field_mapper(self) -> SplunkLogMapper:
@@ -347,6 +371,15 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             logger.warning("count_repository_actions failed: %s", e)
             return 0
 
+    def _get_export_batch_size(self) -> int:
+        """Get the export batch size from config, with default fallback."""
+        DEFAULT_BATCH_SIZE = 5000
+        if self._splunk_config:
+            return self._splunk_config.get("export_batch_size", DEFAULT_BATCH_SIZE)
+        elif self._splunk_hec_config:
+            return self._splunk_hec_config.get("export_batch_size", DEFAULT_BATCH_SIZE)
+        return DEFAULT_BATCH_SIZE
+
     def yield_logs_for_export(
         self,
         start_datetime,
@@ -356,7 +389,7 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         max_query_time=None,
     ) -> Generator[List[Log], None, None]:
         """Yield batches of logs for export."""
-        BATCH_SIZE = 5000
+        batch_size = self._get_export_batch_size()
         DEFAULT_MAX_QUERY_TIME = 300
 
         max_query_seconds = (
@@ -398,7 +431,7 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
                 query=spl_query,
                 earliest_time=start_datetime.isoformat(),
                 latest_time=end_datetime.isoformat(),
-                max_count=BATCH_SIZE,
+                max_count=batch_size,
                 offset=offset,
             )
 
