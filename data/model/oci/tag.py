@@ -1,5 +1,7 @@
 import datetime
 import logging
+import random
+import time
 import uuid
 from calendar import timegm
 
@@ -454,8 +456,14 @@ def retarget_tag(
     now_ms = now_ms or get_epoch_timestamp_ms()
 
     MAX_RETRIES = 3
+    BASE_DELAY_SEC = 0.1
 
     for attempt in range(MAX_RETRIES):
+        if attempt > 0:
+            # exponential backoff with jitter
+            delay = BASE_DELAY_SEC * (2 ** (attempt - 1)) * (0.5 + random.random())
+            time.sleep(delay)
+
         with db_transaction():
             # Use FOR UPDATE to lock the existing active tag row (if any)
             # This serializes concurrent operations on the same tag
