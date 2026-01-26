@@ -26,6 +26,7 @@ import {
   syncMirror,
 } from 'src/resources/MirroringResource';
 import {MirroringFormData} from './types';
+import {ArchitectureFilter} from './ArchitectureFilter';
 
 interface MirroringConfigurationProps {
   control: Control<MirroringFormData>;
@@ -47,6 +48,8 @@ interface MirroringConfigurationProps {
     title: string;
     message?: string;
   }) => void;
+  architectureFilter: string[];
+  setArchitectureFilter: (archs: string[]) => void;
 }
 
 export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
@@ -65,6 +68,8 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
   robotOptions,
   setConfig,
   addAlert,
+  architectureFilter,
+  setArchitectureFilter,
 }) => {
   return (
     <>
@@ -126,6 +131,12 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         required
         helperText="Comma-separated list of tag patterns to synchronize."
         data-testid="tags-input"
+      />
+
+      <ArchitectureFilter
+        selectedArchitectures={architectureFilter}
+        onChange={setArchitectureFilter}
+        isDisabled={config ? !formValues.isEnabled : false}
       />
 
       <FormGroup
