@@ -217,7 +217,9 @@ def test_expiration(queue, transaction_factory):
     assert gauge_value(queue_items_locked) == 0
     assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
-    one = queue.get(processing_time=0.5, ordering_required=True)
+    # Use processing_time=2 instead of 0.5 to avoid race conditions with
+    # MySQL's second-level timestamp precision (no microseconds)
+    one = queue.get(processing_time=2, ordering_required=True)
     assert one is not None
     assert gauge_value(queue_items_locked) == 1
     assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
@@ -225,7 +227,7 @@ def test_expiration(queue, transaction_factory):
     one_fail = queue.get(ordering_required=True)
     assert one_fail is None
 
-    time.sleep(1)
+    time.sleep(3)
     queue.update_metrics()
     assert gauge_value(queue_items_locked) == 0
     assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
