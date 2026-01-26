@@ -1261,9 +1261,10 @@ class TestUpdateSyncStatusToSyncNow:
         assert result is not None
         assert result.sync_retries_remaining >= 1
 
-    def test_sync_now_also_updates_repos(self, initialized_db):
+    def test_sync_now_does_not_update_repos(self, initialized_db):
         """
-        Should update all repos (except SYNCING) to SYNC_NOW status.
+        Should only update the config, not the repos.
+        Repos are updated by the worker after discovery via propagate_status_to_repos.
         """
         from data.model.org_mirror import update_sync_status_to_sync_now
 
@@ -1293,29 +1294,22 @@ class TestUpdateSyncStatusToSyncNow:
             sync_status=OrgMirrorRepoStatus.SUCCESS,
         )
 
-        before = datetime.utcnow()
         result = update_sync_status_to_sync_now(config)
-        after = datetime.utcnow()
 
         assert result is not None
         assert result.sync_status == OrgMirrorStatus.SYNC_NOW
 
-        # Verify repos are updated appropriately
+        # Verify repos are NOT updated - they retain their original status
+        # The worker will propagate the status after discovery
         syncing_repo = OrgMirrorRepository.get_by_id(syncing_repo.id)
         never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
         fail_repo = OrgMirrorRepository.get_by_id(fail_repo.id)
         success_repo = OrgMirrorRepository.get_by_id(success_repo.id)
 
-        # SYNCING repo should be left alone
         assert syncing_repo.sync_status == OrgMirrorRepoStatus.SYNCING
-
-        # All other repos should be set to SYNC_NOW with updated start date
-        assert never_run_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
-        assert never_run_repo.sync_start_date >= before
-        assert never_run_repo.sync_start_date <= after
-
-        assert fail_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
-        assert success_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert never_run_repo.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+        assert fail_repo.sync_status == OrgMirrorRepoStatus.FAIL
+        assert success_repo.sync_status == OrgMirrorRepoStatus.SUCCESS
 
 
 class TestUpdateSyncStatusToCancel:
@@ -1376,10 +1370,10 @@ class TestUpdateSyncStatusToCancel:
 
         assert result is None
 
-    def test_cancel_also_cancels_repos(self, initialized_db):
+    def test_cancel_does_not_cancel_repos(self, initialized_db):
         """
-        Should cancel repos that are NOT SYNCING.
-        Repos actively being synced (SYNCING) are left alone to complete.
+        Should only update the config, not the repos.
+        Repos are updated by the worker via propagate_status_to_repos.
         """
         from data.model.org_mirror import update_sync_status_to_cancel
 
@@ -1413,13 +1407,134 @@ class TestUpdateSyncStatusToCancel:
         assert result is not None
         assert result.sync_status == OrgMirrorStatus.CANCEL
 
-        # Verify repos are cancelled appropriately
+        # Verify repos are NOT updated - they retain their original status
+        # The worker will propagate the status when it picks up the config
         syncing_repo = OrgMirrorRepository.get_by_id(syncing_repo.id)
         sync_now_repo = OrgMirrorRepository.get_by_id(sync_now_repo.id)
         never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
 
-        # SYNCING repos are left alone to complete
         assert syncing_repo.sync_status == OrgMirrorRepoStatus.SYNCING
-        # All other repos are cancelled
+        assert sync_now_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert never_run_repo.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+
+
+class TestPropagateStatusToRepos:
+    """Tests for propagate_status_to_repos function."""
+
+    def test_propagate_sync_now_skips_syncing_repos(self, initialized_db):
+        """
+        Should propagate SYNC_NOW to all repos except those currently SYNCING.
+        """
+        from data.model.org_mirror import propagate_status_to_repos
+
+        org, robot = _create_org_and_robot("propagate_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create repos in various states
+        syncing_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="syncing-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+        never_run_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="never-run-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+        fail_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="fail-repo",
+            sync_status=OrgMirrorRepoStatus.FAIL,
+        )
+
+        count = propagate_status_to_repos(config, OrgMirrorRepoStatus.SYNC_NOW)
+
+        # Should have updated 2 repos (not the SYNCING one)
+        assert count == 2
+
+        # Verify repos are updated appropriately
+        syncing_repo = OrgMirrorRepository.get_by_id(syncing_repo.id)
+        never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
+        fail_repo = OrgMirrorRepository.get_by_id(fail_repo.id)
+
+        # SYNCING repo should be left alone
+        assert syncing_repo.sync_status == OrgMirrorRepoStatus.SYNCING
+
+        # All other repos should be set to SYNC_NOW
+        assert never_run_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert never_run_repo.sync_start_date is not None
+        assert fail_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+
+    def test_propagate_cancel_includes_syncing_repos(self, initialized_db):
+        """
+        Should propagate CANCEL to ALL repos including those currently SYNCING.
+        """
+        from data.model.org_mirror import propagate_status_to_repos
+
+        org, robot = _create_org_and_robot("propagate_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create repos in various states
+        syncing_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="syncing-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+        sync_now_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="sync-now-repo",
+            sync_status=OrgMirrorRepoStatus.SYNC_NOW,
+        )
+        never_run_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="never-run-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        count = propagate_status_to_repos(config, OrgMirrorRepoStatus.CANCEL)
+
+        # Should have updated all 3 repos (including SYNCING)
+        assert count == 3
+
+        # Verify all repos are cancelled
+        syncing_repo = OrgMirrorRepository.get_by_id(syncing_repo.id)
+        sync_now_repo = OrgMirrorRepository.get_by_id(sync_now_repo.id)
+        never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
+
+        assert syncing_repo.sync_status == OrgMirrorRepoStatus.CANCEL
+        assert syncing_repo.sync_start_date is None
+        assert syncing_repo.sync_retries_remaining == 0
+
         assert sync_now_repo.sync_status == OrgMirrorRepoStatus.CANCEL
         assert never_run_repo.sync_status == OrgMirrorRepoStatus.CANCEL
+
+    def test_propagate_skips_repos_already_in_target_status(self, initialized_db):
+        """
+        Should not update repos that already have the target status.
+        """
+        from data.model.org_mirror import propagate_status_to_repos
+
+        org, robot = _create_org_and_robot("propagate_test3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create repos - some already in SYNC_NOW
+        sync_now_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="sync-now-repo",
+            sync_status=OrgMirrorRepoStatus.SYNC_NOW,
+        )
+        never_run_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="never-run-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        count = propagate_status_to_repos(config, OrgMirrorRepoStatus.SYNC_NOW)
+
+        # Should only update the NEVER_RUN repo
+        assert count == 1
+
+        never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
+        assert never_run_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW

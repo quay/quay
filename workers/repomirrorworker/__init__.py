@@ -31,6 +31,7 @@ from data.model.org_mirror import (
     claim_org_mirror_config,
     claim_org_mirror_repo,
     matches_repository_filter,
+    propagate_status_to_repos,
     release_org_mirror_config,
     release_org_mirror_repo,
     schedule_org_mirror_repos_for_sync,
@@ -764,18 +765,53 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
     Fetches repository list from source registry, applies filters,
     and populates OrgMirrorRepository table.
 
+    Handles special statuses:
+    - CANCEL: Skips discovery, propagates CANCEL to all repos
+    - SYNC_NOW: Runs discovery, propagates SYNC_NOW to all repos
+
     Args:
         org_mirror_config: The OrgMirrorConfig to discover repos for
 
     Raises:
         PreemptedException: If another worker claimed this config first
     """
+    # Remember the original status before claiming (claim changes it to SYNCING)
+    original_status = org_mirror_config.sync_status
+
     # Claim the config for this worker
     claimed_config = claim_org_mirror_config(org_mirror_config)
     if not claimed_config:
         raise PreemptedException
 
     org_name = claimed_config.organization.username
+
+    # Handle CANCEL: skip discovery, propagate CANCEL to repos
+    if original_status == OrgMirrorStatus.CANCEL:
+        logger.info(
+            "Processing cancel for org mirror: %s (config_id=%s)",
+            org_name,
+            claimed_config.id,
+        )
+
+        # Propagate CANCEL to all repos
+        cancelled_count = propagate_status_to_repos(claimed_config, OrgMirrorRepoStatus.CANCEL)
+
+        logger.info(
+            "Cancelled %d repositories for org mirror %s",
+            cancelled_count,
+            org_name,
+        )
+
+        _emit_org_config_log(
+            claimed_config,
+            "org_mirror_sync_failed",
+            "cancelled",
+            f"Sync cancelled: {cancelled_count} repos set to cancelled",
+        )
+
+        # Release with CANCEL status
+        release_org_mirror_config(claimed_config, OrgMirrorStatus.CANCEL)
+        return
 
     logger.info(
         "Starting repository discovery for org mirror: %s (config_id=%s)",
@@ -880,21 +916,30 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
         newly_created,
     )
 
-    # Schedule newly discovered repos for sync
-    scheduled_count = schedule_org_mirror_repos_for_sync(claimed_config)
-
-    logger.info(
-        "Scheduled %d repositories for sync for org mirror %s",
-        scheduled_count,
-        org_name,
-    )
+    # Propagate status to repos based on original config status
+    if original_status == OrgMirrorStatus.SYNC_NOW:
+        # SYNC_NOW: propagate to all repos for immediate sync
+        propagated_count = propagate_status_to_repos(claimed_config, OrgMirrorRepoStatus.SYNC_NOW)
+        logger.info(
+            "Propagated SYNC_NOW to %d repositories for org mirror %s",
+            propagated_count,
+            org_name,
+        )
+    else:
+        # Normal scheduled sync: only schedule NEVER_RUN repos
+        scheduled_count = schedule_org_mirror_repos_for_sync(claimed_config)
+        logger.info(
+            "Scheduled %d repositories for sync for org mirror %s",
+            scheduled_count,
+            org_name,
+        )
 
     # Emit success log
     _emit_org_config_log(
         claimed_config,
         "org_mirror_sync_success",
         "end",
-        f"Discovery completed: {total_count} repos discovered, {newly_created} new, {scheduled_count} scheduled for sync",
+        f"Discovery completed: {total_count} repos discovered, {newly_created} new",
     )
 
     # Release the config

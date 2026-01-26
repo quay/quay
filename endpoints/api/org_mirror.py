@@ -10,7 +10,6 @@ Quay organization.
 import logging
 from datetime import datetime
 
-import requests
 from flask import request
 
 import features
@@ -653,7 +652,6 @@ class OrgMirrorRepositories(ApiResource):
         Query Parameters:
             page (int): Page number, default 1
             limit (int): Items per page, default 100, max 500
-            refresh (bool): If true, fetch fresh data from source registry
 
         Returns:
             JSON object with:
@@ -678,16 +676,11 @@ class OrgMirrorRepositories(ApiResource):
         page = request.args.get("page", 1, type=int)
         limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
         limit = min(limit, MAX_PAGE_LIMIT)  # Cap at max
-        refresh = request.args.get("refresh", "false").lower() == "true"
 
         if page < 1:
             page = 1
         if limit < 1:
             limit = DEFAULT_PAGE_LIMIT
-
-        # Check if we need to refresh from source registry
-        if refresh:
-            self._refresh_from_source(mirror)
 
         # Fetch from database with pagination
         repos, total = model.org_mirror.get_org_mirror_repos(mirror, page, limit)
@@ -711,75 +704,6 @@ class OrgMirrorRepositories(ApiResource):
             "total": total,
             "has_next": (page * limit) < total,
         }
-
-    def _refresh_from_source(self, mirror):
-        """
-        Fetch repositories from source registry and update the database.
-
-        Args:
-            mirror: OrgMirrorConfig instance
-
-        Raises:
-            InvalidRequest: On connection or API errors
-        """
-        # Decrypt credentials
-        try:
-            username = (
-                mirror.external_registry_username.decrypt()
-                if mirror.external_registry_username
-                else None
-            )
-            password = (
-                mirror.external_registry_password.decrypt()
-                if mirror.external_registry_password
-                else None
-            )
-        except DecryptionFailureException as e:
-            logger.warning("Failed to decrypt credentials for mirror config: %s", e)
-            raise InvalidRequest("Failed to decrypt source registry credentials")
-
-        # Create adapter for the source registry type
-        try:
-            adapter = get_registry_adapter(
-                registry_type=mirror.external_registry_type,
-                url=mirror.external_registry_url,
-                namespace=mirror.external_namespace,
-                username=username,
-                password=password,
-                config=mirror.external_registry_config,
-            )
-        except ValueError as e:
-            raise InvalidRequest(str(e))
-
-        # Fetch repositories from source
-        try:
-            all_repos = adapter.list_repositories()
-        except requests.exceptions.Timeout:
-            raise InvalidRequest("Connection to source registry timed out")
-        except requests.exceptions.SSLError as e:
-            raise InvalidRequest(f"SSL error connecting to source registry: {e}")
-        except requests.exceptions.ConnectionError as e:
-            raise InvalidRequest(f"Failed to connect to source registry: {e}")
-        except requests.exceptions.HTTPError as e:
-            raise InvalidRequest(f"Source registry returned error: {e}")
-        except requests.exceptions.RequestException as e:
-            raise InvalidRequest(f"Failed to fetch repositories: {e}")
-
-        # Apply glob filters
-        filters = mirror.repository_filters
-        if filters:
-            all_repos = [
-                r for r in all_repos if model.org_mirror.matches_repository_filter(r, filters)
-            ]
-
-        # Sync to database
-        model.org_mirror.sync_discovered_repos(mirror, all_repos)
-
-        logger.info(
-            "Refreshed %d repositories from source registry for org %s",
-            len(all_repos),
-            mirror.organization.username,
-        )
 
     def _dt_to_string(self, dt):
         """Convert DateTime to ISO 8601 formatted string."""

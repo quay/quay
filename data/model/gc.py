@@ -17,6 +17,7 @@ from data.database import (
     ManifestLabel,
     ManifestPullStatistics,
     ManifestSecurityStatus,
+    OrgMirrorRepository,
     QuotaRepositorySize,
     RepoMirrorConfig,
     Repository,
@@ -128,6 +129,7 @@ def purge_repository(repo, force=False):
     _chunk_delete_all(repo, RepositoryNotification, force=force)
     _chunk_delete_all(repo, BlobUpload, force=force)
     _chunk_delete_all(repo, RepoMirrorConfig, force=force)
+    _chunk_delete_all(repo, OrgMirrorRepository, force=force)
     _chunk_delete_all(repo, RepositoryAuthorizedEmail, force=force)
 
     # Delete pull statistics for the repository.
