@@ -1,14 +1,16 @@
 import json
 import logging
-from datetime import datetime
-from typing import Optional
+import time
+from datetime import datetime, timedelta
+from typing import Generator, List, Optional
 
 from data import model
-from data.logs_model.interface import ActionLogsDataInterface
+from data.logs_model.datatypes import AggregatedLogCount, Log, LogEntriesPage
+from data.logs_model.interface import ActionLogsDataInterface, LogsIterationTimeout
 from data.logs_model.logs_producer import LogProducerProxy, LogSendException
 from data.logs_model.logs_producer.splunk_hec_logs_producer import SplunkHECLogsProducer
 from data.logs_model.logs_producer.splunk_logs_producer import SplunkLogsProducer
-from data.logs_model.shared import SharedModel
+from data.logs_model.shared import InvalidLogsDateRangeError, SharedModel
 from data.logs_model.splunk_field_mapper import SplunkLogMapper
 from data.logs_model.splunk_search_client import SplunkSearchClient
 from data.model import config
@@ -145,6 +147,33 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             else:
                 raise
 
+    def _build_base_query(
+        self,
+        namespace_name=None,
+        performer_name=None,
+        repository_name=None,
+        filter_kinds=None,
+    ) -> str:
+        """Build base SPL query string with filters."""
+        parts = []
+
+        if namespace_name:
+            parts.append(f'account="{namespace_name}"')
+        if performer_name:
+            parts.append(f'performer="{performer_name}"')
+        if repository_name:
+            parts.append(f'repository="{repository_name}"')
+        if filter_kinds:
+            for kind_name in filter_kinds:
+                parts.append(f'kind!="{kind_name}"')
+
+        return " ".join(parts)
+
+    def _build_lookup_query(self, **kwargs) -> str:
+        """Build SPL query for log lookups with sorting."""
+        base = self._build_base_query(**kwargs)
+        return f"{base} | sort -_time" if base else "| sort -_time"
+
     def lookup_logs(
         self,
         start_datetime,
@@ -155,8 +184,56 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         filter_kinds=None,
         page_token=None,
         max_page_count=None,
-    ):
-        raise NotImplementedError("Method not implemented, Splunk does not support log lookups")
+    ) -> LogEntriesPage:
+        """Retrieve paginated logs from Splunk within the specified date range."""
+        PAGE_SIZE = 20
+
+        assert start_datetime is not None and end_datetime is not None
+
+        # Handle combined model token format
+        if page_token is not None and page_token.get("readwrite_page_token") is not None:
+            page_token = page_token.get("readwrite_page_token")
+
+        # Handle page limit
+        if page_token is not None and max_page_count is not None:
+            page_number = page_token.get("page_number", 0)
+            if page_number + 1 > max_page_count:
+                return LogEntriesPage([], None)
+
+        # Build SPL query with filters
+        spl_query = self._build_lookup_query(
+            namespace_name=namespace_name,
+            performer_name=performer_name,
+            repository_name=repository_name,
+            filter_kinds=filter_kinds,
+        )
+
+        # Calculate offset from page token
+        offset = page_token.get("offset", 0) if page_token else 0
+
+        # Execute search with pagination
+        search_client = self._get_search_client()
+        results = search_client.search(
+            query=spl_query,
+            earliest_time=start_datetime.isoformat(),
+            latest_time=end_datetime.isoformat(),
+            max_count=PAGE_SIZE + 1,
+            offset=offset,
+        )
+
+        # Map results to Log objects
+        field_mapper = self._get_field_mapper()
+        logs = field_mapper.map_logs(results.results[:PAGE_SIZE], namespace_name=namespace_name)
+
+        # Build next page token if more results exist
+        next_page_token = None
+        if len(results.results) > PAGE_SIZE:
+            next_page_token = {
+                "offset": offset + PAGE_SIZE,
+                "page_number": (page_token.get("page_number", 0) + 1) if page_token else 1,
+            }
+
+        return LogEntriesPage(logs, next_page_token)
 
     def lookup_latest_logs(
         self,
@@ -165,8 +242,31 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         namespace_name=None,
         filter_kinds=None,
         size=20,
-    ):
-        raise NotImplementedError("Method not implemented, Splunk does not support log lookups")
+    ) -> List[Log]:
+        """Retrieve the most recent logs from Splunk (last 32 days)."""
+        DATE_RANGE_LIMIT = 32
+
+        end_datetime = datetime.now()
+        start_datetime = end_datetime - timedelta(days=DATE_RANGE_LIMIT)
+
+        spl_query = self._build_lookup_query(
+            namespace_name=namespace_name,
+            performer_name=performer_name,
+            repository_name=repository_name,
+            filter_kinds=filter_kinds,
+        )
+
+        search_client = self._get_search_client()
+        results = search_client.search(
+            query=spl_query,
+            earliest_time=start_datetime.isoformat(),
+            latest_time=end_datetime.isoformat(),
+            max_count=size,
+            offset=0,
+        )
+
+        field_mapper = self._get_field_mapper()
+        return field_mapper.map_logs(results.results, namespace_name=namespace_name)
 
     def get_aggregated_log_counts(
         self,
@@ -176,11 +276,76 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         repository_name=None,
         namespace_name=None,
         filter_kinds=None,
-    ):
-        raise NotImplementedError("Method not implemented, Splunk does not support log lookups")
+    ) -> List[AggregatedLogCount]:
+        """Get aggregated log counts grouped by kind and date."""
+        DATE_RANGE_LIMIT = 32
 
-    def count_repository_actions(self, repository, day):
-        raise NotImplementedError("Method not implemented, Splunk does not support log lookups")
+        if end_datetime - start_datetime > timedelta(days=DATE_RANGE_LIMIT):
+            raise InvalidLogsDateRangeError(
+                "Cannot lookup aggregated logs over a period longer than a month"
+            )
+
+        base_query = self._build_base_query(
+            namespace_name=namespace_name,
+            performer_name=performer_name,
+            repository_name=repository_name,
+            filter_kinds=filter_kinds,
+        )
+
+        # SPL aggregation query
+        spl_query = (
+            f"{base_query} "
+            f'| eval log_date=strftime(_time, "%Y-%m-%d") '
+            f"| stats count by kind, log_date"
+        )
+
+        search_client = self._get_search_client()
+        results = search_client.search_with_stats(
+            query=spl_query,
+            earliest_time=start_datetime.isoformat(),
+            latest_time=end_datetime.isoformat(),
+        )
+
+        kind_map = model.log.get_log_entry_kinds()
+        counts = []
+
+        for result in results:
+            kind_name = result.get("kind")
+            kind_id = kind_map.get(kind_name, 0) if kind_name else 0
+            count = int(result.get("count", 0))
+            log_date_str = result.get("log_date")
+            if log_date_str:
+                log_date = datetime.strptime(log_date_str, "%Y-%m-%d")
+                counts.append(AggregatedLogCount(kind_id, count, log_date))
+
+        return counts
+
+    def count_repository_actions(self, repository, day) -> int:
+        """Count audit log entries for a repository on a specific day."""
+        COUNT_TIMEOUT = 30
+
+        if isinstance(day, datetime):
+            start_datetime = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            start_datetime = datetime.combine(day, datetime.min.time())
+        end_datetime = start_datetime + timedelta(days=1)
+
+        repo_name = repository.name
+        namespace_name = repository.namespace_user.username
+
+        spl_query = f'account="{namespace_name}" ' f'repository="{repo_name}"'
+
+        try:
+            search_client = self._get_search_client()
+            return search_client.count(
+                query=spl_query,
+                earliest_time=start_datetime.isoformat(),
+                latest_time=end_datetime.isoformat(),
+                timeout=COUNT_TIMEOUT,
+            )
+        except Exception as e:
+            logger.warning("count_repository_actions failed: %s", e)
+            return 0
 
     def yield_logs_for_export(
         self,
@@ -189,8 +354,72 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         repository_id=None,
         namespace_id=None,
         max_query_time=None,
-    ):
-        raise NotImplementedError("Method not implemented, Splunk does not support log lookups")
+    ) -> Generator[List[Log], None, None]:
+        """Yield batches of logs for export."""
+        BATCH_SIZE = 5000
+        DEFAULT_MAX_QUERY_TIME = 300
+
+        max_query_seconds = (
+            max_query_time.total_seconds() if max_query_time else DEFAULT_MAX_QUERY_TIME
+        )
+        start_time = time.time()
+
+        # Resolve IDs to names using existing model functions
+        namespace_name = None
+        repository_name = None
+
+        if namespace_id:
+            namespace_user = model.user.get_user_by_id(namespace_id)
+            if namespace_user:
+                namespace_name = namespace_user.username
+
+        if repository_id:
+            repository = model.repository.lookup_repository(repository_id)
+            if repository:
+                repository_name = repository.name
+                if not namespace_name:
+                    namespace_name = repository.namespace_user.username
+
+        spl_query = self._build_base_query(
+            namespace_name=namespace_name,
+            repository_name=repository_name,
+        )
+
+        search_client = self._get_search_client()
+        field_mapper = self._get_field_mapper()
+        offset = 0
+
+        while True:
+            elapsed = time.time() - start_time
+            if elapsed > max_query_seconds:
+                raise LogsIterationTimeout()
+
+            results = search_client.search(
+                query=spl_query,
+                earliest_time=start_datetime.isoformat(),
+                latest_time=end_datetime.isoformat(),
+                max_count=BATCH_SIZE,
+                offset=offset,
+            )
+
+            if not results.results:
+                break
+
+            logs = field_mapper.map_logs(results.results, namespace_name=namespace_name)
+            yield logs
+
+            offset += len(results.results)
+            if not results.has_more:
+                break
 
     def yield_log_rotation_context(self, cutoff_date, min_logs_per_rotation):
-        raise NotImplementedError("Method not implemented, Splunk does not support log lookups")
+        """
+        Splunk log rotation is handled by Splunk's retention policies.
+
+        This method is not applicable for Splunk as log retention and cleanup
+        are managed by Splunk's data management features.
+        """
+        # Splunk handles log rotation internally through retention policies
+        # This is a no-op generator that yields nothing
+        return
+        yield  # Makes this a generator function
