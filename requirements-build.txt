@@ -246,9 +246,9 @@ maturin==1.8.6 \
     --hash=sha256:ca30fdb158a24cf312f3e53072a6e987182c103fa613efea2d28b5f52707d04a \
     --hash=sha256:dade5edfaf508439ff6bbc7be4f207e04c0999c47d9ef7e1bae16258e76b1518
     # via -r requirements-build.in
-packaging==25.0 \
-    --hash=sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484 \
-    --hash=sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f
+packaging==26.0 \
+    --hash=sha256:00243ae351a257117b6a241061796684b084ed1c516a08c48a3f7e147a9d80b4 \
+    --hash=sha256:b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529
     # via
     #   -r requirements-build.in
     #   hatchling
