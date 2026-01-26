@@ -125,7 +125,7 @@ deprecation==2.1.0
 
 # Leverage wheels for faster builds
 setuptools==71.1.0
-wheel==0.38.4
+wheel==0.46.2
 
 # Indirect dependencies
 PyNaCl==1.5.0
@@ -141,7 +141,7 @@ oslo.config==7.0.0
 oslo.i18n==6.2.0
 oslo.serialization==5.4.0
 oslo.utils==6.2.1
-packaging==23.2
+packaging==26.0
 pbr==5.11.1
 pycparser==2.21
 python-bidi==0.4.2
