@@ -78,34 +78,6 @@ class SplunkLogMapper:
 
         return logs
 
-    def map_single_log(
-        self,
-        result: Dict[str, Any],
-        id_user_map: Optional[Dict[int, Any]] = None,
-    ) -> Optional[Log]:
-        """
-        Convert a single Splunk result to a Log object.
-
-        Args:
-            result: Splunk result dictionary
-            id_user_map: Optional pre-fetched user map (by ID)
-
-        Returns:
-            Log object or None if mapping fails
-        """
-        _ = id_user_map  # Reserved for future use (alternative lookup method)
-
-        usernames = []
-        account = result.get("account")
-        performer = result.get("performer")
-        if account:
-            usernames.append(account)
-        if performer:
-            usernames.append(performer)
-
-        username_user_map = self._batch_lookup_users(usernames)
-        return self._map_single_log_with_cache(result, username_user_map)
-
     def _map_single_log_with_cache(
         self,
         result: Dict[str, Any],
@@ -286,37 +258,6 @@ class SplunkLogMapper:
                     username_user_map[username] = None
 
         return username_user_map
-
-    def _batch_lookup_repositories(
-        self,
-        repo_names: List[str],
-        namespace_name: str,
-    ) -> Dict[str, int]:
-        """
-        Batch lookup repository IDs by name within namespace.
-
-        Args:
-            repo_names: List of repository names to look up
-            namespace_name: Namespace containing the repositories
-
-        Returns:
-            Dictionary mapping repository name to repository ID
-        """
-        if not repo_names or not namespace_name:
-            return {}
-
-        repo_id_map = {}
-        for repo_name in repo_names:
-            try:
-                repo = model.repository.get_repository(namespace_name, repo_name)
-                if repo:
-                    repo_id_map[repo_name] = repo.id
-                else:
-                    repo_id_map[repo_name] = None
-            except Exception:
-                repo_id_map[repo_name] = None
-
-        return repo_id_map
 
     def clear_cache(self) -> None:
         """Clear the internal user cache."""

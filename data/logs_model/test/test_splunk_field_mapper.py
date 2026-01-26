@@ -163,29 +163,6 @@ class TestSplunkLogMapperMapLogs:
         assert len(logs) == 2
 
 
-class TestSplunkLogMapperMapSingleLog:
-    """Tests for map_single_log method."""
-
-    def test_map_single_log_returns_log(self, field_mapper, sample_splunk_result):
-        """Test that map_single_log returns a Log object."""
-        log = field_mapper.map_single_log(sample_splunk_result)
-
-        assert isinstance(log, Log)
-        assert log.kind_id == 1
-
-    def test_map_single_log_handles_missing_fields(self, field_mapper):
-        """Test that map_single_log handles missing fields gracefully."""
-        result = {"kind": "push_repo"}
-
-        log = field_mapper.map_single_log(result)
-
-        assert log is not None
-        assert log.kind_id == 1
-        assert log.account_username is None
-        assert log.performer_username is None
-        assert log.ip is None
-
-
 class TestSplunkLogMapperGetKindId:
     """Tests for _get_kind_id method."""
 
@@ -309,34 +286,6 @@ class TestSplunkLogMapperBatchLookupUsers:
     def test_batch_user_lookup_empty_list(self, field_mapper):
         """Test that _batch_lookup_users handles empty list."""
         result = field_mapper._batch_lookup_users([])
-        assert result == {}
-
-
-class TestSplunkLogMapperBatchLookupRepositories:
-    """Tests for _batch_lookup_repositories method."""
-
-    def test_batch_repository_lookup(self, field_mapper):
-        """Test that _batch_lookup_repositories returns repo ID mapping."""
-        result = field_mapper._batch_lookup_repositories(["repo1"], "user1")
-
-        assert "repo1" in result
-        assert result["repo1"] == 1
-
-    def test_batch_repository_lookup_handles_missing_repo(self, field_mapper):
-        """Test that _batch_lookup_repositories handles missing repos."""
-        result = field_mapper._batch_lookup_repositories(["repo1", "nonexistent"], "user1")
-
-        assert result["repo1"] == 1
-        assert result["nonexistent"] is None
-
-    def test_batch_repository_lookup_empty_list(self, field_mapper):
-        """Test that _batch_lookup_repositories handles empty list."""
-        result = field_mapper._batch_lookup_repositories([], "user1")
-        assert result == {}
-
-    def test_batch_repository_lookup_no_namespace(self, field_mapper):
-        """Test that _batch_lookup_repositories handles missing namespace."""
-        result = field_mapper._batch_lookup_repositories(["repo1"], None)
         assert result == {}
 
 
