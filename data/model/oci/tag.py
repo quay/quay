@@ -453,78 +453,90 @@ def retarget_tag(
 
     now_ms = now_ms or get_epoch_timestamp_ms()
 
-    with db_transaction():
-        # Use FOR UPDATE to lock the existing active tag row (if any)
-        # This serializes concurrent operations on the same tag
-        try:
-            existing_tag = db_for_update(
-                Tag.select(Tag, Manifest)
-                .join(Manifest)
-                .where(Tag.repository == manifest.repository_id)
-                .where(Tag.name == tag_name)
-                .where((Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms))
-                .where(Tag.hidden == False)
-            ).get()
-        except Tag.DoesNotExist:
-            existing_tag = None
-        if existing_tag is not None:
-            if features.IMMUTABLE_TAGS and existing_tag.immutable:
-                if raise_on_error:
-                    raise ImmutableTagException(tag_name, "overwrite", manifest.repository_id)
-                return None
+    MAX_RETRIES = 3
 
-            # Inline the expiration UPDATE (no separate transaction)
-            delete_tag_notifications_for_tag(existing_tag)
+    for attempt in range(MAX_RETRIES):
+        with db_transaction():
+            # Use FOR UPDATE to lock the existing active tag row (if any)
+            # This serializes concurrent operations on the same tag
+            try:
+                existing_tag = db_for_update(
+                    Tag.select(Tag, Manifest)
+                    .join(Manifest)
+                    .where(Tag.repository == manifest.repository_id)
+                    .where(Tag.name == tag_name)
+                    .where((Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms))
+                    .where(Tag.hidden == False)
+                ).get()
+            except Tag.DoesNotExist:
+                existing_tag = None
+            if existing_tag is not None:
+                if features.IMMUTABLE_TAGS and existing_tag.immutable:
+                    if raise_on_error:
+                        raise ImmutableTagException(tag_name, "overwrite", manifest.repository_id)
+                    return None
 
-            # Expire the existing tag
-            updated = (
-                Tag.update(lifetime_end_ms=now_ms)
-                .where(Tag.id == existing_tag.id)
-                .where(Tag.lifetime_end_ms == existing_tag.lifetime_end_ms)
-                .execute()
-            )
-            if updated != 1:
-                # Optimistic lock failed - tag was modified by another process
-                return None
+                # Inline the expiration UPDATE (no separate transaction)
+                delete_tag_notifications_for_tag(existing_tag)
 
-        # Check if tag should be immutable based on policies
-        immutable = False
-        if features.IMMUTABLE_TAGS:
-            from data.model import immutability
+                # Expire the existing tag
+                updated = (
+                    Tag.update(lifetime_end_ms=now_ms)
+                    .where(Tag.id == existing_tag.id)
+                    .where(Tag.lifetime_end_ms == existing_tag.lifetime_end_ms)
+                    .execute()
+                )
+                if updated != 1:
+                    # Optimistic lock failed - tag was modified by another process
+                    return None
 
-            repo = (
-                Repository.select(Repository.namespace_user)
-                .where(Repository.id == manifest.repository_id)
-                .get()
-            )
-            immutable = immutability.evaluate_immutability_policies(
-                manifest.repository_id, repo.namespace_user_id, tag_name
-            )
+            # Check if tag should be immutable based on policies
+            immutable = False
+            if features.IMMUTABLE_TAGS:
+                from data.model import immutability
 
-        # Create new tag - partial unique index prevents duplicates
-        try:
-            created = Tag.create(
-                name=tag_name,
-                repository=manifest.repository_id,
-                lifetime_start_ms=now_ms,
-                lifetime_end_ms=(
-                    (now_ms + expiration_seconds * 1000) if expiration_seconds else None
-                ),
-                reversion=is_reversion,
-                manifest=manifest,
-                tag_kind=Tag.tag_kind.get_id("tag"),
-                immutable=immutable,
-            )
-            return created
-        except IntegrityError:
-            # Another process created an active tag - caller should retry if needed
-            logger.warning(
-                "Race condition creating tag '%s': active tag already exists",
-                tag_name,
-            )
-            if raise_on_error:
-                raise RetargetTagException(f"Tag '{tag_name}' was created by another process")
-            return None
+                repo = (
+                    Repository.select(Repository.namespace_user)
+                    .where(Repository.id == manifest.repository_id)
+                    .get()
+                )
+                immutable = immutability.evaluate_immutability_policies(
+                    manifest.repository_id, repo.namespace_user_id, tag_name
+                )
+
+            # Create new tag - partial unique index prevents duplicates
+            try:
+                created = Tag.create(
+                    name=tag_name,
+                    repository=manifest.repository_id,
+                    lifetime_start_ms=now_ms,
+                    lifetime_end_ms=(
+                        (now_ms + expiration_seconds * 1000) if expiration_seconds else None
+                    ),
+                    reversion=is_reversion,
+                    manifest=manifest,
+                    tag_kind=Tag.tag_kind.get_id("tag"),
+                    immutable=immutable,
+                )
+                return created
+            except IntegrityError:
+                # Another process created an active tag - retry to see it and expire it
+                if attempt < MAX_RETRIES - 1:
+                    logger.info(
+                        "Race condition on tag '%s', retrying (attempt %d/%d)",
+                        tag_name,
+                        attempt + 2,
+                        MAX_RETRIES,
+                    )
+                    continue
+
+    # All retries exhausted
+    logger.warning("Failed to create tag '%s' after %d attempts", tag_name, MAX_RETRIES)
+    if raise_on_error:
+        raise RetargetTagException(
+            f"Tag '{tag_name}' could not be created after {MAX_RETRIES} attempts"
+        )
+    return None
 
 
 def delete_tag(repository_id, tag_name):

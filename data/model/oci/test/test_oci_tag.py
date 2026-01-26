@@ -1138,27 +1138,58 @@ class TestRetargetTagRaceConditions:
 
         assert result is None
 
-    def test_integrity_error_returns_none(self, initialized_db):
-        """Test that retarget_tag returns None when IntegrityError is raised.
-
-        This simulates another process creating the same tag concurrently.
-        """
+    def test_retry_succeeds_after_race_condition(self, initialized_db):
+        """Test that retarget_tag retries and succeeds after initial IntegrityError."""
         repo = model.repository.create_repository("devtable", "newrepo", None)
         manifest, _ = create_manifest_for_testing(repo, "1")
 
-        with patch.object(Tag, "create", side_effect=IntegrityError("duplicate")):
+        call_count = [0]
+        original_create = Tag.create
+
+        def mock_create_fails_first(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise IntegrityError("duplicate")
+            return original_create(*args, **kwargs)
+
+        with patch.object(Tag, "create", side_effect=mock_create_fails_first):
+            result = retarget_tag("newtag", manifest.id)
+
+        assert result is not None
+        assert call_count[0] == 2
+
+    def test_integrity_error_returns_none_after_all_retries(self, initialized_db):
+        """Test that retarget_tag returns None after all retries fail with IntegrityError."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        call_count = [0]
+
+        def mock_create_always_fails(*args, **kwargs):
+            call_count[0] += 1
+            raise IntegrityError("duplicate")
+
+        with patch.object(Tag, "create", side_effect=mock_create_always_fails):
             result = retarget_tag("newtag", manifest.id, raise_on_error=False)
 
         assert result is None
+        assert call_count[0] == 3
 
-    def test_integrity_error_raises_exception(self, initialized_db):
-        """Test that retarget_tag raises RetargetTagException when raise_on_error=True."""
+    def test_integrity_error_raises_exception_after_all_retries(self, initialized_db):
+        """Test that retarget_tag raises RetargetTagException after all retries when raise_on_error=True."""
         repo = model.repository.create_repository("devtable", "newrepo", None)
         manifest, _ = create_manifest_for_testing(repo, "1")
 
-        with patch.object(Tag, "create", side_effect=IntegrityError("duplicate")):
+        call_count = [0]
+
+        def mock_create_always_fails(*args, **kwargs):
+            call_count[0] += 1
+            raise IntegrityError("duplicate")
+
+        with patch.object(Tag, "create", side_effect=mock_create_always_fails):
             with pytest.raises(RetargetTagException) as exc_info:
                 retarget_tag("newtag", manifest.id, raise_on_error=True)
 
         assert "newtag" in str(exc_info.value)
-        assert "created by another process" in str(exc_info.value)
+        assert "could not be created after 3 attempts" in str(exc_info.value)
+        assert call_count[0] == 3
