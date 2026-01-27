@@ -735,8 +735,10 @@ describe('Repository Details Page', () => {
     );
 
     cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get('button[aria-label="Next month"]').click();
-    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
+    cy.get('button[aria-label="Next month"]').should('be.visible').click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`)
+      .should('be.visible')
+      .click();
 
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime.replace(/ AM| PM/, ''))
@@ -807,8 +809,10 @@ describe('Repository Details Page', () => {
         cy.contains('latest').should('exist');
       });
     cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get('button[aria-label="Next month"]').click();
-    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
+    cy.get('button[aria-label="Next month"]').should('be.visible').click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`)
+      .should('be.visible')
+      .click();
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
@@ -854,8 +858,10 @@ describe('Repository Details Page', () => {
         cy.contains('manifestlist').should('exist');
       });
     cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get('button[aria-label="Next month"]').click();
-    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
+    cy.get('button[aria-label="Next month"]').should('be.visible').click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`)
+      .should('be.visible')
+      .click();
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
@@ -893,8 +899,10 @@ describe('Repository Details Page', () => {
       cy.contains('Never').click();
     });
     cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get('button[aria-label="Next month"]').click();
-    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
+    cy.get('button[aria-label="Next month"]').should('be.visible').click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`)
+      .should('be.visible')
+      .click();
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
