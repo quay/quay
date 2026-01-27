@@ -46,6 +46,12 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         elif producer == "splunk_hec":
             if splunk_hec_config is None:
                 raise Exception("splunk_hec_config must be provided for 'splunk_hec' producer")
+            if "search_token" not in splunk_hec_config:
+                raise Exception(
+                    "search_token is required in splunk_hec_config. "
+                    "HEC tokens are ingest-only and cannot be used for searching. "
+                    "See: https://docs.splunk.com/Documentation/SplunkCloud/latest/Config/ManageHECtokens"
+                )
             self._logs_producer.initialize(SplunkHECLogsProducer(**splunk_hec_config))
             self._field_mapper = SplunkLogMapper()
         else:
@@ -57,8 +63,7 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
 
         For 'splunk' producer, uses splunk_config directly.
         For 'splunk_hec' producer, builds search config from HEC config,
-        using search_host/search_port/search_token if provided, otherwise
-        falling back to HEC host/port/token.
+        using search_token (required) and optionally search_host/search_port.
 
         Returns:
             SplunkSearchClient instance
@@ -73,12 +78,12 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             self._search_client = SplunkSearchClient(**self._splunk_config)
         elif self._producer == "splunk_hec" and self._splunk_hec_config is not None:
             # Build search client config from HEC config
-            # Use search_* options if provided, otherwise fall back to HEC values
+            # search_token is required (validated in __init__) because HEC tokens cannot search
             hec_config = self._splunk_hec_config
             search_config = {
                 "host": hec_config.get("search_host", hec_config.get("host")),
                 "port": hec_config.get("search_port", 8089),
-                "bearer_token": hec_config.get("search_token", hec_config.get("hec_token")),
+                "bearer_token": hec_config["search_token"],
                 "url_scheme": hec_config.get("url_scheme", "https"),
                 "verify_ssl": hec_config.get("verify_ssl", True),
                 "ssl_ca_path": hec_config.get("ssl_ca_path"),

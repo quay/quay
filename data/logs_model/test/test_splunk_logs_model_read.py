@@ -654,6 +654,7 @@ class TestSplunkLogsModelConfiguration:
         hec_config = {
             "host": "hec.splunk.example",
             "hec_token": "hec_token_123",
+            "search_token": "search_token_456",  # Required for search API
         }
         with patch("data.logs_model.splunk_logs_model.model", mock_model):
             with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
@@ -664,6 +665,22 @@ class TestSplunkLogsModelConfiguration:
 
                 assert model_instance._splunk_hec_config == hec_config
                 assert model_instance._producer == "splunk_hec"
+
+    def test_init_raises_error_without_search_token(self, mock_model):
+        """Test that __init__ raises exception when search_token is missing for splunk_hec."""
+        hec_config = {
+            "host": "hec.splunk.example",
+            "hec_token": "hec_token_123",
+            # Missing search_token
+        }
+        with patch("data.logs_model.splunk_logs_model.model", mock_model):
+            with patch("data.logs_model.splunk_logs_model.SplunkHECLogsProducer") as mock_producer:
+                mock_producer.return_value = Mock()
+                with pytest.raises(Exception) as exc_info:
+                    SplunkLogsModel(producer="splunk_hec", splunk_hec_config=hec_config)
+
+                assert "search_token is required" in str(exc_info.value)
+                assert "HEC tokens are ingest-only" in str(exc_info.value)
 
     def test_get_search_client_with_splunk_config(self, splunk_config, mock_model):
         """Test that _get_search_client uses splunk_config directly."""
@@ -681,11 +698,12 @@ class TestSplunkLogsModelConfiguration:
                     mock_search_client.assert_called_once_with(**splunk_config)
                     assert search_client is not None
 
-    def test_get_search_client_with_hec_config_fallback(self, mock_model):
-        """Test that _get_search_client falls back to HEC host/token when search_* not provided."""
+    def test_get_search_client_with_hec_config_uses_search_token(self, mock_model):
+        """Test that _get_search_client uses search_token (not hec_token) for search API."""
         hec_config = {
             "host": "hec.splunk.example",
             "hec_token": "hec_token_123",
+            "search_token": "search_token_456",  # Required
             "url_scheme": "https",
             "verify_ssl": True,
             "index": "quay_logs",
@@ -703,10 +721,10 @@ class TestSplunkLogsModelConfiguration:
                     )
                     model_instance._get_search_client()
 
-                    # Should use HEC host and token as fallback
+                    # Should use search_token, NOT hec_token
                     call_kwargs = mock_search_client.call_args[1]
                     assert call_kwargs["host"] == "hec.splunk.example"
-                    assert call_kwargs["bearer_token"] == "hec_token_123"
+                    assert call_kwargs["bearer_token"] == "search_token_456"
                     assert call_kwargs["port"] == 8089  # Default search port
                     assert call_kwargs["index_prefix"] == "quay_logs"
 
@@ -759,6 +777,7 @@ class TestSplunkLogsModelConfiguration:
         hec_config = {
             "host": "hec.splunk.example",
             "hec_token": "hec_token_123",
+            "search_token": "search_token_456",  # Required for search API
             "export_batch_size": 3000,
         }
         with patch("data.logs_model.splunk_logs_model.model", mock_model):

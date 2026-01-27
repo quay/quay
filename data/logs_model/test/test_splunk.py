@@ -93,6 +93,7 @@ def splunk_hec_logs_model_config():
                 "index": FAKE_INDEX_PREFIX,
                 "splunk_host": "fake_splunk_host",
                 "splunk_sourcetype": "fake_sourcetype",
+                "search_token": "fake_search_token",  # Required for search API
             },
         },
     }
