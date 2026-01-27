@@ -34,6 +34,7 @@ from data.model.user import (
     get_active_users,
     get_estimated_robot_count,
     get_matching_users,
+    get_namespace_users_by_usernames,
     get_public_repo_count,
     get_pull_credentials,
     get_quay_user_from_federated_login_name,
@@ -397,3 +398,28 @@ def test_get_active_namespaces(initialized_db):
     assert num_active_users > 0
     assert num_organizations > 0
     assert active_namespaces == num_active_users + num_organizations
+
+
+def test_get_namespace_users_by_usernames(initialized_db):
+    # Test with existing users
+    result = get_namespace_users_by_usernames(["devtable", "public"])
+    assert "devtable" in result
+    assert "public" in result
+    assert result["devtable"] is not None
+    assert result["devtable"].username == "devtable"
+    assert result["public"] is not None
+    assert result["public"].username == "public"
+
+    # Test with non-existent user
+    result = get_namespace_users_by_usernames(["devtable", "nonexistent_user_xyz"])
+    assert result["devtable"] is not None
+    assert result["nonexistent_user_xyz"] is None
+
+    # Test with empty list
+    result = get_namespace_users_by_usernames([])
+    assert result == {}
+
+    # Test with only non-existent users
+    result = get_namespace_users_by_usernames(["nonexistent1", "nonexistent2"])
+    assert result["nonexistent1"] is None
+    assert result["nonexistent2"] is None

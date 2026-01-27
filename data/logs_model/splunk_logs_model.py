@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime
+from typing import Optional
 
 from data import model
 from data.logs_model.interface import ActionLogsDataInterface
@@ -8,6 +9,8 @@ from data.logs_model.logs_producer import LogProducerProxy, LogSendException
 from data.logs_model.logs_producer.splunk_hec_logs_producer import SplunkHECLogsProducer
 from data.logs_model.logs_producer.splunk_logs_producer import SplunkLogsProducer
 from data.logs_model.shared import SharedModel
+from data.logs_model.splunk_field_mapper import SplunkLogMapper
+from data.logs_model.splunk_search_client import SplunkSearchClient
 from data.model import config
 from data.model.log import ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING
 
@@ -16,7 +19,10 @@ logger = logging.getLogger(__name__)
 
 class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
     """
-    SplunkLogsModel implements model for establishing connection and sending events to Splunk cluster
+    SplunkLogsModel implements model for establishing connection and sending events to Splunk cluster.
+
+    Supports both writing logs (via SplunkLogsProducer or SplunkHECLogsProducer) and reading logs
+    (via SplunkSearchClient and SplunkLogMapper).
     """
 
     def __init__(
@@ -24,16 +30,52 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
     ):
         self._should_skip_logging = should_skip_logging
         self._logs_producer = LogProducerProxy()
+        self._search_client: Optional[SplunkSearchClient] = None
+        self._field_mapper: Optional[SplunkLogMapper] = None
+        self._splunk_config = splunk_config
+
         if producer == "splunk":
             if splunk_config is None:
                 raise Exception("splunk_config must be provided for 'splunk' producer")
             self._logs_producer.initialize(SplunkLogsProducer(**splunk_config))
+            self._field_mapper = SplunkLogMapper()
         elif producer == "splunk_hec":
             if splunk_hec_config is None:
                 raise Exception("splunk_hec_config must be provided for 'splunk_hec' producer")
             self._logs_producer.initialize(SplunkHECLogsProducer(**splunk_hec_config))
+            self._field_mapper = SplunkLogMapper()
         else:
             raise Exception("Invalid log producer: %s" % producer)
+
+    def _get_search_client(self) -> SplunkSearchClient:
+        """
+        Get or create the Splunk search client.
+
+        Returns:
+            SplunkSearchClient instance
+
+        Raises:
+            Exception: If splunk_config is not available
+        """
+        if self._search_client is not None:
+            return self._search_client
+
+        if self._splunk_config is None:
+            raise Exception("Splunk search requires splunk_config (not available for HEC producer)")
+
+        self._search_client = SplunkSearchClient(**self._splunk_config)
+        return self._search_client
+
+    def _get_field_mapper(self) -> SplunkLogMapper:
+        """
+        Get the field mapper instance.
+
+        Returns:
+            SplunkLogMapper instance
+        """
+        if self._field_mapper is None:
+            self._field_mapper = SplunkLogMapper()
+        return self._field_mapper
 
     def log_action(
         self,

@@ -927,6 +927,43 @@ def get_namespace_user(username):
         return None
 
 
+def get_namespace_users_by_usernames(usernames):
+    """
+    Batch lookup namespace users by username.
+
+    Args:
+        usernames: List of usernames to look up
+
+    Returns:
+        Dictionary mapping username to User object (None for missing users)
+    """
+    if not usernames:
+        return {}
+
+    # Filter out invalid unicode usernames
+    valid_usernames = []
+    for username in usernames:
+        try:
+            if username and isinstance(username, str):
+                username.encode("ascii")
+                valid_usernames.append(username)
+        except UnicodeEncodeError:
+            pass
+
+    if not valid_usernames:
+        return {username: None for username in usernames}
+
+    # Initialize result with None for all requested usernames
+    username_user_map = {username: None for username in usernames}
+
+    # Batch query with IN clause
+    users = User.select().where(User.username << valid_usernames)
+    for user in users:
+        username_user_map[user.username] = user
+
+    return username_user_map
+
+
 def get_user_or_org(username):
     # Make sure we didn't get any unicode for the username.
     try:
