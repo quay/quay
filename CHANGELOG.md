@@ -3,8 +3,29 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.13/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.13.11"></a>
+## [v3.13.11] - 2026-01-20
+### Build
+- [cd9234cd](https://github.com/quay/quay/commit/cd9234cd4c6be5f7e3e8351080dea77eba11392a): move quay to python 3.12 for redhat 3.13 (PROJQUAY-10269) ([#4849](https://github.com/quay/quay/issues/4849))
+### Deps
+- [c7c005ad](https://github.com/quay/quay/commit/c7c005ad68ecac6fd290e412bf898f3c8327c85f): upgrade of qs to 6.14.1 (PROJQUAY-10101) ([#4914](https://github.com/quay/quay/issues/4914))
+- [7aa8d84d](https://github.com/quay/quay/commit/7aa8d84d938cbba2e9cda5cc1ce309c161d0646c): updated node-forge version (PROJQUAY-9978) ([#4807](https://github.com/quay/quay/issues/4807))
+- [051e5409](https://github.com/quay/quay/commit/051e540991f358ff3693c749a4b60632c0e935bb): updated jws package to 4.0.1 (PROJQUAY-10123) ([#4813](https://github.com/quay/quay/issues/4813))
+### [Redhat-3.13] Chore(Deps)
+- [0504ebe0](https://github.com/quay/quay/commit/0504ebe01cf1bbae124666210755a2a01e8a9f19): bump urllib3 to 2.6.3 and related AWS libs (PROJQUAY-10008) ([#4827](https://github.com/quay/quay/issues/4827))
+### [Redhat-3.13] Deps
+- [04856ca8](https://github.com/quay/quay/commit/04856ca8b08025ee5b7d3802dc109fb0e80b9441): Update trove-classifiers to 2025.9.11.17 (PROJQUAY-10085) ([#4902](https://github.com/quay/quay/issues/4902))
+- [9e633004](https://github.com/quay/quay/commit/9e6330046a47fdbe36eb99e1060a81a7cce2a5b2): Update setuptools-scm to 9.2.0 (PROJQUAY-10085) ([#4892](https://github.com/quay/quay/issues/4892))
+- [4dfe2768](https://github.com/quay/quay/commit/4dfe2768f194486a1cd6191eb83f67c51112a430): Update hatch-vcs to 0.4.0 (PROJQUAY-10085) ([#4883](https://github.com/quay/quay/issues/4883))
+- [8b9f9541](https://github.com/quay/quay/commit/8b9f9541df677f03f7abee7af7931c98af3621bc): Update hatchling to 1.27.0 (PROJQUAY-10085) ([#4876](https://github.com/quay/quay/issues/4876))
+- [daa2f0e7](https://github.com/quay/quay/commit/daa2f0e716a3d0cd871e801bb46dcbd16775143c): updating setuptools-rust ([#4855](https://github.com/quay/quay/issues/4855))
+### [Redhat-3.13] Fix(Ui)
+- [f2bc0d81](https://github.com/quay/quay/commit/f2bc0d8172f48dfd729d87ee6b88bde6a5ae77ac): Remove local dev test configs (PROJQUAY-9774) ([#4784](https://github.com/quay/quay/issues/4784))
+### [Redhat-3.13] Init
+- [023a7f68](https://github.com/quay/quay/commit/023a7f68237dd441ab00d57e5c752ce4d9f4c4e8): dynamically looking up python user base (PROJQUAY-9011) ([#4928](https://github.com/quay/quay/issues/4928))
+
 <a name="v3.13.10"></a>
-## [v3.13.10] - 2025-11-13
+## [v3.13.10] - 2025-11-20
 ### [Redhat-3.13] Deps
 - [22f843c2](https://github.com/quay/quay/commit/22f843c232fd6ea6ad8282f9796e840fde05ddbc): update Authlib to version 1.6.5 (PROJQUAY-9442) ([#4350](https://github.com/quay/quay/issues/4350))
 
@@ -278,6 +299,11 @@
 - [fc9a895b](https://github.com/quay/quay/commit/fc9a895b5c33f4d792940cc964758bce8db92015): clear state on delete autoprune policies (PROJQUAY-8003) ([#3279](https://github.com/quay/quay/issues/3279))
 ### [Redhat-3.13] Validator
 - [785a8bd6](https://github.com/quay/quay/commit/785a8bd6c05067c20a65304b20155753d9ecc309): Remove logging of database password (PROJQUAY-8059) ([#3335](https://github.com/quay/quay/issues/3335))
+
+<a name="v3.12.13"></a>
+## [v3.12.13] - 2025-11-20
+### [Redhat-3.12] Deps
+- [0c484c27](https://github.com/quay/quay/commit/0c484c270cfb02db2eb8f4ab25ed14bb29a4f9f9): update Authlib to version 1.6.5 (PROJQUAY-9442) ([#4351](https://github.com/quay/quay/issues/4351))
 
 <a name="v3.12.12"></a>
 ## [v3.12.12] - 2025-09-08
@@ -919,6 +945,9 @@
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
 
+<a name="v3.10.17"></a>
+## [v3.10.17] - 2025-11-11
+
 <a name="v3.10.16"></a>
 ## [v3.10.16] - 2025-10-13
 ### [Redhat-3.10] Deps
@@ -1427,6 +1456,11 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.17"></a>
+## [v3.9.17] - 2025-11-11
+### [Redhat-3.9] Deps
+- [a7ef0ba0](https://github.com/quay/quay/commit/a7ef0ba08cceae0f625929936c37184f65325bfb): update Authlib version to 1.6.5 (PROJQUAY-9441) ([#4354](https://github.com/quay/quay/issues/4354))
 
 <a name="v3.9.16"></a>
 ## [v3.9.16] - 2025-09-09
@@ -3034,7 +3068,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.13.10...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.13.11...HEAD
+[v3.13.11]: https://github.com/quay/quay/compare/v3.13.10...v3.13.11
 [v3.13.10]: https://github.com/quay/quay/compare/v3.13.9...v3.13.10
 [v3.13.9]: https://github.com/quay/quay/compare/v3.13.8...v3.13.9
 [v3.13.8]: https://github.com/quay/quay/compare/v3.13.7...v3.13.8
@@ -3045,7 +3080,8 @@
 [v3.13.3]: https://github.com/quay/quay/compare/v3.13.2...v3.13.3
 [v3.13.2]: https://github.com/quay/quay/compare/v3.13.1...v3.13.2
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
-[v3.13.0]: https://github.com/quay/quay/compare/v3.12.12...v3.13.0
+[v3.13.0]: https://github.com/quay/quay/compare/v3.12.13...v3.13.0
+[v3.12.13]: https://github.com/quay/quay/compare/v3.12.12...v3.12.13
 [v3.12.12]: https://github.com/quay/quay/compare/v3.12.11...v3.12.12
 [v3.12.11]: https://github.com/quay/quay/compare/v3.12.10...v3.12.11
 [v3.12.10]: https://github.com/quay/quay/compare/v3.12.9...v3.12.10
@@ -3072,7 +3108,8 @@
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.16...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.17...v3.11.0
+[v3.10.17]: https://github.com/quay/quay/compare/v3.10.16...v3.10.17
 [v3.10.16]: https://github.com/quay/quay/compare/v3.10.15...v3.10.16
 [v3.10.15]: https://github.com/quay/quay/compare/v3.10.14...v3.10.15
 [v3.10.14]: https://github.com/quay/quay/compare/v3.10.13...v3.10.14
@@ -3089,7 +3126,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.16...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.17...v3.10.0
+[v3.9.17]: https://github.com/quay/quay/compare/v3.9.16...v3.9.17
 [v3.9.16]: https://github.com/quay/quay/compare/v3.9.15...v3.9.16
 [v3.9.15]: https://github.com/quay/quay/compare/v3.9.14...v3.9.15
 [v3.9.14]: https://github.com/quay/quay/compare/v3.9.13...v3.9.14
