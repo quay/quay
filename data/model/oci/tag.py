@@ -495,12 +495,6 @@ def retarget_tag(
                     .execute()
                 )
                 if updated != 1:
-                    # Optimistic lock failed - tag was modified by another process
-                    # Re-query the tag to refresh state and continue retry loop
-                    try:
-                        existing_tag = Tag.get_by_id(existing_tag.id)
-                    except Tag.DoesNotExist:
-                        pass
                     continue
 
             # Check if tag should be immutable based on policies

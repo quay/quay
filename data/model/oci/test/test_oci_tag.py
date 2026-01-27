@@ -1114,10 +1114,10 @@ class TestRetargetTagRaceConditions:
     """Tests for race condition handling in retarget_tag."""
 
     def test_optimistic_lock_failure_returns_none(self, initialized_db):
-        """Test that retarget_tag returns None when optimistic lock fails.
+        """Test that retarget_tag returns None when all retries are exhausted.
 
-        This simulates another process modifying the tag after we read it but
-        before we expire it.
+        This simulates persistent optimistic lock failures where another process
+        continuously modifies the tag, causing all retry attempts to fail.
         """
         repo = model.repository.create_repository("devtable", "newrepo", None)
         manifest_1, _ = create_manifest_for_testing(repo, "1")
