@@ -135,7 +135,7 @@ def test_initialize_user(
                         assert not user.json.get("access_token")
 
 
-def test_email_exception_error_format(app, client):
+def test_email_exception_error_format(_app, client):
     """
     Test that CannotSendEmailException returns standard error format.
 
