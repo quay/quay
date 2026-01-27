@@ -27,7 +27,6 @@ from playhouse.pool import (
 )
 from sqlalchemy.engine.url import make_url
 
-from data.decorators import deprecated_model
 from data.encryption import FieldEncrypter
 from data.estimate import mysql_estimate_row_count, normal_row_count
 from data.fields import (

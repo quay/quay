@@ -204,7 +204,6 @@ class OrgMirrorConfig(ApiResource):
             "repository_filters": mirror.repository_filters or [],
             "robot_username": mirror.internal_robot.username if mirror.internal_robot else None,
             "visibility": mirror.visibility.name,
-            "delete_stale_repos": mirror.delete_stale_repos,
             "sync_interval": mirror.sync_interval,
             "sync_start_date": self._dt_to_string(mirror.sync_start_date),
             "sync_expiration_date": self._dt_to_string(mirror.sync_expiration_date),
