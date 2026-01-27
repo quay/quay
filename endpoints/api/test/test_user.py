@@ -156,7 +156,7 @@ def test_email_exception_error_format(app, client):
             FeatureNameValue("INVITE_ONLY_USER_CREATION", False),
         ):
             with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
-                with patch("util.useremails.send_confirmation_email") as mock_send_email:
+                with patch("endpoints.api.user.send_confirmation_email") as mock_send_email:
                     # Mock send_confirmation_email to raise CannotSendEmailException
                     mock_send_email.side_effect = CannotSendEmailException("SMTP connection failed")
 
