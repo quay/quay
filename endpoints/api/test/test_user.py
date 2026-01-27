@@ -6,7 +6,7 @@ from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.user import User
 from endpoints.test.shared import client_with_identity, conduct_call
 from features import FeatureNameValue
-from test.fixtures import app
+from test.fixtures import *  # noqa: F401, F403
 from util.useremails import CannotSendEmailException
 
 
