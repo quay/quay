@@ -484,6 +484,59 @@ def delete_obsolete_tags(mirror, tags):
     return obsolete_tags
 
 
+def _get_v2_bearer_token(server, scheme, namespace, repo_name, username, password, verify_tls):
+    """
+    Get a bearer token for v2 registry authentication.
+
+    Performs the OAuth2 token exchange required by v2 registries.
+    """
+    import re
+
+    # First, make a request to get the WWW-Authenticate challenge
+    v2_url = f"{scheme}://{server}/v2/"
+    try:
+        resp = requests.get(v2_url, verify=verify_tls, timeout=30)
+        if resp.status_code == 200:
+            # No auth required or already authenticated
+            return None
+
+        www_auth = resp.headers.get("WWW-Authenticate", "")
+        if not www_auth:
+            logger.warning("No WWW-Authenticate header found")
+            return None
+
+        # Parse the WWW-Authenticate header
+        # Format: Bearer realm="...",service="...",scope="..."
+        realm_match = re.search(r'realm="([^"]+)"', www_auth)
+        service_match = re.search(r'service="([^"]+)"', www_auth)
+
+        if not realm_match:
+            logger.warning("Could not parse realm from WWW-Authenticate: %s", www_auth)
+            return None
+
+        realm = realm_match.group(1)
+        service = service_match.group(1) if service_match else ""
+        scope = f"repository:{namespace}/{repo_name}:push,pull"
+
+        # Request a token from the realm
+        token_url = f"{realm}?service={service}&scope={scope}"
+        token_resp = requests.get(
+            token_url, auth=(username, password), verify=verify_tls, timeout=30
+        )
+        if token_resp.status_code != 200:
+            logger.error(
+                "Failed to get bearer token: %s %s", token_resp.status_code, token_resp.text
+            )
+            return None
+
+        token_data = token_resp.json()
+        return token_data.get("token") or token_data.get("access_token")
+
+    except requests.RequestException as e:
+        logger.exception("Error getting bearer token: %s", e)
+        return None
+
+
 def push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
     """
     Push original manifest list bytes directly to preserve digest.
@@ -495,13 +548,33 @@ def push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
     )
     namespace = mirror.repository.namespace_user.username
     repo_name = mirror.repository.name
-    url = f"https://{dest_server}/v2/{namespace}/{repo_name}/manifests/{tag}"
+    scheme = app.config.get("PREFERRED_URL_SCHEME", "https")
+    url = f"{scheme}://{dest_server}/v2/{namespace}/{repo_name}/manifests/{tag}"
 
     robot_username = mirror.internal_robot.username
     robot_token = retrieve_robot_token(mirror.internal_robot)
     dest_tls_verify = app.config.get("REPO_MIRROR_TLS_VERIFY", True)
 
     try:
+        # Get bearer token using v2 OAuth flow
+        bearer_token = _get_v2_bearer_token(
+            dest_server,
+            scheme,
+            namespace,
+            repo_name,
+            robot_username,
+            robot_token,
+            dest_tls_verify,
+        )
+
+        headers = {"Content-Type": media_type or OCI_IMAGE_INDEX_CONTENT_TYPE}
+        if bearer_token:
+            headers["Authorization"] = f"Bearer {bearer_token}"
+            auth = None
+        else:
+            # Fall back to basic auth if token exchange fails
+            auth = (robot_username, robot_token)
+
         response = requests.put(
             url,
             data=(
@@ -509,8 +582,8 @@ def push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
                 if isinstance(manifest_bytes, str)
                 else manifest_bytes
             ),
-            headers={"Content-Type": media_type or OCI_IMAGE_INDEX_CONTENT_TYPE},
-            auth=(robot_username, robot_token),
+            headers=headers,
+            auth=auth,
             verify=dest_tls_verify,
             timeout=60,
         )
