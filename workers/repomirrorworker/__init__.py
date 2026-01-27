@@ -1,8 +1,6 @@
 import fnmatch
 import logging
-import logging.config
 import os
-import re
 import traceback
 from typing import Optional
 
@@ -21,7 +19,6 @@ from data.database import (
     RepoMirrorStatus,
     Repository,
     RepositoryState,
-    Visibility,
 )
 from data.encryption import DecryptionFailureException
 from data.logs_model import logs_model
@@ -38,8 +35,6 @@ from data.model.org_mirror import (
     sync_discovered_repos,
 )
 from data.model.repo_mirror import (
-    change_retries_remaining,
-    change_sync_status,
     check_repo_mirror_sync_status,
     claim_mirror,
     release_mirror,
