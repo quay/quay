@@ -528,10 +528,12 @@ class OrgMirrorSyncCancel(ApiResource):
         """
         Cancel ongoing discovery or sync operation.
 
-        Sets sync_status to CANCEL on the config and all in-progress
-        repository syncs. The worker will stop processing on next check.
+        Transitions the config to CANCEL status from any state except already CANCEL.
+        The worker detects the CANCEL status and propagates it to associated repository
+        syncs during tag processing. Repo status changes are applied when the worker
+        picks up the cancellation request, not immediately.
 
-        Returns 204 on success, 404 if config not found or not syncing.
+        Returns 204 on success, 404 if config not found, 400 if already cancelled.
         """
         require_org_admin(orgname)
 
@@ -546,7 +548,7 @@ class OrgMirrorSyncCancel(ApiResource):
 
         updated = model.org_mirror.update_sync_status_to_cancel(mirror)
         if not updated:
-            raise InvalidRequest("Cannot cancel: mirror is not currently syncing")
+            raise InvalidRequest("Cannot cancel: mirror is already cancelled")
 
         log_action(
             "org_mirror_sync_cancelled",

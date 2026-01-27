@@ -1225,10 +1225,12 @@ class TestSyncCancel:
             params = {"orgname": "buynlarge"}
             conduct_api_call(cl, org_mirror.OrgMirrorSyncCancel, "POST", params, None, 404)
 
-    def test_sync_cancel_fails_when_not_syncing(self, app):
+    def test_sync_cancel_works_from_any_status(self, app):
         """
-        Test sync-cancel returns error when not syncing.
+        Test sync-cancel works from any status except CANCEL.
         """
+        from data.database import OrgMirrorStatus
+
         _cleanup_org_mirror_config("buynlarge")
 
         # Create a config in NEVER_RUN state
@@ -1245,7 +1247,45 @@ class TestSyncCancel:
             }
             conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
 
-        # Try to cancel - should fail since not syncing
+        # Cancel from NEVER_RUN - should succeed
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            conduct_api_call(cl, org_mirror.OrgMirrorSyncCancel, "POST", params, None, 204)
+
+        # Verify status changed to CANCEL
+        org = model.organization.get_organization("buynlarge")
+        config = model.org_mirror.get_org_mirror_config(org)
+        assert config.sync_status == OrgMirrorStatus.CANCEL
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_sync_cancel_idempotent(self, app):
+        """
+        Test sync-cancel returns error when already cancelled.
+        """
+        from data.database import OrgMirrorStatus, SourceRegistryType, Visibility
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create a config and set to CANCEL
+        org = model.organization.get_organization("buynlarge")
+        robot = model.user.lookup_robot("buynlarge+coolrobot")
+        config = model.org_mirror.create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="project",
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date=datetime.now(),
+            is_enabled=True,
+        )
+        config.sync_status = OrgMirrorStatus.CANCEL
+        config.save()
+
+        # Try to cancel again - should fail since already cancelled
         with client_with_identity("devtable", app) as cl:
             params = {"orgname": "buynlarge"}
             conduct_api_call(cl, org_mirror.OrgMirrorSyncCancel, "POST", params, None, 400)
