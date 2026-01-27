@@ -180,7 +180,10 @@ def test_email_exception_error_format(app, client):
                     )
 
                 # Verify the error response format
-                expected_message = "Could not send email. Please contact an administrator and report this problem."
+                expected_message = (
+                    "Could not send email. Please contact an administrator "
+                    "and report this problem."
+                )
 
                 # Verify all required fields exist
                 assert (
