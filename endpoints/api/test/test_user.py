@@ -159,9 +159,7 @@ def test_email_exception_error_format(app, client):
             with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
                 with patch("util.useremails.send_confirmation_email") as mock_send_email:
                     # Mock send_confirmation_email to raise CannotSendEmailException
-                    mock_send_email.side_effect = CannotSendEmailException(
-                        "SMTP connection failed"
-                    )
+                    mock_send_email.side_effect = CannotSendEmailException("SMTP connection failed")
 
                     # Attempt to create a new user via API (will trigger email sending)
                     metadata = {
@@ -211,9 +209,7 @@ def test_email_exception_error_format(app, client):
 
                 # Verify new UI can extract the error (won't fall back to generic message)
                 error_message = response.json.get("error_message")
-                assert (
-                    error_message is not None
-                ), "New UI should be able to extract error_message"
+                assert error_message is not None, "New UI should be able to extract error_message"
                 assert (
                     error_message != "unable to make request"
                 ), "Should not fall back to generic message"
