@@ -3,22 +3,32 @@
 Business logic for organization-level mirror configuration.
 """
 
-from datetime import datetime
+import fnmatch
+from datetime import datetime, timedelta
+from typing import List, Optional, Tuple
 
-from peewee import JOIN, IntegrityError
+from peewee import JOIN, IntegrityError, fn
 
 from data.database import (
     OrgMirrorConfig,
     OrgMirrorRepository,
+    OrgMirrorRepoStatus,
     OrgMirrorStatus,
+    Repository,
+    RepositoryState,
     SourceRegistryType,
     User,
     Visibility,
     db_transaction,
+    uuid_generator,
 )
 from data.fields import DecryptedValue
 from data.model import DataModelException
 from util.names import parse_robot_username
+
+# Constants for sync management
+MAX_SYNC_RETRIES = 3
+MAX_SYNC_DURATION = 60 * 60 * 12  # 12 hours
 
 
 def get_org_mirror_config(org):
@@ -244,3 +254,745 @@ def delete_org_mirror_config(org):
         config.delete_instance()
 
     return True
+
+
+def matches_repository_filter(repository_name: str, filters: Optional[List[str]]) -> bool:
+    """
+    Check if a repository name matches any of the glob patterns.
+
+    Args:
+        repository_name: Name of the repository to check
+        filters: List of glob patterns (e.g., ["ubuntu", "debian*", "alpine-*"])
+
+    Returns:
+        True if the repository matches any filter, or if filters is empty/None
+    """
+    if not filters:
+        return True  # Empty filters = match all
+
+    return any(fnmatch.fnmatch(repository_name, pattern) for pattern in filters)
+
+
+def get_or_create_org_mirror_repo(
+    config: OrgMirrorConfig,
+    repository_name: str,
+) -> Tuple[OrgMirrorRepository, bool]:
+    """
+    Get or create an OrgMirrorRepository entry for a discovered repository.
+
+    Args:
+        config: The OrgMirrorConfig instance
+        repository_name: Name of the repository (without namespace prefix)
+
+    Returns:
+        Tuple of (OrgMirrorRepository instance, created: bool)
+    """
+    try:
+        return (
+            OrgMirrorRepository.get(
+                (OrgMirrorRepository.org_mirror_config == config)
+                & (OrgMirrorRepository.repository_name == repository_name)
+            ),
+            False,
+        )
+    except OrgMirrorRepository.DoesNotExist:
+        return (
+            OrgMirrorRepository.create(
+                org_mirror_config=config,
+                repository_name=repository_name,
+                discovery_date=datetime.utcnow(),
+                sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+                creation_date=datetime.utcnow(),
+            ),
+            True,
+        )
+
+
+def get_org_mirror_repos(
+    config: OrgMirrorConfig,
+    page: int = 1,
+    limit: int = 100,
+    status_filter: Optional[OrgMirrorRepoStatus] = None,
+) -> Tuple[List[OrgMirrorRepository], int]:
+    """
+    Get a paginated list of discovered repositories for an organization mirror config.
+
+    Excludes repositories that are marked for deletion.
+
+    Args:
+        config: The OrgMirrorConfig instance
+        page: Page number (1-indexed)
+        limit: Number of items per page
+        status_filter: Optional filter by sync status
+
+    Returns:
+        Tuple of (list of OrgMirrorRepository instances, total count)
+    """
+    # Join with Repository to check state, use LEFT_OUTER since repository can be NULL
+    query = (
+        OrgMirrorRepository.select()
+        .join(Repository, JOIN.LEFT_OUTER, on=(OrgMirrorRepository.repository == Repository.id))
+        .where(OrgMirrorRepository.org_mirror_config == config)
+        .where(
+            # Include if repository is NULL (not yet created) or not marked for deletion
+            (OrgMirrorRepository.repository >> None)
+            | (Repository.state != RepositoryState.MARKED_FOR_DELETION)
+        )
+    )
+
+    if status_filter is not None:
+        query = query.where(OrgMirrorRepository.sync_status == status_filter)
+
+    total = query.count()
+    ordered_query = query.order_by(OrgMirrorRepository.repository_name)  # type: ignore[func-returns-value]
+    repos = list(ordered_query.paginate(page, limit))
+
+    return repos, total
+
+
+def get_org_mirroring_robot(repository):
+    """
+    Return the robot used for org-level mirroring of a repository.
+
+    This is the org-level equivalent of repo_mirror.get_mirroring_robot().
+    Used by v2auth to authorize push access for org-level mirrored repositories.
+
+    Args:
+        repository: Repository ID or Repository model instance
+
+    Returns:
+        User object representing the robot, or None if not found
+    """
+    try:
+        # Handle both repository ID and model instance
+        repo_id = repository if isinstance(repository, int) else repository.id
+
+        org_mirror_repo = (
+            OrgMirrorRepository.select(OrgMirrorRepository, OrgMirrorConfig, User)
+            .join(OrgMirrorConfig)
+            .join(User, JOIN.LEFT_OUTER, on=(OrgMirrorConfig.internal_robot == User.id))
+            .where(OrgMirrorRepository.repository == repo_id)
+            .get()
+        )
+        return org_mirror_repo.org_mirror_config.internal_robot
+    except OrgMirrorRepository.DoesNotExist:
+        return None
+
+
+def sync_discovered_repos(
+    config: OrgMirrorConfig,
+    discovered_names: List[str],
+) -> Tuple[int, int]:
+    """
+    Sync the discovered repository list with the database.
+
+    Creates new OrgMirrorRepository entries for newly discovered repos.
+    Does NOT delete repos that are no longer in the source (that's a separate operation).
+
+    Args:
+        config: The OrgMirrorConfig instance
+        discovered_names: List of repository names discovered from source
+
+    Returns:
+        Tuple of (total_count, newly_created_count)
+    """
+    newly_created = 0
+
+    with db_transaction():
+        for repo_name in discovered_names:
+            _, created = get_or_create_org_mirror_repo(config, repo_name)
+            if created:
+                newly_created += 1
+
+    return len(discovered_names), newly_created
+
+
+def get_eligible_org_mirror_repos():
+    """
+    Returns OrgMirrorRepository entries that are ready to sync.
+
+    This includes repositories that are:
+    1. Immediate candidates: Status is SYNC_NOW with no expiration date (manually triggered)
+    2. Ready candidates: sync_start_date <= now, retries > 0, not currently syncing, enabled
+    3. Expired candidates: Was syncing but sync_expiration_date <= now (stalled worker recovery)
+
+    Only returns repos from enabled OrgMirrorConfig entries.
+
+    Returns:
+        Peewee query of eligible OrgMirrorRepository entries ordered by sync_start_date
+    """
+    now = datetime.utcnow()
+
+    # Immediate candidates - Status is SYNC_NOW with no expiration date
+    # These are manually triggered syncs that should run immediately
+    immediate_candidates_filter = (
+        OrgMirrorRepository.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+    ) & (OrgMirrorRepository.sync_expiration_date >> None)
+
+    # Ready candidates - scheduled syncs that are due
+    # sync_start_date <= now: past due for sync
+    # sync_retries_remaining > 0: has retry attempts left
+    # sync_status != SYNCING: not currently being processed
+    # sync_expiration_date IS NULL: no active claim on this repo
+    ready_candidates_filter = (
+        (OrgMirrorRepository.sync_start_date <= now)
+        & (OrgMirrorRepository.sync_retries_remaining > 0)
+        & (OrgMirrorRepository.sync_status != OrgMirrorRepoStatus.SYNCING)
+        & (OrgMirrorRepository.sync_expiration_date >> None)
+    )
+
+    # Expired candidates - stalled worker recovery
+    # These were being synced but the worker died (expiration date passed)
+    # sync_start_date <= now: was scheduled
+    # sync_retries_remaining > 0: has retry attempts left
+    # sync_status == SYNCING: was in progress
+    # sync_expiration_date <= now: but claim expired
+    expired_candidates_filter = (
+        (OrgMirrorRepository.sync_start_date <= now)
+        & (OrgMirrorRepository.sync_retries_remaining > 0)
+        & (OrgMirrorRepository.sync_status == OrgMirrorRepoStatus.SYNCING)
+        & (OrgMirrorRepository.sync_expiration_date <= now)
+    )
+
+    return (
+        OrgMirrorRepository.select()
+        .join(OrgMirrorConfig)
+        .where(OrgMirrorConfig.is_enabled == True)
+        .where(immediate_candidates_filter | ready_candidates_filter | expired_candidates_filter)
+        .order_by(OrgMirrorRepository.sync_start_date.asc())
+    )
+
+
+def get_max_id_for_org_mirror_repo():
+    """
+    Gets the maximum id for organization mirror repositories.
+
+    Returns:
+        Maximum ID value or None if no records exist
+    """
+    return OrgMirrorRepository.select(fn.Max(OrgMirrorRepository.id)).scalar()
+
+
+def get_min_id_for_org_mirror_repo():
+    """
+    Gets the minimum id for organization mirror repositories.
+
+    Returns:
+        Minimum ID value or None if no records exist
+    """
+    return OrgMirrorRepository.select(fn.Min(OrgMirrorRepository.id)).scalar()
+
+
+def claim_org_mirror_repo(org_mirror_repo: OrgMirrorRepository) -> Optional[OrgMirrorRepository]:
+    """
+    Claim an org mirror repo by updating its status and setting a new expiration time.
+
+    Uses optimistic locking via sync_transaction_id to prevent concurrent claims.
+    If the repo is already being synced (and not expired), or if another process claims it
+    first, returns None.
+
+    Args:
+        org_mirror_repo: The OrgMirrorRepository to claim
+
+    Returns:
+        Updated OrgMirrorRepository if claim successful, None otherwise
+    """
+    with db_transaction():
+        now = datetime.utcnow()
+        expiration_date = now + timedelta(seconds=MAX_SYNC_DURATION)
+
+        # If already syncing with valid expiration, cannot claim
+        if org_mirror_repo.sync_status == OrgMirrorRepoStatus.SYNCING:
+            if org_mirror_repo.sync_expiration_date and now <= org_mirror_repo.sync_expiration_date:
+                return None
+
+        # If expired, reset the repo for retry (stalled worker recovery)
+        if org_mirror_repo.sync_expiration_date and now > org_mirror_repo.sync_expiration_date:
+            expire_org_mirror_repo(org_mirror_repo)
+            # Re-fetch after expire
+            org_mirror_repo = OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+
+        # Attempt atomic update with optimistic locking
+        query = OrgMirrorRepository.update(
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_expiration_date=expiration_date,
+            sync_transaction_id=uuid_generator(),
+        ).where(
+            OrgMirrorRepository.id == org_mirror_repo.id,
+            OrgMirrorRepository.sync_transaction_id == org_mirror_repo.sync_transaction_id,
+        )
+
+        updated = query.execute()
+
+    return OrgMirrorRepository.get_by_id(org_mirror_repo.id) if updated else None
+
+
+def release_org_mirror_repo(
+    org_mirror_repo: OrgMirrorRepository,
+    sync_status: OrgMirrorRepoStatus,
+) -> Optional[OrgMirrorRepository]:
+    """
+    Release an org mirror repo after sync attempt and update its status.
+
+    Calculates next sync_start_date based on parent config's sync_interval.
+    Decrements retries on failure, resets on success or retry exhaustion.
+
+    If mirroring is cancelled, the job will not be attempted until manual
+    sync-now is triggered by the user.
+
+    Args:
+        org_mirror_repo: The OrgMirrorRepository to release
+        sync_status: The result status (SUCCESS, FAIL, CANCEL, etc.)
+
+    Returns:
+        Updated OrgMirrorRepository if release successful, None otherwise
+    """
+    # Get parent config for sync_interval
+    config = org_mirror_repo.org_mirror_config
+
+    retries = org_mirror_repo.sync_retries_remaining
+    next_start_date = None
+
+    if sync_status == OrgMirrorRepoStatus.FAIL:
+        retries = max(0, retries - 1)
+
+    # On success or exhausted retries, schedule next sync
+    if sync_status == OrgMirrorRepoStatus.SUCCESS or (
+        sync_status == OrgMirrorRepoStatus.FAIL and retries < 1
+    ):
+        now = datetime.utcnow()
+        if org_mirror_repo.sync_start_date:
+            delta = now - org_mirror_repo.sync_start_date
+            delta_seconds = (delta.days * 24 * 60 * 60) + delta.seconds
+            next_start_date = now + timedelta(
+                seconds=config.sync_interval - (delta_seconds % config.sync_interval)
+            )
+        else:
+            # If no previous start date, just add interval from now
+            next_start_date = now + timedelta(seconds=config.sync_interval)
+        retries = MAX_SYNC_RETRIES
+    else:
+        # Keep current start date for retry
+        next_start_date = org_mirror_repo.sync_start_date
+
+    # If cancelled, stop syncing until user triggers sync-now again
+    if sync_status == OrgMirrorRepoStatus.CANCEL:
+        next_start_date = None
+        retries = 0
+
+    query = OrgMirrorRepository.update(
+        sync_transaction_id=uuid_generator(),
+        sync_status=sync_status,
+        sync_start_date=next_start_date,
+        sync_expiration_date=None,
+        sync_retries_remaining=retries,
+        last_sync_date=datetime.utcnow(),
+    ).where(
+        OrgMirrorRepository.id == org_mirror_repo.id,
+        OrgMirrorRepository.sync_transaction_id == org_mirror_repo.sync_transaction_id,
+    )
+
+    if query.execute():
+        return OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+
+    return None
+
+
+def expire_org_mirror_repo(org_mirror_repo: OrgMirrorRepository) -> Optional[OrgMirrorRepository]:
+    """
+    Expire a stalled org mirror repo to allow it to be picked up again.
+
+    This is called when a worker dies and the sync_expiration_date has passed.
+    Resets the repo state to allow another worker to claim it.
+
+    Args:
+        org_mirror_repo: The OrgMirrorRepository to expire
+
+    Returns:
+        Updated OrgMirrorRepository if successful, None otherwise
+    """
+    query = OrgMirrorRepository.update(
+        sync_transaction_id=uuid_generator(),
+        sync_expiration_date=None,
+        sync_retries_remaining=MAX_SYNC_RETRIES,
+        sync_status=OrgMirrorRepoStatus.NEVER_RUN,  # Reset status for re-processing
+    ).where(
+        OrgMirrorRepository.id == org_mirror_repo.id,
+        OrgMirrorRepository.sync_transaction_id == org_mirror_repo.sync_transaction_id,
+    )
+
+    if query.execute():
+        return OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+
+    return None
+
+
+# ==============================================================================
+# OrgMirrorConfig-level functions (for discovery phase)
+# ==============================================================================
+
+
+def get_eligible_org_mirror_configs():
+    """
+    Returns OrgMirrorConfig entries that are ready for discovery sync.
+
+    This includes configs that are:
+    1. Immediate candidates: Status is SYNC_NOW with no expiration date (manually triggered)
+    2. Cancel candidates: Status is CANCEL (need to propagate to repos, no discovery)
+    3. Ready candidates: sync_start_date <= now, retries > 0, not currently syncing, enabled
+    4. Expired candidates: Was syncing but sync_expiration_date <= now (stalled worker recovery)
+
+    Returns:
+        Peewee query of eligible OrgMirrorConfig entries ordered by sync_start_date
+    """
+    now = datetime.utcnow()
+
+    # Immediate candidates - Status is SYNC_NOW with no expiration date
+    immediate_candidates_filter = (OrgMirrorConfig.sync_status == OrgMirrorStatus.SYNC_NOW) & (
+        OrgMirrorConfig.sync_expiration_date >> None
+    )
+
+    # Cancel candidates - Status is CANCEL, need to propagate to repos
+    # No retries check since we set retries=0 when cancelling
+    cancel_candidates_filter = (OrgMirrorConfig.sync_status == OrgMirrorStatus.CANCEL) & (
+        OrgMirrorConfig.sync_expiration_date >> None
+    )
+
+    # Ready candidates - scheduled syncs that are due
+    ready_candidates_filter = (
+        (OrgMirrorConfig.sync_start_date <= now)
+        & (OrgMirrorConfig.sync_retries_remaining > 0)
+        & (OrgMirrorConfig.sync_status != OrgMirrorStatus.SYNCING)
+        & (OrgMirrorConfig.sync_expiration_date >> None)
+    )
+
+    # Expired candidates - stalled worker recovery
+    expired_candidates_filter = (
+        (OrgMirrorConfig.sync_start_date <= now)
+        & (OrgMirrorConfig.sync_retries_remaining > 0)
+        & (OrgMirrorConfig.sync_status == OrgMirrorStatus.SYNCING)
+        & (OrgMirrorConfig.sync_expiration_date <= now)
+    )
+
+    return (
+        OrgMirrorConfig.select()
+        .where(OrgMirrorConfig.is_enabled == True)
+        .where(
+            immediate_candidates_filter
+            | cancel_candidates_filter
+            | ready_candidates_filter
+            | expired_candidates_filter
+        )
+        .order_by(OrgMirrorConfig.sync_start_date.asc())
+    )
+
+
+def get_max_id_for_org_mirror_config():
+    """
+    Gets the maximum id for organization mirror configs.
+
+    Returns:
+        Maximum ID value or None if no records exist
+    """
+    return OrgMirrorConfig.select(fn.Max(OrgMirrorConfig.id)).scalar()
+
+
+def get_min_id_for_org_mirror_config():
+    """
+    Gets the minimum id for organization mirror configs.
+
+    Returns:
+        Minimum ID value or None if no records exist
+    """
+    return OrgMirrorConfig.select(fn.Min(OrgMirrorConfig.id)).scalar()
+
+
+# Duration for discovery phase (shorter than repo sync since it's just API calls)
+MAX_DISCOVERY_DURATION = 60 * 30  # 30 minutes
+
+
+def claim_org_mirror_config(org_mirror_config: OrgMirrorConfig) -> Optional[OrgMirrorConfig]:
+    """
+    Claim an org mirror config for discovery by updating its status and setting expiration.
+
+    Uses optimistic locking via sync_transaction_id to prevent concurrent claims.
+
+    Args:
+        org_mirror_config: The OrgMirrorConfig to claim
+
+    Returns:
+        Updated OrgMirrorConfig if claim successful, None otherwise
+    """
+    with db_transaction():
+        now = datetime.utcnow()
+        expiration_date = now + timedelta(seconds=MAX_DISCOVERY_DURATION)
+
+        # If already syncing with valid expiration, cannot claim
+        if org_mirror_config.sync_status == OrgMirrorStatus.SYNCING:
+            if (
+                org_mirror_config.sync_expiration_date
+                and now <= org_mirror_config.sync_expiration_date
+            ):
+                return None
+
+        # If expired, reset for retry (stalled worker recovery)
+        if org_mirror_config.sync_expiration_date and now > org_mirror_config.sync_expiration_date:
+            expire_org_mirror_config(org_mirror_config)
+            org_mirror_config = OrgMirrorConfig.get_by_id(org_mirror_config.id)
+
+        # Attempt atomic update with optimistic locking
+        query = OrgMirrorConfig.update(
+            sync_status=OrgMirrorStatus.SYNCING,
+            sync_expiration_date=expiration_date,
+            sync_transaction_id=uuid_generator(),
+        ).where(
+            OrgMirrorConfig.id == org_mirror_config.id,
+            OrgMirrorConfig.sync_transaction_id == org_mirror_config.sync_transaction_id,
+        )
+
+        updated = query.execute()
+
+    return OrgMirrorConfig.get_by_id(org_mirror_config.id) if updated else None
+
+
+def release_org_mirror_config(
+    org_mirror_config: OrgMirrorConfig,
+    sync_status: OrgMirrorStatus,
+    _repos_discovered: int = 0,
+    _repos_created: int = 0,
+) -> Optional[OrgMirrorConfig]:
+    """
+    Release an org mirror config after discovery and update its status.
+
+    Calculates next sync_start_date based on sync_interval.
+    Decrements retries on failure, resets on success.
+
+    If discovery is cancelled, the job will not be attempted until manual
+    sync-now is triggered by the user.
+
+    Args:
+        org_mirror_config: The OrgMirrorConfig to release
+        sync_status: The result status (SUCCESS, FAIL, CANCEL, etc.)
+        _repos_discovered: Number of repos discovered (reserved for future use)
+        _repos_created: Number of new repos created (reserved for future use)
+
+    Returns:
+        Updated OrgMirrorConfig if release successful, None otherwise
+    """
+    retries = org_mirror_config.sync_retries_remaining
+    next_start_date = None
+
+    if sync_status == OrgMirrorStatus.FAIL:
+        retries = max(0, retries - 1)
+
+    # On success or exhausted retries, schedule next sync
+    if sync_status == OrgMirrorStatus.SUCCESS or (
+        sync_status == OrgMirrorStatus.FAIL and retries < 1
+    ):
+        now = datetime.utcnow()
+        if org_mirror_config.sync_start_date:
+            delta = now - org_mirror_config.sync_start_date
+            delta_seconds = (delta.days * 24 * 60 * 60) + delta.seconds
+            next_start_date = now + timedelta(
+                seconds=org_mirror_config.sync_interval
+                - (delta_seconds % org_mirror_config.sync_interval)
+            )
+        else:
+            next_start_date = now + timedelta(seconds=org_mirror_config.sync_interval)
+        retries = MAX_SYNC_RETRIES
+    else:
+        next_start_date = org_mirror_config.sync_start_date
+
+    # If cancelled, stop syncing until user triggers sync-now again
+    if sync_status == OrgMirrorStatus.CANCEL:
+        next_start_date = None
+        retries = 0
+
+    query = OrgMirrorConfig.update(
+        sync_transaction_id=uuid_generator(),
+        sync_status=sync_status,
+        sync_start_date=next_start_date,
+        sync_expiration_date=None,
+        sync_retries_remaining=retries,
+    ).where(
+        OrgMirrorConfig.id == org_mirror_config.id,
+        OrgMirrorConfig.sync_transaction_id == org_mirror_config.sync_transaction_id,
+    )
+
+    if query.execute():
+        return OrgMirrorConfig.get_by_id(org_mirror_config.id)
+
+    return None
+
+
+def expire_org_mirror_config(org_mirror_config: OrgMirrorConfig) -> Optional[OrgMirrorConfig]:
+    """
+    Expire a stalled org mirror config to allow it to be picked up again.
+
+    Args:
+        org_mirror_config: The OrgMirrorConfig to expire
+
+    Returns:
+        Updated OrgMirrorConfig if successful, None otherwise
+    """
+    query = OrgMirrorConfig.update(
+        sync_transaction_id=uuid_generator(),
+        sync_expiration_date=None,
+        sync_retries_remaining=MAX_SYNC_RETRIES,
+        sync_status=OrgMirrorStatus.NEVER_RUN,
+    ).where(
+        OrgMirrorConfig.id == org_mirror_config.id,
+        OrgMirrorConfig.sync_transaction_id == org_mirror_config.sync_transaction_id,
+    )
+
+    if query.execute():
+        return OrgMirrorConfig.get_by_id(org_mirror_config.id)
+
+    return None
+
+
+def schedule_org_mirror_repos_for_sync(config: OrgMirrorConfig) -> int:
+    """
+    Schedule all NEVER_RUN repos under a config for immediate sync.
+
+    Called after discovery to trigger the repo-level sync phase.
+
+    Args:
+        config: The OrgMirrorConfig whose repos should be scheduled
+
+    Returns:
+        Number of repos scheduled
+    """
+    now = datetime.utcnow()
+
+    query = OrgMirrorRepository.update(
+        sync_start_date=now,
+        sync_retries_remaining=MAX_SYNC_RETRIES,
+    ).where(
+        OrgMirrorRepository.org_mirror_config == config,
+        OrgMirrorRepository.sync_status == OrgMirrorRepoStatus.NEVER_RUN,
+        OrgMirrorRepository.sync_start_date >> None,  # Only if not already scheduled
+    )
+
+    return query.execute()
+
+
+def propagate_status_to_repos(config: OrgMirrorConfig, status: OrgMirrorRepoStatus) -> int:
+    """
+    Propagate a sync status to all repos under this config that don't already have it.
+
+    This is called by the worker after discovery to set the appropriate status
+    on all discovered repositories.
+
+    For CANCEL: updates all repos (including SYNCING) so workers can detect and stop.
+    For SYNC_NOW: skips SYNCING repos to avoid interrupting active syncs.
+
+    Args:
+        config: The OrgMirrorConfig whose repos should be updated
+        status: The status to propagate (SYNC_NOW, CANCEL, etc.)
+
+    Returns:
+        Number of repos updated
+    """
+    now = datetime.utcnow()
+
+    base_where = (OrgMirrorRepository.org_mirror_config == config) & (
+        OrgMirrorRepository.sync_status != status
+    )
+
+    if status == OrgMirrorRepoStatus.SYNC_NOW:
+        query = OrgMirrorRepository.update(
+            sync_status=status,
+            sync_start_date=now,
+            sync_retries_remaining=MAX_SYNC_RETRIES,
+        ).where(base_where & (OrgMirrorRepository.sync_status != OrgMirrorRepoStatus.SYNCING))
+    elif status == OrgMirrorRepoStatus.CANCEL:
+        query = OrgMirrorRepository.update(
+            sync_status=status,
+            sync_start_date=None,
+            sync_retries_remaining=0,
+        ).where(base_where)
+    else:
+        query = OrgMirrorRepository.update(sync_status=status).where(
+            base_where & (OrgMirrorRepository.sync_status != OrgMirrorRepoStatus.SYNCING)
+        )
+
+    return query.execute()
+
+
+def update_sync_status_to_sync_now(org_mirror_config: OrgMirrorConfig) -> Optional[OrgMirrorConfig]:
+    """
+    Change the org mirror config sync status to SYNC_NOW for immediate sync.
+
+    Sets sync_start_date to now for immediate pickup by the worker, and
+    ensures at least one retry is available.
+
+    Note: This only updates the config status. The worker will propagate
+    SYNC_NOW to associated OrgMirrorRepository entries after discovery.
+
+    Args:
+        org_mirror_config: The OrgMirrorConfig to trigger sync for
+
+    Returns:
+        Updated OrgMirrorConfig if successful, None if currently syncing
+    """
+    # Cannot trigger sync-now if already syncing
+    if org_mirror_config.sync_status == OrgMirrorStatus.SYNCING:
+        return None
+
+    retries = max(org_mirror_config.sync_retries_remaining, 1)
+    now = datetime.utcnow()
+
+    config_query = OrgMirrorConfig.update(
+        sync_transaction_id=uuid_generator(),
+        sync_status=OrgMirrorStatus.SYNC_NOW,
+        sync_start_date=now,
+        sync_expiration_date=None,
+        sync_retries_remaining=retries,
+    ).where(
+        OrgMirrorConfig.id == org_mirror_config.id,
+        OrgMirrorConfig.sync_transaction_id == org_mirror_config.sync_transaction_id,
+    )
+
+    if not config_query.execute():
+        return None
+
+    return OrgMirrorConfig.get_by_id(org_mirror_config.id)
+
+
+def update_sync_status_to_cancel(org_mirror_config: OrgMirrorConfig) -> Optional[OrgMirrorConfig]:
+    """
+    Cancel an ongoing or pending sync for an org mirror config.
+
+    Sets the config status to CANCEL. The cancel request is force-applied
+    (ignores transaction ID) since we need to interrupt an active worker.
+
+    Note: This only updates the config status. The worker will propagate
+    CANCEL to associated OrgMirrorRepository entries when it picks up
+    the config.
+
+    Args:
+        org_mirror_config: The OrgMirrorConfig to cancel
+
+    Returns:
+        Updated OrgMirrorConfig if cancelled, None if not in a cancellable state
+    """
+    # Only allow cancel if SYNCING or SYNC_NOW
+    if org_mirror_config.sync_status not in (
+        OrgMirrorStatus.SYNCING,
+        OrgMirrorStatus.SYNC_NOW,
+    ):
+        return None
+
+    # Force cancel the config (ignore transaction_id for interrupt)
+    config_query = OrgMirrorConfig.update(
+        sync_transaction_id=uuid_generator(),
+        sync_status=OrgMirrorStatus.CANCEL,
+        sync_expiration_date=None,
+        sync_retries_remaining=0,
+    ).where(OrgMirrorConfig.id == org_mirror_config.id)
+
+    if not config_query.execute():
+        return None
+
+    return OrgMirrorConfig.get_by_id(org_mirror_config.id)

@@ -11,7 +11,6 @@ import logging
 from datetime import datetime
 
 from flask import request
-from flask_restful import abort
 
 import features
 from auth import scopes
@@ -33,6 +32,7 @@ from endpoints.api import (
 )
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from util.names import parse_robot_username
+from util.orgmirror import get_registry_adapter
 
 
 def require_org_admin(orgname):
@@ -46,11 +46,6 @@ def require_org_admin(orgname):
 
 
 logger = logging.getLogger(__name__)
-
-
-def _not_implemented():
-    """Return 501 Not Implemented response."""
-    abort(501, message="This endpoint is not yet implemented")
 
 
 @resource("/v1/organization/<orgname>/mirror")
@@ -490,9 +485,34 @@ class OrgMirrorSyncNow(ApiResource):
     def post(self, orgname):
         """
         Trigger immediate discovery and sync for the organization.
+
+        Sets sync_status to SYNC_NOW and sync_start_date to now for
+        immediate pickup by the repomirrorworker.
+
+        Returns 204 on success, 404 if config not found or already syncing.
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        mirror = model.org_mirror.get_org_mirror_config(org)
+        if not mirror:
+            raise NotFound()
+
+        updated = model.org_mirror.update_sync_status_to_sync_now(mirror)
+        if not updated:
+            raise InvalidRequest("Cannot trigger sync: mirror is currently syncing")
+
+        log_action(
+            "org_mirror_sync_now_requested",
+            orgname,
+            {},
+        )
+
+        return "", 204
 
 
 @resource("/v1/organization/<orgname>/mirror/sync-cancel")
@@ -508,9 +528,34 @@ class OrgMirrorSyncCancel(ApiResource):
     def post(self, orgname):
         """
         Cancel ongoing discovery or sync operation.
+
+        Sets sync_status to CANCEL on the config and all in-progress
+        repository syncs. The worker will stop processing on next check.
+
+        Returns 204 on success, 404 if config not found or not syncing.
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        mirror = model.org_mirror.get_org_mirror_config(org)
+        if not mirror:
+            raise NotFound()
+
+        updated = model.org_mirror.update_sync_status_to_cancel(mirror)
+        if not updated:
+            raise InvalidRequest("Cannot cancel: mirror is not currently syncing")
+
+        log_action(
+            "org_mirror_sync_cancelled",
+            orgname,
+            {},
+        )
+
+        return "", 204
 
 
 @resource("/v1/organization/<orgname>/mirror/verify")
@@ -526,9 +571,64 @@ class OrgMirrorVerify(ApiResource):
     def post(self, orgname):
         """
         Verify connection to source registry.
+
+        Tests connectivity, authentication, and TLS configuration without
+        triggering a full sync operation. Useful for validating configuration
+        before enabling mirroring.
+
+        Returns:
+            JSON object with:
+                - success: Boolean indicating if connection was successful
+                - message: Human-readable status message
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        mirror = model.org_mirror.get_org_mirror_config(org)
+        if not mirror:
+            raise NotFound()
+
+        # Decrypt credentials
+        try:
+            username = (
+                mirror.external_registry_username.decrypt()
+                if mirror.external_registry_username
+                else None
+            )
+            password = (
+                mirror.external_registry_password.decrypt()
+                if mirror.external_registry_password
+                else None
+            )
+        except DecryptionFailureException as e:
+            logger.warning("Failed to decrypt credentials for mirror config: %s", e)
+            return {"success": False, "message": "Failed to decrypt source registry credentials"}
+
+        # Create adapter for the source registry type
+        try:
+            adapter = get_registry_adapter(
+                registry_type=mirror.external_registry_type,
+                url=mirror.external_registry_url,
+                namespace=mirror.external_namespace,
+                username=username,
+                password=password,
+                config=mirror.external_registry_config,
+            )
+        except ValueError as e:
+            return {"success": False, "message": str(e)}
+
+        # Test connection
+        success, message = adapter.test_connection()
+
+        return {"success": success, "message": message}
+
+
+MAX_PAGE_LIMIT = 500
+DEFAULT_PAGE_LIMIT = 100
 
 
 @resource("/v1/organization/<orgname>/mirror/repositories")
@@ -536,7 +636,11 @@ class OrgMirrorVerify(ApiResource):
 @show_if(features.ORG_MIRROR)
 class OrgMirrorRepositories(ApiResource):
     """
-    Resource for listing discovered repositories.
+    Resource for listing discovered repositories from the source registry.
+
+    This endpoint fetches repositories from the configured source registry,
+    applies glob filters, persists them to the database, and returns a
+    paginated list with sync status information.
     """
 
     @require_scope(scopes.ORG_ADMIN)
@@ -544,6 +648,65 @@ class OrgMirrorRepositories(ApiResource):
     def get(self, orgname):
         """
         List all discovered repositories from source namespace.
+
+        Query Parameters:
+            page (int): Page number, default 1
+            limit (int): Items per page, default 100, max 500
+
+        Returns:
+            JSON object with:
+                - repositories: List of repository objects
+                - page: Current page number
+                - limit: Items per page
+                - total: Total number of matching repositories
+                - has_next: Whether there are more pages
         """
         require_org_admin(orgname)
-        _not_implemented()
+
+        try:
+            org = model.organization.get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+        mirror = model.org_mirror.get_org_mirror_config(org)
+        if not mirror:
+            raise NotFound()
+
+        # Parse pagination parameters
+        page = request.args.get("page", 1, type=int)
+        limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
+        limit = min(limit, MAX_PAGE_LIMIT)  # Cap at max
+
+        if page < 1:
+            page = 1
+        if limit < 1:
+            limit = DEFAULT_PAGE_LIMIT
+
+        # Fetch from database with pagination
+        repos, total = model.org_mirror.get_org_mirror_repos(mirror, page, limit)
+
+        return {
+            "repositories": [
+                {
+                    "name": r.repository_name,
+                    "sync_status": r.sync_status.name,
+                    "discovery_date": self._dt_to_string(r.discovery_date),
+                    "last_sync_date": self._dt_to_string(r.last_sync_date),
+                    "status_message": r.status_message,
+                    "quay_repository": (
+                        f"{orgname}/{r.repository_name}" if r.repository_id else None
+                    ),
+                }
+                for r in repos
+            ],
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "has_next": (page * limit) < total,
+        }
+
+    def _dt_to_string(self, dt):
+        """Convert DateTime to ISO 8601 formatted string."""
+        if dt is None:
+            return None
+        return dt.isoformat() + "Z"

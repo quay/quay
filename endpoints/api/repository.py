@@ -532,6 +532,9 @@ class RepositoryStateResource(RepositoryParamResource):
         if state == RepositoryState.MIRROR and not features.REPO_MIRROR:
             return {"detail": "Unknown Repository State: %s" % state_name}, 400
 
+        if state == RepositoryState.ORG_MIRROR:
+            return {"detail": "ORG_MIRROR state is managed by organization-level mirroring"}, 400
+
         if state is None:
             return {"detail": "%s is not a valid Repository state." % state_name}, 400
 

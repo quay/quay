@@ -2619,17 +2619,22 @@ class TestDeleteRepository(ApiTestCase):
             ADMIN_ACCESS_USER, "complex", "b@c.com"
         )
 
-        # Create some repository action count entries.
-        RepositoryActionCount.create(repository=repository, date=datetime.datetime.now(), count=1)
-        RepositoryActionCount.create(
+        # Create some repository action count entries (use get_or_create to avoid conflicts
+        # with entries created during database initialization).
+        RepositoryActionCount.get_or_create(
             repository=repository,
-            date=datetime.datetime.now() - datetime.timedelta(days=2),
-            count=2,
+            date=datetime.datetime.now().date(),
+            defaults={"count": 1},
         )
-        RepositoryActionCount.create(
+        RepositoryActionCount.get_or_create(
             repository=repository,
-            date=datetime.datetime.now() - datetime.timedelta(days=5),
-            count=6,
+            date=(datetime.datetime.now() - datetime.timedelta(days=2)).date(),
+            defaults={"count": 2},
+        )
+        RepositoryActionCount.get_or_create(
+            repository=repository,
+            date=(datetime.datetime.now() - datetime.timedelta(days=5)).date(),
+            defaults={"count": 6},
         )
 
         repo_ref = registry_model.lookup_repository(ADMIN_ACCESS_USER, "complex")
