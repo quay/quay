@@ -5,7 +5,7 @@ from email.utils import formatdate
 from functools import partial, wraps
 
 import pytz
-from flask import Blueprint, request, session
+from flask import Blueprint, jsonify, request, session
 from flask_restful import Api, Resource, abort, reqparse
 from flask_restful.utils import unpack
 from jsonschema import ValidationError, validate
@@ -80,6 +80,26 @@ api.decorators = [
     process_oauth,
     require_xhr_from_browser,
 ]
+
+
+# Register custom error handlers for Flask-Restful API
+# Flask-Restful catches exceptions before Flask's @app.errorhandler, so we need to register them here
+from util.useremails import CannotSendEmailException
+
+
+@api.errorhandler(CannotSendEmailException)
+def handle_api_emailexception(_ex):
+    message = "Could not send email. Please contact an administrator and report this problem."
+    response = jsonify(
+        {
+            "error_message": message,  # Standard field for new UI
+            "detail": message,  # Standard field matching ApiException format
+            "message": message,  # Keep for backward compatibility with old UI
+            "status": 400,
+        }
+    )
+    response.status_code = 400
+    return response
 
 
 def resource(*urls, **kwargs):
