@@ -1,11 +1,10 @@
-from test.fixtures import *
-
 import pytest
 
 from data import model
 from endpoints.api import api
 from endpoints.api.repository import Repository
 from endpoints.test.shared import conduct_call
+from test.fixtures import *
 from util.useremails import CannotSendEmailException
 
 

@@ -18,6 +18,9 @@ import features
 
 # Ensure application loads test configuration at import time
 os.environ.setdefault("TEST", "1")
+# Import to ensure error handlers in endpoints.decorated are registered
+# This provides coverage for the production error handler code
+import endpoints.decorated  # noqa: F401
 from app import app as application
 from auth.permissions import on_identity_loaded
 from data import model
@@ -39,10 +42,6 @@ from path_converters import (
 )
 from test.testconfig import FakeTransaction
 from util.useremails import CannotSendEmailException
-
-# Import to ensure error handlers in endpoints.decorated are registered
-# This provides coverage for the production error handler code
-import endpoints.decorated  # noqa: F401
 
 INIT_DB_PATH = 0
 
