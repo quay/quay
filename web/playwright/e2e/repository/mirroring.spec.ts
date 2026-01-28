@@ -306,5 +306,253 @@ test.describe(
         authenticatedPage.getByText('Repository state'),
       ).toBeVisible();
     });
+
+    test('displays architecture filter component with all architectures option', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // Setup: create org, repo, set MIRROR state
+      const org = await api.organization('archfilterorg');
+      const repo = await api.repository(org.name, 'archfilterrepo');
+      await api.setMirrorState(org.name, repo.name);
+
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=mirroring`,
+      );
+
+      // Wait for form to load
+      await expect(authenticatedPage.getByTestId('mirror-form')).toBeVisible();
+
+      // Verify architecture filter component is present
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-toggle'),
+      ).toBeVisible();
+
+      // Verify default text shows "All architectures"
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-toggle'),
+      ).toContainText('All architectures');
+
+      // Verify helper text for empty selection
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-helper'),
+      ).toContainText('All architectures will be mirrored');
+    });
+
+    test('allows selecting multiple architectures from dropdown', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // Setup: create org, repo, set MIRROR state
+      const org = await api.organization('archselectorg');
+      const repo = await api.repository(org.name, 'archselectrepo');
+      await api.setMirrorState(org.name, repo.name);
+
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=mirroring`,
+      );
+
+      // Wait for form to load
+      await expect(authenticatedPage.getByTestId('mirror-form')).toBeVisible();
+
+      // Open the architecture filter dropdown
+      await authenticatedPage.getByTestId('architecture-filter-toggle').click();
+
+      // Verify all architecture options are visible
+      await expect(
+        authenticatedPage.getByTestId('architecture-option-amd64'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('architecture-option-arm64'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('architecture-option-ppc64le'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('architecture-option-s390x'),
+      ).toBeVisible();
+
+      // Select amd64
+      await authenticatedPage.getByTestId('architecture-option-amd64').click();
+
+      // Dropdown stays open for multi-select, select arm64
+      await authenticatedPage.getByTestId('architecture-option-arm64').click();
+
+      // Close dropdown by clicking outside
+      await authenticatedPage.getByTestId('mirror-form').click();
+
+      // Verify badge shows 2
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-badge'),
+      ).toContainText('2');
+
+      // Verify helper text shows selected architectures
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-helper'),
+      ).toContainText('amd64');
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-helper'),
+      ).toContainText('arm64');
+    });
+
+    test('saves and loads architecture filter with mirror configuration', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // Setup: create org, repo, robot, set MIRROR state
+      const org = await api.organization('archsaveorg');
+      const repo = await api.repository(org.name, 'archsaverepo');
+      const robot = await api.robot(org.name, 'archsavebot');
+      await api.setMirrorState(org.name, repo.name);
+
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=mirroring`,
+      );
+
+      // Wait for form to load
+      await expect(authenticatedPage.getByTestId('mirror-form')).toBeVisible();
+
+      // Fill in required fields
+      await authenticatedPage
+        .getByTestId('registry-location-input')
+        .fill('quay.io/library/alpine');
+      await authenticatedPage.getByTestId('tags-input').fill('latest');
+      await authenticatedPage.getByTestId('sync-interval-input').fill('60');
+
+      // Select robot user
+      await authenticatedPage.locator('#robot-user-select').click();
+      await authenticatedPage.getByText(robot.fullName).click();
+
+      // Select architecture filter: amd64 and arm64
+      await authenticatedPage.getByTestId('architecture-filter-toggle').click();
+      await expect(
+        authenticatedPage.getByTestId('architecture-option-amd64'),
+      ).toBeVisible();
+      await authenticatedPage.getByTestId('architecture-option-amd64').click();
+      // Dropdown stays open for multi-select
+      await authenticatedPage.getByTestId('architecture-option-arm64').click();
+      // Close the dropdown by clicking outside
+      await authenticatedPage.getByTestId('mirror-form').click();
+
+      // Submit the form
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      // Verify success message
+      await expect(
+        authenticatedPage.getByText('Mirror configuration saved successfully'),
+      ).toBeVisible();
+
+      // Verify architecture filter was saved via API
+      const mirrorConfig = await api.raw.getMirrorConfig(org.name, repo.name);
+      expect(mirrorConfig?.architecture_filter).toContain('amd64');
+      expect(mirrorConfig?.architecture_filter).toContain('arm64');
+      expect(mirrorConfig?.architecture_filter?.length).toBe(2);
+
+      // Reload page to verify filter persists
+      await authenticatedPage.reload();
+      await expect(authenticatedPage.getByTestId('mirror-form')).toBeVisible();
+
+      // Verify architecture filter shows saved selection
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-badge'),
+      ).toContainText('2');
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-helper'),
+      ).toContainText('amd64');
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-helper'),
+      ).toContainText('arm64');
+    });
+
+    test('clears architecture filter selection', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // Setup: create org, repo, set MIRROR state
+      const org = await api.organization('archclearorg');
+      const repo = await api.repository(org.name, 'archclearrepo');
+      await api.setMirrorState(org.name, repo.name);
+
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=mirroring`,
+      );
+
+      // Wait for form to load
+      await expect(authenticatedPage.getByTestId('mirror-form')).toBeVisible();
+
+      // Open dropdown and select some architectures
+      await authenticatedPage.getByTestId('architecture-filter-toggle').click();
+      await expect(
+        authenticatedPage.getByTestId('architecture-option-amd64'),
+      ).toBeVisible();
+      await authenticatedPage.getByTestId('architecture-option-amd64').click();
+      // Dropdown stays open for multi-select
+      await authenticatedPage.getByTestId('architecture-option-arm64').click();
+      // Close the dropdown by clicking outside
+      await authenticatedPage.getByTestId('mirror-form').click();
+
+      // Verify selections were made
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-badge'),
+      ).toContainText('2');
+
+      // Open dropdown and click "Clear all"
+      await authenticatedPage.getByTestId('architecture-filter-toggle').click();
+      await authenticatedPage.getByTestId('architecture-clear-all').click();
+
+      // Verify selection is cleared
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-toggle'),
+      ).toContainText('All architectures');
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-helper'),
+      ).toContainText('All architectures will be mirrored');
+    });
+
+    test('loads existing architecture filter from saved mirror configuration', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // Setup: create org, repo, robot, set MIRROR state, create mirror config with architecture filter
+      const org = await api.organization('archloadorg');
+      const repo = await api.repository(org.name, 'archloadrepo');
+      const robot = await api.robot(org.name, 'archloadbot');
+      await api.setMirrorState(org.name, repo.name);
+
+      // Create mirror config via API with architecture filter
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createMirrorConfig(org.name, repo.name, {
+        external_reference: 'quay.io/library/nginx',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        root_rule: {
+          rule_kind: 'tag_glob_csv',
+          rule_value: ['latest'],
+        },
+        robot_username: robot.fullName,
+        skopeo_timeout_interval: 300,
+        is_enabled: true,
+        architecture_filter: ['ppc64le', 's390x'],
+      });
+
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=mirroring`,
+      );
+
+      // Wait for form to load
+      await expect(authenticatedPage.getByTestId('mirror-form')).toBeVisible();
+
+      // Verify architecture filter shows the saved selection
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-badge'),
+      ).toContainText('2');
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-helper'),
+      ).toContainText('ppc64le');
+      await expect(
+        authenticatedPage.getByTestId('architecture-filter-helper'),
+      ).toContainText('s390x');
+    });
   },
 );

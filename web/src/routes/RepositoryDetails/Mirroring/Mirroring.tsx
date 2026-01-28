@@ -19,7 +19,7 @@ import {
   SelectGroup,
   Spinner,
 } from '@patternfly/react-core';
-import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
+import {DesktopIcon} from '@patternfly/react-icons';
 import {useRepository} from 'src/hooks/UseRepository';
 import {useUI} from 'src/contexts/UIContext';
 import FormError from 'src/components/errors/FormError';
@@ -173,6 +173,10 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           robotOptions={robotOptions}
           setConfig={configHook.setConfig}
           addAlert={addAlert}
+          architectureFilter={formHook.formValues.architectureFilter}
+          setArchitectureFilter={(archs) =>
+            formHook.setValue('architectureFilter', archs, {shouldDirty: true})
+          }
         />
         <MirroringCredentials
           control={formHook.control}

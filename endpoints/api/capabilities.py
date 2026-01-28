@@ -4,6 +4,7 @@ Registry capabilities API endpoint.
 
 import features
 from app import app
+from data.model.repo_mirror import VALID_ARCHITECTURES
 from endpoints.api import ApiResource, define_json_response, nickname, resource
 from endpoints.decorators import anon_allowed
 
@@ -30,6 +31,11 @@ class RegistryCapabilities(ApiResource):
                         "optional_architectures_allowed": {"type": "boolean"},
                     },
                 },
+                "mirror_architectures": {
+                    "type": "array",
+                    "description": "Available architectures for repository mirroring filter",
+                    "items": {"type": "string"},
+                },
             },
         },
     }
@@ -53,4 +59,5 @@ class RegistryCapabilities(ApiResource):
                 "required_architectures": required_archs if sparse_enabled else [],
                 "optional_architectures_allowed": sparse_enabled and len(required_archs) > 0,
             },
+            "mirror_architectures": sorted(VALID_ARCHITECTURES),
         }

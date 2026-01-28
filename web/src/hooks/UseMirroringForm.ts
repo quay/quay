@@ -21,6 +21,7 @@ const defaultFormValues: MirroringFormData = {
   noProxy: '',
   unsignedImages: false,
   skopeoTimeoutInterval: 300,
+  architectureFilter: [],
 };
 
 export const useMirroringForm = (
