@@ -6,6 +6,7 @@ from data import model
 from endpoints.api import api
 from endpoints.api.repository import Repository
 from endpoints.test.shared import conduct_call
+from util.useremails import CannotSendEmailException
 
 
 @pytest.mark.parametrize(
@@ -41,3 +42,32 @@ def test_require_xhr_from_browser(user_agent, include_header, expected_code, app
     conduct_call(
         client, Repository, api.url_for, "GET", params, headers=headers, expected_code=expected_code
     )
+
+
+def test_cannot_send_email_exception_handler():
+    """
+    Test that CannotSendEmailException error handler is properly formatted.
+
+    This test ensures endpoints.decorated module is loaded and provides coverage
+    for the production error handler code in endpoints/decorated.py.
+    """
+    # Import endpoints.decorated to ensure error handlers are registered
+    # This provides coverage for the @app.errorhandler decorator code
+    import endpoints.decorated
+    from endpoints.decorated import handle_emailexception
+
+    # Create a test exception
+    exc = CannotSendEmailException("Test SMTP failure")
+
+    # Call the handler function directly
+    response = handle_emailexception(exc)
+
+    # Verify response format
+    assert response.status_code == 400
+    data = response.get_json()
+
+    expected_message = "Could not send email. Please contact an administrator and report this problem."
+    assert data["error_message"] == expected_message
+    assert data["detail"] == expected_message
+    assert data["message"] == expected_message
+    assert data["status"] == 400
