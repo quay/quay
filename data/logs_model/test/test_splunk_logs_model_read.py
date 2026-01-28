@@ -167,6 +167,32 @@ class TestBuildBaseQuery:
         assert 'performer="testuser"' in result
         assert 'repository="testrepo"' in result
 
+    def test_escapes_double_quotes_to_prevent_spl_injection(self, splunk_model):
+        """Test that double quotes are escaped to prevent SPL injection."""
+        # Malicious input attempting to break out of quoted string
+        malicious_input = 'foo" | search account="*'
+        result = splunk_model._build_base_query(performer_name=malicious_input)
+        # Double quotes in the value should be escaped with backslash
+        # The result should be: performer="foo\" | search account=\"*"
+        assert '\\"' in result  # Escaped quotes present
+        assert result.startswith('performer="')
+        assert result.endswith('"')
+        # Verify the malicious quotes are escaped (preceded by backslash)
+        assert 'foo\\"' in result
+
+    def test_escapes_backslashes_to_prevent_spl_injection(self, splunk_model):
+        """Test that backslashes are escaped to prevent SPL injection."""
+        malicious_input = 'foo\\" | delete'
+        result = splunk_model._build_base_query(namespace_name=malicious_input)
+        # Backslash should be escaped first, then quote
+        assert result == 'account="foo\\\\\\" | delete"'
+
+    def test_escapes_filter_kinds(self, splunk_model):
+        """Test that filter_kinds values are also escaped."""
+        malicious_kind = 'push" | stats count'
+        result = splunk_model._build_base_query(filter_kinds=[malicious_kind])
+        assert 'kind!="push\\" | stats count"' in result
+
 
 class TestBuildLookupQuery:
     """Tests for _build_lookup_query helper method."""

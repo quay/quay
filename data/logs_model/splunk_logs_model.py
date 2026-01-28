@@ -19,6 +19,28 @@ from data.model.log import ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING
 logger = logging.getLogger(__name__)
 
 
+def _escape_spl_value(value: Optional[str]) -> Optional[str]:
+    """
+    Escape special characters in a value for safe use in SPL queries.
+
+    Prevents SPL injection by escaping backslashes and double quotes
+    before interpolating user-supplied values into SPL strings.
+
+    Args:
+        value: The string value to escape
+
+    Returns:
+        The escaped string safe for use in SPL double-quoted strings
+    """
+    if value is None:
+        return value
+    # Escape backslashes first (before they're used in other escapes)
+    value = value.replace("\\", "\\\\")
+    # Escape double quotes
+    value = value.replace('"', '\\"')
+    return value
+
+
 class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
     """
     SplunkLogsModel implements model for establishing connection and sending events to Splunk cluster.
@@ -183,18 +205,25 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         repository_name=None,
         filter_kinds=None,
     ) -> str:
-        """Build base SPL query string with filters."""
+        """Build base SPL query string with filters.
+
+        All user-supplied values are escaped to prevent SPL injection.
+        """
         parts = []
 
         if namespace_name:
-            parts.append(f'account="{namespace_name}"')
+            escaped = _escape_spl_value(namespace_name)
+            parts.append(f'account="{escaped}"')
         if performer_name:
-            parts.append(f'performer="{performer_name}"')
+            escaped = _escape_spl_value(performer_name)
+            parts.append(f'performer="{escaped}"')
         if repository_name:
-            parts.append(f'repository="{repository_name}"')
+            escaped = _escape_spl_value(repository_name)
+            parts.append(f'repository="{escaped}"')
         if filter_kinds:
             for kind_name in filter_kinds:
-                parts.append(f'kind!="{kind_name}"')
+                escaped = _escape_spl_value(kind_name)
+                parts.append(f'kind!="{escaped}"')
 
         return " ".join(parts)
 
@@ -217,7 +246,8 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         """Retrieve paginated logs from Splunk within the specified date range."""
         PAGE_SIZE = 20
 
-        assert start_datetime is not None and end_datetime is not None
+        if start_datetime is None or end_datetime is None:
+            raise ValueError("start_datetime and end_datetime are required")
 
         # Handle combined model token format
         if page_token is not None and page_token.get("readwrite_page_token") is not None:
@@ -362,7 +392,10 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         repo_name = repository.name
         namespace_name = repository.namespace_user.username
 
-        spl_query = f'account="{namespace_name}" ' f'repository="{repo_name}"'
+        # Escape values to prevent SPL injection
+        escaped_namespace = _escape_spl_value(namespace_name)
+        escaped_repo = _escape_spl_value(repo_name)
+        spl_query = f'account="{escaped_namespace}" repository="{escaped_repo}"'
 
         try:
             search_client = self._get_search_client()
@@ -459,5 +492,4 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         """
         # Splunk handles log rotation internally through retention policies
         # This is a no-op generator that yields nothing
-        return
-        yield  # Makes this a generator function
+        yield from []
