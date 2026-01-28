@@ -41,6 +41,25 @@ TEMP_TAG_EXPIRATION_SEC = 300  # 5 minutes
 
 logger = logging.getLogger(__name__)
 
+
+def is_manifest_present(manifest) -> bool:
+    """
+    Check if manifest content is available (not sparse).
+
+    A manifest is considered "sparse" when it exists in the database but
+    has empty manifest_bytes. This typically happens with pull-through proxy
+    where child manifests of a manifest list may not be fetched until accessed.
+
+    Args:
+        manifest: A Manifest database row or object with manifest_bytes attribute.
+
+    Returns:
+        True if the manifest has content, False if it's sparse (empty/missing content).
+    """
+    manifest_bytes = manifest.manifest_bytes
+    return manifest_bytes is not None and manifest_bytes != ""
+
+
 CreatedManifest = namedtuple("CreatedManifest", ["manifest", "newly_created", "labels_to_apply"])
 
 

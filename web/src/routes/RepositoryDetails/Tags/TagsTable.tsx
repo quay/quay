@@ -1,4 +1,4 @@
-import {Spinner, Tooltip} from '@patternfly/react-core';
+import {Label, Spinner, Tooltip} from '@patternfly/react-core';
 import {
   ExpandableRowContent,
   Table,
@@ -11,7 +11,7 @@ import {
 } from '@patternfly/react-table';
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
-import {Tag, Manifest, Label} from 'src/resources/TagResource';
+import {Tag, Manifest, Label as ManifestLabel} from 'src/resources/TagResource';
 import {useRecoilValue} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';
 import {getTagDetailPath} from 'src/routes/NavigationPath';
@@ -22,6 +22,7 @@ import {expandedViewState} from 'src/atoms/TagListState';
 import ColumnNames from './ColumnNames';
 import {
   DownloadIcon,
+  ExclamationTriangleIcon,
   LockIcon,
   ShieldAltIcon,
   TagIcon,
@@ -39,6 +40,9 @@ import {useTagPullStatistics} from 'src/hooks/UseTags';
 import TagExpiration from './TagsTableExpiration';
 
 function SubRow(props: SubRowProps) {
+  const isMissing = props.manifest.is_present === false;
+  const location = useLocation();
+
   return (
     <Tr
       key={`${props.manifest.platform.os}-${props.manifest.platform.architecture}-${props.rowIndex}`}
@@ -48,17 +52,37 @@ function SubRow(props: SubRowProps) {
       {props.manifest.platform ? (
         <Td dataLabel="platform" noPadding={false} colSpan={2}>
           <ExpandableRowContent>
-            <Link
-              to={getTagDetailPath(
-                location.pathname,
-                props.org,
-                props.repo,
-                props.tag.name,
-                new Map([['digest', props.manifest.digest]]),
-              )}
-            >
-              {`${props.manifest.platform.os} on ${props.manifest.platform.architecture}`}
-            </Link>
+            {isMissing ? (
+              <Tooltip content="This architecture is not present locally. It will be pulled on first access.">
+                <span style={{color: 'var(--pf-v5-global--Color--200)'}}>
+                  <ExclamationTriangleIcon
+                    style={{marginRight: '4px'}}
+                    aria-label="Missing architecture"
+                  />
+                  {`${props.manifest.platform.os} on ${props.manifest.platform.architecture}`}
+                  <Label
+                    color="grey"
+                    isCompact
+                    style={{marginLeft: '8px'}}
+                    data-testid="missing-manifest-label"
+                  >
+                    Missing
+                  </Label>
+                </span>
+              </Tooltip>
+            ) : (
+              <Link
+                to={getTagDetailPath(
+                  location.pathname,
+                  props.org,
+                  props.repo,
+                  props.tag.name,
+                  new Map([['digest', props.manifest.digest]]),
+                )}
+              >
+                {`${props.manifest.platform.os} on ${props.manifest.platform.architecture}`}
+              </Link>
+            )}
           </ExpandableRowContent>
         </Td>
       ) : (
@@ -67,29 +91,47 @@ function SubRow(props: SubRowProps) {
       <Conditional if={props.config?.features?.SECURITY_SCANNER}>
         <Td dataLabel="security" noPadding={false} colSpan={1}>
           <ExpandableRowContent>
-            <SecurityDetails
-              org={props.org}
-              repo={props.repo}
-              digest={props.manifest.digest}
-              tag={props.tag.name}
-              variant="condensed"
-            />
+            {isMissing ? (
+              <span style={{color: 'var(--pf-v5-global--Color--200)'}}>
+                N/A
+              </span>
+            ) : (
+              <SecurityDetails
+                org={props.org}
+                repo={props.repo}
+                digest={props.manifest.digest}
+                tag={props.tag.name}
+                variant="condensed"
+              />
+            )}
           </ExpandableRowContent>
         </Td>
       </Conditional>
       <Td dataLabel="size" noPadding={false} colSpan={1}>
         <ExpandableRowContent>
-          <ChildManifestSize
-            org={props.org}
-            repo={props.repo}
-            digest={props.manifest.digest}
-          />
+          {isMissing ? (
+            <span style={{color: 'var(--pf-v5-global--Color--200)'}}>N/A</span>
+          ) : (
+            <ChildManifestSize
+              org={props.org}
+              repo={props.repo}
+              digest={props.manifest.digest}
+            />
+          )}
         </ExpandableRowContent>
       </Td>
       {props.manifest.digest ? (
         <Td dataLabel="digest" noPadding={false} colSpan={1}>
           <ExpandableRowContent>
-            {props.manifest.digest.substring(0, 19)}
+            <span
+              style={
+                isMissing
+                  ? {color: 'var(--pf-v5-global--Color--200)'}
+                  : undefined
+              }
+            >
+              {props.manifest.digest.substring(0, 19)}
+            </span>
           </ExpandableRowContent>
         </Td>
       ) : (
@@ -190,6 +232,18 @@ function TagsTableRow(props: RowProps) {
                 aria-label="Immutable tag"
                 data-testid="immutable-tag-icon"
               />
+            </Tooltip>
+          )}
+          {tag.is_sparse && (
+            <Tooltip content="This is a sparse manifest list - not all architectures are present locally">
+              <Label
+                color="orange"
+                isCompact
+                style={{marginLeft: '8px'}}
+                data-testid="sparse-manifest-label"
+              >
+                Sparse ({tag.present_child_count}/{tag.child_manifest_count})
+              </Label>
             </Tooltip>
           )}
         </Td>
@@ -468,8 +522,8 @@ interface TableProps {
   loadTags: () => void;
   repoDetails: RepositoryDetails;
   getSortableSort?: (columnIndex: number) => ThProps['sort'];
-  labelCache?: Record<string, Label[]>;
-  setLabelCache?: (cache: Record<string, Label[]>) => void;
+  labelCache?: Record<string, ManifestLabel[]>;
+  setLabelCache?: (cache: Record<string, ManifestLabel[]>) => void;
 }
 
 interface RowProps {
@@ -483,8 +537,8 @@ interface RowProps {
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;
   loadTags: () => void;
   repoDetails: RepositoryDetails;
-  labelCache?: Record<string, Label[]>;
-  setLabelCache?: (cache: Record<string, Label[]>) => void;
+  labelCache?: Record<string, ManifestLabel[]>;
+  setLabelCache?: (cache: Record<string, ManifestLabel[]>) => void;
 }
 
 interface SubRowProps {
@@ -497,6 +551,7 @@ interface SubRowProps {
   config: {
     features?: {
       IMAGE_PULL_STATS?: boolean;
+      SECURITY_SCANNER?: boolean;
     };
   } | null;
 }
