@@ -20,7 +20,7 @@ import features
 os.environ.setdefault("TEST", "1")
 # Import to ensure error handlers in endpoints.decorated are registered
 # This provides coverage for the production error handler code
-import endpoints.decorated  # noqa: F401
+import endpoints.decorated
 from app import app as application
 from auth.permissions import on_identity_loaded
 from data import model
