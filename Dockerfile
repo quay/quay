@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-312-minimal:latest as base
+FROM registry.access.redhat.com/ubi9/python-312-minimal:latest@sha256:ecacdd63283ed3083ddd33c02ab5112d4dbf1fbf2508317bf4d4f6d7d913d2f1 AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 USER root
@@ -15,8 +15,8 @@ ENV PATH=/app/bin/:$PATH \
     CNB_GROUP_ID=0 \
     PIP_NO_CACHE_DIR=off
 
-ENV PYTHONUSERBASE /app
-ENV TZ UTC
+ENV PYTHONUSERBASE=/app
+ENV TZ=UTC
 RUN set -ex\
 	; microdnf -y module enable nginx:1.24 \
 	; microdnf update -y \
@@ -37,7 +37,7 @@ RUN set -ex\
 
 # Build-python installs the requirements for the python code.
 FROM base AS build-python
-ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONDONTWRITEBYTECODE=1
 RUN set -ex\
 	; microdnf -y --setopt=tsflags=nodocs install \
 		gcc-c++ \
@@ -70,7 +70,7 @@ COPY requirements.txt .
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 
 # Added below line for GRPC support for IBMZ i.e. s390x
-ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL 1
+ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
 
 USER 1001
 
@@ -95,7 +95,7 @@ RUN set -ex\
 	;
 
 # Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal AS build-static
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal@sha256:3e7019795501caa3391374072aa9359ecc09b10bb5698ec54d8fbbc2ea6091aa AS build-static
 ARG BUILD_ANGULAR=true
 WORKDIR /opt/app-root/src
 # This below line is a workaround because in UBI 9, the OpenSSL version does not support MD4 anymore which is required by the combination of webpack and terser-webpack-plugin.
@@ -107,7 +107,7 @@ COPY --chown=1001:0 *.json *.js  ./
 RUN if [ "$BUILD_ANGULAR" = "true" ]; then npm run --quiet build; fi
 
 # Build React UI
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest as build-ui
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest@sha256:3e7019795501caa3391374072aa9359ecc09b10bb5698ec54d8fbbc2ea6091aa AS build-ui
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/package-lock.json  ./
 RUN CYPRESS_INSTALL_BINARY=0 npm clean-install
@@ -115,7 +115,7 @@ COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS pushgateway
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:bb08f2300cb8d12a7eb91dddf28ea63692b3ec99e7f0fa71a1b300f2756ea829 AS pushgateway
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.11.1
 RUN set -ex\
@@ -131,13 +131,13 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.access.redhat.com/ubi9/go-toolset as config-tool
+FROM registry.access.redhat.com/ubi9/go-toolset@sha256:359dd4c6c4255b3f7bce4dc15ffa5a9aa65a401f819048466fa91baa8244a793 AS config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 ENV GOTOOLCHAIN=auto
 RUN GOPATH=/opt/app-root/src/go GOFIPS140=latest go install -tags=fips ./cmd/config-tool
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal AS build-quaydir
+FROM registry.access.redhat.com/ubi9/ubi-minimal@sha256:bb08f2300cb8d12a7eb91dddf28ea63692b3ec99e7f0fa71a1b300f2756ea829 AS build-quaydir
 WORKDIR /quaydir
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
@@ -155,13 +155,13 @@ RUN set -ex\
 # Final is the end container, where all the work from the other
 # containers are copied in.
 FROM base AS final
-LABEL maintainer "quay-devel@redhat.com"
+LABEL maintainer="quay-devel@redhat.com"
 
-ENV QUAYDIR /quay-registry
-ENV QUAYCONF /quay-registry/conf
-ENV QUAYRUN /quay-registry/conf
-ENV QUAYPATH $QUAYDIR
-ENV PYTHONPATH $QUAYPATH
+ENV QUAYDIR=/quay-registry
+ENV QUAYCONF=/quay-registry/conf
+ENV QUAYRUN=/quay-registry/conf
+ENV QUAYPATH=$QUAYDIR
+ENV PYTHONPATH=$QUAYPATH
 
 # All of these chgrp+chmod commands are an Openshift-ism.
 #
