@@ -61,8 +61,10 @@ class SplunkLogMapper:
 
         usernames = set()
         for result in splunk_results:
-            account = result.get("account")
-            performer = result.get("performer")
+            # Extract fields from _raw to get usernames
+            fields = self._extract_log_fields(result)
+            account = fields.get("account")
+            performer = fields.get("performer")
             if account:
                 usernames.add(account)
             if performer:
@@ -77,6 +79,33 @@ class SplunkLogMapper:
                 logs.append(log)
 
         return logs
+
+    def _extract_log_fields(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract log fields from Splunk result.
+
+        Splunk stores the event data in _raw as a JSON string. This method
+        parses _raw to extract the actual log fields, falling back to
+        top-level fields if _raw is not available.
+
+        Args:
+            result: Splunk result dictionary
+
+        Returns:
+            Dictionary with extracted log fields
+        """
+        # Try to parse _raw field which contains the actual JSON event data
+        raw_data = result.get("_raw")
+        if raw_data and isinstance(raw_data, str):
+            try:
+                parsed = json.loads(raw_data)
+                if isinstance(parsed, dict):
+                    return parsed
+            except (json.JSONDecodeError, TypeError):
+                logger.warning("Failed to parse _raw field as JSON")
+
+        # Fall back to top-level fields (for indexed field extraction)
+        return result
 
     def _map_single_log_with_cache(
         self,
@@ -94,10 +123,13 @@ class SplunkLogMapper:
             Log object or None if mapping fails
         """
         try:
-            kind_name = result.get("kind")
+            # Extract fields from _raw JSON or fall back to top-level fields
+            fields = self._extract_log_fields(result)
+
+            kind_name = fields.get("kind")
             kind_id = self._get_kind_id(kind_name) if kind_name else 0
 
-            account_username = result.get("account")
+            account_username = fields.get("account")
             account_user = username_user_map.get(account_username) if account_username else None
 
             account_organization = None
@@ -108,7 +140,7 @@ class SplunkLogMapper:
                 account_email = getattr(account_user, "email", None)
                 account_robot = getattr(account_user, "robot", None)
 
-            performer_username = result.get("performer")
+            performer_username = fields.get("performer")
             performer_user = (
                 username_user_map.get(performer_username) if performer_username else None
             )
@@ -119,12 +151,12 @@ class SplunkLogMapper:
                 performer_email = getattr(performer_user, "email", None)
                 performer_robot = getattr(performer_user, "robot", None)
 
-            dt = self._parse_datetime(result.get("datetime"))
+            dt = self._parse_datetime(fields.get("datetime"))
 
-            metadata = self._parse_metadata(result.get("metadata_json"))
+            metadata = self._parse_metadata(fields.get("metadata_json"))
             metadata_json = json.dumps(metadata) if isinstance(metadata, dict) else "{}"
 
-            ip = result.get("ip")
+            ip = fields.get("ip")
 
             return Log(
                 metadata_json=metadata_json,

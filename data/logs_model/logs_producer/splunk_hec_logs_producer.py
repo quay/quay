@@ -27,6 +27,7 @@ class SplunkHECLogsProducer(LogProducerInterface):
         splunk_host=None,
         splunk_sourcetype=None,
         timeout=10,
+        **kwargs,  # Ignore extra config params (search_host, search_timeout, etc.)
     ):
         splunk_port = port if port else (443 if verify_ssl else 80)
         self.hec_url = f"{url_scheme}://{host}:{splunk_port}/services/collector/event"

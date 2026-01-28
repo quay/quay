@@ -28,6 +28,7 @@ class SplunkLogsProducer(LogProducerInterface):
         verify_ssl=True,
         index_prefix=None,
         ssl_ca_path=None,
+        **kwargs,  # Ignore extra config params (search_timeout, max_results, etc.)
     ):
         connect_args = {
             "host": host,
