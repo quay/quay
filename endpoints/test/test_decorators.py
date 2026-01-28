@@ -43,7 +43,7 @@ def test_require_xhr_from_browser(user_agent, include_header, expected_code, app
     )
 
 
-def test_cannot_send_email_exception_handler():
+def test_cannot_send_email_exception_handler(app):
     """
     Test that CannotSendEmailException error handler is properly formatted.
 
@@ -58,17 +58,18 @@ def test_cannot_send_email_exception_handler():
     # Create a test exception
     exc = CannotSendEmailException("Test SMTP failure")
 
-    # Call the handler function directly
-    response = handle_emailexception(exc)
+    # Call the handler function within app context
+    with app.app_context():
+        response = handle_emailexception(exc)
 
-    # Verify response format
-    assert response.status_code == 400
-    data = response.get_json()
+        # Verify response format
+        assert response.status_code == 400
+        data = response.get_json()
 
-    expected_message = (
-        "Could not send email. Please contact an administrator and report this problem."
-    )
-    assert data["error_message"] == expected_message
-    assert data["detail"] == expected_message
-    assert data["message"] == expected_message
-    assert data["status"] == 400
+        expected_message = (
+            "Could not send email. Please contact an administrator and report this problem."
+        )
+        assert data["error_message"] == expected_message
+        assert data["detail"] == expected_message
+        assert data["message"] == expected_message
+        assert data["status"] == 400
