@@ -1072,6 +1072,11 @@ CONFIG_SCHEMA = {
             "description": "Whether to enable support for organization-level repository mirroring. Defaults to False",
             "x-example": False,
         },
+        "ORG_MIRROR_INTERVAL": {
+            "type": "number",
+            "description": "The number of seconds between organization mirror worker iterations. Defaults to 30.",
+            "x-example": 30,
+        },
         "REPO_MIRROR_TLS_VERIFY": {
             "type": "boolean",
             "description": "Require HTTPS and verify certificates of Quay registry during mirror. Defaults to True",
