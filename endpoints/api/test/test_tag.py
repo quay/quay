@@ -345,7 +345,7 @@ def test_list_repo_tags_non_manifest_list_has_no_sparse_info(app):
 def test_list_repo_tags_manifest_list_has_sparse_info(app, initialized_db):
     """Test that manifest list tags include sparse info fields."""
     from data.database import Manifest as ManifestTable
-    from data.database import ManifestChild, Repository
+    from data.database import Repository
     from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
 
     # Find a manifest list in the test database
@@ -398,7 +398,6 @@ def test_list_repo_tags_sparse_manifest_detection(app, initialized_db):
     """Test that sparse manifests are correctly detected."""
     from data.database import Manifest as ManifestTable
     from data.database import ManifestChild, Tag
-    from data.model.oci.tag import get_tag, retarget_tag
     from data.model.repository import create_repository
     from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
     from image.docker.schema2.manifest import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
