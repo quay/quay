@@ -1092,7 +1092,8 @@ class TestClaimOrgMirrorRepo:
         claimed2 = claim_org_mirror_repo(repo)
         assert claimed2 is None
 
-    def test_claim_cancelled_repo_returns_none(self, initialized_db):
+    @pytest.mark.usefixtures("initialized_db")
+    def test_claim_cancelled_repo_returns_none(self):
         """
         Claiming a repo that was cancelled (even with stale object) should return None.
         This prevents race condition where cancel is triggered after repos are fetched.
@@ -1128,7 +1129,8 @@ class TestClaimOrgMirrorRepo:
         refreshed = OrgMirrorRepository.get_by_id(repo.id)
         assert refreshed.sync_status == OrgMirrorRepoStatus.CANCEL
 
-    def test_claim_cancelled_repo_with_syncing_status_returns_none(self, initialized_db):
+    @pytest.mark.usefixtures("initialized_db")
+    def test_claim_cancelled_repo_with_syncing_status_returns_none(self):
         """
         Even if a repo was SYNCING and then cancelled, claim should fail.
         """
@@ -1157,6 +1159,66 @@ class TestClaimOrgMirrorRepo:
         claimed = claim_org_mirror_repo(repo)
 
         # Should return None
+        assert claimed is None
+
+    @pytest.mark.usefixtures("initialized_db")
+    def test_claim_deleted_repo_returns_none(self):
+        """
+        Claiming a repo that gets deleted during claim should return None.
+        This tests the DoesNotExist exception handling.
+        """
+        from unittest.mock import patch
+
+        org, robot = _create_org_and_robot("claim_test7")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="delete-during-claim-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_retries_remaining=3,
+        )
+
+        original_get_by_id = OrgMirrorRepository.get_by_id
+
+        def mock_get_by_id(id_val):
+            # Delete the repo when get_by_id is called (simulates race condition)
+            OrgMirrorRepository.delete().where(OrgMirrorRepository.id == id_val).execute()
+            return original_get_by_id(id_val)
+
+        with patch.object(OrgMirrorRepository, "get_by_id", side_effect=mock_get_by_id):
+            claimed = claim_org_mirror_repo(repo)
+
+        # Should return None because repo was deleted
+        assert claimed is None
+
+    @pytest.mark.usefixtures("initialized_db")
+    def test_claim_expired_repo_when_expire_fails(self):
+        """
+        Claiming an expired repo should return None if expire_org_mirror_repo fails.
+        This tests the case where expire returns None during claim.
+        """
+        from unittest.mock import patch
+
+        org, robot = _create_org_and_robot("claim_test8")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=2)
+        expired_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="expire-fail-claim-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=past_time,
+            sync_retries_remaining=1,
+            sync_expiration_date=expired_time,
+        )
+
+        # Mock expire_org_mirror_repo to return None (simulates race condition)
+        with patch("data.model.org_mirror.expire_org_mirror_repo", return_value=None):
+            claimed = claim_org_mirror_repo(repo)
+
+        # Should return None because expire failed
         assert claimed is None
 
 
@@ -1264,6 +1326,41 @@ class TestExpireOrgMirrorRepo:
         assert expired.sync_status == OrgMirrorRepoStatus.NEVER_RUN
         assert expired.sync_expiration_date is None
         assert expired.sync_retries_remaining == MAX_SYNC_RETRIES
+
+    def test_expire_deleted_repo_returns_none(self, initialized_db):
+        """
+        Expiring a repo that gets deleted during expire should return None.
+        This tests the DoesNotExist exception handling.
+        """
+        from unittest.mock import patch
+
+        org, robot = _create_org_and_robot("expire_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=2)
+        expired_time = datetime.utcnow() - timedelta(hours=1)
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="delete-during-expire-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=past_time,
+            sync_retries_remaining=1,
+            sync_expiration_date=expired_time,
+        )
+
+        repo_id = repo.id
+        original_get_by_id = OrgMirrorRepository.get_by_id
+
+        def mock_get_by_id(id_val):
+            # Delete the repo when get_by_id is called (simulates race condition)
+            OrgMirrorRepository.delete().where(OrgMirrorRepository.id == id_val).execute()
+            return original_get_by_id(id_val)
+
+        with patch.object(OrgMirrorRepository, "get_by_id", side_effect=mock_get_by_id):
+            expired = expire_org_mirror_repo(repo)
+
+        # Should return None because repo was deleted
+        assert expired is None
 
 
 class TestUpdateSyncStatusToSyncNow:
@@ -1750,3 +1847,28 @@ class TestCheckOrgMirrorRepoSyncStatus:
         result = check_org_mirror_repo_sync_status(repo)
 
         assert result == OrgMirrorRepoStatus.FAIL
+
+    def test_returns_cancel_when_repo_deleted(self, initialized_db):
+        """
+        Should return CANCEL status when repo has been deleted.
+        This handles the case where config is deleted mid-sync.
+        """
+        from data.model.org_mirror import check_org_mirror_repo_sync_status
+
+        org, robot = _create_org_and_robot("check_status_test6")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="deleted-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+        )
+
+        # Delete the repo to simulate config deletion mid-sync
+        repo_id = repo.id
+        OrgMirrorRepository.delete().where(OrgMirrorRepository.id == repo_id).execute()
+
+        # Should return CANCEL for deleted repo
+        result = check_org_mirror_repo_sync_status(repo)
+
+        assert result == OrgMirrorRepoStatus.CANCEL

@@ -465,12 +465,11 @@ class TestPerformOrgMirrorRepo:
         assert result == OrgMirrorRepoStatus.FAIL
 
     @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
     @patch("workers.repomirrorworker.check_org_mirror_repo_sync_status")
-    def test_sync_cancelled_during_tag_loop(
-        self, mock_check_status, mock_token, mock_logs, initialized_db, app
-    ):
+    def test_sync_cancelled_during_tag_loop(self, mock_check_status, mock_token, _mock_logs):
         """Test that sync is cancelled when cancel is detected during tag processing."""
         org, robot = _create_org_and_robot("sync_test_cancel1")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -504,12 +503,11 @@ class TestPerformOrgMirrorRepo:
         assert mock_skopeo.copy.call_count == 2
 
     @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
     @patch("workers.repomirrorworker.check_org_mirror_repo_sync_status")
-    def test_cancel_emits_correct_log(
-        self, mock_check_status, mock_token, mock_logs, initialized_db, app
-    ):
+    def test_cancel_emits_correct_log(self, mock_check_status, mock_token, mock_logs):
         """Test that correct log is emitted when sync is cancelled."""
         org, robot = _create_org_and_robot("sync_test_cancel2")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -547,12 +545,11 @@ class TestPerformOrgMirrorRepo:
         assert "cancelled" in log_calls[0][1]["metadata"]["message"].lower()
 
     @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
     @patch("workers.repomirrorworker.check_org_mirror_repo_sync_status")
-    def test_cancel_stops_at_first_detection(
-        self, mock_check_status, mock_token, mock_logs, initialized_db, app
-    ):
+    def test_cancel_stops_at_first_detection(self, mock_check_status, mock_token, _mock_logs):
         """Test that remaining tags are not processed after cancel detection."""
         org, robot = _create_org_and_robot("sync_test_cancel3")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -589,11 +586,12 @@ class TestPerformOrgMirrorRepo:
         assert mock_skopeo.copy.call_count == 3
 
     @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
     @patch("workers.repomirrorworker.check_org_mirror_repo_sync_status")
     def test_cancel_releases_repo_with_cancel_status(
-        self, mock_check_status, mock_token, mock_logs, initialized_db, app
+        self, mock_check_status, mock_token, _mock_logs
     ):
         """Test that repo is released with CANCEL status after cancellation."""
         org, robot = _create_org_and_robot("sync_test_cancel4")

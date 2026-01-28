@@ -501,19 +501,6 @@ def claim_org_mirror_repo(org_mirror_repo: OrgMirrorRepository) -> Optional[OrgM
         now = datetime.utcnow()
         expiration_date = now + timedelta(seconds=MAX_SYNC_DURATION)
 
-        # Re-fetch current status from DB to detect cancel that happened after fetch
-        # If the row was deleted between fetch and claim, treat as unclaimable
-        try:
-            current_status = OrgMirrorRepository.get(
-                OrgMirrorRepository.id == org_mirror_repo.id
-            ).sync_status
-        except OrgMirrorRepository.DoesNotExist:
-            return None
-
-        # If cancelled, do not claim - cancel takes priority
-        if current_status == OrgMirrorRepoStatus.CANCEL:
-            return None
-
         # If already syncing with valid expiration, cannot claim
         if org_mirror_repo.sync_status == OrgMirrorRepoStatus.SYNCING:
             if org_mirror_repo.sync_expiration_date and now <= org_mirror_repo.sync_expiration_date:
@@ -521,9 +508,10 @@ def claim_org_mirror_repo(org_mirror_repo: OrgMirrorRepository) -> Optional[OrgM
 
         # If expired, reset the repo for retry (stalled worker recovery)
         if org_mirror_repo.sync_expiration_date and now > org_mirror_repo.sync_expiration_date:
-            expire_org_mirror_repo(org_mirror_repo)
-            # Re-fetch after expire
-            org_mirror_repo = OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+            expired_repo = expire_org_mirror_repo(org_mirror_repo)
+            if expired_repo is None:
+                return None
+            org_mirror_repo = expired_repo
 
         # Attempt atomic update with optimistic locking
         query = OrgMirrorRepository.update(
@@ -533,11 +521,15 @@ def claim_org_mirror_repo(org_mirror_repo: OrgMirrorRepository) -> Optional[OrgM
         ).where(
             OrgMirrorRepository.id == org_mirror_repo.id,
             OrgMirrorRepository.sync_transaction_id == org_mirror_repo.sync_transaction_id,
+            OrgMirrorRepository.sync_status != OrgMirrorRepoStatus.CANCEL,
         )
 
-        updated = query.execute()
-
-    return OrgMirrorRepository.get_by_id(org_mirror_repo.id) if updated else None
+        if query.execute():
+            try:
+                return OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+            except OrgMirrorRepository.DoesNotExist:
+                return None
+        return None
 
 
 def check_org_mirror_repo_sync_status(org_mirror_repo: OrgMirrorRepository) -> OrgMirrorRepoStatus:
@@ -653,11 +645,14 @@ def expire_org_mirror_repo(org_mirror_repo: OrgMirrorRepository) -> Optional[Org
     ).where(
         OrgMirrorRepository.id == org_mirror_repo.id,
         OrgMirrorRepository.sync_transaction_id == org_mirror_repo.sync_transaction_id,
+        OrgMirrorRepository.sync_status != OrgMirrorRepoStatus.CANCEL,
     )
 
     if query.execute():
-        return OrgMirrorRepository.get_by_id(org_mirror_repo.id)
-
+        try:
+            return OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+        except OrgMirrorRepository.DoesNotExist:
+            return None
     return None
 
 
