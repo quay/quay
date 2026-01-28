@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useMemo} from 'react';
 import {
   FormGroup,
   Select,
@@ -10,16 +10,18 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
+  Spinner,
+  Alert,
 } from '@patternfly/react-core';
+import {useMirrorArchitectures} from 'src/hooks/UseRegistryCapabilities';
 
-// Available architectures matching the backend validation
-// See data/model/repo_mirror.py:VALID_ARCHITECTURES
-const AVAILABLE_ARCHITECTURES = [
-  {value: 'amd64', label: 'AMD64 (x86_64)'},
-  {value: 'arm64', label: 'ARM64 (aarch64)'},
-  {value: 'ppc64le', label: 'PowerPC 64 LE'},
-  {value: 's390x', label: 'IBM Z (s390x)'},
-];
+// Human-readable labels for architectures
+const ARCHITECTURE_LABELS: Record<string, string> = {
+  amd64: 'AMD64 (x86_64)',
+  arm64: 'ARM64 (aarch64)',
+  ppc64le: 'PowerPC 64 LE',
+  s390x: 'IBM Z (s390x)',
+};
 
 interface ArchitectureFilterProps {
   selectedArchitectures: string[];
@@ -33,6 +35,15 @@ export const ArchitectureFilter: React.FC<ArchitectureFilterProps> = ({
   isDisabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const {architectures, isLoading, error} = useMirrorArchitectures();
+
+  // Build available architectures from backend data
+  const availableArchitectures = useMemo(() => {
+    return architectures.map((arch) => ({
+      value: arch,
+      label: ARCHITECTURE_LABELS[arch] || arch,
+    }));
+  }, [architectures]);
 
   const onToggle = () => {
     setIsOpen(!isOpen);
@@ -67,10 +78,39 @@ export const ArchitectureFilter: React.FC<ArchitectureFilterProps> = ({
     return selectedArchitectures
       .map(
         (arch) =>
-          AVAILABLE_ARCHITECTURES.find((a) => a.value === arch)?.value || arch,
+          availableArchitectures.find((a) => a.value === arch)?.value || arch,
       )
       .join(', ');
   };
+
+  if (isLoading) {
+    return (
+      <FormGroup
+        label="Architecture Filter"
+        fieldId="architecture_filter"
+        isStack
+      >
+        <Spinner size="md" data-testid="architecture-filter-loading" />
+      </FormGroup>
+    );
+  }
+
+  if (error) {
+    return (
+      <FormGroup
+        label="Architecture Filter"
+        fieldId="architecture_filter"
+        isStack
+      >
+        <Alert
+          variant="warning"
+          isInline
+          title="Failed to load architectures"
+          data-testid="architecture-filter-error"
+        />
+      </FormGroup>
+    );
+  }
 
   return (
     <FormGroup
@@ -107,7 +147,7 @@ export const ArchitectureFilter: React.FC<ArchitectureFilterProps> = ({
         )}
       >
         <SelectList data-testid="architecture-filter-list">
-          {AVAILABLE_ARCHITECTURES.map((arch) => (
+          {availableArchitectures.map((arch) => (
             <SelectOption
               key={arch.value}
               value={arch.value}

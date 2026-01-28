@@ -1,12 +1,27 @@
 import React from 'react';
 import {render, screen, fireEvent} from '@testing-library/react';
 import {ArchitectureFilter} from '../ArchitectureFilter';
+import * as UseRegistryCapabilities from 'src/hooks/UseRegistryCapabilities';
+
+const defaultArchitectures = ['amd64', 'arm64', 'ppc64le', 's390x'];
 
 describe('ArchitectureFilter', () => {
   const mockOnChange = jest.fn();
 
   beforeEach(() => {
     mockOnChange.mockClear();
+    // Default mock implementation - successful load
+    jest
+      .spyOn(UseRegistryCapabilities, 'useMirrorArchitectures')
+      .mockReturnValue({
+        architectures: defaultArchitectures,
+        isLoading: false,
+        error: null,
+      });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('renders with no selection and shows "All architectures" placeholder', () => {
@@ -169,6 +184,49 @@ describe('ArchitectureFilter', () => {
     // "Clear all" should not be visible
     expect(
       screen.queryByTestId('architecture-clear-all'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows loading spinner while fetching architectures', () => {
+    jest
+      .spyOn(UseRegistryCapabilities, 'useMirrorArchitectures')
+      .mockReturnValue({
+        architectures: [],
+        isLoading: true,
+        error: null,
+      });
+
+    render(
+      <ArchitectureFilter selectedArchitectures={[]} onChange={mockOnChange} />,
+    );
+
+    expect(
+      screen.getByTestId('architecture-filter-loading'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('architecture-filter-toggle'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows error alert when fetching architectures fails', () => {
+    jest
+      .spyOn(UseRegistryCapabilities, 'useMirrorArchitectures')
+      .mockReturnValue({
+        architectures: [],
+        isLoading: false,
+        error: new Error('Failed to fetch'),
+      });
+
+    render(
+      <ArchitectureFilter selectedArchitectures={[]} onChange={mockOnChange} />,
+    );
+
+    expect(screen.getByTestId('architecture-filter-error')).toBeInTheDocument();
+    expect(
+      screen.getByText('Failed to load architectures'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('architecture-filter-toggle'),
     ).not.toBeInTheDocument();
   });
 });
