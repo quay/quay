@@ -22,7 +22,7 @@ def handle_dme(ex):
 
 
 @app.errorhandler(CannotSendEmailException)
-def handle_emailexception(ex):
+def handle_emailexception(_ex):
     message = "Could not send email. Please contact an administrator and report this problem."
     response = jsonify(
         {
