@@ -16,7 +16,11 @@ from data.registry_model.datatypes import RepositoryReference
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
-from workers.repomirrorworker import delete_obsolete_tags
+from workers.repomirrorworker import (
+    _get_v2_bearer_token,
+    delete_obsolete_tags,
+    push_sparse_manifest_list,
+)
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 
 
@@ -1076,3 +1080,385 @@ def test_mirror_no_matching_architectures(run_skopeo_mock, initialized_db, app):
     # Mirror should fail due to no matching architectures
     mirror = RepoMirrorConfig.get_by_id(mirror.id)
     assert mirror.sync_status == RepoMirrorStatus.FAIL
+
+
+# =============================================================================
+# Tests for _get_v2_bearer_token()
+# =============================================================================
+
+
+class MockResponse:
+    """Mock response object for requests."""
+
+    def __init__(self, status_code, headers=None, json_data=None, text=""):
+        self.status_code = status_code
+        self.headers = headers or {}
+        self._json_data = json_data
+        self.text = text
+
+    def json(self):
+        return self._json_data
+
+
+@mock.patch("workers.repomirrorworker.requests.get")
+def test_get_v2_bearer_token_success(mock_get, initialized_db, app):
+    """
+    Test successful token acquisition with WWW-Authenticate header parsing.
+    """
+    # First call to v2 endpoint returns 401 with WWW-Authenticate header
+    challenge_response = MockResponse(
+        401,
+        headers={
+            "WWW-Authenticate": 'Bearer realm="https://auth.example.com/token",service="registry.example.com",scope="repository:namespace/repo:pull"'
+        },
+    )
+
+    # Second call to token endpoint returns the token
+    token_response = MockResponse(
+        200,
+        json_data={"token": "test-bearer-token-12345"},
+    )
+
+    mock_get.side_effect = [challenge_response, token_response]
+
+    token = _get_v2_bearer_token(
+        server="registry.example.com",
+        scheme="https",
+        namespace="namespace",
+        repo_name="repo",
+        username="testuser",
+        password="testpass",
+        verify_tls=True,
+    )
+
+    assert token == "test-bearer-token-12345"
+    assert mock_get.call_count == 2
+
+    # Verify first call was to v2 endpoint
+    first_call = mock_get.call_args_list[0]
+    assert first_call[0][0] == "https://registry.example.com/v2/"
+
+    # Verify second call was to token endpoint with correct auth
+    second_call = mock_get.call_args_list[1]
+    assert "https://auth.example.com/token" in second_call[0][0]
+    assert second_call[1]["auth"] == ("testuser", "testpass")
+
+
+@mock.patch("workers.repomirrorworker.requests.get")
+def test_get_v2_bearer_token_access_token_key(mock_get, initialized_db, app):
+    """
+    Test token acquisition when response uses access_token key instead of token.
+    """
+    challenge_response = MockResponse(
+        401,
+        headers={
+            "WWW-Authenticate": 'Bearer realm="https://auth.example.com/token",service="registry.example.com"'
+        },
+    )
+
+    # Some registries return "access_token" instead of "token"
+    token_response = MockResponse(
+        200,
+        json_data={"access_token": "access-token-67890"},
+    )
+
+    mock_get.side_effect = [challenge_response, token_response]
+
+    token = _get_v2_bearer_token(
+        server="registry.example.com",
+        scheme="https",
+        namespace="namespace",
+        repo_name="repo",
+        username="testuser",
+        password="testpass",
+        verify_tls=True,
+    )
+
+    assert token == "access-token-67890"
+
+
+@mock.patch("workers.repomirrorworker.requests.get")
+def test_get_v2_bearer_token_no_auth_required(mock_get, initialized_db, app):
+    """
+    Test that None is returned when v2 endpoint returns 200 (no auth required).
+    """
+    # V2 endpoint returns 200 - no authentication required
+    mock_get.return_value = MockResponse(200)
+
+    token = _get_v2_bearer_token(
+        server="registry.example.com",
+        scheme="https",
+        namespace="namespace",
+        repo_name="repo",
+        username="testuser",
+        password="testpass",
+        verify_tls=True,
+    )
+
+    assert token is None
+    assert mock_get.call_count == 1
+
+
+@mock.patch("workers.repomirrorworker.requests.get")
+def test_get_v2_bearer_token_no_www_auth_header(mock_get, initialized_db, app):
+    """
+    Test that None is returned when no WWW-Authenticate header is present.
+    """
+    # 401 response but no WWW-Authenticate header
+    mock_get.return_value = MockResponse(401, headers={})
+
+    token = _get_v2_bearer_token(
+        server="registry.example.com",
+        scheme="https",
+        namespace="namespace",
+        repo_name="repo",
+        username="testuser",
+        password="testpass",
+        verify_tls=True,
+    )
+
+    assert token is None
+
+
+@mock.patch("workers.repomirrorworker.requests.get")
+def test_get_v2_bearer_token_invalid_realm(mock_get, initialized_db, app):
+    """
+    Test that None is returned when realm cannot be parsed from header.
+    """
+    # WWW-Authenticate header without realm
+    mock_get.return_value = MockResponse(
+        401,
+        headers={"WWW-Authenticate": 'Bearer service="registry.example.com"'},
+    )
+
+    token = _get_v2_bearer_token(
+        server="registry.example.com",
+        scheme="https",
+        namespace="namespace",
+        repo_name="repo",
+        username="testuser",
+        password="testpass",
+        verify_tls=True,
+    )
+
+    assert token is None
+
+
+@mock.patch("workers.repomirrorworker.requests.get")
+def test_get_v2_bearer_token_request_exception(mock_get, initialized_db, app):
+    """
+    Test that None is returned when a request exception occurs.
+    """
+    import requests
+
+    mock_get.side_effect = requests.RequestException("Connection failed")
+
+    token = _get_v2_bearer_token(
+        server="registry.example.com",
+        scheme="https",
+        namespace="namespace",
+        repo_name="repo",
+        username="testuser",
+        password="testpass",
+        verify_tls=True,
+    )
+
+    assert token is None
+
+
+@mock.patch("workers.repomirrorworker.requests.get")
+def test_get_v2_bearer_token_token_request_fails(mock_get, initialized_db, app):
+    """
+    Test that None is returned when token request fails with non-200 status.
+    """
+    challenge_response = MockResponse(
+        401,
+        headers={
+            "WWW-Authenticate": 'Bearer realm="https://auth.example.com/token",service="registry.example.com"'
+        },
+    )
+
+    # Token request fails
+    token_response = MockResponse(401, text="Unauthorized")
+
+    mock_get.side_effect = [challenge_response, token_response]
+
+    token = _get_v2_bearer_token(
+        server="registry.example.com",
+        scheme="https",
+        namespace="namespace",
+        repo_name="repo",
+        username="testuser",
+        password="testpass",
+        verify_tls=True,
+    )
+
+    assert token is None
+
+
+# =============================================================================
+# Tests for push_sparse_manifest_list() with bearer token logic
+# =============================================================================
+
+
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+@mock.patch("workers.repomirrorworker._get_v2_bearer_token")
+@mock.patch("workers.repomirrorworker.requests.put")
+def test_push_sparse_manifest_list_with_bearer_token(
+    mock_put, mock_get_token, mock_retrieve_robot_token, initialized_db, app
+):
+    """
+    Test that bearer token is used when token exchange succeeds.
+    """
+    mirror, repo = create_mirror_repo_robot(["latest"])
+
+    mock_retrieve_robot_token.return_value = "robot-token-123"
+    mock_get_token.return_value = "bearer-token-456"
+    mock_put.return_value = MockResponse(201)
+
+    manifest_bytes = b'{"schemaVersion": 2, "manifests": []}'
+    media_type = "application/vnd.docker.distribution.manifest.list.v2+json"
+
+    result = push_sparse_manifest_list(mirror, "latest", manifest_bytes, media_type)
+
+    assert result is True
+    mock_put.assert_called_once()
+
+    # Verify bearer token was used (Authorization header, no auth tuple)
+    call_kwargs = mock_put.call_args[1]
+    assert call_kwargs["headers"]["Authorization"] == "Bearer bearer-token-456"
+    assert call_kwargs["auth"] is None
+
+
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+@mock.patch("workers.repomirrorworker._get_v2_bearer_token")
+@mock.patch("workers.repomirrorworker.requests.put")
+def test_push_sparse_manifest_list_fallback_to_basic_auth(
+    mock_put, mock_get_token, mock_retrieve_robot_token, initialized_db, app
+):
+    """
+    Test fallback to basic auth when token exchange returns None.
+    """
+    mirror, repo = create_mirror_repo_robot(["latest"])
+
+    mock_retrieve_robot_token.return_value = "robot-token-123"
+    mock_get_token.return_value = None  # Token exchange failed
+    mock_put.return_value = MockResponse(200)
+
+    manifest_bytes = '{"schemaVersion": 2, "manifests": []}'
+    media_type = "application/vnd.oci.image.index.v1+json"
+
+    result = push_sparse_manifest_list(mirror, "v1.0", manifest_bytes, media_type)
+
+    assert result is True
+    mock_put.assert_called_once()
+
+    # Verify basic auth was used (auth tuple, no Authorization header)
+    call_kwargs = mock_put.call_args[1]
+    assert "Authorization" not in call_kwargs["headers"]
+    assert call_kwargs["auth"] == (mirror.internal_robot.username, "robot-token-123")
+
+
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+@mock.patch("workers.repomirrorworker._get_v2_bearer_token")
+@mock.patch("workers.repomirrorworker.requests.put")
+def test_push_sparse_manifest_list_put_fails(
+    mock_put, mock_get_token, mock_retrieve_robot_token, initialized_db, app
+):
+    """
+    Test that False is returned when PUT request fails.
+    """
+    mirror, repo = create_mirror_repo_robot(["latest"])
+
+    mock_retrieve_robot_token.return_value = "robot-token-123"
+    mock_get_token.return_value = "bearer-token-456"
+    mock_put.return_value = MockResponse(500, text="Internal Server Error")
+
+    manifest_bytes = b'{"schemaVersion": 2, "manifests": []}'
+    media_type = "application/vnd.docker.distribution.manifest.list.v2+json"
+
+    result = push_sparse_manifest_list(mirror, "latest", manifest_bytes, media_type)
+
+    assert result is False
+
+
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+@mock.patch("workers.repomirrorworker._get_v2_bearer_token")
+@mock.patch("workers.repomirrorworker.requests.put")
+def test_push_sparse_manifest_list_request_exception(
+    mock_put, mock_get_token, mock_retrieve_robot_token, initialized_db, app
+):
+    """
+    Test that False is returned when a request exception occurs.
+    """
+    import requests
+
+    mirror, repo = create_mirror_repo_robot(["latest"])
+
+    mock_retrieve_robot_token.return_value = "robot-token-123"
+    mock_get_token.return_value = "bearer-token-456"
+    mock_put.side_effect = requests.RequestException("Connection failed")
+
+    manifest_bytes = b'{"schemaVersion": 2, "manifests": []}'
+    media_type = "application/vnd.docker.distribution.manifest.list.v2+json"
+
+    result = push_sparse_manifest_list(mirror, "latest", manifest_bytes, media_type)
+
+    assert result is False
+
+
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+@mock.patch("workers.repomirrorworker._get_v2_bearer_token")
+@mock.patch("workers.repomirrorworker.requests.put")
+def test_push_sparse_manifest_list_uses_config_scheme(
+    mock_put, mock_get_token, mock_retrieve_robot_token, initialized_db, app
+):
+    """
+    Test that the URL scheme comes from app config.
+    """
+    mirror, repo = create_mirror_repo_robot(["latest"])
+
+    mock_retrieve_robot_token.return_value = "robot-token-123"
+    mock_get_token.return_value = "bearer-token-456"
+    mock_put.return_value = MockResponse(201)
+
+    manifest_bytes = b'{"schemaVersion": 2, "manifests": []}'
+    media_type = "application/vnd.docker.distribution.manifest.list.v2+json"
+
+    with patch.dict(app.config, {"PREFERRED_URL_SCHEME": "http"}):
+        result = push_sparse_manifest_list(mirror, "latest", manifest_bytes, media_type)
+
+    assert result is True
+
+    # Verify URL uses configured scheme
+    call_args = mock_put.call_args[0]
+    assert call_args[0].startswith("http://")
+
+
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+@mock.patch("workers.repomirrorworker._get_v2_bearer_token")
+@mock.patch("workers.repomirrorworker.requests.put")
+def test_push_sparse_manifest_list_string_manifest(
+    mock_put, mock_get_token, mock_retrieve_robot_token, initialized_db, app
+):
+    """
+    Test that string manifest bytes are properly encoded to UTF-8.
+    """
+    mirror, repo = create_mirror_repo_robot(["latest"])
+
+    mock_retrieve_robot_token.return_value = "robot-token-123"
+    mock_get_token.return_value = "bearer-token-456"
+    mock_put.return_value = MockResponse(201)
+
+    # Pass manifest as string instead of bytes
+    manifest_str = '{"schemaVersion": 2, "manifests": []}'
+    media_type = "application/vnd.docker.distribution.manifest.list.v2+json"
+
+    result = push_sparse_manifest_list(mirror, "latest", manifest_str, media_type)
+
+    assert result is True
+
+    # Verify data was encoded to bytes
+    call_kwargs = mock_put.call_args[1]
+    assert isinstance(call_kwargs["data"], bytes)
+    assert call_kwargs["data"] == manifest_str.encode("utf-8")
