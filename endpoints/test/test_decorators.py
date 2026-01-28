@@ -66,7 +66,9 @@ def test_cannot_send_email_exception_handler():
     assert response.status_code == 400
     data = response.get_json()
 
-    expected_message = "Could not send email. Please contact an administrator and report this problem."
+    expected_message = (
+        "Could not send email. Please contact an administrator and report this problem."
+    )
     assert data["error_message"] == expected_message
     assert data["detail"] == expected_message
     assert data["message"] == expected_message
