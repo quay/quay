@@ -35,7 +35,6 @@ from endpoints.api.repotoken import *
 from endpoints.api.robot import *  # type: ignore[no-redef]
 from endpoints.api.search import *  # type: ignore
 from endpoints.api.secscan import *
-from endpoints.api.signing import *  # type: ignore[no-redef]
 from endpoints.api.subscribe import *  # type: ignore[no-redef]
 from endpoints.api.suconfig import *  # type: ignore[no-redef]
 from endpoints.api.superuser import *  # type: ignore
@@ -146,9 +145,6 @@ SECURITY_TESTS: List[
     (SuperUserDumpConfig, "GET", None, None, "reader", 403),
     (SuperUserDumpConfig, "GET", None, None, "devtable", 403),
     (SuperUserDumpConfig, "GET", None, None, "globalreadonlysuperuser", 403),
-    (RepositorySignatures, "GET", REPO_PARAMS, {}, "freshuser", 403),
-    (RepositorySignatures, "GET", REPO_PARAMS, {}, "reader", 403),
-    (RepositorySignatures, "GET", REPO_PARAMS, {}, "devtable", 404),
     (RepositoryNotification, "POST", NOTIFICATION_PARAMS, {}, None, 401),
     (RepositoryNotification, "POST", NOTIFICATION_PARAMS, {}, "freshuser", 403),
     (RepositoryNotification, "POST", NOTIFICATION_PARAMS, {}, "reader", 403),
