@@ -22,9 +22,16 @@ def handle_dme(ex):
 
 
 @app.errorhandler(CannotSendEmailException)
-def handle_emailexception(ex):
+def handle_emailexception(_ex):
     message = "Could not send email. Please contact an administrator and report this problem."
-    response = jsonify({"message": message})
+    response = jsonify(
+        {
+            "error_message": message,  # Standard field for new UI
+            "detail": message,  # Standard field matching ApiException format
+            "message": message,  # Keep for backward compatibility with old UI
+            "status": 400,
+        }
+    )
     response.status_code = 400
     return response
 
