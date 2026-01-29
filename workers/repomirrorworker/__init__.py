@@ -1,6 +1,7 @@
 import fnmatch
 import logging
 import os
+import re
 import traceback
 from typing import Optional
 
@@ -518,7 +519,6 @@ def _get_v2_bearer_token(server, scheme, namespace, repo_name, username, passwor
 
     Performs the OAuth2 token exchange required by v2 registries.
     """
-    import re
 
     # First, make a request to get the WWW-Authenticate challenge
     v2_url = f"{scheme}://{server}/v2/"
