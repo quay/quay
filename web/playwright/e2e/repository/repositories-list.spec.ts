@@ -500,4 +500,184 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
       expect(count).toBeGreaterThanOrEqual(2);
     });
   });
+
+  test.describe('column management', () => {
+    test.afterEach(async ({authenticatedPage}) => {
+      // Clear column management localStorage keys
+      await authenticatedPage.evaluate(() => {
+        localStorage.removeItem('quay-columns-repositories-list');
+      });
+    });
+
+    test('opens manage columns modal and shows default columns', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // Create test data
+      const org = await api.organization('colmgmt');
+      await api.repository(org.name, 'testrepo');
+
+      await authenticatedPage.goto(`/organization/${org.name}`);
+
+      // Scope to Repositories tab panel
+      const reposPanel = authenticatedPage.getByRole('tabpanel', {
+        name: 'Repositories',
+      });
+
+      // Click manage columns button
+      await reposPanel.getByTestId('manage-columns-button').click();
+
+      // Verify modal opens
+      const modal = authenticatedPage.locator('.pf-v5-c-modal-box');
+      await expect(modal).toBeVisible();
+      await expect(modal.locator('.pf-v5-c-modal-box__title')).toContainText(
+        'Manage columns',
+      );
+
+      // Verify default columns section
+      await expect(
+        modal.getByRole('heading', {name: 'Default columns'}),
+      ).toBeVisible();
+      await expect(
+        modal.getByRole('heading', {name: 'Additional columns'}),
+      ).toBeVisible();
+
+      // Verify default columns are listed (Name, Visibility, Last Modified)
+      await expect(modal.locator('[id="column-name"]')).toBeVisible();
+      await expect(modal.locator('[id="column-visibility"]')).toBeVisible();
+      await expect(modal.locator('[id="column-lastModified"]')).toBeVisible();
+
+      // Verify Name column checkbox is disabled (required)
+      await expect(modal.locator('[name="column-name"]')).toBeDisabled();
+      await expect(modal.getByText('(Required)')).toBeVisible();
+
+      // Close modal
+      await authenticatedPage.getByTestId('manage-columns-cancel').click();
+      await expect(modal).not.toBeVisible();
+    });
+
+    test('toggles column visibility', async ({authenticatedPage, api}) => {
+      // Create test data
+      const org = await api.organization('coltoggle');
+      await api.repository(org.name, 'testrepo');
+
+      await authenticatedPage.goto(`/organization/${org.name}`);
+
+      const reposPanel = authenticatedPage.getByRole('tabpanel', {
+        name: 'Repositories',
+      });
+
+      // Verify Visibility column is visible initially
+      await expect(
+        reposPanel.locator('th').getByText('Visibility'),
+      ).toBeVisible();
+      await expect(
+        reposPanel.locator('td[data-label="Visibility"]').first(),
+      ).toBeVisible();
+
+      // Open manage columns modal and hide Visibility column
+      await reposPanel.getByTestId('manage-columns-button').click();
+      const modal = authenticatedPage.locator('.pf-v5-c-modal-box');
+      await modal.locator('[name="column-visibility"]').click();
+      await authenticatedPage.getByTestId('manage-columns-save').click();
+
+      // Verify modal closed
+      await expect(modal).not.toBeVisible();
+
+      // Verify Visibility column is now hidden
+      await expect(
+        reposPanel.locator('th').getByText('Visibility'),
+      ).not.toBeVisible();
+      await expect(
+        reposPanel.locator('td[data-label="Visibility"]'),
+      ).toHaveCount(0);
+
+      // Re-enable the column
+      await reposPanel.getByTestId('manage-columns-button').click();
+      await modal.locator('[name="column-visibility"]').click();
+      await authenticatedPage.getByTestId('manage-columns-save').click();
+
+      // Verify Visibility column is visible again
+      await expect(
+        reposPanel.locator('th').getByText('Visibility'),
+      ).toBeVisible();
+    });
+
+    test('persists column preferences across page reloads', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('colpersist');
+      await api.repository(org.name, 'testrepo');
+
+      await authenticatedPage.goto(`/organization/${org.name}`);
+
+      const reposPanel = authenticatedPage.getByRole('tabpanel', {
+        name: 'Repositories',
+      });
+
+      // Hide Last Modified column
+      await reposPanel.getByTestId('manage-columns-button').click();
+      const modal = authenticatedPage.locator('.pf-v5-c-modal-box');
+      await modal.locator('[name="column-lastModified"]').click();
+      await authenticatedPage.getByTestId('manage-columns-save').click();
+
+      // Verify column is hidden
+      await expect(
+        reposPanel.locator('th').getByText('Last Modified'),
+      ).not.toBeVisible();
+
+      // Reload the page
+      await authenticatedPage.reload();
+
+      // Re-scope to Repositories tab panel after reload
+      const reposPanelAfterReload = authenticatedPage.getByRole('tabpanel', {
+        name: 'Repositories',
+      });
+
+      // Verify column is still hidden after reload
+      await expect(
+        reposPanelAfterReload.locator('th').getByText('Last Modified'),
+      ).not.toBeVisible();
+    });
+
+    test('restores default columns', async ({authenticatedPage, api}) => {
+      const org = await api.organization('colrestore');
+      await api.repository(org.name, 'testrepo');
+
+      await authenticatedPage.goto(`/organization/${org.name}`);
+
+      const reposPanel = authenticatedPage.getByRole('tabpanel', {
+        name: 'Repositories',
+      });
+
+      // Hide multiple columns
+      await reposPanel.getByTestId('manage-columns-button').click();
+      const modal = authenticatedPage.locator('.pf-v5-c-modal-box');
+      await modal.locator('[name="column-visibility"]').click();
+      await modal.locator('[name="column-lastModified"]').click();
+      await authenticatedPage.getByTestId('manage-columns-save').click();
+
+      // Verify columns are hidden
+      await expect(
+        reposPanel.locator('th').getByText('Visibility'),
+      ).not.toBeVisible();
+      await expect(
+        reposPanel.locator('th').getByText('Last Modified'),
+      ).not.toBeVisible();
+
+      // Open modal and restore defaults
+      await reposPanel.getByTestId('manage-columns-button').click();
+      await authenticatedPage.getByTestId('manage-columns-restore').click();
+      await authenticatedPage.getByTestId('manage-columns-save').click();
+
+      // Verify all default columns are visible again
+      await expect(
+        reposPanel.locator('th').getByText('Visibility'),
+      ).toBeVisible();
+      await expect(
+        reposPanel.locator('th').getByText('Last Modified'),
+      ).toBeVisible();
+    });
+  });
 });
