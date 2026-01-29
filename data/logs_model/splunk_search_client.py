@@ -68,6 +68,7 @@ class SplunkSearchClient:
         index_prefix: Optional[str] = None,
         search_timeout: int = 60,
         max_results: int = 10000,
+        **kwargs,  # Ignore extra config params (export_batch_size, etc.)
     ):
         """
         Initialize Splunk search client with connection parameters.
