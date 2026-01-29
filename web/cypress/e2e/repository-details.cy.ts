@@ -3,6 +3,39 @@
 import moment from 'moment';
 import {formatDate} from '../../src/libs/utils';
 
+/**
+ * Safely adds months to a date without JavaScript date rollover issues.
+ * When adding 1 month to Jan 29/30/31, JavaScript would roll over to March
+ * because Feb doesn't have those days. This function clamps to the last day
+ * of the target month instead.
+ *
+ * Examples:
+ * - Jan 29 + 1 month = Feb 28 (in non-leap year)
+ * - Jan 31 + 1 month = Feb 28
+ * - Mar 31 + 1 month = Apr 30
+ */
+function addMonthsSafe(date: Date, months: number): Date {
+  const result = new Date(date);
+  const targetMonth = result.getMonth() + months;
+  const originalDay = result.getDate();
+
+  // Set to day 1 first to avoid rollover when changing month
+  result.setDate(1);
+  result.setMonth(targetMonth);
+
+  // Get the last day of the new month
+  const lastDayOfMonth = new Date(
+    result.getFullYear(),
+    result.getMonth() + 1,
+    0,
+  ).getDate();
+
+  // Set day to min(original day, last day of month)
+  result.setDate(Math.min(originalDay, lastDayOfMonth));
+
+  return result;
+}
+
 describe('Repository Details Page', () => {
   beforeEach(() => {
     cy.exec('npm run quay:seed');
@@ -687,8 +720,7 @@ describe('Repository Details Page', () => {
         day: 'numeric',
       },
     );
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const nextMonth = addMonthsSafe(new Date(), 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'long',
@@ -778,8 +810,7 @@ describe('Repository Details Page', () => {
   });
 
   it('changes expiration through tag row', () => {
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const nextMonth = addMonthsSafe(new Date(), 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'long',
@@ -826,8 +857,7 @@ describe('Repository Details Page', () => {
   });
 
   it('changes multiple tag expirations', () => {
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const nextMonth = addMonthsSafe(new Date(), 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'long',
@@ -875,8 +905,7 @@ describe('Repository Details Page', () => {
   });
 
   it('alerts on failure to change expiration', () => {
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const nextMonth = addMonthsSafe(new Date(), 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'long',
