@@ -85,7 +85,7 @@
     "bootstrap-sass": "^3.3.7",
     "cache-loader": "1.x",
     "chalk": "2.3.x",
-    "chromedriver": "^2.43.3",
+    "chromedriver": "^145.0.0",
     "circular-dependency-plugin": "5.0.2",
     "css-loader": "0.28.x",
     "enzyme": "^3.9.0",
