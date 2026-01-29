@@ -861,8 +861,12 @@ class DefaultConfig(ImmutableConfig):
     # deployment to complete. Defaults to 30m.
     QUOTA_TOTAL_DELAY_SECONDS = 60 * 30
 
-    # Enables the quota backfill worker
+    # Enables the quota backfill worker.
     QUOTA_BACKFILL = True
+
+    # Enables exposing quota metrics for the registry, organizations and repositories
+    # Beware of high cardinality if there are many organizations and repositories.
+    QUOTA_METRICS = False
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
