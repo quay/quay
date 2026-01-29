@@ -30,11 +30,11 @@ logger = logging.getLogger(__name__)
 
 def check_schema1_push_enabled(error_class=None):
     """
-    Decorator which checks if schema1/v1 manifest push is enabled for the current namespace.
+    Decorator which checks if schema1 manifest push is enabled for the current namespace.
 
     This is designed for v2 endpoints where we need to check the content type to determine
-    if it's a schema1 push. If FEATURE_RESTRICTED_V1_PUSH is enabled, only namespaces in
-    V1_PUSH_WHITELIST are allowed to push schema1 manifests.
+    if it's a schema1 push. If FEATURE_RESTRICTED_V2_SCHEMA1_PUSH is enabled, only namespaces
+    in V1_PUSH_WHITELIST are allowed to push schema1 manifests via the v2 API.
 
     Args:
         error_class: Optional exception class to raise instead of abort. Should accept
