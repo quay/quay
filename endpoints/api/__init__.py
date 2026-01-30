@@ -16,10 +16,11 @@ from .__init__models_pre_oci import pre_oci_model as model
 from app import app, authentication, usermanager
 from auth import scopes
 from auth.auth_context import (
+    determine_auth_type_and_performer_kind,
     get_authenticated_context,
     get_authenticated_user,
-    get_validated_oauth_token,
     get_sso_token,
+    get_validated_oauth_token,
 )
 from auth.decorators import process_oauth
 from auth.permissions import (
@@ -692,17 +693,35 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
     if not metadata:
         metadata = {}
 
+    # Add OAuth token metadata if present
     oauth_token = get_validated_oauth_token()
     if oauth_token:
         metadata["oauth_token_id"] = oauth_token.id
         metadata["oauth_token_application_id"] = oauth_token.application.client_id
         metadata["oauth_token_application"] = oauth_token.application.name
 
+    # Use shared helper for consistent auth detection across all logging paths
+    auth_type, performer_kind = determine_auth_type_and_performer_kind(
+        auth_context=get_authenticated_context(),
+        oauth_token=oauth_token,
+    )
+
     if performer is None:
         performer = get_authenticated_user()
 
     if repo_name is not None:
         repo = data_model.repository.get_repository(user_or_orgname, repo_name)
+
+    # Capture user agent
+    user_agent = None
+    if request.user_agent:
+        user_agent = request.user_agent.string
+
+    # Get request ID if available (set by RequestWithId class in app.py)
+    request_id = getattr(request, "request_id", None)
+
+    # Get X-Forwarded-For header for original client IP behind proxies
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
 
     logs_model.log_action(
         kind,
@@ -711,6 +730,14 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
         performer=performer,
         ip=get_request_ip(),
         metadata=metadata,
+        # Enhanced logging fields for ESS EOI compliance
+        request_url=request.url,
+        http_method=request.method,
+        auth_type=auth_type,
+        user_agent=user_agent,
+        performer_kind=performer_kind,
+        request_id=request_id,
+        x_forwarded_for=x_forwarded_for,
     )
 
 
