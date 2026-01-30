@@ -25,6 +25,7 @@ from data.logs_model import logs_model
 from data.model import repository as repository_model
 from data.model.oci.tag import delete_tag, lookup_alive_tags_shallow, retarget_tag
 from data.model.org_mirror import (
+    check_org_mirror_repo_sync_status,
     claim_org_mirror_config,
     claim_org_mirror_repo,
     matches_repository_filter,
@@ -1154,6 +1155,16 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
                 unsigned_images=config.external_registry_config.get("unsigned_images", False),
             )
 
+        # Check if cancel was requested before processing next tag
+        if check_org_mirror_repo_sync_status(claimed_repo) == OrgMirrorRepoStatus.CANCEL:
+            logger.info(
+                "Org mirror sync cancelled on repo %s/%s.",
+                org.username,
+                claimed_repo.repository_name,
+            )
+            overall_status = OrgMirrorRepoStatus.CANCEL
+            break
+
         if not result.success:
             overall_status = OrgMirrorRepoStatus.FAIL
             failed_tags.append(tag)
@@ -1169,6 +1180,14 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             "end",
             f"Sync failed for '{external_reference}': {len(failed_tags)}/{len(tags)} tags failed",
             tags=", ".join(failed_tags),
+        )
+    elif overall_status == OrgMirrorRepoStatus.CANCEL:
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_cancelled",
+            "end",
+            f"Sync cancelled for '{external_reference}'",
         )
     else:
         emit_org_mirror_log(

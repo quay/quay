@@ -463,3 +463,166 @@ class TestPerformOrgMirrorRepo:
         result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
 
         assert result == OrgMirrorRepoStatus.FAIL
+
+    @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    @patch("workers.repomirrorworker.check_org_mirror_repo_sync_status")
+    def test_sync_cancelled_during_tag_loop(self, mock_check_status, mock_token, _mock_logs):
+        """Test that sync is cancelled when cancel is detected during tag processing."""
+        org, robot = _create_org_and_robot("sync_test_cancel1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create org mirror repo
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cancel-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        # Mock skopeo with 3 tags
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, ["v1.0", "v2.0", "v3.0"], "", "")
+        mock_skopeo.copy.return_value = SkopeoResults(True, [], "copied", "")
+        mock_token.return_value = "robot_token"
+
+        # First call returns SYNCING, second call returns CANCEL
+        mock_check_status.side_effect = [
+            OrgMirrorRepoStatus.SYNCING,
+            OrgMirrorRepoStatus.CANCEL,
+        ]
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.CANCEL
+        # Should have only copied 2 tags before cancel was detected
+        assert mock_skopeo.copy.call_count == 2
+
+    @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    @patch("workers.repomirrorworker.check_org_mirror_repo_sync_status")
+    def test_cancel_emits_correct_log(self, mock_check_status, mock_token, mock_logs):
+        """Test that correct log is emitted when sync is cancelled."""
+        org, robot = _create_org_and_robot("sync_test_cancel2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create org mirror repo
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cancel-log-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        # Mock skopeo
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, ["v1.0", "v2.0"], "", "")
+        mock_skopeo.copy.return_value = SkopeoResults(True, [], "copied", "")
+        mock_token.return_value = "robot_token"
+
+        # Cancel immediately after first tag
+        mock_check_status.return_value = OrgMirrorRepoStatus.CANCEL
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.CANCEL
+
+        # Verify the cancel log was emitted
+        log_calls = [
+            call
+            for call in mock_logs.log_action.call_args_list
+            if call[0][0] == "org_mirror_sync_cancelled"
+        ]
+        assert len(log_calls) == 1
+        assert "cancelled" in log_calls[0][1]["metadata"]["message"].lower()
+
+    @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    @patch("workers.repomirrorworker.check_org_mirror_repo_sync_status")
+    def test_cancel_stops_at_first_detection(self, mock_check_status, mock_token, _mock_logs):
+        """Test that remaining tags are not processed after cancel detection."""
+        org, robot = _create_org_and_robot("sync_test_cancel3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create org mirror repo
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cancel-remaining-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        # Mock skopeo with 5 tags
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(
+            True, ["v1.0", "v2.0", "v3.0", "v4.0", "v5.0"], "", ""
+        )
+        mock_skopeo.copy.return_value = SkopeoResults(True, [], "copied", "")
+        mock_token.return_value = "robot_token"
+
+        # Cancel after 3 tags (status check happens after each copy)
+        mock_check_status.side_effect = [
+            OrgMirrorRepoStatus.SYNCING,
+            OrgMirrorRepoStatus.SYNCING,
+            OrgMirrorRepoStatus.CANCEL,
+        ]
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.CANCEL
+        # Should have copied exactly 3 tags before stopping
+        assert mock_skopeo.copy.call_count == 3
+
+    @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    @patch("workers.repomirrorworker.check_org_mirror_repo_sync_status")
+    def test_cancel_releases_repo_with_cancel_status(
+        self, mock_check_status, mock_token, _mock_logs
+    ):
+        """Test that repo is released with CANCEL status after cancellation."""
+        org, robot = _create_org_and_robot("sync_test_cancel4")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Create org mirror repo
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cancel-release-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        # Mock skopeo
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, ["v1.0"], "", "")
+        mock_skopeo.copy.return_value = SkopeoResults(True, [], "copied", "")
+        mock_token.return_value = "robot_token"
+
+        # Cancel immediately
+        mock_check_status.return_value = OrgMirrorRepoStatus.CANCEL
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.CANCEL
+
+        # Verify the repo was released with CANCEL status
+        # (release_org_mirror_repo sets sync_start_date to None for cancel)
+        refreshed_repo = OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+        assert refreshed_repo.sync_status == OrgMirrorRepoStatus.CANCEL
+        assert refreshed_repo.sync_start_date is None
+        assert refreshed_repo.sync_retries_remaining == 0

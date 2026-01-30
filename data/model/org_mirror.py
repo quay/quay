@@ -508,9 +508,10 @@ def claim_org_mirror_repo(org_mirror_repo: OrgMirrorRepository) -> Optional[OrgM
 
         # If expired, reset the repo for retry (stalled worker recovery)
         if org_mirror_repo.sync_expiration_date and now > org_mirror_repo.sync_expiration_date:
-            expire_org_mirror_repo(org_mirror_repo)
-            # Re-fetch after expire
-            org_mirror_repo = OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+            expired_repo = expire_org_mirror_repo(org_mirror_repo)
+            if expired_repo is None:
+                return None
+            org_mirror_repo = expired_repo
 
         # Attempt atomic update with optimistic locking
         query = OrgMirrorRepository.update(
@@ -520,11 +521,36 @@ def claim_org_mirror_repo(org_mirror_repo: OrgMirrorRepository) -> Optional[OrgM
         ).where(
             OrgMirrorRepository.id == org_mirror_repo.id,
             OrgMirrorRepository.sync_transaction_id == org_mirror_repo.sync_transaction_id,
+            OrgMirrorRepository.sync_status != OrgMirrorRepoStatus.CANCEL,
         )
 
-        updated = query.execute()
+        if query.execute():
+            try:
+                return OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+            except OrgMirrorRepository.DoesNotExist:
+                return None
+        return None
 
-    return OrgMirrorRepository.get_by_id(org_mirror_repo.id) if updated else None
+
+def check_org_mirror_repo_sync_status(org_mirror_repo: OrgMirrorRepository) -> OrgMirrorRepoStatus:
+    """
+    Returns the current sync status for a given org mirror repository.
+
+    Used by the worker to detect cancel requests during sync.
+    If the repository has been deleted (e.g., due to config deletion),
+    returns CANCEL status to gracefully interrupt the sync.
+
+    Args:
+        org_mirror_repo: The OrgMirrorRepository to check
+
+    Returns:
+        The current OrgMirrorRepoStatus of the repository, or CANCEL if deleted
+    """
+    try:
+        return OrgMirrorRepository.get(OrgMirrorRepository.id == org_mirror_repo.id).sync_status
+    except OrgMirrorRepository.DoesNotExist:
+        # Repo was deleted (e.g., config deleted mid-sync), treat as cancel signal
+        return OrgMirrorRepoStatus.CANCEL
 
 
 def release_org_mirror_repo(
@@ -619,11 +645,14 @@ def expire_org_mirror_repo(org_mirror_repo: OrgMirrorRepository) -> Optional[Org
     ).where(
         OrgMirrorRepository.id == org_mirror_repo.id,
         OrgMirrorRepository.sync_transaction_id == org_mirror_repo.sync_transaction_id,
+        OrgMirrorRepository.sync_status != OrgMirrorRepoStatus.CANCEL,
     )
 
     if query.execute():
-        return OrgMirrorRepository.get_by_id(org_mirror_repo.id)
-
+        try:
+            return OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+        except OrgMirrorRepository.DoesNotExist:
+            return None
     return None
 
 
@@ -966,6 +995,7 @@ def update_sync_status_to_cancel(org_mirror_config: OrgMirrorConfig) -> Optional
 
     Sets the config status to CANCEL. The cancel request is force-applied
     (ignores transaction ID) since we need to interrupt an active worker.
+    This allows cancellation from any status except when already CANCEL.
 
     Note: This only updates the config status. The worker will propagate
     CANCEL to associated OrgMirrorRepository entries when it picks up
@@ -975,13 +1005,10 @@ def update_sync_status_to_cancel(org_mirror_config: OrgMirrorConfig) -> Optional
         org_mirror_config: The OrgMirrorConfig to cancel
 
     Returns:
-        Updated OrgMirrorConfig if cancelled, None if not in a cancellable state
+        Updated OrgMirrorConfig if successfully cancelled, None if already CANCEL
     """
-    # Only allow cancel if SYNCING or SYNC_NOW
-    if org_mirror_config.sync_status not in (
-        OrgMirrorStatus.SYNCING,
-        OrgMirrorStatus.SYNC_NOW,
-    ):
+    # Only skip if already cancelled (idempotent)
+    if org_mirror_config.sync_status == OrgMirrorStatus.CANCEL:
         return None
 
     # Force cancel the config (ignore transaction_id for interrupt)
