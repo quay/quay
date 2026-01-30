@@ -141,6 +141,14 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         repository_name=None,
         timestamp=None,
         is_free_namespace=False,
+        # Enhanced logging fields for ESS EOI compliance
+        request_url=None,
+        http_method=None,
+        auth_type=None,
+        user_agent=None,
+        performer_kind=None,
+        request_id=None,
+        x_forwarded_for=None,
     ):
 
         if self._should_skip_logging and self._should_skip_logging(
@@ -176,6 +184,11 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
 
         metadata_json = metadata or {}
 
+        # Get performer email if available
+        performer_email = None
+        if performer is not None:
+            performer_email = getattr(performer, "email", None)
+
         log_data = {
             "kind": kind_name,
             "account": username,
@@ -184,6 +197,18 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             "ip": ip,
             "metadata_json": metadata_json or {},
             "datetime": timestamp,
+            # Enhanced logging fields for ESS EOI compliance
+            "request_url": request_url,
+            "http_method": http_method,
+            "performer_username": performer_name,
+            "performer_email": performer_email,
+            "performer_kind": performer_kind,
+            "auth_type": auth_type,
+            "user_agent": user_agent,
+            "namespace_name": namespace_name,
+            "repository_name": repo_name,
+            "request_id": request_id,
+            "x_forwarded_for": x_forwarded_for,
         }
 
         try:

@@ -6,7 +6,11 @@ from urllib.parse import urlparse
 from flask import request
 
 from app import analytics, app, ip_resolver, userevents
-from auth.auth_context import get_authenticated_context, get_authenticated_user
+from auth.auth_context import (
+    determine_auth_type_and_performer_kind,
+    get_authenticated_context,
+    get_authenticated_user,
+)
 from data.logs_model import logs_model
 from data.readreplica import ReadOnlyModeException
 from util.request import get_request_ip
@@ -45,6 +49,9 @@ def track_and_log(event_name, repo_obj, analytics_name=None, analytics_sample=1,
     if auth_context is not None:
         analytics_id, context_metadata = auth_context.analytics_id_and_public_metadata()
         metadata.update(context_metadata)
+
+    # Use shared helper for consistent auth detection across all logging paths
+    auth_type, performer_kind = determine_auth_type_and_performer_kind(auth_context=auth_context)
 
     # Publish the user event (if applicable)
     logger.debug("Checking publishing %s to the user events system", event_name)
@@ -90,6 +97,17 @@ def track_and_log(event_name, repo_obj, analytics_name=None, analytics_sample=1,
     # Log the action to the database.
     logger.debug("Logging the %s to logs system", event_name)
 
+    # Capture user agent
+    user_agent = None
+    if request.user_agent:
+        user_agent = request.user_agent.string
+
+    # Get request ID if available (set by RequestWithId class in app.py)
+    request_id = getattr(request, "request_id", None)
+
+    # Get X-Forwarded-For header for original client IP behind proxies
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+
     logs_model.log_action(
         event_name,
         namespace_name,
@@ -98,5 +116,13 @@ def track_and_log(event_name, repo_obj, analytics_name=None, analytics_sample=1,
         metadata=metadata,
         repository=repo_obj,
         is_free_namespace=is_free_namespace,
+        # Enhanced logging fields for ESS EOI compliance
+        request_url=request.url,
+        http_method=request.method,
+        auth_type=auth_type,
+        user_agent=user_agent,
+        performer_kind=performer_kind,
+        request_id=request_id,
+        x_forwarded_for=x_forwarded_for,
     )
     logger.debug("Track and log of %s complete", event_name)
