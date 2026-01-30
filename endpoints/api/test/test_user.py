@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from flask import url_for
 from mock import patch
@@ -8,6 +6,8 @@ from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.user import User
 from endpoints.test.shared import client_with_identity, conduct_call
 from features import FeatureNameValue
+from test.fixtures import *  # noqa: F401, F403
+from util.useremails import CannotSendEmailException
 
 
 def test_user_metadata_update(app):
@@ -133,3 +133,82 @@ def test_initialize_user(
                         assert 40 == len(user.json.get("access_token", ""))
                     else:
                         assert not user.json.get("access_token")
+
+
+def test_email_exception_error_format(client):
+    """
+    Test that CannotSendEmailException returns standard error format.
+
+    This test verifies the fix for PROJQUAY-10418, ensuring that email
+    sending failures return a properly formatted error response that the
+    new UI can parse correctly.
+
+    Verifies:
+    - HTTP 400 status code
+    - error_message field (for new UI)
+    - detail field (standard ApiException format)
+    - message field (backward compatibility with old UI)
+    - status field
+    """
+    with patch("features.MAILING", FeatureNameValue("MAILING", True)):
+        with patch(
+            "features.INVITE_ONLY_USER_CREATION",
+            FeatureNameValue("INVITE_ONLY_USER_CREATION", False),
+        ):
+            with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
+                with patch("endpoints.api.user.send_confirmation_email") as mock_send_email:
+                    # Mock send_confirmation_email to raise CannotSendEmailException
+                    mock_send_email.side_effect = CannotSendEmailException("SMTP connection failed")
+
+                    # Attempt to create a new user via API (will trigger email sending)
+                    metadata = {
+                        "username": "emailfailtest",
+                        "password": "password",
+                        "email": "test@example.com",
+                    }
+
+                    response = conduct_api_call(
+                        client,
+                        User,
+                        "POST",
+                        None,
+                        body=metadata,
+                        expected_code=400,
+                    )
+
+                # Verify the error response format
+                expected_message = (
+                    "Could not send email. Please contact an administrator "
+                    "and report this problem."
+                )
+
+                # Verify all required fields exist
+                assert (
+                    "error_message" in response.json
+                ), "Should have error_message field for new UI"
+                assert (
+                    "detail" in response.json
+                ), "Should have detail field matching ApiException format"
+                assert (
+                    "message" in response.json
+                ), "Should have message field for backward compatibility"
+                assert "status" in response.json, "Should have status field"
+
+                # Verify field values
+                assert (
+                    response.json["error_message"] == expected_message
+                ), "error_message should match expected text"
+                assert (
+                    response.json["detail"] == expected_message
+                ), "detail should match expected text"
+                assert (
+                    response.json["message"] == expected_message
+                ), "message should match expected text"
+                assert response.json["status"] == 400, "status field should be 400"
+
+                # Verify new UI can extract the error (won't fall back to generic message)
+                error_message = response.json.get("error_message")
+                assert error_message is not None, "New UI should be able to extract error_message"
+                assert (
+                    error_message != "unable to make request"
+                ), "Should not fall back to generic message"

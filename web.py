@@ -1,3 +1,4 @@
+import endpoints.decorated  # Note: Import to register error handlers (e.g., CannotSendEmailException)
 from app import app as application
 from endpoints.api import api_bp
 from endpoints.bitbuckettrigger import bitbuckettrigger

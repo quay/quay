@@ -5,7 +5,7 @@ from email.utils import formatdate
 from functools import partial, wraps
 
 import pytz
-from flask import Blueprint, request, session
+from flask import Blueprint, jsonify, request, session
 from flask_restful import Api, Resource, abort, reqparse
 from flask_restful.utils import unpack
 from jsonschema import ValidationError, validate
@@ -64,6 +64,24 @@ FRESH_LOGIN_TIMEOUT = convert_to_timedelta(app.config.get("FRESH_LOGIN_TIMEOUT",
 class ApiExceptionHandlingApi(Api):
     @crossorigin()
     def handle_error(self, error):
+        # Handle CannotSendEmailException with custom error format
+        from util.useremails import CannotSendEmailException
+
+        if isinstance(error, CannotSendEmailException):
+            message = (
+                "Could not send email. Please contact an administrator and report this problem."
+            )
+            response = jsonify(
+                {
+                    "error_message": message,  # Standard field for new UI
+                    "detail": message,  # Standard field matching ApiException format
+                    "message": message,  # Keep for backward compatibility with old UI
+                    "status": 400,
+                }
+            )
+            response.status_code = 400
+            return response
+
         return super(ApiExceptionHandlingApi, self).handle_error(error)
 
     def _should_use_fr_error_handler(self):
