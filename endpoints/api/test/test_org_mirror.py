@@ -1292,3 +1292,213 @@ class TestSyncCancel:
 
         # Clean up
         _cleanup_org_mirror_config("buynlarge")
+
+
+class TestOrgMirrorAuditLogging:
+    """Tests for audit event logging in organization mirror API endpoints."""
+
+    def test_create_logs_org_mirror_enabled(self, app):
+        """
+        Test that POST creates org_mirror_enabled audit event with correct metadata.
+        """
+        from unittest.mock import patch
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        with patch("endpoints.api.org_mirror.log_action") as mock_log:
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                request_body = {
+                    "external_registry_type": "harbor",
+                    "external_registry_url": "https://harbor.example.com",
+                    "external_namespace": "my-project",
+                    "robot_username": "buynlarge+coolrobot",
+                    "visibility": "private",
+                    "sync_interval": 3600,
+                    "sync_start_date": "2025-01-01T00:00:00Z",
+                }
+                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+            # Verify log_action was called with correct parameters
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "org_mirror_enabled"
+            assert call_args[0][1] == "buynlarge"
+            metadata = call_args[0][2]
+            assert metadata["external_registry_type"] == "harbor"
+            assert metadata["external_registry_url"] == "https://harbor.example.com"
+            assert metadata["external_namespace"] == "my-project"
+            assert metadata["sync_interval"] == 3600
+            assert metadata["robot_username"] == "buynlarge+coolrobot"
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_logs_org_mirror_config_changed(self, app):
+        """
+        Test that PUT creates org_mirror_config_changed audit event with correct metadata.
+        """
+        from unittest.mock import patch
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create config first
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_type": "harbor",
+                "external_registry_url": "https://harbor.example.com",
+                "external_namespace": "my-project",
+                "robot_username": "buynlarge+coolrobot",
+                "visibility": "private",
+                "sync_interval": 3600,
+                "sync_start_date": "2025-01-01T00:00:00Z",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+        with patch("endpoints.api.org_mirror.log_action") as mock_log:
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                request_body = {
+                    "sync_interval": 7200,
+                    "external_namespace": "updated-project",
+                }
+                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, request_body, 200)
+
+            # Verify log_action was called with correct parameters
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "org_mirror_config_changed"
+            assert call_args[0][1] == "buynlarge"
+            metadata = call_args[0][2]
+            assert "updated_fields" in metadata
+            assert "sync_interval" in metadata["updated_fields"]
+            assert "external_namespace" in metadata["updated_fields"]
+            # Verify both old and new external_reference are logged
+            assert "old_external_reference" in metadata
+            assert "external_reference" in metadata
+            assert metadata["old_external_reference"] == "https://harbor.example.com/my-project"
+            assert metadata["external_reference"] == "https://harbor.example.com/updated-project"
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_delete_logs_org_mirror_disabled(self, app):
+        """
+        Test that DELETE creates org_mirror_disabled audit event with correct metadata.
+        """
+        from unittest.mock import patch
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create config first
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_type": "harbor",
+                "external_registry_url": "https://harbor.example.com",
+                "external_namespace": "my-project",
+                "robot_username": "buynlarge+coolrobot",
+                "visibility": "private",
+                "sync_interval": 3600,
+                "sync_start_date": "2025-01-01T00:00:00Z",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+        with patch("endpoints.api.org_mirror.log_action") as mock_log:
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "DELETE", params, None, 204)
+
+            # Verify log_action was called with correct parameters
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "org_mirror_disabled"
+            assert call_args[0][1] == "buynlarge"
+            metadata = call_args[0][2]
+            assert "external_reference" in metadata
+            expected_external_reference = (
+                f"{request_body['external_registry_url']}/{request_body['external_namespace']}"
+            )
+            assert metadata["external_reference"] == expected_external_reference
+
+    def test_sync_now_logs_org_mirror_sync_now_requested(self, app):
+        """
+        Test that sync-now creates org_mirror_sync_now_requested audit event.
+        """
+        from unittest.mock import patch
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create config first
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_type": "harbor",
+                "external_registry_url": "https://harbor.example.com",
+                "external_namespace": "my-project",
+                "robot_username": "buynlarge+coolrobot",
+                "visibility": "private",
+                "sync_interval": 3600,
+                "sync_start_date": "2025-01-01T00:00:00Z",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+        with patch("endpoints.api.org_mirror.log_action") as mock_log:
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                conduct_api_call(cl, org_mirror.OrgMirrorSyncNow, "POST", params, None, 204)
+
+            # Verify log_action was called with correct parameters
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "org_mirror_sync_now_requested"
+            assert call_args[0][1] == "buynlarge"
+            metadata = call_args[0][2]
+            assert "external_reference" in metadata
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_sync_cancel_logs_org_mirror_sync_cancelled(self, app):
+        """
+        Test that sync-cancel creates org_mirror_sync_cancelled audit event.
+        """
+        from unittest.mock import patch
+
+        from data.database import OrgMirrorStatus, SourceRegistryType, Visibility
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create a config in SYNCING state
+        org = model.organization.get_organization("buynlarge")
+        robot = model.user.lookup_robot("buynlarge+coolrobot")
+        config = model.org_mirror.create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date=datetime.now(),
+            is_enabled=True,
+        )
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.save()
+
+        with patch("endpoints.api.org_mirror.log_action") as mock_log:
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                conduct_api_call(cl, org_mirror.OrgMirrorSyncCancel, "POST", params, None, 204)
+
+            # Verify log_action was called with correct parameters
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "org_mirror_sync_cancelled"
+            assert call_args[0][1] == "buynlarge"
+            metadata = call_args[0][2]
+            assert "external_reference" in metadata
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
