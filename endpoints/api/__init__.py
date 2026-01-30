@@ -67,7 +67,9 @@ class ApiExceptionHandlingApi(Api):
         from util.useremails import CannotSendEmailException
 
         if isinstance(error, CannotSendEmailException):
-            message = "Could not send email. Please contact an administrator and report this problem."
+            message = (
+                "Could not send email. Please contact an administrator and report this problem."
+            )
             response = jsonify(
                 {
                     "error_message": message,  # Standard field for new UI
