@@ -2485,6 +2485,18 @@ CONFIG_SCHEMA = {
         "x-example": 1,
         "x-reference": None,
     },
+    "FEATURE_LDAP_CACHING": {
+        "type": "boolean",
+        "description": "Enable in-memory caching for LDAP permission check results (superuser, restricted user). Reduces LDAP server load. Defaults to False.",
+        "x-example": True,
+        "x-reference": None,
+    },
+    "LDAP_CACHE_TTL": {
+        "type": "number",
+        "description": "Time-to-live in seconds for cached LDAP permission results. Defaults to 60.",
+        "x-example": 60,
+        "x-reference": None,
+    },
     "GLOBAL_PROMETHEUS_STATS_FREQUENCY": {
         "type": "number",
         "description": "Frequency to report metrics to Push gateway. Defaults to 3600 seconds",
