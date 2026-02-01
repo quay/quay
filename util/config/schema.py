@@ -1522,6 +1522,11 @@ CONFIG_SCHEMA = {
             "description": "The amount of time between runs of the quota registry size worker in seconds",
             "x-example": 30,
         },
+        "QUOTA_METRICS": {
+            "type": "boolean",
+            "description": "Whether quota metrics are exposed about total registry storage consumption, organization and repository usage and organization quota limits and attainment. Defaults to False",
+            "x-example": False,
+        },
         "FEATURE_EDIT_QUOTA": {
             "type": "boolean",
             "description": "Allow editing of quota configurations",
