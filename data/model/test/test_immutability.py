@@ -1,5 +1,8 @@
+from unittest.mock import patch
+
 import pytest
 
+from data.database import Tag, get_epoch_timestamp_ms
 from data.model import (
     DuplicateImmutabilityPolicy,
     ImmutabilityPolicyDoesNotExist,
@@ -8,6 +11,7 @@ from data.model import (
 from data.model.immutability import (
     _matches_policy,
     _validate_policy,
+    apply_immutability_policy_to_existing_tags,
     create_namespace_immutability_policy,
     create_repository_immutability_policy,
     delete_namespace_immutability_policy,
@@ -20,8 +24,9 @@ from data.model.immutability import (
     update_namespace_immutability_policy,
     update_repository_immutability_policy,
 )
+from data.model.oci.tag import filter_to_alive_tags
 from data.model.organization import create_organization
-from data.model.repository import create_repository
+from data.model.repository import create_repository, get_repository
 from data.model.user import create_user_noverify
 from test.fixtures import *  # noqa: F401, F403
 
@@ -257,3 +262,355 @@ class TestGetView:
         assert view["uuid"] == created.uuid
         assert view["tagPattern"] == "^v.*$"
         assert view["tagPatternMatches"] is True
+
+
+def _create_tag(repository, manifest, name, immutable=False, hidden=False, expired=False):
+    """Helper to create a tag for testing."""
+    now_ms = get_epoch_timestamp_ms()
+    lifetime_end_ms = now_ms - 1000 if expired else None
+    return Tag.create(
+        name=name,
+        repository=repository.id,
+        manifest=manifest,
+        lifetime_start_ms=now_ms - 10000,
+        lifetime_end_ms=lifetime_end_ms,
+        hidden=hidden,
+        immutable=immutable,
+        reversion=False,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+
+
+def _get_manifest_from_repo(repo):
+    """Get an existing manifest from a repository's alive tags."""
+    for tag in filter_to_alive_tags(Tag.select().where(Tag.repository == repo.id)):
+        if tag.manifest:
+            return tag.manifest
+    return None
+
+
+class TestRetroactiveImmutability:
+    def test_namespace_policy_marks_matching_tags(self, initialized_db):
+        """Verify v* tags become immutable when namespace policy is created."""
+        org = create_org("retrouser1", "retro1@example.com", "retroorg1", "retroorg1@example.com")
+        repo = create_repository(org.username, "retrorepo1", None)
+
+        # Get a manifest from an existing repo to use
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+        assert manifest is not None
+
+        # Create tags before policy
+        tag_v1 = _create_tag(repo, manifest, "v1.0.0")
+        tag_v2 = _create_tag(repo, manifest, "v2.0.0")
+        tag_latest = _create_tag(repo, manifest, "notversioned")
+
+        # Verify tags are not immutable
+        assert Tag.get(Tag.id == tag_v1.id).immutable is False
+        assert Tag.get(Tag.id == tag_v2.id).immutable is False
+        assert Tag.get(Tag.id == tag_latest.id).immutable is False
+
+        # Create policy matching v* tags
+        create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        # Verify v* tags are now immutable, notversioned is not
+        assert Tag.get(Tag.id == tag_v1.id).immutable is True
+        assert Tag.get(Tag.id == tag_v2.id).immutable is True
+        assert Tag.get(Tag.id == tag_latest.id).immutable is False
+
+    def test_repository_policy_marks_matching_tags(self, initialized_db):
+        """Verify repo-scoped enforcement works."""
+        org = create_org("retrouser2", "retro2@example.com", "retroorg2", "retroorg2@example.com")
+        repo = create_repository(org.username, "retrorepo2", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        tag_release = _create_tag(repo, manifest, "release-1.0")
+        tag_dev = _create_tag(repo, manifest, "dev-branch")
+
+        create_repository_immutability_policy(
+            org.username, repo.name, {"tag_pattern": "^release-.*$"}
+        )
+
+        assert Tag.get(Tag.id == tag_release.id).immutable is True
+        assert Tag.get(Tag.id == tag_dev.id).immutable is False
+
+    def test_inverted_pattern_marks_non_matching_tags(self, initialized_db):
+        """Verify tag_pattern_matches=False marks non-matching tags."""
+        org = create_org("retrouser3", "retro3@example.com", "retroorg3", "retroorg3@example.com")
+        repo = create_repository(org.username, "retrorepo3", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        tag_dev = _create_tag(repo, manifest, "dev-branch")
+        tag_v1 = _create_tag(repo, manifest, "v1.0.0")
+
+        # Make all tags EXCEPT dev-* immutable
+        create_namespace_immutability_policy(
+            org.username, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": False}
+        )
+
+        # dev-* should NOT be immutable, everything else should be
+        assert Tag.get(Tag.id == tag_dev.id).immutable is False
+        assert Tag.get(Tag.id == tag_v1.id).immutable is True
+
+    def test_update_policy_marks_newly_matching_tags(self, initialized_db):
+        """Verify pattern change marks new matches."""
+        org = create_org("retrouser4", "retro4@example.com", "retroorg4", "retroorg4@example.com")
+        repo = create_repository(org.username, "retrorepo4", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        tag_v1 = _create_tag(repo, manifest, "v1.0.0")
+        tag_release = _create_tag(repo, manifest, "release-1.0")
+
+        # Create policy matching v* tags
+        policy = create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        assert Tag.get(Tag.id == tag_v1.id).immutable is True
+        assert Tag.get(Tag.id == tag_release.id).immutable is False
+
+        # Update policy to match release-* instead
+        update_namespace_immutability_policy(
+            org.username, policy.uuid, {"tag_pattern": "^release-.*$"}
+        )
+
+        # v1 should still be immutable (we don't unmark)
+        # release should now be immutable
+        assert Tag.get(Tag.id == tag_v1.id).immutable is True
+        assert Tag.get(Tag.id == tag_release.id).immutable is True
+
+    def test_delete_policy_does_not_unmark_tags(self, initialized_db):
+        """Verify immutability persists after policy delete."""
+        org = create_org("retrouser5", "retro5@example.com", "retroorg5", "retroorg5@example.com")
+        repo = create_repository(org.username, "retrorepo5", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        tag_v1 = _create_tag(repo, manifest, "v1.0.0")
+
+        policy = create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        assert Tag.get(Tag.id == tag_v1.id).immutable is True
+
+        # Delete the policy
+        delete_namespace_immutability_policy(org.username, policy.uuid)
+
+        # Tag should still be immutable
+        assert Tag.get(Tag.id == tag_v1.id).immutable is True
+
+    def test_already_immutable_tags_not_updated_again(self, initialized_db):
+        """Verify idempotency - already immutable tags aren't touched."""
+        org = create_org("retrouser6", "retro6@example.com", "retroorg6", "retroorg6@example.com")
+        repo = create_repository(org.username, "retrorepo6", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        # Create an already immutable tag
+        tag_v1 = _create_tag(repo, manifest, "v1.0.0", immutable=True)
+
+        # Create policy - should not fail or double-update
+        create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        # Tag should still be immutable
+        assert Tag.get(Tag.id == tag_v1.id).immutable is True
+
+    def test_batch_processing_large_number_of_tags(self, initialized_db):
+        """Test pagination with small batch."""
+        org = create_org("retrouser7", "retro7@example.com", "retroorg7", "retroorg7@example.com")
+        repo = create_repository(org.username, "retrorepo7", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        # Create more tags than a small batch size
+        tag_ids = []
+        for i in range(10):
+            tag = _create_tag(repo, manifest, f"v{i}.0.0")
+            tag_ids.append(tag.id)
+
+        # Apply policy with small batch size
+        marked = apply_immutability_policy_to_existing_tags(
+            namespace_id=org.id,
+            repository_id=repo.id,
+            tag_pattern="^v.*$",
+            tag_pattern_matches=True,
+            batch_size=3,  # Small batch to test pagination
+        )
+
+        assert marked == 10
+
+        # Verify all tags are immutable
+        for tag_id in tag_ids:
+            assert Tag.get(Tag.id == tag_id).immutable is True
+
+    def test_namespace_policy_affects_multiple_repositories(self, initialized_db):
+        """Cross-repo enforcement for namespace policies."""
+        org = create_org("retrouser8", "retro8@example.com", "retroorg8", "retroorg8@example.com")
+        repo1 = create_repository(org.username, "retrorepo8a", None)
+        repo2 = create_repository(org.username, "retrorepo8b", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        tag1 = _create_tag(repo1, manifest, "v1.0.0")
+        tag2 = _create_tag(repo2, manifest, "v2.0.0")
+
+        create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        # Both tags in different repos should be immutable
+        assert Tag.get(Tag.id == tag1.id).immutable is True
+        assert Tag.get(Tag.id == tag2.id).immutable is True
+
+    def test_expired_tags_not_affected(self, initialized_db):
+        """Dead tags excluded from retroactive enforcement."""
+        org = create_org("retrouser9", "retro9@example.com", "retroorg9", "retroorg9@example.com")
+        repo = create_repository(org.username, "retrorepo9", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        # Create an expired tag
+        tag_expired = _create_tag(repo, manifest, "v1.0.0", expired=True)
+        tag_alive = _create_tag(repo, manifest, "v2.0.0", expired=False)
+
+        create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        # Expired tag should NOT be marked immutable
+        assert Tag.get(Tag.id == tag_expired.id).immutable is False
+        # Alive tag should be immutable
+        assert Tag.get(Tag.id == tag_alive.id).immutable is True
+
+    def test_hidden_tags_not_affected(self, initialized_db):
+        """Temp tags excluded from retroactive enforcement."""
+        org = create_org(
+            "retrouser10", "retro10@example.com", "retroorg10", "retroorg10@example.com"
+        )
+        repo = create_repository(org.username, "retrorepo10", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        # Create a hidden tag
+        tag_hidden = _create_tag(repo, manifest, "v1.0.0", hidden=True)
+        tag_visible = _create_tag(repo, manifest, "v2.0.0", hidden=False)
+
+        create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        # Hidden tag should NOT be marked immutable
+        assert Tag.get(Tag.id == tag_hidden.id).immutable is False
+        # Visible tag should be immutable
+        assert Tag.get(Tag.id == tag_visible.id).immutable is True
+
+
+class TestRetroactiveImmutabilityRollback:
+    @patch(
+        "data.model.immutability.apply_immutability_policy_to_existing_tags",
+        side_effect=Exception("Simulated failure"),
+    )
+    def test_create_namespace_policy_rolls_back_on_failure(self, mock_apply, initialized_db):
+        """Verify policy is deleted if retroactive enforcement fails on create."""
+        org = create_org(
+            "rollbackuser1",
+            "rollback1@example.com",
+            "rollbackorg1",
+            "rollbackorg1@example.com",
+        )
+
+        # Attempt to create policy - should raise
+        with pytest.raises(Exception, match="Simulated failure"):
+            create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        # Verify policy was rolled back (deleted)
+        policies = get_namespace_immutability_policies(org.username)
+        assert len(policies) == 0
+
+    def test_update_namespace_policy_rolls_back_on_failure(self, initialized_db):
+        """Verify policy is restored to old config if retroactive enforcement fails on update."""
+        org = create_org(
+            "rollbackuser2",
+            "rollback2@example.com",
+            "rollbackorg2",
+            "rollbackorg2@example.com",
+        )
+
+        # Create policy successfully first (don't mock yet)
+        policy = create_namespace_immutability_policy(
+            org.username, {"tag_pattern": "^v.*$", "tag_pattern_matches": True}
+        )
+
+        # Now mock to fail on update
+        with patch(
+            "data.model.immutability.apply_immutability_policy_to_existing_tags",
+            side_effect=Exception("Simulated failure"),
+        ):
+            # Attempt to update policy - should raise
+            with pytest.raises(Exception, match="Simulated failure"):
+                update_namespace_immutability_policy(
+                    org.username, policy.uuid, {"tag_pattern": "^release-.*$"}
+                )
+
+        # Verify policy was rolled back to original config
+        restored_policy = get_namespace_immutability_policy(org.username, policy.uuid)
+        assert restored_policy is not None
+        assert restored_policy.tag_pattern == "^v.*$"
+        assert restored_policy.tag_pattern_matches is True
+
+    @patch(
+        "data.model.immutability.apply_immutability_policy_to_existing_tags",
+        side_effect=Exception("Simulated failure"),
+    )
+    def test_create_repository_policy_rolls_back_on_failure(self, mock_apply, initialized_db):
+        """Verify repository policy is deleted if retroactive enforcement fails on create."""
+        org = create_org(
+            "rollbackuser3",
+            "rollback3@example.com",
+            "rollbackorg3",
+            "rollbackorg3@example.com",
+        )
+        repo = create_repository(org.username, "rollbackrepo3", None)
+
+        # Attempt to create policy - should raise
+        with pytest.raises(Exception, match="Simulated failure"):
+            create_repository_immutability_policy(org.username, repo.name, {"tag_pattern": "^v.*$"})
+
+        # Verify policy was rolled back (deleted)
+        policies = get_repository_immutability_policies(org.username, repo.name)
+        assert len(policies) == 0
+
+    def test_update_repository_policy_rolls_back_on_failure(self, initialized_db):
+        """Verify repository policy is restored to old config if retroactive fails on update."""
+        org = create_org(
+            "rollbackuser4",
+            "rollback4@example.com",
+            "rollbackorg4",
+            "rollbackorg4@example.com",
+        )
+        repo = create_repository(org.username, "rollbackrepo4", None)
+
+        # Create policy successfully first
+        policy = create_repository_immutability_policy(
+            org.username, repo.name, {"tag_pattern": "^v.*$", "tag_pattern_matches": True}
+        )
+
+        # Now mock to fail on update
+        with patch(
+            "data.model.immutability.apply_immutability_policy_to_existing_tags",
+            side_effect=Exception("Simulated failure"),
+        ):
+            # Attempt to update policy - should raise
+            with pytest.raises(Exception, match="Simulated failure"):
+                update_repository_immutability_policy(
+                    org.username, repo.name, policy.uuid, {"tag_pattern": "^release-.*$"}
+                )
+
+        # Verify policy was rolled back to original config
+        restored_policy = get_repository_immutability_policy(org.username, repo.name, policy.uuid)
+        assert restored_policy is not None
+        assert restored_policy.tag_pattern == "^v.*$"
+        assert restored_policy.tag_pattern_matches is True
