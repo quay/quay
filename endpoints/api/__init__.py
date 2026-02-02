@@ -5,7 +5,7 @@ from email.utils import formatdate
 from functools import partial, wraps
 
 import pytz
-from flask import Blueprint, request, session
+from flask import Blueprint, g, request, session
 from flask_restful import Api, Resource, abort, reqparse
 from flask_restful.utils import unpack
 from jsonschema import ValidationError, validate
@@ -18,8 +18,8 @@ from auth import scopes
 from auth.auth_context import (
     get_authenticated_context,
     get_authenticated_user,
-    get_validated_oauth_token,
     get_sso_token,
+    get_validated_oauth_token,
 )
 from auth.decorators import process_oauth
 from auth.permissions import (
@@ -575,7 +575,29 @@ def allow_if_global_readonly_superuser():
         return False
 
     username = context.authed_user.username
+
+    # Request-scoped cache using Flask's g object to avoid excessive LDAP binds.
+    # Without caching, each call to is_global_readonly_superuser() triggers a new
+    # LDAP bind operation. Since this function is called multiple times per request
+    # (e.g., in team_view() and org_view() for each item in a collection), this
+    # caused a significant increase in LDAP binds (from 27 to 43 per login).
+    # See: PROJQUAY-10426
+    cache_attr = "_is_global_readonly_superuser_cache"
+    if hasattr(g, cache_attr):
+        cached = getattr(g, cache_attr)
+        if username in cached:
+            logger.debug(
+                "allow_if_global_readonly_superuser: cache hit for user=%s, result=%s",
+                username,
+                cached[username],
+            )
+            return cached[username]
+    else:
+        setattr(g, cache_attr, {})
+
     is_global_readonly = usermanager.is_global_readonly_superuser(username)
+    getattr(g, cache_attr)[username] = is_global_readonly
+
     logger.debug(
         "allow_if_global_readonly_superuser: user=%s, is_global_readonly=%s",
         username,
