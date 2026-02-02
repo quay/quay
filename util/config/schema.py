@@ -306,6 +306,11 @@ CONFIG_SCHEMA = {
             "description": "Whether pull through proxy cache feature is enabled. Defaults to False",
             "x-example": False,
         },
+        "FEATURE_EXTENDED_ACTION_LOGGING": {
+            "type": "boolean",
+            "description": "Whether extended action logging is enabled for ESS Events of Interest compliance. When enabled, logs include request URL, HTTP method, auth type, user agent, and other request context. Increases log volume by ~2.5-3x. Defaults to False",
+            "x-example": False,
+        },
         "FEATURE_PROXY_CACHE_BLOB_DOWNLOAD": {
             "type": "boolean",
             "description": "Whether to enable a background worker to download placeholder blobs. Defaults to True",

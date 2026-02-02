@@ -872,6 +872,11 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
 
+    # Feature Flag: Extended action logging for ESS Events of Interest compliance
+    # When enabled, logs include request URL, HTTP method, auth type, user agent, etc.
+    # This increases log volume by ~2.5-3x. Defaults to False (opt-in).
+    FEATURE_EXTENDED_ACTION_LOGGING = False
+
     # Feature Flag: Enable a background worker to check and download missing placeholder blobs
     FEATURE_PROXY_CACHE_BLOB_DOWNLOAD = True
 
