@@ -8,19 +8,25 @@ from flask_restful.utils.cors import crossdomain
 from app import app
 
 # Query parameters that should be redacted from logged URLs for security
-SENSITIVE_QUERY_PARAMS = frozenset({
-    "token",
-    "access_token",
-    "refresh_token",
-    "code",
-    "api_key",
-    "apikey",
-    "password",
-    "secret",
-    "credential",
-    "signature",
-    "sig",
-})
+SENSITIVE_QUERY_PARAMS = frozenset(
+    {
+        "token",
+        "access_token",
+        "refresh_token",
+        "id_token",
+        "code",
+        "api_key",
+        "apikey",
+        "password",
+        "secret",
+        "credential",
+        "signature",
+        "sig",
+        "client_secret",
+        "oauth_verifier",
+        "state",
+    }
+)
 
 # Base headers that are allowed for cross origin requests
 BASE_CROSS_DOMAIN_HEADERS = [
@@ -75,9 +81,9 @@ def sanitize_request_url(url):
         }
         sanitized_query = urlencode(sanitized_params, doseq=True)
         return urlunparse(parsed._replace(query=sanitized_query))
-    except Exception:
-        # If parsing fails, return the original URL rather than failing the log
-        return url
+    except (ValueError, UnicodeError):
+        # Fail-closed: if parsing fails, drop the query to avoid leaking secrets
+        return url.split("?", 1)[0]
 
 
 def crossorigin(anonymous=True):
