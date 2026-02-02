@@ -2,6 +2,7 @@ from flask import request
 
 from auth.auth_context import determine_auth_type_and_performer_kind
 from data.logs_model import logs_model
+from util.request import sanitize_request_url
 
 
 def log_action(kind, user_or_orgname, metadata=None, repo=None, performer=None):
@@ -30,7 +31,7 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, performer=None):
         ip=request.remote_addr or None,
         metadata=metadata,
         # Enhanced logging fields for ESS EOI compliance
-        request_url=request.url,
+        request_url=sanitize_request_url(request.url),
         http_method=request.method,
         auth_type=auth_type,
         user_agent=user_agent,

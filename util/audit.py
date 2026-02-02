@@ -13,7 +13,7 @@ from auth.auth_context import (
 )
 from data.logs_model import logs_model
 from data.readreplica import ReadOnlyModeException
-from util.request import get_request_ip
+from util.request import get_request_ip, sanitize_request_url
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ def track_and_log(event_name, repo_obj, analytics_name=None, analytics_sample=1,
         repository=repo_obj,
         is_free_namespace=is_free_namespace,
         # Enhanced logging fields for ESS EOI compliance
-        request_url=request.url,
+        request_url=sanitize_request_url(request.url),
         http_method=request.method,
         auth_type=auth_type,
         user_agent=user_agent,

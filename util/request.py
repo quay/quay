@@ -1,10 +1,26 @@
 import os
 from functools import wraps
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from flask import request
 from flask_restful.utils.cors import crossdomain
 
 from app import app
+
+# Query parameters that should be redacted from logged URLs for security
+SENSITIVE_QUERY_PARAMS = frozenset({
+    "token",
+    "access_token",
+    "refresh_token",
+    "code",
+    "api_key",
+    "apikey",
+    "password",
+    "secret",
+    "credential",
+    "signature",
+    "sig",
+})
 
 # Base headers that are allowed for cross origin requests
 BASE_CROSS_DOMAIN_HEADERS = [
@@ -26,6 +42,42 @@ def get_request_ip():
         remote_addr = request.headers.get("X-Override-Remote-Addr-For-Testing", remote_addr)
 
     return remote_addr
+
+
+def sanitize_request_url(url):
+    """
+    Sanitizes a URL by redacting sensitive query parameters.
+
+    This prevents tokens, API keys, and other credentials from being logged.
+    Parameters in SENSITIVE_QUERY_PARAMS are replaced with '[REDACTED]'.
+
+    Args:
+        url: The URL string to sanitize
+
+    Returns:
+        The sanitized URL string with sensitive parameters redacted
+    """
+    if not url or "?" not in url:
+        return url
+
+    # Quick check: skip full parsing if no sensitive params present (fast path)
+    url_lower = url.lower()
+    if not any(param in url_lower for param in SENSITIVE_QUERY_PARAMS):
+        return url
+
+    # Slow path: parse and redact
+    try:
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query, keep_blank_values=True)
+        sanitized_params = {
+            key: ["[REDACTED]"] if key.lower() in SENSITIVE_QUERY_PARAMS else values
+            for key, values in params.items()
+        }
+        sanitized_query = urlencode(sanitized_params, doseq=True)
+        return urlunparse(parsed._replace(query=sanitized_query))
+    except Exception:
+        # If parsing fails, return the original URL rather than failing the log
+        return url
 
 
 def crossorigin(anonymous=True):

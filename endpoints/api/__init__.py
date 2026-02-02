@@ -52,7 +52,7 @@ from endpoints.exception import (
 from util.metrics.prometheus import timed_blueprint
 from util.names import parse_namespace_repository
 from util.pagination import decrypt_page_token, encrypt_page_token
-from util.request import crossorigin, get_request_ip
+from util.request import crossorigin, get_request_ip, sanitize_request_url
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
@@ -740,7 +740,7 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
         ip=get_request_ip(),
         metadata=metadata,
         # Enhanced logging fields for ESS EOI compliance
-        request_url=request.url,
+        request_url=sanitize_request_url(request.url),
         http_method=request.method,
         auth_type=auth_type,
         user_agent=user_agent,
