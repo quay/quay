@@ -1296,6 +1296,77 @@ def test_get_v2_bearer_token_token_request_fails(mock_get, initialized_db, app):
     assert token is None
 
 
+@mock.patch("workers.repomirrorworker.requests.get")
+def test_get_v2_bearer_token_json_decode_error(mock_get, initialized_db, app):
+    """
+    Test that None is returned when token response is not valid JSON.
+    """
+    challenge_response = MockResponse(
+        401,
+        headers={
+            "WWW-Authenticate": 'Bearer realm="https://auth.example.com/token",service="registry.example.com"'
+        },
+    )
+
+    # Token request returns 200 but with non-JSON body
+    import json
+
+    token_response = MockResponse(200, text="<html>Not JSON</html>")
+    token_response.json = mock.Mock(
+        side_effect=json.JSONDecodeError("Expecting value", "<html>Not JSON</html>", 0)
+    )
+
+    mock_get.side_effect = [challenge_response, token_response]
+
+    token = _get_v2_bearer_token(
+        server="registry.example.com",
+        scheme="https",
+        namespace="namespace",
+        repo_name="repo",
+        username="testuser",
+        password="testpass",
+        verify_tls=True,
+    )
+
+    assert token is None
+
+
+@mock.patch("workers.repomirrorworker.requests.get")
+def test_get_v2_bearer_token_realm_with_existing_query_params(mock_get, initialized_db, app):
+    """
+    Test that existing query params in realm URL are preserved.
+    """
+    challenge_response = MockResponse(
+        401,
+        headers={
+            "WWW-Authenticate": 'Bearer realm="https://auth.example.com/token?foo=bar",service="registry.example.com"'
+        },
+    )
+
+    token_response = MockResponse(200)
+    token_response.json = mock.Mock(return_value={"token": "test-token"})
+
+    mock_get.side_effect = [challenge_response, token_response]
+
+    token = _get_v2_bearer_token(
+        server="registry.example.com",
+        scheme="https",
+        namespace="namespace",
+        repo_name="repo",
+        username="testuser",
+        password="testpass",
+        verify_tls=True,
+    )
+
+    assert token == "test-token"
+    # Verify the token URL was called with proper query params
+    token_call = mock_get.call_args_list[1]
+    token_url = token_call[0][0]
+    assert "foo=bar" in token_url or "foo" in token_url
+    assert "scope=" in token_url
+    assert "service=" in token_url
+
+
 # =============================================================================
 # Tests for push_sparse_manifest_list() with bearer token logic
 # =============================================================================

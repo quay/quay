@@ -1,9 +1,11 @@
 import fnmatch
+import json
 import logging
 import os
 import re
 import traceback
 from typing import Optional
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
 from prometheus_client import Gauge
@@ -543,11 +545,36 @@ def _get_v2_bearer_token(server, scheme, namespace, repo_name, username, passwor
             return None
 
         realm = realm_match.group(1)
-        service = service_match.group(1) if service_match else ""
+        service = service_match.group(1) if service_match else None
         scope = f"repository:{namespace}/{repo_name}:push,pull"
 
-        # Request a token from the realm
-        token_url = f"{realm}?service={service}&scope={scope}"
+        # Build token URL using urllib.parse to handle existing query params in realm
+        parsed_realm = urlparse(realm)
+        existing_params = parse_qs(parsed_realm.query)
+
+        # Add service and scope params (only add service if present)
+        new_params = {}
+        if service:
+            new_params["service"] = service
+        new_params["scope"] = scope
+
+        # Merge existing params with new params (new params take precedence)
+        for key, value in existing_params.items():
+            if key not in new_params:
+                new_params[key] = value[0] if len(value) == 1 else value
+
+        # Reconstruct the URL with merged query parameters
+        token_url = urlunparse(
+            (
+                parsed_realm.scheme,
+                parsed_realm.netloc,
+                parsed_realm.path,
+                parsed_realm.params,
+                urlencode(new_params),
+                parsed_realm.fragment,
+            )
+        )
+
         token_resp = requests.get(
             token_url, auth=(username, password), verify=verify_tls, timeout=30
         )
@@ -557,11 +584,16 @@ def _get_v2_bearer_token(server, scheme, namespace, repo_name, username, passwor
             )
             return None
 
-        token_data = token_resp.json()
+        try:
+            token_data = token_resp.json()
+        except json.JSONDecodeError:
+            logger.error("Token endpoint returned non-JSON response: %s", token_resp.text[:200])
+            return None
+
         return token_data.get("token") or token_data.get("access_token")
 
-    except requests.RequestException as e:
-        logger.exception("Error getting bearer token: %s", e)
+    except requests.RequestException:
+        logger.exception("Error getting bearer token")
         return None
 
 
