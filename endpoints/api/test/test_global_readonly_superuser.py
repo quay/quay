@@ -46,6 +46,235 @@ class TestGlobalReadOnlySuperuserHelperFunctions:
 
 
 # =============================================================================
+# Request-Scoped Caching Tests (PROJQUAY-10426)
+# =============================================================================
+
+
+class TestGlobalReadOnlySuperuserCaching:
+    """
+    Test the request-scoped caching for allow_if_global_readonly_superuser().
+
+    This addresses PROJQUAY-10426 where excessive LDAP binds were caused by
+    multiple calls to is_global_readonly_superuser() within a single request.
+    The fix adds caching using Flask's g object so the LDAP lookup only happens
+    once per request.
+    """
+
+    def test_multiple_calls_use_cached_result(self, app):
+        """
+        Test that multiple calls within the same request only trigger one lookup.
+
+        This is the core test for PROJQUAY-10426. Before the fix, each call to
+        allow_if_global_readonly_superuser() would trigger a new LDAP bind.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from flask import g
+
+        with app.test_request_context():
+            # Mock the auth context to return a user
+            mock_context = MagicMock()
+            mock_context.authed_user.username = "testuser"
+
+            # Mock usermanager.is_global_readonly_superuser to track calls
+            mock_is_global_readonly = MagicMock(return_value=True)
+
+            with (
+                patch(
+                    "endpoints.api.app.config",
+                    {"GLOBAL_READONLY_SUPER_USERS": ["testuser"]},
+                ),
+                patch("endpoints.api.get_authenticated_context", return_value=mock_context),
+                patch(
+                    "endpoints.api.usermanager.is_global_readonly_superuser",
+                    mock_is_global_readonly,
+                ),
+            ):
+                # Clear any existing cache
+                if hasattr(g, "_is_global_readonly_superuser_cache"):
+                    delattr(g, "_is_global_readonly_superuser_cache")
+
+                # First call should trigger the lookup
+                result1 = allow_if_global_readonly_superuser()
+                assert result1 is True
+                assert mock_is_global_readonly.call_count == 1
+
+                # Second call should use cached result
+                result2 = allow_if_global_readonly_superuser()
+                assert result2 is True
+                assert mock_is_global_readonly.call_count == 1  # Still 1, not 2
+
+                # Third call should also use cached result
+                result3 = allow_if_global_readonly_superuser()
+                assert result3 is True
+                assert mock_is_global_readonly.call_count == 1  # Still 1
+
+    def test_cache_works_for_non_superuser(self, app):
+        """
+        Test that caching works correctly for users who are not global readonly superusers.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from flask import g
+
+        with app.test_request_context():
+            mock_context = MagicMock()
+            mock_context.authed_user.username = "regularuser"
+
+            mock_is_global_readonly = MagicMock(return_value=False)
+
+            with (
+                patch(
+                    "endpoints.api.app.config",
+                    {"GLOBAL_READONLY_SUPER_USERS": ["someotheruser"]},
+                ),
+                patch("endpoints.api.get_authenticated_context", return_value=mock_context),
+                patch(
+                    "endpoints.api.usermanager.is_global_readonly_superuser",
+                    mock_is_global_readonly,
+                ),
+            ):
+                # Clear any existing cache
+                if hasattr(g, "_is_global_readonly_superuser_cache"):
+                    delattr(g, "_is_global_readonly_superuser_cache")
+
+                # First call
+                result1 = allow_if_global_readonly_superuser()
+                assert result1 is False
+                assert mock_is_global_readonly.call_count == 1
+
+                # Second call should use cached result
+                result2 = allow_if_global_readonly_superuser()
+                assert result2 is False
+                assert mock_is_global_readonly.call_count == 1  # Still 1
+
+    def test_cache_is_per_request(self, app):
+        """
+        Test that the cache is properly scoped to each request (cleared between requests).
+
+        Flask's g object is automatically cleared when a new request context is entered,
+        so the cache should be cleared between requests. This test verifies that in
+        real HTTP request scenarios, the cache is properly scoped.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from flask import g
+
+        # Test that cache is cleared when we explicitly remove it between requests
+        # This simulates what Flask does naturally between different HTTP requests
+        with app.test_request_context():
+            mock_context = MagicMock()
+            mock_context.authed_user.username = "testuser"
+
+            mock_is_global_readonly = MagicMock(return_value=True)
+
+            with (
+                patch(
+                    "endpoints.api.app.config",
+                    {"GLOBAL_READONLY_SUPER_USERS": ["testuser"]},
+                ),
+                patch("endpoints.api.get_authenticated_context", return_value=mock_context),
+                patch(
+                    "endpoints.api.usermanager.is_global_readonly_superuser",
+                    mock_is_global_readonly,
+                ),
+            ):
+                # Clear any existing cache (simulates start of new request)
+                if hasattr(g, "_is_global_readonly_superuser_cache"):
+                    delattr(g, "_is_global_readonly_superuser_cache")
+
+                # First call triggers lookup
+                result1 = allow_if_global_readonly_superuser()
+                assert result1 is True
+                assert mock_is_global_readonly.call_count == 1
+
+                # Second call uses cache
+                result2 = allow_if_global_readonly_superuser()
+                assert result2 is True
+                assert mock_is_global_readonly.call_count == 1  # Still 1
+
+                # Simulate a new request by clearing the cache
+                if hasattr(g, "_is_global_readonly_superuser_cache"):
+                    delattr(g, "_is_global_readonly_superuser_cache")
+
+                # Third call triggers new lookup (simulating new request)
+                result3 = allow_if_global_readonly_superuser()
+                assert result3 is True
+                assert mock_is_global_readonly.call_count == 2  # Now 2
+
+                # Fourth call uses cache again
+                result4 = allow_if_global_readonly_superuser()
+                assert result4 is True
+                assert mock_is_global_readonly.call_count == 2  # Still 2
+
+    def test_cache_handles_multiple_users(self, app):
+        """
+        Test that the cache correctly handles different users within the same request.
+
+        While unlikely in practice (a single request typically has one authenticated user),
+        the cache should correctly store results per username.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from flask import g
+
+        with app.test_request_context():
+            call_count = {"count": 0}
+
+            def mock_is_readonly(username):
+                call_count["count"] += 1
+                return username == "globalreadonly"
+
+            mock_context1 = MagicMock()
+            mock_context1.authed_user.username = "globalreadonly"
+
+            mock_context2 = MagicMock()
+            mock_context2.authed_user.username = "regularuser"
+
+            with (
+                patch(
+                    "endpoints.api.app.config",
+                    {"GLOBAL_READONLY_SUPER_USERS": ["globalreadonly"]},
+                ),
+                patch(
+                    "endpoints.api.usermanager.is_global_readonly_superuser",
+                    side_effect=mock_is_readonly,
+                ),
+            ):
+                # Clear any existing cache
+                if hasattr(g, "_is_global_readonly_superuser_cache"):
+                    delattr(g, "_is_global_readonly_superuser_cache")
+
+                # First user - global readonly
+                with patch("endpoints.api.get_authenticated_context", return_value=mock_context1):
+                    result1 = allow_if_global_readonly_superuser()
+                    assert result1 is True
+                    assert call_count["count"] == 1
+
+                    # Call again for same user
+                    result1b = allow_if_global_readonly_superuser()
+                    assert result1b is True
+                    assert call_count["count"] == 1  # Cached
+
+                # Second user - regular user
+                with patch("endpoints.api.get_authenticated_context", return_value=mock_context2):
+                    result2 = allow_if_global_readonly_superuser()
+                    assert result2 is False
+                    assert call_count["count"] == 2  # New lookup for different user
+
+                    # Call again for same user
+                    result2b = allow_if_global_readonly_superuser()
+                    assert result2b is False
+                    assert call_count["count"] == 2  # Cached
+
+                # Back to first user - should still be cached
+                with patch("endpoints.api.get_authenticated_context", return_value=mock_context1):
+                    result3 = allow_if_global_readonly_superuser()
+                    assert result3 is True
+                    assert call_count["count"] == 2  # Still cached
+
+
+# =============================================================================
 # App Token Access Tests (Well-Written Integration Tests)
 # =============================================================================
 
