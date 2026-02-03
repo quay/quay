@@ -39,6 +39,7 @@ import {GlobalMessages} from 'src/components/GlobalMessages';
 import {LoadingPage} from 'src/components/LoadingPage';
 import {useUI} from 'src/contexts/UIContext';
 import {useExternalScripts} from 'src/hooks/UseExternalScripts';
+import {AxiosError} from 'axios';
 
 // Lazy load route components for better performance
 const OrganizationsList = lazy(
@@ -250,9 +251,15 @@ export function StandaloneMain() {
     }
   }, [quayConfig]);
 
-  if (loading) {
+  // Don't render anything while loading, or if there's a 401 error
+  // (401 errors trigger a redirect to /signin via axios interceptor, so we shouldn't
+  // flash the SiteUnavailableError during the redirect - fixes PROJQUAY-10089)
+  const is401Error = error && (error as AxiosError)?.response?.status === 401;
+  if (loading || is401Error) {
     return null;
   }
+
+  // Only show SiteUnavailableError for non-401 errors (real server errors)
   return (
     <ErrorBoundary hasError={!!error} fallback={<SiteUnavailableError />}>
       <Page
