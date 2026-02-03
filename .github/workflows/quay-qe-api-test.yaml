@@ -111,14 +111,10 @@ jobs:
 
           docker run --rm \
             --network host \
-            --memory="4g" \
-            --cpus="1.5" \
-            --shm-size="2g" \
             -e CYPRESS_QUAY_ENDPOINT="${QUAY_URL}" \
             -e CYPRESS_QUAY_HOSTNAME="${QUAY_HOSTNAME}" \
             -e CYPRESS_QUAY_USER="admin" \
             -e CYPRESS_QUAY_PASSWORD="password" \
-            -e TERM=xterm-256color \
             -v ${{ github.workspace }}/test-results:/test-results \
             -v ${{ github.workspace }}/cypress-videos:/quay-tests/quay-api-tests/cypress/videos \
             -v ${{ github.workspace }}/cypress-screenshots:/quay-tests/quay-api-tests/cypress/screenshots \
@@ -128,7 +124,7 @@ jobs:
               yarn install && \
               NO_COLOR=1 yarn run cypress run \
                 --spec 'cypress/e2e/quay_api_testing_all.cy.js' \
-                --browser edge \
+                --browser chrome \
                 --headless \
                 --reporter cypress-multi-reporters \
                 --reporter-options configFile=reporter-config.json \
