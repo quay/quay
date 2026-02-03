@@ -65,10 +65,6 @@ def test_create_org_as_superuser_with_restricted_users_set(app):
                 cl, OrganizationList, "POST", None, body=body, expected_code=201
             )
 
-    # unset all super users temporarily
-    superuser_list = realapp.config.get("SUPER_USERS")
-    realapp.config["SUPER_USERS"] = []
-
     body = {
         "name": "buyandlargetimes2",
         "email": "some1@email.com",
@@ -76,10 +72,30 @@ def test_create_org_as_superuser_with_restricted_users_set(app):
 
     # check if users who are not super users can create organizations when restricted users is set
     with patch("features.RESTRICTED_USERS", FeatureNameValue("RESTRICTED_USERS", True)):
-        with client_with_identity("devtable", app) as cl:
-            resp = conduct_api_call(
-                cl, OrganizationList, "POST", None, body=body, expected_code=403
-            )
+        with patch("endpoints.api.organization.usermanager.is_superuser", return_value=False):
+            with client_with_identity("devtable", app) as cl:
+                conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=403)
 
-    # reset superuser list to previous value
+
+def test_create_org_as_ldap_superuser_with_restricted_users_set(app):
+    """
+    Test that LDAP-detected superusers can create organizations
+    even when not in the config SUPER_USERS list.
+    """
+    body = {
+        "name": "ldapsuperuserorg",
+        "email": "ldap@email.com",
+    }
+
+    # Remove user from config SUPER_USERS to simulate LDAP-only superuser
+    superuser_list = realapp.config.get("SUPER_USERS")
+    realapp.config["SUPER_USERS"] = []
+
+    with patch("features.RESTRICTED_USERS", FeatureNameValue("RESTRICTED_USERS", True)):
+        # Mock usermanager.is_superuser to return True (simulating LDAP detection)
+        with patch("endpoints.api.organization.usermanager.is_superuser", return_value=True):
+            with client_with_identity("devtable", app) as cl:
+                conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+    # Restore superuser list
     realapp.config["SUPER_USERS"] = superuser_list
