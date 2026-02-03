@@ -24,6 +24,9 @@ export function LoginPageLayout({
   const footerListItems = useLoginFooterItems();
   const logoUrl = useLogo();
 
+  // Use REGISTRY_TITLE from config for brand alt text, fallback to 'Quay'
+  const brandAltText = quayConfig?.config?.REGISTRY_TITLE || 'Quay';
+
   // Set document title from registry title
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
@@ -38,7 +41,7 @@ export function LoginPageLayout({
       <LoginPage
         className={className}
         brandImgSrc={logoUrl}
-        brandImgAlt="Red Hat Quay"
+        brandImgAlt={brandAltText}
         backgroundImgSrc="assets/images/rh_login.jpeg"
         textContent={description}
         loginTitle={title}
