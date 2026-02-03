@@ -100,7 +100,7 @@ jobs:
 
       - name: Run Cypress tests
         run: |
-          QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
+          QUAY_URL="http://172.17.0.1:8080"
           QUAY_HOSTNAME="${QUAY_URL#http://}"
 
           echo "Waiting 1 minutes for Quay UI to be fully ready..."
@@ -117,7 +117,15 @@ jobs:
             -v ${{ github.workspace }}/cypress-screenshots:/quay-tests/quay-api-tests/cypress/screenshots \
             quay.io/quay-qetest/ci-test-image:latest \
             bash -c "
-              curl localhost:8080/config
+              cd /quay-tests/quay-api-tests && \
+              yarn install && \
+              NO_COLOR=1 yarn run cypress run \
+                --spec 'cypress/e2e/quay_api_testing_all.cy.js' \
+                --browser chrome \
+                --headless \
+                --reporter cypress-multi-reporters \
+                --reporter-options configFile=reporter-config.json \
+                > /test-results/quay_api_testing_report
             "
 
       - name: Upload Cypress Test Report
