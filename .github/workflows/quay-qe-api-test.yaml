@@ -64,11 +64,11 @@ jobs:
           --data '{ "username": "admin", "password": "password", "email": "quayqe@redhat.com", "access_token": true }')
           echo "Initialization response: $response"
 
-      # - name: Create test results directory
-      #   run: |
-      #     mkdir -p ${{ github.workspace }}/test-results
-      #     mkdir -p ${{ github.workspace }}/cypress-videos
-      #     mkdir -p ${{ github.workspace }}/cypress-screenshots
+      - name: Create test results directory
+        run: |
+          mkdir -p ${{ github.workspace }}/test-results
+          mkdir -p ${{ github.workspace }}/cypress-videos
+          mkdir -p ${{ github.workspace }}/cypress-screenshots
 
       - name: Install Cypress Test Dependencies
         run: |
@@ -99,9 +99,15 @@ jobs:
           curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
           sudo tar -zxf oras_${VERSION}_linux_amd64.tar.gz -C /usr/local/bin/ oras
 
+      - name: Checkout quay-tests repository
+        uses: actions/checkout@v6
+        with:
+          repository: quay/quay-tests
+          path: quay-tests
+          token: ${{ secrets.QUAY_QE_TESTS }}
+
       - name: Run Cypress tests
         run: |
-          git clone https://${{ secrets.QUAY_QE_TESTS }}@github.com/quay/quay-tests.git
           QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
           QUAY_HOSTNAME="${QUAY_URL#http://}"
 
@@ -121,7 +127,7 @@ jobs:
           --headless \
           --reporter cypress-multi-reporters \
           --reporter-options configFile=reporter-config.json \
-          > /test-results/quay_api_testing_report
+          > ${{ github.workspace }}/test-results/quay_api_testing_report
 
       # - name: Run Cypress tests
       #   run: |
@@ -159,8 +165,9 @@ jobs:
         if: always()
         with:
           name: quay-api-test-report
-          path: ${{ github.workspace }}/quay-tests/quay_api_testing_report
+          path: ${{ github.workspace }}/test-results/quay_api_testing_report
           retention-days: 30
+          if-no-files-found: ignore
 
       - name: Upload Cypress Videos
         uses: actions/upload-artifact@v4
