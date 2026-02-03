@@ -169,7 +169,7 @@ class OrganizationList(ApiResource):
         existing = None
 
         # Super users should be able to create new orgs regardless of user restriction
-        if user.username not in app.config.get("SUPER_USERS", None):
+        if not usermanager.is_superuser(user.username):
             if features.RESTRICTED_USERS and usermanager.is_restricted_user(user.username):
                 raise Unauthorized()
 
