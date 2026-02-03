@@ -42,7 +42,6 @@ export function LoginPageLayout({
         className={className}
         brandImgSrc={logoUrl}
         brandImgAlt={brandAltText}
-        backgroundImgSrc="assets/images/rh_login.jpeg"
         textContent={description}
         loginTitle={title}
         footerListItems={footerListItems}
