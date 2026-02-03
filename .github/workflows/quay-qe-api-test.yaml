@@ -103,7 +103,6 @@ jobs:
         run: |
           # Use output from setup-quay and convert localhost to Docker bridge IP for container access
           QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
-          QUAY_URL="${QUAY_URL/localhost/172.17.0.1}"
           QUAY_HOSTNAME="${QUAY_URL#http://}"
 
           echo "Waiting 1 minutes for Quay UI to be fully ready..."
@@ -124,7 +123,7 @@ jobs:
               yarn install && \
               NO_COLOR=1 yarn run cypress run \
                 --spec 'cypress/e2e/quay_api_testing_all.cy.js' \
-                --browser chrome \
+                --browser edge \
                 --headless \
                 --reporter cypress-multi-reporters \
                 --reporter-options configFile=reporter-config.json \
