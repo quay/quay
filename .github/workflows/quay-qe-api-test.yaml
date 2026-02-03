@@ -123,7 +123,7 @@ jobs:
               yarn install && \
               NO_COLOR=1 yarn run cypress run \
                 --spec 'cypress/e2e/quay_api_testing_all.cy.js' \
-                --browser edge \
+                --browser chrome \
                 --headless \
                 --reporter cypress-multi-reporters \
                 --reporter-options configFile=reporter-config.json \
