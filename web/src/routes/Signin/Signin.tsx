@@ -15,7 +15,7 @@ import {useNavigate, Link, useSearchParams} from 'react-router-dom';
 import {useRecoilState} from 'recoil';
 import {AuthState} from 'src/atoms/AuthState';
 import {getCsrfToken} from 'src/libs/axios';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
 import {AxiosError} from 'axios';
 import './Signin.css';
 import {addDisplayError} from 'src/resources/ErrorHandling';
@@ -48,7 +48,8 @@ export function Signin() {
   const {inReadOnlyMode, inAccountRecoveryMode} = useQuayState();
 
   const navigate = useNavigate();
-  const quayConfig = useQuayConfig();
+  const {config: quayConfig, isLoading: configLoading} =
+    useQuayConfigWithLoading();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const {
@@ -111,6 +112,17 @@ export function Signin() {
       setExternalLoginError(hookError);
     }
   }, [hookError]);
+
+  // Show loading spinner until config is loaded to prevent flash of unconfigured content
+  if (configLoading) {
+    return (
+      <LoginPageLayout title="" description="">
+        <div style={{textAlign: 'center', padding: '40px'}}>
+          <Spinner size="xl" />
+        </div>
+      </LoginPageLayout>
+    );
+  }
 
   const showForgotPassword = () => {
     if (!quayConfig) return false;
@@ -471,7 +483,7 @@ export function Signin() {
       title={
         currentView === 'signin' ? 'Log in to your account' : 'Reset Password'
       }
-      description="Quay builds, analyzes and distributes your container images. Store your containers with added security. Easily build and deploy new containers. Scan containers to provide security."
+      description="Build, analyze and distribute your container images. Store your containers with added security. Easily build and deploy new containers. Scan containers to provide security."
     >
       {currentView === 'signin' ? loginForm : recoveryForm}
     </LoginPageLayout>
