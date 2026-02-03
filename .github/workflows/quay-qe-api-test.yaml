@@ -235,3 +235,9 @@ jobs:
           path: ${{ github.workspace }}/cypress-screenshots
           retention-days: 30
           if-no-files-found: ignore
+
+      - name: Collect Quay logs
+        if: always()
+        uses: ./.github/actions/collect-quay-logs
+        with:
+          artifact-name: quay-debug-logs
