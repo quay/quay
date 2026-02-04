@@ -90,12 +90,12 @@ def test_move_tag(manifest_exists, test_tag, expected_status, app):
 @pytest.mark.parametrize(
     "repo_namespace, repo_name, query_count",
     [
-        ("devtable", "simple", 6),  # +2 for converting object to and from json
-        ("devtable", "history", 6),  # +2 for converting object to and from json
-        ("devtable", "complex", 6),  # +2 for converting object to and from json
-        ("devtable", "gargantuan", 6),  # +2 for converting object to and from json
-        ("buynlarge", "orgrepo", 9),  # +3 for permissions checks.
-        ("buynlarge", "anotherorgrepo", 9),  # +3 for permissions checks.
+        ("devtable", "simple", 5),  # +2 for converting object to and from json
+        ("devtable", "history", 5),  # +2 for converting object to and from json
+        ("devtable", "complex", 5),  # +2 for converting object to and from json
+        ("devtable", "gargantuan", 5),  # +2 for converting object to and from json
+        ("buynlarge", "orgrepo", 8),  # +3 for permissions checks.
+        ("buynlarge", "anotherorgrepo", 8),  # +3 for permissions checks.
     ],
 )
 def test_list_repo_tags(repo_namespace, repo_name, query_count, app):
@@ -115,7 +115,7 @@ def test_list_repo_tags(repo_namespace, repo_name, query_count, app):
 @pytest.mark.parametrize(
     "repo_namespace, repo_name, query_count",
     [
-        ("devtable", "gargantuan", 6),  # +2 for converting object to and from json
+        ("devtable", "gargantuan", 5),  # +2 for converting object to and from json
     ],
 )
 def test_list_repo_tags_filter(repo_namespace, repo_name, query_count, app):

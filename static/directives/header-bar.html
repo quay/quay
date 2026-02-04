@@ -23,7 +23,6 @@
         <!-- Signed in -->
         <ul class="nav navbar-nav navbar-links" ng-if="!user.anonymous">
           <li ng-if="searchingAllowed"><a ng-href="/search" quay-section="search">Explore</a></li>
-          <li quay-require="['APP_REGISTRY']"><a ng-href="/application/" quay-section="application">Applications</a></li>
           <li><a ng-href="/repository/" quay-section="repository">Repositories</a></li>
           <li><a ng-href="/tutorial/" quay-section="tutorial" ng-if="!inReadOnlyMode">Tutorial</a></li>
         </ul>

@@ -328,42 +328,6 @@ def test_push_pull_formerly_bad_repo_name(
     )
 
 
-def test_application_repo(
-    pusher,
-    puller,
-    basic_images,
-    liveserver_session,
-    app_reloader,
-    registry_server_executor,
-    liveserver,
-):
-    """Test: Attempting to push or pull from an *application* repository raises a 405."""
-    credentials = ("devtable", "password")
-    registry_server_executor.on(liveserver).create_app_repository("devtable", "someapprepo")
-
-    # Attempt to push to the repository.
-    pusher.push(
-        liveserver_session,
-        "devtable",
-        "someapprepo",
-        "latest",
-        basic_images,
-        credentials=credentials,
-        expected_failure=Failures.APP_REPOSITORY,
-    )
-
-    # Attempt to pull from the repository.
-    puller.pull(
-        liveserver_session,
-        "devtable",
-        "someapprepo",
-        "latest",
-        basic_images,
-        credentials=credentials,
-        expected_failure=Failures.APP_REPOSITORY,
-    )
-
-
 def test_middle_layer_different_sha(v2_protocol, v1_protocol, liveserver_session, app_reloader):
     """Test: Pushing of a 3-layer image with the *same* V1 ID's, but the middle layer having
     different bytes, must result in new IDs being generated for the leaf layer, as

@@ -2081,21 +2081,6 @@ class TestCreateRepo(ApiTestCase):
         self.assertEqual(ADMIN_ACCESS_USER, json["namespace"])
         self.assertEqual("newrepo", json["name"])
 
-    def test_create_app_repo(self):
-        self.login(ADMIN_ACCESS_USER)
-
-        json = self.postJsonResponse(
-            RepositoryList,
-            data=dict(
-                repository="newrepo", visibility="public", description="", repo_kind="application"
-            ),
-            expected_code=201,
-        )
-
-        self.assertEqual(ADMIN_ACCESS_USER, json["namespace"])
-        self.assertEqual("newrepo", json["name"])
-        self.assertEqual("application", json["kind"])
-
     def test_createrepo_underorg(self):
         self.login(ADMIN_ACCESS_USER)
 
@@ -2112,26 +2097,6 @@ class TestCreateRepo(ApiTestCase):
 
 
 class TestListRepos(ApiTestCase):
-    def test_list_app_repos(self):
-        self.login(ADMIN_ACCESS_USER)
-
-        # Create an app repo.
-        self.postJsonResponse(
-            RepositoryList,
-            data=dict(
-                repository="newrepo", visibility="public", description="", repo_kind="application"
-            ),
-            expected_code=201,
-        )
-
-        json = self.getJsonResponse(
-            RepositoryList,
-            params=dict(namespace=ADMIN_ACCESS_USER, public=False, repo_kind="application"),
-        )
-
-        self.assertEqual(1, len(json["repositories"]))
-        self.assertEqual("application", json["repositories"][0]["kind"])
-
     def test_listrepos_asguest(self):
         # Queries: Base + the list query
         # TODO: Add quota queries
@@ -2911,7 +2876,7 @@ class TestRepoBuilds(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         # Queries: Permission + the list query + app check
-        with assert_query_count(2):
+        with assert_query_count(1):
             json = self.getJsonResponse(
                 RepositoryBuildList, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
             )
@@ -2922,7 +2887,7 @@ class TestRepoBuilds(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         # Queries: Permission + the list query + app check
-        with assert_query_count(2):
+        with assert_query_count(1):
             json = self.getJsonResponse(
                 RepositoryBuildList, params=dict(repository=ADMIN_ACCESS_USER + "/building")
             )

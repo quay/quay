@@ -2388,12 +2388,6 @@ CONFIG_SCHEMA = {
         "x-example": False,
         "x-reference": "https://docs.redhat.com/en/documentation/red_hat_quay/3.12/html/configure_red_hat_quay/config-fields-intro#config-fields-aci",
     },
-    "FEATURE_APP_REGISTRY": {
-        "type": "boolean",
-        "description": "[QUAY.IO] FEATURE_APP_REGISTRY. Defaults to False",
-        "x-example": False,
-        "x-reference": None,
-    },
     "GITLAB_TRIGGER_KIND": {
         "type": "object",
         "description": "[QUAY.IO] GITLAB_TRIGGER_KIND.",
