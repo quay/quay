@@ -181,6 +181,50 @@ def get_org_wide_permissions(user, org_filter=None):
     return with_user.where(User.id == user, Org.organization == True)
 
 
+def get_user_teams_in_org(user: User, org_name: str) -> set[str]:
+    """
+    Returns a set of team names that the given user is a member of within the specified organization.
+
+    This is used for batch permission checking - a user can view a team if they are a member of it
+    (any role) or if they are an organization admin (checked separately).
+    """
+    Org = User.alias()
+
+    query = (
+        Team.select(Team.name)
+        .join(Org, on=(Team.organization == Org.id))
+        .switch(Team)
+        .join(TeamMember)
+        .join(User)
+        .where(User.id == user, Org.username == org_name)
+    )
+
+    return {team.name for team in query}
+
+
+def is_org_admin(user: User, org_name: str) -> bool:
+    """
+    Returns True if the user is an admin of the specified organization.
+
+    A user is an org admin if they are a member of any team with the 'admin' role.
+    """
+    Org = User.alias()
+
+    query = (
+        Team.select(Team.id)
+        .join(TeamRole)
+        .switch(Team)
+        .join(Org, on=(Team.organization == Org.id))
+        .switch(Team)
+        .join(TeamMember)
+        .join(User)
+        .where(User.id == user, Org.username == org_name, TeamRole.name == "admin")
+        .limit(1)
+    )
+
+    return query.exists()
+
+
 def get_all_repo_teams(namespace_name, repository_name):
     return (
         RepositoryPermission.select(Team.name, Role.name, RepositoryPermission)
