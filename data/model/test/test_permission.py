@@ -3,7 +3,9 @@
 import pytest
 
 from data.model.organization import create_organization
-from data.model.permission import get_org_wide_permissions
+from data.model.permission import _get_user_repo_permissions, get_org_wide_permissions
+from data.model.repository import create_repository
+from data.model.team import add_user_to_team, create_team
 from data.model.user import create_user_noverify, get_user
 from test.fixtures import *
 
@@ -63,3 +65,31 @@ class TestGetOrgWidePermissions:
 
         # Filtered should only have filterorg1
         assert filtered_org_names == {"filterorg1"}
+
+
+def test_get_user_repo_permissions_returns_direct_and_team(initialized_db):
+    """Test that UNION query returns both direct and team-based permissions."""
+    admin_user = get_user("devtable")
+    test_user = create_user_noverify("unionuser", "unionuser@example.com")
+
+    # Create org and team
+    org = create_organization("unionorg", "unionorg@example.com", admin_user)
+    team = create_team("devs", org, "member")
+    add_user_to_team(test_user, team)
+
+    from data.database import RepositoryPermission, Role
+
+    # Create two repos - one with direct permission, one with team permission
+    repo1 = create_repository("unionorg", "directrepo", admin_user)
+    repo2 = create_repository("unionorg", "teamrepo", admin_user)
+
+    read_role = Role.get(Role.name == "read")
+    RepositoryPermission.create(user=test_user, repository=repo1, role=read_role)
+    RepositoryPermission.create(team=team, repository=repo2, role=read_role)
+
+    # Get all permissions - UNION should return both direct and team permissions
+    perms = list(_get_user_repo_permissions(test_user))
+    repo_names = {p.repository.name for p in perms}
+
+    assert "directrepo" in repo_names
+    assert "teamrepo" in repo_names
