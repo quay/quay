@@ -626,3 +626,221 @@ class TestPerformOrgMirrorRepo:
         assert refreshed_repo.sync_status == OrgMirrorRepoStatus.CANCEL
         assert refreshed_repo.sync_start_date is None
         assert refreshed_repo.sync_retries_remaining == 0
+
+
+class TestRepoCreatedAuditLogging:
+    """Tests for org_mirror_repo_created and org_mirror_repo_creation_failed audit events."""
+
+    @patch("workers.repomirrorworker.logs_model")
+    def test_repo_created_emits_audit_event(self, mock_logs, initialized_db):
+        """Test that creating a new repository emits org_mirror_repo_created audit event."""
+        org, robot = _create_org_and_robot("audit_repo_test1")
+        config = _create_org_mirror_config(org, robot)
+
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="audit-new-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        result = _ensure_local_repository(config, org_mirror_repo)
+
+        # Verify repository was created
+        assert result is not None
+        assert result.name == "audit-new-repo"
+
+        # Verify audit event was logged
+        calls = mock_logs.log_action.call_args_list
+        repo_created_calls = [c for c in calls if c[0][0] == "org_mirror_repo_created"]
+        assert len(repo_created_calls) == 1
+
+        call_args = repo_created_calls[0]
+        assert call_args[1]["namespace_name"] == org.username
+        assert call_args[1]["repository_name"] == "audit-new-repo"
+        assert call_args[1]["performer"] == robot
+        assert call_args[1]["ip"] is None
+        metadata = call_args[1]["metadata"]
+        assert "external_reference" in metadata
+        assert metadata["visibility"] == "private"
+        assert metadata["via_org_mirror"] is True
+
+    @patch("workers.repomirrorworker.logs_model")
+    def test_existing_repo_does_not_emit_created_event(self, mock_logs, initialized_db):
+        """Test that linking an existing repository does not emit org_mirror_repo_created."""
+        org, robot = _create_org_and_robot("audit_repo_test2")
+        config = _create_org_mirror_config(org, robot)
+
+        # Create a repository but don't link it
+        from data.model import repository as repository_model
+
+        repository_model.create_repository(
+            org.username, "existing-repo", robot, visibility="private"
+        )
+
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="existing-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        result = _ensure_local_repository(config, org_mirror_repo)
+
+        # Verify repository was linked
+        assert result is not None
+
+        # Verify NO org_mirror_repo_created event was logged (repo already existed)
+        calls = mock_logs.log_action.call_args_list
+        repo_created_calls = [c for c in calls if c[0][0] == "org_mirror_repo_created"]
+        assert len(repo_created_calls) == 0
+
+    @patch("workers.repomirrorworker.logs_model")
+    def test_already_linked_repo_does_not_emit_created_event(self, mock_logs, initialized_db):
+        """Test that already linked repository does not emit org_mirror_repo_created."""
+        org, robot = _create_org_and_robot("audit_repo_test3")
+        config = _create_org_mirror_config(org, robot)
+
+        # Create and link a repository
+        from data.model import repository as repository_model
+
+        existing_repo = repository_model.create_repository(
+            org.username, "linked-repo", robot, visibility="private"
+        )
+        repo_db = Repository.get(Repository.id == existing_repo.id)
+
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="linked-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            repository=repo_db,
+        )
+
+        result = _ensure_local_repository(config, org_mirror_repo)
+
+        # Verify repository was returned
+        assert result is not None
+        assert result.id == repo_db.id
+
+        # Verify NO log_action was called at all
+        assert mock_logs.log_action.call_count == 0
+
+    @patch("workers.repomirrorworker.repository_model")
+    @patch("workers.repomirrorworker.logs_model")
+    def test_repo_creation_failure_emits_audit_event(
+        self, mock_logs, mock_repo_model, initialized_db
+    ):
+        """Test that repository creation failure emits org_mirror_repo_creation_failed event."""
+        org, robot = _create_org_and_robot("audit_repo_test4")
+        config = _create_org_mirror_config(org, robot)
+
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="fail-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        # Mock repository creation to raise an exception
+        mock_repo_model.create_repository.side_effect = Exception("Database error")
+
+        result = _ensure_local_repository(config, org_mirror_repo)
+
+        # Verify repository was not created
+        assert result is None
+
+        # Verify failure audit event was logged
+        calls = mock_logs.log_action.call_args_list
+        repo_failed_calls = [c for c in calls if c[0][0] == "org_mirror_repo_creation_failed"]
+        assert len(repo_failed_calls) == 1
+
+        call_args = repo_failed_calls[0]
+        assert call_args[1]["namespace_name"] == org.username
+        assert call_args[1]["repository_name"] == "fail-repo"
+        assert call_args[1]["performer"] == robot
+        assert call_args[1]["ip"] is None
+        metadata = call_args[1]["metadata"]
+        assert "external_reference" in metadata
+        assert "Database error" in metadata["error"]
+
+
+class TestDiscoveryAuditLogging:
+    """Tests for audit events during org mirror discovery phase."""
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.get_registry_adapter")
+    @patch("workers.repomirrorworker.logs_model")
+    def test_discovery_logs_sync_started(self, mock_logs, mock_get_adapter, initialized_db):
+        """Test that discovery phase logs org_mirror_sync_started event."""
+        org, robot = _create_org_and_robot("audit_discovery_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+        config.sync_start_date = datetime.utcnow() - timedelta(hours=1)
+        config.save()
+
+        mock_adapter = Mock()
+        mock_adapter.list_repositories.return_value = ["repo1"]
+        mock_get_adapter.return_value = mock_adapter
+
+        perform_org_mirror_discovery(config)
+
+        # Verify org_mirror_sync_started was logged
+        calls = mock_logs.log_action.call_args_list
+        started_calls = [c for c in calls if c[0][0] == "org_mirror_sync_started"]
+        assert len(started_calls) == 1
+
+        call_args = started_calls[0]
+        assert call_args[1]["namespace_name"] == org.username
+        assert call_args[1]["performer"] == robot
+        metadata = call_args[1]["metadata"]
+        assert "message" in metadata
+        assert "external_registry_url" in metadata
+        assert "external_namespace" in metadata
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.get_registry_adapter")
+    @patch("workers.repomirrorworker.logs_model")
+    def test_discovery_logs_sync_success(self, mock_logs, mock_get_adapter, initialized_db):
+        """Test that successful discovery logs org_mirror_sync_success event."""
+        org, robot = _create_org_and_robot("audit_discovery_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+        config.sync_start_date = datetime.utcnow() - timedelta(hours=1)
+        config.save()
+
+        mock_adapter = Mock()
+        mock_adapter.list_repositories.return_value = ["repo1", "repo2"]
+        mock_get_adapter.return_value = mock_adapter
+
+        perform_org_mirror_discovery(config)
+
+        # Verify org_mirror_sync_success was logged
+        calls = mock_logs.log_action.call_args_list
+        success_calls = [c for c in calls if c[0][0] == "org_mirror_sync_success"]
+        assert len(success_calls) == 1
+
+        call_args = success_calls[0]
+        assert call_args[1]["namespace_name"] == org.username
+        metadata = call_args[1]["metadata"]
+        assert "Discovery completed" in metadata["message"]
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.get_registry_adapter")
+    @patch("workers.repomirrorworker.logs_model")
+    def test_discovery_logs_sync_failed_on_error(self, mock_logs, mock_get_adapter, initialized_db):
+        """Test that discovery failure logs org_mirror_sync_failed event."""
+        org, robot = _create_org_and_robot("audit_discovery_test3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+        config.sync_start_date = datetime.utcnow() - timedelta(hours=1)
+        config.save()
+
+        mock_adapter = Mock()
+        mock_adapter.list_repositories.side_effect = Exception("Connection refused")
+        mock_get_adapter.return_value = mock_adapter
+
+        perform_org_mirror_discovery(config)
+
+        # Verify org_mirror_sync_failed was logged
+        calls = mock_logs.log_action.call_args_list
+        failed_calls = [c for c in calls if c[0][0] == "org_mirror_sync_failed"]
+        assert len(failed_calls) == 1
+
+        call_args = failed_calls[0]
+        assert call_args[1]["namespace_name"] == org.username
+        metadata = call_args[1]["metadata"]
+        assert "Connection refused" in metadata["message"]

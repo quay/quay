@@ -1082,6 +1082,63 @@ def _emit_org_config_log(
     )
 
 
+def _emit_org_repo_created_log(
+    config: OrgMirrorConfig,
+    org_mirror_repo: OrgMirrorRepository,
+):
+    """
+    Emit an audit log when a repository is created via org mirror.
+
+    Args:
+        config: The OrgMirrorConfig
+        org_mirror_repo: The OrgMirrorRepository that was created
+    """
+    org = config.organization
+    external_reference = _build_external_reference(config, org_mirror_repo.repository_name)
+
+    logs_model.log_action(
+        "org_mirror_repo_created",
+        namespace_name=org.username,
+        repository_name=org_mirror_repo.repository_name,
+        performer=config.internal_robot,
+        ip=None,
+        metadata={
+            "external_reference": external_reference,
+            "visibility": config.visibility.name,
+            "via_org_mirror": True,
+        },
+    )
+
+
+def _emit_org_repo_creation_failed_log(
+    config: OrgMirrorConfig,
+    org_mirror_repo: OrgMirrorRepository,
+    error: str,
+):
+    """
+    Emit an audit log when repository creation fails via org mirror.
+
+    Args:
+        config: The OrgMirrorConfig
+        org_mirror_repo: The OrgMirrorRepository that failed to create
+        error: The error message
+    """
+    org = config.organization
+    external_reference = _build_external_reference(config, org_mirror_repo.repository_name)
+
+    logs_model.log_action(
+        "org_mirror_repo_creation_failed",
+        namespace_name=org.username,
+        repository_name=org_mirror_repo.repository_name,
+        performer=config.internal_robot,
+        ip=None,
+        metadata={
+            "external_reference": external_reference,
+            "error": error,
+        },
+    )
+
+
 def process_org_mirrors(skopeo, token=None):
     """
     Performs mirroring of org-level mirror repositories whose last sync time is greater than
@@ -1389,9 +1446,16 @@ def _ensure_local_repository(
                 org.username,
                 repo_name,
             )
+
+            # Emit audit event for repository creation
+            _emit_org_repo_created_log(config, org_mirror_repo)
+
             return repo_db
-    except Exception:
+    except Exception as e:
         logger.exception("Failed to create repository %s/%s", org.username, repo_name)
+
+        # Emit audit event for repository creation failure
+        _emit_org_repo_creation_failed_log(config, org_mirror_repo, str(e))
 
     return None
 

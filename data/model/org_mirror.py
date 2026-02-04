@@ -230,17 +230,19 @@ def update_org_mirror_config(
     return config
 
 
-def delete_org_mirror_config(org):
+def delete_org_mirror_config(org, config=None):
     """
     Delete the organization-level mirror configuration and all associated discovered repositories.
 
     Args:
         org: A User object representing the organization.
+        config: Optional pre-fetched OrgMirrorConfig. If None, will be fetched.
 
     Returns:
         True if the configuration was deleted, False if no configuration existed.
     """
-    config = get_org_mirror_config(org)
+    if config is None:
+        config = get_org_mirror_config(org)
     if config is None:
         return False
 
