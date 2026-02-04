@@ -5,7 +5,11 @@ QUAYCONF=${QUAYCONF:-"$QUAYPATH/conf"}
 QUAYCONFIG=${QUAYCONFIG:-"$QUAYCONF/stack"}
 CERTDIR=${CERTDIR:-"$QUAYCONFIG/extra_ca_certs"}
 SYSTEM_CERTDIR=${SYSTEM_CERTDIR:-"/etc/pki/ca-trust/source/anchors"}
-PYTHONUSERBASE_SITE_PACKAGE=/opt/app-root/lib/python3.12/site-packages
+if grep -q 'VERSION_ID="8' /etc/os-release; then
+    PYTHONUSERBASE_SITE_PACKAGE=${PYTHONUSERBASE_SITE_PACKAGE:-"$(python -m site --user-site)"}
+else
+    PYTHONUSERBASE_SITE_PACKAGE=/opt/app-root/lib/python3.12/site-packages
+fi
 
 cd ${QUAYDIR:-"/quay-registry"}
 
@@ -65,10 +69,14 @@ done
 
 # Update all CA certificates.
 # hack for UBI9, extract it a temp location and move
-# to /etc/pki after because of permission issues
-
-mkdir -p /tmp/extracted
-rm -rf /etc/pki/ca-trust/extracted
-update-ca-trust extract -o /tmp/extracted
-chmod ug+w -R /tmp/extracted
-mv /tmp/extracted /etc/pki/ca-trust
+# to /etc/pki after because of permission issues.
+# All ubi8 specific code should be removed after UBI9 is fully supported, see PROJQUAY-9013
+if grep -q 'VERSION_ID="8' /etc/os-release; then
+    update-ca-trust extract
+else
+    mkdir -p /tmp/extracted
+    rm -rf /etc/pki/ca-trust/extracted
+    update-ca-trust extract -o /tmp/extracted
+    chmod ug+w -R /tmp/extracted
+    mv /tmp/extracted /etc/pki/ca-trust
+fi
