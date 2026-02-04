@@ -97,16 +97,16 @@ CORS_ORIGIN:
 FEATURE_UI_V2: True
 FEATURE_USER_METADATA: True
 # Local Keycloak OIDC provider (PKCE disabled initially)
-SOMEOIDC_LOGIN_CONFIG:
-  SERVICE_NAME: "Keycloak"
-  OIDC_SERVER: "http://host.containers.internal:8081/realms/quay/"
-  CLIENT_ID: "quay-ui"
-  CLIENT_SECRET: "KbIEbjqeK73iL6zhXZLaVSOCiD5mhB3h"
-  LOGIN_SCOPES: ["openid", "profile", "email"]
-  DEBUGGING: true
-  USE_PKCE: true
-  PKCE_METHOD: "S256"
-  PUBLIC_CLIENT: true # omit client_secret during token request when client is public
+#SOMEOIDC_LOGIN_CONFIG:
+#  SERVICE_NAME: "Keycloak"
+#  OIDC_SERVER: "http://host.containers.internal:8081/realms/quay/"
+#  CLIENT_ID: "quay-ui"
+#  CLIENT_SECRET: "KbIEbjqeK73iL6zhXZLaVSOCiD5mhB3h"
+#  LOGIN_SCOPES: ["openid", "profile", "email"]
+#  DEBUGGING: true
+#  USE_PKCE: true
+#  PKCE_METHOD: "S256"
+#  PUBLIC_CLIENT: true # omit client_secret during token request when client is public
 #RHSSO_LOGIN_CONFIG:
 #  CLIENT_ID: stage.quay.io
 #  CLIENT_SECRET: SECRET

@@ -27,7 +27,6 @@ from playhouse.pool import (
 )
 from sqlalchemy.engine.url import make_url
 
-from data.decorators import deprecated_model
 from data.encryption import FieldEncrypter
 from data.estimate import mysql_estimate_row_count, normal_row_count
 from data.fields import (
@@ -1016,6 +1015,7 @@ class RepositoryState(IntEnum):
     NORMAL:    Regular repo where all actions are possible
     READ_ONLY: Only read actions, such as pull, are allowed regardless of specific user permissions
     MIRROR:    Equivalent to READ_ONLY except that mirror robot has write permission
+    ORG_MIRROR: Equivalent to MIRROR but for repositories created via organization-level mirroring
     MARKED_FOR_DELETION: Indicates the repository has been marked for deletion and should be hidden
                          and un-usable.
     """
@@ -1024,6 +1024,7 @@ class RepositoryState(IntEnum):
     READ_ONLY = 1
     MIRROR = 2
     MARKED_FOR_DELETION = 3
+    ORG_MIRROR = 4
 
 
 class Repository(BaseModel):
@@ -2146,6 +2147,10 @@ class OrgMirrorConfig(BaseModel):
     # Empty list means mirror all repositories
     repository_filters = JSONField(default=[])
 
+    # Architecture filtering - list of architectures (e.g., ["amd64", "arm64"])
+    # Empty list means mirror all architectures
+    architecture_filter = JSONField(default=[])
+
     # Visibility for created repositories
     visibility = EnumField(Visibility)
 
@@ -2181,6 +2186,8 @@ class OrgMirrorRepository(BaseModel):
     sync_status = ClientEnumField(OrgMirrorRepoStatus, default=OrgMirrorRepoStatus.NEVER_RUN)
     sync_start_date = DateTimeField(null=True)
     sync_expiration_date = DateTimeField(null=True)
+    sync_retries_remaining = IntegerField(default=3)  # Retry attempts for failed syncs
+    sync_transaction_id = CharField(default=uuid_generator, max_length=36)
     last_sync_date = DateTimeField(null=True)
     status_message = TextField(null=True)  # Error message or skip reason
 

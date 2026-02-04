@@ -12,3 +12,16 @@ export function useQuayConfig() {
 
   return config;
 }
+
+// New hook that also returns loading state for components that need to show loading UI
+export function useQuayConfigWithLoading() {
+  const {
+    data: config,
+    isLoading,
+    error,
+  } = useQuery(['config'], fetchQuayConfig, {
+    staleTime: Infinity,
+  });
+
+  return {config, isLoading, error};
+}

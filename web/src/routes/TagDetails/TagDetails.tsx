@@ -1,4 +1,9 @@
-import {PageSection, PageSectionVariants, Title} from '@patternfly/react-core';
+import {
+  Alert,
+  PageSection,
+  PageSectionVariants,
+  Title,
+} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {useLocation, useSearchParams} from 'react-router-dom';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
@@ -20,6 +25,15 @@ import {
 } from '../../libs/utils';
 import TagArchSelect from './TagDetailsArchSelect';
 import TagTabs from './TagDetailsTabs';
+
+function getMissingArchitectures(tag: Tag): string[] {
+  if (!tag.is_sparse || !tag.manifest_list?.manifests) {
+    return [];
+  }
+  return tag.manifest_list.manifests
+    .filter((m) => m.is_present === false)
+    .map((m) => `${m.platform.os}/${m.platform.architecture}`);
+}
 
 export default function TagDetails() {
   const [searchParams] = useSearchParams();
@@ -79,7 +93,18 @@ export default function TagDetails() {
           );
 
         if (tagResp.is_manifest_list) {
-          tagResp.manifest_list = JSON.parse(manifestResp.manifest_data);
+          const manifestList = JSON.parse(manifestResp.manifest_data);
+          // Merge presence info from tag API into manifest list
+          if (tagResp.child_manifests_presence && manifestList.manifests) {
+            manifestList.manifests = manifestList.manifests.map(
+              (m: {digest: string}) => ({
+                ...m,
+                is_present:
+                  tagResp.child_manifests_presence?.[m.digest] ?? true,
+              }),
+            );
+          }
+          tagResp.manifest_list = manifestList;
         }
         if (manifestResp.modelcard) {
           tagResp.modelcard = manifestResp.modelcard;
@@ -99,11 +124,20 @@ export default function TagDetails() {
           throw new Error(`Requested digest not found: ${requestedDigest}`);
         }
 
-        let currentDigest =
+        // For manifest lists, prefer the first present architecture
+        let currentDigest = tagResp.manifest_digest;
+        if (
           tagResp.is_manifest_list &&
           tagResp.manifest_list?.manifests?.length > 0
-            ? tagResp.manifest_list.manifests[0].digest
-            : tagResp.manifest_digest;
+        ) {
+          // Find the first present manifest, or fall back to first if none present
+          const firstPresent = tagResp.manifest_list.manifests.find(
+            (m) => m.is_present !== false,
+          );
+          currentDigest = firstPresent
+            ? firstPresent.digest
+            : tagResp.manifest_list.manifests[0].digest;
+        }
         currentDigest = searchParams.get('digest')
           ? searchParams.get('digest')
           : currentDigest;
@@ -132,6 +166,26 @@ export default function TagDetails() {
           render={tagDetails.is_manifest_list}
           style={{marginTop: 'var(--pf-v5-global--spacer--md)'}}
         />
+        {tagDetails.is_sparse && (
+          <Alert
+            variant="warning"
+            isInline
+            title="Sparse Manifest List"
+            style={{marginTop: 'var(--pf-v5-global--spacer--md)'}}
+            data-testid="sparse-manifest-alert"
+          >
+            This is a sparse manifest list - not all architectures are present
+            locally.
+            {getMissingArchitectures(tagDetails).length > 0 && (
+              <>
+                {' '}
+                Missing architectures:{' '}
+                {getMissingArchitectures(tagDetails).join(', ')}.
+              </>
+            )}{' '}
+            Missing architectures will be pulled on first access.
+          </Alert>
+        )}
       </PageSection>
       <PageSection
         variant={PageSectionVariants.light}

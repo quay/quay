@@ -30,6 +30,12 @@ export interface Tag {
   pull_count?: number;
   last_pulled?: string;
   immutable?: boolean;
+  // Sparse manifest info (only present for manifest lists)
+  is_sparse?: boolean;
+  child_manifest_count?: number;
+  present_child_count?: number;
+  // Map of child manifest digest to presence status
+  child_manifests_presence?: Record<string, boolean>;
 }
 
 export interface ManifestList {
@@ -45,6 +51,8 @@ export interface Manifest {
   platform: Platform;
   security: SecurityDetailsResponse;
   layers: Layer[];
+  // Whether manifest content is available locally (not sparse)
+  is_present?: boolean;
 }
 
 export interface Layer {

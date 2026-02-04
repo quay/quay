@@ -15,4 +15,5 @@ export interface MirroringFormData {
   noProxy: string;
   unsignedImages: boolean;
   skopeoTimeoutInterval: number;
+  architectureFilter: string[];
 }

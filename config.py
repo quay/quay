@@ -550,6 +550,9 @@ class DefaultConfig(ImmutableConfig):
     # Organization-level repository mirror
     FEATURE_ORG_MIRROR = False
 
+    # The number of seconds between organization mirror worker iterations
+    ORG_MIRROR_INTERVAL = 30
+
     # The number of seconds between indexing intervals in the repository mirror
     REPO_MIRROR_INTERVAL = 30
 

@@ -111,6 +111,11 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     const isInputInvalid = dateValue !== null && dateValue === undefined;
     if (!isInputInvalid) {
       const newDate = isNullOrUndefined(date) ? new Date() : new Date(date);
+      // Set day to 1 first to avoid JavaScript date rollover when changing months.
+      // Example: If newDate is Jan 29 and we set month to February, JavaScript would
+      // roll over to March 1 because Feb doesn't have day 29. Setting day to 1 first
+      // prevents this.
+      newDate.setDate(1);
       newDate.setFullYear(dateValue.getFullYear());
       newDate.setMonth(dateValue.getMonth());
       newDate.setDate(dateValue.getDate());

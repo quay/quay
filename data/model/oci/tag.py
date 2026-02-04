@@ -16,6 +16,7 @@ from data.database import (
     Tag,
     TagPullStatistics,
     User,
+    db_for_update,
     db_random_func,
     db_regex_search,
     db_transaction,
@@ -196,6 +197,7 @@ def list_repository_tag_history(
             Manifest.media_type,
             Manifest.layers_compressed_size,
             Manifest.config_media_type,
+            can_use_read_replica=True,
         )
         .join(Manifest)
         .where(Tag.repository == repository_id)
@@ -453,37 +455,38 @@ def retarget_tag(
     now_ms = now_ms or get_epoch_timestamp_ms()
 
     with db_transaction():
-        # Lookup an existing tag in the repository with the same name and, if present, mark it
-        # as expired.
+        # Lock the repository row to serialize all tag operations.
+        # This prevents race conditions when multiple processes try to
+        # create/update the same tag concurrently.
+        try:
+            repo = db_for_update(
+                Repository.select().where(Repository.id == manifest.repository_id)
+            ).get()
+        except Repository.DoesNotExist:
+            if raise_on_error:
+                raise RetargetTagException("Repository no longer exists")
+            return None
+
+        # Now safe to read/modify tags - we hold the repo lock
         existing_tag = get_tag(manifest.repository_id, tag_name)
         if existing_tag is not None:
-            # Check if the existing tag is immutable
             if features.IMMUTABLE_TAGS and existing_tag.immutable:
                 if raise_on_error:
                     raise ImmutableTagException(tag_name, "overwrite", manifest.repository_id)
                 return None
 
-            _, okay = set_tag_end_ms(existing_tag, now_ms)
-
-            # TODO: should we retry here and/or use a for-update?
-            if not okay:
-                return None
+            delete_tag_notifications_for_tag(existing_tag)
+            Tag.update(lifetime_end_ms=now_ms).where(Tag.id == existing_tag.id).execute()
 
         # Check if tag should be immutable based on policies
         immutable = False
         if features.IMMUTABLE_TAGS:
             from data.model import immutability
 
-            repo = (
-                Repository.select(Repository.namespace_user)
-                .where(Repository.id == manifest.repository_id)
-                .get()
-            )
             immutable = immutability.evaluate_immutability_policies(
                 manifest.repository_id, repo.namespace_user_id, tag_name
             )
 
-        # Create a new tag pointing to the manifest with a lifetime start of now.
         created = Tag.create(
             name=tag_name,
             repository=manifest.repository_id,

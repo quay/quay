@@ -7020,22 +7020,22 @@ SECURITY_TESTS: List[
     (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, None, 401),
     (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, "freshuser", 403),
     (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, "reader", 403),
-    (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, "devtable", 501),
+    (OrgMirrorSyncNow, "POST", ORG_PARAMS, None, "devtable", 404),
     # OrgMirrorSyncCancel POST
     (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, None, 401),
     (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, "freshuser", 403),
     (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, "reader", 403),
-    (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, "devtable", 501),
+    (OrgMirrorSyncCancel, "POST", ORG_PARAMS, None, "devtable", 404),
     # OrgMirrorVerify POST
     (OrgMirrorVerify, "POST", ORG_PARAMS, None, None, 401),
     (OrgMirrorVerify, "POST", ORG_PARAMS, None, "freshuser", 403),
     (OrgMirrorVerify, "POST", ORG_PARAMS, None, "reader", 403),
-    (OrgMirrorVerify, "POST", ORG_PARAMS, None, "devtable", 501),
+    (OrgMirrorVerify, "POST", ORG_PARAMS, None, "devtable", 404),
     # OrgMirrorRepositories GET
     (OrgMirrorRepositories, "GET", ORG_PARAMS, None, None, 401),
     (OrgMirrorRepositories, "GET", ORG_PARAMS, None, "freshuser", 403),
     (OrgMirrorRepositories, "GET", ORG_PARAMS, None, "reader", 403),
-    (OrgMirrorRepositories, "GET", ORG_PARAMS, None, "devtable", 501),
+    (OrgMirrorRepositories, "GET", ORG_PARAMS, None, "devtable", 404),
     # OrgImmutabilityPolicies GET
     (OrgImmutabilityPolicies, "GET", ORG_PARAMS, None, None, 401),
     (OrgImmutabilityPolicies, "GET", ORG_PARAMS, None, "freshuser", 403),

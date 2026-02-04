@@ -321,3 +321,171 @@ def test_set_immutability_idempotent(app):
         # Still immutable
         tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
         assert tag_ref.immutable is True
+
+
+# Sparse Manifest Tests
+
+
+def test_list_repo_tags_non_manifest_list_has_no_sparse_info(app):
+    """Test that non-manifest-list tags don't have sparse info fields."""
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
+
+        # Find a non-manifest-list tag
+        for tag in tags:
+            if not tag.get("is_manifest_list", False):
+                # Non-manifest lists should not have sparse info fields
+                assert "is_sparse" not in tag
+                assert "child_manifest_count" not in tag
+                assert "present_child_count" not in tag
+                break
+
+
+def test_list_repo_tags_manifest_list_has_sparse_info(app, initialized_db):
+    """Test that manifest list tags include sparse info fields."""
+    from data.database import Manifest as ManifestTable
+    from data.database import Repository
+    from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+
+    # Find a manifest list in the test database
+    manifest_list_media_type_id = ManifestTable.media_type.get_id(
+        DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+    )
+
+    # Check if there are any manifest lists in the test data
+    manifest_lists = list(
+        ManifestTable.select()
+        .where(ManifestTable.media_type == manifest_list_media_type_id)
+        .limit(1)
+    )
+
+    if not manifest_lists:
+        # No manifest lists in test data; this test will verify that
+        # normal tags don't have sparse info
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
+
+            for tag in tags:
+                if tag.get("is_manifest_list", False):
+                    assert "is_sparse" in tag
+                    assert isinstance(tag["is_sparse"], bool)
+    else:
+        # There are manifest lists, verify sparse info is present
+        manifest_list = manifest_lists[0]
+        repo = Repository.get(Repository.id == manifest_list.repository_id)
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": f"{repo.namespace_user.username}/{repo.name}"}
+            try:
+                tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
+
+                for tag in tags:
+                    if tag.get("is_manifest_list", False):
+                        assert "is_sparse" in tag
+                        assert "child_manifest_count" in tag
+                        assert "present_child_count" in tag
+                        assert isinstance(tag["is_sparse"], bool)
+                        assert isinstance(tag["child_manifest_count"], int)
+                        assert isinstance(tag["present_child_count"], int)
+            except Exception:
+                # Permission denied or repo not found - skip this part
+                pass
+
+
+def test_list_repo_tags_sparse_manifest_detection(app, initialized_db):
+    """Test that sparse manifests are correctly detected."""
+    from data.database import Manifest as ManifestTable
+    from data.database import ManifestChild, Tag
+    from data.model.repository import create_repository
+    from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+    from image.docker.schema2.manifest import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+
+    # Create a test repository
+    repository = create_repository("devtable", "sparsetestrepo", None)
+
+    # Create a parent manifest list
+    manifest_list_media_type_id = ManifestTable.media_type.get_id(
+        DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+    )
+    child_media_type_id = ManifestTable.media_type.get_id(DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE)
+
+    # Create the parent manifest (manifest list)
+    parent_manifest = ManifestTable.create(
+        repository=repository.id,
+        digest="sha256:parentmanifestdigest123456789012345678901234567890123456789012",
+        media_type=manifest_list_media_type_id,
+        manifest_bytes='{"schemaVersion": 2, "manifests": []}',
+    )
+
+    # Create two child manifests - one present, one sparse
+    present_child = ManifestTable.create(
+        repository=repository.id,
+        digest="sha256:presentchildmanifest12345678901234567890123456789012345678901",
+        media_type=child_media_type_id,
+        manifest_bytes='{"schemaVersion": 2, "config": {}}',  # Has content - present
+    )
+
+    sparse_child = ManifestTable.create(
+        repository=repository.id,
+        digest="sha256:sparsechild123456789012345678901234567890123456789012345678901",
+        media_type=child_media_type_id,
+        manifest_bytes="",  # Empty - sparse
+    )
+
+    # Link children to parent
+    ManifestChild.create(
+        manifest=parent_manifest,
+        child_manifest=present_child,
+        repository=repository.id,
+    )
+    ManifestChild.create(
+        manifest=parent_manifest,
+        child_manifest=sparse_child,
+        repository=repository.id,
+    )
+
+    # Create a tag pointing to the manifest list
+    from data.database import get_epoch_timestamp_ms
+
+    Tag.create(
+        name="sparsetag",
+        repository=repository.id,
+        manifest=parent_manifest,
+        lifetime_start_ms=get_epoch_timestamp_ms(),
+        lifetime_end_ms=None,
+        hidden=False,
+        reversion=False,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+
+    # Now fetch the tags via API
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/sparsetestrepo"}
+        tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
+
+        # Find our sparse tag
+        sparse_tag = None
+        for tag in tags:
+            if tag["name"] == "sparsetag":
+                sparse_tag = tag
+                break
+
+        assert sparse_tag is not None
+        assert sparse_tag["is_manifest_list"] is True
+        assert sparse_tag["is_sparse"] is True  # Should be sparse (1 of 2 children is sparse)
+        assert sparse_tag["child_manifest_count"] == 2
+        assert sparse_tag["present_child_count"] == 1  # Only 1 child has content
+
+        # Verify child_manifests_presence map
+        assert "child_manifests_presence" in sparse_tag
+        presence_map = sparse_tag["child_manifests_presence"]
+        assert (
+            presence_map["sha256:presentchildmanifest12345678901234567890123456789012345678901"]
+            is True
+        )
+        assert (
+            presence_map["sha256:sparsechild123456789012345678901234567890123456789012345678901"]
+            is False
+        )

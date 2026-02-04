@@ -63,6 +63,7 @@ export interface MirrorConfig {
       no_proxy?: string | null;
     };
   };
+  architecture_filter?: string[] | null;
 }
 
 export interface MirrorConfigResponse extends MirrorConfig {
@@ -70,6 +71,7 @@ export interface MirrorConfigResponse extends MirrorConfig {
   sync_retries_remaining: number;
   sync_expiration_date: string | null;
   mirror_type: string;
+  architecture_filter: string[];
 }
 
 export interface CreateUserResponse {
@@ -364,6 +366,7 @@ export class ApiClient {
               no_proxy: null,
             },
           },
+          architecture_filter: config.architecture_filter ?? null,
         },
       },
     );

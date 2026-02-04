@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 97bFbRkax7KQ9dCarATTECnUjaj3yrx03WezcRZS94T9hV2bAEcFmbH51eaiblK
+\restrict fxmrevWdeqvsJK2qrfDBibqaVDzkdGEOr3EJHZQ3whLLSJmC0pjEOeA6rHwY82y
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg13+2)
 -- Dumped by pg_dump version 18.1 (Debian 18.1-1.pgdg13+2)
@@ -42,6 +42,7 @@ ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXIS
 ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_method_id;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_linked_tag_id_tag;
+ALTER TABLE IF EXISTS ONLY public.tagpullstatistics DROP CONSTRAINT IF EXISTS fk_tagpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.servicekey DROP CONSTRAINT IF EXISTS fk_servicekey_approval_id_servicekeyapproval;
@@ -118,6 +119,7 @@ ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXIS
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_label_id_label;
+ALTER TABLE IF EXISTS ONLY public.manifestpullstatistics DROP CONSTRAINT IF EXISTS fk_manifestpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_child_manifest_id_manifest;
@@ -3657,7 +3659,8 @@ CREATE TABLE public.repomirrorconfig (
     root_rule_id integer NOT NULL,
     external_reference text NOT NULL,
     external_registry_password character varying(9000),
-    skopeo_timeout bigint DEFAULT '300'::bigint NOT NULL
+    skopeo_timeout bigint DEFAULT '300'::bigint NOT NULL,
+    architecture_filter text
 );
 
 
@@ -7124,8 +7127,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2026-01-21 14:11:18.51086	t	2026-01-21 17:06:18.469519	5	bc1aa914-ed3b-448f-955e-ab367f49b4ac
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2026-01-21 14:11:23.544782	t	2026-01-21 17:06:23.522137	5	031e6e19-67ee-4601-a574-906e3044b76f
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2026-01-22 19:36:20.881382	t	2026-01-22 22:31:20.868721	5	d6ad2871-2ca4-430c-a193-50693557d841
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2026-01-22 19:36:25.891006	t	2026-01-22 22:31:25.8845	5	6f99ab1d-bb41-41c1-9f3e-dbbc9d8031ad
 \.
 
 
@@ -7369,7 +7372,7 @@ COPY public.redhatsubscriptions (id, user_id, account_number) FROM stdin;
 -- Data for Name: repomirrorconfig; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.repomirrorconfig (id, repository_id, creation_date, is_enabled, mirror_type, internal_robot_id, external_registry_username, external_registry_config, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, root_rule_id, external_reference, external_registry_password, skopeo_timeout) FROM stdin;
+COPY public.repomirrorconfig (id, repository_id, creation_date, is_enabled, mirror_type, internal_robot_id, external_registry_username, external_registry_config, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, root_rule_id, external_reference, external_registry_password, skopeo_timeout, architecture_filter) FROM stdin;
 \.
 
 
@@ -14070,5 +14073,5 @@ ALTER TABLE ONLY public.userregion
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 97bFbRkax7KQ9dCarATTECnUjaj3yrx03WezcRZS94T9hV2bAEcFmbH51eaiblK
+\unrestrict fxmrevWdeqvsJK2qrfDBibqaVDzkdGEOr3EJHZQ3whLLSJmC0pjEOeA6rHwY82y
 

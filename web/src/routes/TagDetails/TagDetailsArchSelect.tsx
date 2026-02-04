@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Flex,
   FlexItem,
+  Label,
   MenuToggle,
   MenuToggleElement,
   SelectList,
@@ -16,6 +17,11 @@ export default function ArchSelect(props: ArchSelectProps) {
     _event: React.MouseEvent<Element, MouseEvent> | undefined,
     value: string | number | undefined,
   ) => {
+    // Prevent selecting missing architectures
+    const selectedManifest = props.options.find((m) => m.digest === value);
+    if (selectedManifest?.is_present === false) {
+      return;
+    }
     props.setDigest(value as string);
     setIsOpen(false);
   };
@@ -47,11 +53,26 @@ export default function ArchSelect(props: ArchSelectProps) {
           shouldFocusToggleOnSelect
         >
           <SelectList>
-            {props.options.map((manifest, index) => (
-              <SelectOption key={index} value={manifest.digest}>
-                {getPlatformValue(manifest)}
-              </SelectOption>
-            ))}
+            {props.options.map((manifest, index) => {
+              const isMissing = manifest.is_present === false;
+              return (
+                <SelectOption
+                  key={index}
+                  value={manifest.digest}
+                  isDisabled={isMissing}
+                  data-testid={
+                    isMissing ? 'missing-arch-option' : 'arch-option'
+                  }
+                >
+                  {getPlatformValue(manifest)}
+                  {isMissing && (
+                    <Label color="grey" isCompact style={{marginLeft: '8px'}}>
+                      Missing
+                    </Label>
+                  )}
+                </SelectOption>
+              );
+            })}
           </SelectList>
         </Select>
       </FlexItem>

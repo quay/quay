@@ -88,7 +88,33 @@ class TestRegistryCapabilities:
             resp = conduct_api_call(cl, RegistryCapabilities, "GET", {}, None, 200)
             # Verify top-level keys exist
             assert "sparse_manifests" in resp.json
+            assert "mirror_architectures" in resp.json
             # Verify sparse_manifests structure
             assert "supported" in resp.json["sparse_manifests"]
             assert "required_architectures" in resp.json["sparse_manifests"]
             assert "optional_architectures_allowed" in resp.json["sparse_manifests"]
+
+    def test_capabilities_includes_mirror_architectures(self, app):
+        """Test capabilities endpoint includes mirror_architectures field."""
+        from data.model.repo_mirror import VALID_ARCHITECTURES
+        from endpoints.api.capabilities import RegistryCapabilities
+
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(cl, RegistryCapabilities, "GET", {}, None, 200)
+            assert "mirror_architectures" in resp.json
+            # Verify all valid architectures are present
+            assert set(resp.json["mirror_architectures"]) == VALID_ARCHITECTURES
+            # Verify it contains expected architectures
+            assert "amd64" in resp.json["mirror_architectures"]
+            assert "arm64" in resp.json["mirror_architectures"]
+            assert "ppc64le" in resp.json["mirror_architectures"]
+            assert "s390x" in resp.json["mirror_architectures"]
+
+    def test_capabilities_mirror_architectures_sorted(self, app):
+        """Test capabilities endpoint returns mirror_architectures in sorted order."""
+        from endpoints.api.capabilities import RegistryCapabilities
+
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(cl, RegistryCapabilities, "GET", {}, None, 200)
+            archs = resp.json["mirror_architectures"]
+            assert archs == sorted(archs)

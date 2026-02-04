@@ -18,6 +18,7 @@ from auth.permissions import (
 )
 from data import model
 from data.database import RepositoryState
+from data.model.org_mirror import get_org_mirroring_robot
 from data.model.repo_mirror import get_mirroring_robot
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
@@ -278,14 +279,35 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                         final_actions.append("push")
                     elif repository_ref.state == RepositoryState.MIRROR:
                         # In MIRROR mode, only the mirroring robot can push.
+                        # Check repo-level mirror first
                         mirror = model.repo_mirror.get_mirror(repository_ref.id)
                         robot = mirror.internal_robot if mirror is not None else None
+
+                        # If no repo-level mirror, check org-level mirror
+                        if robot is None:
+                            robot = get_org_mirroring_robot(repository_ref.id)
+
                         if robot is not None and user is not None and robot == user:
                             assert robot.robot
                             final_actions.append("push")
                         else:
                             logger.debug(
                                 "Repository %s/%s push requested for non-mirror robot %s: %s",
+                                namespace,
+                                reponame,
+                                robot,
+                                user,
+                            )
+                    elif repository_ref.state == RepositoryState.ORG_MIRROR:
+                        # In ORG_MIRROR mode, only the org-level mirroring robot can push.
+                        robot = get_org_mirroring_robot(repository_ref.id)
+
+                        if robot is not None and user is not None and robot == user:
+                            assert robot.robot
+                            final_actions.append("push")
+                        else:
+                            logger.debug(
+                                "Repository %s/%s push requested for non-org-mirror robot %s: %s",
                                 namespace,
                                 reponame,
                                 robot,
@@ -396,6 +418,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
 
             if repository_ref and repository_ref.state in (
                 RepositoryState.MIRROR,
+                RepositoryState.ORG_MIRROR,
                 RepositoryState.READ_ONLY,
             ):
                 logger.debug("No permission to administer repository %s/%s", namespace, reponame)

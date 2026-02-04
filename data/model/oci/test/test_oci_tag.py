@@ -1106,3 +1106,96 @@ class TestSetTagsImmutabilityForManifest:
         count = set_tags_immutability_for_manifest(manifest.id, False)
         assert count == 1
         assert Tag.get_by_id(tag.id).immutable is False
+
+
+class TestRetargetTagRaceCondition:
+    """Tests for retarget_tag race condition protection via repository locking."""
+
+    def test_retarget_tag_creates_single_active_tag(self, initialized_db):
+        """Test that multiple retarget_tag calls produce only one active tag."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest1, _ = create_manifest_for_testing(repo, "race1")
+        manifest2, _ = create_manifest_for_testing(repo, "race2")
+
+        tag1 = retarget_tag("racelatest", manifest1.id)
+        assert tag1 is not None
+        assert tag1.lifetime_end_ms is None
+
+        tag2 = retarget_tag("racelatest", manifest2.id)
+        assert tag2 is not None
+        assert tag2.lifetime_end_ms is None
+
+        active_tags = list(
+            Tag.select().where(
+                Tag.repository == repo.id, Tag.name == "racelatest", Tag.lifetime_end_ms >> None
+            )
+        )
+        assert len(active_tags) == 1
+        assert active_tags[0].id == tag2.id
+
+        tag1_refreshed = Tag.get_by_id(tag1.id)
+        assert tag1_refreshed.lifetime_end_ms is not None
+
+    def test_retarget_tag_new_tag_no_duplicate(self, initialized_db):
+        """Test that creating a new tag doesn't create duplicates."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "newtag1")
+
+        tag = retarget_tag("noduptag", manifest.id)
+        assert tag is not None
+        assert tag.lifetime_end_ms is None
+
+        active_tags = list(
+            Tag.select().where(
+                Tag.repository == repo.id, Tag.name == "noduptag", Tag.lifetime_end_ms >> None
+            )
+        )
+        assert len(active_tags) == 1
+
+    def test_retarget_tag_expires_previous_correctly(self, initialized_db):
+        """Test that previous tag is expired with correct timestamp."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest1, _ = create_manifest_for_testing(repo, "expire1")
+        manifest2, _ = create_manifest_for_testing(repo, "expire2")
+
+        now_ms = get_epoch_timestamp_ms()
+        tag1 = retarget_tag("expiretag", manifest1.id, now_ms=now_ms)
+        assert tag1.lifetime_start_ms == now_ms
+
+        later_ms = now_ms + 10000
+        tag2 = retarget_tag("expiretag", manifest2.id, now_ms=later_ms)
+        assert tag2.lifetime_start_ms == later_ms
+
+        tag1_refreshed = Tag.get_by_id(tag1.id)
+        assert tag1_refreshed.lifetime_end_ms == later_ms
+
+    def test_retarget_tag_repository_not_found_returns_none(self, initialized_db):
+        """Test that retarget_tag returns None when repository lock fails."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "reponotfound1")
+
+        def mock_db_for_update(query):
+            mock_result = MagicMock()
+            mock_result.get.side_effect = Repository.DoesNotExist()
+            return mock_result
+
+        with patch("data.model.oci.tag.db_for_update", mock_db_for_update):
+            result = retarget_tag("failingtag", manifest.id, raise_on_error=False)
+            assert result is None
+
+    def test_retarget_tag_repository_not_found_raises_exception(self, initialized_db):
+        """Test that retarget_tag raises exception when repository lock fails and raise_on_error=True."""
+        from data.model.oci.tag import RetargetTagException
+
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "reponotfound2")
+
+        def mock_db_for_update(query):
+            mock_result = MagicMock()
+            mock_result.get.side_effect = Repository.DoesNotExist()
+            return mock_result
+
+        with patch("data.model.oci.tag.db_for_update", mock_db_for_update):
+            with pytest.raises(RetargetTagException) as exc_info:
+                retarget_tag("failingtag", manifest.id, raise_on_error=True)
+            assert "Repository no longer exists" in str(exc_info.value)
