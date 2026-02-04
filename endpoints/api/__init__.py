@@ -800,7 +800,6 @@ import endpoints.api.repotoken
 import endpoints.api.robot
 import endpoints.api.search
 import endpoints.api.secscan
-import endpoints.api.signing
 import endpoints.api.suconfig
 import endpoints.api.superuser
 import endpoints.api.tag

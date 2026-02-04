@@ -64,7 +64,6 @@ from util.repomirror.api import RepoMirrorAPI
 from util.saas.analytics import Analytics
 from util.saas.exceptionlog import Sentry
 from util.security.instancekeys import InstanceKeys
-from util.tufmetadata.api import TUFMetadataAPI
 
 OVERRIDE_CONFIG_YAML_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.yaml")
 OVERRIDE_CONFIG_PY_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.py")
@@ -321,7 +320,6 @@ repo_mirror_api = RepoMirrorAPI(
     instance_keys=instance_keys,
 )
 
-tuf_metadata_api = TUFMetadataAPI(app, app.config)
 
 marketplace_users = MarketplaceUserApi(app)
 marketplace_subscriptions = MarketplaceSubscriptionApi(app)
@@ -350,7 +348,6 @@ database.configure(app.config)
 
 model.config.app_config = app.config
 model.config.store = storage
-model.config.register_repo_cleanup_callback(tuf_metadata_api.delete_metadata)
 
 secscan_model.configure(app, instance_keys, storage)
 

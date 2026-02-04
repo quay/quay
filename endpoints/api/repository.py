@@ -9,13 +9,7 @@ from datetime import datetime, timedelta
 from flask import abort, request
 
 import features
-from app import (
-    app,
-    dockerfile_build_queue,
-    repository_gc_queue,
-    tuf_metadata_api,
-    usermanager,
-)
+from app import app, dockerfile_build_queue, repository_gc_queue, usermanager
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
@@ -470,10 +464,6 @@ class RepositoryTrust(RepositoryParamResource):
         """
         if not model.repo_exists(namespace, repository):
             raise NotFound()
-
-        tags, _ = tuf_metadata_api.get_default_tags_with_expiration(namespace, repository)
-        if tags and not tuf_metadata_api.delete_metadata(namespace, repository):
-            raise DownstreamIssue("Unable to delete downstream trust metadata")
 
         values = request.get_json()
         model.set_trust(namespace, repository, values["trust_enabled"])
