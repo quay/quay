@@ -177,7 +177,7 @@ def get_org_wide_permissions(user, org_filter=None):
     with_user = with_org.switch(Team).join(TeamMember).join(User)
 
     if org_filter:
-        with_user.where(Org.username == org_filter)
+        with_user = with_user.where(Org.username == org_filter)
 
     return with_user.where(User.id == user, Org.organization == True)
 
