@@ -115,6 +115,7 @@ objects:
         annotations:
           ${{QUAY_APP_COMPONENT_ANNOTATIONS_KEY}}: ${{QUAY_APP_COMPONENT_ANNOTATIONS_VALUE}}
       spec:
+        terminationGracePeriodSeconds: ${{QUAY_APP_DEPLOYMENT_TERMINATION_GRACE_PERIOD_SECONDS}}
         volumes:
         - name: configvolume
           secret:
@@ -154,7 +155,7 @@ objects:
           lifecycle:
             preStop:
               exec:
-                command: ["kill -SIGQUIT $(cat /tmp/nginx.pid) && sleep 15"]
+                command: ["/bin/sh", "-c", "sleep 20 && kill -SIGQUIT $(cat /tmp/nginx.pid)"]
           startupProbe:
             exec:
               command:
@@ -284,6 +285,8 @@ parameters:
   - name: QUAY_APP_DEPLOYMENT_MAX_UNAVAILABLE
     value: "0"
     displayName: quay app deployment max unavailable
+  - name: QUAY_APP_DEPLOYMENT_TERMINATION_GRACE_PERIOD_SECONDS
+    value: "60"
   - name: QUAY_APP_STARTUP_PROBE_FAILURE_THRESHOLD
     value: "20"
     displayName: quay app startup probe initial delay seconds
