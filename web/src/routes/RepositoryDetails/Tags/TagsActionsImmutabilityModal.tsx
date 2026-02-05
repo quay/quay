@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   Modal,
   ModalVariant,
@@ -114,6 +115,21 @@ export default function ImmutabilityModal(props: ImmutabilityModalProps) {
         </Button>,
       ]}
     >
+      {props.tagsWithExpiration && props.tagsWithExpiration.length > 0 && (
+        <>
+          <Alert
+            isInline
+            variant="warning"
+            title="Tags with expiration will be skipped"
+            data-testid="expiring-tags-immutability-warning"
+          >
+            The following tags have expiration dates and cannot be made
+            immutable. Clear their expiration first:{' '}
+            {props.tagsWithExpiration.join(', ')}
+          </Alert>
+          <div style={{marginBottom: '1rem'}} />
+        </>
+      )}
       <TextContent>
         <Text>{description}</Text>
       </TextContent>
@@ -130,4 +146,5 @@ interface ImmutabilityModalProps {
   currentlyImmutable: boolean;
   loadTags: () => void;
   onComplete?: () => void;
+  tagsWithExpiration?: string[];
 }

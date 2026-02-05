@@ -748,6 +748,11 @@ CONFIG_SCHEMA = {
             "description": "Whether tag immutability enforcement is enabled. When enabled, immutable tags cannot be deleted or overwritten. Defaults to True.",
             "x-example": True,
         },
+        "FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": {
+            "type": "boolean",
+            "description": "Whether immutable tags can have expiration dates set. When False (default), setting expiration on immutable tags is blocked, and tags with expiration cannot be made immutable.",
+            "x-example": False,
+        },
         "DEFAULT_TAG_EXPIRATION": {
             "type": "string",
             "description": "The default, configurable tag expiration time for time machine. Defaults to `2w`.",

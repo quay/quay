@@ -21,6 +21,7 @@ from data.model.immutability import (
     get_namespace_immutability_policy,
     get_repository_immutability_policies,
     get_repository_immutability_policy,
+    namespace_has_immutable_tags,
     update_namespace_immutability_policy,
     update_repository_immutability_policy,
 )
@@ -614,3 +615,86 @@ class TestRetroactiveImmutabilityRollback:
         assert restored_policy is not None
         assert restored_policy.tag_pattern == "^v.*$"
         assert restored_policy.tag_pattern_matches is True
+
+
+@pytest.mark.usefixtures("initialized_db")
+class TestNamespaceHasImmutableTags:
+    def test_returns_false_when_no_immutable_tags(self):
+        """Verify returns False when namespace has no immutable tags."""
+        org = create_org(
+            "hasimmuser1", "hasimm1@example.com", "hasimmorg1", "hasimmorg1@example.com"
+        )
+        repo = create_repository(org.username, "hasimmrepo1", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        # Create some tags, none immutable
+        _create_tag(repo, manifest, "v1.0.0", immutable=False)
+        _create_tag(repo, manifest, "latest", immutable=False)
+
+        assert namespace_has_immutable_tags(org.id) is False
+
+    def test_returns_true_when_has_immutable_tags(self):
+        """Verify returns True when namespace has immutable tags."""
+        org = create_org(
+            "hasimmuser2", "hasimm2@example.com", "hasimmorg2", "hasimmorg2@example.com"
+        )
+        repo = create_repository(org.username, "hasimmrepo2", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        # Create an immutable tag
+        _create_tag(repo, manifest, "v1.0.0", immutable=True)
+
+        assert namespace_has_immutable_tags(org.id) is True
+
+    def test_returns_true_with_multiple_repos_with_immutable_tags(self):
+        """Verify returns True when multiple repos have immutable tags."""
+        org = create_org(
+            "hasimmuser3", "hasimm3@example.com", "hasimmorg3", "hasimmorg3@example.com"
+        )
+        repo1 = create_repository(org.username, "hasimmrepo3a", None)
+        repo2 = create_repository(org.username, "hasimmrepo3b", None)
+        repo3 = create_repository(org.username, "hasimmrepo3c", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        # Create immutable tags in two repos
+        _create_tag(repo1, manifest, "v1.0.0", immutable=True)
+        _create_tag(repo2, manifest, "v1.0.0", immutable=True)
+        _create_tag(repo3, manifest, "v1.0.0", immutable=False)
+
+        assert namespace_has_immutable_tags(org.id) is True
+
+    def test_ignores_expired_immutable_tags(self):
+        """Verify expired immutable tags are not counted."""
+        org = create_org(
+            "hasimmuser4", "hasimm4@example.com", "hasimmorg4", "hasimmorg4@example.com"
+        )
+        repo = create_repository(org.username, "hasimmrepo4", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        # Create an expired immutable tag
+        _create_tag(repo, manifest, "v1.0.0", immutable=True, expired=True)
+
+        assert namespace_has_immutable_tags(org.id) is False
+
+    def test_ignores_hidden_immutable_tags(self):
+        """Verify hidden immutable tags are not counted."""
+        org = create_org(
+            "hasimmuser5", "hasimm5@example.com", "hasimmorg5", "hasimmorg5@example.com"
+        )
+        repo = create_repository(org.username, "hasimmrepo5", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        # Create a hidden immutable tag
+        _create_tag(repo, manifest, "v1.0.0", immutable=True, hidden=True)
+
+        assert namespace_has_immutable_tags(org.id) is False

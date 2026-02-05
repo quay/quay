@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   ButtonVariant,
   DatePicker,
@@ -222,6 +223,20 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
           overflowY: 'visible',
         }}
       >
+        {props.immutableTags && props.immutableTags.length > 0 && (
+          <>
+            <Alert
+              isInline
+              variant="warning"
+              title="Immutable tags will be skipped"
+              data-testid="immutable-tags-expiration-warning"
+            >
+              The following tags are immutable and will not have their
+              expiration changed: {props.immutableTags.join(', ')}
+            </Alert>
+            <div style={{marginBottom: '1rem'}} />
+          </>
+        )}
         <DescriptionList>
           <DescriptionListGroup>
             <DescriptionListTerm>Tags that will be updated</DescriptionListTerm>
@@ -284,4 +299,5 @@ interface EditExpirationModalProps {
   loadTags: () => void;
   expiration?: string;
   onComplete?: () => void;
+  immutableTags?: string[];
 }

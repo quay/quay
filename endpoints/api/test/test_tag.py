@@ -1,8 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 from playhouse.test_utils import assert_query_count
 
 from data.database import Manifest
-from data.model.oci.tag import set_tag_immutable
+from data.model import DataModelException, ImmutableTagException
+from data.model.oci.tag import change_tag_expiration, set_tag_immutable
 from data.registry_model import registry_model
 from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RestoreTag
 from endpoints.api.test.shared import conduct_api_call
@@ -489,3 +492,106 @@ def test_list_repo_tags_sparse_manifest_detection(app, initialized_db):
             presence_map["sha256:sparsechild123456789012345678901234567890123456789012345678901"]
             is False
         )
+
+
+# Expiration/Immutability Conflict Tests
+
+
+@pytest.mark.usefixtures("app")
+def test_change_tag_expiration_blocked_on_immutable_tag():
+    """Test that setting expiration on immutable tag raises ImmutableTagException."""
+    from datetime import datetime, timedelta
+
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
+
+        # Make the tag immutable
+        set_tag_immutable(repo_ref.id, "latest", True)
+
+        # Try to set expiration - should raise ImmutableTagException
+        future_date = datetime.utcnow() + timedelta(days=7)
+        with patch.dict(
+            "data.model.oci.tag.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": False}
+        ):
+            with pytest.raises(ImmutableTagException) as exc_info:
+                change_tag_expiration(tag_ref.id, future_date)
+            assert "set expiration on" in str(exc_info.value)
+
+        # Clean up
+        set_tag_immutable(repo_ref.id, "latest", False)
+
+
+@pytest.mark.usefixtures("app")
+def test_change_tag_expiration_allowed_when_config_permits():
+    """Test that setting expiration on immutable tag succeeds when FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is True."""
+    from datetime import datetime, timedelta
+
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
+
+        # Make the tag immutable
+        set_tag_immutable(repo_ref.id, "latest", True)
+
+        # Set expiration - should succeed when config allows
+        future_date = datetime.utcnow() + timedelta(days=7)
+        with patch.dict(
+            "data.model.oci.tag.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": True}
+        ):
+            _prev_exp, success = change_tag_expiration(tag_ref.id, future_date)
+            assert success is True
+
+        # Clean up
+        set_tag_immutable(repo_ref.id, "latest", False)
+        change_tag_expiration(tag_ref.id, None)
+
+
+@pytest.mark.usefixtures("app")
+def test_set_tag_immutable_blocked_on_expiring_tag():
+    """Test that making an expiring tag immutable raises DataModelException."""
+    from datetime import datetime, timedelta
+
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
+
+        # Set expiration on the tag first
+        future_date = datetime.utcnow() + timedelta(days=7)
+        with patch.dict(
+            "data.model.oci.tag.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": False}
+        ):
+            change_tag_expiration(tag_ref.id, future_date)
+
+            # Try to make it immutable - should raise DataModelException
+            with pytest.raises(DataModelException) as exc_info:
+                set_tag_immutable(repo_ref.id, "latest", True)
+            assert "has expiration set" in str(exc_info.value)
+
+        # Clean up
+        change_tag_expiration(tag_ref.id, None)
+
+
+@pytest.mark.usefixtures("app")
+def test_set_tag_immutable_allowed_when_config_permits():
+    """Test that making an expiring tag immutable succeeds when FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is True."""
+    from datetime import datetime, timedelta
+
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
+
+        # Set expiration on the tag first
+        future_date = datetime.utcnow() + timedelta(days=7)
+        with patch.dict(
+            "data.model.oci.tag.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": True}
+        ):
+            change_tag_expiration(tag_ref.id, future_date)
+
+            # Make it immutable - should succeed when config allows
+            _prev_immutable, success = set_tag_immutable(repo_ref.id, "latest", True)
+            assert success is True
+
+        # Clean up
+        set_tag_immutable(repo_ref.id, "latest", False)
+        change_tag_expiration(tag_ref.id, None)

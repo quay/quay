@@ -606,3 +606,22 @@ def evaluate_immutability_policies(repository_id: int, namespace_id: int, tag_na
             return True
 
     return False
+
+
+def namespace_has_immutable_tags(namespace_id: int) -> bool:
+    """
+    Check if any repository in the namespace has immutable tags.
+    """
+    now_ms = get_epoch_timestamp_ms()
+
+    return (
+        Tag.select()
+        .join(Repository, on=(Tag.repository == Repository.id))
+        .where(
+            Repository.namespace_user == namespace_id,
+            Tag.immutable == True,  # noqa: E712
+            Tag.hidden == False,  # noqa: E712
+            (Tag.lifetime_end_ms.is_null()) | (Tag.lifetime_end_ms > now_ms),
+        )
+        .exists()
+    )

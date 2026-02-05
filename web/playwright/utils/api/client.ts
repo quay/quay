@@ -1729,6 +1729,39 @@ export class ApiClient {
     }
   }
 
+  /**
+   * Set tag expiration.
+   * Uses PUT /api/v1/repository/{namespace}/{repo}/tag/{tag}
+   * @param expiration Unix timestamp in seconds, or null to clear expiration
+   */
+  async setTagExpiration(
+    namespace: string,
+    repo: string,
+    tag: string,
+    expiration: number | null,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/tag/${tag}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: {
+          expiration,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to set expiration for tag ${tag} in ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
   // Immutability policy methods
 
   /**
