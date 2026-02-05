@@ -3,6 +3,30 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.16/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.16.2"></a>
+## [v3.16.2] - 2026-02-04
+### Deps
+- [df155833](https://github.com/quay/quay/commit/df15583368b36ba7f1aec6edb2ee2c0fa040dc93): Updated the react-router version to 7.13.0 (PROJQUAY-10239) ([#4977](https://github.com/quay/quay/issues/4977))
+- [eef15088](https://github.com/quay/quay/commit/eef15088b4b7f0fbf4bc3488fa8c542a70b9201e): updated jws package to 4.0.1 (PROJQUAY-10111)  ([#4819](https://github.com/quay/quay/issues/4819))
+### [Redhat-3.16] Chore(Deps)
+- [ac940335](https://github.com/quay/quay/commit/ac94033580a7c91ebaeef0eccf8024243a078507): bump urllib3 to 2.6.3 and related AWS libs (PROJQUAY-10085) ([#4824](https://github.com/quay/quay/issues/4824))
+### [Redhat-3.16] Deps
+- [a43c0aef](https://github.com/quay/quay/commit/a43c0aefb5f1b58b8f7a4d2cd336e5f7a12d73bb): upgrade of wheel from 0.41.2 to 0.46.2 (PROJQUAY-10368) ([#4960](https://github.com/quay/quay/issues/4960))
+- [b6294d66](https://github.com/quay/quay/commit/b6294d66a899b9c64d8bd4f85fe95437bb4dc383): upgrade of qs to 6.14.1 (PROJQUAY-10285) ([#4908](https://github.com/quay/quay/issues/4908))
+- [2ceb25c3](https://github.com/quay/quay/commit/2ceb25c35a462c0e85674d67febf8b132f94c074): Update hatch-vcs to 0.4.0 (PROJQUAY-10085) ([#4886](https://github.com/quay/quay/issues/4886))
+- [e65747f5](https://github.com/quay/quay/commit/e65747f53a706ca84c2e7a7d192c9e8ea7dfccbe): Update hatchling to 1.27.0 (PROJQUAY-10085) ([#4879](https://github.com/quay/quay/issues/4879))
+### [Redhat-3.16] Fix(Api)
+- [a821de07](https://github.com/quay/quay/commit/a821de078192635059353dc8395b86a381170db1): use usermanager for superuser check in org creation (PROJQUAY-9696) ([#4989](https://github.com/quay/quay/issues/4989))
+### [Redhat-3.16] Fix(Data)
+- [e78ee342](https://github.com/quay/quay/commit/e78ee342d8318f09640513bc7f8251adcb814d58): apply org_filter in get_org_wide_permissions() (PROJQUAY-0000) ([#4995](https://github.com/quay/quay/issues/4995))
+- [92b7e271](https://github.com/quay/quay/commit/92b7e271c476b03c61326ffde538ae4b0c64810f): set expiry on manifest list tags for existing manifests (PROJQUAY-7245) ([#4910](https://github.com/quay/quay/issues/4910))
+### [Redhat-3.16] Fix(Endpoints)
+- [64b0c7b7](https://github.com/quay/quay/commit/64b0c7b7d98055b06fd4b780a9d8fbdf6ba643bc): route /health endpoint to server (PROJQUAY-10155) ([#4868](https://github.com/quay/quay/issues/4868))
+### [Redhat-3.16] Fix(Nginx)
+- [4316a995](https://github.com/quay/quay/commit/4316a995333516742a8626de5d9c5d29055e95b7): Add /logarchive endpoint to nginx config (PROJQUAY-6932) ([#4947](https://github.com/quay/quay/issues/4947))
+### [Redhat-3.16] Fix(Web)
+- [d99eb65c](https://github.com/quay/quay/commit/d99eb65c71cf3ece66c918242759502e6ab66eb3): prevent signin page branding flash (PROJQUAY-10089) ([#4991](https://github.com/quay/quay/issues/4991))
+
 <a name="v3.16.1"></a>
 ## [v3.16.1] - 2026-01-08
 ### [Redhat-3.16] Deps
@@ -11,9 +35,6 @@
 - [8338dbdf](https://github.com/quay/quay/commit/8338dbdfe76e28cfda044437e838d1b8557ce1d7): route /buildlogs to backend for React UI (PROJQUAY-6767) ([#4792](https://github.com/quay/quay/issues/4792))
 ### [Redhat-3.16] Fix(Web)
 - [69183b68](https://github.com/quay/quay/commit/69183b68b3922452b233bf6d5ef76895e361257b): prevent signin page redirect loop (PROJQUAY-10090) ([#4782](https://github.com/quay/quay/issues/4782))
-### [Redhat-3.16] Fix(Pushgateway)
-- fix Pushgateway does not start on Quay 3.16.0 (PROJQUAY-10083)
-
 
 <a name="v3.16.0"></a>
 ## [v3.16.0] - 2025-12-04
@@ -3033,7 +3054,7 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Dev
 - [d3cc640f](https://github.com/quay/quay/commit/d3cc640fef64d673ae0c8ff9aef84aad13562c45): Update Clair for dev (PROJQUAY-4461) ([#1528](https://github.com/quay/quay/issues/1528))
 - [04af141a](https://github.com/quay/quay/commit/04af141a49fa231157d91f20f04ab498e307228d): Add pre-commit script to run black (PROJQUAY-4039) ([#1432](https://github.com/quay/quay/issues/1432))
-### Doc
+### Doc 
 - [34cd7d09](https://github.com/quay/quay/commit/34cd7d09188cabe90af78ed6ef7b3cb048cfe309): update Instructions for Deploying on OpenShift ([#1537](https://github.com/quay/quay/issues/1537))
 ### Dockerfile
 - [f0f31e0b](https://github.com/quay/quay/commit/f0f31e0b7a864c5322c6d7981d9f4afa4ad8e8e3): use nodejs ubi8 image to build frontends ([#1355](https://github.com/quay/quay/issues/1355))
@@ -3795,7 +3816,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.16.1...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.16.2...HEAD
+[v3.16.2]: https://github.com/quay/quay/compare/v3.16.1...v3.16.2
 [v3.16.1]: https://github.com/quay/quay/compare/v3.16.0...v3.16.1
 [v3.16.0]: https://github.com/quay/quay/compare/v3.15.2...v3.16.0
 [v3.15.2]: https://github.com/quay/quay/compare/v3.15.1...v3.15.2
