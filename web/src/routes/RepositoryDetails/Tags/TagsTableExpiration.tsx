@@ -82,6 +82,9 @@ export default function TagExpiration(props: TagExpirationProps) {
         tags={[props.tag]}
         loadTags={props.loadTags}
         expiration={props.expiration}
+        immutableTags={
+          canImmutableTagsExpire ? [] : props.immutable ? [props.tag] : []
+        }
       />
     </>
   );

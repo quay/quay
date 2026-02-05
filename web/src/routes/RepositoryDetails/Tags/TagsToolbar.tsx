@@ -267,8 +267,8 @@ export function TagsToolbar(props: ToolBarProps) {
         repo={props.repository}
         isOpen={isEditExpirationModalOpen}
         setIsOpen={setIsEditExpirationModalOpen}
-        tags={selectedMutableTags}
-        immutableTags={selectedImmutableTags}
+        tags={selectedTags}
+        immutableTags={canImmutableTagsExpire ? [] : selectedImmutableTags}
         loadTags={props.loadTags}
         onComplete={() => {
           setSelectedTags([]);
