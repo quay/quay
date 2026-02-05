@@ -115,7 +115,7 @@ COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:bb08f2300cb8d12a7eb91dddf28ea63692b3ec99e7f0fa71a1b300f2756ea829 AS pushgateway
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:759f5f42d9d6ce2a705e290b7fc549e2d2cd39312c4fa345f93c02e4abb8da95 AS pushgateway
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.11.1
 RUN set -ex\
