@@ -59,6 +59,7 @@ CLIENT_WHITELIST = [
     "DEFAULT_UI",
     "DISABLE_ANGULAR_UI",
     "ROBOTS_DISALLOW",
+    "FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE",
 ]
 
 
@@ -653,6 +654,10 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether tag immutability enforcement is enabled.
     FEATURE_IMMUTABLE_TAGS = True
+
+    # Feature Flag: Whether immutable tags can have expiration dates set.
+    # When False (default), setting expiration on immutable tags is blocked.
+    FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE = False
 
     # Defines a secret for enabling the health-check endpoint's debug information.
     ENABLE_HEALTH_DEBUG_SECRET = None

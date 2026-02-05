@@ -60,6 +60,27 @@ export function TagsToolbar(props: ToolBarProps) {
     const tag = props.TagList.find((t) => t.name === tagName);
     return tag && tag.immutable;
   });
+
+  // Check if immutable tags can expire
+  const canImmutableTagsExpire =
+    quayConfig?.config?.FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE ?? false;
+
+  // Filter mutable tags that have expiration (can't be made immutable when config disallows)
+  const selectedMutableTagsWithExpiration = canImmutableTagsExpire
+    ? []
+    : selectedMutableTags.filter((tagName) => {
+        const tag = props.TagList.find((t) => t.name === tagName);
+        return tag && tag.expiration;
+      });
+
+  // Mutable tags without expiration (or all if config allows expiration)
+  const selectedMutableTagsForImmutability = canImmutableTagsExpire
+    ? selectedMutableTags
+    : selectedMutableTags.filter((tagName) => {
+        const tag = props.TagList.find((t) => t.name === tagName);
+        return tag && !tag.expiration;
+      });
+
   const kebabItems: ReactElement[] = [
     <DropdownItem
       key="set-expiration"
@@ -89,6 +110,19 @@ export function TagsToolbar(props: ToolBarProps) {
 
   // Add immutability action if feature is enabled
   if (quayConfig?.features?.IMMUTABLE_TAGS) {
+    // Determine tooltip content
+    let immutableTooltip: string | undefined;
+    if (selectedTags.length > 0 && selectedMutableTags.length === 0) {
+      immutableTooltip = 'All selected tags are already immutable';
+    } else if (
+      selectedMutableTags.length > 0 &&
+      selectedMutableTagsForImmutability.length === 0 &&
+      !canImmutableTagsExpire
+    ) {
+      immutableTooltip =
+        'All selected mutable tags have expiration dates. Clear expiration first.';
+    }
+
     kebabItems.splice(
       1, // Insert after "Set expiration"
       0,
@@ -98,11 +132,9 @@ export function TagsToolbar(props: ToolBarProps) {
           setKebabOpen(!isKebabOpen);
           setIsImmutabilityModalOpen(true);
         }}
-        isDisabled={selectedMutableTags.length <= 0}
+        isDisabled={selectedMutableTagsForImmutability.length <= 0}
         tooltipProps={
-          selectedTags.length > 0 && selectedMutableTags.length === 0
-            ? {content: 'All selected tags are already immutable'}
-            : undefined
+          immutableTooltip ? {content: immutableTooltip} : undefined
         }
         data-testid="bulk-make-immutable-action"
       >
@@ -236,6 +268,7 @@ export function TagsToolbar(props: ToolBarProps) {
         isOpen={isEditExpirationModalOpen}
         setIsOpen={setIsEditExpirationModalOpen}
         tags={selectedTags}
+        immutableTags={canImmutableTagsExpire ? [] : selectedImmutableTags}
         loadTags={props.loadTags}
         onComplete={() => {
           setSelectedTags([]);
@@ -246,7 +279,8 @@ export function TagsToolbar(props: ToolBarProps) {
         repo={props.repository}
         isOpen={isImmutabilityModalOpen}
         setIsOpen={setIsImmutabilityModalOpen}
-        tags={selectedMutableTags}
+        tags={selectedMutableTagsForImmutability}
+        tagsWithExpiration={selectedMutableTagsWithExpiration}
         currentlyImmutable={false}
         loadTags={props.loadTags}
         onComplete={() => {

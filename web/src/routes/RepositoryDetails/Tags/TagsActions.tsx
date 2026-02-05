@@ -91,6 +91,12 @@ export default function TagActions(props: TagActionsProps) {
       props.isImmutable && props.repoDetails?.can_admin;
     const showMakeImmutable = !props.isImmutable;
 
+    // Check if this tag can be made immutable (no expiration if config disallows)
+    const canImmutableTagsExpire =
+      quayConfig?.config?.FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE ?? false;
+    const hasExpiration = Boolean(props.expiration);
+    const canMakeImmutable = !hasExpiration || canImmutableTagsExpire;
+
     if (showMakeImmutable || showRemoveImmutability) {
       // Insert before the delete action (at position -2 to be before delete items)
       dropdownItems.splice(
@@ -102,6 +108,15 @@ export default function TagActions(props: TagActionsProps) {
             setIsOpen(false);
             setIsImmutabilityModalOpen(true);
           }}
+          isDisabled={showMakeImmutable && !canMakeImmutable}
+          tooltipProps={
+            showMakeImmutable && !canMakeImmutable
+              ? {
+                  content:
+                    'Cannot make tag immutable while it has an expiration date. Clear expiration first.',
+                }
+              : undefined
+          }
           data-testid="toggle-immutability-action"
         >
           {props.isImmutable ? 'Remove immutability' : 'Make immutable'}

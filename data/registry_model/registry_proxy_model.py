@@ -19,6 +19,7 @@ from data.database import (
     get_epoch_timestamp_ms,
 )
 from data.model import (
+    ImmutableTagException,
     ManifestDoesNotExist,
     QuotaExceededException,
     RepositoryDoesNotExist,
@@ -513,12 +514,28 @@ class ProxyModel(OCIModel):
                 # 0 means a tag never expires - if we get 0 as expiration,
                 # we set the tag expiration to None.
                 expiration = self._config.expiration_s or None
-                tag = oci.tag.retarget_tag(
-                    tag_name,
-                    db_manifest,
-                    raise_on_error=True,
-                    expiration_seconds=expiration,
-                )
+                try:
+                    tag = oci.tag.retarget_tag(
+                        tag_name,
+                        db_manifest,
+                        raise_on_error=True,
+                        expiration_seconds=expiration,
+                    )
+                except ImmutableTagException:
+                    # For proxy cache, if an immutable tag already exists,
+                    # return the existing tag - the cached image is still valid
+                    existing_tag = oci.tag.get_tag(repository_ref.id, tag_name)
+                    if existing_tag and existing_tag.immutable:
+                        wrapped_manifest = Manifest.for_manifest(
+                            existing_tag.manifest, self._legacy_image_id_handler
+                        )
+                        wrapped_tag = Tag.for_tag(
+                            existing_tag,
+                            self._legacy_image_id_handler,
+                            manifest_row=existing_tag.manifest,
+                        )
+                        return wrapped_manifest, wrapped_tag
+                    raise
                 if tag is None:
                     return None, None
 

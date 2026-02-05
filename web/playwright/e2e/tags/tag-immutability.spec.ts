@@ -341,5 +341,335 @@ test.describe(
         timeout: 10000,
       });
     });
+
+    test('bulk set expiration shows warning for immutable tags', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+
+      // Push both images
+      await Promise.all([
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'immutable-tag',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'mutable-tag',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+      ]);
+
+      // Make one tag immutable
+      await api.raw.setTagImmutability(
+        repo.namespace,
+        repo.name,
+        'immutable-tag',
+        true,
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'immutable-tag',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'mutable-tag', exact: true}),
+      ).toBeVisible();
+
+      // Select both tags
+      const immutableRow = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-tag',
+          exact: true,
+        }),
+      });
+      const mutableRow = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'mutable-tag',
+          exact: true,
+        }),
+      });
+
+      await immutableRow.getByRole('checkbox').click();
+      await mutableRow.getByRole('checkbox').click();
+
+      // Open bulk actions and click set expiration
+      await authenticatedPage.getByTestId('bulk-actions-kebab').click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Set expiration'})
+        .click();
+
+      // Should show warning about immutable tags being skipped
+      await expect(
+        authenticatedPage.getByTestId('immutable-tags-expiration-warning'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Immutable tags will be skipped'),
+      ).toBeVisible();
+
+      await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
+    });
+
+    test('make immutable is disabled for tags with expiration', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await pushImage(
+        repo.namespace,
+        repo.name,
+        'expiring-tag',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Set expiration to 30 days from now
+      const expirationTimestamp =
+        Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+      await api.raw.setTagExpiration(
+        repo.namespace,
+        repo.name,
+        'expiring-tag',
+        expirationTimestamp,
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'expiring-tag',
+          exact: true,
+        }),
+      ).toBeVisible();
+
+      const tagRow = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'expiring-tag',
+          exact: true,
+        }),
+      });
+      await tagRow.getByLabel('Tag actions kebab').click();
+
+      const makeImmutableAction = authenticatedPage.getByRole('menuitem', {
+        name: 'Make immutable',
+      });
+      await expect(makeImmutableAction).toBeDisabled();
+    });
+
+    test('bulk make immutable shows warning for tags with expiration', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+
+      // Push both images
+      await Promise.all([
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'expiring-tag',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'non-expiring-tag',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+      ]);
+
+      // Set expiration on one tag
+      const expirationTimestamp =
+        Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+      await api.raw.setTagExpiration(
+        repo.namespace,
+        repo.name,
+        'expiring-tag',
+        expirationTimestamp,
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'expiring-tag',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'non-expiring-tag',
+          exact: true,
+        }),
+      ).toBeVisible();
+
+      // Select both tags
+      const expiringRow = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'expiring-tag',
+          exact: true,
+        }),
+      });
+      const nonExpiringRow = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'non-expiring-tag',
+          exact: true,
+        }),
+      });
+
+      await expiringRow.getByRole('checkbox').click();
+      await nonExpiringRow.getByRole('checkbox').click();
+
+      // Open bulk actions and click make immutable
+      await authenticatedPage.getByTestId('bulk-actions-kebab').click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Make immutable'})
+        .click();
+
+      // Should show warning about expiring tags being skipped
+      await expect(
+        authenticatedPage.getByTestId('expiring-tags-immutability-warning'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Tags with expiration will be skipped'),
+      ).toBeVisible();
+
+      await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
+    });
+
+    test('bulk make immutable is disabled when all mutable tags have expiration', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+
+      // Push two images
+      await Promise.all([
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'expiring-tag-1',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'expiring-tag-2',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+      ]);
+
+      // Set expiration on BOTH tags
+      const expirationTimestamp =
+        Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+      await Promise.all([
+        api.raw.setTagExpiration(
+          repo.namespace,
+          repo.name,
+          'expiring-tag-1',
+          expirationTimestamp,
+        ),
+        api.raw.setTagExpiration(
+          repo.namespace,
+          repo.name,
+          'expiring-tag-2',
+          expirationTimestamp,
+        ),
+      ]);
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'expiring-tag-1',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'expiring-tag-2',
+          exact: true,
+        }),
+      ).toBeVisible();
+
+      // Select both tags
+      const row1 = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'expiring-tag-1',
+          exact: true,
+        }),
+      });
+      const row2 = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'expiring-tag-2',
+          exact: true,
+        }),
+      });
+
+      await row1.getByRole('checkbox').click();
+      await row2.getByRole('checkbox').click();
+
+      // Open bulk actions kebab
+      await authenticatedPage.getByTestId('bulk-actions-kebab').click();
+
+      const makeImmutableAction = authenticatedPage.getByTestId(
+        'bulk-make-immutable-action',
+      );
+      // PatternFly uses pf-m-disabled class on li elements, not disabled attribute
+      await expect(makeImmutableAction).toHaveClass(/pf-m-disabled/);
+    });
+
+    test('immutable tags display Never for expiration', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await pushImage(
+        repo.namespace,
+        repo.name,
+        'immutable-tag',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+      await api.raw.setTagImmutability(
+        repo.namespace,
+        repo.name,
+        'immutable-tag',
+        true,
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'immutable-tag',
+          exact: true,
+        }),
+      ).toBeVisible();
+
+      const tagRow = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-tag',
+          exact: true,
+        }),
+      });
+
+      // Verify the expiration column shows "Never"
+      await expect(tagRow.getByText('Never')).toBeVisible();
+    });
   },
 );

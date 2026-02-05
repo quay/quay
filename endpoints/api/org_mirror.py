@@ -19,6 +19,7 @@ from data import model
 from data.database import SourceRegistryType, Visibility
 from data.encryption import DecryptionFailureException
 from data.model import DataModelException, InvalidOrganizationException
+from data.model.immutability import namespace_has_immutable_tags
 from endpoints.api import (
     ApiResource,
     allow_if_superuser_with_full_access,
@@ -251,6 +252,15 @@ class OrgMirrorConfig(ApiResource):
         existing = model.org_mirror.get_org_mirror_config(org)
         if existing:
             raise InvalidRequest("Mirror configuration already exists for this organization")
+
+        # Check for immutable tags in the organization
+        if features.IMMUTABLE_TAGS:
+            if namespace_has_immutable_tags(org.id):
+                logger.warning(
+                    "Blocking mirror creation for org '%s': immutable tags exist",
+                    orgname,
+                )
+                raise InvalidRequest("Cannot convert organization to mirror: immutable tags exist")
 
         data = request.get_json()
 
