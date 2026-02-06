@@ -148,6 +148,7 @@ jobs:
             -v ${{ github.workspace }}/cypress-screenshots:/quay-tests/quay-api-tests/cypress/screenshots \
             quay.io/quay-qetest/ci-test-image:latest \
             bash -c "
+              set -xeo pipefail
               cd /quay-tests/quay-api-tests && \
               yarn install && \
               NO_COLOR=1 yarn run cypress run \
