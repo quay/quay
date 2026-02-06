@@ -57,7 +57,6 @@ jobs:
             FEATURE_QUOTA_MANAGEMENT: true
             FEATURE_PROXY_CACHE: true
             SERVER_HOSTNAME: localhost:8080
-          logs-artifact-name: 'quay-debug'
 
       - name: Use Quay Initialize API to create the 1st Super User
         run: |
@@ -134,7 +133,7 @@ jobs:
 
           docker run --rm \
             --network host \
-            -e CYPRESS_QUAY_ENDPOINT="${QUAY_URL}" \
+            -e CYPRESS_QUAY_ENDPOINT="${QUAY_NEW_UI}" \
             -e CYPRESS_QUAY_HOSTNAME="${QUAY_HOSTNAME}" \
             -e CYPRESS_QUAY_USER="admin" \
             -e CYPRESS_QUAY_PASSWORD="password" \
