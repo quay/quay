@@ -341,21 +341,10 @@ class TestDeleteOrgMirrorConfig:
         assert get_org_mirror_config(org) is not None
 
         # Delete the config
-        result = delete_org_mirror_config(org)
+        result = delete_org_mirror_config(config)
 
         assert result is True
         assert get_org_mirror_config(org) is None
-
-    def test_delete_org_mirror_config_not_found(self, initialized_db):
-        """
-        Deleting a config that doesn't exist should return False.
-        """
-        org, _ = _create_org_and_robot("delete_test2")
-
-        # No config exists for this org
-        result = delete_org_mirror_config(org)
-
-        assert result is False
 
     def test_delete_org_mirror_config_with_discovered_repos(self, initialized_db):
         """
@@ -390,7 +379,7 @@ class TestDeleteOrgMirrorConfig:
         assert repo_count == 3
 
         # Delete the config
-        result = delete_org_mirror_config(org)
+        result = delete_org_mirror_config(config)
 
         assert result is True
         assert get_org_mirror_config(org) is None
@@ -426,7 +415,7 @@ class TestDeleteOrgMirrorConfig:
         )
 
         # Delete config1
-        result = delete_org_mirror_config(org1)
+        result = delete_org_mirror_config(config1)
 
         assert result is True
         assert get_org_mirror_config(org1) is None
@@ -464,7 +453,7 @@ class TestDeleteOrgMirrorConfig:
         )
 
         # Delete it
-        delete_org_mirror_config(org)
+        delete_org_mirror_config(config1)
 
         # Create a new config
         config2 = create_org_mirror_config(

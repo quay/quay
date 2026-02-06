@@ -230,22 +230,16 @@ def update_org_mirror_config(
     return config
 
 
-def delete_org_mirror_config(org, config=None):
+def delete_org_mirror_config(config):
     """
     Delete the organization-level mirror configuration and all associated discovered repositories.
 
     Args:
-        org: A User object representing the organization.
-        config: Optional pre-fetched OrgMirrorConfig. If None, will be fetched.
+        config: The OrgMirrorConfig instance to delete.
 
     Returns:
-        True if the configuration was deleted, False if no configuration existed.
+        True if the configuration was deleted.
     """
-    if config is None:
-        config = get_org_mirror_config(org)
-    if config is None:
-        return False
-
     with db_transaction():
         # Delete all associated discovered repositories first
         OrgMirrorRepository.delete().where(

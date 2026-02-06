@@ -489,7 +489,7 @@ class OrgMirrorConfig(ApiResource):
 
         external_reference = f"{mirror.external_registry_url}/{mirror.external_namespace}"
 
-        deleted = model.org_mirror.delete_org_mirror_config(org, config=mirror)
+        deleted = model.org_mirror.delete_org_mirror_config(mirror)
         if not deleted:
             raise NotFound()
 
