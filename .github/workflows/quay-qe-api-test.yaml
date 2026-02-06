@@ -77,22 +77,6 @@ jobs:
           mkdir -p ${{ github.workspace }}/cypress-videos
           mkdir -p ${{ github.workspace }}/cypress-screenshots
 
-      - name: Debug - Check container static files
-        run: |
-          echo "=== Checking static/build in container ==="
-          docker exec quay-quay ls -la /quay-registry/static/build/ 2>&1 | head -20 || echo "static/build directory missing or error"
-          echo ""
-          echo "=== Checking for bundle files ==="
-          docker exec quay-quay find /quay-registry/static/build -name "*bundle*" 2>&1 || echo "No bundle files found"
-          echo ""
-          echo "=== Fetching index HTML and checking for main_scripts ==="
-          curl -s http://localhost:8080/ > /tmp/index.html
-          echo "Scripts in HTML:"
-          grep -o '<script src="[^"]*"' /tmp/index.html | head -20
-          echo ""
-          echo "=== Looking for bundle script tag ==="
-          grep -i "bundle" /tmp/index.html || echo "No bundle script found in HTML"
-
       - name: Debug - Capture page console with Playwright
         run: |
           npm install playwright
