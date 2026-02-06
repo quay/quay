@@ -3,12 +3,13 @@ import json
 import logging
 import os
 import re
+import time
 import traceback
 from typing import Optional
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
-from prometheus_client import Gauge
+from prometheus_client import Counter, Gauge, Histogram
 
 import features
 from app import app
@@ -75,6 +76,30 @@ unmirrored_org_repositories = Gauge(
 pending_org_mirror_discovery = Gauge(
     "quay_org_mirror_configs_pending_discovery",
     "number of org-level mirror configs pending repository discovery",
+)
+
+org_mirror_discovery_total = Counter(
+    "quay_org_mirror_discovery_total",
+    "total number of org-level mirror discovery runs",
+    labelnames=["status"],
+)
+org_mirror_discovery_duration = Histogram(
+    "quay_org_mirror_discovery_duration_seconds",
+    "duration of org-level mirror discovery runs in seconds",
+    buckets=(1, 5, 10, 30, 60, 120, 300, 600, 1800),
+)
+org_mirror_repos_discovered_total = Counter(
+    "quay_org_mirror_repos_discovered_total",
+    "total number of repositories discovered by org-level mirroring",
+)
+org_mirror_repos_created_total = Counter(
+    "quay_org_mirror_repos_created_total",
+    "total number of new repositories created by org-level mirroring",
+)
+org_mirror_repos_synced_total = Counter(
+    "quay_org_mirror_repos_synced_total",
+    "total number of org-level mirror repository sync completions",
+    labelnames=["status"],
 )
 
 # Used only for testing - should not be set in production
@@ -884,6 +909,7 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
     if not claimed_config:
         raise PreemptedException
 
+    discovery_start_time = time.time()
     org_name = claimed_config.organization.username
 
     # Handle CANCEL: skip discovery, propagate CANCEL to repos
@@ -912,6 +938,8 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
 
         # Release with CANCEL status
         release_org_mirror_config(claimed_config, OrgMirrorStatus.CANCEL)
+        org_mirror_discovery_total.labels(status="cancel").inc()
+        org_mirror_discovery_duration.observe(time.time() - discovery_start_time)
         return
 
     logger.info(
@@ -949,6 +977,8 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             f"Failed to decrypt source registry credentials: {e}",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        org_mirror_discovery_total.labels(status="fail").inc()
+        org_mirror_discovery_duration.observe(time.time() - discovery_start_time)
         return
 
     # Create registry adapter
@@ -974,6 +1004,8 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             f"Failed to create registry adapter: {e}",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        org_mirror_discovery_total.labels(status="fail").inc()
+        org_mirror_discovery_duration.observe(time.time() - discovery_start_time)
         return
 
     # Fetch repositories from source
@@ -992,6 +1024,8 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             f"Failed to fetch repositories from source: {e}",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        org_mirror_discovery_total.labels(status="fail").inc()
+        org_mirror_discovery_duration.observe(time.time() - discovery_start_time)
         return
 
     # Apply glob filters
@@ -1050,6 +1084,10 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
         _repos_discovered=total_count,
         _repos_created=newly_created,
     )
+    org_mirror_discovery_total.labels(status="success").inc()
+    org_mirror_discovery_duration.observe(time.time() - discovery_start_time)
+    org_mirror_repos_discovered_total.inc(total_count)
+    org_mirror_repos_created_total.inc(newly_created)
 
 
 def _emit_org_config_log(
@@ -1227,6 +1265,7 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             f"Failed to create local repository for '{claimed_repo.repository_name}'",
         )
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        org_mirror_repos_synced_total.labels(status="fail").inc()
         return OrgMirrorRepoStatus.FAIL
 
     # Fetch all tags from remote
@@ -1244,6 +1283,7 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             stderr=e.stderr,
         )
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        org_mirror_repos_synced_total.labels(status="fail").inc()
         return OrgMirrorRepoStatus.FAIL
     except Exception:
         emit_org_mirror_log(
@@ -1255,6 +1295,7 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             stderr=traceback.format_exc(),
         )
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        org_mirror_repos_synced_total.labels(status="fail").inc()
         return OrgMirrorRepoStatus.FAIL
 
     if not tags:
@@ -1266,6 +1307,7 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             f"No tags found for '{external_reference}'",
         )
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.SUCCESS)
+        org_mirror_repos_synced_total.labels(status="success").inc()
         return OrgMirrorRepoStatus.SUCCESS
 
     # Sync each tag
@@ -1290,6 +1332,7 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             claimed_repo.repository_name,
         )
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        org_mirror_repos_synced_total.labels(status="fail").inc()
         return OrgMirrorRepoStatus.FAIL
 
     dest_server = (
@@ -1362,6 +1405,12 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         )
 
     release_org_mirror_repo(claimed_repo, overall_status)
+    _STATUS_MAP = {
+        OrgMirrorRepoStatus.SUCCESS: "success",
+        OrgMirrorRepoStatus.FAIL: "fail",
+        OrgMirrorRepoStatus.CANCEL: "cancel",
+    }
+    org_mirror_repos_synced_total.labels(status=_STATUS_MAP.get(overall_status, "fail")).inc()
     return overall_status
 
 
