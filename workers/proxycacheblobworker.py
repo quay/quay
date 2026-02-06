@@ -1,7 +1,7 @@
 import logging
 import time
 
-from peewee import fn
+from peewee import JOIN
 
 import features
 from app import app, proxy_cache_blob_queue
@@ -40,15 +40,20 @@ class ProxyCacheBlobWorker(QueueWorker):
         Check if all blobs associated with a manifest have ImageStoragePlacement.
         Returns True if all blobs are downloaded, False otherwise.
         """
-        # Check if there exists a blob in the manifest that does not have a placement.
-        missing_placement = ManifestBlob.select().where(
-            ManifestBlob.manifest == manifest_id,
-            ManifestBlob.repository == repo_id,
-            ~fn.EXISTS(
-                ImageStoragePlacement.select().where(
-                    ImageStoragePlacement.storage == ManifestBlob.blob
-                )
-            ),
+        # LEFT JOIN to ImageStoragePlacement and check for any blobs missing a placement.
+        missing_placement = (
+            ManifestBlob.select()
+            .join(ImageStorage, on=(ManifestBlob.blob == ImageStorage.id))
+            .join(
+                ImageStoragePlacement,
+                JOIN.LEFT_OUTER,
+                on=(ImageStoragePlacement.storage == ImageStorage.id),
+            )
+            .where(
+                ManifestBlob.manifest == manifest_id,
+                ManifestBlob.repository == repo_id,
+                ImageStoragePlacement.id.is_null(),
+            )
         )
 
         return not missing_placement.exists()
