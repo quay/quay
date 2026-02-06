@@ -1,4 +1,3 @@
-version: "3.7"
 volumes:
   quay-db-data:
   clair-db-data:
