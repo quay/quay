@@ -57,12 +57,6 @@ jobs:
             FEATURE_QUOTA_MANAGEMENT: true
             FEATURE_PROXY_CACHE: true
             SERVER_HOSTNAME: localhost:8080
-            # Remove OIDC config that points to non-existent Keycloak in GHA
-            SOMEOIDC_LOGIN_CONFIG: null
-            # Fix CORS to allow requests from localhost:8080
-            CORS_ORIGIN:
-              - "http://localhost:8080"
-              - "http://localhost:9000"
           logs-artifact-name: 'quay-debug'
 
       - name: Use Quay Initialize API to create the 1st Super User
@@ -76,50 +70,6 @@ jobs:
           mkdir -p ${{ github.workspace }}/test-results
           mkdir -p ${{ github.workspace }}/cypress-videos
           mkdir -p ${{ github.workspace }}/cypress-screenshots
-
-      - name: Debug - Capture page console with Playwright
-        run: |
-          npm install playwright
-          npx playwright install chromium
-          node << 'EOF'
-          const { chromium } = require('playwright');
-          (async () => {
-            const browser = await chromium.launch();
-            const page = await browser.newPage();
-
-            // Capture all console messages
-            page.on('console', msg => {
-              console.log(`[${msg.type().toUpperCase()}]`, msg.text());
-            });
-
-            // Capture page errors
-            page.on('pageerror', err => {
-              console.log('[PAGE ERROR]', err.message);
-              console.log(err.stack);
-            });
-
-            // Capture failed requests
-            page.on('requestfailed', request => {
-              console.log('[REQUEST FAILED]', request.url(), request.failure().errorText);
-            });
-
-            console.log('Navigating to http://localhost:8080...');
-            await page.goto('http://localhost:8080', { waitUntil: 'networkidle', timeout: 60000 });
-
-            console.log('Page title:', await page.title());
-            await page.screenshot({ path: 'debug-screenshot.png', fullPage: true });
-            console.log('Screenshot saved to debug-screenshot.png');
-
-            await browser.close();
-          })();
-          EOF
-
-      - name: Upload debug screenshot
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: debug-screenshot
-          path: debug-screenshot.png
 
       # - name: Install Cypress Test Dependencies
       #   run: |
