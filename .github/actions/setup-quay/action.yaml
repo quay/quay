@@ -15,7 +15,7 @@ inputs:
   use-gha-cache:
     description: 'Use GitHub Actions cache for Docker builds'
     required: false
-    default: 'true'
+    default: 'false'
 
   image-tag:
     description: 'Tag for the built Quay image'
