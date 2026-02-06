@@ -151,7 +151,7 @@ jobs:
               cd /quay-tests/quay-api-tests && \
               yarn install && \
               NO_COLOR=1 yarn run cypress run \
-                --spec 'cypress/e2e/quay_api_testing_all.cy.js' \
+                --spec 'cypress/e2e/quay_api_testing_all_new_ui.cy.js' \
                 --browser chrome \
                 --headless \
                 --reporter cypress-multi-reporters \
