@@ -202,6 +202,7 @@ local-dev-build-images:
 .PHONY: local-dev-up
 local-dev-up: local-dev-clean node_modules | build-image-quay
 	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) up -d --force-recreate local-dev-frontend
+	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) up -d --force-recreate local-dev-react
 	$(DOCKER_COMPOSE) up -d redis quay-db
 	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) stop quay  # we need to restart quay after local-dev-clean
@@ -209,7 +210,8 @@ local-dev-up: local-dev-clean node_modules | build-image-quay
 	# Waiting until the frontend is built...
 	# Use '$(DOCKER_COMPOSE) logs -f local-dev-frontend' to see the progress
 	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
-	@echo "You can now access the frontend at http://localhost:8080"
+	@echo "Angular frontend: http://localhost:8080"
+	@echo "React dev server: http://localhost:9000"
 
 .PHONY: update-testdata
 update-testdata: local-dev-clean node_modules | build-image-quay
