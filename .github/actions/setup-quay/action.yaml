@@ -7,21 +7,6 @@ branding:
   color: 'red'
 
 inputs:
-  build-image:
-    description: 'Whether to build the Quay Docker image'
-    required: false
-    default: 'true'
-
-  use-gha-cache:
-    description: 'Use GitHub Actions cache for Docker builds'
-    required: false
-    default: 'false'
-
-  image-tag:
-    description: 'Tag for the built Quay image'
-    required: false
-    default: 'localhost/quay-local:latest'
-
   extra-config-file:
     description: 'Path to extra config to append to config.yaml'
     required: false
@@ -73,28 +58,6 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Set up Docker Buildx
-      if: inputs.build-image == 'true'
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build Quay image (with cache)
-      if: inputs.build-image == 'true' && inputs.use-gha-cache == 'true'
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        load: true
-        tags: ${{ inputs.image-tag }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Build Quay image (no cache)
-      if: inputs.build-image == 'true' && inputs.use-gha-cache != 'true'
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        load: true
-        tags: ${{ inputs.image-tag }}
-
     - name: Start LDAP server
       if: inputs.with-ldap == 'true'
       shell: bash
@@ -171,24 +134,10 @@ runs:
         rm -f "${INLINE_CONFIG}"
         echo "Inline config merged successfully"
 
-    - name: Start database services
+    - name: Start Quay local dev environment
       shell: bash
       run: |
-        docker compose up -d redis quay-db
-        docker exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-
-    - name: Start Quay container
-      shell: bash
-      run: |
-        DOCKER_USER="1001:0" docker compose up -d --no-build quay
-
-    - name: Start frontend dev servers
-      shell: bash
-      run: |
-        DOCKER_USER="1001:0" docker compose up -d local-dev-frontend local-dev-react
-        echo "Waiting for Angular frontend to build..."
-        while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
-        echo "Frontend dev servers started"
+        make local-dev-up
 
     - name: Wait for Quay to be ready
       id: healthcheck
