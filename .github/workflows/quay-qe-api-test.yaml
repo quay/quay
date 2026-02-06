@@ -128,14 +128,9 @@ jobs:
         run: |
           # Use the Quay URL from setup-quay action output
           QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
+          QUAY_NEW_UI="${{ steps.setup-quay.outputs.react-dev-url }}"
           # Extract hostname from URL (remove http:// prefix)
           QUAY_HOSTNAME="${QUAY_URL#http://}"
-
-          echo "Quay URL: ${QUAY_URL}"
-          echo "Quay Hostname: ${QUAY_HOSTNAME}"
-
-          echo "Waiting 1 minute for Quay UI to be fully ready..."
-          sleep 60
 
           docker run --rm \
             --network host \

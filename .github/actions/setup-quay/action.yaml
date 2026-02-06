@@ -53,7 +53,7 @@ outputs:
 
   react-dev-url:
     description: 'URL where React dev server is accessible'
-    value: 'http://localhost:9000'
+    value: ${{ steps.react-healthcheck.outputs.react-dev-url }}
 
 runs:
   using: 'composite'
@@ -156,6 +156,26 @@ runs:
         else
           echo "Quay failed to become ready within ${TIMEOUT} seconds"
           docker logs quay-quay 2>&1 | tail -100
+          exit 1
+        fi
+
+    - name: Wait for React dev server to be ready
+      id: react-healthcheck
+      shell: bash
+      run: |
+        echo "Waiting for React dev server (local-dev-react) to be ready..."
+
+        TIMEOUT=${{ inputs.health-check-timeout }}
+        RETRY_DELAY=2
+        MAX_RETRIES=$((TIMEOUT / RETRY_DELAY))
+
+        if curl -sf --retry ${MAX_RETRIES} --retry-delay ${RETRY_DELAY} --retry-all-errors \
+            http://localhost:9000 > /dev/null 2>&1; then
+          echo "React dev server is ready!"
+          echo "react-dev-url=http://localhost:9000" >> $GITHUB_OUTPUT
+        else
+          echo "React dev server failed to become ready within ${TIMEOUT} seconds"
+          docker compose logs local-dev-react 2>&1 | tail -100
           exit 1
         fi
 
