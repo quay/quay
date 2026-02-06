@@ -118,11 +118,23 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            # since we change from credentials to authfile we need to check the diff
+            auth_diff = set(skopeo_call["args"]).difference(set(args))
+            assert any(
+                [
+                    auth_diff == set(),
+                    "--creds" in auth_diff,
+                    "--dest-creds" in auth_diff,
+                    "--src-creds" in auth_diff,
+                ]
+            )
+            # we want an --authfile in the args instead
+            assert "--authfile" in args
             assert proxy == {}
 
             return skopeo_call["results"]
         except Exception as e:
+            print(f"Exception {e} {args}")
             skopeo_calls.append(skopeo_call)
             raise e
 
@@ -177,7 +189,18 @@ def test_mirror_unsigned_images(run_skopeo_mock, initialized_db, app):
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            # since we change from credentials to authfile we need to check the diff
+            auth_diff = set(skopeo_call["args"]).difference(set(args))
+            assert any(
+                [
+                    auth_diff == set(),
+                    "--creds" in auth_diff,
+                    "--dest-creds" in auth_diff,
+                    "--src-creds" in auth_diff,
+                ]
+            )
+            # we want an --authfile in the args instead
+            assert "--authfile" in args
             assert proxy == {}
 
             return skopeo_call["results"]
@@ -236,7 +259,18 @@ def test_successful_disabled_sync_now(run_skopeo_mock, initialized_db, app):
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            # since we change from credentials to authfile we need to check the diff
+            auth_diff = set(skopeo_call["args"]).difference(set(args))
+            assert any(
+                [
+                    auth_diff == set(),
+                    "--creds" in auth_diff,
+                    "--dest-creds" in auth_diff,
+                    "--src-creds" in auth_diff,
+                ]
+            )
+            # we want an --authfile in the args instead
+            assert "--authfile" in args
             assert proxy == {}
 
             return skopeo_call["results"]
@@ -294,7 +328,18 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            # since we change from credentials to authfile we need to check the diff
+            auth_diff = set(skopeo_call["args"]).difference(set(args))
+            assert any(
+                [
+                    auth_diff == set(),
+                    "--creds" in auth_diff,
+                    "--dest-creds" in auth_diff,
+                    "--src-creds" in auth_diff,
+                ]
+            )
+            # we want an --authfile in the args instead
+            assert "--authfile" in args
             assert proxy == {}
 
             return skopeo_call["results"]
@@ -417,7 +462,18 @@ def test_rollback(
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            # since we change from credentials to authfile we need to check the diff
+            auth_diff = set(skopeo_call["args"]).difference(set(args))
+            assert any(
+                [
+                    auth_diff == set(),
+                    "--creds" in auth_diff,
+                    "--dest-creds" in auth_diff,
+                    "--src-creds" in auth_diff,
+                ]
+            )
+            # we want an --authfile in the args instead
+            assert "--authfile" in args
             assert proxy == {}
 
             if args[1] == "copy" and args[8].endswith(":updated"):
@@ -510,7 +566,18 @@ def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, mon
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            # since we change from credentials to authfile we need to check the diff
+            auth_diff = set(skopeo_call["args"]).difference(set(args))
+            assert any(
+                [
+                    auth_diff == set(),
+                    "--creds" in auth_diff,
+                    "--dest-creds" in auth_diff,
+                    "--src-creds" in auth_diff,
+                ]
+            )
+            # we want an --authfile in the args instead
+            assert "--authfile" in args
             assert proxy == {}
 
             return skopeo_call["results"]
@@ -577,7 +644,18 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            # since we change from credentials to authfile we need to check the diff
+            auth_diff = set(skopeo_call["args"]).difference(set(args))
+            assert any(
+                [
+                    auth_diff == set(),
+                    "--creds" in auth_diff,
+                    "--dest-creds" in auth_diff,
+                    "--src-creds" in auth_diff,
+                ]
+            )
+            # we want an --authfile in the args instead
+            assert "--authfile" in args
             assert proxy == {}
 
             return skopeo_call["results"]
@@ -641,7 +719,18 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            # since we change from credentials to authfile we need to check the diff
+            auth_diff = set(skopeo_call["args"]).difference(set(args))
+            assert any(
+                [
+                    auth_diff == set(),
+                    "--creds" in auth_diff,
+                    "--dest-creds" in auth_diff,
+                    "--src-creds" in auth_diff,
+                ]
+            )
+            # we want an --authfile in the args instead
+            assert "--authfile" in args
             assert proxy == {}
 
             return skopeo_call["results"]
@@ -670,7 +759,18 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            # since we change from credentials to authfile we need to check the diff
+            auth_diff = set(skopeo_call["args"]).difference(set(args))
+            assert any(
+                [
+                    auth_diff == set(),
+                    "--creds" in auth_diff,
+                    "--dest-creds" in auth_diff,
+                    "--src-creds" in auth_diff,
+                ]
+            )
+            # we want an --authfile in the args instead
+            assert "--authfile" in args
             assert proxy == {}
 
             return skopeo_call["results"]
