@@ -66,6 +66,10 @@ outputs:
     description: 'Name of the Quay container'
     value: 'quay-quay'
 
+  react-dev-url:
+    description: 'URL where React dev server is accessible'
+    value: 'http://localhost:9000'
+
 runs:
   using: 'composite'
   steps:
@@ -177,6 +181,14 @@ runs:
       shell: bash
       run: |
         DOCKER_USER="1001:0" docker compose up -d --no-build quay
+
+    - name: Start frontend dev servers
+      shell: bash
+      run: |
+        DOCKER_USER="1001:0" docker compose up -d local-dev-frontend local-dev-react
+        echo "Waiting for Angular frontend to build..."
+        while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
+        echo "Frontend dev servers started"
 
     - name: Wait for Quay to be ready
       id: healthcheck
