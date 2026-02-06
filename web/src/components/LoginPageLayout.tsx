@@ -1,6 +1,6 @@
 import React, {useEffect} from 'react';
 import {ListVariant, LoginPage} from '@patternfly/react-core';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
 import {useLogo} from 'src/hooks/UseLogo';
 import {useLoginFooterItems} from 'src/components/LoginFooter';
 import SystemStatusBanner from 'src/components/SystemStatusBanner';
@@ -20,7 +20,8 @@ export function LoginPageLayout({
   children,
   className = 'pf-u-background-color-100 pf-v5-u-text-align-left',
 }: LoginPageLayoutProps) {
-  const quayConfig = useQuayConfig();
+  const {config: quayConfig, isLoading: configLoading} =
+    useQuayConfigWithLoading();
   const footerListItems = useLoginFooterItems();
   const logoUrl = useLogo();
 
@@ -33,6 +34,11 @@ export function LoginPageLayout({
       document.title = `${quayConfig.config.REGISTRY_TITLE} • Quay`;
     }
   }, [quayConfig]);
+
+  // Don't render with fallback branding while config is loading
+  if (configLoading) {
+    return null;
+  }
 
   return (
     <>
