@@ -139,14 +139,13 @@ RUN GOPATH=/opt/app-root/src/go GOFIPS140=latest go install -tags=fips ./cmd/con
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal@sha256:bb08f2300cb8d12a7eb91dddf28ea63692b3ec99e7f0fa71a1b300f2756ea829 AS build-quaydir
 WORKDIR /quaydir
-
-# Copy in source first, then overlay with built static files
-# This ensures webpack bundles from build-static are not overwritten
-COPY --chown=0:0 . .
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
 
-# Update local copy of AWS IP Ranges.
+# Copy in source and update local copy of AWS IP Ranges.
+# This is a bad place to do the curl, but there's no good place to do
+# it except to have it checked in.
+COPY --chown=0:0 . .
 RUN set -ex\
 	; chmod -R g=u ./conf\
     ; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json 2>/dev/null \
