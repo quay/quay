@@ -90,7 +90,7 @@
     "css-loader": "0.28.x",
     "enzyme": "^3.9.0",
     "enzyme-adapter-react-16": "1.12.1",
-    "eslint": "5.16.0",
+    "eslint": "10.0.0",
     "eslint-plugin-import": "2.x",
     "eslint-plugin-react": "7.x",
     "eslint-plugin-react-hooks": "^1.6.0",
