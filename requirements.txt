@@ -138,7 +138,7 @@ resumablesha256==1.0
 deprecation==2.1.0
 
 # Leverage wheels for faster builds
-setuptools==78.1.1
+setuptools==82.0.0
 wheel==0.46.2
 
 # Indirect dependencies
