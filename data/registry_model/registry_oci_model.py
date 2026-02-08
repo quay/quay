@@ -1012,7 +1012,8 @@ class OCIModel(RegistryDataInterface):
             tags, has_more = self.lookup_active_repository_tags(
                 repository_ref, last_pagination_tag_name, limit
             )
-            return [tag.asdict() for tag in tags], has_more
+            # Store minimal (db_id, name) tuples - the API only uses tag.name
+            return [(tag._db_id, tag.name) for tag in tags], has_more
 
         tags_cache_key = cache_key.for_active_repo_tags(
             repository_ref._db_id, last_pagination_tag_name, limit, model_cache.cache_config
@@ -1020,8 +1021,10 @@ class OCIModel(RegistryDataInterface):
         result, has_more = tuple(model_cache.retrieve(tags_cache_key, load_tags))
 
         try:
-            return [ShallowTag.from_dict(tag_dict) for tag_dict in result], has_more
-        except FromDictionaryException:
+            # Reconstruct ShallowTag from (db_id, name) tuples
+            return [ShallowTag(db_id=db_id, name=name) for db_id, name in result], has_more
+        except (TypeError, ValueError):
+            # Handle old cache format (full dicts) or corrupted entries - reload from DB
             return self.lookup_active_repository_tags(
                 repository_ref, last_pagination_tag_name, limit
             )
