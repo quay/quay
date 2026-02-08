@@ -7,21 +7,6 @@ branding:
   color: 'red'
 
 inputs:
-  build-image:
-    description: 'Whether to build the Quay Docker image'
-    required: false
-    default: 'true'
-
-  use-gha-cache:
-    description: 'Use GitHub Actions cache for Docker builds'
-    required: false
-    default: 'true'
-
-  image-tag:
-    description: 'Tag for the built Quay image'
-    required: false
-    default: 'localhost/quay-local:latest'
-
   extra-config-file:
     description: 'Path to extra config to append to config.yaml'
     required: false
@@ -66,31 +51,13 @@ outputs:
     description: 'Name of the Quay container'
     value: 'quay-quay'
 
+  react-dev-url:
+    description: 'URL where React dev server is accessible'
+    value: ${{ steps.react-healthcheck.outputs.react-dev-url }}
+
 runs:
   using: 'composite'
   steps:
-    - name: Set up Docker Buildx
-      if: inputs.build-image == 'true'
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build Quay image (with cache)
-      if: inputs.build-image == 'true' && inputs.use-gha-cache == 'true'
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        load: true
-        tags: ${{ inputs.image-tag }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Build Quay image (no cache)
-      if: inputs.build-image == 'true' && inputs.use-gha-cache != 'true'
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        load: true
-        tags: ${{ inputs.image-tag }}
-
     - name: Start LDAP server
       if: inputs.with-ldap == 'true'
       shell: bash
@@ -167,16 +134,10 @@ runs:
         rm -f "${INLINE_CONFIG}"
         echo "Inline config merged successfully"
 
-    - name: Start database services
+    - name: Start Quay local dev environment
       shell: bash
       run: |
-        docker compose up -d redis quay-db
-        docker exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-
-    - name: Start Quay container
-      shell: bash
-      run: |
-        DOCKER_USER="1001:0" docker compose up -d --no-build quay
+        make local-dev-up
 
     - name: Wait for Quay to be ready
       id: healthcheck
@@ -195,6 +156,26 @@ runs:
         else
           echo "Quay failed to become ready within ${TIMEOUT} seconds"
           docker logs quay-quay 2>&1 | tail -100
+          exit 1
+        fi
+
+    - name: Wait for React dev server to be ready
+      id: react-healthcheck
+      shell: bash
+      run: |
+        echo "Waiting for React dev server (local-dev-react) to be ready..."
+
+        TIMEOUT=${{ inputs.health-check-timeout }}
+        RETRY_DELAY=2
+        MAX_RETRIES=$((TIMEOUT / RETRY_DELAY))
+
+        if curl -sf --retry ${MAX_RETRIES} --retry-delay ${RETRY_DELAY} --retry-all-errors \
+            http://localhost:9000 > /dev/null 2>&1; then
+          echo "React dev server is ready!"
+          echo "react-dev-url=http://localhost:9000" >> $GITHUB_OUTPUT
+        else
+          echo "React dev server failed to become ready within ${TIMEOUT} seconds"
+          docker compose logs local-dev-react 2>&1 | tail -100
           exit 1
         fi
 
