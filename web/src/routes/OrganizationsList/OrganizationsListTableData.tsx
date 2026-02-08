@@ -16,6 +16,7 @@ import OrganizationOptionsKebab from './OrganizationOptionsKebab';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {renderQuotaConsumed} from 'src/libs/quotaUtils';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 interface CountProps {
   count: string | number;
@@ -47,6 +48,7 @@ interface OrgTableDataProps extends OrganizationsTableItem {
   selectedOrganization?: OrganizationsTableItem[];
   setSelectedOrganization?: (orgs: OrganizationsTableItem[]) => void;
   avatar?: IAvatar;
+  isColumnVisible: (columnId: string) => boolean;
 }
 
 // Get and assemble data from multiple endpoints to show in Org table
@@ -57,6 +59,7 @@ export default function OrgTableData(props: OrgTableDataProps) {
   const {user: currentUser} = useCurrentUser();
 
   const {isSuperUser} = useCurrentUser();
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
 
   // Get organization
   const {data: organization} = useQuery(
@@ -116,118 +119,136 @@ export default function OrgTableData(props: OrgTableDataProps) {
 
   return (
     <>
-      <Td dataLabel={ColumnNames.name}>
-        <Flex
-          alignItems={{default: 'alignItemsCenter'}}
-          justifyContent={{default: 'justifyContentSpaceBetween'}}
-        >
-          <Flex alignItems={{default: 'alignItemsCenter'}}>
-            {/* Show avatar for all entries that have avatar data */}
-            {props.avatar && (
-              <FlexItem spacer={{default: 'spacerSm'}}>
-                <Avatar avatar={props.avatar} size="sm" />
+      {props.isColumnVisible('name') && (
+        <Td dataLabel={ColumnNames.name}>
+          <Flex
+            alignItems={{default: 'alignItemsCenter'}}
+            justifyContent={{default: 'justifyContentSpaceBetween'}}
+          >
+            <Flex alignItems={{default: 'alignItemsCenter'}}>
+              {/* Show avatar for all entries that have avatar data */}
+              {props.avatar && (
+                <FlexItem spacer={{default: 'spacerSm'}}>
+                  <Avatar avatar={props.avatar} size="sm" />
+                </FlexItem>
+              )}
+              <FlexItem>
+                <Link to={props.name}>{props.name}</Link>
               </FlexItem>
-            )}
-            <FlexItem>
-              <Link to={props.name}>{props.name}</Link>
-            </FlexItem>
-          </Flex>
-          {/* Show status labels for users (right-aligned, superuser only) */}
-          {isSuperUser && props.isUser && (
-            <Flex spaceItems={{default: 'spaceItemsXs'}}>
-              {currentUser?.username === props.name && (
-                <FlexItem>
-                  <Label color="green">You</Label>
-                </FlexItem>
-              )}
-              {props.userSuperuser && (
-                <FlexItem>
-                  <Label color="blue">Superuser</Label>
-                </FlexItem>
-              )}
-              {props.userGlobalReadonlySuperuser && (
-                <FlexItem>
-                  <Label color="cyan">Global Readonly Superuser</Label>
-                </FlexItem>
-              )}
-              {props.userEnabled === false && (
-                <FlexItem>
-                  <Label>Disabled</Label>
-                </FlexItem>
-              )}
             </Flex>
-          )}
-        </Flex>
-      </Td>
-      {isSuperUser && config?.features?.MAILING && (
-        <Td dataLabel={ColumnNames.adminEmail}>
-          {props.isUser ? (
-            props.userEmail ? (
-              <a href={`mailto:${props.userEmail}`}>{props.userEmail}</a>
+            {/* Show status labels for users (right-aligned, superuser only) */}
+            {isSuperUser && props.isUser && (
+              <Flex spaceItems={{default: 'spaceItemsXs'}}>
+                {currentUser?.username === props.name && (
+                  <FlexItem>
+                    <Label color="green">You</Label>
+                  </FlexItem>
+                )}
+                {props.userSuperuser && (
+                  <FlexItem>
+                    <Label color="blue">Superuser</Label>
+                  </FlexItem>
+                )}
+                {props.userGlobalReadonlySuperuser && (
+                  <FlexItem>
+                    <Label color="cyan">Global Readonly Superuser</Label>
+                  </FlexItem>
+                )}
+                {props.userEnabled === false && (
+                  <FlexItem>
+                    <Label>Disabled</Label>
+                  </FlexItem>
+                )}
+              </Flex>
+            )}
+          </Flex>
+        </Td>
+      )}
+      {props.isColumnVisible('adminEmail') &&
+        isSuperUser &&
+        config?.features?.MAILING && (
+          <Td dataLabel={ColumnNames.adminEmail}>
+            {props.isUser ? (
+              props.userEmail ? (
+                <a href={`mailto:${props.userEmail}`}>{props.userEmail}</a>
+              ) : (
+                <span style={{color: '#888'}}>—</span>
+              )
+            ) : organization?.email ? (
+              <a href={`mailto:${organization.email}`}>{organization.email}</a>
             ) : (
               <span style={{color: '#888'}}>—</span>
-            )
-          ) : organization?.email ? (
-            <a href={`mailto:${organization.email}`}>{organization.email}</a>
-          ) : (
-            <span style={{color: '#888'}}>—</span>
-          )}
+            )}
+          </Td>
+        )}
+      {props.isColumnVisible('repoCount') && (
+        <Td dataLabel={ColumnNames.repoCount}>
+          <Count count={repoCount}></Count>
         </Td>
       )}
-      <Td dataLabel={ColumnNames.repoCount}>
-        <Count count={repoCount}></Count>
-      </Td>
-      <Td dataLabel={ColumnNames.teamsCount}>
-        <Count count={teamCountVal}></Count>
-      </Td>
-      <Td dataLabel={ColumnNames.membersCount}>
-        <Count count={memberCount}></Count>
-      </Td>
-      <Td dataLabel={ColumnNames.robotsCount}>
-        <Count count={robotCount}></Count>
-      </Td>
-      <Td dataLabel={ColumnNames.lastModified}>
-        <RepoLastModifiedDate
-          lastModifiedDate={lastModifiedDate}
-        ></RepoLastModifiedDate>
-      </Td>
-      {config?.features?.QUOTA_MANAGEMENT && config?.features?.EDIT_QUOTA && (
-        <Td dataLabel={ColumnNames.size}>
-          {props.isUser ? (
-            props.quota_report ? (
-              renderQuotaConsumed(props.quota_report, {
-                showPercentage: true,
-                showTotal: true,
-                showBackfill: true,
-              })
+      {props.isColumnVisible('teamsCount') && (
+        <Td dataLabel={ColumnNames.teamsCount}>
+          <Count count={teamCountVal}></Count>
+        </Td>
+      )}
+      {props.isColumnVisible('membersCount') && (
+        <Td dataLabel={ColumnNames.membersCount}>
+          <Count count={memberCount}></Count>
+        </Td>
+      )}
+      {props.isColumnVisible('robotsCount') && (
+        <Td dataLabel={ColumnNames.robotsCount}>
+          <Count count={robotCount}></Count>
+        </Td>
+      )}
+      {props.isColumnVisible('lastModified') && (
+        <Td dataLabel={ColumnNames.lastModified}>
+          <RepoLastModifiedDate
+            lastModifiedDate={lastModifiedDate}
+          ></RepoLastModifiedDate>
+        </Td>
+      )}
+      {props.isColumnVisible('size') &&
+        config?.features?.QUOTA_MANAGEMENT &&
+        config?.features?.EDIT_QUOTA && (
+          <Td dataLabel={ColumnNames.size}>
+            {props.isUser ? (
+              props.quota_report ? (
+                renderQuotaConsumed(props.quota_report, {
+                  showPercentage: true,
+                  showTotal: true,
+                  showBackfill: true,
+                })
+              ) : (
+                <span style={{color: '#888'}}>—</span>
+              )
             ) : (
-              <span style={{color: '#888'}}>—</span>
-            )
-          ) : (
-            renderQuotaConsumed(
-              props.quota_report || organization?.quota_report,
-              {
-                showPercentage: true,
-                showTotal: true,
-                showBackfill: true,
-              },
-            )
-          )}
-        </Td>
-      )}
-      {isSuperUser && (
-        <Td dataLabel={ColumnNames.options}>
-          <OrganizationOptionsKebab
-            name={props.name}
-            isUser={props.isUser}
-            userEnabled={props.userEnabled}
-            userSuperuser={props.userSuperuser}
-            userGlobalReadonlySuperuser={props.userGlobalReadonlySuperuser}
-            selectedOrganization={props.selectedOrganization}
-            setSelectedOrganization={props.setSelectedOrganization}
-          />
-        </Td>
-      )}
+              renderQuotaConsumed(
+                props.quota_report || organization?.quota_report,
+                {
+                  showPercentage: true,
+                  showTotal: true,
+                  showBackfill: true,
+                },
+              )
+            )}
+          </Td>
+        )}
+      {props.isColumnVisible('options') &&
+        isSuperUser &&
+        !isReadOnlySuperUser && (
+          <Td dataLabel={ColumnNames.options}>
+            <OrganizationOptionsKebab
+              name={props.name}
+              isUser={props.isUser}
+              userEnabled={props.userEnabled}
+              userSuperuser={props.userSuperuser}
+              userGlobalReadonlySuperuser={props.userGlobalReadonlySuperuser}
+              selectedOrganization={props.selectedOrganization}
+              setSelectedOrganization={props.setSelectedOrganization}
+            />
+          </Td>
+        )}
     </>
   );
 }

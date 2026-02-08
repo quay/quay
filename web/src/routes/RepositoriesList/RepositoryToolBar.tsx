@@ -7,6 +7,7 @@ import {Kebab} from 'src/components/toolbar/Kebab';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
+import {ManageColumnsButton, ColumnConfig} from 'src/components/ManageColumns';
 
 export function RepositoryToolBar(props: RepositoryToolBarProps) {
   const fetchConfirmationModalText = () => {
@@ -71,6 +72,10 @@ export function RepositoryToolBar(props: RepositoryToolBarProps) {
           ) : null}
           {props.deleteKebabIsOpen ? props.deleteModal : null}
         </ToolbarItem>
+        <ManageColumnsButton
+          columns={props.columns}
+          onSave={props.onSaveColumns}
+        />
         <ToolbarPagination
           itemsList={props.repositoryList}
           perPage={props.perPage}
@@ -135,4 +140,6 @@ type RepositoryToolBarProps = {
   setSelectedRepoNames: (selectedRepoList) => void;
   paginatedRepositoryList: any[];
   onSelectRepo: (Repo, rowIndex, isSelecting) => void;
+  columns: ColumnConfig[];
+  onSaveColumns: (columns: ColumnConfig[]) => void;
 };
