@@ -469,6 +469,14 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
         repository_name=None,
         timestamp=None,
         is_free_namespace=False,
+        # Enhanced logging fields for ESS EOI compliance
+        request_url=None,
+        http_method=None,
+        auth_type=None,
+        user_agent=None,
+        performer_kind=None,
+        request_id=None,
+        x_forwarded_for=None,
     ):
         if self._should_skip_logging and self._should_skip_logging(
             kind_name, namespace_name, is_free_namespace
@@ -486,15 +494,25 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
         account_id = None
         performer_id = None
         repository_id = None
+        performer_username = None
+        performer_email = None
+        repo_name = None
 
         if namespace_name is not None:
             account_id = model.user.get_namespace_user(namespace_name).id
 
         if performer is not None:
             performer_id = performer.id
+            # Only extract string attributes to avoid issues with Mock objects in tests
+            username = getattr(performer, "username", None)
+            performer_username = username if isinstance(username, str) else None
+            email = getattr(performer, "email", None)
+            performer_email = email if isinstance(email, str) else None
 
         if repository is not None:
             repository_id = repository.id
+            name = getattr(repository, "name", None)
+            repo_name = name if isinstance(name, str) else None
 
         kind_id = model.log._get_log_entry_kind(kind_name)
         log = LogEntry(
@@ -506,6 +524,18 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
             metadata=metadata or {},
             repository_id=repository_id,
             datetime=timestamp,
+            # Enhanced logging fields
+            request_url=request_url,
+            http_method=http_method,
+            performer_username=performer_username,
+            performer_email=performer_email,
+            performer_kind=performer_kind,
+            auth_type=auth_type,
+            user_agent=user_agent,
+            namespace_name=namespace_name,
+            repository_name=repo_name,
+            request_id=request_id,
+            x_forwarded_for=x_forwarded_for,
         )
 
         try:

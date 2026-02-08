@@ -311,6 +311,18 @@ def test_splunk_logs_producers(
                     "metadata_json": {"key": "value"},
                     "performer": "fake_username",
                     "repository": None,
+                    # ESS EOI fields
+                    "request_url": None,
+                    "http_method": None,
+                    "performer_username": "fake_username",
+                    "performer_email": "fake_email@123",
+                    "performer_kind": None,
+                    "auth_type": None,
+                    "user_agent": None,
+                    "namespace_name": "devtable",
+                    "repository_name": None,
+                    "request_id": None,
+                    "x_forwarded_for": None,
                 }
 
                 expected_call_args = [call(expected_event)]
@@ -428,6 +440,18 @@ def test_splunk_hec_logs_producer(
                     "metadata_json": {"key": "value"},
                     "performer": "fake_username",
                     "repository": None,
+                    # ESS EOI fields
+                    "request_url": None,
+                    "http_method": None,
+                    "performer_username": "fake_username",
+                    "performer_email": "fake_email@123",
+                    "performer_kind": None,
+                    "auth_type": None,
+                    "user_agent": None,
+                    "namespace_name": "devtable",
+                    "repository_name": None,
+                    "request_id": None,
+                    "x_forwarded_for": None,
                 }
 
                 expected_call = {
@@ -493,6 +517,18 @@ def test_submit_called_with_multiple_none_args(
                 "metadata_json": {},
                 "performer": None,
                 "repository": None,
+                # ESS EOI fields
+                "request_url": None,
+                "http_method": None,
+                "performer_username": None,
+                "performer_email": None,
+                "performer_kind": None,
+                "auth_type": None,
+                "user_agent": None,
+                "namespace_name": None,
+                "repository_name": None,
+                "request_id": None,
+                "x_forwarded_for": None,
             }
 
             expected_call_args = [call(expected_event)]
@@ -535,6 +571,18 @@ def test_submit_skip_ssl_verify_false(
                 "metadata_json": {},
                 "performer": None,
                 "repository": "simple",
+                # ESS EOI fields
+                "request_url": None,
+                "http_method": None,
+                "performer_username": None,
+                "performer_email": None,
+                "performer_kind": None,
+                "auth_type": None,
+                "user_agent": None,
+                "namespace_name": "devtable",
+                "repository_name": "simple",
+                "request_id": None,
+                "x_forwarded_for": None,
             }
 
             expected_call_args = [call(expected_event)]
