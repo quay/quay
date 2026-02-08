@@ -20,7 +20,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
-	golang.org/x/oauth2 v0.28.0
+	golang.org/x/oauth2 v0.35.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
