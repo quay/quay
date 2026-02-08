@@ -160,7 +160,7 @@ class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_lookup_repository_creates_private_repo_when_enabled(self):
         with patch("data.registry_model.registry_proxy_model.app", MagicMock()) as app_mock:
-            app_mock.config = {"CREATE_PRIVATE_REPO_ON_PUSH": True}
+            app_mock.config = {"CREATE_PRIVATE_REPO_ON_PULL_THROUGH": True}
             repo_ref = self.proxy_model.lookup_repository(
                 self.orgname, self.upstream_repository, manifest_ref=self.tag
             )
@@ -170,7 +170,7 @@ class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_lookup_repository_creates_public_repo_when_disabled(self):
         with patch("data.registry_model.registry_proxy_model.app", MagicMock()) as app_mock:
-            app_mock.config = {"CREATE_PRIVATE_REPO_ON_PUSH": False}
+            app_mock.config = {"CREATE_PRIVATE_REPO_ON_PULL_THROUGH": False}
             repo_ref = self.proxy_model.lookup_repository(
                 self.orgname, self.upstream_repository, manifest_ref=self.tag
             )
