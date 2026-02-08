@@ -93,22 +93,22 @@ services:
     container_name: quay-local-dev-react
     build:
       context: .
-      args:
-        BUILD_ANGULAR: false
-      target: build-ui
-    image: localhost/quay-react:latest
+      target: build-static
+    image: localhost/quay-build:latest
+    init: true
+    extra_hosts:
+      - "localhost:host-gateway"
     volumes:
       - ".:/quay-registry"
-    working_dir: /quay-registry
+    working_dir: /quay-registry/web
+    environment:
+      npm_config_cache: /quay-registry/.npm
+    ports:
+      - "9000:9000"
     entrypoint:
       - sh
       - -c
-      - |
-        echo "Copying React files to host volume..."
-        mkdir -p static/patternfly
-        cp -r /opt/app-root/dist/* static/patternfly/
-        echo "React files ready for nginx"
-        tail -f /dev/null
+      - npm install && npm start -- --no-open
   quay:
     user: ${DOCKER_USER:-nobody:0}
     container_name: quay-quay
