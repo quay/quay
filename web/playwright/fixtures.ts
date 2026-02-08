@@ -734,6 +734,7 @@ export type QuayFeature =
   | 'AUTO_PRUNE'
   | 'PROXY_CACHE'
   | 'REPO_MIRROR'
+  | 'ORG_MIRROR'
   | 'SECURITY_SCANNER'
   | 'CHANGE_TAG_EXPIRATION'
   | 'USER_METADATA'

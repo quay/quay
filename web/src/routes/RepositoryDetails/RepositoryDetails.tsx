@@ -14,7 +14,12 @@ import {
   Title,
 } from '@patternfly/react-core';
 import {useEffect, useRef, useState} from 'react';
-import {useLocation, useNavigate, useSearchParams} from 'react-router-dom';
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import Conditional from 'src/components/empty/Conditional';
@@ -290,14 +295,30 @@ export default function RepositoryDetails() {
                     {repoDetails?.state !== 'MIRROR' ? (
                       <div>
                         This repository&apos;s state is{' '}
-                        <strong>{repoDetails?.state}</strong>. Use the{' '}
-                        <a
-                          href={`/repository/${repoDetails?.namespace}/${repoDetails?.name}?tab=settings`}
-                        >
-                          Settings tab
-                        </a>{' '}
-                        and change it to <strong>Mirror</strong> to manage its
-                        mirroring configuration.
+                        <strong>{repoDetails?.state}</strong>.{' '}
+                        {repoDetails?.state === 'ORG_MIRROR' ? (
+                          <>
+                            Mirroring is managed at the organization level. Use
+                            the{' '}
+                            <Link
+                              to={`/organization/${repoDetails?.namespace}?tab=Mirroring`}
+                            >
+                              organization mirroring settings
+                            </Link>{' '}
+                            to manage mirroring configuration.
+                          </>
+                        ) : (
+                          <>
+                            Use the{' '}
+                            <Link
+                              to={`/repository/${repoDetails?.namespace}/${repoDetails?.name}?tab=settings`}
+                            >
+                              Settings tab
+                            </Link>{' '}
+                            and change it to <strong>Mirror</strong> to manage
+                            its mirroring configuration.
+                          </>
+                        )}
                       </div>
                     ) : (
                       <Mirroring
