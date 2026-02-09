@@ -21,7 +21,7 @@ from endpoints.api import (
     show_if,
     validate_json_request,
 )
-from endpoints.exception import NotFound
+from endpoints.exception import InvalidRequest, NotFound
 from util.audit import track_and_log, wrap_repository
 from util.names import parse_robot_username
 
@@ -305,6 +305,8 @@ class RepoMirrorResource(RepositoryParamResource):
         if not repo:
             raise NotFound()
 
+        self._reject_if_org_mirror_configured(namespace_name)
+
         if model.repo_mirror.get_mirror(repo):
             return (
                 {
@@ -371,6 +373,8 @@ class RepoMirrorResource(RepositoryParamResource):
         repo = model.repository.get_repository(namespace_name, repository_name)
         if not repo:
             raise NotFound()
+
+        self._reject_if_org_mirror_configured(namespace_name)
 
         mirror = model.repo_mirror.get_mirror(repo)
         if not mirror:
@@ -583,6 +587,16 @@ class RepoMirrorResource(RepositoryParamResource):
                 )
 
         return "", 201
+
+    def _reject_if_org_mirror_configured(self, namespace_name):
+        """Raise InvalidRequest if the namespace has an org-level mirror config."""
+        namespace_user = model.user.get_namespace_user(namespace_name)
+        if namespace_user and namespace_user.organization:
+            if model.org_mirror.get_org_mirror_config(namespace_user):
+                raise InvalidRequest(
+                    "Repository mirror configuration cannot be managed when "
+                    "organization-level mirroring is configured"
+                )
 
     def _setup_robot_for_mirroring(self, namespace_name, repo_name, robot_username):
         """
