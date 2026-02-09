@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  PageSection,
-  PageSectionVariants,
-  Text,
-  TextContent,
-  TextVariants,
-} from '@patternfly/react-core';
+import {PageSection, Content, ContentVariants} from '@patternfly/react-core';
 import TheBasics from './TheBasics';
 import PackagesTable from './PackagesTable';
 import './css/About.scss';
@@ -13,12 +7,12 @@ import './css/About.scss';
 export const About: React.FC = () => {
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
-        <TextContent>
-          <Text component={TextVariants.h1}>About Us</Text>
-        </TextContent>
+      <PageSection hasBodyWrapper={false}>
+        <Content>
+          <Content component={ContentVariants.h1}>About Us</Content>
+        </Content>
       </PageSection>
-      <PageSection variant={PageSectionVariants.default} className="about-page">
+      <PageSection hasBodyWrapper={false} className="about-page">
         <TheBasics />
         <PackagesTable />
       </PageSection>

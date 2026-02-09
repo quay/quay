@@ -1,14 +1,13 @@
 import {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
   TextInput,
   Alert,
-  Text,
+  Content,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useCreateApplicationToken} from 'src/hooks/UseApplicationTokens';
 import {IApplicationToken} from 'src/resources/UserResource';
 import CredentialsModal from './CredentialsModal';
@@ -115,10 +114,10 @@ export default function CreateApplicationTokenModal({
       ]}
     >
       <Form>
-        <Text className="pf-v5-u-mb-md">
+        <Content component="p" className="pf-v5-u-mb-md">
           Create an application token that can be used in place of your password
           for Docker and other CLI authentication.
-        </Text>
+        </Content>
 
         {error && (
           <Alert

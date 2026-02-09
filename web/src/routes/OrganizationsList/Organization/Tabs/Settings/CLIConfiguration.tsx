@@ -4,20 +4,19 @@ import {
   Form,
   Flex,
   Button,
-  Text,
+  Content,
   Spinner,
   Alert,
   EmptyState,
-  EmptyStateIcon,
   EmptyStateBody,
   Divider,
   Dropdown,
   DropdownItem,
   DropdownList,
   MenuToggle,
-  Modal,
   Tooltip,
 } from '@patternfly/react-core';
+import {Modal} from '@patternfly/react-core/deprecated';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {EllipsisVIcon, KeyIcon} from '@patternfly/react-icons';
 import {GenerateEncryptedPassword} from 'src/components/modals/GenerateEncryptedPasswordModal';
@@ -225,7 +224,9 @@ export const CliConfiguration = () => {
           {isLoading && (
             <div className="pf-v5-u-text-align-center pf-v5-u-p-lg">
               <Spinner size="md" />
-              <Text className="pf-v5-u-mt-sm">Loading tokens...</Text>
+              <Content component="p" className="pf-v5-u-mt-sm">
+                Loading tokens...
+              </Content>
             </div>
           )}
 
@@ -238,11 +239,14 @@ export const CliConfiguration = () => {
           {!isLoading && !error && tokens && (
             <>
               {tokens.length === 0 ? (
-                <EmptyState>
-                  <EmptyStateIcon icon={KeyIcon} />
-                  <Title headingLevel="h4" size="lg">
-                    No application tokens
-                  </Title>
+                <EmptyState
+                  titleText={
+                    <Title headingLevel="h4" size="lg">
+                      No application tokens
+                    </Title>
+                  }
+                  icon={KeyIcon}
+                >
                   <EmptyStateBody>
                     You haven&apos;t created any application tokens yet. Create
                     one to use as an alternative to your password for CLI
@@ -393,9 +397,9 @@ export const CliConfiguration = () => {
             >
               <div className="pf-v5-u-text-align-center pf-v5-u-p-lg">
                 <Spinner size="md" />
-                <Text className="pf-v5-u-mt-sm">
+                <Content component="p" className="pf-v5-u-mt-sm">
                   Loading token credentials...
-                </Text>
+                </Content>
               </div>
             </Modal>
           )}

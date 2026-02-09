@@ -132,17 +132,28 @@ export default function UpdateUser() {
       case 'confirmed':
         return (
           <CheckCircleIcon
-            style={{color: 'var(--pf-v5-global--success-color--100)'}}
+            style={{
+              color:
+                'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--success-color--100 */,
+            }}
           />
         );
       case 'existing':
         return (
-          <BanIcon style={{color: 'var(--pf-v5-global--danger-color--100)'}} />
+          <BanIcon
+            style={{
+              color:
+                'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--danger-color--100 */,
+            }}
+          />
         );
       case 'error':
         return (
           <ExclamationTriangleIcon
-            style={{color: 'var(--pf-v5-global--warning-color--100)'}}
+            style={{
+              color:
+                'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--warning-color--100 */,
+            }}
           />
         );
       case 'confirming':
@@ -225,7 +236,7 @@ export default function UpdateUser() {
                       color:
                         usernameState === 'existing' ||
                         usernameState === 'error'
-                          ? 'var(--pf-v5-global--danger-color--100)'
+                          ? 'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--danger-color--100 */
                           : 'var(--pf-v5-global--color--100)',
                     }}
                   >

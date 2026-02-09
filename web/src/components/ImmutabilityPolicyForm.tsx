@@ -144,22 +144,20 @@ export default function ImmutabilityPolicyForm(
               aria-label="Actions"
             >
               <Button
+                icon={<PencilAltIcon />}
                 variant="plain"
                 onClick={() => setIsEditing(true)}
                 aria-label="Edit policy"
                 data-testid="edit-immutability-policy-btn"
-              >
-                <PencilAltIcon />
-              </Button>
+              />
               {props.onDelete && (
                 <Button
+                  icon={<TrashIcon />}
                   variant="plain"
                   onClick={handleDelete}
                   aria-label="Delete policy"
                   data-testid="delete-immutability-policy-btn"
-                >
-                  <TrashIcon />
-                </Button>
+                />
               )}
             </DataListAction>
           </DataListItemRow>
@@ -257,7 +255,7 @@ export default function ImmutabilityPolicyForm(
 
   // Default: render form in card
   return (
-    <Card isFlat className="pf-v5-u-mb-md">
+    <Card className="pf-v5-u-mb-md">
       <CardBody>{formContent}</CardBody>
     </Card>
   );

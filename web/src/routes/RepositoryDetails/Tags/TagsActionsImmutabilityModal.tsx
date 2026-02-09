@@ -1,11 +1,5 @@
-import {
-  Alert,
-  Button,
-  Modal,
-  ModalVariant,
-  TextContent,
-  Text,
-} from '@patternfly/react-core';
+import {Alert, Button, Content} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useEffect} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useSetTagImmutability} from 'src/hooks/UseTags';
@@ -130,9 +124,9 @@ export default function ImmutabilityModal(props: ImmutabilityModalProps) {
           <div style={{marginBottom: '1rem'}} />
         </>
       )}
-      <TextContent>
-        <Text>{description}</Text>
-      </TextContent>
+      <Content>
+        <Content component="p">{description}</Content>
+      </Content>
     </Modal>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
-import {Modal, ModalVariant, Button, Alert, Text} from '@patternfly/react-core';
+import {Button, Alert, Content} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useRevokeApplicationToken} from 'src/hooks/UseApplicationTokens';
 import {IApplicationToken} from 'src/resources/UserResource';
 
@@ -68,10 +69,10 @@ export default function RevokeTokenModal({
         longer be able to authenticate.
       </Alert>
 
-      <Text>
+      <Content component="p">
         Are you sure you want to revoke the application token &quot;
         <strong>{token.title}</strong>&quot;?
-      </Text>
+      </Content>
     </Modal>
   );
 }

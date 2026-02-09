@@ -1,50 +1,41 @@
 import React from 'react';
-import {
-  PageSection,
-  PageSectionVariants,
-  Text,
-  TextContent,
-  TextVariants,
-} from '@patternfly/react-core';
+import {PageSection, Content, ContentVariants} from '@patternfly/react-core';
 import './css/Security.scss';
 
 export const Security: React.FC = () => {
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
-        <TextContent>
-          <Text component={TextVariants.h1}>Quay Security</Text>
-        </TextContent>
+      <PageSection hasBodyWrapper={false}>
+        <Content>
+          <Content component={ContentVariants.h1}>Quay Security</Content>
+        </Content>
       </PageSection>
-      <PageSection
-        variant={PageSectionVariants.default}
-        className="security-page"
-      >
-        <TextContent>
-          <Text component={TextVariants.p}>
+      <PageSection hasBodyWrapper={false} className="security-page">
+        <Content>
+          <Content component={ContentVariants.p}>
             We understand that when you upload one of your repositories to Quay
             that you are trusting us with some potentially very sensitive data.
             On this page we will lay out our security features and practices to
             help you make an informed decision about whether you can trust us
             with your data.
-          </Text>
+          </Content>
 
-          <Text component={TextVariants.h2} style={{marginTop: '2rem'}}>
+          <Content component={ContentVariants.h2} style={{marginTop: '2rem'}}>
             SSL Everywhere
-          </Text>
-          <Text component={TextVariants.p}>
+          </Content>
+          <Content component={ContentVariants.p}>
             We expressly forbid connections to Quay using unencrypted HTTP
             traffic. This helps keep your data and account information safe on
             the wire. Our SSL traffic is decrypted on our application servers,
             so your traffic is encrypted even within the datacenter. We use a
             4096-bit RSA key, and after the key exchange is complete, traffic is
             transferred using 256-bit AES, for the maximum encryption strength.
-          </Text>
+          </Content>
 
-          <Text component={TextVariants.h2} style={{marginTop: '2rem'}}>
+          <Content component={ContentVariants.h2} style={{marginTop: '2rem'}}>
             Encryption
-          </Text>
-          <Text component={TextVariants.p}>
+          </Content>
+          <Content component={ContentVariants.p}>
             Our binary data is currently stored in Amazon&apos;s{' '}
             <a
               href="https://aws.amazon.com/s3/"
@@ -64,12 +55,12 @@ export const Security: React.FC = () => {
               server side encryption
             </a>{' '}
             to protect your data while stored at rest in their data centers.
-          </Text>
+          </Content>
 
-          <Text component={TextVariants.h2} style={{marginTop: '2rem'}}>
+          <Content component={ContentVariants.h2} style={{marginTop: '2rem'}}>
             Passwords
-          </Text>
-          <Text component={TextVariants.p}>
+          </Content>
+          <Content component={ContentVariants.p}>
             There have been a number of high profile leaks recently where
             companies have been storing their customers&apos; passwords in plain
             text, an unsalted hash, or a{' '}
@@ -101,35 +92,35 @@ export const Security: React.FC = () => {
             and is obviously superior to plain-text storage. Your credentials
             are also never written in plain text to our application logs, a leak
             that is commonly overlooked.
-          </Text>
+          </Content>
 
-          <Text component={TextVariants.h2} style={{marginTop: '2rem'}}>
+          <Content component={ContentVariants.h2} style={{marginTop: '2rem'}}>
             Access Controls
-          </Text>
-          <Text component={TextVariants.p}>
+          </Content>
+          <Content component={ContentVariants.p}>
             Repositories will only ever be shared with people to whom you
             delegate access. Repositories created from the Docker command line
             are private by default and must be made public with an explicit
             action in the Quay UI. We have a test suite which is run before
             every code push which tests all methods which expose private data
             with all levels of access to ensure nothing is accidentally leaked.
-          </Text>
+          </Content>
 
-          <Text component={TextVariants.h2} style={{marginTop: '2rem'}}>
+          <Content component={ContentVariants.h2} style={{marginTop: '2rem'}}>
             Firewalls
-          </Text>
-          <Text component={TextVariants.p}>
+          </Content>
+          <Content component={ContentVariants.p}>
             Our application servers and database servers are all protected with
             firewall settings that only allow communication with known hosts and
             host groups on sensitive ports (e.g. SSH). None of our servers have
             SSH password authentication enabled, preventing brute force password
             attacks.
-          </Text>
+          </Content>
 
-          <Text component={TextVariants.h2} style={{marginTop: '2rem'}}>
+          <Content component={ContentVariants.h2} style={{marginTop: '2rem'}}>
             Data Resilience
-          </Text>
-          <Text component={TextVariants.p}>
+          </Content>
+          <Content component={ContentVariants.p}>
             While not related directly to security, many of you are probably
             worried about whether you can depend on the data you store in Quay.
             All binary data that we store is stored in Amazon S3 at the highest
@@ -144,8 +135,8 @@ export const Security: React.FC = () => {
             . Our service metadata (e.g. logins, tags, teams) is stored in a
             database which is backed up nightly, and backups are preserved for 7
             days.
-          </Text>
-        </TextContent>
+          </Content>
+        </Content>
       </PageSection>
     </>
   );

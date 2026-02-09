@@ -13,10 +13,9 @@ import {
   DescriptionListTerm,
   Flex,
   FlexItem,
-  Modal,
-  ModalVariant,
   Spinner,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {LoadingPage} from 'src/components/LoadingPage';
 import RequestError from 'src/components/errors/RequestError';
@@ -213,8 +212,8 @@ export default function Build() {
             <CodeBlock
               actions={[
                 <CodeBlockAction key="copy-logs" style={{margin: '.3em'}}>
-                  <Button key="copy" onClick={onCopy}>
-                    <CopyIcon /> Copy
+                  <Button icon={<CopyIcon />} key="copy" onClick={onCopy}>
+                    Copy
                   </Button>
                 </CodeBlockAction>,
                 <CodeBlockAction key="download-logs" style={{margin: '.3em'}}>
@@ -224,8 +223,12 @@ export default function Build() {
                       href={`/buildlogs/${build.id}`}
                       rel="noreferrer"
                     >
-                      <Button key="download" id="download-button">
-                        <DownloadIcon /> Download
+                      <Button
+                        icon={<DownloadIcon />}
+                        key="download"
+                        id="download-button"
+                      >
+                        Download
                       </Button>
                     </a>
                   </Conditional>

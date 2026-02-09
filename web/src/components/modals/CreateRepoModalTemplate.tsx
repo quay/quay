@@ -1,7 +1,5 @@
 import {useRef, useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
@@ -18,6 +16,7 @@ import {
   MenuToggle,
   MenuToggleElement,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {IRepository} from 'src/resources/RepositoryResource';
 import FormError from 'src/components/errors/FormError';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';

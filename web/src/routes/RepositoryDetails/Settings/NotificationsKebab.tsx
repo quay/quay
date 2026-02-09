@@ -9,9 +9,8 @@ import {
   DropdownList,
   MenuToggle,
   MenuToggleElement,
-  Modal,
-  ModalVariant,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
 import {useUpdateNotifications} from 'src/hooks/UseUpdateNotifications';
 import Conditional from 'src/components/empty/Conditional';

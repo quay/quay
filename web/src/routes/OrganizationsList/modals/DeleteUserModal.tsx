@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
+import {Button, Content, Alert} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useDeleteUser} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {isFreshLoginError} from 'src/utils/freshLoginErrors';
@@ -84,9 +85,9 @@ export default function DeleteUserModal(props: DeleteUserModalProps) {
         </Button>,
       ]}
     >
-      <Text>
+      <Content component="p">
         Are you sure you want to delete user <strong>{props.username}</strong>?
-      </Text>
+      </Content>
       <Alert variant="warning" title="Warning" isInline style={{marginTop: 16}}>
         This action cannot be undone. All repositories and data owned by this
         user will be permanently deleted.

@@ -1,6 +1,5 @@
 import {
   PageSection,
-  PageSectionVariants,
   Title,
   Toolbar,
   ToolbarContent,
@@ -11,12 +10,11 @@ import {
   DropdownList,
   DropdownItem,
   TextInput,
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {
   Table,
   Tbody,
@@ -53,7 +51,7 @@ function ServiceKeysHeader() {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Service Keys</Title>
         </div>
@@ -337,7 +335,7 @@ export default function ServiceKeys() {
     return (
       <>
         <ServiceKeysHeader />
-        <PageSection>
+        <PageSection hasBodyWrapper={false}>
           <div>
             Error loading service keys:{' '}
             {error instanceof Error ? error.message : 'Unknown error'}
@@ -350,7 +348,7 @@ export default function ServiceKeys() {
   return (
     <>
       <ServiceKeysHeader />
-      <PageSection>
+      <PageSection hasBodyWrapper={false}>
         <div style={{marginBottom: '20px'}}>
           Service keys provide a recognized means of authentication between Quay
           and external services, as well as between external services. <br />
@@ -384,7 +382,7 @@ export default function ServiceKeys() {
               onItemSelect={onSelectKey}
               id="service-keys-checkbox"
             />
-            <ToolbarItem variant="search-filter">
+            <ToolbarItem>
               <TextInput
                 type="search"
                 id="service-keys-search-input"

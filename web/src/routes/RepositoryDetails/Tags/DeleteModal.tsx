@@ -1,10 +1,5 @@
-import {
-  Modal,
-  ModalVariant,
-  Button,
-  Label,
-  Alert,
-} from '@patternfly/react-core';
+import {Button, Label, Alert} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useEffect} from 'react';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import './Tags.css';

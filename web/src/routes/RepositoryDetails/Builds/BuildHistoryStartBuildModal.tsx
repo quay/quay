@@ -1,6 +1,4 @@
 import {
-  Modal,
-  ModalVariant,
   Button,
   Title,
   Tabs,
@@ -8,6 +6,7 @@ import {
   TabTitleText,
   Tooltip,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useState} from 'react';
 import {RepositoryBuildTrigger} from 'src/resources/BuildResource';

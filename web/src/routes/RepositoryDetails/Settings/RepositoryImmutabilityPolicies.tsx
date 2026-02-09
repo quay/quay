@@ -4,8 +4,6 @@ import {
   EmptyStateActions,
   EmptyStateBody,
   EmptyStateFooter,
-  EmptyStateHeader,
-  EmptyStateIcon,
   Label,
   Spinner,
   Title,
@@ -44,21 +42,19 @@ function PolicyActionButtons({
       style={{minHeight: '36px'}}
     >
       <Button
+        icon={<PencilAltIcon />}
         variant="plain"
         onClick={() => onEdit(uuid)}
         aria-label="Edit policy"
         data-testid="edit-immutability-policy-btn"
-      >
-        <PencilAltIcon />
-      </Button>
+      />
       <Button
+        icon={<TrashIcon />}
         variant="plain"
         onClick={() => onDelete(uuid)}
         aria-label="Delete policy"
         data-testid="delete-immutability-policy-btn"
-      >
-        <TrashIcon />
-      </Button>
+      />
     </div>
   );
 }
@@ -234,12 +230,11 @@ export default function RepositoryImmutabilityPolicies(
       </p>
 
       {!hasPolicies && !isAddingNew && (
-        <EmptyState>
-          <EmptyStateHeader
-            titleText="No immutability policies"
-            headingLevel="h4"
-            icon={<EmptyStateIcon icon={LockIcon} />}
-          />
+        <EmptyState
+          headingLevel="h4"
+          icon={LockIcon}
+          titleText="No immutability policies"
+        >
           <EmptyStateBody>
             Add a policy to automatically protect tags matching a pattern from
             modification or deletion.

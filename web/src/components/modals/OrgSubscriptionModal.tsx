@@ -2,16 +2,14 @@ import {
   Button,
   Flex,
   FlexItem,
-  HelperText,
   MenuToggle,
   MenuToggleElement,
-  Modal,
-  ModalVariant,
   NumberInput,
   Select,
   SelectList,
   SelectOption,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import React from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useManageOrgSubscriptions} from 'src/hooks/UseMarketplaceSubscriptions';

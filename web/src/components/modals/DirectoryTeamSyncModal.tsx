@@ -2,11 +2,11 @@ import {useState} from 'react';
 import {
   Alert,
   Button,
-  Modal,
-  Text,
+  Content,
   TextInput,
-  TextVariants,
+  ContentVariants,
 } from '@patternfly/react-core';
+import {Modal} from '@patternfly/react-core/deprecated';
 import Conditional from 'src/components/empty/Conditional';
 
 export default function DirectoryTeamSyncModal(
@@ -39,11 +39,11 @@ export default function DirectoryTeamSyncModal(
         </Button>,
       ]}
     >
-      <Text component={TextVariants.p}>{props.primaryText}</Text>
+      <Content component={ContentVariants.p}>{props.primaryText}</Content>
       <br />
       <div>
         <Conditional if={props.secondaryText != null}>
-          <Text component={TextVariants.p}>{props.secondaryText}</Text>
+          <Content component={ContentVariants.p}>{props.secondaryText}</Content>
         </Conditional>
         <TextInput
           value={groupName}

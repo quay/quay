@@ -146,7 +146,7 @@ export default function BuildHistory(props: BuildHistoryProps) {
               config?.registry_state !== 'readonly'
             }
           >
-            <ToolbarItem align={{default: 'alignRight'}}>
+            <ToolbarItem align={{default: 'alignEnd'}}>
               <Button onClick={() => setIsRunBuildModalOpen(true)}>
                 Start New Build
               </Button>

@@ -1,9 +1,7 @@
 import {
   PageSection,
-  PageSectionVariants,
-  Text,
-  TextContent,
-  TextVariants,
+  Content,
+  ContentVariants,
   Alert,
 } from '@patternfly/react-core';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
@@ -35,19 +33,16 @@ export default function ExternalLoginsList() {
   if (!externalLogins || externalLogins.length === 0) {
     return (
       <>
-        <PageSection
-          variant={PageSectionVariants.light}
-          data-testid="external-logins-tab"
-        >
-          <TextContent>
-            <Text component={TextVariants.h1}>External Logins</Text>
-            <Text component={TextVariants.p}>
+        <PageSection hasBodyWrapper={false} data-testid="external-logins-tab">
+          <Content>
+            <Content component={ContentVariants.h1}>External Logins</Content>
+            <Content component={ContentVariants.p}>
               The external logins panel lists all supported external login
               providers, which can be used for one-click OAuth-based login to
               Quay. Accounts can be attached or detached by clicking the
               associated button below.
-            </Text>
-          </TextContent>
+            </Content>
+          </Content>
 
           <Alert
             variant="info"
@@ -71,19 +66,16 @@ export default function ExternalLoginsList() {
 
   return (
     <>
-      <PageSection
-        variant={PageSectionVariants.light}
-        data-testid="external-logins-tab"
-      >
-        <TextContent>
-          <Text component={TextVariants.h1}>External Logins</Text>
-          <Text component={TextVariants.p}>
+      <PageSection hasBodyWrapper={false} data-testid="external-logins-tab">
+        <Content>
+          <Content component={ContentVariants.h1}>External Logins</Content>
+          <Content component={ContentVariants.p}>
             The external logins panel lists all supported external login
             providers, which can be used for one-click OAuth-based login to
             Quay. Accounts can be attached or detached by clicking the
             associated button below.
-          </Text>
-        </TextContent>
+          </Content>
+        </Content>
 
         <Table
           aria-label="External login providers table"

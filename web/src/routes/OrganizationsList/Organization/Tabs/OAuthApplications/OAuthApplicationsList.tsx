@@ -1,9 +1,4 @@
-import {
-  PageSection,
-  PageSectionVariants,
-  Spinner,
-  Button,
-} from '@patternfly/react-core';
+import {PageSection, Spinner, Button} from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useState} from 'react';
 import {
@@ -210,7 +205,7 @@ export default function OAuthApplicationsList(
           orgName={props.orgName}
           updateSelectedApplication={updateSelectedApplication}
         >
-          <PageSection variant={PageSectionVariants.light}>
+          <PageSection hasBodyWrapper={false}>
             {error && error.length > 0 && (
               <ErrorModal
                 title="OAuth application operation failed"
@@ -315,7 +310,7 @@ export default function OAuthApplicationsList(
           </PageSection>
         </ManageOAuthApplicationDrawer>
       ) : (
-        <PageSection variant={PageSectionVariants.light}>
+        <PageSection hasBodyWrapper={false}>
           {error && error.length > 0 && (
             <ErrorModal
               title="OAuth application operation failed"

@@ -1,4 +1,5 @@
-import {Button, Modal, ModalVariant} from '@patternfly/react-core';
+import {Button} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 
 export default function DeleteModalForRowTemplate<T, K extends keyof T>(
   props: DeleteModalForRowTemplateProps<T, K>,

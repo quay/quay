@@ -1,10 +1,5 @@
-import {
-  Button,
-  Modal,
-  ModalVariant,
-  TextInput,
-  Title,
-} from '@patternfly/react-core';
+import {Button, TextInput, Title} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useCreateTag} from 'src/hooks/UseTags';

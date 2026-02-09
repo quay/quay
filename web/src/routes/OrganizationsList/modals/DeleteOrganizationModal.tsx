@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
+import {Button, Content, Alert} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useDeleteSingleOrganization} from 'src/hooks/UseOrganizationActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {isFreshLoginError} from 'src/utils/freshLoginErrors';
@@ -86,10 +87,10 @@ export default function DeleteOrganizationModal(
         </Button>,
       ]}
     >
-      <Text>
+      <Content component="p">
         Are you sure you want to delete this organization? Its data will be
         deleted with it.
-      </Text>
+      </Content>
       {error && (
         <Alert variant="danger" title="Error" isInline style={{marginTop: 16}}>
           {error}

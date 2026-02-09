@@ -1,15 +1,13 @@
 import {
   Button,
-  Modal,
-  ModalVariant,
   PageSection,
-  PageSectionVariants,
   TextInput,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
   SearchInput,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useEffect, useState} from 'react';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
@@ -106,7 +104,7 @@ export const BulkDeleteModalTemplate = <T,>(
       <span>
         This action deletes all {props.resourceName} and cannot be recovered.
       </span>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Toolbar>
           <ToolbarContent className="pf-v5-u-pl-0">
             <ToolbarItem>

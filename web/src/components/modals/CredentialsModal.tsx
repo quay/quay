@@ -1,8 +1,6 @@
 import {useMemo, useState} from 'react';
 import {
   Alert,
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
@@ -12,8 +10,9 @@ import {
   TabTitleText,
   CodeBlock,
   CodeBlockCode,
-  Text,
+  Content,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export interface Credentials {
@@ -225,9 +224,9 @@ type: kubernetes.io/dockerconfigjson`;
               </ClipboardCopy>
             </FormGroup>
             <FormGroup label="Step 3: Reference in pod spec">
-              <Text component="small" className="pf-v5-u-mb-sm">
+              <Content component="small" className="pf-v5-u-mb-sm">
                 Add the following to your pod configuration:
-              </Text>
+              </Content>
               <CodeBlock>
                 <CodeBlockCode>
                   {`imagePullSecrets:\n  - name: ${credentials.title}-pull-secret`}

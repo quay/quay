@@ -3,7 +3,6 @@ import {
   Title,
   Flex,
   PageSection,
-  PageSectionVariants,
   Spinner,
   TextArea,
   ToggleGroup,
@@ -13,9 +12,8 @@ import {
   ToolbarContent,
   ToolbarItem,
   FlexItem,
-  TextContent,
-  TextVariants,
-  Text,
+  Content,
+  ContentVariants,
   ButtonVariant,
   Divider,
   Tooltip,
@@ -24,10 +22,6 @@ import {
   AccordionItem,
   AccordionContent,
   AccordionToggle,
-  TextList,
-  TextListVariants,
-  TextListItem,
-  TextListItemVariants,
 } from '@patternfly/react-core';
 import {useEffect, useState, useMemo} from 'react';
 import ManageMembersToolbar from './ManageMembersToolbar';
@@ -239,7 +233,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   const viewToggle = (
     <Toolbar>
       <ToolbarContent>
-        <ToolbarItem spacer={{default: 'spacerMd'}}>
+        <ToolbarItem gap={{default: 'gapMd'}}>
           <ToggleGroup aria-label="Manage members toggle view">
             <ToggleGroupItem
               text="All members"
@@ -418,15 +412,15 @@ export default function ManageMembersList(props: ManageMembersListProps) {
       {!isEditing ? (
         <Flex className="text-area-section">
           <FlexItem>
-            <TextContent isVisited={false}>
-              <Text
-                component={TextVariants.p}
+            <Content isVisitedLink={false}>
+              <Content
+                component={ContentVariants.p}
                 style={{color: 'grey'}}
                 data-testid="team-description-text"
               >
                 {getTeamDescription()}
-              </Text>
-            </TextContent>
+              </Content>
+            </Content>
           </FlexItem>
         </Flex>
       ) : (
@@ -513,32 +507,28 @@ export default function ManageMembersList(props: ManageMembersListProps) {
       />
       <Conditional if={teamSyncInfo?.config}>
         <Accordion>
-          <AccordionItem>
+          <AccordionItem isExpanded={!teamSyncConfigExpanded}>
             <AccordionToggle
               onClick={() => onAccordionToggle()}
-              isExpanded={!teamSyncConfigExpanded}
               id="team-sync-config-toggle"
             >
               Team Synchronization Config
             </AccordionToggle>
-            <AccordionContent
-              id="team-sync-config-toggle"
-              isHidden={!teamSyncConfigExpanded}
-            >
-              <TextContent>
-                <TextList component={TextListVariants.dl}>
-                  <TextListItem component={TextListItemVariants.dt}>
+            <AccordionContent id="team-sync-config-toggle">
+              <Content>
+                <Content component={ContentVariants.dl}>
+                  <Content component={ContentVariants.dt}>
                     Bound to group
-                  </TextListItem>
-                  <TextListItem component={TextListItemVariants.dd}>
+                  </Content>
+                  <Content component={ContentVariants.dd}>
                     {directoryGroupName}
-                  </TextListItem>
+                  </Content>
                   {teamSyncInfo?.service !== 'oidc' && (
                     <>
-                      <TextListItem component={TextListItemVariants.dt}>
+                      <Content component={ContentVariants.dt}>
                         Last Updated
-                      </TextListItem>
-                      <TextListItem component={TextListItemVariants.dd}>
+                      </Content>
+                      <Content component={ContentVariants.dd}>
                         {!teamSyncLastUpdated ||
                         teamSyncLastUpdated === 'Never' ? (
                           <Flex spaceItems={{default: 'spaceItemsSm'}}>
@@ -554,11 +544,11 @@ export default function ManageMembersList(props: ManageMembersListProps) {
                             </span>
                           </Tooltip>
                         )}
-                      </TextListItem>
+                      </Content>
                     </>
                   )}
-                </TextList>
-              </TextContent>
+                </Content>
+              </Content>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
@@ -606,7 +596,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     return (
       <>
         <Conditional if={pageInReadOnlyMode}>{teamSyncedConfig}</Conditional>
-        <PageSection variant={PageSectionVariants.light}>
+        <PageSection hasBodyWrapper={false}>
           {teamDescriptionComponent}
         </PageSection>
         <Empty
@@ -649,7 +639,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   return (
     <>
       <Conditional if={pageInReadOnlyMode}>{teamSyncedConfig}</Conditional>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <ManageMembersToolbar
           selectedTeams={selectedTeamMembers}
           deSelectAll={() => setSelectedTeamMembers([])}

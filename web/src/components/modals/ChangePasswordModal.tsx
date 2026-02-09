@@ -1,7 +1,5 @@
 import React, {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
@@ -11,6 +9,7 @@ import {
   HelperTextItem,
   Alert,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useUpdateUser} from 'src/hooks/UseCurrentUser';
 
 interface ChangePasswordModalProps {

@@ -1,4 +1,4 @@
-import {Modal, ModalVariant} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {QuotaManagement} from 'src/routes/OrganizationsList/Organization/Tabs/Settings/QuotaManagement';
 
 interface ConfigureQuotaModalProps {
