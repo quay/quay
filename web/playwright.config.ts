@@ -25,7 +25,7 @@ export default defineConfig({
 
   // Reporter configuration
   reporter: [
-    [process.env.CI ? 'github' : 'list'],
+    [process.env.CI && !process.env.OPENSHIFT_CI ? 'github' : 'list'],
     ['html', {outputFolder: 'playwright-report'}],
     ['json', {outputFile: 'test-results/results.json'}],
   ],
@@ -60,12 +60,14 @@ export default defineConfig({
   ],
 
   // Configure web server for local development
-  // Note: In CI, services are started separately via docker-compose
-  webServer: {
-    command:
-      'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && npm run start:integration',
-    url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
-    reuseExistingServer: true,
-    timeout: 120 * 1000,
-  },
+  // Note: In OpenShift CI (Prow), services are already running on the cluster
+  webServer: process.env.OPENSHIFT_CI
+    ? undefined
+    : {
+        command:
+          'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && npm run start:integration',
+        url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
+        reuseExistingServer: true,
+        timeout: 120 * 1000,
+      },
 });
