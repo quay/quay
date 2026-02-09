@@ -132,10 +132,7 @@ def swagger_route_data(include_internal=False, compact=False):
 
             path_swagger["parameters"] = path_parameters_swagger
 
-        existing_path_params = set(
-            (p["name"], p["in"])
-            for p in path_swagger.get("parameters", [])
-        )
+        existing_path_params = set((p["name"], p["in"]) for p in path_swagger.get("parameters", []))
 
         # Add the individual HTTP operations.
         method_names = list(rule.methods.difference(["HEAD", "OPTIONS"]))
