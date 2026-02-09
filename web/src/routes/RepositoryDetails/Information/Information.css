@@ -1,18 +1,18 @@
 .inline-code {
-  background-color: var(--pf-v5-global--BackgroundColor--200);
-  padding: var(--pf-v5-global--spacer--xs) var(--pf-v5-global--spacer--sm);
-  border-radius: var(--pf-v5-global--BorderRadius--sm);
-  font-family: var(--pf-v5-global--FontFamily--monospace);
+  background-color: var(--pf-t--global--background--color--secondary--default);
+  padding: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--sm);
+  border-radius: var(--pf-t--global--border--radius--small);
+  font-family: var(--pf-t--global--font--family--mono);
 }
 
 .markdown-table-header {
-  border: 1px solid var(--pf-v5-global--BorderColor--100);
-  padding: var(--pf-v5-global--spacer--md);
+  border: 1px solid var(--pf-t--global--border--color--default);
+  padding: var(--pf-t--global--spacer--md);
 }
 
 .markdown-table-cell {
-  border: 1px solid var(--pf-v5-global--BorderColor--100);
-  padding: var(--pf-v5-global--spacer--md);
+  border: 1px solid var(--pf-t--global--border--color--default);
+  padding: var(--pf-t--global--spacer--md);
 }
 
 /* Recent Repo Builds section */
@@ -42,7 +42,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--pf-v5-global--link--Color);
+  color: var(--pf-t--global--text--color--link--default);
   white-space: nowrap;
   min-width: 160px;
 }
@@ -60,7 +60,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--pf-v5-global--link--Color);
+  color: var(--pf-t--global--text--color--link--default);
 }
 
 .recent-build-description:hover {
@@ -78,7 +78,7 @@
 }
 
 .view-build-history-link a {
-  color: var(--pf-v5-global--link--Color);
+  color: var(--pf-t--global--text--color--link--default);
   text-decoration: none;
 }
 

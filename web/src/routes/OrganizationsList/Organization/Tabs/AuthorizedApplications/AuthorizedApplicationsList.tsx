@@ -265,8 +265,7 @@ export default function AuthorizedApplicationsList() {
                     )}
                     <span
                       style={{
-                        color:
-                          'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--Color--200 */,
+                        color: 'var(--pf-t--global--text--color--subtle)',
                       }}
                     >
                       by {app.application.organization.name}
@@ -327,8 +326,7 @@ export default function AuthorizedApplicationsList() {
                     )}
                     <span
                       style={{
-                        color:
-                          'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--Color--200 */,
+                        color: 'var(--pf-t--global--text--color--subtle)',
                       }}
                     >
                       {app.application.organization.name}

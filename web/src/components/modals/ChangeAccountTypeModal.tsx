@@ -182,8 +182,7 @@ export default function ChangeAccountTypeModal({
           <Content
             component="small"
             style={{
-              color:
-                'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--Color--200 */,
+              color: 'var(--pf-t--global--text--color--subtle)',
             }}
           >
             This will continue to be the namespace for your repositories
@@ -211,8 +210,7 @@ export default function ChangeAccountTypeModal({
           <Content
             component="small"
             style={{
-              color:
-                'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--Color--200 */,
+              color: 'var(--pf-t--global--text--color--subtle)',
             }}
           >
             The username and password for the account that will become an

@@ -24,13 +24,13 @@
 .activity-heatmap-month-label {
   font-family: var(--pf-t--global--font--family--body);
   font-weight: var(--pf-t--global--font--weight--body--bold);
-  fill: var(--pf-v5-global--Color--200);
+  fill: var(--pf-t--global--text--color--subtle);
   user-select: none;
 }
 
 .activity-heatmap-day-label {
   font-family: var(--pf-t--global--font--family--body);
-  fill: var(--pf-v5-global--Color--200);
+  fill: var(--pf-t--global--text--color--subtle);
   user-select: none;
 }
 

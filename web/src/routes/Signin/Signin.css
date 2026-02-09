@@ -7,7 +7,7 @@
 .forgot-password-form h4 {
   text-align: center;
   margin-bottom: 20px;
-  color: var(--pf-v5-global--Color--200);
+  color: var(--pf-t--global--text--color--subtle);
   font-weight: 400;
 }
 
@@ -15,7 +15,7 @@
 .signin-link-button {
   background: none;
   border: none;
-  color: var(--pf-v5-global--link--Color);
+  color: var(--pf-t--global--text--color--link--default);
   cursor: pointer;
   text-decoration: none;
   font-size: inherit;
@@ -25,12 +25,12 @@
 }
 
 .signin-link-button:hover {
-  color: var(--pf-v5-global--link--Color--hover);
+  color: var(--pf-t--global--text--color--link--hover);
   text-decoration: underline;
 }
 
 .signin-link-button:focus {
-  outline: 2px solid var(--pf-v5-global--active-color--100);
+  outline: 2px solid var(--pf-t--global--color--brand--default);
   outline-offset: 2px;
 }
 
@@ -82,14 +82,14 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--pf-v5-global--BorderColor--100);
+  background: var(--pf-t--global--border--color--default);
   z-index: 1;
 }
 
 .login-divider span {
-  background: var(--pf-v5-global--BackgroundColor--100);
+  background: var(--pf-t--global--background--color--primary--default);
   padding: 0 10px;
-  color: var(--pf-v5-global--Color--200);
+  color: var(--pf-t--global--text--color--subtle);
   position: relative;
   z-index: 2;
 }
@@ -111,9 +111,9 @@
 }
 
 .external-logins-table .account-status-attached {
-  color: var(--pf-v5-global--success-color--100);
+  color: var(--pf-t--global--color--status--success--default);
 }
 
 .external-logins-table .account-status-unattached {
-  color: var(--pf-v5-global--Color--200);
+  color: var(--pf-t--global--text--color--subtle);
 }

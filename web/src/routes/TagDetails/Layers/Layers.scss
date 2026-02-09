@@ -2,42 +2,42 @@
 // Recreates the Angular manifest-view-layer timeline design
 
 .layers-container {
-  margin-top: var(--pf-v5-global--spacer--lg);
+  margin-top: var(--pf-t--global--spacer--lg);
 }
 
 .manifest-view-layer-element {
   position: relative;
-  padding: var(--pf-v5-global--spacer--md);
-  padding-left: calc(var(--pf-v5-global--spacer--xl) + var(--pf-v5-global--spacer--sm));
+  padding: var(--pf-t--global--spacer--md);
+  padding-left: calc(var(--pf-t--global--spacer--xl) + var(--pf-t--global--spacer--sm));
 
   .image-comment {
-    margin-bottom: var(--pf-v5-global--spacer--md);
-    color: var(--pf-v5-global--Color--200);
+    margin-bottom: var(--pf-t--global--spacer--md);
+    color: var(--pf-t--global--text--color--subtle);
     font-style: italic;
   }
 
   .nondocker-command {
-    font-family: var(--pf-v5-global--FontFamily--monospace);
-    padding: var(--pf-v5-global--spacer--xs);
-    background-color: var(--pf-v5-global--BackgroundColor--200);
-    border-radius: var(--pf-v5-global--BorderRadius--sm);
+    font-family: var(--pf-t--global--font--family--mono);
+    padding: var(--pf-t--global--spacer--xs);
+    background-color: var(--pf-t--global--background--color--secondary--default);
+    border-radius: var(--pf-t--global--border--radius--small);
 
     &:before {
       content: "\f120";
       font-family: "Font Awesome 5 Free";
       font-weight: 900;
-      font-size: var(--pf-v5-global--FontSize--md);
-      margin-right: var(--pf-v5-global--spacer--sm);
-      color: var(--pf-v5-global--Color--200);
+      font-size: var(--pf-t--global--font--size--md);
+      margin-right: var(--pf-t--global--spacer--sm);
+      color: var(--pf-t--global--text--color--subtle);
     }
   }
 
   code {
-    font-family: var(--pf-v5-global--FontFamily--monospace);
-    background-color: var(--pf-v5-global--BackgroundColor--200);
-    padding: var(--pf-v5-global--spacer--xs) var(--pf-v5-global--spacer--sm);
-    border-radius: var(--pf-v5-global--BorderRadius--sm);
-    color: var(--pf-v5-global--primary-color--100);
+    font-family: var(--pf-t--global--font--family--mono);
+    background-color: var(--pf-t--global--background--color--secondary--default);
+    padding: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--sm);
+    border-radius: var(--pf-t--global--border--radius--small);
+    color: var(--pf-t--global--color--brand--default);
   }
 
   // Timeline line connecting all layers
@@ -45,37 +45,37 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    left: var(--pf-v5-global--spacer--md);
-    border-left: 2px solid var(--pf-v5-global--primary-color--100);
+    left: var(--pf-t--global--spacer--md);
+    border-left: 2px solid var(--pf-t--global--color--brand--default);
     width: 0;
   }
 
   // First layer - line starts from the dot
   &.first .image-layer-line {
-    top: calc(var(--pf-v5-global--spacer--lg) + 2px);
+    top: calc(var(--pf-t--global--spacer--lg) + 2px);
   }
 
   // Last layer - line ends at the dot
   &.last .image-layer-line {
-    height: calc(var(--pf-v5-global--spacer--lg) + 2px);
+    height: calc(var(--pf-t--global--spacer--lg) + 2px);
   }
 
   // Timeline dot for each layer
   .image-layer-dot {
     position: absolute;
-    top: calc(var(--pf-v5-global--spacer--md) + 2px);
-    left: calc(var(--pf-v5-global--spacer--md) - 6px);
-    border: 2px solid var(--pf-v5-global--primary-color--100);
+    top: calc(var(--pf-t--global--spacer--md) + 2px);
+    left: calc(var(--pf-t--global--spacer--md) - 6px);
+    border: 2px solid var(--pf-t--global--color--brand--default);
     border-radius: 50%;
     width: 12px;
     height: 12px;
-    background: var(--pf-v5-global--BackgroundColor--100);
+    background: var(--pf-t--global--background--color--primary--default);
     z-index: 2;
   }
 
   // First layer gets a filled dot
   &.first .image-layer-dot {
-    background: var(--pf-v5-global--primary-color--100);
+    background: var(--pf-t--global--color--brand--default);
   }
 }
 
@@ -83,25 +83,25 @@
 .dockerfile-command-element {
   display: flex;
   align-items: center;
-  gap: var(--pf-v5-global--spacer--sm);
+  gap: var(--pf-t--global--spacer--sm);
 
   .dockerfile-instruction {
     flex-shrink: 0;
   }
 
   .command-title {
-    font-family: var(--pf-v5-global--FontFamily--monospace);
-    color: var(--pf-v5-global--Color--100);
+    font-family: var(--pf-t--global--font--family--mono);
+    color: var(--pf-t--global--text--color--regular);
     word-break: break-all;
 
     // FROM command link styling
     .from-image-link {
-      color: var(--pf-v5-global--link--Color);
+      color: var(--pf-t--global--text--color--link--default);
       text-decoration: none;
-      font-size: var(--pf-v5-global--FontSize--md);
+      font-size: var(--pf-t--global--font--size--md);
 
       &:hover {
-        color: var(--pf-v5-global--link--Color--hover);
+        color: var(--pf-t--global--text--color--link--hover);
         text-decoration: underline;
       }
     }
@@ -109,7 +109,7 @@
 }
 
 .image-command-element {
-  margin-bottom: var(--pf-v5-global--spacer--xs);
+  margin-bottom: var(--pf-t--global--spacer--xs);
 }
 
 // Mobile responsiveness
@@ -125,7 +125,7 @@
       }
 
       .command-title {
-        padding-top: var(--pf-v5-global--spacer--md);
+        padding-top: var(--pf-t--global--spacer--md);
         padding-left: 0;
       }
     }

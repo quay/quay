@@ -56,8 +56,7 @@ function SubRow(props: SubRowProps) {
               <Tooltip content="This architecture is not present locally. It will be pulled on first access.">
                 <span
                   style={{
-                    color:
-                      'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--Color--200 */,
+                    color: 'var(--pf-t--global--text--color--subtle)',
                   }}
                 >
                   <ExclamationTriangleIcon
@@ -99,8 +98,7 @@ function SubRow(props: SubRowProps) {
             {isMissing ? (
               <span
                 style={{
-                  color:
-                    'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--Color--200 */,
+                  color: 'var(--pf-t--global--text--color--subtle)',
                 }}
               >
                 N/A
@@ -122,8 +120,7 @@ function SubRow(props: SubRowProps) {
           {isMissing ? (
             <span
               style={{
-                color:
-                  'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--Color--200 */,
+                color: 'var(--pf-t--global--text--color--subtle)',
               }}
             >
               N/A
@@ -144,8 +141,7 @@ function SubRow(props: SubRowProps) {
               style={
                 isMissing
                   ? {
-                      color:
-                        'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--Color--200 */,
+                      color: 'var(--pf-t--global--text--color--subtle)',
                     }
                   : undefined
               }
@@ -247,8 +243,7 @@ function TagsTableRow(props: RowProps) {
               <LockIcon
                 style={{
                   marginLeft: '8px',
-                  color:
-                    'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--info-color--100 */,
+                  color: 'var(--pf-t--global--color--status--info--default)',
                 }}
                 aria-label="Immutable tag"
                 data-testid="immutable-tag-icon"

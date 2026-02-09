@@ -27,9 +27,9 @@
 
 /* Account status styling */
 .account-status-attached {
-  color: var(--pf-v5-global--success-color--100);
+  color: var(--pf-t--global--color--status--success--default);
 }
 
 .account-status-unattached {
-  color: var(--pf-v5-global--Color--200);
+  color: var(--pf-t--global--text--color--subtle);
 }

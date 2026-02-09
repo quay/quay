@@ -278,8 +278,7 @@ export function CreateAccount() {
             <Link
               to="/signin"
               style={{
-                color:
-                  'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--link--Color */,
+                color: 'var(--pf-t--global--text--color--link--default)',
               }}
             >
               Sign in
@@ -294,8 +293,7 @@ export function CreateAccount() {
           <Link
             to="/signin"
             style={{
-              color:
-                'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v5-global--link--Color */,
+              color: 'var(--pf-t--global--text--color--link--default)',
             }}
           >
             Sign in
