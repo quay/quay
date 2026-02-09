@@ -29,7 +29,7 @@ test.describe(
       await searchInput.fill('nonexistent_org_xyz_123456');
       await expect(
         authenticatedPage.locator(
-          '[data-testid="orgslist-pagination"] .pf-v5-c-pagination__total-items',
+          '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
         ),
       ).toContainText('0 - 0 of 0');
       await authenticatedPage.locator('[aria-label="Reset search"]').click();
@@ -83,7 +83,7 @@ test.describe(
       // Should show pagination (20 per page default, so 25 orgs = 2 pages)
       await expect(
         authenticatedPage.locator(
-          '[data-testid="orgslist-pagination"] .pf-v5-c-pagination__total-items',
+          '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
         ),
       ).toContainText(/1 - 20 of \d+/);
       await expect(
@@ -199,7 +199,7 @@ test.describe(
         await authenticatedPage.getByPlaceholder(/Search by/).fill(orgName);
         await expect(
           authenticatedPage.locator(
-            '[data-testid="orgslist-pagination"] .pf-v5-c-pagination__total-items',
+            '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
           ),
         ).toContainText('1 - 1 of 1');
 
@@ -353,7 +353,7 @@ test.describe(
             name: TEST_USERS.user.username,
           }),
         });
-        await expect(userRow.locator('.pf-v5-c-avatar')).toBeVisible();
+        await expect(userRow.locator('.pf-v6-c-avatar')).toBeVisible();
       },
     );
 
@@ -395,7 +395,7 @@ test.describe(
           ).toBeVisible();
           await expect(
             readonlyRow
-              .locator('.pf-v5-c-label.pf-m-cyan')
+              .locator('.pf-v6-c-label.pf-m-teal')
               .getByText('Global Readonly Superuser'),
           ).toBeVisible();
 
@@ -481,7 +481,7 @@ test.describe(
           // Should show exactly once (no duplicates)
           await expect(
             superuserPage.locator(
-              '[data-testid="orgslist-pagination"] .pf-v5-c-pagination__total-items',
+              '[data-testid="orgslist-pagination"] .pf-v6-c-pagination__total-items',
             ),
           ).toContainText('1 - 1 of 1');
           const orgLinks = superuserPage.getByRole('link', {

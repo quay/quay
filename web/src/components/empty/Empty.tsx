@@ -21,9 +21,7 @@ export default function Empty(props: EmptyProps) {
           {props.body}
         </EmptyStateBody>
         <EmptyStateFooter>
-          <EmptyStateActions variant="primary">
-            {props.button}
-          </EmptyStateActions>
+          <EmptyStateActions>{props.button}</EmptyStateActions>
           {props.secondaryActions?.map((ele) => ele)}
         </EmptyStateFooter>
       </EmptyState>

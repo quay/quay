@@ -17,14 +17,14 @@ export function DockerfileCommand(props: DockerfileCommandProps) {
     const colorMap: {
       [key: string]:
         | 'blue'
-        | 'cyan'
+        | 'teal'
         | 'green'
         | 'orange'
         | 'purple'
         | 'red'
         | 'grey';
     } = {
-      FROM: 'cyan',
+      FROM: 'teal',
       ARG: 'orange', // yellow not available in PatternFly, using orange
       ONBUILD: 'purple',
       CMD: 'blue',

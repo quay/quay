@@ -22,7 +22,7 @@ export default function NotificationsFilterChips(
         deleteLabelGroup={() => props.resetFilter('event')}
         categoryName="Event"
       >
-        {}
+        <></>
       </ToolbarFilter>
       <ToolbarFilter
         labels={props.filter.status}
@@ -32,7 +32,7 @@ export default function NotificationsFilterChips(
         deleteLabelGroup={() => props.resetFilter('status')}
         categoryName="Status"
       >
-        {}
+        <></>
       </ToolbarFilter>
     </>
   );

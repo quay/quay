@@ -263,7 +263,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
 
       if (!popup || popup.closed || typeof popup.closed === 'undefined') {
         addAlert({
-          variant: AlertVariant.Warning,
+          variant: AlertVariant.warning,
           title:
             'Popup was blocked by your browser. Please allow popups for this site and try again.',
         });

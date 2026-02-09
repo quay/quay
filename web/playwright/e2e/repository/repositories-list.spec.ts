@@ -95,7 +95,7 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
 
       // Verify modal opens
       await expect(
-        authenticatedPage.locator('.pf-v5-c-modal-box__title-text'),
+        authenticatedPage.locator('.pf-v6-c-modal-box__title-text'),
       ).toHaveText('Create repository');
 
       // Select user namespace from dropdown
@@ -124,7 +124,7 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
 
       // Verify success - wait for modal close (auto-wait handles the success alert)
       await expect(
-        authenticatedPage.locator('.pf-v5-c-modal-box'),
+        authenticatedPage.locator('.pf-v6-c-modal-box'),
       ).not.toBeVisible();
 
       // Search for the new repo
@@ -178,7 +178,7 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
 
       // Verify success - wait for modal close
       await expect(
-        authenticatedPage.locator('.pf-v5-c-modal-box'),
+        authenticatedPage.locator('.pf-v6-c-modal-box'),
       ).not.toBeVisible();
 
       await getSearchInput(authenticatedPage).fill(
@@ -230,7 +230,7 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
 
       // Verify success - wait for modal close
       await expect(
-        authenticatedPage.locator('.pf-v5-c-modal-box'),
+        authenticatedPage.locator('.pf-v6-c-modal-box'),
       ).not.toBeVisible();
       await expect(reposPanel.getByText(orgRepoName)).toBeVisible();
 

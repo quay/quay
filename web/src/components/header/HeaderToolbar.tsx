@@ -40,7 +40,6 @@ import Avatar from 'src/components/Avatar';
 
 import MoonIcon from '@patternfly/react-icons/dist/esm/icons/moon-icon';
 import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
-import BellIcon from '@patternfly/react-icons/dist/esm/icons/bell-icon';
 
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -357,9 +356,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                 onClick={toggleDrawer}
                 aria-label="Notifications"
                 data-testid="notification-bell"
-              >
-                <BellIcon />
-              </NotificationBadge>
+              />
             </ToolbarItem>
             <ToolbarItem>
               {user.username ? menuContainer : signInButton}

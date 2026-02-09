@@ -240,11 +240,8 @@ export const CliConfiguration = () => {
             <>
               {tokens.length === 0 ? (
                 <EmptyState
-                  titleText={
-                    <Title headingLevel="h4" size="lg">
-                      No application tokens
-                    </Title>
-                  }
+                  titleText="No application tokens"
+                  headingLevel="h4"
                   icon={KeyIcon}
                 >
                   <EmptyStateBody>

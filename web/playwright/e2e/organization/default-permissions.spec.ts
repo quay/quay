@@ -31,7 +31,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
       name: 'Default permissions',
     });
     const paginationInfo = tabPanel
-      .locator('.pf-v5-c-pagination__total-items')
+      .locator('.pf-v6-c-pagination__total-items')
       .first();
 
     // Wait for initial data load (with extended timeout for API response)
@@ -82,7 +82,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     );
     await searchInput.fill(robot.fullName);
     await expect(
-      tabPanel.locator('.pf-v5-c-pagination__total-items').first(),
+      tabPanel.locator('.pf-v6-c-pagination__total-items').first(),
     ).toContainText('1 - 1 of 1');
 
     // Click on the permission dropdown toggle
@@ -95,7 +95,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify success alert (use .last() to get most recent)
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText('Permission updated successfully');
   });
 
@@ -130,7 +130,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     );
     await searchInput.fill(robot.fullName);
     await expect(
-      tabPanel.locator('.pf-v5-c-pagination__total-items').first(),
+      tabPanel.locator('.pf-v6-c-pagination__total-items').first(),
     ).toContainText('1 - 1 of 1');
 
     // Click kebab menu within the table
@@ -138,11 +138,11 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await table.getByTestId(`${robot.fullName}-toggle-kebab`).click();
 
     // Click delete option
-    await table.getByTestId(`${robot.fullName}-del-option`).click();
+    await authenticatedPage.getByTestId(`${robot.fullName}-del-option`).click();
 
     // Verify success alert (use .last() to get most recent)
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(
       `Permission created by: ${robot.fullName} successfully deleted`,
     );
@@ -200,7 +200,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
       // Verify success alert (use .last() to get most recent)
       const successAlert = authenticatedPage
-        .locator('.pf-v5-c-alert.pf-m-success')
+        .locator('.pf-v6-c-alert.pf-m-success')
         .last();
       if (userType === 'Specific user') {
         await expect(successAlert).toContainText(
@@ -253,7 +253,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify team creation success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(`Successfully created new team: ${newTeamName}`);
 
     // Team wizard - Step: Name & Description (verify pre-filled)
@@ -266,7 +266,10 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add to repository
-    await authenticatedPage.getByTestId(`checkbox-row-${repo.name}`).click();
+    await authenticatedPage
+      .getByTestId(`checkbox-row-${repo.name}`)
+      .locator('input')
+      .click();
     await expect(
       authenticatedPage.getByTestId(`${repo.name}-permission-dropdown-toggle`),
     ).toContainText('Read');
@@ -313,7 +316,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toBeVisible();
   });
 
@@ -358,7 +361,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify team creation success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(`Successfully created new team: ${newTeamName}`);
 
     // Team wizard - Step: Name & Description
@@ -371,7 +374,10 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add to repository
-    await authenticatedPage.getByTestId(`checkbox-row-${repo.name}`).click();
+    await authenticatedPage
+      .getByTestId(`checkbox-row-${repo.name}`)
+      .locator('input')
+      .click();
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add team member - create new robot
@@ -423,7 +429,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toBeVisible();
   });
 
@@ -489,7 +495,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify robot creation success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(
       `Successfully created robot account with robot name: ${org.name}+${newRobotShortname}`,
     );
@@ -517,7 +523,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
 
     // Verify success alert
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(
       `Successfully created default permission for creator: ${org.name}+${newRobotShortname}`,
     );
@@ -560,7 +566,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
       name: 'Default permissions',
     });
     const paginationInfo = tabPanel
-      .locator('.pf-v5-c-pagination__total-items')
+      .locator('.pf-v6-c-pagination__total-items')
       .first();
 
     // Search for prototypes in this org

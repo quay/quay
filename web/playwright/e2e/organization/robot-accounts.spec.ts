@@ -50,7 +50,7 @@ test.describe(
 
       // Verify success alert
       await expect(
-        authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+        authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
       ).toContainText(
         `Successfully created robot account with robot name: ${org.name}+${robotShortname}`,
       );
@@ -65,7 +65,7 @@ test.describe(
         name: 'Robot accounts',
       });
       const paginationInfo = tabPanel
-        .locator('.pf-v5-c-pagination__total-items')
+        .locator('.pf-v6-c-pagination__total-items')
         .first();
       await expect(paginationInfo).toContainText('1 - 1 of 1');
 
@@ -98,7 +98,7 @@ test.describe(
 
       // Verify success alert for deletion
       await expect(
-        authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+        authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
       ).toContainText('Successfully deleted robot account');
 
       // Verify robot no longer appears
@@ -275,7 +275,7 @@ test.describe(
 
       // Verify success alert
       await expect(
-        authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+        authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
       ).toContainText('Successfully updated repository permission');
 
       // Verify Save button is gone after successful save
@@ -439,7 +439,7 @@ test.describe(
 
       // Verify success alert
       await expect(
-        authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+        authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
       ).toContainText(
         `Successfully created robot account with robot name: ${userNamespace}+${userRobotShortname}`,
       );
@@ -452,7 +452,7 @@ test.describe(
         name: 'Robot accounts',
       });
       const paginationInfo = tabPanel
-        .locator('.pf-v5-c-pagination__total-items')
+        .locator('.pf-v6-c-pagination__total-items')
         .first();
       await expect(paginationInfo).toContainText('1 - 1 of 1');
     });

@@ -257,7 +257,7 @@ test.describe(
       await readonlyPage.keyboard.press('Escape');
 
       // Select the key and verify bulk delete is disabled
-      await keyRow.getByTestId(`select-${key.kid}`).click();
+      await keyRow.getByTestId(`select-${key.kid}`).locator('input').click();
 
       // Click Actions button
       await readonlyPage.getByRole('button', {name: 'Actions'}).click();
@@ -287,8 +287,14 @@ test.describe(
       await expect(superuserPage.getByText('Bulk Key 2')).toBeVisible();
 
       // Select both keys using individual checkboxes
-      await superuserPage.getByTestId(`select-${key1.kid}`).click();
-      await superuserPage.getByTestId(`select-${key2.kid}`).click();
+      await superuserPage
+        .getByTestId(`select-${key1.kid}`)
+        .locator('input')
+        .click();
+      await superuserPage
+        .getByTestId(`select-${key2.kid}`)
+        .locator('input')
+        .click();
 
       // Click Actions button (appears when items are selected)
       await superuserPage.getByRole('button', {name: 'Actions'}).click();

@@ -58,7 +58,7 @@ describe('Teams and membership page', () => {
     cy.get('[data-testid="create-team-confirm"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully created new team: ${newTeam}`)
       .should('exist');
 
@@ -103,7 +103,7 @@ describe('Teams and membership page', () => {
     cy.get('[data-testid="review-and-finish-wizard-btn"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains('Successfully added members to team')
       .should('exist');
 
@@ -126,7 +126,7 @@ describe('Teams and membership page', () => {
     cy.get(`[data-testid="${teamToBeUpdated}-Creator"]`).click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Team role updated successfully for: ${teamToBeUpdated}`)
       .should('exist');
   });
@@ -146,7 +146,7 @@ describe('Teams and membership page', () => {
     cy.get(`[data-testid="${teamToBeDeleted}-del-btn"]`).click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success').contains(
+    cy.get('.pf-v6-c-alert.pf-m-success').contains(
       `Successfully deleted team: ${teamToBeDeleted}`,
     );
   });
@@ -161,7 +161,7 @@ describe('Teams and membership page', () => {
     cy.get(`[data-testid="${collaboratorName}-del-btn"]`).click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully deleted collaborator`)
       .should('exist');
   });
@@ -190,7 +190,7 @@ describe('Teams and membership page', () => {
     cy.get('#update-team-repo-permissions').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Updated repo perm for team: ${team} successfully`)
       .should('exist');
   });
@@ -215,7 +215,7 @@ describe('Teams and membership page', () => {
     cy.get('#update-team-repo-permissions').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Updated repo perm for team: ${team} successfully`)
       .should('exist');
   });
@@ -273,7 +273,7 @@ describe('Teams and membership page', () => {
     cy.get('[data-testid="save-team-description-btn"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully updated team:${team} description`)
       .should('exist');
 
