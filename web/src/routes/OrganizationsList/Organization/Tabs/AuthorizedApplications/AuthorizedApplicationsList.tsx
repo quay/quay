@@ -277,7 +277,7 @@ export default function AuthorizedApplicationsList() {
                   {app.scopes.map((scopeInfo) => (
                     <span
                       key={scopeInfo.scope}
-                      className="pf-v5-c-label pf-m-blue"
+                      className="pf-v6-c-label pf-m-blue"
                       style={{marginRight: '4px'}}
                       title={scopeInfo.description}
                     >
@@ -339,7 +339,7 @@ export default function AuthorizedApplicationsList() {
                   {app.scopes.map((scopeInfo) => (
                     <span
                       key={scopeInfo.scope}
-                      className="pf-v5-c-label pf-m-blue"
+                      className="pf-v6-c-label pf-m-blue"
                       style={{marginRight: '4px'}}
                       title={scopeInfo.description}
                     >

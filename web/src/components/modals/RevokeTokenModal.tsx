@@ -63,7 +63,7 @@ export default function RevokeTokenModal({
         variant="warning"
         isInline
         title="Warning"
-        className="pf-v5-u-mb-md"
+        className="pf-v6-u-mb-md"
       >
         This action cannot be undone. Any applications using this token will no
         longer be able to authenticate.

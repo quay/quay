@@ -171,7 +171,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
                     <FormHelperText>
                       <Content
                         component="p"
-                        className="pf-m-error pf-v5-u-mt-sm"
+                        className="pf-m-error pf-v6-u-mt-sm"
                       >
                         {errors.syncStartDate.message}
                       </Content>
@@ -228,7 +228,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         <InputGroup
           onPointerEnterCapture={() => setIsHovered(true)}
           onPointerLeaveCapture={() => setIsHovered(false)}
-          className={isHovered ? 'pf-v5-u-background-color-200' : ''}
+          className={isHovered ? 'pf-v6-u-background-color-200' : ''}
         >
           <Controller
             name="syncValue"
@@ -332,7 +332,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
             <InputGroup
               onPointerEnterCapture={() => setIsHovered(true)}
               onPointerLeaveCapture={() => setIsHovered(false)}
-              className={isHovered ? 'pf-v5-u-background-color-200' : ''}
+              className={isHovered ? 'pf-v6-u-background-color-200' : ''}
             >
               <TextInput
                 type="number"

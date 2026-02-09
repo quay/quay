@@ -106,7 +106,7 @@ export const BulkDeleteModalTemplate = <T,>(
       </span>
       <PageSection hasBodyWrapper={false}>
         <Toolbar>
-          <ToolbarContent className="pf-v5-u-pl-0">
+          <ToolbarContent className="pf-v6-u-pl-0">
             <ToolbarItem>
               <SearchInput
                 type="search"
@@ -123,7 +123,7 @@ export const BulkDeleteModalTemplate = <T,>(
               itemsList={itemsMarkedForDelete}
               setPage={setBulkModalPage}
               setPerPage={setBulkModalPerPage}
-              className="pf-v5-u-mr-md"
+              className="pf-v6-u-mr-md"
             />
           </ToolbarContent>
         </Toolbar>
@@ -159,7 +159,7 @@ export const BulkDeleteModalTemplate = <T,>(
             setPerPage={setBulkModalPerPage}
           />
         </Toolbar>
-        <p className="pf-v5-u-pt-md">
+        <p className="pf-v6-u-pt-md">
           Confirm deletion by typing <b>&quot;confirm&quot;</b> below:
         </p>
         <TextInput

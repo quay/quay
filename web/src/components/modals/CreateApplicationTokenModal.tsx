@@ -114,7 +114,7 @@ export default function CreateApplicationTokenModal({
       ]}
     >
       <Form>
-        <Content component="p" className="pf-v5-u-mb-md">
+        <Content component="p" className="pf-v6-u-mb-md">
           Create an application token that can be used in place of your password
           for Docker and other CLI authentication.
         </Content>
@@ -124,7 +124,7 @@ export default function CreateApplicationTokenModal({
             variant="danger"
             isInline
             title="Error"
-            className="pf-v5-u-mb-md"
+            className="pf-v6-u-mb-md"
           >
             {error}
           </Alert>

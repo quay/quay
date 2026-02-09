@@ -137,7 +137,7 @@ type: kubernetes.io/dockerconfigjson`;
           variant="success"
           isInline
           title="Token Created Successfully"
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
         >
           Your application token has been created and can be used in place of
           your password for Docker and other CLI commands. Make sure to copy and
@@ -149,7 +149,7 @@ type: kubernetes.io/dockerconfigjson`;
           variant="info"
           isInline
           title="Application Token"
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
         >
           This token can be used in place of your password for Docker and other
           CLI commands. Keep it secure and do not share it.
@@ -160,7 +160,7 @@ type: kubernetes.io/dockerconfigjson`;
           variant="info"
           isInline
           title="Encrypted Password"
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
         >
           This encrypted password can be used for <code>docker login</code> and
           other CLI commands. It is recommended to use this instead of your
@@ -173,11 +173,11 @@ type: kubernetes.io/dockerconfigjson`;
         onSelect={(_event, tabIndex) => setActiveTabKey(tabIndex)}
       >
         <Tab eventKey={0} title={<TabTitleText>{firstTabTitle}</TabTitleText>}>
-          <Form className="pf-v5-u-p-md">
+          <Form className="pf-v6-u-p-md">
             <FormGroup
               label="Username"
               fieldId="username"
-              className="pf-v5-u-mb-md"
+              className="pf-v6-u-mb-md"
             >
               <ClipboardCopy
                 hoverTip="Copy"
@@ -206,10 +206,10 @@ type: kubernetes.io/dockerconfigjson`;
           eventKey={1}
           title={<TabTitleText>Kubernetes Secret</TabTitleText>}
         >
-          <div className="pf-v5-u-p-md">
+          <div className="pf-v6-u-p-md">
             <FormGroup
               label="Step 1: Create secret YAML file"
-              className="pf-v5-u-mb-md"
+              className="pf-v6-u-mb-md"
             >
               <CodeBlock>
                 <CodeBlockCode>{kubernetesYaml}</CodeBlockCode>
@@ -217,14 +217,14 @@ type: kubernetes.io/dockerconfigjson`;
             </FormGroup>
             <FormGroup
               label="Step 2: Apply the secret"
-              className="pf-v5-u-mb-md"
+              className="pf-v6-u-mb-md"
             >
               <ClipboardCopy hoverTip="Copy" clickTip="Copied" isReadOnly>
                 {`kubectl create -f ${credentials.title}-pull-secret.yaml --namespace=NAMESPACE`}
               </ClipboardCopy>
             </FormGroup>
             <FormGroup label="Step 3: Reference in pod spec">
-              <Content component="small" className="pf-v5-u-mb-sm">
+              <Content component="small" className="pf-v6-u-mb-sm">
                 Add the following to your pod configuration:
               </Content>
               <CodeBlock>
@@ -240,10 +240,10 @@ type: kubernetes.io/dockerconfigjson`;
           eventKey={2}
           title={<TabTitleText>rkt Configuration</TabTitleText>}
         >
-          <div className="pf-v5-u-p-md">
+          <div className="pf-v6-u-p-md">
             <FormGroup
               label="Step 1: Create rkt configuration file"
-              className="pf-v5-u-mb-md"
+              className="pf-v6-u-mb-md"
             >
               <CodeBlock>
                 <CodeBlockCode>{rktConfig}</CodeBlockCode>
@@ -258,7 +258,7 @@ type: kubernetes.io/dockerconfigjson`;
         </Tab>
 
         <Tab eventKey={3} title={<TabTitleText>Podman Login</TabTitleText>}>
-          <div className="pf-v5-u-p-md">
+          <div className="pf-v6-u-p-md">
             <FormGroup label="Run podman login command">
               <ClipboardCopy hoverTip="Copy" clickTip="Copied" isReadOnly>
                 {getContainerLoginCommand('podman')}
@@ -268,7 +268,7 @@ type: kubernetes.io/dockerconfigjson`;
         </Tab>
 
         <Tab eventKey={4} title={<TabTitleText>Docker Login</TabTitleText>}>
-          <div className="pf-v5-u-p-md">
+          <div className="pf-v6-u-p-md">
             <FormGroup label="Run docker login command">
               <ClipboardCopy hoverTip="Copy" clickTip="Copied" isReadOnly>
                 {getContainerLoginCommand('docker')}
@@ -281,10 +281,10 @@ type: kubernetes.io/dockerconfigjson`;
           eventKey={5}
           title={<TabTitleText>Docker Configuration</TabTitleText>}
         >
-          <div className="pf-v5-u-p-md">
+          <div className="pf-v6-u-p-md">
             <FormGroup
               label="Step 1: Create Docker config file"
-              className="pf-v5-u-mb-md"
+              className="pf-v6-u-mb-md"
             >
               <CodeBlock>
                 <CodeBlockCode>{dockerConfig}</CodeBlockCode>
@@ -295,7 +295,7 @@ type: kubernetes.io/dockerconfigjson`;
                 variant="warning"
                 isInline
                 title="Warning"
-                className="pf-v5-u-mb-sm"
+                className="pf-v6-u-mb-sm"
               >
                 This will <strong>overwrite</strong> existing credentials
               </Alert>

@@ -26,7 +26,7 @@ export default function ReadonlyAutoprunePolicy(
         {props.title}
       </Title>
       <DataList
-        className="pf-v5-u-mb-lg"
+        className="pf-v6-u-mb-lg"
         aria-label={`Auto prune policy for ${props.title}`}
         isCompact
       >

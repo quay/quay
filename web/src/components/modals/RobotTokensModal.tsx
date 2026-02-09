@@ -318,7 +318,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               variant={ClipboardCopyVariant.expansion}
               id="step-2"
               data-testid="step-2-secret"
-              className="pf-v5-u-mb-sm"
+              className="pf-v6-u-mb-sm"
             >
               {getKubernetesContent().join('')}
             </ClipboardCopy>

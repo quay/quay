@@ -29,7 +29,7 @@ export function Layers(props: LayersProps) {
   if (isError) {
     return (
       <PageSection hasBodyWrapper={false}>
-        <Title headingLevel="h3" className="pf-v5-u-text-align-left">
+        <Title headingLevel="h3" className="pf-v6-u-text-align-left">
           Manifest Layers
         </Title>
         <Alert variant="danger" title="Failed to load layers" isInline>
@@ -53,7 +53,7 @@ export function Layers(props: LayersProps) {
   if (!layers || layers.length === 0) {
     return (
       <PageSection hasBodyWrapper={false}>
-        <Title headingLevel="h3" className="pf-v5-u-text-align-left">
+        <Title headingLevel="h3" className="pf-v6-u-text-align-left">
           Manifest Layers
         </Title>
         <Content>
@@ -65,7 +65,7 @@ export function Layers(props: LayersProps) {
 
   return (
     <PageSection hasBodyWrapper={false}>
-      <Title headingLevel="h3" className="pf-v5-u-text-align-left">
+      <Title headingLevel="h3" className="pf-v6-u-text-align-left">
         Manifest Layers
       </Title>
       <div

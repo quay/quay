@@ -33,7 +33,7 @@ function PolicyActionButtons({
   onDelete: (uuid: string) => void;
 }) {
   return (
-    <div className="pf-v5-u-display-flex pf-v5-u-flex-direction-row">
+    <div className="pf-v6-u-display-flex pf-v6-u-flex-direction-row">
       <Button
         icon={<PencilAltIcon />}
         variant="plain"
@@ -162,7 +162,7 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
 
   return (
     <>
-      <div className="pf-v5-u-display-flex pf-v5-u-justify-content-space-between pf-v5-u-align-items-center pf-v5-u-pb-sm">
+      <div className="pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-center pf-v6-u-pb-sm">
         <Title headingLevel="h2">Immutability Policies</Title>
         {(hasPolicies || isAddingNew) && (
           <Button
@@ -175,7 +175,7 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
           </Button>
         )}
       </div>
-      <p className="pf-v5-u-pb-md">
+      <p className="pf-v6-u-pb-md">
         Immutability policies automatically make tags immutable based on pattern
         matching. Tags that match the configured patterns cannot be modified or
         deleted.

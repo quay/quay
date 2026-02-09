@@ -416,7 +416,7 @@ export default function CreatePermissionDrawer(
         {createRobotModalForAppliedTo}
       </Conditional>
       <DrawerPanelContent>
-        <DrawerHead className="pf-v5-c-title pf-m-xl">
+        <DrawerHead className="pf-v6-c-title pf-m-xl">
           <h6
             tabIndex={
               props.drawerContent != OrganizationDrawerContentType.None ? 0 : -1
@@ -431,7 +431,7 @@ export default function CreatePermissionDrawer(
           </DrawerActions>
         </DrawerHead>
         <DrawerPanelBody>
-          <h3 className="pf-v5-c-title pf-m-md">
+          <h3 className="pf-v6-c-title pf-m-md">
             Applies when a repository is created by:
           </h3>
         </DrawerPanelBody>

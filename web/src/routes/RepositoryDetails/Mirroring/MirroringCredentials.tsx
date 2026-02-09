@@ -22,7 +22,7 @@ export const MirroringCredentials: React.FC<MirroringCredentialsProps> = ({
       <Title headingLevel="h3">Credentials</Title>
       <Content
         component="small"
-        className="pf-v5-c-form__helper-text pf-v5-u-text-align-center pf-v5-u-display-block"
+        className="pf-v6-c-form__helper-text pf-v6-u-text-align-center pf-v6-u-display-block"
       >
         Required if the external repository is private.
       </Content>

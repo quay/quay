@@ -81,7 +81,7 @@ export function NotificationDrawerListComponent() {
             />
             <NotificationDrawerListItemBody>
               <Content>
-                <Content component="small" className="pf-v5-u-text-align-right">
+                <Content component="small" className="pf-v6-u-text-align-right">
                   {formatDate(notification.created, 'medium')}
                 </Content>
               </Content>

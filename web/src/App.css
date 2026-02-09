@@ -6,20 +6,20 @@ html, body, #root,  .App {
   height: 100%;
 }
 
-.page-sidebar .pf-v5-c-page__sidebar-body {
+.page-sidebar .pf-v6-c-page__sidebar-body {
   background-color: black;
   color: black;
 }
 
-.page-sidebar .pf-v5-c-nav__list {
+.page-sidebar .pf-v6-c-nav__list {
     padding-top: 0;
 }
 
-.pf-v5-c-page__sidebar-body {
+.pf-v6-c-page__sidebar-body {
     padding-top: 0;
 }
 
-.pf-v5-c-page__main {
+.pf-v6-c-page__main {
     display: flex;
     flex-direction: column;
     min-height: 100%;
@@ -43,11 +43,11 @@ html, body, #root,  .App {
     padding-right: 0;
 }
 
-.pf-v5-c-tabs {
+.pf-v6-c-tabs {
     padding-left: 24px;
 }
 
-.pf-v5-c-panel__footer {
+.pf-v6-c-panel__footer {
     padding: 24px 24px 0 0;
 }
 
