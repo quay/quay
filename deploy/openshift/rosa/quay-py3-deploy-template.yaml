@@ -155,7 +155,7 @@ objects:
           lifecycle:
             preStop:
               exec:
-                command: ["/bin/sh", "-c", "sleep 20 && kill -SIGQUIT $(cat /tmp/nginx.pid)"]
+                command: ["/bin/sh", "-c", "sleep 20 && kill -QUIT $(cat /tmp/nginx.pid)"]
           startupProbe:
             exec:
               command:
