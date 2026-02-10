@@ -2,9 +2,11 @@
 """
 Unit tests for organization-level mirror worker functions.
 
-Tests cover the org-level mirroring functions in workers/repomirrorworker/__init__.py
+Tests cover the org-level mirroring functions in workers/repomirrorworker/__init__.py,
+as well as manifest_utils.py and org_mirror_model.py.
 """
 
+import json
 from datetime import datetime, timedelta
 from functools import wraps
 from unittest.mock import MagicMock, Mock, patch
@@ -38,6 +40,17 @@ from workers.repomirrorworker import (
     perform_org_mirror_repo,
     process_org_mirror_discovery,
     process_org_mirrors,
+)
+from workers.repomirrorworker.manifest_utils import (
+    filter_manifests_by_architecture,
+    get_available_architectures,
+    get_manifest_media_type,
+    is_manifest_list,
+)
+from workers.repomirrorworker.org_mirror_model import (
+    OrgMirrorConfigToken,
+    OrgMirrorModel,
+    OrgMirrorToken,
 )
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 
@@ -273,7 +286,7 @@ class TestProcessOrgMirrorDiscovery:
     """Tests for process_org_mirror_discovery function."""
 
     @patch("workers.repomirrorworker.features")
-    def test_disabled_feature_returns_none(self, mock_features, _initialized_db):
+    def test_disabled_feature_returns_none(self, mock_features, initialized_db):
         """When ORG_MIRROR feature is disabled, return None."""
         mock_features.ORG_MIRROR = False
 
@@ -283,7 +296,7 @@ class TestProcessOrgMirrorDiscovery:
 
     @patch("workers.repomirrorworker.features")
     @patch("workers.repomirrorworker.org_mirror_model")
-    def test_no_configs_returns_token(self, mock_model, mock_features, _initialized_db):
+    def test_no_configs_returns_token(self, mock_model, mock_features, initialized_db):
         """When no configs to discover, return next_token."""
         mock_features.ORG_MIRROR = True
         mock_model.configs_to_discover.return_value = (None, None)
@@ -297,7 +310,7 @@ class TestProcessOrgMirrors:
     """Tests for process_org_mirrors function."""
 
     @patch("workers.repomirrorworker.features")
-    def test_disabled_feature_returns_none(self, mock_features, _initialized_db):
+    def test_disabled_feature_returns_none(self, mock_features, initialized_db):
         """When ORG_MIRROR feature is disabled, return None."""
         mock_features.ORG_MIRROR = False
         mock_skopeo = Mock()
@@ -308,7 +321,7 @@ class TestProcessOrgMirrors:
 
     @patch("workers.repomirrorworker.features")
     @patch("workers.repomirrorworker.org_mirror_model")
-    def test_no_repos_returns_token(self, mock_model, mock_features, _initialized_db):
+    def test_no_repos_returns_token(self, mock_model, mock_features, initialized_db):
         """When no repos to mirror, return next_token."""
         mock_features.ORG_MIRROR = True
         mock_model.repositories_to_mirror.return_value = (None, None)
@@ -325,7 +338,7 @@ class TestPerformOrgMirrorDiscovery:
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.get_registry_adapter")
     @patch("workers.repomirrorworker.logs_model")
-    def test_successful_discovery(self, _mock_logs, mock_get_adapter, _initialized_db):
+    def test_successful_discovery(self, _mock_logs, mock_get_adapter, initialized_db):
         """Test successful repository discovery."""
         org, robot = _create_org_and_robot("discovery_test1")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -352,7 +365,7 @@ class TestPerformOrgMirrorDiscovery:
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.get_registry_adapter")
     @patch("workers.repomirrorworker.logs_model")
-    def test_discovery_with_filters(self, _mock_logs, mock_get_adapter, _initialized_db):
+    def test_discovery_with_filters(self, _mock_logs, mock_get_adapter, initialized_db):
         """Test discovery with repository filters applied."""
         org, robot = _create_org_and_robot("discovery_test2")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -384,7 +397,7 @@ class TestPerformOrgMirrorRepo:
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
-    def test_successful_sync(self, mock_token, _mock_logs, _initialized_db, _app):
+    def test_successful_sync(self, mock_token, _mock_logs, initialized_db, app):
         """Test successful repository sync."""
         org, robot = _create_org_and_robot("sync_test1")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -412,7 +425,7 @@ class TestPerformOrgMirrorRepo:
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
-    def test_sync_no_tags(self, mock_token, _mock_logs, _initialized_db, _app):
+    def test_sync_no_tags(self, mock_token, _mock_logs, initialized_db, app):
         """Test sync when no tags exist in source repo."""
         org, robot = _create_org_and_robot("sync_test2")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -439,7 +452,7 @@ class TestPerformOrgMirrorRepo:
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
-    def test_sync_partial_failure(self, mock_token, _mock_logs, _initialized_db, _app):
+    def test_sync_partial_failure(self, mock_token, _mock_logs, initialized_db, app):
         """Test sync when some tags fail to copy."""
         org, robot = _create_org_and_robot("sync_test3")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -862,7 +875,7 @@ class TestProcessOrgMirrorDiscoveryIterator:
     @patch("workers.repomirrorworker.perform_org_mirror_discovery")
     @patch("workers.repomirrorworker.org_mirror_model")
     @patch("workers.repomirrorworker.features")
-    def test_preempted_sets_abort(self, mock_features, mock_model, mock_perform, _initialized_db):
+    def test_preempted_sets_abort(self, mock_features, mock_model, mock_perform, initialized_db):
         """When perform_org_mirror_discovery raises PreemptedException, abort is set."""
         mock_features.ORG_MIRROR = True
         mock_abt = Mock()
@@ -882,7 +895,7 @@ class TestProcessOrgMirrorDiscoveryIterator:
     @patch("workers.repomirrorworker.org_mirror_model")
     @patch("workers.repomirrorworker.features")
     def test_generic_exception_continues(
-        self, mock_features, mock_model, mock_perform, _initialized_db
+        self, mock_features, mock_model, mock_perform, initialized_db
     ):
         """When a generic exception occurs, processing continues to next config."""
         mock_features.ORG_MIRROR = True
@@ -904,7 +917,7 @@ class TestProcessOrgMirrorDiscoveryIterator:
     @patch("workers.repomirrorworker.perform_org_mirror_discovery")
     @patch("workers.repomirrorworker.org_mirror_model")
     @patch("workers.repomirrorworker.features")
-    def test_successful_iteration(self, mock_features, mock_model, mock_perform, _initialized_db):
+    def test_successful_iteration(self, mock_features, mock_model, mock_perform, initialized_db):
         """Successful iteration processes all configs and returns next token."""
         mock_features.ORG_MIRROR = True
         mock_config = Mock()
@@ -931,7 +944,7 @@ class TestProcessOrgMirrorsIterator:
     @patch("workers.repomirrorworker.perform_org_mirror_repo")
     @patch("workers.repomirrorworker.org_mirror_model")
     @patch("workers.repomirrorworker.features")
-    def test_preempted_sets_abort(self, mock_features, mock_model, mock_perform, _initialized_db):
+    def test_preempted_sets_abort(self, mock_features, mock_model, mock_perform, initialized_db):
         """When perform_org_mirror_repo raises PreemptedException, abort is set."""
         mock_features.ORG_MIRROR = True
         mock_abt = Mock()
@@ -952,7 +965,7 @@ class TestProcessOrgMirrorsIterator:
     @patch("workers.repomirrorworker.org_mirror_model")
     @patch("workers.repomirrorworker.features")
     def test_generic_exception_returns_none(
-        self, mock_features, mock_model, mock_perform, _initialized_db
+        self, mock_features, mock_model, mock_perform, initialized_db
     ):
         """When a generic exception occurs, process_org_mirrors returns None."""
         mock_features.ORG_MIRROR = True
@@ -972,7 +985,7 @@ class TestProcessOrgMirrorsIterator:
     @patch("workers.repomirrorworker.perform_org_mirror_repo")
     @patch("workers.repomirrorworker.org_mirror_model")
     @patch("workers.repomirrorworker.features")
-    def test_successful_iteration(self, mock_features, mock_model, mock_perform, _initialized_db):
+    def test_successful_iteration(self, mock_features, mock_model, mock_perform, initialized_db):
         """Successful iteration processes all repos and returns next token."""
         mock_features.ORG_MIRROR = True
         mock_repo = Mock()
@@ -999,7 +1012,7 @@ class TestPerformOrgMirrorDiscoveryEdgeCases:
 
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.logs_model")
-    def test_cancel_propagates_to_repos(self, mock_logs, _initialized_db):
+    def test_cancel_propagates_to_repos(self, mock_logs, initialized_db):
         """When config status is CANCEL, cancel is propagated to all repos."""
         org, robot = _create_org_and_robot("discovery_cancel_test")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -1031,7 +1044,7 @@ class TestPerformOrgMirrorDiscoveryEdgeCases:
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.get_registry_adapter")
     @patch("workers.repomirrorworker.logs_model")
-    def test_adapter_creation_failure(self, mock_logs, mock_get_adapter, _initialized_db):
+    def test_adapter_creation_failure(self, mock_logs, mock_get_adapter, initialized_db):
         """When registry adapter creation fails, discovery fails gracefully."""
         org, robot = _create_org_and_robot("discovery_adapter_test")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -1055,7 +1068,7 @@ class TestPerformOrgMirrorDiscoveryEdgeCases:
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.get_registry_adapter")
     @patch("workers.repomirrorworker.logs_model")
-    def test_sync_now_propagation(self, _mock_logs, mock_get_adapter, _initialized_db):
+    def test_sync_now_propagation(self, _mock_logs, mock_get_adapter, initialized_db):
         """When config status is SYNC_NOW, it propagates to all discovered repos."""
         org, robot = _create_org_and_robot("discovery_syncnow_test")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -1080,7 +1093,7 @@ class TestPerformOrgMirrorDiscoveryEdgeCases:
     @patch("workers.repomirrorworker.release_org_mirror_config")
     @patch("workers.repomirrorworker.claim_org_mirror_config")
     @patch("workers.repomirrorworker.logs_model")
-    def test_decryption_failure(self, mock_logs, mock_claim, mock_release, _initialized_db):
+    def test_decryption_failure(self, mock_logs, mock_claim, mock_release, initialized_db):
         """When credential decryption fails, discovery fails gracefully."""
         org, robot = _create_org_and_robot("discovery_decrypt_test")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -1118,7 +1131,7 @@ class TestPerformOrgMirrorDiscoveryEdgeCases:
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.get_registry_adapter")
     @patch("workers.repomirrorworker.logs_model")
-    def test_source_registry_error(self, mock_logs, mock_get_adapter, _initialized_db):
+    def test_source_registry_error(self, mock_logs, mock_get_adapter, initialized_db):
         """When source registry listing fails, discovery fails gracefully."""
         org, robot = _create_org_and_robot("discovery_source_err_test")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -1151,7 +1164,7 @@ class TestPerformOrgMirrorRepoEdgeCases:
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.claim_org_mirror_repo")
     @patch("workers.repomirrorworker.logs_model")
-    def test_preempted_when_claim_fails(self, _mock_logs, mock_claim, _initialized_db, _app):
+    def test_preempted_when_claim_fails(self, _mock_logs, mock_claim, initialized_db, app):
         """When claim_org_mirror_repo returns None, PreemptedException is raised."""
         org, robot = _create_org_and_robot("preempt_test")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
@@ -1173,7 +1186,7 @@ class TestPerformOrgMirrorRepoEdgeCases:
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
     def test_local_repo_creation_failure(
-        self, mock_token, _mock_logs, mock_ensure, _initialized_db, _app
+        self, mock_token, _mock_logs, mock_ensure, initialized_db, app
     ):
         """When local repo creation fails, sync fails gracefully."""
         org, robot = _create_org_and_robot("localrepo_fail_test")
@@ -1201,7 +1214,7 @@ class TestPerformOrgMirrorRepoEdgeCases:
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
     def test_skopeo_tag_listing_failure(
-        self, mock_token, _mock_logs, mock_get_tags, _initialized_db, _app
+        self, mock_token, _mock_logs, mock_get_tags, initialized_db, app
     ):
         """When skopeo tag listing fails with RepoMirrorSkopeoException, sync fails."""
         org, robot = _create_org_and_robot("skopeo_fail_test")
@@ -1231,7 +1244,7 @@ class TestPerformOrgMirrorRepoEdgeCases:
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
     def test_generic_tag_listing_exception(
-        self, mock_token, _mock_logs, mock_get_tags, _initialized_db, _app
+        self, mock_token, _mock_logs, mock_get_tags, initialized_db, app
     ):
         """When tag listing raises a generic exception, sync fails."""
         org, robot = _create_org_and_robot("generic_tag_fail_test")
@@ -1260,7 +1273,7 @@ class TestPerformOrgMirrorRepoEdgeCases:
     @patch("workers.repomirrorworker.logs_model")
     @patch("workers.repomirrorworker.retrieve_robot_token")
     def test_decryption_failure_during_sync(
-        self, mock_token, _mock_logs, mock_claim, mock_release, _initialized_db, _app
+        self, mock_token, _mock_logs, mock_claim, mock_release, initialized_db, app
     ):
         """When credential decryption fails during sync, sync fails gracefully."""
         org, robot = _create_org_and_robot("decrypt_sync_test")
@@ -1323,7 +1336,7 @@ class TestPerformOrgMirrorRepoEdgeCases:
 class TestGetAllTagsForOrgMirror:
     """Tests for _get_all_tags_for_org_mirror edge cases."""
 
-    def test_decryption_failure_raises_skopeo_exception(self, _initialized_db, _app):
+    def test_decryption_failure_raises_skopeo_exception(self, initialized_db, app):
         """When credential decryption fails, RepoMirrorSkopeoException is raised."""
         mock_config = MagicMock()
         mock_username = MagicMock()
@@ -1339,7 +1352,7 @@ class TestGetAllTagsForOrgMirror:
         assert "decrypt" in str(exc_info.value.message).lower()
 
     @patch("workers.repomirrorworker.database")
-    def test_skopeo_tags_failure_raises_exception(self, _mock_db, _initialized_db, _app):
+    def test_skopeo_tags_failure_raises_exception(self, _mock_db, initialized_db, app):
         """When skopeo.tags fails, RepoMirrorSkopeoException is raised."""
         mock_config = MagicMock()
         mock_config.external_registry_username = None
@@ -1363,7 +1376,7 @@ class TestRepoMirrorWorkerOrgMethods:
     """Tests for the org mirror methods on RepoMirrorWorker."""
 
     @patch("workers.repomirrorworker.repomirrorworker.process_org_mirror_discovery")
-    def test_process_org_mirror_discovery_loops(self, mock_process, _initialized_db, _app):
+    def test_process_org_mirror_discovery_loops(self, mock_process, initialized_db, app):
         """_process_org_mirror_discovery loops until token is None."""
         mock_process.side_effect = [Mock(), None]
 
@@ -1373,7 +1386,7 @@ class TestRepoMirrorWorkerOrgMethods:
         assert mock_process.call_count == 2
 
     @patch("workers.repomirrorworker.repomirrorworker.process_org_mirrors")
-    def test_process_org_mirrors_loops(self, mock_process, _initialized_db, _app):
+    def test_process_org_mirrors_loops(self, mock_process, initialized_db, app):
         """_process_org_mirrors loops until token is None."""
         mock_process.side_effect = [Mock(), None]
 
@@ -1381,3 +1394,230 @@ class TestRepoMirrorWorkerOrgMethods:
         worker._process_org_mirrors()
 
         assert mock_process.call_count == 2
+
+
+# =============================================================================
+# Tests for manifest_utils.py
+# =============================================================================
+
+
+class TestManifestUtils:
+    """Tests for manifest_utils.py error-handling paths."""
+
+    def test_is_manifest_list_invalid_json(self):
+        """Invalid JSON returns False."""
+        assert is_manifest_list("not valid json") is False
+
+    def test_is_manifest_list_none_input(self):
+        """None input returns False (TypeError path)."""
+        assert is_manifest_list(None) is False
+
+    def test_is_manifest_list_no_media_type_no_manifests(self):
+        """Non-list manifest without mediaType or manifests key returns False."""
+        manifest = json.dumps({"schemaVersion": 2, "config": {}})
+        assert is_manifest_list(manifest) is False
+
+    def test_is_manifest_list_with_manifests_array(self):
+        """Manifest with 'manifests' array but no mediaType returns True (OCI index)."""
+        manifest = json.dumps({"schemaVersion": 2, "manifests": []})
+        assert is_manifest_list(manifest) is True
+
+    def test_is_manifest_list_manifests_not_a_list(self):
+        """Manifest with 'manifests' key that is not a list returns False."""
+        manifest = json.dumps({"schemaVersion": 2, "manifests": "not-a-list"})
+        assert is_manifest_list(manifest) is False
+
+    def test_get_manifest_media_type_invalid_json(self):
+        """Invalid JSON returns None."""
+        assert get_manifest_media_type("not valid json") is None
+
+    def test_get_manifest_media_type_none_input(self):
+        """None input returns None (TypeError path)."""
+        assert get_manifest_media_type(None) is None
+
+    def test_get_manifest_media_type_no_media_type_key(self):
+        """Valid JSON without mediaType key returns None."""
+        manifest = json.dumps({"schemaVersion": 2})
+        assert get_manifest_media_type(manifest) is None
+
+    def test_filter_manifests_by_architecture_invalid_json(self):
+        """Invalid JSON returns empty list."""
+        assert filter_manifests_by_architecture("not valid json", ["amd64"]) == []
+
+    def test_filter_manifests_by_architecture_no_manifests_key(self):
+        """Valid JSON without 'manifests' key returns empty list."""
+        manifest = json.dumps({"schemaVersion": 2})
+        assert filter_manifests_by_architecture(manifest, ["amd64"]) == []
+
+    def test_get_available_architectures_invalid_json(self):
+        """Invalid JSON returns empty list."""
+        assert get_available_architectures("not valid json") == []
+
+    def test_get_available_architectures_no_manifests_key(self):
+        """Valid JSON without 'manifests' key returns empty list."""
+        manifest = json.dumps({"schemaVersion": 2})
+        assert get_available_architectures(manifest) == []
+
+    def test_get_available_architectures_manifest_without_platform(self):
+        """Manifests without platform info are excluded."""
+        manifest = json.dumps(
+            {
+                "manifests": [
+                    {"digest": "sha256:abc"},
+                    {"digest": "sha256:def", "platform": {"architecture": "amd64"}},
+                ]
+            }
+        )
+        result = get_available_architectures(manifest)
+        assert result == ["amd64"]
+
+
+# =============================================================================
+# Tests for org_mirror_model.py
+# =============================================================================
+
+
+class TestOrgMirrorModel:
+    """Tests for OrgMirrorModel configs_to_discover and repositories_to_mirror."""
+
+    # --- configs_to_discover ---
+
+    @patch("workers.repomirrorworker.org_mirror_model.get_max_id_for_org_mirror_config")
+    @patch("workers.repomirrorworker.org_mirror_model.get_min_id_for_org_mirror_config")
+    def test_configs_to_discover_max_id_none(self, mock_min_id, mock_max_id):
+        """When max_id is None, returns (None, None)."""
+        mock_min_id.return_value = 1
+        mock_max_id.return_value = None
+
+        model = OrgMirrorModel()
+        iterator, token = model.configs_to_discover()
+
+        assert iterator is None
+        assert token is None
+
+    @patch("workers.repomirrorworker.org_mirror_model.get_max_id_for_org_mirror_config")
+    @patch("workers.repomirrorworker.org_mirror_model.get_min_id_for_org_mirror_config")
+    def test_configs_to_discover_min_id_none(self, mock_min_id, mock_max_id):
+        """When min_id is None, returns (None, None)."""
+        mock_min_id.return_value = None
+        mock_max_id.return_value = 10
+
+        model = OrgMirrorModel()
+        iterator, token = model.configs_to_discover()
+
+        assert iterator is None
+        assert token is None
+
+    @patch("workers.repomirrorworker.org_mirror_model.get_max_id_for_org_mirror_config")
+    @patch("workers.repomirrorworker.org_mirror_model.get_min_id_for_org_mirror_config")
+    def test_configs_to_discover_min_id_gt_max_id(self, mock_min_id, mock_max_id):
+        """When min_id > max_id, returns (None, None)."""
+        mock_min_id.return_value = 20
+        mock_max_id.return_value = 10
+
+        model = OrgMirrorModel()
+        iterator, token = model.configs_to_discover()
+
+        assert iterator is None
+        assert token is None
+
+    @patch("workers.repomirrorworker.org_mirror_model.yield_random_entries")
+    @patch("workers.repomirrorworker.org_mirror_model.get_max_id_for_org_mirror_config")
+    @patch("workers.repomirrorworker.org_mirror_model.get_min_id_for_org_mirror_config")
+    def test_configs_to_discover_no_start_token(self, mock_min_id, mock_max_id, mock_yield):
+        """Without start_token, uses get_min_id and returns iterator + token."""
+        mock_min_id.return_value = 1
+        mock_max_id.return_value = 100
+        mock_yield.return_value = iter([])
+
+        model = OrgMirrorModel()
+        iterator, token = model.configs_to_discover()
+
+        assert iterator is not None
+        assert token.min_id == 101
+        mock_min_id.assert_called_once()
+
+    @patch("workers.repomirrorworker.org_mirror_model.yield_random_entries")
+    @patch("workers.repomirrorworker.org_mirror_model.get_max_id_for_org_mirror_config")
+    def test_configs_to_discover_with_start_token(self, mock_max_id, mock_yield):
+        """With start_token, uses token.min_id instead of get_min_id."""
+        mock_max_id.return_value = 100
+        mock_yield.return_value = iter([])
+
+        model = OrgMirrorModel()
+        start_token = OrgMirrorConfigToken(min_id=50)
+        iterator, token = model.configs_to_discover(start_token=start_token)
+
+        assert iterator is not None
+        assert token.min_id == 101
+
+    # --- repositories_to_mirror ---
+
+    @patch("workers.repomirrorworker.org_mirror_model.get_max_id_for_org_mirror_repo")
+    @patch("workers.repomirrorworker.org_mirror_model.get_min_id_for_org_mirror_repo")
+    def test_repos_to_mirror_max_id_none(self, mock_min_id, mock_max_id):
+        """When max_id is None, returns (None, None)."""
+        mock_min_id.return_value = 1
+        mock_max_id.return_value = None
+
+        model = OrgMirrorModel()
+        iterator, token = model.repositories_to_mirror()
+
+        assert iterator is None
+        assert token is None
+
+    @patch("workers.repomirrorworker.org_mirror_model.get_max_id_for_org_mirror_repo")
+    @patch("workers.repomirrorworker.org_mirror_model.get_min_id_for_org_mirror_repo")
+    def test_repos_to_mirror_min_id_none(self, mock_min_id, mock_max_id):
+        """When min_id is None, returns (None, None)."""
+        mock_min_id.return_value = None
+        mock_max_id.return_value = 10
+
+        model = OrgMirrorModel()
+        iterator, token = model.repositories_to_mirror()
+
+        assert iterator is None
+        assert token is None
+
+    @patch("workers.repomirrorworker.org_mirror_model.get_max_id_for_org_mirror_repo")
+    @patch("workers.repomirrorworker.org_mirror_model.get_min_id_for_org_mirror_repo")
+    def test_repos_to_mirror_min_id_gt_max_id(self, mock_min_id, mock_max_id):
+        """When min_id > max_id, returns (None, None)."""
+        mock_min_id.return_value = 20
+        mock_max_id.return_value = 10
+
+        model = OrgMirrorModel()
+        iterator, token = model.repositories_to_mirror()
+
+        assert iterator is None
+        assert token is None
+
+    @patch("workers.repomirrorworker.org_mirror_model.yield_random_entries")
+    @patch("workers.repomirrorworker.org_mirror_model.get_max_id_for_org_mirror_repo")
+    @patch("workers.repomirrorworker.org_mirror_model.get_min_id_for_org_mirror_repo")
+    def test_repos_to_mirror_no_start_token(self, mock_min_id, mock_max_id, mock_yield):
+        """Without start_token, uses get_min_id and returns iterator + token."""
+        mock_min_id.return_value = 1
+        mock_max_id.return_value = 100
+        mock_yield.return_value = iter([])
+
+        model = OrgMirrorModel()
+        iterator, token = model.repositories_to_mirror()
+
+        assert iterator is not None
+        assert token.min_id == 101
+        mock_min_id.assert_called_once()
+
+    @patch("workers.repomirrorworker.org_mirror_model.yield_random_entries")
+    @patch("workers.repomirrorworker.org_mirror_model.get_max_id_for_org_mirror_repo")
+    def test_repos_to_mirror_with_start_token(self, mock_max_id, mock_yield):
+        """With start_token, uses token.min_id instead of get_min_id."""
+        mock_max_id.return_value = 100
+        mock_yield.return_value = iter([])
+
+        model = OrgMirrorModel()
+        start_token = OrgMirrorToken(min_id=50)
+        iterator, token = model.repositories_to_mirror(start_token=start_token)
+
+        assert iterator is not None
+        assert token.min_id == 101

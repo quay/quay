@@ -8,6 +8,7 @@ import pytest
 
 from app import storage
 from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
+from data.encryption import DecryptionFailureException
 from data.model.test.test_repo_mirroring import create_mirror_repo_robot
 from data.model.user import retrieve_robot_token
 from data.registry_model import registry_model
@@ -17,9 +18,11 @@ from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
 from workers.repomirrorworker import (
+    PreemptedException,
     _get_v2_bearer_token,
     copy_filtered_architectures,
     delete_obsolete_tags,
+    perform_mirror,
     process_mirrors,
     push_sparse_manifest_list,
 )
@@ -1543,7 +1546,7 @@ def test_push_sparse_manifest_list_string_manifest(
 
 
 @mock.patch("workers.repomirrorworker.features")
-def test_process_mirrors_feature_disabled(mock_features, _initialized_db, _app):
+def test_process_mirrors_feature_disabled(mock_features, initialized_db, app):
     """
     When REPO_MIRROR feature is disabled, process_mirrors returns None immediately.
     """
@@ -1558,7 +1561,7 @@ def test_process_mirrors_feature_disabled(mock_features, _initialized_db, _app):
 @mock.patch("workers.repomirrorworker.model")
 @mock.patch("workers.repomirrorworker.features")
 def test_process_mirrors_preempted_exception(
-    mock_features, mock_model, mock_perform, _initialized_db, _app
+    mock_features, mock_model, mock_perform, initialized_db, app
 ):
     """
     When perform_mirror raises PreemptedException, the abort signal is set and iteration continues.
@@ -1585,7 +1588,7 @@ def test_process_mirrors_preempted_exception(
 @mock.patch("workers.repomirrorworker.model")
 @mock.patch("workers.repomirrorworker.features")
 def test_process_mirrors_generic_exception(
-    mock_features, mock_model, mock_perform, _initialized_db, _app
+    mock_features, mock_model, mock_perform, initialized_db, app
 ):
     """
     When perform_mirror raises a generic Exception, process_mirrors returns None.
@@ -1610,7 +1613,7 @@ def test_process_mirrors_generic_exception(
 
 
 @disable_existing_mirrors
-def test_copy_filtered_architectures_inspect_failure(_initialized_db, _app):
+def test_copy_filtered_architectures_inspect_failure(initialized_db, app):
     """
     When skopeo inspect_raw fails, copy_filtered_architectures returns failure result.
     """
@@ -1629,7 +1632,7 @@ def test_copy_filtered_architectures_inspect_failure(_initialized_db, _app):
 
 @disable_existing_mirrors
 @mock.patch("workers.repomirrorworker.retrieve_robot_token")
-def test_copy_filtered_architectures_arch_copy_failure(mock_token, _initialized_db, _app):
+def test_copy_filtered_architectures_arch_copy_failure(mock_token, initialized_db, app):
     """
     When copying an architecture by digest fails, copy_filtered_architectures returns failure.
     """
@@ -1652,7 +1655,7 @@ def test_copy_filtered_architectures_arch_copy_failure(mock_token, _initialized_
 @mock.patch("workers.repomirrorworker.push_sparse_manifest_list")
 @mock.patch("workers.repomirrorworker.retrieve_robot_token")
 def test_copy_filtered_architectures_manifest_push_failure(
-    mock_token, mock_push, _initialized_db, _app
+    mock_token, mock_push, initialized_db, app
 ):
     """
     When pushing the sparse manifest list fails, copy_filtered_architectures returns failure.
@@ -1680,7 +1683,7 @@ def test_copy_filtered_architectures_manifest_push_failure(
 
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
-def test_perform_mirror_empty_tags(run_skopeo_mock, _initialized_db, _app):
+def test_perform_mirror_empty_tags(run_skopeo_mock, initialized_db, app):
     """
     When tags_to_mirror returns an empty list (no tags match pattern),
     mirror succeeds with no sync.
@@ -1717,9 +1720,7 @@ def test_perform_mirror_empty_tags(run_skopeo_mock, _initialized_db, _app):
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 @mock.patch("workers.repomirrorworker.check_repo_mirror_sync_status")
-def test_perform_mirror_cancel_during_sync(
-    mock_check_status, run_skopeo_mock, _initialized_db, _app
-):
+def test_perform_mirror_cancel_during_sync(mock_check_status, run_skopeo_mock, initialized_db, app):
     """
     When cancel is detected during tag sync, mirror is cancelled.
     """
@@ -1769,3 +1770,148 @@ def test_perform_mirror_cancel_during_sync(
     assert [] == skopeo_calls
     mirror = RepoMirrorConfig.get_by_id(mirror.id)
     assert mirror.sync_status == RepoMirrorStatus.CANCEL
+
+
+# =============================================================================
+# Tests for perform_mirror() error paths
+# =============================================================================
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.claim_mirror")
+def test_perform_mirror_claim_fails(mock_claim, initialized_db, app):
+    """
+    When claim_mirror() returns None, PreemptedException is raised.
+    """
+    mirror, _repo = create_mirror_repo_robot(["latest"])
+    mock_claim.return_value = None
+
+    skopeo = mock.Mock()
+    with pytest.raises(PreemptedException):
+        perform_mirror(skopeo, mirror)
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.release_mirror")
+@mock.patch("workers.repomirrorworker.tags_to_mirror")
+@mock.patch("workers.repomirrorworker.logs_model")
+def test_perform_mirror_generic_exception_during_tags(
+    _mock_logs, mock_tags, mock_release, initialized_db, app
+):
+    """
+    When tags_to_mirror() raises a generic Exception, mirror is released with FAIL status.
+    """
+    mirror, _repo = create_mirror_repo_robot(["latest"])
+
+    mock_tags.side_effect = RuntimeError("unexpected tag listing error")
+
+    skopeo = mock.Mock()
+    perform_mirror(skopeo, mirror)
+
+    mock_release.assert_called_once_with(mirror, RepoMirrorStatus.FAIL)
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.release_mirror")
+@mock.patch("workers.repomirrorworker.logs_model")
+@mock.patch("workers.repomirrorworker.tags_to_mirror")
+@mock.patch("workers.repomirrorworker.claim_mirror")
+def test_perform_mirror_decryption_failure(
+    mock_claim, mock_tags, _mock_logs, mock_release, initialized_db, app
+):
+    """
+    When credential decryption raises DecryptionFailureException during tag sync,
+    the inner except re-raises it and the outer except Exception catches it,
+    releasing the mirror with FAIL status.
+    """
+    mirror, _repo = create_mirror_repo_robot(["latest"])
+
+    # claim_mirror returns a mock with decrypt that raises
+    mock_claimed = mock.MagicMock()
+    mock_claimed.id = mirror.id
+    mock_claimed.external_reference = mirror.external_reference
+    mock_claimed.root_rule.rule_value = ["latest"]
+    mock_claimed.repository = mirror.repository
+    mock_claimed.skopeo_timeout = 300
+    mock_claimed.architecture_filter = []
+    mock_claimed.external_registry_config = {}
+
+    # Make username decryption fail
+    mock_username = mock.MagicMock()
+    mock_username.decrypt.side_effect = DecryptionFailureException("decrypt failed")
+    mock_username.__bool__ = mock.MagicMock(return_value=True)
+    mock_claimed.external_registry_username = mock_username
+
+    mock_claim.return_value = mock_claimed
+    mock_tags.return_value = ["latest"]
+
+    skopeo = mock.Mock()
+    perform_mirror(skopeo, mock_claimed)
+
+    # DecryptionFailureException is re-raised but caught by outer except Exception,
+    # which releases the mirror with FAIL status
+    fail_calls = [c for c in mock_release.call_args_list if c[0][1] == RepoMirrorStatus.FAIL]
+    assert len(fail_calls) >= 1
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.release_mirror")
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+@mock.patch("workers.repomirrorworker.logs_model")
+@mock.patch("workers.repomirrorworker.tags_to_mirror")
+@mock.patch("workers.repomirrorworker.claim_mirror")
+def test_perform_mirror_preempted_during_sync(
+    mock_claim, mock_tags, _mock_logs, mock_token, mock_release, initialized_db, app
+):
+    """
+    When PreemptedException occurs during tag sync loop, mirror is released with FAIL.
+    """
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+
+    mock_claim.return_value = mirror
+    mock_tags.return_value = ["latest"]
+    mock_token.return_value = "robot_token"
+
+    skopeo = mock.Mock()
+    skopeo.copy.side_effect = PreemptedException()
+
+    result = perform_mirror(skopeo, mirror)
+
+    # The PreemptedException during sync is caught internally and mirror released with FAIL
+    assert mock_release.call_count >= 1
+    # Check that at least one release call was with FAIL status
+    fail_calls = [c for c in mock_release.call_args_list if c[0][1] == RepoMirrorStatus.FAIL]
+    assert len(fail_calls) >= 1
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.release_mirror")
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+@mock.patch("workers.repomirrorworker.logs_model")
+@mock.patch("workers.repomirrorworker.tags_to_mirror")
+@mock.patch("workers.repomirrorworker.claim_mirror")
+def test_perform_mirror_generic_exception_during_sync(
+    mock_claim, mock_tags, _mock_logs, mock_token, mock_release, initialized_db, app
+):
+    """
+    When a generic Exception occurs during tag sync loop, mirror is released with FAIL.
+    """
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+
+    mock_claim.return_value = mirror
+    mock_tags.return_value = ["latest"]
+    mock_token.return_value = "robot_token"
+
+    skopeo = mock.Mock()
+    skopeo.copy.side_effect = RuntimeError("unexpected sync error")
+
+    result = perform_mirror(skopeo, mirror)
+
+    # The exception during sync is caught and mirror released with FAIL
+    assert mock_release.call_count >= 1
+    fail_calls = [c for c in mock_release.call_args_list if c[0][1] == RepoMirrorStatus.FAIL]
+    assert len(fail_calls) >= 1
