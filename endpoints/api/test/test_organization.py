@@ -99,3 +99,44 @@ def test_create_org_as_ldap_superuser_with_restricted_users_set(app):
 
     # Restore superuser list
     realapp.config["SUPER_USERS"] = superuser_list
+
+
+@pytest.mark.parametrize(
+    "is_superuser, is_restricted, expected_code",
+    [
+        # LDAP superuser + not restricted by LDAP -> allowed
+        (True, False, 201),
+        # LDAP superuser + restricted by LDAP -> allowed (superuser bypass)
+        (True, True, 201),
+        # Non-superuser + restricted -> forbidden
+        (False, True, 403),
+    ],
+)
+def test_create_org_ldap_restricted_user_no_whitelist(
+    is_superuser, is_restricted, expected_code, app
+):
+    """
+    Test org creation when FEATURE_RESTRICTED_USERS is enabled without
+    RESTRICTED_USERS_WHITELIST (the LDAP-only restricted user path).
+    Verifies LDAP superusers not matched by LDAP_RESTRICTED_USER_FILTER
+    are not incorrectly blocked.
+    """
+    suffix = f"{str(is_superuser).lower()}{str(is_restricted).lower()}"
+    body = {
+        "name": f"ldaprestrictedorg{suffix}",
+        "email": f"ldap{suffix}@email.com",
+    }
+
+    with patch("features.RESTRICTED_USERS", FeatureNameValue("RESTRICTED_USERS", True)):
+        with patch(
+            "endpoints.api.organization.usermanager.is_superuser",
+            return_value=is_superuser,
+        ):
+            with patch(
+                "endpoints.api.organization.usermanager.is_restricted_user",
+                return_value=is_restricted,
+            ):
+                with client_with_identity("devtable", app) as cl:
+                    conduct_api_call(
+                        cl, OrganizationList, "POST", None, body=body, expected_code=expected_code
+                    )
