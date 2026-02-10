@@ -470,9 +470,15 @@ class FederatedUserManager(ConfigUserManager):
         if not identifier:
             identifier = username
 
-        return self.federated_users.is_restricted_user(identifier) or super().is_restricted_user(
-            username
-        )
+        # When config whitelist is set, either source can restrict the user.
+        # When no config whitelist, LDAP result is authoritative - don't fall
+        # back to ConfigUserManager which defaults all users to restricted.
+        if super().restricted_whitelist_is_set():
+            return self.federated_users.is_restricted_user(
+                identifier
+            ) or super().is_restricted_user(username)
+
+        return self.federated_users.is_restricted_user(identifier)
 
     def has_restricted_users(self) -> bool:
         return self.federated_users.has_restricted_users() or super().has_restricted_users()
