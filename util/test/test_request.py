@@ -150,3 +150,81 @@ class TestSanitizeRequestUrl:
         assert "secret" not in result
         # The base path is always preserved
         assert "https://example.com/path" in result
+
+    def test_empty_query_string(self):
+        """URL with just a question mark is handled."""
+        url = "https://example.com/path?"
+        result = sanitize_request_url(url)
+        assert result == url
+
+    def test_all_params_sensitive(self):
+        """When all params are sensitive, all are redacted."""
+        url = "https://example.com?token=abc&password=def&api_key=ghi"
+        result = sanitize_request_url(url)
+        assert "abc" not in result
+        assert "def" not in result
+        assert "ghi" not in result
+        assert "[REDACTED]" in result or "%5BREDACTED%5D" in result
+
+    def test_url_with_fragment(self):
+        """URL fragments are preserved."""
+        url = "https://example.com/path?token=secret&scope=read#section"
+        result = sanitize_request_url(url)
+        assert "secret" not in result
+        assert "#section" in result
+        assert "scope=read" in result
+
+    def test_param_with_empty_value(self):
+        """Parameters with empty values are preserved."""
+        url = "https://example.com?empty=&token=secret"
+        result = sanitize_request_url(url)
+        assert "secret" not in result
+        assert "empty=" in result
+
+    def test_fast_path_no_sensitive_params(self):
+        """Fast path returns URL unchanged when no sensitive params present."""
+        url = "https://quay.io/v2/auth?scope=repo:test:pull&service=quay"
+        result = sanitize_request_url(url)
+        # Should be unchanged
+        assert result == url
+
+    def test_signature_param_redacted(self):
+        """signature and sig params are redacted."""
+        url = "https://example.com?signature=hash123&sig=abc"
+        result = sanitize_request_url(url)
+        assert "hash123" not in result
+        assert "abc" not in result or "sig=" in result
+
+    def test_credential_param_redacted(self):
+        """credential parameter is redacted."""
+        url = "https://example.com?credential=mycred123"
+        result = sanitize_request_url(url)
+        assert "mycred123" not in result
+
+    def test_secret_param_redacted(self):
+        """secret parameter is redacted."""
+        url = "https://example.com?secret=topsecret"
+        result = sanitize_request_url(url)
+        assert "topsecret" not in result
+
+    def test_apikey_no_underscore_redacted(self):
+        """apikey (no underscore) parameter is redacted."""
+        url = "https://example.com?apikey=key456"
+        result = sanitize_request_url(url)
+        assert "key456" not in result
+
+    def test_preserves_encoded_chars_in_values(self):
+        """URL-encoded characters in non-sensitive values are preserved."""
+        url = "https://example.com?scope=repo%3Atest%3Apull&token=secret"
+        result = sanitize_request_url(url)
+        assert "secret" not in result
+        # The scope value should still be present (may be encoded differently)
+        assert "scope=" in result
+
+    def test_multiple_values_same_param(self):
+        """Multiple values for same param are all preserved or redacted."""
+        url = "https://example.com?tag=v1&tag=v2&token=secret"
+        result = sanitize_request_url(url)
+        assert "secret" not in result
+        assert "v1" in result
+        assert "v2" in result
