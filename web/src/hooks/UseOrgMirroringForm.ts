@@ -6,7 +6,7 @@ import {Entity, EntityKind} from 'src/resources/UserResource';
 // Default form values
 export const defaultFormValues: OrgMirroringFormData = {
   isEnabled: true,
-  externalRegistryType: 'harbor',
+  externalRegistryType: '',
   externalRegistryUrl: '',
   externalNamespace: '',
   robotUsername: '',

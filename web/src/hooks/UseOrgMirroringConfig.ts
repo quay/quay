@@ -160,7 +160,7 @@ export const useOrgMirroringConfig = (
       ).replace(/\.\d{3}Z$/, 'Z');
 
       const mirrorConfig: CreateOrgMirrorConfig = {
-        external_registry_type: data.externalRegistryType,
+        external_registry_type: data.externalRegistryType as SourceRegistryType,
         external_registry_url: data.externalRegistryUrl,
         external_namespace: data.externalNamespace,
         robot_username: data.robotUsername,

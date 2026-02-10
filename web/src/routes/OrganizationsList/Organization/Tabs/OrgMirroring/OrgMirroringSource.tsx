@@ -2,6 +2,9 @@ import React, {useState} from 'react';
 import {Control, FieldErrors, Controller} from 'react-hook-form';
 import {
   FormGroup,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
   Select,
   SelectOption,
   MenuToggle,
@@ -37,31 +40,44 @@ export const OrgMirroringSource: React.FC<OrgMirroringSourceProps> = ({
         <Controller
           name="externalRegistryType"
           control={control}
-          rules={{required: 'This field is required'}}
-          render={({field: {value, onChange}}) => (
-            <Select
-              isOpen={isTypeSelectOpen}
-              onOpenChange={(isOpen) => setIsTypeSelectOpen(isOpen)}
-              onSelect={(_event, selectedValue) => {
-                onChange(selectedValue as string);
-                setIsTypeSelectOpen(false);
-              }}
-              selected={value}
-              aria-label="Source registry type"
-              toggle={(toggleRef) => (
-                <MenuToggle
-                  ref={toggleRef}
-                  onClick={() => setIsTypeSelectOpen(!isTypeSelectOpen)}
-                  isExpanded={isTypeSelectOpen}
-                  data-testid="registry-type-toggle"
-                >
-                  {registryTypeLabels[value] || value}
-                </MenuToggle>
+          rules={{required: 'Registry type is required'}}
+          render={({field: {value, onChange}, fieldState: {error}}) => (
+            <>
+              <Select
+                isOpen={isTypeSelectOpen}
+                onOpenChange={(isOpen) => setIsTypeSelectOpen(isOpen)}
+                onSelect={(_event, selectedValue) => {
+                  onChange(selectedValue as string);
+                  setIsTypeSelectOpen(false);
+                }}
+                selected={value}
+                aria-label="Source registry type"
+                toggle={(toggleRef) => (
+                  <MenuToggle
+                    ref={toggleRef}
+                    onClick={() => setIsTypeSelectOpen(!isTypeSelectOpen)}
+                    isExpanded={isTypeSelectOpen}
+                    data-testid="registry-type-toggle"
+                  >
+                    {value
+                      ? registryTypeLabels[value] || value
+                      : 'Select registry type'}
+                  </MenuToggle>
+                )}
+              >
+                <SelectOption value="harbor">Harbor</SelectOption>
+                <SelectOption value="quay">Quay</SelectOption>
+              </Select>
+              {error && (
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem variant="error">
+                      {error.message}
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
               )}
-            >
-              <SelectOption value="harbor">Harbor</SelectOption>
-              <SelectOption value="quay">Quay</SelectOption>
-            </Select>
+            </>
           )}
         />
       </FormGroup>

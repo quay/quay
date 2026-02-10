@@ -6,7 +6,7 @@ export type Visibility = 'public' | 'private';
 // Form data types for Organization Mirroring components
 export interface OrgMirroringFormData {
   isEnabled: boolean;
-  externalRegistryType: SourceRegistryType;
+  externalRegistryType: SourceRegistryType | '';
   externalRegistryUrl: string;
   externalNamespace: string;
   robotUsername: string;

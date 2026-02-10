@@ -195,7 +195,7 @@ export default function Organization() {
       component: <OrgMirroring orgName={organizationName} />,
       visible:
         !isUserOrganization &&
-        organization?.is_admin &&
+        (organization?.is_admin || organization?.is_org_admin) &&
         quayConfig?.features?.ORG_MIRROR,
     },
     {
