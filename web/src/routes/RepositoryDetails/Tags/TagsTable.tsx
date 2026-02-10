@@ -1,4 +1,4 @@
-import {Label, Spinner, Tooltip} from '@patternfly/react-core';
+import {Button, Label, Spinner, Tooltip} from '@patternfly/react-core';
 import {
   ExpandableRowContent,
   Table,
@@ -27,6 +27,7 @@ import {
   ShieldAltIcon,
   TagIcon,
   CubeIcon,
+  CopyIcon,
 } from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
 import Labels from 'src/components/labels/Labels';
@@ -154,6 +155,11 @@ function TagsTableRow(props: RowProps) {
   const rowIndex = props.rowIndex;
   const expandedView = useRecoilValue(expandedViewState);
   const location = useLocation();
+  const [isTagHovered, setIsTagHovered] = useState(false);
+  const [isDigestHovered, setIsDigestHovered] = useState(false);
+
+  const isTagCopied = props.copiedKey === `tag-${tag.name}`;
+  const isDigestCopied = props.copiedKey === `digest-${tag.name}`;
 
   // Calculate colspan dynamically based on whether actions column and pull stats columns are shown
   // Columns: expand(1) + select(1) + tag(1) + security(0-1) + size(1) + lastModified(1) + expires(1) + manifest(1) + pull(1) + pullStats(0-2) + actions(0-1)
@@ -203,7 +209,11 @@ function TagsTableRow(props: RowProps) {
             isSelected: props.selectedTags.includes(tag.name),
           }}
         />
-        <Td dataLabel={ColumnNames.name}>
+        <Td
+          dataLabel={ColumnNames.name}
+          onMouseEnter={() => setIsTagHovered(true)}
+          onMouseLeave={() => setIsTagHovered(false)}
+        >
           <Link
             to={getTagDetailPath(
               location.pathname,
@@ -246,6 +256,33 @@ function TagsTableRow(props: RowProps) {
               </Label>
             </Tooltip>
           )}
+          <span
+            className="copy-icon"
+            style={{visibility: isTagHovered ? 'visible' : 'hidden'}}
+          >
+            <Tooltip
+              content={
+                <div>
+                  {isTagCopied ? 'Copied to clipboard!' : `Copy pull spec`}
+                </div>
+              }
+              position="top"
+            >
+              <Button
+                variant="plain"
+                aria-label="Copy pull spec to clipboard"
+                onClick={() => {
+                  props.copyToClipboard(
+                    `${config?.config.SERVER_HOSTNAME}/${props.org}/${props.repo}:${tag.name}`,
+                    `tag-${tag.name}`,
+                  );
+                }}
+                style={{padding: 0, marginLeft: '8px'}}
+              >
+                <CopyIcon />
+              </Button>
+            </Tooltip>
+          </span>
         </Td>
         <Conditional if={config?.features?.SECURITY_SCANNER}>
           <Td dataLabel={ColumnNames.security}>
@@ -282,8 +319,39 @@ function TagsTableRow(props: RowProps) {
             immutable={tag.immutable}
           />
         </Td>
-        <Td dataLabel={ColumnNames.digest}>
+        <Td
+          dataLabel={ColumnNames.digest}
+          onMouseEnter={() => setIsDigestHovered(true)}
+          onMouseLeave={() => setIsDigestHovered(false)}
+        >
           {tag.manifest_digest.substring(0, 19)}
+          <span
+            className="copy-icon"
+            style={{visibility: isDigestHovered ? 'visible' : 'hidden'}}
+          >
+            <Tooltip
+              content={
+                <div>
+                  {isDigestCopied ? 'Copied to clipboard!' : `Copy digest`}
+                </div>
+              }
+              position="top"
+            >
+              <Button
+                variant="plain"
+                aria-label="Copy manifest digest to clipboard"
+                onClick={() => {
+                  props.copyToClipboard(
+                    tag.manifest_digest,
+                    `digest-${tag.name}`,
+                  );
+                }}
+                style={{padding: 0, marginLeft: '8px'}}
+              >
+                <CopyIcon />
+              </Button>
+            </Tooltip>
+          </span>
         </Td>
         <Conditional if={config?.features?.IMAGE_PULL_STATS}>
           <Td dataLabel={ColumnNames.lastPulled}>
@@ -444,6 +512,14 @@ export default function TagsTable(props: TableProps) {
     });
   const isTagExpanded = (tag: Tag) => expandedTags.includes(tag.name);
 
+  // Shared clipboard state
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+  };
+
   return (
     <>
       <Table
@@ -500,6 +576,8 @@ export default function TagsTable(props: TableProps) {
             repoDetails={props.repoDetails}
             labelCache={props.labelCache}
             setLabelCache={props.setLabelCache}
+            copyToClipboard={copyToClipboard}
+            copiedKey={copiedKey}
           />
         ))}
       </Table>
@@ -540,6 +618,8 @@ interface RowProps {
   repoDetails: RepositoryDetails;
   labelCache?: Record<string, ManifestLabel[]>;
   setLabelCache?: (cache: Record<string, ManifestLabel[]>) => void;
+  copyToClipboard: (text: string, key: string) => void;
+  copiedKey: string | null;
 }
 
 interface SubRowProps {
