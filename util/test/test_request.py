@@ -50,9 +50,9 @@ class TestSanitizeRequestUrl:
 
     def test_id_token_redacted(self):
         """id_token (JWT) parameter is redacted."""
-        url = "https://example.com/callback?id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.xxx"
+        url = "https://example.com/callback?id_token=sometoken.xxx"
         result = sanitize_request_url(url)
-        assert "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9" not in result
+        assert "sometoken" not in result
 
     def test_code_redacted(self):
         """OAuth authorization code is redacted."""
