@@ -14,7 +14,7 @@ require (
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/jojomi/go-spew v1.1.1-0.20180323180114-b94c73b27dc1
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.11.2
 	github.com/minio/minio-go/v7 v7.0.95
 	github.com/ncw/swift v1.0.53
 	github.com/olekukonko/tablewriter v0.0.5
