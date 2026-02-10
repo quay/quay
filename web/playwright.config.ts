@@ -35,6 +35,9 @@ export default defineConfig({
     // Base URL for navigation
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
 
+    // Accept self-signed certificates (needed for OpenShift CI clusters)
+    ignoreHTTPSErrors: true,
+
     // Action timeout
     actionTimeout: 30 * 1000,
 
