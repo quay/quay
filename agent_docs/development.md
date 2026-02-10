@@ -1,16 +1,18 @@
 # Local Development Setup
 
+For comprehensive onboarding documentation, see [docs/getting-started.md](/docs/getting-started.md).
+
 ## Prerequisites
 
-- Docker or Podman
-- docker-compose
+- Podman (recommended) or Docker
+- podman-compose or docker-compose
 - Python 3.12
-- Node 16+
+- Node.js 18+
 
-## Starting the Environment
+## Quick Start
 
 ```bash
-# Basic (Quay + PostgreSQL + Redis)
+# Start all services (Quay + PostgreSQL + Redis)
 make local-dev-up
 
 # With Clair security scanner
@@ -29,25 +31,40 @@ make local-dev-down
 | Redis | localhost:6379 | quay-redis |
 | Clair | localhost:6000 (internal) | quay-clair |
 
+## Podman Machine Resources
+
+If you encounter out-of-memory errors (exit code 137):
+
+```bash
+podman machine stop
+podman machine set --memory 8192 --cpus 4
+podman machine start
+```
+
 ## Applying Code Changes
 
-Code is mounted as a volume with hot-reload. For some changes:
+Backend code is mounted with hot-reload. For some changes:
 
 ```bash
 podman restart quay-quay
 ```
 
-## Volume Mounts
+## Frontend Development
 
-Ensure `docker-compose.yaml` has source code mounted:
-
-```yaml
-volumes:
-  - ".:/quay-registry"
-  - "./local-dev/stack:/quay-registry/conf/stack"
+### Legacy Angular (static/js/)
+```bash
+npm install
+npm run watch  # Auto-rebuilds on changes
 ```
 
-Without the mount, code changes won't be reflected.
+### React Frontend (web/)
+```bash
+cd web
+npm install
+npm run start  # Dev server on http://localhost:9000
+```
+
+The React dev server proxies API requests to the Quay backend at localhost:8080.
 
 ## Configuration
 
@@ -96,21 +113,6 @@ make local-docker-rebuild
 CLAIR=true make local-docker-rebuild
 ```
 
-## Frontend Development
-
-### Legacy Angular
-```bash
-npm install
-npm run watch  # Auto-rebuilds on changes
-```
-
-### React (in web/)
-```bash
-cd web
-npm install
-npm start      # Dev server on :9000
-```
-
 ## Pre-commit Hooks
 
 ```bash
@@ -118,6 +120,8 @@ make install-pre-commit-hook
 ```
 
 ## Common Issues
+
+**Out of memory (exit 137):** Increase Podman machine memory (see above)
 
 **Port conflicts:** Ensure nothing else uses 8080, 5432, 6379
 
