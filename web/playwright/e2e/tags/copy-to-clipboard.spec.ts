@@ -5,7 +5,7 @@ import {pushImage} from '../../utils/container';
 
 test.describe(
   'Tags - Copy to Clipboard Functionality',
-  {tag: ['@tags', '@copy', '@repository']},
+  {tag: ['@tags', '@copy', '@repository', '@container']},
   () => {
     let testRepo: {namespace: string; name: string; fullName: string};
 
