@@ -36,3 +36,10 @@ node_modules
 **/node_modules
 .local
 **/testdata
+
+# ignore Go rewrite files for now (root-only, not config-tool/)
+/go.mod
+/go.sum
+/cmd/
+/bin/
+/.golangci.yml

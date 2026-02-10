@@ -128,6 +128,9 @@ web/.playwright/
 local-dev/stack/quay-marketplace-api.crt
 local-dev/stack/quay-marketplace-api.key
 
+# Go build output
+bin/
+
 # claude
 .claude/plans
 .claude/implementation
