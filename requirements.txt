@@ -104,7 +104,7 @@ pytz==2019.3
 PyYAML==6.0.2
 sentry-sdk[flask]==1.40.0
 recaptcha2==0.1
-redis==7.1.0
+redis==7.1.1
 rehash==1.0.1
 requests==2.32.3
 requests-aws4auth==1.2.3
