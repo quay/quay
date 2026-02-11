@@ -70,6 +70,27 @@ services:
       wait
       "
 
+  # Splunk Enterprise - local audit log testing
+  # Web UI: http://localhost:8000 (admin/changeme1)
+  splunk:
+    container_name: quay-splunk
+    image: docker.io/splunk/splunk:latest
+    environment:
+      SPLUNK_START_ARGS: "--accept-license"
+      SPLUNK_GENERAL_TERMS: "--accept-sgt-current-at-splunk-com"
+      SPLUNK_PASSWORD: "changeme1"
+    volumes:
+      - "./local-dev/splunk/init-splunk.sh:/tmp/init-splunk.sh:ro"
+    ports:
+      - "8000:8000"   # Web UI
+      - "8089:8089"   # Management/SDK API
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -k https://localhost:8089/services/server/health/splunkd || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
+
   local-dev-frontend:
     user: ${DOCKER_USER:-root}
     container_name: quay-local-dev-frontend

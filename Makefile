@@ -303,3 +303,49 @@ enable-ldap:
 	@echo "✓ LDAP configuration merged"
 	@echo "  Backup: local-dev/stack/config.yaml.backup"
 	@echo "  Apply changes: docker-compose restart quay"
+
+.PHONY: enable-splunk
+enable-splunk:
+	@echo "Setting up Splunk for local development..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@if ! $(DOCKER_COMPOSE) ps splunk 2>/dev/null | grep -q "Up"; then \
+		echo "Starting Splunk container..."; \
+		$(DOCKER_COMPOSE) up -d splunk; \
+	fi
+	@echo "Waiting for Splunk to be healthy (this may take 60-90 seconds)..."
+	@timeout=180; \
+	while [ $$timeout -gt 0 ]; do \
+		if $(DOCKER) inspect --format='{{.State.Health.Status}}' quay-splunk 2>/dev/null | grep -q "healthy"; then \
+			break; \
+		fi; \
+		sleep 5; \
+		timeout=$$((timeout - 5)); \
+	done; \
+	if [ $$timeout -le 0 ]; then \
+		echo "Error: Splunk did not become healthy in time"; \
+		exit 1; \
+	fi
+	@echo "Initializing Splunk (creating index and token)..."
+	@$(DOCKER) exec quay-splunk bash /tmp/init-splunk.sh
+	@echo "Merging Splunk config into local-dev/stack/config.yaml..."
+	@BEARER_TOKEN=$$($(DOCKER) exec quay-splunk cat /tmp/quay_splunk_bearer_token 2>/dev/null || echo ""); \
+	if [ -z "$$BEARER_TOKEN" ]; then \
+		echo "⚠ Warning: Could not retrieve bearer token."; \
+		echo "  You may need to set bearer_token manually in config.yaml"; \
+		BEARER_TOKEN="REPLACE_WITH_BEARER_TOKEN"; \
+	fi; \
+	cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup; \
+	sed "s/BEARER_TOKEN_PLACEHOLDER/$$BEARER_TOKEN/" \
+		local-dev/splunk/splunk-config.yaml > /tmp/splunk-config-resolved.yaml; \
+	yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml /tmp/splunk-config-resolved.yaml > local-dev/stack/config.yaml.tmp; \
+	mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml; \
+	rm -f /tmp/splunk-config-resolved.yaml
+	@echo "✓ Splunk configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Splunk UI: http://localhost:8000 (admin/changeme1)"
+	@echo "  Apply changes: $(DOCKER_COMPOSE) restart quay"
