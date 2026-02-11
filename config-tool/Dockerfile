@@ -1,4 +1,4 @@
-FROM golang:1.24.8-alpine3.22
+FROM golang:1.26.0-alpine3.22
 
 RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/* && mkdir /usr/local/share/ca-certificates/extra
 WORKDIR /go/src/config-tool
