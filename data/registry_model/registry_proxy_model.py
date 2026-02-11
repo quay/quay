@@ -436,6 +436,20 @@ class ProxyModel(OCIModel):
         freshly out of the database, and a boolean indicating whether the returned
         tag was newly created or not.
         """
+        placeholder = manifest.internal_manifest_bytes.as_unicode() == ""
+
+        # PROJQUAY-8440: Serve from cache without contacting upstream if:
+        # 1. Tag is not expired (still valid in cache)
+        # 2. Manifest is not a placeholder (has full content)
+        # This allows cached images to be served even when upstream registry is unavailable
+        if not tag.expired and not placeholder:
+            logger.debug(
+                f"Serving cached manifest for {manifest_ref} "
+                f"(tag not expired, manifest complete, digest={manifest.digest})"
+            )
+            return tag, False
+
+        # Tag is expired or manifest is placeholder - need to contact upstream
         upstream_manifest = None
         upstream_digest = self._proxy.manifest_exists(manifest_ref, ACCEPTED_MEDIA_TYPES)
 
@@ -448,7 +462,6 @@ class ProxyModel(OCIModel):
         logger.debug(f"Found upstream manifest with digest {upstream_digest}, {manifest_ref=}")
         up_to_date = manifest.digest == upstream_digest
 
-        placeholder = manifest.internal_manifest_bytes.as_unicode() == ""
         if up_to_date and not placeholder:
             if tag.expired:
                 if upstream_manifest is None:
