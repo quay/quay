@@ -206,15 +206,6 @@ class NamespaceDisabled(V2RegistryException):
         super(NamespaceDisabled, self).__init__("DENIED", message, {}, 405)
 
 
-class BlobDownloadGeoBlocked(V2RegistryException):
-    def __init__(self, detail=None):
-        message = (
-            "The region from which you are pulling has been geo-ip blocked. "
-            + "Please contact the namespace owner."
-        )
-        super(BlobDownloadGeoBlocked, self).__init__("DENIED", message, detail, 403)
-
-
 class ReadOnlyMode(V2RegistryException):
     def __init__(self, detail=None):
         message = (
