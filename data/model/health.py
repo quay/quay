@@ -11,11 +11,9 @@ def sql_timeout(app_config, database, timeout):
     # Apply the context manager only if PostgreSQL is used as db schema
     if "postgresql" in app_config["DB_URI"]:
         logger.debug("Checking for existence of team roles, timeout 5000 ms.")
-        database.execute_sql("SET statement_timeout=%s;", (timeout,))
-        try:
+        with database.atomic():
+            database.execute_sql("SET LOCAL statement_timeout=%s;", (timeout,))
             yield database
-        finally:
-            database.execute_sql("SET statement_timeout=%s;", (0,))
     else:
         logger.debug("Checking for existence of team roles.")
         try:
