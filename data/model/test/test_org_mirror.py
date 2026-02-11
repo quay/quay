@@ -25,9 +25,11 @@ from data.model.org_mirror import (
     delete_org_mirror_config,
     expire_org_mirror_repo,
     get_eligible_org_mirror_repos,
+    get_enabled_org_mirror_config_count,
     get_max_id_for_org_mirror_repo,
     get_min_id_for_org_mirror_repo,
     get_org_mirror_config,
+    get_org_mirror_config_count,
     release_org_mirror_repo,
     update_org_mirror_config,
 )
@@ -1861,3 +1863,39 @@ class TestCheckOrgMirrorRepoSyncStatus:
         result = check_org_mirror_repo_sync_status(repo)
 
         assert result == OrgMirrorRepoStatus.CANCEL
+
+
+class TestGetOrgMirrorConfigCount:
+    """Tests for get_org_mirror_config_count and get_enabled_org_mirror_config_count."""
+
+    def test_get_org_mirror_config_count(self, initialized_db):
+        """
+        Creating 3 configs should result in a count of 3 (plus any pre-existing).
+        """
+        baseline = get_org_mirror_config_count()
+
+        org1, robot1 = _create_org_and_robot("count_test1a")
+        org2, robot2 = _create_org_and_robot("count_test1b")
+        org3, robot3 = _create_org_and_robot("count_test1c")
+
+        _create_org_mirror_config(org1, robot1)
+        _create_org_mirror_config(org2, robot2)
+        _create_org_mirror_config(org3, robot3)
+
+        assert get_org_mirror_config_count() == baseline + 3
+
+    def test_get_enabled_org_mirror_config_count(self, initialized_db):
+        """
+        Creating 3 configs and disabling 1 should result in enabled count of 2 (plus baseline).
+        """
+        baseline = get_enabled_org_mirror_config_count()
+
+        org1, robot1 = _create_org_and_robot("count_test2a")
+        org2, robot2 = _create_org_and_robot("count_test2b")
+        org3, robot3 = _create_org_and_robot("count_test2c")
+
+        _create_org_mirror_config(org1, robot1, is_enabled=True)
+        _create_org_mirror_config(org2, robot2, is_enabled=True)
+        _create_org_mirror_config(org3, robot3, is_enabled=False)
+
+        assert get_enabled_org_mirror_config_count() == baseline + 2

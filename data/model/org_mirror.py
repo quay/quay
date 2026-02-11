@@ -52,6 +52,20 @@ def get_org_mirror_config(org):
         return None
 
 
+def get_org_mirror_config_count():
+    """
+    Return the total number of OrgMirrorConfig entries.
+    """
+    return OrgMirrorConfig.select().count()
+
+
+def get_enabled_org_mirror_config_count():
+    """
+    Return the number of enabled OrgMirrorConfig entries.
+    """
+    return OrgMirrorConfig.select().where(OrgMirrorConfig.is_enabled == True).count()
+
+
 def create_org_mirror_config(
     organization,
     internal_robot,
