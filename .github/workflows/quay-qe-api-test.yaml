@@ -1,0 +1,161 @@
+name: Quay QE API Tests
+on:
+  pull_request:
+    branches:
+      - "*"
+    paths:
+      - "endpoints/**"
+      - ".github/actions/setup-quay/**"
+      - ".github/workflows/quay-qe-api-test.yaml"
+  issue_comment:
+    types: [created]
+
+jobs:
+  cypress:
+    name: Quay QE API Tests
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    # Only run on PR comments containing "/quay-qe-api-test" or on pull_request events
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/quay-qe-api-test') &&
+       (github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'OWNER' ||
+        github.event.comment.author_association == 'COLLABORATOR'))
+    steps:
+      - name: React to comment
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            })
+
+      - name: Checkout PR code
+        uses: actions/checkout@v6
+        with:
+          # For issue_comment trigger, checkout the PR head ref
+          ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
+
+      - name: Setup Quay
+        id: setup-quay
+        uses: ./.github/actions/setup-quay
+        with:
+          extra-config: |
+            FEATURE_USER_INITIALIZE: true
+            FEATURE_USER_METADATA: false
+            FEATURE_MAILING: false
+            FEATURE_SUPERUSER_CONFIGDUMP: true
+            PERMANENTLY_DELETE_TAGS: true
+            CREATE_NAMESPACE_ON_PUSH: true
+            FEATURE_QUOTA_MANAGEMENT: true
+            FEATURE_PROXY_CACHE: true
+          logs-artifact-name: 'quay-debug'
+
+      - name: Use Quay Initialize API to create the 1st Super User
+        run: |
+          response=$(curl -X POST ${{ steps.setup-quay.outputs.quay-url }}/api/v1/user/initialize --header 'Content-Type: application/json' \
+          --data '{ "username": "admin", "password": "password", "email": "quayqe@redhat.com", "access_token": true }')
+          echo "Initialization response: $response"
+
+      - name: Get PR number
+        id: pr
+        run: |
+          mkdir -p pr-info
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+          elif [ "${{ github.event_name }}" == "issue_comment" ]; then
+            PR_NUMBER="${{ github.event.issue.number }}"
+          fi
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "$PR_NUMBER" > pr-info/pr_number.txt
+          echo "Saved PR number: $PR_NUMBER"
+
+      - name: Create test results directory
+        run: |
+          mkdir -p ${{ github.workspace }}/test-results
+          mkdir -p ${{ github.workspace }}/cypress-videos
+          mkdir -p ${{ github.workspace }}/cypress-screenshots
+          mkdir -p ${{ github.workspace }}/cypress-results
+
+      - name: Run Cypress tests
+        run: |
+          QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
+          QUAY_HOSTNAME="${QUAY_URL#http://}"
+
+          echo "Waiting 1 minutes for Quay UI to be fully ready..."
+          sleep 30
+
+          docker run --rm \
+            --network host \
+            -e CYPRESS_QUAY_ENDPOINT="${QUAY_URL}" \
+            -e CYPRESS_QUAY_HOSTNAME="${QUAY_HOSTNAME}" \
+            -e CYPRESS_QUAY_USER="admin" \
+            -e CYPRESS_QUAY_PASSWORD="password" \
+            -e CYPRESS_QUAY_VERSION="3.16" \
+            -v ${{ github.workspace }}/test-results:/test-results \
+            -v ${{ github.workspace }}/cypress-videos:/quay-tests/quay-api-tests/cypress/videos \
+            -v ${{ github.workspace }}/cypress-screenshots:/quay-tests/quay-api-tests/cypress/screenshots \
+            -v ${{ github.workspace }}/cypress-results:/quay-tests/quay-api-tests/cypress/results \
+            quay.io/quay-qetest/ci-test-image:latest \
+            bash -c "
+              cd /quay-tests/quay-api-tests && \
+              yarn install && \
+              NO_COLOR=1 yarn run cypress run \
+                --spec 'cypress/e2e/quay_api_testing_all.cy.js' \
+                --browser chrome \
+                --headless \
+                --reporter cypress-multi-reporters \
+                --reporter-options configFile=reporter-config.json \
+                > /test-results/quay_api_testing_report
+            "
+
+      - name: Upload Cypress Test Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quay-api-test-report
+          path: ${{ github.workspace }}/test-results/quay_api_testing_report
+          retention-days: 30
+
+      - name: Upload Cypress Videos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-videos
+          path: ${{ github.workspace }}/cypress-videos
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload Cypress Screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-screenshots
+          path: ${{ github.workspace }}/cypress-screenshots
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload Cypress CTRF Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-ctrf-report
+          path: ${{ github.workspace }}/cypress-results/ctrf-report.json
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload PR number
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr-number
+          path: pr-info/pr_number.txt
+          retention-days: 30
