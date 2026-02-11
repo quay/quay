@@ -14,8 +14,10 @@ import sqlalchemy as sa
 
 
 def upgrade(op, tables, tester):
-    op.alter_column("blobupload", "byte_count", existing_type=sa.BigInteger(), nullable=False)
+    with op.batch_alter_table("blobupload") as batch_op:
+        batch_op.alter_column("byte_count", existing_type=sa.BigInteger(), nullable=False)
 
 
 def downgrade(op, tables, tester):
-    op.alter_column("blobupload", "byte_count", existing_type=sa.BigInteger(), nullable=True)
+    with op.batch_alter_table("blobupload") as batch_op:
+        batch_op.alter_column("byte_count", existing_type=sa.BigInteger(), nullable=True)

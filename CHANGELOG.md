@@ -3,8 +3,21 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.18"></a>
+## [v3.9.18] - 2026-02-05
+### Build
+- [c0b036de](https://github.com/quay/quay/commit/c0b036de345f12720494cfaab66a524b3c081949): move quay to python 3.12 for redhat 3.9 (PROJQUAY-10272) ([#4867](https://github.com/quay/quay/issues/4867))
+### Chore
+- [e85a47e1](https://github.com/quay/quay/commit/e85a47e164e2c84d377b861b5a712c9a56c3b545): remove tekton files (PROJQUAY-0000) ([#4957](https://github.com/quay/quay/issues/4957))
+### Deps
+- [bc21fed5](https://github.com/quay/quay/commit/bc21fed588775e68d971a7b6f46c88d21e475ee4): upgrade of wheel from 0.41.2 to 0.46.2 (PROJQUAY-10374) ([#4967](https://github.com/quay/quay/issues/4967))
+- [2821ab8a](https://github.com/quay/quay/commit/2821ab8a785999a8d6b750934d785ba31965cda5): Update requirements files for Python 3.12 (PROJQUAY-10272) ([#4959](https://github.com/quay/quay/issues/4959))
+- [c4e4d3b8](https://github.com/quay/quay/commit/c4e4d3b806a866f77fcaace5162e84cd4839e514): Update requirements-build.txt (PROJQUAY-10272) ([#4948](https://github.com/quay/quay/issues/4948))
+### [Redhat-3.9] Chore
+- [4676cbb0](https://github.com/quay/quay/commit/4676cbb088af97909c85ac5a688282d1da08add9): remove set buildx rc version as not needed anymore ([#4733](https://github.com/quay/quay/issues/4733))
+
 <a name="v3.9.17"></a>
-## [v3.9.17] - 2025-10-13
+## [v3.9.17] - 2025-11-11
 ### [Redhat-3.9] Deps
 - [a7ef0ba0](https://github.com/quay/quay/commit/a7ef0ba08cceae0f625929936c37184f65325bfb): update Authlib version to 1.6.5 (PROJQUAY-9441) ([#4354](https://github.com/quay/quay/issues/4354))
 
@@ -1614,7 +1627,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.17...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.18...HEAD
+[v3.9.18]: https://github.com/quay/quay/compare/v3.9.17...v3.9.18
 [v3.9.17]: https://github.com/quay/quay/compare/v3.9.16...v3.9.17
 [v3.9.16]: https://github.com/quay/quay/compare/v3.9.15...v3.9.16
 [v3.9.15]: https://github.com/quay/quay/compare/v3.9.14...v3.9.15
