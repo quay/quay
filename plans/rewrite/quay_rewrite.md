@@ -82,6 +82,9 @@ This master is intentionally concise. Detailed plans are split into sub-docs.
   - `plans/rewrite/notification_driver_inventory.md`
 - Unified CLI and mirror-registry integration:
   - External design: `https://gist.github.com/jbpratt/f23cef1dcabcac3dec55ec55578abd9a`
+- Existing Go implementation (prototype) and reconciliation:
+  - Source: `https://github.com/quay/quay-distribution`
+  - Reconciliation report: `plans/rewrite/quay_distribution_reconciliation.md`
 - Architecture diagrams (team review):
   - `plans/rewrite/architecture_diagrams.md`
 - AI agent implementation guide:
