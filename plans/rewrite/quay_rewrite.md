@@ -82,6 +82,8 @@ This master is intentionally concise. Detailed plans are split into sub-docs.
   - `plans/rewrite/notification_driver_inventory.md`
 - Unified CLI and mirror-registry integration:
   - External design: `https://gist.github.com/jbpratt/f23cef1dcabcac3dec55ec55578abd9a`
+- Architecture diagrams (team review):
+  - `plans/rewrite/architecture_diagrams.md`
 - AI agent implementation guide:
   - `plans/rewrite/ai_agent_guide.md`
 - Rollout and rollback playbooks:
