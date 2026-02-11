@@ -212,7 +212,6 @@ def _is_duplicate_namespace_policy(
 ) -> bool:
     """Check if a policy with the same tag_pattern already exists for namespace."""
     new_pattern = policy_config.get("tag_pattern")
-    new_matches = policy_config.get("tag_pattern_matches", True)
 
     for row in NamespaceImmutabilityPolicyTable.select().where(
         NamespaceImmutabilityPolicyTable.namespace == namespace_id
@@ -220,10 +219,7 @@ def _is_duplicate_namespace_policy(
         if exclude_uuid and row.uuid == exclude_uuid:
             continue
         existing = row.policy
-        if (
-            existing.get("tag_pattern") == new_pattern
-            and existing.get("tag_pattern_matches", True) == new_matches
-        ):
+        if existing.get("tag_pattern") == new_pattern:
             return True
     return False
 
@@ -233,7 +229,6 @@ def _is_duplicate_repository_policy(
 ) -> bool:
     """Check if a policy with the same tag_pattern already exists for repository."""
     new_pattern = policy_config.get("tag_pattern")
-    new_matches = policy_config.get("tag_pattern_matches", True)
 
     for row in RepositoryImmutabilityPolicyTable.select().where(
         RepositoryImmutabilityPolicyTable.repository == repo_id
@@ -241,10 +236,7 @@ def _is_duplicate_repository_policy(
         if exclude_uuid and row.uuid == exclude_uuid:
             continue
         existing = row.policy
-        if (
-            existing.get("tag_pattern") == new_pattern
-            and existing.get("tag_pattern_matches", True) == new_matches
-        ):
+        if existing.get("tag_pattern") == new_pattern:
             return True
     return False
 
@@ -283,9 +275,7 @@ def create_namespace_immutability_policy(
         namespace = get_active_namespace_user_by_username(orgname)
 
         if _is_duplicate_namespace_policy(namespace.id, policy_config):
-            raise DuplicateImmutabilityPolicy(
-                "A policy with the same tag_pattern and tag_pattern_matches already exists"
-            )
+            raise DuplicateImmutabilityPolicy("A policy with the same tag_pattern already exists")
 
         policy = NamespaceImmutabilityPolicyTable.create(
             namespace=namespace.id, policy=policy_config
@@ -340,9 +330,7 @@ def update_namespace_immutability_policy(
         }
 
         if _is_duplicate_namespace_policy(namespace.id, policy_config, exclude_uuid=uuid):
-            raise DuplicateImmutabilityPolicy(
-                "A policy with the same tag_pattern and tag_pattern_matches already exists"
-            )
+            raise DuplicateImmutabilityPolicy("A policy with the same tag_pattern already exists")
 
         NamespaceImmutabilityPolicyTable.update(policy=policy_config).where(
             NamespaceImmutabilityPolicyTable.uuid == uuid,
@@ -447,9 +435,7 @@ def create_repository_immutability_policy(
             raise InvalidRepositoryException(f"Repository does not exist: {repo_name}")
 
         if _is_duplicate_repository_policy(repo.id, policy_config):
-            raise DuplicateImmutabilityPolicy(
-                "A policy with the same tag_pattern and tag_pattern_matches already exists"
-            )
+            raise DuplicateImmutabilityPolicy("A policy with the same tag_pattern already exists")
 
         policy = RepositoryImmutabilityPolicyTable.create(
             namespace=namespace.id, repository=repo.id, policy=policy_config
@@ -509,9 +495,7 @@ def update_repository_immutability_policy(
         }
 
         if _is_duplicate_repository_policy(repo.id, policy_config, exclude_uuid=uuid):
-            raise DuplicateImmutabilityPolicy(
-                "A policy with the same tag_pattern and tag_pattern_matches already exists"
-            )
+            raise DuplicateImmutabilityPolicy("A policy with the same tag_pattern already exists")
 
         RepositoryImmutabilityPolicyTable.update(policy=policy_config).where(
             RepositoryImmutabilityPolicyTable.uuid == uuid,

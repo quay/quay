@@ -579,6 +579,43 @@ test.describe(
           authenticatedPage.getByText('Could not create immutability policy'),
         ).toBeVisible();
       });
+
+      test('rejects same pattern with different matches behavior', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization();
+        // Create a policy with tagPatternMatches=true
+        await api.orgImmutabilityPolicy(org.name, 'dev-.*', true);
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+        // Navigate to Immutability Policies tab
+        await authenticatedPage.getByTestId('Immutability Policies').click();
+
+        // Add a new policy with the same pattern but opposite behavior
+        await authenticatedPage
+          .getByTestId('add-immutability-policy-btn')
+          .click();
+
+        const secondForm = authenticatedPage.locator(
+          '#immutability-policy-form-1',
+        );
+
+        await secondForm.getByTestId('immutability-tag-pattern').fill('dev-.*');
+
+        // Select "does not match" behavior (opposite of the existing policy)
+        await secondForm
+          .getByTestId('immutability-pattern-behavior')
+          .selectOption('doesnotmatch');
+
+        await secondForm.getByTestId('save-immutability-policy-btn').click();
+
+        // Verify error - same pattern should be rejected regardless of matches behavior
+        await expect(
+          authenticatedPage.getByText('Could not create immutability policy'),
+        ).toBeVisible();
+      });
     });
   },
 );

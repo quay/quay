@@ -148,18 +148,17 @@ class TestNamespacePolicyCRUD:
         policies = get_namespace_immutability_policies(org.username)
         assert len(policies) == 2
 
-    def test_same_pattern_different_matches_allowed(self, initialized_db):
+    def test_same_pattern_different_matches_rejected(self, initialized_db):
         org = create_org("testuser9", "test9@example.com", "testorg9", "org9@example.com")
 
         create_namespace_immutability_policy(
             org.username, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": True}
         )
-        create_namespace_immutability_policy(
-            org.username, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": False}
-        )
 
-        policies = get_namespace_immutability_policies(org.username)
-        assert len(policies) == 2
+        with pytest.raises(DuplicateImmutabilityPolicy):
+            create_namespace_immutability_policy(
+                org.username, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": False}
+            )
 
 
 class TestRepositoryPolicyCRUD:
@@ -208,6 +207,19 @@ class TestRepositoryPolicyCRUD:
 
         with pytest.raises(DuplicateImmutabilityPolicy):
             create_repository_immutability_policy(org.username, repo.name, {"tag_pattern": "^v.*$"})
+
+    def test_same_pattern_different_matches_rejected(self, initialized_db):
+        org = create_org("repouser5", "repo5@example.com", "repoorg5", "repoorg5@example.com")
+        repo = create_repository(org.username, "testrepo5", None)
+
+        create_repository_immutability_policy(
+            org.username, repo.name, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": True}
+        )
+
+        with pytest.raises(DuplicateImmutabilityPolicy):
+            create_repository_immutability_policy(
+                org.username, repo.name, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": False}
+            )
 
 
 class TestEvaluatePolicies:
