@@ -13,11 +13,6 @@ from app import config_provider
 from storage import CloudFlareS3Storage, CloudFrontedS3Storage, StorageContext
 from test.fixtures import *
 from util.ipresolver import IPResolver
-from util.ipresolver.test.test_ipresolver import (
-    aws_ip_range_data,
-    test_aws_ip,
-    test_ip_range_cache,
-)
 
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
@@ -37,19 +32,17 @@ def ipranges_populated(request):
 def test_empty_ip_range_cache(empty_range_data):
     sync_token = empty_range_data["syncToken"]
     all_amazon = IPResolver._parse_amazon_ranges(empty_range_data)
-    fake_cache = {
+    return {
         "sync_token": sync_token,
     }
-    return fake_cache
 
 
 @pytest.fixture()
 def empty_range_data():
-    empty_range_data = {
+    return {
         "syncToken": 123456789,
         "prefixes": [],
     }
-    return empty_range_data
 
 
 @mock_s3
@@ -59,9 +52,9 @@ def test_direct_download(
     test_ip_range_cache,
     aws_ip_range_data,
     ipranges_populated,
-    app,
+    mock_ipresolver,
 ):
-    ipresolver = IPResolver(app)
+    ipresolver = mock_ipresolver
     if ipranges_populated:
         ipresolver.sync_token = (
             test_ip_range_cache["sync_token"]
@@ -159,8 +152,8 @@ def test_direct_download(
 
 
 @mock_s3
-def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populated, app):
-    ipresolver = IPResolver(app)
+def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populated, mock_ipresolver):
+    ipresolver = mock_ipresolver
     context = StorageContext("nyc", None, config_provider, ipresolver)
 
     # Create a test bucket and put some test content.
@@ -185,8 +178,10 @@ def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populate
 
 
 @mock_s3
-def test_direct_download_with_username(test_aws_ip, aws_ip_range_data, ipranges_populated, app):
-    ipresolver = IPResolver(app)
+def test_direct_download_with_username(
+    test_aws_ip, aws_ip_range_data, ipranges_populated, mock_ipresolver
+):
+    ipresolver = mock_ipresolver
     context = StorageContext("nyc", None, config_provider, ipresolver)
 
     # Create a test bucket and put some test content.
@@ -211,8 +206,10 @@ def test_direct_download_with_username(test_aws_ip, aws_ip_range_data, ipranges_
 
 
 @mock_s3
-def test_direct_download_with_repo_name(test_aws_ip, aws_ip_range_data, ipranges_populated, app):
-    ipresolver = IPResolver(app)
+def test_direct_download_with_repo_name(
+    test_aws_ip, aws_ip_range_data, ipranges_populated, mock_ipresolver
+):
+    ipresolver = mock_ipresolver
     context = StorageContext("nyc", None, config_provider, ipresolver)
 
     # Create a test bucket and put some test content.
@@ -237,8 +234,8 @@ def test_direct_download_with_repo_name(test_aws_ip, aws_ip_range_data, ipranges
 
 
 @mock_s3
-def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, app):
-    ipresolver = IPResolver(app)
+def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, mock_ipresolver):
+    ipresolver = mock_ipresolver
     if ipranges_populated:
         ipresolver.sync_token = test_ip_range_cache["sync_token"]
         ipresolver.amazon_ranges = test_ip_range_cache["all_amazon"]
@@ -269,9 +266,9 @@ def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, a
 
 @mock_s3
 def test_direct_download_regions(
-    app,
+    mock_ipresolver,
 ):
-    ipresolver = IPResolver(app)
+    ipresolver = mock_ipresolver
     context = StorageContext("nyc", None, config_provider, ipresolver)
     # Create a test bucket and put some test content.
     boto3.client("s3").create_bucket(Bucket="bucket")
