@@ -130,7 +130,6 @@ def registry_server_executor(app):
         Manifest.delete().execute()
         return "OK"
 
-
     def make_tag_immutable(namespace_name, repo_name, tag_name):
         from data.model.oci.tag import set_tag_immutable
 
@@ -138,8 +137,6 @@ def registry_server_executor(app):
         set_tag_immutable(repo_ref.id, tag_name, True)
         return "OK"
 
-=======
->>>>>>> 965fffa (refactor: remove geoblocking code and database models)
     executor = LiveServerExecutor()
     executor.register("generate_csrf", generate_csrf)
     executor.register("set_supports_direct_download", set_supports_direct_download)
