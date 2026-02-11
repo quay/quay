@@ -13,8 +13,7 @@ import {
   ButtonVariant,
   ActionGroup,
   Divider,
-  Text,
-  TextContent,
+  Content,
   SelectOption,
   SelectGroup,
   Spinner,
@@ -117,19 +116,19 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   }
 
   if (!repoDetails) {
-    return <Text>Repository not found</Text>;
+    return <Content component="p">Repository not found</Content>;
   }
 
   if (repoDetails.state !== 'MIRROR') {
     return (
-      <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
-        <TextContent>
-          <Text>
+      <div className="pf-v6-u-max-width-lg pf-v6-u-p-md">
+        <Content>
+          <Content component="p">
             This repository&apos;s state is <strong>{repoDetails.state}</strong>
             . Use the settings tab and change it to <strong>Mirror</strong> to
             manage its mirroring configuration.
-          </Text>
-        </TextContent>
+          </Content>
+        </Content>
       </div>
     );
   }
@@ -145,7 +144,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   }
 
   return (
-    <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
+    <div className="pf-v6-u-max-width-lg pf-v6-u-p-md">
       <Form
         isWidthLimited
         data-testid="mirror-form"
@@ -156,7 +155,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           repoName={repoName}
           isConfigured={!!configHook.config}
         />
-        <Divider className="pf-v5-u-mt-sm" />
+        <Divider className="pf-v6-u-mt-sm" />
         <MirroringConfiguration
           control={formHook.control}
           errors={formHook.errors}
@@ -198,7 +197,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         <ActionGroup>
           <Button
             variant={ButtonVariant.primary}
-            className="pf-v5-u-display-block pf-v5-u-mx-auto"
+            className="pf-v6-u-display-block pf-v6-u-mx-auto"
             type="button"
             onClick={() => formHook.onSubmit(formHook.formValues)}
             isDisabled={

@@ -1,14 +1,13 @@
 import React, {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
   TextInput,
   Alert,
-  Text,
+  Content,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 
 interface DeleteAccountModalProps {
   isOpen: boolean;
@@ -69,7 +68,7 @@ export default function DeleteAccountModal({
         variant="danger"
         isInline
         title="Warning"
-        className="pf-v5-u-mb-md"
+        className="pf-v6-u-mb-md"
       >
         <p>
           Deleting an {namespaceTitle} is <strong>non-reversible</strong> and
@@ -79,10 +78,10 @@ export default function DeleteAccountModal({
       </Alert>
 
       <Form>
-        <Text className="pf-v5-u-mb-md">
+        <Content component="p" className="pf-v6-u-mb-md">
           You must type <strong>{namespaceName}</strong> below to confirm
           deletion is requested:
-        </Text>
+        </Content>
 
         <FormGroup fieldId="verification">
           <TextInput

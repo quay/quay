@@ -6,9 +6,8 @@ import {
   FlexItem,
   Grid,
   GridItem,
-  Text,
-  TextContent,
-  TextVariants,
+  Content,
+  ContentVariants,
 } from '@patternfly/react-core';
 import {CalendarAltIcon, GlobeIcon} from '@patternfly/react-icons';
 import CoreOSLogo from 'src/assets/coreos-globe-color-lg.png';
@@ -39,10 +38,10 @@ const InfoCard: React.FC<InfoCardProps> = ({icon, label, value}) => {
             {icon}
           </FlexItem>
           <FlexItem>
-            <TextContent style={{textAlign: 'center'}}>
-              <Text component={TextVariants.h4}>{label}</Text>
-              <Text component={TextVariants.p}>{value}</Text>
-            </TextContent>
+            <Content style={{textAlign: 'center'}}>
+              <Content component={ContentVariants.h4}>{label}</Content>
+              <Content component={ContentVariants.p}>{value}</Content>
+            </Content>
           </FlexItem>
         </Flex>
       </CardBody>
@@ -74,9 +73,9 @@ const RedHatCard: React.FC<RedHatCardProps> = ({logo, value}) => {
             <img src={logo} alt="Red Hat" style={{height: '42px'}} />
           </FlexItem>
           <FlexItem>
-            <TextContent style={{textAlign: 'center'}}>
-              <Text component={TextVariants.p}>{value}</Text>
-            </TextContent>
+            <Content style={{textAlign: 'center'}}>
+              <Content component={ContentVariants.p}>{value}</Content>
+            </Content>
           </FlexItem>
         </Flex>
       </CardBody>

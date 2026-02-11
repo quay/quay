@@ -73,7 +73,7 @@ export function FilterInput(props: FilterInputProps) {
   const searchInputId = props.id ? props.id : 'toolbar-text-input';
 
   return (
-    <ToolbarItem variant="search-filter">
+    <ToolbarItem>
       <div ref={containerRef}>
         <SearchInput
           ref={searchInputRef}

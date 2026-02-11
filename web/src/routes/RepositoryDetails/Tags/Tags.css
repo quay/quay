@@ -4,7 +4,7 @@
 
 /* Expanded view styles */
 .expanded-row {
-    background-color: var(--pf-v5-global--BackgroundColor--light-100);
+    background-color: var(--pf-t--global--background--color--primary--default);
 }
 
 .expanded-row td {
@@ -13,12 +13,12 @@
 }
 
 .expanded-row-content {
-    padding: var(--pf-v5-global--spacer--sm) var(--pf-v5-global--spacer--md);
-    font-size: var(--pf-v5-global--FontSize--sm);
+    padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+    font-size: var(--pf-t--global--font--size--sm);
 }
 
 .expanded-row-section {
-    margin-bottom: var(--pf-v5-global--spacer--sm);
+    margin-bottom: var(--pf-t--global--spacer--sm);
 }
 
 .expanded-row-section:last-child {
@@ -27,9 +27,9 @@
 
 /* Manifest link styles */
 .manifest-link .id-label {
-    font-size: var(--pf-v5-global--FontSize--xs);
+    font-size: var(--pf-t--global--font--size--xs);
     padding: 2px 4px;
-    background-color: var(--pf-v5-global--BackgroundColor--200);
-    border-radius: var(--pf-v5-global--BorderRadius--sm);
-    margin-right: var(--pf-v5-global--spacer--xs);
+    background-color: var(--pf-t--global--background--color--secondary--default);
+    border-radius: var(--pf-t--global--border--radius--small);
+    margin-right: var(--pf-t--global--spacer--xs);
 }

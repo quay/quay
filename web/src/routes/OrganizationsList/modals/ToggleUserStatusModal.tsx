@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
+import {Button, Content, Alert} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useToggleUserStatus} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
@@ -69,10 +70,10 @@ export default function ToggleUserStatusModal(
         </Button>,
       ]}
     >
-      <Text>
+      <Content component="p">
         Are you sure you want to {actionLower} user{' '}
         <strong>{props.username}</strong>?
-      </Text>
+      </Content>
       {props.currentlyEnabled && (
         <Alert variant="warning" title="Note" isInline style={{marginTop: 16}}>
           Disabling this user will prevent them from logging in and accessing

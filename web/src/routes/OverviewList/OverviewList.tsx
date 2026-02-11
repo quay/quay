@@ -4,7 +4,7 @@ import {
   Tabs,
   Tab,
   TabTitleText,
-  Text,
+  Content,
   Panel,
   Brand,
   Divider,
@@ -48,12 +48,16 @@ export default function OverviewList() {
           />
           <FlexItem className="overview-info">
             <Title headingLevel="h1">Red Hat Quay.io</Title>
-            <Text>
+            <Content component="p">
               Secure, Scalable, and Flexible: Quay.io Image Registry for Cloud
               Native Applications
-            </Text>
-            <Button variant="link" style={{paddingLeft: '0'}}>
-              Learn More <ExternalLinkAltIcon />
+            </Content>
+            <Button
+              icon={<ExternalLinkAltIcon />}
+              variant="link"
+              style={{paddingLeft: '0'}}
+            >
+              Learn More
             </Button>
           </FlexItem>
         </Flex>

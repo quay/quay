@@ -427,7 +427,9 @@ export function Signin() {
                 <Link
                   to="/createaccount"
                   data-testid="signin-create-account-link"
-                  style={{color: 'var(--pf-v5-global--link--Color)'}}
+                  style={{
+                    color: 'var(--pf-t--global--text--color--link--default)',
+                  }}
                 >
                   Create account
                 </Link>

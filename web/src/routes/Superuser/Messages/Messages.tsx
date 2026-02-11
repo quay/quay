@@ -1,17 +1,15 @@
 import {
   PageSection,
-  PageSectionVariants,
   Title,
   Button,
   Spinner,
   Alert,
-  Modal,
-  ModalVariant,
   Dropdown,
   DropdownList,
   DropdownItem,
   MenuToggle,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {
   EnvelopeIcon,
   PlusIcon,
@@ -47,7 +45,7 @@ function MessagesHeader({onCreateMessage, canModify}: MessagesHeaderProps) {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <div
           className="co-m-nav-title--row"
           style={{
@@ -302,7 +300,7 @@ export default function Messages() {
         onCreateMessage={handleCreateMessage}
         canModify={canModify}
       />
-      <PageSection>{renderContent()}</PageSection>
+      <PageSection hasBodyWrapper={false}>{renderContent()}</PageSection>
 
       {/* Create Message Modal */}
       <CreateMessageForm

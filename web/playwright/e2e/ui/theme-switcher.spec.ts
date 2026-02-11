@@ -8,7 +8,7 @@ test.describe('Theme Switcher', {tag: ['@ui']}, () => {
 
     // Verify default is light (no dark class)
     await expect(authenticatedPage.locator('html')).not.toHaveClass(
-      /pf-v5-theme-dark/,
+      /pf-v6-theme-dark/,
     );
 
     // Open user menu
@@ -42,7 +42,7 @@ test.describe('Theme Switcher', {tag: ['@ui']}, () => {
 
     // Verify dark theme applied
     await expect(authenticatedPage.locator('html')).toHaveClass(
-      /pf-v5-theme-dark/,
+      /pf-v6-theme-dark/,
     );
 
     // Verify localStorage
@@ -54,7 +54,7 @@ test.describe('Theme Switcher', {tag: ['@ui']}, () => {
     // Reload and verify persistence
     await authenticatedPage.reload();
     await expect(authenticatedPage.locator('html')).toHaveClass(
-      /pf-v5-theme-dark/,
+      /pf-v6-theme-dark/,
     );
 
     // Switch to light
@@ -63,7 +63,7 @@ test.describe('Theme Switcher', {tag: ['@ui']}, () => {
 
     // Verify light theme
     await expect(authenticatedPage.locator('html')).not.toHaveClass(
-      /pf-v5-theme-dark/,
+      /pf-v6-theme-dark/,
     );
     const lightPref = await authenticatedPage.evaluate(() =>
       localStorage.getItem('theme-preference'),
@@ -80,7 +80,7 @@ test.describe('Theme Switcher', {tag: ['@ui']}, () => {
 
     // With auto theme (default), should show dark
     await expect(authenticatedPage.locator('html')).toHaveClass(
-      /pf-v5-theme-dark/,
+      /pf-v6-theme-dark/,
     );
 
     // Verify auto is still selected
@@ -92,7 +92,7 @@ test.describe('Theme Switcher', {tag: ['@ui']}, () => {
     // Switch to light preference - verify reactive change
     await authenticatedPage.emulateMedia({colorScheme: 'light'});
     await expect(authenticatedPage.locator('html')).not.toHaveClass(
-      /pf-v5-theme-dark/,
+      /pf-v6-theme-dark/,
     );
   });
 });

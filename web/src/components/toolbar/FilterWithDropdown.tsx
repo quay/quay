@@ -24,7 +24,7 @@ export function FilterWithDropdown(props: FilterWithDropdownProps) {
   );
 
   return (
-    <ToolbarItem variant="search-filter">
+    <ToolbarItem>
       <Dropdown
         onSelect={() => setIsOpen(false)}
         toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
@@ -50,12 +50,11 @@ export function FilterWithDropdown(props: FilterWithDropdownProps) {
             <TextInputGroupUtilities>
               {!!props.searchState.query && (
                 <Button
+                  icon={<TimesIcon aria-hidden />}
                   variant="plain"
                   onClick={() => setSearchState('')}
                   aria-label="Clear input value"
-                >
-                  <TimesIcon aria-hidden />
-                </Button>
+                />
               )}
             </TextInputGroupUtilities>
           </MenuToggle>

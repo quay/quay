@@ -118,7 +118,7 @@ export default function ImmutabilityPolicyForm(
       <DataList
         aria-label={`Immutability policy ${props.index}`}
         isCompact
-        className="pf-v5-u-mb-sm"
+        className="pf-v6-u-mb-sm"
       >
         <DataListItem aria-labelledby={`policy-${props.index}`}>
           <DataListItemRow>
@@ -144,22 +144,20 @@ export default function ImmutabilityPolicyForm(
               aria-label="Actions"
             >
               <Button
+                icon={<PencilAltIcon />}
                 variant="plain"
                 onClick={() => setIsEditing(true)}
                 aria-label="Edit policy"
                 data-testid="edit-immutability-policy-btn"
-              >
-                <PencilAltIcon />
-              </Button>
+              />
               {props.onDelete && (
                 <Button
+                  icon={<TrashIcon />}
                   variant="plain"
                   onClick={handleDelete}
                   aria-label="Delete policy"
                   data-testid="delete-immutability-policy-btn"
-                >
-                  <TrashIcon />
-                </Button>
+                />
               )}
             </DataListAction>
           </DataListItemRow>
@@ -228,7 +226,7 @@ export default function ImmutabilityPolicyForm(
           </HelperText>
         </FormHelperText>
       </FormGroup>
-      <ActionGroup className="pf-v5-u-m-0">
+      <ActionGroup className="pf-v6-u-m-0">
         <Button
           variant="primary"
           type="submit"
@@ -252,12 +250,12 @@ export default function ImmutabilityPolicyForm(
 
   // Inline mode: render form without card wrapper
   if (props.isInline) {
-    return <div className="pf-v5-u-p-md">{formContent}</div>;
+    return <div className="pf-v6-u-p-md">{formContent}</div>;
   }
 
   // Default: render form in card
   return (
-    <Card isFlat className="pf-v5-u-mb-md">
+    <Card className="pf-v6-u-mb-md">
       <CardBody>{formContent}</CardBody>
     </Card>
   );

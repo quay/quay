@@ -97,7 +97,7 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
           props.tag,
           queryParams,
         )}
-        className={'pf-v5-u-display-inline-flex pf-v5-u-align-items-center'}
+        className={'pf-v6-u-display-inline-flex pf-v6-u-align-items-center'}
         style={{textDecoration: 'none'}}
       >
         <CheckCircleIcon
@@ -123,7 +123,7 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
           props.tag,
           queryParams,
         )}
-        className={'pf-v5-u-display-inline-flex pf-v5-u-align-items-center'}
+        className={'pf-v6-u-display-inline-flex pf-v6-u-align-items-center'}
         style={{textDecoration: 'none'}}
       >
         <ExclamationTriangleIcon
@@ -146,7 +146,7 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
       return (
         <div
           key={severity.toString()}
-          className={'pf-v5-u-display-flex pf-v5-u-align-items-center'}
+          className={'pf-v6-u-display-flex pf-v6-u-align-items-center'}
         >
           <ExclamationTriangleIcon
             color={getSeverityColor(severity)}

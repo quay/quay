@@ -1,8 +1,7 @@
 import {
   PageSection,
-  PageSectionVariants,
   Title,
-  TextContent,
+  Content,
   Spinner,
   Card,
   CardBody,
@@ -21,7 +20,7 @@ function ChangeLogHeader() {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Change Log</Title>
         </div>
@@ -46,7 +45,7 @@ export default function ChangeLog() {
   return (
     <>
       <ChangeLogHeader />
-      <PageSection>
+      <PageSection hasBodyWrapper={false}>
         {changeLogLoading ? (
           <div style={{textAlign: 'center', padding: '2rem'}}>
             <Spinner size="lg" />
@@ -60,7 +59,7 @@ export default function ChangeLog() {
         ) : changeLog?.log ? (
           <Card>
             <CardBody>
-              <TextContent>
+              <Content>
                 <Markdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeRaw]}
@@ -95,7 +94,7 @@ export default function ChangeLog() {
                 >
                   {changeLog.log}
                 </Markdown>
-              </TextContent>
+              </Content>
             </CardBody>
           </Card>
         ) : (

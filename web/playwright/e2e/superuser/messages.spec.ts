@@ -95,7 +95,7 @@ test.describe(
       });
 
       await superuserPage.goto('/messages');
-      await expect(superuserPage.locator('.pf-v5-c-spinner')).toBeVisible();
+      await expect(superuserPage.locator('.pf-v6-c-spinner')).toBeVisible();
     });
 
     // Read-only superuser tests use the existing readonlyPage fixture

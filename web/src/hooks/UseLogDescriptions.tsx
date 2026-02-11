@@ -97,7 +97,7 @@ export function useLogDescriptions() {
           borderRadius: '3px',
           fontFamily: 'monospace',
           fontSize: '0.9em',
-          color: 'var(--pf-v5-global--Color--200)',
+          color: 'var(--pf-t--global--text--color--subtle)',
         }}
       >
         {value}

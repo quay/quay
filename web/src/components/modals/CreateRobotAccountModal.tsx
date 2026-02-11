@@ -1,14 +1,12 @@
 import {SetStateAction, useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
-  Text,
-  TextContent,
-  TextVariants,
+  Content,
+  ContentVariants,
   Wizard,
   WizardHeader,
   WizardStep,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import NameAndDescription from './robotAccountWizard/NameAndDescription';
 import {useCreateRobotAccount} from 'src/hooks/useRobotAccounts';
 
@@ -142,11 +140,11 @@ export default function CreateRobotAccountModal(
       key="robot-name-and-desc"
     >
       <>
-        <TextContent>
-          <Text component={TextVariants.h1}>
+        <Content>
+          <Content component={ContentVariants.h1}>
             Provide robot account name and description
-          </Text>
-        </TextContent>
+          </Content>
+        </Content>
         <NameAndDescription
           name={robotName}
           setName={setRobotName}

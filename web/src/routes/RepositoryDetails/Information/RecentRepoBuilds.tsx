@@ -4,9 +4,8 @@ import {
   CardTitle,
   Flex,
   Spinner,
-  Text,
-  TextContent,
-  TextVariants,
+  Content,
+  ContentVariants,
   Tooltip,
 } from '@patternfly/react-core';
 import {OutlinedClockIcon} from '@patternfly/react-icons';
@@ -60,26 +59,26 @@ export default function RecentRepoBuilds({
 
         {/* Error State */}
         {isError && (
-          <TextContent>
-            <Text component={TextVariants.small}>
+          <Content>
+            <Content component={ContentVariants.small}>
               Unable to load recent builds.
-            </Text>
-          </TextContent>
+            </Content>
+          </Content>
         )}
 
         {/* Empty State */}
         {!isLoading && !isError && (!builds || builds.length === 0) && (
           <div className="recent-builds-empty">
-            <TextContent>
-              <Text component={TextVariants.p}>
+            <Content>
+              <Content component={ContentVariants.p}>
                 No builds have been run for this repository.
-              </Text>
+              </Content>
               {canWrite && (
-                <Text component={TextVariants.small}>
+                <Content component={ContentVariants.small}>
                   Click on the Builds tab to start a new build.
-                </Text>
+                </Content>
               )}
-            </TextContent>
+            </Content>
           </div>
         )}
 

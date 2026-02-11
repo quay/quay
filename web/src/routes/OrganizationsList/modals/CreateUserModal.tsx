@@ -1,7 +1,5 @@
 import {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Form,
   FormGroup,
   TextInput,
@@ -9,6 +7,7 @@ import {
   Alert,
   ClipboardCopy,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useForm} from 'react-hook-form';
 import {useCreateUser} from 'src/hooks/UseCreateUser';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';

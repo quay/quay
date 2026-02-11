@@ -1,7 +1,6 @@
-import {ChartDonut} from '@patternfly/react-charts';
+import {ChartDonut} from '@patternfly/react-charts/victory';
 import {
   PageSection,
-  PageSectionVariants,
   Skeleton,
   Split,
   SplitItem,
@@ -41,15 +40,15 @@ function PackagesSummary(props: PackageStatsProps) {
 
   return (
     <div>
-      <div className="pf-v5-u-mt-xl pf-v5-u-ml-2xl">
+      <div className="pf-v6-u-mt-xl pf-v6-u-ml-2xl">
         <Title
           headingLevel="h1"
           size={TitleSizes['3xl']}
-          className="pf-v5-u-mb-sm"
+          className="pf-v6-u-mb-sm"
         >
           {packagesMessage}
         </Title>
-        <Title headingLevel="h3" className="pf-v5-u-mb-lg">
+        <Title headingLevel="h3" className="pf-v6-u-mb-lg">
           {availableMessage}
         </Title>
 
@@ -58,10 +57,10 @@ function PackagesSummary(props: PackageStatsProps) {
             return;
             {
               props.stats.Pending === 0 ? (
-                <div className="pf-v5-u-mb-sm" key={vulnLevel}>
+                <div className="pf-v6-u-mb-sm" key={vulnLevel}>
                   <BundleIcon
                     color={getSeverityColor(vulnLevel as VulnerabilitySeverity)}
-                    className="pf-v5-u-mr-md"
+                    className="pf-v6-u-mr-md"
                   />
                   <b>{props.stats[vulnLevel]}</b>
                   <PackageMessage vulnLevel={vulnLevel} />
@@ -168,7 +167,7 @@ export function PackagesChart(props: PackageChartProps) {
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <Split>
         <SplitItem data-testid="packages-chart">
           <PackagesDonutChart

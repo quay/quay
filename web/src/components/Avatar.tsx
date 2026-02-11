@@ -18,7 +18,7 @@ export default function Avatar({
 }: AvatarProps) {
   const firstLetter = avatar.name ? avatar.name.charAt(0).toUpperCase() : '?';
 
-  // PatternFly 5 Avatar sizing standards
+  // PatternFly Avatar sizing standards
   const sizeMap: Record<
     AvatarSize,
     {width: string; height: string; fontSize: string}
@@ -48,7 +48,7 @@ export default function Avatar({
 
   return (
     <div
-      className={`pf-v5-c-avatar ${className}`}
+      className={`pf-v6-c-avatar ${className}`}
       style={avatarStyle}
       title={`${avatar.name} avatar`}
       aria-label={`${avatar.name} avatar`}

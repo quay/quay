@@ -2,10 +2,7 @@ import {
   Button,
   EmptyState,
   EmptyStateBody,
-  EmptyStateIcon,
   PageSection,
-  PageSectionVariants,
-  EmptyStateHeader,
   EmptyStateFooter,
 } from '@patternfly/react-core';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
@@ -22,15 +19,13 @@ export default function RequestError(props: RequestErrorProps) {
     props.title !== undefined ? props.title : 'Unable to complete request';
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
-      <EmptyState variant="full">
-        {title && (
-          <EmptyStateHeader
-            titleText={title}
-            icon={<EmptyStateIcon icon={ExclamationTriangleIcon} />}
-            headingLevel="h1"
-          />
-        )}
+    <PageSection hasBodyWrapper={false}>
+      <EmptyState
+        headingLevel="h1"
+        icon={ExclamationTriangleIcon}
+        titleText={title}
+        variant="full"
+      >
         <EmptyStateBody>{message}</EmptyStateBody>
         <EmptyStateFooter>
           <Button title="Home" onClick={() => window.location.reload()}>

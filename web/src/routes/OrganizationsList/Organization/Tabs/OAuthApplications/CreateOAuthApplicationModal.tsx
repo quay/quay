@@ -1,5 +1,6 @@
 import React from 'react';
-import {Modal, ModalVariant, Button, Form} from '@patternfly/react-core';
+import {Button, Form} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useUI} from 'src/contexts/UIContext';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {useOAuthApplicationForm} from 'src/hooks/UseOAuthApplicationForm';

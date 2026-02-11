@@ -1,7 +1,5 @@
 import React, {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
@@ -13,8 +11,9 @@ import {
   Flex,
   FlexItem,
   Spinner,
-  Text,
+  Content,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useConvertAccount} from 'src/hooks/UseConvertAccount';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -178,14 +177,16 @@ export default function ChangeAccountTypeModal({
         <FormGroup label="Organization Name" fieldId="org-name">
           <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
             <Avatar avatar={user?.avatar} size="sm" />
-            <Text>{user?.username}</Text>
+            <Content component="p">{user?.username}</Content>
           </div>
-          <Text
+          <Content
             component="small"
-            style={{color: 'var(--pf-v5-global--Color--200)'}}
+            style={{
+              color: 'var(--pf-t--global--text--color--subtle)',
+            }}
           >
             This will continue to be the namespace for your repositories
-          </Text>
+          </Content>
         </FormGroup>
 
         <FormGroup label="Admin User" fieldId="admin-user">
@@ -206,16 +207,18 @@ export default function ChangeAccountTypeModal({
             isRequired
             style={{marginTop: '8px'}}
           />
-          <Text
+          <Content
             component="small"
-            style={{color: 'var(--pf-v5-global--Color--200)'}}
+            style={{
+              color: 'var(--pf-t--global--text--color--subtle)',
+            }}
           >
             The username and password for the account that will become an
             administrator of the organization. Note that this account{' '}
             <strong>must be a separate registered account</strong> from the
             account that you are trying to convert, and{' '}
             <strong>must already exist</strong>.
-          </Text>
+          </Content>
         </FormGroup>
       </Form>
     </div>
@@ -351,7 +354,7 @@ export default function ChangeAccountTypeModal({
           variant="danger"
           isInline
           title="Error"
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
         >
           {error}
         </Alert>

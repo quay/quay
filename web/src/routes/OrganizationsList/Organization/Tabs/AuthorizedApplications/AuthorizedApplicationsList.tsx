@@ -1,10 +1,8 @@
 import {useState, useCallback, useEffect} from 'react';
 import {
   PageSection,
-  PageSectionVariants,
-  Text,
-  TextContent,
-  TextVariants,
+  Content,
+  ContentVariants,
   Alert,
   Spinner,
   Button,
@@ -159,7 +157,7 @@ export default function AuthorizedApplicationsList() {
 
     if (!popup || popup.closed || typeof popup.closed === 'undefined') {
       addAlert({
-        variant: AlertVariant.Warning,
+        variant: AlertVariant.warning,
         title:
           'Popup was blocked by your browser. Please allow popups for this site and try again.',
       });
@@ -188,7 +186,7 @@ export default function AuthorizedApplicationsList() {
 
   if (isLoading) {
     return (
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Spinner size="lg" />
       </PageSection>
     );
@@ -196,23 +194,25 @@ export default function AuthorizedApplicationsList() {
 
   if (error) {
     return (
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Alert variant="danger" title="Cannot load authorized applications" />
       </PageSection>
     );
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
-      <TextContent>
-        <Text component={TextVariants.h1}>Authorized Applications</Text>
-        <Text component={TextVariants.p}>
+    <PageSection hasBodyWrapper={false}>
+      <Content>
+        <Content component={ContentVariants.h1}>
+          Authorized Applications
+        </Content>
+        <Content component={ContentVariants.p}>
           The authorized applications panel lists applications you have
           authorized to view information and perform actions on your behalf. You
           can revoke any of your authorizations by clicking &quot;Revoke
           Authorization&quot; from the kebab menu.
-        </Text>
-      </TextContent>
+        </Content>
+      </Content>
 
       {authorizedApps.length === 0 && assignedApps.length === 0 ? (
         <Alert
@@ -263,7 +263,11 @@ export default function AuthorizedApplicationsList() {
                         {app.application.name}
                       </span>
                     )}
-                    <span style={{color: 'var(--pf-v5-global--Color--200)'}}>
+                    <span
+                      style={{
+                        color: 'var(--pf-t--global--text--color--subtle)',
+                      }}
+                    >
                       by {app.application.organization.name}
                     </span>
                   </div>
@@ -272,7 +276,7 @@ export default function AuthorizedApplicationsList() {
                   {app.scopes.map((scopeInfo) => (
                     <span
                       key={scopeInfo.scope}
-                      className="pf-v5-c-label pf-m-blue"
+                      className="pf-v6-c-label pf-m-blue"
                       style={{marginRight: '4px'}}
                       title={scopeInfo.description}
                     >
@@ -320,7 +324,11 @@ export default function AuthorizedApplicationsList() {
                         {app.application.name}
                       </span>
                     )}
-                    <span style={{color: 'var(--pf-v5-global--Color--200)'}}>
+                    <span
+                      style={{
+                        color: 'var(--pf-t--global--text--color--subtle)',
+                      }}
+                    >
                       {app.application.organization.name}
                     </span>
                   </div>
@@ -329,7 +337,7 @@ export default function AuthorizedApplicationsList() {
                   {app.scopes.map((scopeInfo) => (
                     <span
                       key={scopeInfo.scope}
-                      className="pf-v5-c-label pf-m-blue"
+                      className="pf-v6-c-label pf-m-blue"
                       style={{marginRight: '4px'}}
                       title={scopeInfo.description}
                     >

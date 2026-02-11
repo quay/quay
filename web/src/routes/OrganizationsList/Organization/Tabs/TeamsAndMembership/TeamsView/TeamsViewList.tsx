@@ -8,7 +8,6 @@ import {
   MenuToggle,
   MenuToggleElement,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Spinner,
   Tooltip,
@@ -249,7 +248,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
 
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <ErrorModal
           title="Team deletion failed"
           error={err}
@@ -286,7 +285,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
             <Tr>
               <Th />
               <Conditional if={showSyncColumn}>
-                <Th modifier="center" />
+                <Th textCenter />
               </Conditional>
               <Th sort={getSortableSort(1)}>{teamViewColumnNames.teamName}</Th>
               <Th sort={getSortableSort(2)}>{teamViewColumnNames.members}</Th>
@@ -309,7 +308,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
                   }}
                 />
                 <Conditional if={showSyncColumn}>
-                  <Td modifier="center">
+                  <Td textCenter>
                     {team.is_synced && (
                       <Tooltip content="Team is synchronized with a backing group">
                         <SyncIcon data-test-id="sync-icon" />

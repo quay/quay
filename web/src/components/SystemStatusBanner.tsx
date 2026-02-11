@@ -29,7 +29,6 @@ export default function SystemStatusBanner() {
     <>
       {inReadOnlyMode && (
         <Banner
-          variant="default"
           data-testid="readonly-mode-banner"
           screenReaderText="Read-only mode warning"
         >
@@ -42,7 +41,7 @@ export default function SystemStatusBanner() {
       )}
       {inAccountRecoveryMode && (
         <Banner
-          variant="gold"
+          color="yellow"
           data-testid="account-recovery-mode-banner"
           screenReaderText="Account recovery mode warning"
         >

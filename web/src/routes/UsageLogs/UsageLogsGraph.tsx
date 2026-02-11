@@ -5,7 +5,7 @@ import {
   ChartLegend,
   ChartGroup,
   ChartVoronoiContainer,
-} from '@patternfly/react-charts';
+} from '@patternfly/react-charts/victory';
 import {getAggregateLogs} from 'src/hooks/UseUsageLogs';
 
 import {useQuery} from '@tanstack/react-query';
