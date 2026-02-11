@@ -1,0 +1,106 @@
+name: Quay QE API Test Results
+on:
+  workflow_run:
+    workflows: ["Quay QE API Tests"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'GitHub Actions run ID to download artifacts from'
+        required: true
+        type: string
+      pr_number:
+        description: 'PR number to post results to'
+        required: true
+        type: string
+
+jobs:
+  publish-results:
+    name: Publish Test Results
+    runs-on: ubuntu-22.04
+    # Run on workflow_run for pull_request events OR manual dispatch
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'pull_request'
+
+    permissions:
+      # Required to post comments on PRs
+      pull-requests: write
+      # Required to add annotations
+      checks: write
+      # Required to download artifacts
+      actions: read
+
+    steps:
+    - name: Set run ID and PR number
+      id: setup
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "run_id=${{ inputs.run_id }}" >> $GITHUB_OUTPUT
+          echo "pr_number=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
+          echo "Using manual inputs: run_id=${{ inputs.run_id }}, pr_number=${{ inputs.pr_number }}"
+        else
+          echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
+          echo "Using workflow_run: run_id=${{ github.event.workflow_run.id }}"
+        fi
+
+    - name: Download test results
+      uses: dawidd6/action-download-artifact@v8
+      with:
+        name: cypress-ctrf-report
+        workflow: quay-qe-api-test.yaml
+        run_id: ${{ steps.setup.outputs.run_id }}
+        path: ./test-results
+
+    - name: Download PR number artifact
+      if: github.event_name != 'workflow_dispatch'
+      uses: dawidd6/action-download-artifact@v8
+      with:
+        name: pr-number
+        workflow: quay-qe-api-test.yaml
+        run_id: ${{ steps.setup.outputs.run_id }}
+        path: ./pr-info
+
+    - name: Read PR number
+      id: pr
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          PR_NUMBER="${{ steps.setup.outputs.pr_number }}"
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "Using manual PR number: $PR_NUMBER"
+        elif [ -f pr-info/pr_number.txt ]; then
+          PR_NUMBER=$(cat pr-info/pr_number.txt)
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "Found PR number from artifact: $PR_NUMBER"
+        else
+          echo "Error: pr_number.txt not found"
+          exit 1
+        fi
+
+    - name: Check for CTRF report
+      id: check-report
+      run: |
+        if [ -f test-results/ctrf-report.json ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "CTRF report found"
+          cat test-results/ctrf-report.json
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "Warning: CTRF report not found"
+        fi
+
+    - name: Publish test results to PR
+      if: steps.check-report.outputs.exists == 'true'
+      uses: ctrf-io/github-test-reporter@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        report-path: test-results/ctrf-report.json
+        issue: ${{ steps.pr.outputs.number }}
+        title: 'Quay QE API Test Results'
+        annotate: true
+        on-fail-only: false
+        overwrite-comment: true
+        collapse-large-reports: true
+        summary-report: true
+        community-report: true
+        community-report-name: failed-detailed

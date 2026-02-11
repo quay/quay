@@ -173,6 +173,17 @@ runs:
         docker compose up -d redis quay-db
         docker exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 
+    - name: Build Angular static files
+      shell: bash
+      env:
+        NODE_OPTIONS: --openssl-legacy-provider
+      run: |
+        echo "Building Angular static files for old UI..."
+        npm clean-install
+        npm run build
+        echo "Static files built successfully"
+        ls -la static/build/ || echo "Warning: static/build/ directory not found"
+
     - name: Start Quay container
       shell: bash
       run: |
