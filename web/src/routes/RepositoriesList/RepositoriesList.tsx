@@ -1,4 +1,4 @@
-import {ReactElement, useEffect, useState} from 'react';
+import {ReactElement, useEffect, useState, useMemo} from 'react';
 import {
   PageSection,
   PageSectionVariants,
@@ -28,7 +28,11 @@ import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import ErrorModal from 'src/components/errors/ErrorModal';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
-import {RepositoryListColumnNames} from './ColumnNames';
+import {
+  RepositoryListColumnNames,
+  repositoryDefaultColumns,
+} from './ColumnNames';
+import {useColumnManagement} from 'src/hooks/useColumnManagement';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
@@ -75,9 +79,24 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const {repos, loading, error, search, setSearch, searchFilter} =
     useRepositories(currentOrg);
 
-  repos?.sort((r1, r2) => {
-    return r1.last_modified > r2.last_modified ? -1 : 1;
+  // Column management for table column visibility
+  const {columns, isColumnVisible, saveColumns} = useColumnManagement({
+    storageKey: 'repositories-list',
+    defaultColumns: repositoryDefaultColumns,
   });
+
+  // Filter columns shown in modal based on feature flags
+  const visibleColumns = useMemo(() => {
+    return columns.filter((col) => {
+      if (col.id === 'size') {
+        return (
+          quayConfig?.features?.QUOTA_MANAGEMENT &&
+          quayConfig?.features?.EDIT_QUOTA
+        );
+      }
+      return true;
+    });
+  }, [columns, quayConfig?.features]);
 
   const repositoryList: RepoListTableItem[] = repos?.map((repo) => {
     return {
@@ -360,28 +379,35 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           setSelectedRepoNames={setSelectedRepoNames}
           paginatedRepositoryList={paginatedRepositoryList}
           onSelectRepo={onSelectRepo}
+          columns={visibleColumns}
+          onSaveColumns={saveColumns}
         />
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
               <Th />
-              <Th modifier="wrap" sort={getSortableSort(0)}>
-                {RepositoryListColumnNames.name}
-              </Th>
-              <Th modifier="wrap" sort={getSortableSort(1)}>
-                {RepositoryListColumnNames.visibility}
-              </Th>
-              {quayConfig?.features.QUOTA_MANAGEMENT &&
-              quayConfig?.features.EDIT_QUOTA ? (
-                <Th modifier="wrap" sort={getSortableSort(2)}>
-                  {RepositoryListColumnNames.size}
+              {isColumnVisible('name') && (
+                <Th modifier="wrap" sort={getSortableSort(0)}>
+                  {RepositoryListColumnNames.name}
                 </Th>
-              ) : (
-                <></>
               )}
-              <Th modifier="wrap" sort={getSortableSort(3)}>
-                {RepositoryListColumnNames.lastModified}
-              </Th>
+              {isColumnVisible('visibility') && (
+                <Th modifier="wrap" sort={getSortableSort(1)}>
+                  {RepositoryListColumnNames.visibility}
+                </Th>
+              )}
+              {isColumnVisible('size') &&
+                quayConfig?.features.QUOTA_MANAGEMENT &&
+                quayConfig?.features.EDIT_QUOTA && (
+                  <Th modifier="wrap" sort={getSortableSort(2)}>
+                    {RepositoryListColumnNames.size}
+                  </Th>
+                )}
+              {isColumnVisible('lastModified') && (
+                <Th modifier="wrap" sort={getSortableSort(3)}>
+                  {RepositoryListColumnNames.lastModified}
+                </Th>
+              )}
             </Tr>
           </Thead>
           <Tbody data-testid="repository-list-table">
@@ -404,74 +430,79 @@ export default function RepositoriesList(props: RepositoriesListProps) {
                       isDisabled: !isRepoSelectable(repo),
                     }}
                   />
-                  <Td dataLabel={RepositoryListColumnNames.name}>
-                    <Flex alignItems={{default: 'alignItemsCenter'}}>
-                      <FlexItem spacer={{default: 'spacerSm'}}>
-                        <Avatar
-                          avatar={generateAvatarFromName(
-                            currentOrg == null ? repo.namespace : currentOrg,
+                  {isColumnVisible('name') && (
+                    <Td dataLabel={RepositoryListColumnNames.name}>
+                      <Flex alignItems={{default: 'alignItemsCenter'}}>
+                        <FlexItem spacer={{default: 'spacerSm'}}>
+                          <Avatar
+                            avatar={generateAvatarFromName(
+                              currentOrg == null ? repo.namespace : currentOrg,
+                            )}
+                            size="sm"
+                          />
+                        </FlexItem>
+                        <FlexItem>
+                          {currentOrg == null ? (
+                            <Link
+                              to={getRepoDetailPath(
+                                location.pathname,
+                                repo.namespace,
+                                repo.name,
+                              )}
+                            >
+                              {repo.namespace}/{repo.name}
+                            </Link>
+                          ) : (
+                            <Link
+                              to={getRepoDetailPath(
+                                location.pathname,
+                                repo.namespace,
+                                repo.name,
+                              )}
+                            >
+                              {repo.name}
+                            </Link>
                           )}
-                          size="sm"
-                        />
-                      </FlexItem>
-                      <FlexItem>
-                        {currentOrg == null ? (
-                          <Link
-                            to={getRepoDetailPath(
-                              location.pathname,
-                              repo.namespace,
-                              repo.name,
-                            )}
-                          >
-                            {repo.namespace}/{repo.name}
-                          </Link>
-                        ) : (
-                          <Link
-                            to={getRepoDetailPath(
-                              location.pathname,
-                              repo.namespace,
-                              repo.name,
-                            )}
-                          >
-                            {repo.name}
-                          </Link>
-                        )}
-                      </FlexItem>
-                    </Flex>
-                  </Td>
-                  <Td dataLabel={RepositoryListColumnNames.visibility}>
-                    {repo.is_public ? 'public' : 'private'}
-                  </Td>
-                  {quayConfig?.features.QUOTA_MANAGEMENT &&
-                  quayConfig?.features.EDIT_QUOTA ? (
-                    <Td dataLabel={RepositoryListColumnNames.size}>
-                      {(() => {
-                        const sizeDisplay =
-                          repo.size != null ? formatSize(repo.size) : '';
-
-                        if (repo.configured_quota) {
-                          const percentage =
-                            repo.size != null
-                              ? Math.round(
-                                  (repo.size / repo.configured_quota) * 100,
-                                )
-                              : 0;
-
-                          // Combine size and percentage: "1.5 GiB (45%)" or "N/A (0%)"
-                          const displaySize = sizeDisplay || 'N/A';
-                          return `${displaySize} (${percentage}%)`;
-                        }
-
-                        // No configured quota - just show size or empty
-                        return sizeDisplay;
-                      })()}
+                        </FlexItem>
+                      </Flex>
                     </Td>
-                  ) : (
-                    <></>
                   )}
-                  <Td dataLabel={RepositoryListColumnNames.lastModified}>
-                    {formatDate(repo.last_modified)}
-                  </Td>
+                  {isColumnVisible('visibility') && (
+                    <Td dataLabel={RepositoryListColumnNames.visibility}>
+                      {repo.is_public ? 'public' : 'private'}
+                    </Td>
+                  )}
+                  {isColumnVisible('size') &&
+                    quayConfig?.features.QUOTA_MANAGEMENT &&
+                    quayConfig?.features.EDIT_QUOTA && (
+                      <Td dataLabel={RepositoryListColumnNames.size}>
+                        {(() => {
+                          const sizeDisplay =
+                            repo.size != null ? formatSize(repo.size) : '';
+
+                          if (repo.configured_quota) {
+                            const percentage =
+                              repo.size != null
+                                ? Math.round(
+                                    (repo.size / repo.configured_quota) * 100,
+                                  )
+                                : 0;
+
+                            // Combine size and percentage: "1.5 GiB (45%)" or "N/A (0%)"
+                            const displaySize = sizeDisplay || 'N/A';
+                            return `${displaySize} (${percentage}%)`;
+                          }
+
+                          // No configured quota - just show size or empty
+                          return sizeDisplay;
+                        })()}
+                      </Td>
+                    )}
+                  {isColumnVisible('lastModified') && (
+                    <Td dataLabel={RepositoryListColumnNames.lastModified}>
+                      {formatDate(repo.last_modified)}
+                    </Td>
+                  )}
                 </Tr>
               ))
             )}
