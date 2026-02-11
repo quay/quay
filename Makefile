@@ -303,3 +303,22 @@ enable-ldap:
 	@echo "✓ LDAP configuration merged"
 	@echo "  Backup: local-dev/stack/config.yaml.backup"
 	@echo "  Apply changes: docker-compose restart quay"
+
+.PHONY: enable-oidc
+enable-oidc:
+	@echo "Merging Keycloak OIDC config into local-dev/stack/config.yaml..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@if ! $(DOCKER_COMPOSE) ps keycloak 2>/dev/null | grep -q "Up"; then \
+		echo "⚠ Warning: Keycloak container not running. Start with: docker-compose up -d keycloak"; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/keycloak/keycloak-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "✓ Keycloak OIDC configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Apply changes: docker-compose restart quay"
