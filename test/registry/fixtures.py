@@ -15,7 +15,6 @@ from data.database import (
     ImageStorage,
     Manifest,
     ManifestBlob,
-    NamespaceGeoRestriction,
     QueueItem,
     User,
     close_db_filter,
@@ -131,14 +130,6 @@ def registry_server_executor(app):
         Manifest.delete().execute()
         return "OK"
 
-    def set_geo_block_for_namespace(namespace_name, iso_country_code):
-        NamespaceGeoRestriction.create(
-            namespace=User.get(username=namespace_name),
-            description="",
-            unstructured_json={},
-            restricted_region_iso_code=iso_country_code,
-        )
-        return "OK"
 
     def make_tag_immutable(namespace_name, repo_name, tag_name):
         from data.model.oci.tag import set_tag_immutable
@@ -147,6 +138,8 @@ def registry_server_executor(app):
         set_tag_immutable(repo_ref.id, tag_name, True)
         return "OK"
 
+=======
+>>>>>>> 965fffa (refactor: remove geoblocking code and database models)
     executor = LiveServerExecutor()
     executor.register("generate_csrf", generate_csrf)
     executor.register("set_supports_direct_download", set_supports_direct_download)
@@ -159,7 +152,6 @@ def registry_server_executor(app):
     executor.register("reload_app", reload_app)
     executor.register("disable_namespace", disable_namespace)
     executor.register("delete_manifests", delete_manifests)
-    executor.register("set_geo_block_for_namespace", set_geo_block_for_namespace)
     executor.register("make_tag_immutable", make_tag_immutable)
     return executor
 
