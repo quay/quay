@@ -11,6 +11,7 @@ import {
   useUpdateTeamRepoPerm,
 } from 'src/hooks/UseTeams';
 import {SetRepoPermForTeamRoleDropDown} from './SetRepoPermForTeamRoleDropDown';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {formatDate} from 'src/libs/utils';
 
 export const setRepoPermForTeamColumnNames = {
@@ -66,7 +67,7 @@ export default function SetRepoPermissionForTeamModal(
             ([repoPerm, error]) => (
               <p key={repoPerm}>
                 Could not update repo permission for {repoPerm}:{' '}
-                {error.error.message}
+                {getErrorMessageFromUnknown(error.error)}
               </p>
             ),
           )}

@@ -1,24 +1,11 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
-import {pushImage, isContainerRuntimeAvailable} from '../../utils/container';
+import {pushImage} from '../../utils/container';
 
 test.describe(
   'Tag Immutability',
-  {tag: ['@tags', '@immutability', '@feature:IMMUTABLE_TAGS']},
+  {tag: ['@tags', '@immutability', '@feature:IMMUTABLE_TAGS', '@container']},
   () => {
-    let hasContainerRuntime = false;
-
-    test.beforeAll(async () => {
-      hasContainerRuntime = await isContainerRuntimeAvailable();
-    });
-
-    test.beforeEach(async () => {
-      test.skip(
-        !hasContainerRuntime,
-        'Skipping: no container runtime available to push test images',
-      );
-    });
-
     test('can make a tag immutable via kebab menu', async ({
       authenticatedPage,
       api,
@@ -670,6 +657,77 @@ test.describe(
 
       // Verify the expiration column shows "Never"
       await expect(tagRow.getByText('Never')).toBeVisible();
+    });
+
+    // PROJQUAY-10500: Verify error messages show server details, not "Undefined"
+    test('deleting an immutable tag shows server error message', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await pushImage(
+        repo.namespace,
+        repo.name,
+        'v1.0.0',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      // Wait for tag to render (UI loads tag as mutable)
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
+      ).toBeVisible();
+
+      // Make tag immutable via API while UI still shows stale mutable state.
+      // This simulates a tag becoming immutable after the page was loaded
+      // (e.g., by an admin or policy), which is a valid real-world scenario.
+      await api.raw.setTagImmutability(
+        repo.namespace,
+        repo.name,
+        'v1.0.0',
+        true,
+      );
+
+      // Open kebab menu and click "Remove" (still enabled due to stale state)
+      const tagRow = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
+      });
+      await tagRow.getByLabel('Tag actions kebab').click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Remove', exact: true})
+        .click();
+
+      // Wait for delete modal
+      await expect(
+        authenticatedPage.getByRole('dialog', {
+          name: /Delete the following tag/,
+        }),
+      ).toBeVisible();
+
+      // Click Delete to trigger the DELETE request (server will reject)
+      await authenticatedPage.getByRole('button', {name: 'Delete'}).click();
+
+      // Wait for the danger alert to appear
+      const dangerAlert = authenticatedPage
+        .locator('.pf-v5-c-alert.pf-m-danger')
+        .last();
+      await expect(dangerAlert).toBeVisible({timeout: 10000});
+
+      // Verify the alert title
+      await expect(dangerAlert).toContainText('Could not delete tag');
+
+      // Expand the alert to reveal the detailed error message
+      await dangerAlert.locator('.pf-v5-c-alert__toggle button').click();
+
+      // Verify the alert contains the server's specific error message
+      await expect(dangerAlert).toContainText(
+        "Cannot delete immutable tag 'v1.0.0'",
+      );
+
+      // Verify "Undefined" does NOT appear in the alert
+      await expect(dangerAlert).not.toContainText('Undefined');
     });
   },
 );
