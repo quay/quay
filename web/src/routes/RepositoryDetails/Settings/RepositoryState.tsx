@@ -9,6 +9,7 @@ import {Form, FormGroup, Button} from '@patternfly/react-core';
 
 export const RepositoryStateForm = (props: StateProps) => {
   const [selectedState, setSelectedState] = useState(props.repoDetails.state);
+  const isOrgMirror = props.repoDetails.state === 'ORG_MIRROR';
   const handleSubmit = (e) => {
     e.preventDefault();
     setState(selectedState as IRepositoryState);
@@ -22,6 +23,20 @@ export const RepositoryStateForm = (props: StateProps) => {
 
   if (loadingSetState) {
     return <Spinner size="md" />;
+  }
+
+  if (isOrgMirror) {
+    return (
+      <Form>
+        <FormGroup fieldId="repository-state">
+          <Alert
+            isInline
+            variant="info"
+            title="This repository is managed by organization-level mirroring. Its state cannot be changed manually."
+          />
+        </FormGroup>
+      </Form>
+    );
   }
 
   return (

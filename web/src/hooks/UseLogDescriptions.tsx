@@ -222,6 +222,98 @@ export function useLogDescriptions() {
         </>
       );
     },
+    org_mirror_enabled: function (metadata: Metadata) {
+      const target =
+        metadata.external_registry_url && metadata.external_namespace
+          ? `${metadata.external_registry_url}/${metadata.external_namespace}`
+          : metadata.external_registry_url || 'external registry';
+      return <>Organization mirroring enabled for {wrapVariable(target)}</>;
+    },
+    org_mirror_disabled: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirroring disabled
+          {metadata.external_reference && (
+            <> for {wrapVariable(metadata.external_reference)}</>
+          )}
+        </>
+      );
+    },
+    org_mirror_config_changed: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror configuration updated
+          {metadata.external_reference && (
+            <> for {wrapVariable(metadata.external_reference)}</>
+          )}
+        </>
+      );
+    },
+    org_mirror_sync_now_requested: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror sync triggered
+          {metadata.external_reference && (
+            <> for {wrapVariable(metadata.external_reference)}</>
+          )}
+        </>
+      );
+    },
+    org_mirror_sync_cancelled: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror sync cancelled
+          {metadata.external_reference && (
+            <> for {wrapVariable(metadata.external_reference)}</>
+          )}
+        </>
+      );
+    },
+    org_mirror_sync_started: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror sync started
+          {metadata.message && <> - {wrapVariable(metadata.message)}</>}
+        </>
+      );
+    },
+    org_mirror_sync_success: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror sync completed successfully
+          {metadata.message && <> - {wrapVariable(metadata.message)}</>}
+        </>
+      );
+    },
+    org_mirror_sync_failed: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror sync failed
+          {metadata.message && <> - {wrapVariable(metadata.message)}</>}
+        </>
+      );
+    },
+    org_mirror_repo_created: function (metadata: Metadata) {
+      return (
+        <>
+          Repository created by organization mirroring
+          {metadata.external_reference && (
+            <> from {wrapVariable(metadata.external_reference)}</>
+          )}
+        </>
+      );
+    },
+    org_mirror_repo_creation_failed: function (metadata: Metadata) {
+      return (
+        <>
+          Repository creation failed during organization mirroring
+          {metadata.external_reference && (
+            <> for {wrapVariable(metadata.external_reference)}</>
+          )}
+          {metadata.error && <> - {wrapVariable(metadata.error)}</>}
+        </>
+      );
+    },
     repo_mirror_sync_started: function (metadata: Metadata) {
       return `Mirror started for ${metadata.message}`;
     },

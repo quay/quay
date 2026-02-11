@@ -9,6 +9,7 @@ import {API_URL} from '../config';
 
 export type RepositoryVisibility = 'public' | 'private';
 export type RepositoryState = 'NORMAL' | 'MIRROR' | 'READ_ONLY';
+export type OrgMirrorVisibility = 'public' | 'private';
 export type TeamRole = 'member' | 'creator' | 'admin';
 export type PrototypeRole = 'read' | 'write' | 'admin';
 export type MessageSeverity = 'info' | 'warning' | 'error';
@@ -41,6 +42,38 @@ export interface GetTagsResponse {
   has_additional: boolean;
 }
 
+// Organization mirror types
+export interface OrgMirrorConfig {
+  external_registry_type: 'harbor' | 'quay';
+  external_registry_url: string;
+  external_namespace: string;
+  robot_username?: string | null;
+  visibility: OrgMirrorVisibility;
+  sync_interval: number;
+  sync_start_date?: string | null;
+  is_enabled?: boolean;
+  external_registry_username?: string | null;
+  external_registry_password?: string | null;
+  external_registry_config?: {
+    verify_tls?: boolean;
+    proxy?: {
+      http_proxy?: string | null;
+      https_proxy?: string | null;
+      no_proxy?: string | null;
+    };
+  };
+  repository_filters?: string[];
+  skopeo_timeout?: number;
+}
+
+export interface OrgMirrorConfigResponse extends OrgMirrorConfig {
+  sync_status: string;
+  sync_retries_remaining: number;
+  sync_expiration_date: string | null;
+  creation_date: string | null;
+}
+
+// Repository-level mirror types
 export interface MirrorConfig {
   external_reference: string;
   sync_interval: number;
@@ -1976,6 +2009,140 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to delete immutability policy ${policyUuid} from ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // Organization mirror methods
+
+  async createOrgMirrorConfig(
+    orgName: string,
+    config: OrgMirrorConfig,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/mirror`,
+      {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: config,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create org mirror config for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async getOrgMirrorConfig(
+    orgName: string,
+  ): Promise<OrgMirrorConfigResponse | null> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/organization/${orgName}/mirror`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (response.status() === 404) {
+      return null;
+    }
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get org mirror config for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async updateOrgMirrorConfig(
+    orgName: string,
+    updates: Partial<OrgMirrorConfig>,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/organization/${orgName}/mirror`,
+      {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: updates,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to update org mirror config for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async deleteOrgMirrorConfig(orgName: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/mirror`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete org mirror config for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async triggerOrgMirrorSync(orgName: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/mirror/sync-now`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to trigger org mirror sync for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async cancelOrgMirrorSync(orgName: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/mirror/sync-cancel`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to cancel org mirror sync for ${orgName}: ${response.status()} - ${body}`,
       );
     }
   }
