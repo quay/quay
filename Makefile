@@ -339,7 +339,8 @@ enable-splunk:
 		BEARER_TOKEN="REPLACE_WITH_BEARER_TOKEN"; \
 	fi; \
 	cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup; \
-	sed "s/BEARER_TOKEN_PLACEHOLDER/$$BEARER_TOKEN/" \
+	ESCAPED_TOKEN=$$(echo "$$BEARER_TOKEN" | sed 's/[\/&]/\\&/g'); \
+	sed "s/BEARER_TOKEN_PLACEHOLDER/$$ESCAPED_TOKEN/" \
 		local-dev/splunk/splunk-config.yaml > /tmp/splunk-config-resolved.yaml; \
 	yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
 		local-dev/stack/config.yaml /tmp/splunk-config-resolved.yaml > local-dev/stack/config.yaml.tmp; \

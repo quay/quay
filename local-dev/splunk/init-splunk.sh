@@ -41,6 +41,7 @@ echo "Enabling token authentication..."
 curl -sf -k -u "${AUTH}" \
     "${BASE_URL}/services/admin/token-auth/tokens_auth" \
     -d "disabled=false" >/dev/null 2>&1 || true
+sleep 5
 
 # Check if we already have a saved token
 if [ -f "${TOKEN_OUTPUT_FILE}" ]; then

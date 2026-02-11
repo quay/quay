@@ -85,7 +85,7 @@ services:
       - "8000:8000"   # Web UI
       - "8089:8089"   # Management/SDK API
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf -k https://localhost:8089/services/server/health/splunkd || exit 1"]
+      test: ["CMD-SHELL", "curl -sf -k -u admin:changeme1 https://localhost:8089/services/server/health/splunkd || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 12

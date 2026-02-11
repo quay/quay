@@ -12,7 +12,7 @@ make local-dev-up
 make enable-splunk
 
 # 3. Restart Quay to apply
-podman restart quay-quay
+docker compose restart quay    # or: podman restart quay-quay
 ```
 
 ## Connection Details
@@ -36,7 +36,7 @@ podman restart quay-quay
 
 ```bash
 cp local-dev/stack/config.yaml.backup local-dev/stack/config.yaml
-podman restart quay-quay
+docker compose restart quay    # or: podman restart quay-quay
 ```
 
 ## Troubleshooting
