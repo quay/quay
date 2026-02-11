@@ -140,6 +140,13 @@ def registry_server_executor(app):
         )
         return "OK"
 
+    def make_tag_immutable(namespace_name, repo_name, tag_name):
+        from data.model.oci.tag import set_tag_immutable
+
+        repo_ref = registry_model.lookup_repository(namespace_name, repo_name)
+        set_tag_immutable(repo_ref.id, tag_name, True)
+        return "OK"
+
     executor = LiveServerExecutor()
     executor.register("generate_csrf", generate_csrf)
     executor.register("set_supports_direct_download", set_supports_direct_download)
@@ -153,6 +160,7 @@ def registry_server_executor(app):
     executor.register("disable_namespace", disable_namespace)
     executor.register("delete_manifests", delete_manifests)
     executor.register("set_geo_block_for_namespace", set_geo_block_for_namespace)
+    executor.register("make_tag_immutable", make_tag_immutable)
     return executor
 
 

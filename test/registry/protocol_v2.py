@@ -45,6 +45,7 @@ class V2ProtocolSteps(Enum):
     MOUNT_BLOB = "mount-blob"
     CATALOG = "catalog"
     LIST_TAGS = "list-tags"
+    DELETE_MANIFEST = "delete-manifest"
     START_UPLOAD = "start-upload"
     GET_BLOB = "get-blob"
 
@@ -98,6 +99,10 @@ class V2Protocol(RegistryProtocol):
             Failures.MIRROR_ROBOT_MISSING: 401,
             Failures.READONLY_REGISTRY: 405,
             Failures.INVALID_MANIFEST: 400,
+            Failures.TAG_IMMUTABLE: 409,
+        },
+        V2ProtocolSteps.DELETE_MANIFEST: {
+            Failures.TAG_IMMUTABLE: 409,
         },
         V2ProtocolSteps.PUT_MANIFEST_LIST: {
             Failures.INVALID_MANIFEST_IN_LIST: 400,
@@ -752,7 +757,7 @@ class V2Protocol(RegistryProtocol):
                 "DELETE",
                 "/v2/%s/manifests/%s" % (self.repo_name(namespace, repo_name), tag_name),
                 headers=headers,
-                expected_status=202,
+                expected_status=(202, expected_failure, V2ProtocolSteps.DELETE_MANIFEST),
             )
 
     def pull(
