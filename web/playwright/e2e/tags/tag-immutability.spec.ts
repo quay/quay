@@ -659,6 +659,49 @@ test.describe(
       await expect(tagRow.getByText('Never')).toBeVisible();
     });
 
+    test('Never expiration is not clickable for immutable tags', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await pushImage(
+        repo.namespace,
+        repo.name,
+        'immutable-tag',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+      await api.raw.setTagImmutability(
+        repo.namespace,
+        repo.name,
+        'immutable-tag',
+        true,
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      const tagRow = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-tag',
+          exact: true,
+        }),
+      });
+
+      // Verify "Never" is visible but is NOT rendered as a link
+      const neverText = tagRow.getByText('Never');
+      await expect(neverText).toBeVisible();
+
+      // Should not be inside an <a> tag (not clickable)
+      const neverLink = tagRow.locator('a', {hasText: 'Never'});
+      await expect(neverLink).not.toBeVisible();
+
+      // Click "Never" text and verify modal does NOT open
+      await neverText.click();
+      await expect(
+        authenticatedPage.getByTestId('edit-expiration-tags'),
+      ).not.toBeVisible();
+    });
+
     // PROJQUAY-10500: Verify error messages show server details, not "Undefined"
     test('deleting an immutable tag shows server error message', async ({
       authenticatedPage,
