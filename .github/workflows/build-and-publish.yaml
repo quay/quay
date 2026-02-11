@@ -113,7 +113,7 @@ jobs:
         with:
           platforms: linux/amd64,linux/ppc64le,linux/s390x
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}-amd64-ppc64le-s390x
 
       - name: Clean up
         if: success() || failure()
@@ -158,7 +158,7 @@ jobs:
         with:
           platforms: linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}-arm64
 
   create-manifest:
     name: Create multi-arch manifest
