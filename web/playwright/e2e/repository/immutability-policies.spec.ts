@@ -542,6 +542,89 @@ test.describe(
       });
     });
 
+    test.describe('Permanence Warning', () => {
+      test('shows warning when creating a new org policy', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization();
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+        // Navigate to Immutability Policies tab
+        await authenticatedPage.getByTestId('Immutability Policies').click();
+
+        // Click "Add Policy" button
+        await authenticatedPage
+          .getByTestId('add-immutability-policy-btn')
+          .click();
+
+        // Verify the permanence warning is visible
+        await expect(
+          authenticatedPage.getByText('Immutability is permanent per tag.'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByText(
+            'Removing this policy will not remove immutability from tags',
+          ),
+        ).toBeVisible();
+      });
+
+      test('does not show warning when editing an existing org policy', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization();
+        await api.orgImmutabilityPolicy(org.name, 'v[0-9]+\\..*', true);
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+        // Navigate to Immutability Policies tab
+        await authenticatedPage.getByTestId('Immutability Policies').click();
+
+        // Wait for policy to load
+        await expect(
+          authenticatedPage.getByTestId('immutability-tag-pattern-display'),
+        ).toContainText('v[0-9]+\\..*');
+
+        // Click edit button
+        await authenticatedPage
+          .getByTestId('edit-immutability-policy-btn')
+          .click();
+
+        // Verify the permanence warning is NOT visible
+        await expect(
+          authenticatedPage.getByText('Immutability is permanent per tag.'),
+        ).not.toBeVisible();
+      });
+
+      test('shows warning when creating a new repo policy', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const repo = await api.repository();
+
+        await authenticatedPage.goto(
+          `/repository/${repo.fullName}?tab=settings`,
+        );
+
+        // Navigate to Repository Immutability Policies tab
+        await authenticatedPage
+          .getByTestId('settings-tab-repositoryimmutabilitypolicies')
+          .click();
+
+        // Click "Add Policy" button
+        await authenticatedPage
+          .getByTestId('add-repo-immutability-policy-btn')
+          .click();
+
+        // Verify the permanence warning is visible
+        await expect(
+          authenticatedPage.getByText('Immutability is permanent per tag.'),
+        ).toBeVisible();
+      });
+    });
+
     test.describe('Error Handling', () => {
       test('displays error for duplicate policy pattern', async ({
         authenticatedPage,

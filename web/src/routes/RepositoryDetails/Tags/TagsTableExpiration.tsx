@@ -66,15 +66,16 @@ export default function TagExpiration(props: TagExpirationProps) {
   }
 
   const showNever =
-    isNullOrUndefined(props.expiration) ||
-    (props.immutable && !canImmutableTagsExpire);
+    isNullOrUndefined(props.expiration) || isImmutableAndCannotExpire;
 
   return (
     <>
       {showNever ? (
         isImmutableAndCannotExpire ? (
           <Tooltip content="Immutable tags cannot have expiration">
-            {message}
+            <span tabIndex={0} aria-label="Immutable tags cannot expire">
+              {message}
+            </span>
           </Tooltip>
         ) : (
           <a onClick={() => setIsEditExpirationModalOpen(true)}>{message}</a>
