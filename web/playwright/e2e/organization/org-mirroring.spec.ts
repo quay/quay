@@ -21,16 +21,22 @@ async function fillRequiredFields(
   page: Page,
   robotFullName: string,
   options: {
+    registryType?: string;
     registryUrl?: string;
     namespace?: string;
     syncInterval?: string;
   } = {},
 ) {
   const {
+    registryType = 'Quay',
     registryUrl = 'https://quay.io',
     namespace = 'projectquay',
     syncInterval = '60',
   } = options;
+
+  // Select registry type (required field)
+  await page.getByTestId('registry-type-toggle').click();
+  await page.getByRole('option', {name: registryType}).click();
 
   await page.getByTestId('registry-url-input').fill(registryUrl);
   await page.getByTestId('namespace-input').fill(namespace);
@@ -605,12 +611,9 @@ test.describe(
         authenticatedPage.getByTestId('org-mirror-form'),
       ).toBeVisible();
 
-      // Select Harbor registry type
-      await authenticatedPage.getByTestId('registry-type-toggle').click();
-      await authenticatedPage.getByRole('option', {name: 'Harbor'}).click();
-
-      // Fill in required fields with Harbor URL
+      // Fill in required fields with Harbor registry type
       await fillRequiredFields(authenticatedPage, robot.fullName, {
+        registryType: 'Harbor',
         registryUrl: 'https://harbor.example.com',
         namespace: 'library',
       });

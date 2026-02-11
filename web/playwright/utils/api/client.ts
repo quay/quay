@@ -47,10 +47,10 @@ export interface OrgMirrorConfig {
   external_registry_type: 'harbor' | 'quay';
   external_registry_url: string;
   external_namespace: string;
-  robot_username: string;
+  robot_username?: string | null;
   visibility: OrgMirrorVisibility;
   sync_interval: number;
-  sync_start_date: string;
+  sync_start_date?: string | null;
   is_enabled?: boolean;
   external_registry_username?: string | null;
   external_registry_password?: string | null;
