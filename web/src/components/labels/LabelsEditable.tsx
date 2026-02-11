@@ -1,4 +1,5 @@
 import {Label as ImageLabel} from 'src/resources/TagResource';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {
   Button,
   DescriptionList,
@@ -58,7 +59,8 @@ export default function EditableLabels(props: EditableLabelsProps) {
           {Array.from(errorCreatingLabelsDetails.getErrors()).map(
             ([label, error]) => (
               <p key={label}>
-                Could not create label {label}: {error.error.message}
+                Could not create label {label}:{' '}
+                {getErrorMessageFromUnknown(error.error)}
               </p>
             ),
           )}
@@ -82,7 +84,8 @@ export default function EditableLabels(props: EditableLabelsProps) {
           {Array.from(errorDeletingLabelsDetails.getErrors()).map(
             ([label, error]) => (
               <p key={label}>
-                Could not delete label {label}: {error.error.message}
+                Could not delete label {label}:{' '}
+                {getErrorMessageFromUnknown(error.error)}
               </p>
             ),
           )}

@@ -19,14 +19,20 @@ export default function TagExpiration(props: TagExpirationProps) {
   const canImmutableTagsExpire =
     quayConfig?.config?.FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE ?? false;
 
+  const isImmutableAndCannotExpire = props.immutable && !canImmutableTagsExpire;
+
   let message: ReactElement = null;
   // If immutable and config disallows expiration, show "Never" even if expiration is set
-  if (
-    isNullOrUndefined(props.expiration) ||
-    (props.immutable && !canImmutableTagsExpire)
-  ) {
+  if (isNullOrUndefined(props.expiration) || isImmutableAndCannotExpire) {
     message = (
-      <span style={{color: '#aaa', textDecoration: 'underline dotted'}}>
+      <span
+        style={{
+          color: '#aaa',
+          ...(isImmutableAndCannotExpire
+            ? {}
+            : {textDecoration: 'underline dotted'}),
+        }}
+      >
         Never
       </span>
     );
@@ -60,13 +66,20 @@ export default function TagExpiration(props: TagExpirationProps) {
   }
 
   const showNever =
-    isNullOrUndefined(props.expiration) ||
-    (props.immutable && !canImmutableTagsExpire);
+    isNullOrUndefined(props.expiration) || isImmutableAndCannotExpire;
 
   return (
     <>
       {showNever ? (
-        <a onClick={() => setIsEditExpirationModalOpen(true)}>{message}</a>
+        isImmutableAndCannotExpire ? (
+          <Tooltip content="Immutable tags cannot have expiration">
+            <span tabIndex={0} aria-label="Immutable tags cannot expire">
+              {message}
+            </span>
+          </Tooltip>
+        ) : (
+          <a onClick={() => setIsEditExpirationModalOpen(true)}>{message}</a>
+        )
       ) : (
         <Tooltip
           content={formatDate(new Date(props.expiration).getTime() / 1000)}

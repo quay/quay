@@ -148,18 +148,28 @@ class TestNamespacePolicyCRUD:
         policies = get_namespace_immutability_policies(org.username)
         assert len(policies) == 2
 
-    def test_same_pattern_different_matches_allowed(self, initialized_db):
+    def test_same_pattern_different_matches_rejected(self, initialized_db):
         org = create_org("testuser9", "test9@example.com", "testorg9", "org9@example.com")
 
         create_namespace_immutability_policy(
             org.username, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": True}
         )
-        create_namespace_immutability_policy(
-            org.username, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": False}
-        )
 
-        policies = get_namespace_immutability_policies(org.username)
-        assert len(policies) == 2
+        with pytest.raises(DuplicateImmutabilityPolicy):
+            create_namespace_immutability_policy(
+                org.username, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": False}
+            )
+
+    def test_update_to_duplicate_pattern_raises(self, initialized_db):
+        org = create_org("testuser10", "test10@example.com", "testorg10", "org10@example.com")
+
+        create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+        second = create_namespace_immutability_policy(org.username, {"tag_pattern": "^release-.*$"})
+
+        with pytest.raises(DuplicateImmutabilityPolicy):
+            update_namespace_immutability_policy(
+                org.username, second.uuid, {"tag_pattern": "^v.*$"}
+            )
 
 
 class TestRepositoryPolicyCRUD:
@@ -208,6 +218,33 @@ class TestRepositoryPolicyCRUD:
 
         with pytest.raises(DuplicateImmutabilityPolicy):
             create_repository_immutability_policy(org.username, repo.name, {"tag_pattern": "^v.*$"})
+
+    def test_same_pattern_different_matches_rejected(self, initialized_db):
+        org = create_org("repouser5", "repo5@example.com", "repoorg5", "repoorg5@example.com")
+        repo = create_repository(org.username, "testrepo5", None)
+
+        create_repository_immutability_policy(
+            org.username, repo.name, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": True}
+        )
+
+        with pytest.raises(DuplicateImmutabilityPolicy):
+            create_repository_immutability_policy(
+                org.username, repo.name, {"tag_pattern": "^dev-.*$", "tag_pattern_matches": False}
+            )
+
+    def test_update_to_duplicate_pattern_raises(self, initialized_db):
+        org = create_org("repouser6", "repo6@example.com", "repoorg6", "repoorg6@example.com")
+        repo = create_repository(org.username, "testrepo6", None)
+
+        create_repository_immutability_policy(org.username, repo.name, {"tag_pattern": "^v.*$"})
+        second = create_repository_immutability_policy(
+            org.username, repo.name, {"tag_pattern": "^release-.*$"}
+        )
+
+        with pytest.raises(DuplicateImmutabilityPolicy):
+            update_repository_immutability_policy(
+                org.username, repo.name, second.uuid, {"tag_pattern": "^v.*$"}
+            )
 
 
 class TestEvaluatePolicies:
