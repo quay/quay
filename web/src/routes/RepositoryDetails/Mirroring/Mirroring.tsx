@@ -28,6 +28,7 @@ import {useFetchTeams} from 'src/hooks/UseTeams';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {Entity} from 'src/resources/UserResource';
 import {useQueryClient} from '@tanstack/react-query';
+import {Link} from 'react-router-dom';
 import './Mirroring.css';
 
 interface MirroringProps {
@@ -126,8 +127,21 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         <TextContent>
           <Text>
             This repository&apos;s state is <strong>{repoDetails.state}</strong>
-            . Use the settings tab and change it to <strong>Mirror</strong> to
-            manage its mirroring configuration.
+            .{' '}
+            {repoDetails.state === 'ORG_MIRROR' ? (
+              <>
+                Mirroring is managed at the organization level. Use the{' '}
+                <Link to={`/organization/${namespace}?tab=Mirroring`}>
+                  organization mirroring settings
+                </Link>{' '}
+                to manage mirroring configuration.
+              </>
+            ) : (
+              <>
+                Use the settings tab and change it to <strong>Mirror</strong> to
+                manage its mirroring configuration.
+              </>
+            )}
           </Text>
         </TextContent>
       </div>

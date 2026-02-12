@@ -9,6 +9,7 @@ import {
 import {useEffect} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useSetTagImmutability} from 'src/hooks/UseTags';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {isNullOrUndefined} from 'src/libs/utils';
 
 export default function ImmutabilityModal(props: ImmutabilityModalProps) {
@@ -49,7 +50,7 @@ export default function ImmutabilityModal(props: ImmutabilityModalProps) {
             ([tag, error]) => (
               <p key={tag}>
                 Could not update immutability for tag {tag}:{' '}
-                {error.error.message}
+                {getErrorMessageFromUnknown(error.error)}
               </p>
             ),
           )}

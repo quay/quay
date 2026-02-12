@@ -77,6 +77,7 @@ class Failures(Enum):
     MIRROR_MISCONFIGURED = "mirror-misconfigured"
     MIRROR_ROBOT_MISSING = "mirror-robot-missing"
     READONLY_REGISTRY = "readonly-registry"
+    TAG_IMMUTABLE = "tag-immutable"
 
 
 class ProtocolOptions(object):

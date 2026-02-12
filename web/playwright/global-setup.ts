@@ -81,7 +81,7 @@ async function globalSetup(config: FullConfig) {
     // Each user creation requires a fresh context and CSRF token
     for (const [role, user] of Object.entries(TEST_USERS)) {
       // Create a fresh context for each user to avoid CSRF token issues
-      const userContext = await browser.newContext();
+      const userContext = await browser.newContext({ignoreHTTPSErrors: true});
       const userRequest = userContext.request;
 
       try {

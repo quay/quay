@@ -7,6 +7,7 @@ import {BillingInformation} from './BillingInformation';
 import {CliConfiguration} from './CLIConfiguration';
 import {GeneralSettings} from './GeneralSettings';
 import ImmutabilityPolicies from './ImmutabilityPolicies';
+import {OrgMirroringState} from './OrgMirroringState';
 import {ProxyCacheConfig} from './ProxyCacheConfig';
 import {QuotaManagement} from './QuotaManagement';
 
@@ -71,6 +72,14 @@ export default function Settings(props: SettingsProps) {
         />
       ),
       visible: quayConfig?.features?.PROXY_CACHE && !props.isUserOrganization,
+    },
+    {
+      name: 'Organization state',
+      id: 'organizationstate',
+      content: () => (
+        <OrgMirroringState organizationName={props.organizationName} />
+      ),
+      visible: quayConfig?.features?.ORG_MIRROR && !props.isUserOrganization,
     },
     {
       name: 'Quota',
