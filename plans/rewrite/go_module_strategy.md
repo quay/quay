@@ -11,7 +11,7 @@ Define how Go code is introduced into this repo with reproducible builds, lintin
 
 Recommended baseline:
 - Single root module: `github.com/quay/quay`
-- Go version: `1.23.x`
+- Go version: `1.24+`
 - Use `internal/` for rewrite implementation packages during mixed-runtime migration.
 
 Why single module:
