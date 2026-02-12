@@ -1,7 +1,7 @@
 # Open Decisions Register
 
-Status: Resolved (all listed decisions approved)
-Last updated: 2026-02-09
+Status: Active
+Last updated: 2026-02-12
 
 ## 1. Purpose
 
@@ -16,6 +16,7 @@ Track planning decisions that block or materially change implementation sequenci
 | D-003 | DB exception governance | approved | db-architecture | 2026-02-20 | Policy exists in `db_migration_policy.md`; approvers/process now documented in backlog/gates | Require explicit migration exception record + designated approvers before non-additive changes | Risk of untracked breaking schema changes during mixed runtime |
 | D-004 | Operational CLI tooling disposition | approved | release-management | 2026-02-20 | `operational_tooling_plan.md` + tooling inventory identify scripts requiring disposition | Treat tooling scripts as `retire-approved` by default unless transition-period exception is approved | Python dependency may linger and block retirement gate |
 | D-005 | Repo mirror implementation path (`skopeo` subprocess vs Go `containers/image`) | approved | registry-platform | 2026-02-09 | User approved Go-native migration on 2026-02-09; source anchor: `util/repomirror/skopeomirror.py` | Migrate to Go-native `containers/image`; keep temporary compatibility fallback only during transition testing | Mirror/image workstreams proceed with finalized dependency direction |
+| D-006 | `reconciliationworker` architecture: polling vs event-driven | open | billing-entitlements | TBD | Python worker polls all active users every 5 minutes, making O(users) external API calls (Stripe retrieve + marketplace lookup/create) per cycle. Stripe webhooks and billing API mutations already provide real-time signals for subscription changes. No idempotency keys on marketplace `create_entitlement` or Stripe `Customer.create` calls. Source anchors: `workers/reconciliationworker.py`, `util/marketplace.py`, `endpoints/api/billing.py`, `endpoints/webhooks.py` | Replace full-table polling with event-driven reconciliation triggered by Stripe webhooks and billing API mutations, plus a reduced-frequency sweep (hourly/daily) as a consistency catch-up for out-of-band changes. Add idempotency keys to marketplace and Stripe write calls in Go implementation. See `workers_inventory.md` §9 for detailed proposal. | If deferred: Go port inherits O(users) polling overhead, no idempotency guarantees on external billing API calls, and unnecessarily wide duplicate-call window during coexistence |
 
 ## 3. Resolution rules
 
