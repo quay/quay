@@ -500,11 +500,11 @@ class ObservablePooledDatabase(ObservableDatabase):
             # Manually remove from _in_use tracking and close the connection
             try:
                 # Remove from pool's _in_use dict to prevent connection leak
-                key = self.conn_key(conn)  # type: ignore
-                self._in_use.pop(key, None)  # type: ignore
+                key = self.conn_key(conn)
+                self._in_use.pop(key, None)
 
                 # Close the actual connection (bypassing pool return logic)
-                super(ObservablePooledDatabase, self)._close(conn, close_conn=True)  # type: ignore
+                super(ObservablePooledDatabase, self)._close(conn, close_conn=True)
             except Exception as ex:
                 logger.debug("Error closing stale connection: %s", ex)
 
