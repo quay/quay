@@ -254,7 +254,7 @@ export function useOrganizations() {
 
     // Mutations
     createOrganization: async (name: string, email: string) =>
-      createOrganizationMutator.mutate({name, email}),
+      createOrganizationMutator.mutateAsync({name, email}),
     deleteOrganizations: async (names: string[]) =>
       deleteOrganizationMutator.mutateAsync(names),
     deleteUsers: async (usernames: string[]) =>

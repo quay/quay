@@ -91,11 +91,6 @@ export const CreateOrganizationModal = (
         err,
       );
       setErr(errorMessage);
-      addAlert({
-        variant: AlertVariant.Failure,
-        title: 'Unable to create organization',
-        message: errorMessage,
-      });
     }
   };
 
