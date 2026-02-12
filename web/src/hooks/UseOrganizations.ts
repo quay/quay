@@ -157,7 +157,7 @@ export function useOrganizations() {
   const queryClient = useQueryClient();
 
   const createOrganizationMutator = useMutation(
-    async ({name, email}: {name: string; email: string}) => {
+    async ({name, email}: {name: string; email?: string}) => {
       return createOrg(name, email);
     },
     {
@@ -255,7 +255,7 @@ export function useOrganizations() {
     totalResults: organizationsTableDetails.length,
 
     // Mutations
-    createOrganization: async (name: string, email: string) =>
+    createOrganization: async (name: string, email?: string) =>
       createOrganizationMutator.mutateAsync({name, email}),
     deleteOrganizations: async (names: string[]) =>
       deleteOrganizationMutator.mutateAsync(names),
