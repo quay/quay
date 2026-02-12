@@ -764,12 +764,13 @@ class TestDeleteTagImmutable:
         # Mark tag as immutable
         Tag.update(immutable=True).where(Tag.id == tag.id).execute()
 
-        with pytest.raises(ImmutableTagException) as exc_info:
-            delete_tag(repo.id, tag.name)
+        with patch("data.model.oci.tag.features", MagicMock(IMMUTABLE_TAGS=True)):
+            with pytest.raises(ImmutableTagException) as exc_info:
+                delete_tag(repo.id, tag.name)
 
-        assert exc_info.value.tag_name == tag.name
-        assert exc_info.value.operation == "delete"
-        assert exc_info.value.repository_id == repo.id
+            assert exc_info.value.tag_name == tag.name
+            assert exc_info.value.operation == "delete"
+            assert exc_info.value.repository_id == repo.id
 
     @patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False})
     def test_delete_tag_mutable_works(self, initialized_db):
@@ -789,6 +790,7 @@ class TestDeleteTagImmutable:
 
 
 class TestRetargetTagImmutable:
+    @patch("data.model.oci.tag.features", MagicMock(IMMUTABLE_TAGS=True))
     def test_retarget_tag_immutable_raises_exception(self, initialized_db):
         """Test that overwriting an immutable tag raises ImmutableTagException."""
         repo = model.repository.create_repository("devtable", "newrepo", None)
@@ -806,6 +808,7 @@ class TestRetargetTagImmutable:
         assert exc_info.value.tag_name == "mytag"
         assert exc_info.value.operation == "overwrite"
 
+    @patch("data.model.oci.tag.features", MagicMock(IMMUTABLE_TAGS=True))
     def test_retarget_tag_immutable_returns_none(self, initialized_db):
         """Test that overwriting an immutable tag returns None when raise_on_error=False."""
         repo = model.repository.create_repository("devtable", "newrepo", None)
@@ -843,6 +846,7 @@ class TestRetargetTagImmutable:
 
 
 class TestRemoveTagFromTimemachineImmutable:
+    @patch("data.model.oci.tag.features", MagicMock(IMMUTABLE_TAGS=True))
     def test_remove_alive_immutable_tag_returns_false(self, initialized_db):
         """Test that permanently deleting an alive immutable tag returns False and logs."""
         repo = get_repository("devtable", "history")
@@ -859,6 +863,7 @@ class TestRemoveTagFromTimemachineImmutable:
         # Tag should still exist
         assert get_tag(repo.id, "latest") is not None
 
+    @patch("data.model.oci.tag.features", MagicMock(IMMUTABLE_TAGS=True))
     def test_remove_expired_immutable_tag_is_skipped(self, initialized_db):
         """Test that permanently deleting an expired immutable tag skips it."""
         repo = get_repository("devtable", "history")
@@ -993,6 +998,7 @@ class TestFeatureFlagDisabled:
 class TestDeleteTagsForManifestImmutable:
     """Test delete_tags_for_manifest with immutable tags."""
 
+    @patch("data.model.oci.tag.features", MagicMock(IMMUTABLE_TAGS=True))
     def test_delete_tags_for_manifest_skips_immutable(self, initialized_db):
         """Immutable tags are skipped when deleting tags for manifest."""
         repo = model.repository.create_repository("devtable", "newrepo", None)

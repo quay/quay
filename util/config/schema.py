@@ -745,7 +745,7 @@ CONFIG_SCHEMA = {
         },
         "FEATURE_IMMUTABLE_TAGS": {
             "type": "boolean",
-            "description": "Whether tag immutability enforcement is enabled. When enabled, immutable tags cannot be deleted or overwritten. Defaults to True.",
+            "description": "Whether tag immutability enforcement is enabled. When enabled, immutable tags cannot be deleted or overwritten. Defaults to False.",
             "x-example": True,
         },
         "FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": {
@@ -2492,8 +2492,8 @@ CONFIG_SCHEMA = {
     },
     "LDAP_CACHE_TTL": {
         "type": "number",
-        "description": "Time-to-live in seconds for cached LDAP permission results. Defaults to 60.",
-        "x-example": 60,
+        "description": "Time-to-live in seconds for cached LDAP permission results. Defaults to 5.",
+        "x-example": 10,
         "x-reference": None,
     },
     "GLOBAL_PROMETHEUS_STATS_FREQUENCY": {
