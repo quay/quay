@@ -36,6 +36,10 @@ from workers.repomirrorworker import (
     _ensure_local_repository,
     _get_all_tags_for_org_mirror,
     emit_org_mirror_log,
+    org_mirror_discovery_total,
+    org_mirror_repo_sync_total,
+    org_mirror_repos_created_total,
+    org_mirror_repos_discovered,
     perform_org_mirror_discovery,
     perform_org_mirror_repo,
     process_org_mirror_discovery,
@@ -1621,3 +1625,154 @@ class TestOrgMirrorModel:
 
         assert iterator is not None
         assert token.min_id == 101
+
+
+# =============================================================================
+# Tests for Prometheus metrics instrumentation
+# =============================================================================
+
+
+def _get_counter_value(counter, labels=None):
+    """Get current value of a Prometheus Counter (with optional labels)."""
+    if labels:
+        return counter.labels(**labels)._value.get()
+    return counter._value.get()
+
+
+def _get_gauge_value(gauge):
+    """Get current value of a Prometheus Gauge."""
+    return gauge._value.get()
+
+
+class TestOrgMirrorMetrics:
+    """Tests for Prometheus metrics instrumentation in org mirror functions."""
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.get_registry_adapter")
+    @patch("workers.repomirrorworker.logs_model")
+    def test_discovery_success_increments_metrics(
+        self, mock_logs, mock_get_adapter, initialized_db
+    ):
+        """Successful discovery should increment discovery_total(success), duration,
+        repos_discovered, and repos_created counters."""
+        org, robot = _create_org_and_robot("metrics_disc_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+        config.sync_start_date = datetime.utcnow() - timedelta(hours=1)
+        config.save()
+
+        mock_adapter = Mock()
+        mock_adapter.list_repositories.return_value = ["repo1", "repo2", "repo3"]
+        mock_get_adapter.return_value = mock_adapter
+
+        # Record baseline values
+        success_before = _get_counter_value(org_mirror_discovery_total, {"status": "success"})
+        created_before = _get_counter_value(org_mirror_repos_created_total)
+
+        perform_org_mirror_discovery(config)
+
+        assert (
+            _get_counter_value(org_mirror_discovery_total, {"status": "success"})
+            == success_before + 1
+        )
+        assert _get_gauge_value(org_mirror_repos_discovered) == 3
+        assert _get_counter_value(org_mirror_repos_created_total) == created_before + 3
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.get_registry_adapter")
+    @patch("workers.repomirrorworker.logs_model")
+    def test_discovery_failure_increments_fail_counter(
+        self, mock_logs, mock_get_adapter, initialized_db
+    ):
+        """Discovery failure (adapter error) should increment discovery_total(fail)."""
+        org, robot = _create_org_and_robot("metrics_disc_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+        config.sync_start_date = datetime.utcnow() - timedelta(hours=1)
+        config.save()
+
+        mock_get_adapter.side_effect = ValueError("Unsupported registry type")
+
+        fail_before = _get_counter_value(org_mirror_discovery_total, {"status": "fail"})
+
+        perform_org_mirror_discovery(config)
+
+        assert _get_counter_value(org_mirror_discovery_total, {"status": "fail"}) == fail_before + 1
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.logs_model")
+    def test_discovery_cancel_increments_cancel_counter(self, mock_logs, initialized_db):
+        """Discovery cancel should increment discovery_total(cancel)."""
+        org, robot = _create_org_and_robot("metrics_disc_test3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+        config.sync_status = OrgMirrorStatus.CANCEL
+        config.sync_start_date = datetime.utcnow() - timedelta(hours=1)
+        config.save()
+
+        cancel_before = _get_counter_value(org_mirror_discovery_total, {"status": "cancel"})
+
+        perform_org_mirror_discovery(config)
+
+        assert (
+            _get_counter_value(org_mirror_discovery_total, {"status": "cancel"})
+            == cancel_before + 1
+        )
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    def test_repo_sync_success_increments_counter(self, mock_token, mock_logs, initialized_db, app):
+        """Successful repo sync should increment repo_sync_total(success)."""
+        org, robot = _create_org_and_robot("metrics_sync_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="metrics-sync-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, ["v1.0"], "", "")
+        mock_skopeo.copy.return_value = SkopeoResults(True, [], "copied", "")
+        mock_token.return_value = "robot_token"
+
+        success_before = _get_counter_value(org_mirror_repo_sync_total, {"status": "success"})
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.SUCCESS
+        assert (
+            _get_counter_value(org_mirror_repo_sync_total, {"status": "success"})
+            == success_before + 1
+        )
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    def test_repo_sync_failure_increments_counter(self, mock_token, mock_logs, initialized_db, app):
+        """Failed repo sync should increment repo_sync_total(fail)."""
+        org, robot = _create_org_and_robot("metrics_sync_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="metrics-fail-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, ["v1.0"], "", "")
+        mock_skopeo.copy.return_value = SkopeoResults(False, [], "", "copy failed")
+        mock_token.return_value = "robot_token"
+
+        fail_before = _get_counter_value(org_mirror_repo_sync_total, {"status": "fail"})
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.FAIL
+        assert _get_counter_value(org_mirror_repo_sync_total, {"status": "fail"}) == fail_before + 1
