@@ -31,7 +31,7 @@ The Python registry currently registers 13 storage drivers:
 13. `AkamaiS3Storage`
 
 Additional compatibility-critical components:
-- `DistributedStorage` (multi-location routing)
+- `DistributedStorage` (multi-location routing) — **WS3** (moved from WS10; required for any multi-location testing, which covers most production deployments)
 - `DownloadProxy` (`/_storage_proxy_auth` flow)
 
 ## 3. Migration strategy

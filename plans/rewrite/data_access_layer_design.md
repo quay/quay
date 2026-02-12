@@ -36,7 +36,7 @@ Rationale:
 
 Module strategy (planning baseline):
 - Single module at repo root: `github.com/quay/quay`
-- Minimum toolchain: Go `1.23.x`
+- Minimum toolchain: Go `1.24+`
 
 DAL package layout (implementation target):
 - `internal/dal/dbcore/`
