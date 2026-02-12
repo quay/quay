@@ -34,7 +34,18 @@ def test_ip_range_cache(aws_ip_range_data):
 
 
 @pytest.fixture()
-def mock_ipresolver(app):
+def mock_geoip_db():
+    db = MagicMock()
+    lookup = {
+        "8.8.8.8": {"country_code": "US", "continent_code": "NA"},
+        "4.0.0.2": {"country_code": "US", "continent_code": "NA"},
+    }
+    db.get.side_effect = lambda ip: lookup.get(ip)
+    return db
+
+
+@pytest.fixture()
+def mock_ipresolver(app, mock_geoip_db):
     with patch("util.ipresolver.maxminddb") as mock_maxminddb:
-        mock_maxminddb.open_database.return_value = MagicMock()
+        mock_maxminddb.open_database.return_value = mock_geoip_db
         yield IPResolver(app)
