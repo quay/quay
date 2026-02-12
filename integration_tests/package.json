@@ -79,7 +79,7 @@
     "@types/react-router-dom": "4.2.7",
     "@types/react-transition-group": "2.x",
     "@types/react-virtualized": "9.x",
-    "@types/webpack": "4.x",
+    "@types/webpack": "5.x",
     "@typescript-eslint/eslint-plugin": "^1.7.0",
     "@typescript-eslint/parser": "^1.7.0",
     "bootstrap-sass": "^3.3.7",
@@ -117,7 +117,7 @@
     "ts-loader": "5.3.3",
     "ts-node": "5.x",
     "typescript": "3.4.4",
-    "webpack": "4.29.6",
+    "webpack": "5.105.2",
     "webpack-bundle-analyzer": "2.x",
     "webpack-cli": "^2.0.12",
     "webpack-virtual-modules": "^0.1.10"
