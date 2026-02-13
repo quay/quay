@@ -12,7 +12,6 @@ from storage import (
 )
 from storage.basestorage import InvalidStorageConfigurationException
 from test.fixtures import *
-from util.ipresolver import IPResolver
 
 _TEST_CONFIG_JSON = """{
   "storage_config": {
@@ -53,8 +52,8 @@ _TEST_CONFIG_JSON = """{
 
 
 @pytest.fixture()
-def context(app):
-    return StorageContext("nyc", None, config_provider, IPResolver(app))
+def context(mock_ipresolver):
+    return StorageContext("nyc", None, config_provider, mock_ipresolver)
 
 
 def test_should_pass_config_no_rules(context, app):
@@ -185,11 +184,11 @@ def test_should_fail_bad_target_in_rule(context, app):
         ),  # no rule match
     ],
 )
-def test_rule_match(rule, namespace, ip, host, expected):
+def test_rule_match(rule, namespace, ip, host, expected, mock_ipresolver):
     test_config = json.loads(_TEST_CONFIG_JSON)
     test_config["rules"] = [rule]
 
-    context = StorageContext("nyc", None, config_provider, IPResolver(app))
+    context = StorageContext("nyc", None, config_provider, mock_ipresolver)
 
     engine = MultiCDNStorage(context, **test_config)
 

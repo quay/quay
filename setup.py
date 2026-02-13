@@ -36,7 +36,6 @@ packages = [
     "tzlocal",
     "beautifulsoup4",
     "bintrees",
-    "geoip2",
     "gevent",
     "greenlet",
     "gunicorn",

@@ -823,7 +823,6 @@ class User(BaseModel):
                 DeletedNamespace,
                 DeletedRepository,
                 RepoMirrorRule,
-                NamespaceGeoRestriction,
                 ManifestSecurityStatus,
                 RepoMirrorConfig,
                 UploadedBlob,
@@ -889,19 +888,6 @@ class DeletedNamespace(BaseModel):
     original_username = CharField(index=True)
     original_email = CharField(index=True)
     queue_id = CharField(null=True, index=True)
-
-
-class NamespaceGeoRestriction(BaseModel):
-    namespace = QuayUserField(index=True, allows_robots=False)
-    added = DateTimeField(default=datetime.utcnow)
-    description = CharField()
-    unstructured_json = JSONField()
-    restricted_region_iso_code = CharField(index=True)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("namespace", "restricted_region_iso_code"), True),)
 
 
 class UserPromptTypes(object):

@@ -1437,7 +1437,6 @@ WHITELISTED_EMPTY_MODELS = [
     "DeletedNamespace",
     "DeletedRepository",
     "ManifestChild",
-    "NamespaceGeoRestriction",
     "RepoMirrorConfig",
     "RepoMirrorRule",
     "OrgMirrorConfig",
