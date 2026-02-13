@@ -20,6 +20,7 @@ from cachetools.func import lru_cache
 from peewee import *
 from peewee import Function, __exception_wrapper__  # type: ignore
 from playhouse.pool import (
+    MaxConnectionsExceeded,
     PooledDatabase,
     PooledMySQLDatabase,
     PooledPostgresqlDatabase,
@@ -450,6 +451,70 @@ class ObservableDatabase(object):
 
 class ObservablePooledDatabase(ObservableDatabase):
     """Wrapper around Peewee's PooledDatabase class for observability."""
+
+    def _connect(self, _retry_count=0):
+        """
+        Override internal connection method to validate connection availability from the connection pool.
+        This acts like SQLAlchemy's pool_pre_ping with exponential backoff for high concurrency.
+        """
+        # Limit retries to prevent long delays in high-concurrency scenarios
+        # With 50+ concurrent requests, we want individual requests to fail faster
+        # rather than each one retrying 20+ times
+        max_retries = 7
+        if _retry_count >= max_retries:
+            raise OperationalError(
+                f"Unable to obtain healthy connection after {max_retries} attempts"
+            )
+
+        try:
+            conn = super(ObservablePooledDatabase, self)._connect()
+        except MaxConnectionsExceeded:
+            # Pool exhausted - wait with exponential backoff before retrying
+            # Base delay: 10ms, max delay: 200ms to prevent long waits
+            delay = min(0.01 * (2**_retry_count), 0.2)
+            # Add jitter to prevent thundering herd (±25% randomization)
+            jitter = delay * (0.75 + uniform(0, 0.5))
+            logger.debug(
+                "Connection pool exhausted (attempt %d/%d), retrying after %.3fs",
+                _retry_count + 1,
+                max_retries,
+                jitter,
+            )
+            time.sleep(jitter)
+            return self._connect(_retry_count=_retry_count + 1)
+
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            return conn  # Connection is healthy
+        except Exception as e:
+            # Catch ALL exceptions during liveness check - includes ProtocolViolation,
+            # OperationalError, InterfaceError, and any other DB-related errors
+            logger.warning(
+                "Pooled connection failed liveness check (attempt %d/%d), discarding: %s",
+                _retry_count + 1,
+                max_retries,
+                e,
+            )
+
+            # Manually remove from _in_use tracking and close the connection
+            try:
+                # Remove from pool's _in_use dict to prevent connection leak
+                key = self.conn_key(conn)
+                self._in_use.pop(key, None)
+
+                # Close the actual connection (bypassing pool return logic)
+                super(ObservablePooledDatabase, self)._close(conn, close_conn=True)
+            except Exception as ex:
+                logger.debug("Error closing stale connection: %s", ex)
+
+            # Small delay before retry to allow other requests to complete
+            if _retry_count > 0:
+                delay = min(0.01 * _retry_count, 0.05)  # 10-50ms
+                time.sleep(delay)
+
+            # Recursively retry - pool will provide another connection (or create new one)
+            return self._connect(_retry_count=_retry_count + 1)
 
     def connect(self, reuse_if_open=False):
         ret = super(ObservablePooledDatabase, self).connect(reuse_if_open)
