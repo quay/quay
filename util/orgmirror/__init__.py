@@ -6,7 +6,7 @@ This package provides adapters for discovering repositories from various
 source registries (Quay, Harbor, etc.) for organization-level mirroring.
 """
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from data.database import SourceRegistryType
 from util.orgmirror.exceptions import (
@@ -27,6 +27,7 @@ def get_registry_adapter(
     password: Optional[str] = None,
     config: Optional[Dict] = None,
     token: Optional[str] = None,
+    allowed_hosts: Optional[List[str]] = None,
 ) -> RegistryAdapter:
     """
     Factory function to create the appropriate registry adapter.
@@ -39,6 +40,7 @@ def get_registry_adapter(
         password: Password for authentication (optional, used as token for Quay)
         config: Additional configuration (verify_tls, proxy, etc.)
         token: API token for authentication (optional, primarily for Quay)
+        allowed_hosts: Hostnames/CIDRs that bypass SSRF blocklist (optional)
 
     Returns:
         RegistryAdapter instance for the specified registry type
@@ -51,9 +53,13 @@ def get_registry_adapter(
         the API token. Quay's API v1 does not support basic authentication.
     """
     if registry_type == SourceRegistryType.QUAY:
-        return QuayAdapter(url, namespace, username, password, config, token=token)
+        return QuayAdapter(
+            url, namespace, username, password, config, token=token, allowed_hosts=allowed_hosts
+        )
     elif registry_type == SourceRegistryType.HARBOR:
-        return HarborAdapter(url, namespace, username, password, config)
+        return HarborAdapter(
+            url, namespace, username, password, config, allowed_hosts=allowed_hosts
+        )
     else:
         raise ValueError(f"Unsupported registry type: {registry_type}")
 
