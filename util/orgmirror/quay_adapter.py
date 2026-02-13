@@ -132,6 +132,10 @@ class QuayAdapter(RegistryAdapter):
                     raise QuayDiscoveryException(
                         f"Access forbidden to namespace '{self.namespace}'"
                     )
+                elif 300 <= response.status_code < 400:
+                    raise QuayDiscoveryException(
+                        f"Registry returned redirect ({response.status_code})"
+                    )
 
                 try:
                     response.raise_for_status()

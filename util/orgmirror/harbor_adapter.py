@@ -91,6 +91,10 @@ class HarborAdapter(RegistryAdapter):
                     raise HarborDiscoveryException(
                         f"Access forbidden to project '{self.namespace}'"
                     )
+                elif 300 <= response.status_code < 400:
+                    raise HarborDiscoveryException(
+                        f"Registry returned redirect ({response.status_code})"
+                    )
 
                 try:
                     response.raise_for_status()
