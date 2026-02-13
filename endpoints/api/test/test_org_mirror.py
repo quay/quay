@@ -5,6 +5,7 @@ Unit tests for organization-level mirror API endpoints.
 
 import logging
 from datetime import datetime
+from unittest.mock import patch
 
 import pytest
 
@@ -19,6 +20,23 @@ from test.fixtures import *
 logger = logging.getLogger(__name__)
 
 
+@pytest.fixture()
+def _mock_dns_for_ssrf_validation():
+    """
+    Mock DNS resolution in the SSRF validation module so tests with hostnames
+    like harbor.example.com don't fail due to DNS lookup failures.
+
+    This only patches the socket reference inside util.security.ssrf, so the
+    requests library (used by verify-connection tests) still resolves DNS normally.
+
+    Applied explicitly via @pytest.mark.usefixtures to test classes that need it,
+    rather than autouse=True which masks potential DNS-related bugs.
+    """
+    with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+        mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+        yield mock_dns
+
+
 def _cleanup_org_mirror_config(orgname):
     """Helper to clean up any existing org mirror config."""
     try:
@@ -31,6 +49,7 @@ def _cleanup_org_mirror_config(orgname):
         raise
 
 
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestCreateOrgMirrorConfig:
     """Tests for POST /v1/organization/<orgname>/mirror endpoint."""
 
@@ -348,6 +367,7 @@ class TestCreateOrgMirrorConfig:
             conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400)
 
 
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestDeleteOrgMirrorConfig:
     """Tests for DELETE /v1/organization/<orgname>/mirror endpoint."""
 
@@ -489,6 +509,7 @@ class TestDeleteOrgMirrorConfig:
         _cleanup_org_mirror_config("buynlarge")
 
 
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestUpdateOrgMirrorConfig:
     """Tests for PUT /v1/organization/<orgname>/mirror endpoint."""
 
@@ -941,6 +962,7 @@ class TestUpdateOrgMirrorConfig:
         _cleanup_org_mirror_config("buynlarge")
 
 
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestVerifyOrgMirrorConnection:
     """Tests for POST /v1/organization/<orgname>/mirror/verify endpoint."""
 
@@ -1094,6 +1116,7 @@ class TestVerifyOrgMirrorConnection:
         _cleanup_org_mirror_config("buynlarge")
 
 
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestSyncNow:
     """Tests for POST /v1/organization/<orgname>/mirror/sync-now endpoint."""
 
@@ -1176,6 +1199,7 @@ class TestSyncNow:
         _cleanup_org_mirror_config("buynlarge")
 
 
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestSyncCancel:
     """Tests for POST /v1/organization/<orgname>/mirror/sync-cancel endpoint."""
 
@@ -1295,6 +1319,7 @@ class TestSyncCancel:
         _cleanup_org_mirror_config("buynlarge")
 
 
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestCreateOrgMirrorWithImmutableTags:
     """Tests for blocking mirror creation when immutable tags exist."""
 
@@ -1400,6 +1425,7 @@ class TestCreateOrgMirrorWithImmutableTags:
         _cleanup_org_mirror_config("buynlarge")
 
 
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestOrgMirrorAuditLogging:
     """Tests for audit event logging in organization mirror API endpoints."""
 
@@ -1607,4 +1633,154 @@ class TestOrgMirrorAuditLogging:
             assert "external_reference" in metadata
 
         # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
+class TestOrgMirrorSSRFProtection:
+    """Tests for SSRF protection in organization mirror API endpoints (CWE-918)."""
+
+    def _base_create_body(self, url):
+        return {
+            "external_registry_type": "harbor",
+            "external_registry_url": url,
+            "external_namespace": "my-project",
+            "robot_username": "buynlarge+coolrobot",
+            "visibility": "private",
+            "sync_interval": 3600,
+            "sync_start_date": "2025-01-01T00:00:00Z",
+        }
+
+    def test_create_with_localhost_rejected(self, app):
+        """POST with localhost URL returns 400 with generic error."""
+        _cleanup_org_mirror_config("buynlarge")
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            body = self._base_create_body("https://localhost")
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
+            assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_loopback_ip_rejected(self, app):
+        """POST with 127.0.0.1 URL returns 400 with generic error."""
+        _cleanup_org_mirror_config("buynlarge")
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            body = self._base_create_body("https://127.0.0.1")
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
+            assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_private_ip_rejected(self, app):
+        """POST with RFC 1918 private IP returns 400 with generic error."""
+        _cleanup_org_mirror_config("buynlarge")
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            body = self._base_create_body("https://10.0.0.1")
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
+            assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_aws_metadata_ip_rejected(self, app):
+        """POST with AWS metadata service IP (169.254.169.254) returns 400 with generic error."""
+        _cleanup_org_mirror_config("buynlarge")
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            body = self._base_create_body("http://169.254.169.254/latest/meta-data")
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
+            assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_kubernetes_hostname_rejected(self, app):
+        """POST with Kubernetes internal hostname returns 400 with generic error."""
+        _cleanup_org_mirror_config("buynlarge")
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            body = self._base_create_body("https://kubernetes.default.svc")
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
+            assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_gcp_metadata_rejected(self, app):
+        """POST with GCP metadata hostname returns 400 with generic error."""
+        _cleanup_org_mirror_config("buynlarge")
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            body = self._base_create_body("https://metadata.google.internal")
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
+            assert "not allowed" in resp.json.get("error_message", "")
+
+    def test_create_with_ftp_scheme_rejected(self, app):
+        """POST with non-HTTP scheme returns 400."""
+        _cleanup_org_mirror_config("buynlarge")
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            body = self._base_create_body("ftp://registry.example.com")
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
+            assert "scheme" in resp.json.get("error_message", "")
+
+    def test_create_with_valid_url_succeeds(self, app):
+        """POST with valid public URL succeeds (regression check)."""
+        from unittest.mock import patch
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = self._base_create_body("https://harbor.example.com")
+                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 201)
+
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_with_private_ip_rejected(self, app):
+        """PUT with private IP URL returns 400."""
+        from unittest.mock import patch
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create a valid config first
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = self._base_create_body("https://harbor.example.com")
+                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 201)
+
+        # Try to update with private IP
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            update_body = {"external_registry_url": "https://192.168.1.1"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, update_body, 400)
+            assert "not allowed" in resp.json.get("error_message", "")
+
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_with_aws_metadata_rejected(self, app):
+        """PUT with AWS metadata URL returns 400 with generic error."""
+        from unittest.mock import patch
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        # Create a valid config first
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                body = self._base_create_body("https://harbor.example.com")
+                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 201)
+
+        # Try to update with AWS metadata IP
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            update_body = {"external_registry_url": "http://169.254.169.254/latest/meta-data"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, update_body, 400)
+            assert "not allowed" in resp.json.get("error_message", "")
+
         _cleanup_org_mirror_config("buynlarge")

@@ -20,6 +20,18 @@ from util.orgmirror.harbor_adapter import HarborAdapter
 from util.orgmirror.quay_adapter import QuayAdapter
 
 
+@pytest.fixture(autouse=True)
+def _mock_ssrf_validation():
+    """Mock SSRF validation to avoid DNS resolution in unit tests.
+
+    SSRF validation calls socket.getaddrinfo() which fails in CI for fake
+    hostnames like harbor.example.com. SSRF validation is tested separately
+    in util/security/test/test_ssrf.py.
+    """
+    with patch("util.orgmirror.registry_adapter.validate_external_registry_url"):
+        yield
+
+
 class TestQuayAdapter:
     """Tests for QuayAdapter."""
 
