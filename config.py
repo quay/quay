@@ -653,7 +653,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_CHANGE_TAG_EXPIRATION = True
 
     # Feature Flag: Whether tag immutability enforcement is enabled.
-    FEATURE_IMMUTABLE_TAGS = True
+    FEATURE_IMMUTABLE_TAGS = False
 
     # Feature Flag: Whether immutable tags can have expiration dates set.
     # When False (default), setting expiration on immutable tags is blocked.
