@@ -56,6 +56,14 @@ class CombinedLogsModel(SharedModel, ActionLogsDataInterface):
         repository_name=None,
         timestamp=None,
         is_free_namespace=False,
+        # Enhanced logging fields for ESS EOI compliance
+        request_url=None,
+        http_method=None,
+        auth_type=None,
+        user_agent=None,
+        performer_kind=None,
+        request_id=None,
+        x_forwarded_for=None,
     ):
         return self.read_write_logs_model.log_action(
             kind_name,
@@ -67,6 +75,13 @@ class CombinedLogsModel(SharedModel, ActionLogsDataInterface):
             repository_name,
             timestamp,
             is_free_namespace,
+            request_url=request_url,
+            http_method=http_method,
+            auth_type=auth_type,
+            user_agent=user_agent,
+            performer_kind=performer_kind,
+            request_id=request_id,
+            x_forwarded_for=x_forwarded_for,
         )
 
     def count_repository_actions(self, repository, day):
