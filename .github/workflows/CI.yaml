@@ -286,6 +286,8 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
+      env:
+        TOX_DOCKER_GATEWAY: "0.0.0.0"
       run: |
         tox -e py312-mysql
 
@@ -313,5 +315,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
+      env:
+        TOX_DOCKER_GATEWAY: "0.0.0.0"
       run: |
         tox -e py312-psql
