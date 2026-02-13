@@ -37,8 +37,10 @@ def test_ip_range_cache(aws_ip_range_data):
 def mock_geoip_db():
     db = MagicMock()
     lookup = {
-        "8.8.8.8": {"country_code": "US", "continent_code": "NA"},
         "4.0.0.2": {"country_code": "US", "continent_code": "NA"},
+        "6.0.0.2": {"country_code": "US", "continent_code": "NA"},
+        "8.8.8.8": {"country_code": "US", "continent_code": "NA"},
+        "56.0.0.2": {"country_code": "US", "continent_code": "NA"},
     }
     db.get.side_effect = lambda ip: lookup.get(ip)
     return db
