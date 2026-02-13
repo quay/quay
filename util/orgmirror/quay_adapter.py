@@ -53,11 +53,12 @@ class QuayAdapter(RegistryAdapter):
         config: Optional[Dict] = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
         token: Optional[str] = None,
+        allowed_hosts: Optional[List[str]] = None,
     ):
         # Store token before calling super().__init__ since _create_session uses it
         # Token can be passed explicitly or via password field (common pattern)
         self._api_token = token or password
-        super().__init__(url, namespace, username, password, config, max_retries)
+        super().__init__(url, namespace, username, password, config, max_retries, allowed_hosts)
 
     def _create_session(self) -> requests.Session:
         """
@@ -117,6 +118,7 @@ class QuayAdapter(RegistryAdapter):
                     verify=self.verify_tls,
                     proxies=self._build_proxies(),
                     timeout=self.timeout,
+                    allow_redirects=False,
                 )
 
                 # Handle HTTP errors with specific messages
@@ -129,6 +131,10 @@ class QuayAdapter(RegistryAdapter):
                 elif response.status_code == 403:
                     raise QuayDiscoveryException(
                         f"Access forbidden to namespace '{self.namespace}'"
+                    )
+                elif 300 <= response.status_code < 400:
+                    raise QuayDiscoveryException(
+                        f"Registry returned redirect ({response.status_code})"
                     )
 
                 try:
@@ -190,6 +196,7 @@ class QuayAdapter(RegistryAdapter):
                 verify=self.verify_tls,
                 proxies=self._build_proxies(),
                 timeout=10,
+                allow_redirects=False,
             )
 
             if response.status_code == 200:

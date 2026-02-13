@@ -10,6 +10,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
+from util.security.ssrf import validate_external_registry_url
+
 DEFAULT_TIMEOUT = 30
 DEFAULT_MAX_RETRIES = 3
 
@@ -30,6 +32,7 @@ class RegistryAdapter(ABC):
         password: Optional[str] = None,
         config: Optional[Dict] = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
+        allowed_hosts: Optional[List[str]] = None,
     ):
         """
         Initialize the registry adapter.
@@ -41,7 +44,13 @@ class RegistryAdapter(ABC):
             password: Password for authentication (optional)
             config: Additional configuration (verify_tls, proxy settings, etc.)
             max_retries: Maximum number of retries for transient failures
+            allowed_hosts: Hostnames/CIDRs that bypass SSRF blocklist (optional)
         """
+        # Validate URL to prevent SSRF (CWE-918) - defense-in-depth
+        # DNS is re-validated here to prevent TOCTOU/DNS rebinding attacks where the
+        # DNS record changes between config creation (API layer) and actual HTTP use.
+        validate_external_registry_url(url, resolve_dns=True, allowed_hosts=allowed_hosts)
+
         self.base_url = url.rstrip("/")
         self.namespace = namespace
         self.auth = (username, password) if username and password else None
