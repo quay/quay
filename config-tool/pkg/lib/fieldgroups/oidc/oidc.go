@@ -9,7 +9,9 @@ import (
 
 // OIDC represents the OIDC config fields
 type OIDCFieldGroup struct {
-	OIDCProviders []*OIDCProvider `default:"[]" validate:"" json:"-" yaml:"-"`
+	OIDCProviders      []*OIDCProvider `default:"[]" validate:"" json:"-" yaml:"-"`
+	ServerHostname     string          `default:"" validate:"" json:"SERVER_HOSTNAME,omitempty" yaml:"SERVER_HOSTNAME,omitempty"`
+	PreferredUrlScheme string          `default:"https" validate:"" json:"PREFERRED_URL_SCHEME,omitempty" yaml:"PREFERRED_URL_SCHEME,omitempty"`
 }
 
 type OIDCProvider struct {
@@ -28,6 +30,17 @@ type OIDCProvider struct {
 func NewOIDCFieldGroup(fullConfig map[string]interface{}) (*OIDCFieldGroup, error) {
 	newOIDCFieldGroup := &OIDCFieldGroup{}
 	defaults.Set(newOIDCFieldGroup)
+
+	if value, ok := fullConfig["SERVER_HOSTNAME"]; ok {
+		if strVal, ok := value.(string); ok {
+			newOIDCFieldGroup.ServerHostname = strVal
+		}
+	}
+	if value, ok := fullConfig["PREFERRED_URL_SCHEME"]; ok {
+		if strVal, ok := value.(string); ok {
+			newOIDCFieldGroup.PreferredUrlScheme = strVal
+		}
+	}
 
 	for key, value := range fullConfig {
 		if providerConf, ok := value.(map[string]interface{}); ok {
@@ -102,4 +115,15 @@ func NewOIDCProvider(prefix string, providerConfig map[string]interface{}) (*OID
 	}
 
 	return newOIDCProvider, nil
+}
+
+// serviceIDFromPrefix derives the OIDC service ID from the config prefix.
+// This matches the Python logic in oauth/oidc.py: lowercase of everything
+// before the first underscore (e.g., "AUTH0" → "auth0", "MY_CUSTOM" → "my").
+func serviceIDFromPrefix(prefix string) string {
+	idx := strings.Index(prefix, "_")
+	if idx >= 0 {
+		return strings.ToLower(prefix[:idx])
+	}
+	return strings.ToLower(prefix)
 }
