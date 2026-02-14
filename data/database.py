@@ -768,6 +768,7 @@ class User(BaseModel):
     removed_tag_expiration_s = BigIntegerField(default=1209600)  # Two weeks
     enabled = BooleanField(default=True)
     invoice_email_address = CharField(null=True, index=True)
+    contact_email = CharField(null=True, max_length=255)
 
     given_name = CharField(null=True)
     family_name = CharField(null=True)
