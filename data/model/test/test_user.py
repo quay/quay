@@ -423,3 +423,84 @@ def test_get_namespace_users_by_usernames(initialized_db):
     result = get_namespace_users_by_usernames(["nonexistent1", "nonexistent2"])
     assert result["nonexistent1"] is None
     assert result["nonexistent2"] is None
+
+
+def test_user_contact_email_defaults_to_none(initialized_db):
+    """Verify that contact_email defaults to None when creating a user."""
+    user = create_user_noverify("testcontact1", "contact1@example.com", email_required=False)
+    assert user.contact_email is None
+
+
+def test_user_contact_email_can_be_set(initialized_db):
+    """Verify that contact_email can be set and persisted."""
+    user = create_user_noverify("testcontact2", "contact2@example.com", email_required=False)
+    user.contact_email = "mycontact@example.com"
+    user.save()
+
+    reloaded = get_user("testcontact2")
+    assert reloaded.contact_email == "mycontact@example.com"
+
+
+def test_user_contact_email_can_be_cleared(initialized_db):
+    """Verify that contact_email can be set to None after being set."""
+    user = create_user_noverify("testcontact3", "contact3@example.com", email_required=False)
+    user.contact_email = "mycontact@example.com"
+    user.save()
+
+    user.contact_email = None
+    user.save()
+
+    reloaded = get_user("testcontact3")
+    assert reloaded.contact_email is None
+
+
+def test_contact_email_allows_duplicates(initialized_db):
+    """Verify that the same contact_email can be used for multiple users/orgs."""
+    shared_email = "shared@example.com"
+
+    user1 = create_user_noverify("testcontact4", "contact4@example.com", email_required=False)
+    user1.contact_email = shared_email
+    user1.save()
+
+    user2 = create_user_noverify("testcontact5", "contact5@example.com", email_required=False)
+    user2.contact_email = shared_email
+    user2.save()
+
+    reloaded1 = get_user("testcontact4")
+    reloaded2 = get_user("testcontact5")
+    assert reloaded1.contact_email == shared_email
+    assert reloaded2.contact_email == shared_email
+
+
+def test_org_contact_email_allows_duplicates(initialized_db):
+    """Verify that the same contact_email can be used across organizations."""
+    shared_email = "orgshared@example.com"
+
+    creating_user = create_user_noverify(
+        "orgcreator", "orgcreator@example.com", email_required=False
+    )
+
+    org1 = create_organization("testorg1", "org1@example.com", creating_user)
+    org1.contact_email = shared_email
+    org1.save()
+
+    org2 = create_organization("testorg2", "org2@example.com", creating_user)
+    org2.contact_email = shared_email
+    org2.save()
+
+    reloaded1 = User.get(User.username == "testorg1")
+    reloaded2 = User.get(User.username == "testorg2")
+    assert reloaded1.contact_email == shared_email
+    assert reloaded2.contact_email == shared_email
+
+
+def test_contact_email_independent_of_email(initialized_db):
+    """Verify that contact_email is independent of the unique email field."""
+    user = create_user_noverify("testcontact6", "contact6@example.com", email_required=False)
+    user.contact_email = "contact6@example.com"  # Same as internal email
+    user.save()
+
+    reloaded = get_user("testcontact6")
+    assert reloaded.contact_email == "contact6@example.com"
+    # Internal email may be different (UUID) but contact_email is what we set
+    assert reloaded.contact_email is not None
