@@ -745,6 +745,14 @@ describe('Repository Details Page', () => {
       dateStyle: 'medium',
     });
 
+    // Freeze the browser's Date at noon today so that the +1 hour offset
+    // in onDateChange (which adds 1h when selecting today with no prior
+    // expiration) doesn't wrap past midnight and shift to the next day.
+    // Only Date is stubbed; timers are left alone so Cypress waits work.
+    const noon = new Date();
+    noon.setHours(12, 0, 0, 0);
+    cy.clock(noon.getTime(), ['Date']);
+
     // Start
     cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
