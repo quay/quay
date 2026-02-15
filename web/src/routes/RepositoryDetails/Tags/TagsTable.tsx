@@ -286,12 +286,13 @@ function TagsTableRow(props: RowProps) {
                 variant="plain"
                 aria-label="Copy pull spec to clipboard"
                 onClick={() => {
+                  const hostname =
+                    config?.config?.SERVER_HOSTNAME || window.location.host;
                   props.copyToClipboard(
-                    `${config?.config.SERVER_HOSTNAME}/${props.org}/${props.repo}:${tag.name}`,
+                    `${hostname}/${props.org}/${props.repo}:${tag.name}`,
                     `tag-${tag.name}`,
                   );
                 }}
-                style={{padding: 0, marginLeft: '8px'}}
               >
                 <CopyIcon />
               </Button>
@@ -360,7 +361,6 @@ function TagsTableRow(props: RowProps) {
                     `digest-${tag.name}`,
                   );
                 }}
-                style={{padding: 0, marginLeft: '8px'}}
               >
                 <CopyIcon />
               </Button>
@@ -556,9 +556,15 @@ export default function TagsTable(props: TableProps) {
   // Shared clipboard state
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const copyToClipboard = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
+  const copyToClipboard = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
   // Calculate manifest tracks for visual grouping of tags sharing the same digest
   const {tracks, getTrackEntry, getLineClass, trackCount} = useManifestTracks(
     props.allTags,
