@@ -85,6 +85,12 @@ export function useOrganizations() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['user']);
+        queryClient.invalidateQueries([
+          'organization',
+          'superuser',
+          'organizations',
+        ]);
+        queryClient.invalidateQueries(['organization', 'superuser', 'users']);
       },
     },
   );
@@ -96,6 +102,12 @@ export function useOrganizations() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['user']);
+        queryClient.invalidateQueries([
+          'organization',
+          'superuser',
+          'organizations',
+        ]);
+        queryClient.invalidateQueries(['organization', 'superuser', 'users']);
       },
     },
   );

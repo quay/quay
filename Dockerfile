@@ -1,18 +1,26 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS base
+FROM registry.access.redhat.com/ubi9/python-312:latest as base
 # Only set variables or install packages that need to end up in the
 # final container here.
+USER root
+
 ENV PATH=/app/bin/:$PATH \
-	PYTHONUNBUFFERED=1 \
-	PYTHONIOENCODING=UTF-8 \
-	LC_ALL=C.UTF-8 \
-	LANG=C.UTF-8
+    PYTHON_VERSION=3.12 \
+    PATH=$HOME/.local/bin/:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=UTF-8 \
+    LC_ALL=en_US.UTF-8 \
+    LANG=en_US.UTF-8 \
+    CNB_STACK_ID=com.redhat.stacks.ubi9-python-312 \
+    CNB_USER_ID=1001 \
+    CNB_GROUP_ID=0 \
+    PIP_NO_CACHE_DIR=off
+
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
-	; microdnf -y module enable nginx:1.22 \
-	; microdnf -y module enable python39:3.9 \
-	; microdnf update -y \
-	; microdnf -y --setopt=tsflags=nodocs install \
+	; dnf -y module enable nginx:1.24 \
+	; dnf update -y \
+	; dnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
 		memcached \
 		nginx \
@@ -20,13 +28,12 @@ RUN set -ex\
 		libjpeg-turbo \
 		openldap \
 		openssl \
-		python39 \
 		python3-gpg \
+    python3-six \
 		skopeo \
 		findutils \
-	; microdnf -y reinstall tzdata \
-	; microdnf remove platform-python-pip python39-pip \
-	; microdnf -y clean all && rm -rf /var/cache/yum
+	; dnf -y reinstall tzdata \
+	; dnf -y clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
 FROM registry.access.redhat.com/ubi8/nodejs-22 AS config-editor
@@ -44,13 +51,11 @@ ENV PYTHONDONTWRITEBYTECODE 1
 # Enable CodeReady Builder for access to -devel packages.
 
 RUN set -ex\
-	; microdnf -y \
-    --setopt=tsflags=nodocs install \
-    --enablerepo=ubi-8-codeready-builder-rpms \
+	; dnf -y --setopt=tsflags=nodocs install \
 		gcc-c++ \
 		git \
 		openldap-devel \
-		python39-devel \
+		python3.12-devel \
 		libffi-devel \
         openssl-devel \
         diffutils \
@@ -63,7 +68,7 @@ RUN set -ex\
 		libxml2-devel \
 		libxslt-devel \
 		freetype-devel \
-	; microdnf -y clean all
+	; dnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
@@ -81,25 +86,27 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 # In Future if wget is to be removed , then uncomment below line for grpc installation on IBMZ i.e. s390x
 ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL 1
 
+USER 1001
+
 RUN ARCH=$(uname -m) ; echo $ARCH; \
     if [ "$ARCH" == "ppc64le" ] ; then \
     GE_LATEST=$(grep "gevent" requirements.txt |cut -d "=" -f 3); \
-	wget https://github.com/IBM/oss-ecosystem-gevent/releases/download/${GE_LATEST}/manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
-	tar xvf manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
-	python3 -m pip install --no-cache-dir --user wheelhouse/gevent-${GE_LATEST}-cp39-cp39-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl; \
+	wget https://github.com/IBM/oss-ecosystem-gevent/releases/download/${GE_LATEST}/manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz -O /tmp/gvent.tar.gz; \
+	cd /tmp; tar xvf gvent.tar.gz; cd -; \
+	python3 -m pip install --no-cache-dir /tmp/wheelhouse/gevent-${GE_LATEST}-cp39-cp3.12-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl; \
     GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
-	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
-	python3 -m pip install --no-cache-dir --user grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
+	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl -O /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
+	python3 -m pip install --no-cache-dir /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
 	fi
 
 RUN set -ex\
-	; python3 -m pip install --no-cache-dir --progress-bar off --user $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
-	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements.txt \
+	; python3 -m pip install --no-cache-dir --progress-bar off $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
+	; python3 -m pip install --no-cache-dir --progress-bar off --requirement requirements.txt \
 	;
 RUN set -ex\
 # Doing this is explicitly against the purpose and use of certifi.
 	; for dir in\
-		$(find "$(python3 -m site --user-base)" -type d -name certifi)\
+		$(find "/opt/app-root/lib/python3.12/site-packages" -type d -name certifi)\
 	; do chgrp -R 0 "$dir" && chmod -R g=u "$dir" ; done\
 	;
 
@@ -173,7 +180,6 @@ ENV PYTHONPATH $QUAYPATH
 # Openshift runs a container as a random UID and GID 0, so anything
 # that's in the base image and needs to be modified at runtime needs
 # to make sure it's group-writable.
-RUN alternatives --set python /usr/bin/python3
 RUN set -ex\
 	; setperms() { for d in "$@"; do chgrp -R 0 "$d" && chmod -R g=u "$d" && ls -ld "$d"; done; }\
 	; newdir() { for d in "$@"; do mkdir -m 775 "$d" && ls -ld "$d"; done; }\
@@ -192,13 +198,23 @@ RUN set -ex\
 # Another Openshift-ism: it doesn't bother picking a uid that means
 # anything to the OS inside the container, so the process needs
 # permissions to modify the user database.
-	; setperms /etc/passwd\
-	;
+# Harden /etc/passwd – no group write.
+    ; chown root:root /etc/passwd \
+    ; chmod 0644      /etc/passwd \
+	; chown -R 1001:0 /etc/pki/ \
+	; chown -R 1001:0 /etc/ssl/ \
+	; chown -R 1001:0 /quay-registry \
+	; chmod ug+wx -R /etc/pki/ \
+	; chmod ug+wx -R /etc/ssl/
+
+
+RUN python3 -m pip install --no-cache-dir --progress-bar off dumb-init
 
 WORKDIR $QUAYDIR
 # Ordered from least changing to most changing.
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
-COPY --from=build-python /app /app
+COPY --from=build-python /opt/app-root/lib/python3.12/site-packages /opt/app-root/lib/python3.12/site-packages
+COPY --from=build-python /opt/app-root/bin /opt/app-root/bin
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=build-quaydir /quaydir $QUAYDIR
 

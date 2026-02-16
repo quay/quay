@@ -112,12 +112,12 @@ describe('Org List Page', () => {
   it('Pagination', () => {
     cy.visit('/organization');
 
-    cy.contains('1 - 20 of 28').should('exist');
+    cy.contains('1 - 20 of 30').should('exist');
     cy.get('td[data-label="Name"]').should('have.length', 20);
 
     // cycle through the pages
     cy.get('button[aria-label="Go to next page"]').first().click();
-    cy.get('td[data-label="Name"]').should('have.length', 8);
+    cy.get('td[data-label="Name"]').should('have.length', 10);
 
     // Go to first page
     cy.get('button[aria-label="Go to first page"]').first().click();
@@ -127,12 +127,12 @@ describe('Org List Page', () => {
     // Go to last page
     cy.get('button[aria-label="Go to last page"]').first().click();
     cy.contains('user1').should('exist');
-    cy.get('td[data-label="Name"]').should('have.length', 8);
+    cy.get('td[data-label="Name"]').should('have.length', 10);
 
     // Change per page
-    cy.get('button:contains("21 - 28 of 28")').first().click();
+    cy.get('button:contains("21 - 30 of 30")').first().click();
     cy.contains('20 per page').click();
     cy.get('td[data-label="Name"]').should('have.length', 20);
-    cy.contains('1 - 20 of 28').should('exist');
+    cy.contains('1 - 20 of 30').should('exist');
   });
 });

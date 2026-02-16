@@ -212,13 +212,13 @@ hatch-fancy-pypi-readme==25.1.0 \
     --hash=sha256:9c58ed3dff90d51f43414ce37009ad1d5b0f08ffc9fc216998a06380f01c0045 \
     --hash=sha256:ce0134c40d63d874ac48f48ccc678b8f3b62b8e50e9318520d2bffc752eedaf3
     # via -r requirements-build.in
-hatch-vcs==0.3.0 \
-    --hash=sha256:60ce59a3fa4664057e4a858b6a96ab0b9dec21bf8f562f836139315bb361be8c \
-    --hash=sha256:cec5107cfce482c67f8bc96f18bbc320c9aa0d068180e14ad317bbee5a153fee
+hatch-vcs==0.4.0 \
+    --hash=sha256:093810748fe01db0d451fabcf2c1ac2688caefd232d4ede967090b1c1b07d9f7 \
+    --hash=sha256:b8a2b6bee54cf6f9fc93762db73890017ae59c9081d1038a41f16235ceaf8b2c
     # via -r requirements-build.in
-hatchling==1.18.0 \
-    --hash=sha256:50e99c3110ce0afc3f7bdbadff1c71c17758e476731c27607940cfa6686489ca \
-    --hash=sha256:b66dc254931ec42aa68b5febd1d342c58142cc5267b7ff3b12ba3fa5b4900c93
+hatchling==1.27.0 \
+    --hash=sha256:971c296d9819abb3811112fc52c7a9751c8d381898f36533bb16f9791e941fd6 \
+    --hash=sha256:d3a2f3567c4f926ea39849cdf924c7e99e6686c9c8e288ae1037c8fa2a5d937b
     # via
     #   -r requirements-build.in
     #   hatch-fancy-pypi-readme
@@ -278,9 +278,9 @@ mypy-extensions==1.1.0 \
     # via
     #   -r requirements-build.in
     #   mypy
-packaging==25.0 \
-    --hash=sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484 \
-    --hash=sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f
+packaging==26.0 \
+    --hash=sha256:00243ae351a257117b6a241061796684b084ed1c516a08c48a3f7e147a9d80b4 \
+    --hash=sha256:b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529
     # via
     #   -r requirements-build.in
     #   hatchling
@@ -319,9 +319,9 @@ setuptools-rust==1.11.0 \
     --hash=sha256:61739c016f7ba9e114d68e0ddf92d204748c17d3e55492693aa743d70b9a335e \
     --hash=sha256:f765d66f3def6fdc85e1e6d889c6a812aea1430c8dadcf1c7b6779b45f874fb2
     # via -r requirements-build.in
-setuptools-scm==7.1.0 \
-    --hash=sha256:6c508345a771aad7d56ebff0e70628bf2b0ec7573762be9960214730de278f27 \
-    --hash=sha256:73988b6d848709e2af142aa48c986ea29592bbcfca5375678064708205253d8e
+setuptools-scm==9.2.0 \
+    --hash=sha256:6662c9b9497b6c9bf13bead9d7a9084756f68238302c5ed089fb4dbd29d102d7 \
+    --hash=sha256:c551ef54e2270727ee17067881c9687ca2aedf179fa5b8f3fab9e8d73bdc421f
     # via
     #   -r requirements-build.in
     #   hatch-vcs
@@ -340,9 +340,9 @@ tomli==2.0.1 \
     #   mypy
     #   setuptools-rust
     #   setuptools-scm
-trove-classifiers==2023.9.19 \
-    --hash=sha256:3e700af445c802f251ce2b741ee78d2e5dfa5ab8115b933b89ca631b414691c9 \
-    --hash=sha256:55460364fe248294386d4dfa5d16544ec930493ecc6bd1db07a0d50afb37018e
+trove-classifiers==2025.9.11.17 \
+    --hash=sha256:5d392f2d244deb1866556457d6f3516792124a23d1c3a463a2e8668a5d1c15dd \
+    --hash=sha256:931ca9841a5e9c9408bc2ae67b50d28acf85bef56219b56860876dd1f2d024dd
     # via
     #   -r requirements-build.in
     #   hatchling
@@ -354,9 +354,14 @@ typing-extensions==4.8.0 \
     #   mypy
     #   setuptools-rust
     #   setuptools-scm
-wheel==0.41.2 \
-    --hash=sha256:0c5ac5ff2afb79ac23ab82bab027a0be7b5dbcf2e54dc50efe4bf507de1f7985 \
-    --hash=sha256:75909db2664838d015e3d9139004ee16711748a52c8f336b52882266540215d8
+wheel==0.46.2 \
+    --hash=sha256:33ae60725d69eaa249bc1982e739943c23b34b58d51f1cb6253453773aca6e65 \
+    --hash=sha256:3d79e48fde9847618a5a181f3cc35764c349c752e2fe911e65fa17faab9809b0
+    # via -r requirements-build.in
+
+calver==2022.6.26 \
+    --hash=sha256:a1d7fcdd67797afc52ee36ffb8c8adf6643173864306547bfd1380cbce6310a0 \
+    --hash=sha256:e05493a3b17517ef1748fbe610da11f10485faa7c416b9d33fd4a52d74894f8b
     # via -r requirements-build.in
 
 # The following packages are considered to be unsafe in a requirements file:
