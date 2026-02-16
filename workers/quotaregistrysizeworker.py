@@ -1,5 +1,4 @@
 import logging.config
-import time
 
 import features
 from app import app
@@ -28,32 +27,6 @@ def create_gunicorn_worker():
 
 
 if __name__ == "__main__":
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.QUOTA_MANAGEMENT:
-        logger.debug("Quota management disabled; skipping quotaregistrysizeworker")
-        while True:
-            time.sleep(100000)
-
-    # Registry size is only viewable by superusers, don't calculate if not used
-    if not any(
-        [
-            any(
-                [
-                    features.SUPER_USERS,
-                    len(app.config.get("SUPER_USERS", [])) == 0,
-                ]
-            ),
-            app.config.get("LDAP_SUPERUSER_FILTER", False),
-        ]
-    ):
-        logger.debug("Super users disabled or none specified; skipping quotaregistrysizeworker")
-        while True:
-            time.sleep(100000)
-
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
     worker = QuotaRegistrySizeWorker()
     worker.start()

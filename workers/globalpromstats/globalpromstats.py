@@ -1,5 +1,4 @@
 import logging
-import time
 
 from prometheus_client import Gauge
 
@@ -81,16 +80,6 @@ def create_gunicorn_worker():
 
 def main():
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not app.config.get("PROMETHEUS_PUSHGATEWAY_URL"):
-        logger.debug("Prometheus not enabled; skipping global stats reporting")
-        while True:
-            time.sleep(100000)
 
     GlobalLock.configure(app.config)
     worker = GlobalPrometheusStatsWorker()

@@ -1,5 +1,4 @@
 import logging
-import time
 
 import features
 from app import all_queues, app, namespace_gc_queue
@@ -62,21 +61,6 @@ def create_gunicorn_worker():
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.NAMESPACE_GARBAGE_COLLECTION:
-        logger.debug("Namespace garbage collection is disabled; skipping")
-        while True:
-            time.sleep(100000)
-
-    if app.config.get("DISABLE_PUSHES", False):
-        logger.debug("Pushes to the registry are disabled; skipping startup")
-        while True:
-            time.sleep(100000)
 
     GlobalLock.configure(app.config)
     logger.debug("Starting namespace GC worker")

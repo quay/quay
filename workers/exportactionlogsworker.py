@@ -1,7 +1,6 @@
 import json
 import logging
 import os.path
-import time
 import uuid
 from datetime import datetime, timedelta
 from enum import Enum, unique
@@ -305,11 +304,6 @@ def create_gunicorn_worker():
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if not features.LOG_EXPORT:
-        logger.debug("Log export not enabled; skipping")
-        while True:
-            time.sleep(100000)
 
     logger.debug("Starting export action logs worker")
     worker = ExportActionLogsWorker(

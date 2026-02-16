@@ -1,5 +1,4 @@
 import logging
-import time
 
 import features
 from app import app, proxy_cache_blob_queue
@@ -107,15 +106,6 @@ def create_gunicorn_worker():
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.PROXY_CACHE or not features.PROXY_CACHE_BLOB_DOWNLOAD:
-        while True:
-            time.sleep(100000)
 
     logger.debug("Starting proxy cache blob worker")
     worker = ProxyCacheBlobWorker(
