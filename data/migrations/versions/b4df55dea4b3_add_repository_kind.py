@@ -35,13 +35,13 @@ def upgrade(op, tables, tester):
         "repository", sa.Column("kind_id", sa.Integer(), nullable=False, server_default="1")
     )
     op.create_index("repository_kind_id", "repository", ["kind_id"], unique=False)
-    op.create_foreign_key(
-        op.f("fk_repository_kind_id_repositorykind"),
-        "repository",
-        "repositorykind",
-        ["kind_id"],
-        ["id"],
-    )
+    with op.batch_alter_table("repository") as batch_op:
+        batch_op.create_foreign_key(
+            op.f("fk_repository_kind_id_repositorykind"),
+            "repositorykind",
+            ["kind_id"],
+            ["id"],
+        )
 
     # ### population of test data ### #
     tester.populate_column("repository", "kind_id", tester.TestDataType.Foreign("repositorykind"))
@@ -53,5 +53,6 @@ def downgrade(op, tables, tester):
         op.f("fk_repository_kind_id_repositorykind"), "repository", type_="foreignkey"
     )
     op.drop_index("repository_kind_id", table_name="repository")
-    op.drop_column("repository", "kind_id")
+    with op.batch_alter_table("repository") as batch_op:
+        batch_op.drop_column("kind_id")
     op.drop_table("repositorykind")

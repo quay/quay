@@ -25,4 +25,5 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    op.drop_column("user", "location")
+    with op.batch_alter_table("user") as batch_op:
+        batch_op.drop_column("location")
