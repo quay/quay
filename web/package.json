@@ -80,7 +80,7 @@
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.18.0",
     "axios-mock-adapter": "^1.22.0",
-    "copy-webpack-plugin": "^10.2.4",
+    "copy-webpack-plugin": "^13.0.0",
     "css-loader": "^6.11.0",
     "css-minimizer-webpack-plugin": "^5.0.1",
     "cypress-ctrf-json-reporter": "^0.0.13",
