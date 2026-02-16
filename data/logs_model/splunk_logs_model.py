@@ -184,9 +184,11 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
 
         metadata_json = metadata or {}
 
-        # Get performer email if available
+        # Only extract performer email when extended logging is enabled
+        # This avoids triggering lazy DB loads on performer which can cause deadlocks
+        extended_logging_enabled = request_url is not None or http_method is not None
         performer_email = None
-        if performer is not None:
+        if extended_logging_enabled and performer is not None:
             performer_email = getattr(performer, "email", None)
 
         log_data = {

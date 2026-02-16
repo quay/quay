@@ -503,16 +503,24 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
 
         if performer is not None:
             performer_id = performer.id
-            # Only extract string attributes to avoid issues with Mock objects in tests
-            username = getattr(performer, "username", None)
-            performer_username = username if isinstance(username, str) else None
-            email = getattr(performer, "email", None)
-            performer_email = email if isinstance(email, str) else None
 
         if repository is not None:
             repository_id = repository.id
-            name = getattr(repository, "name", None)
-            repo_name = name if isinstance(name, str) else None
+
+        # Only extract extended fields when extended logging is enabled
+        # This avoids triggering lazy DB loads on performer which can cause deadlocks
+        extended_logging_enabled = request_url is not None or http_method is not None
+        if extended_logging_enabled:
+            if performer is not None:
+                # Only extract string attributes to avoid issues with Mock objects in tests
+                username = getattr(performer, "username", None)
+                performer_username = username if isinstance(username, str) else None
+                email = getattr(performer, "email", None)
+                performer_email = email if isinstance(email, str) else None
+
+            if repository is not None:
+                name = getattr(repository, "name", None)
+                repo_name = name if isinstance(name, str) else None
 
         kind_id = model.log._get_log_entry_kind(kind_name)
         log = LogEntry(
@@ -524,7 +532,7 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
             metadata=metadata or {},
             repository_id=repository_id,
             datetime=timestamp,
-            # Enhanced logging fields
+            # Enhanced logging fields (only populated when extended logging is enabled)
             request_url=request_url,
             http_method=http_method,
             performer_username=performer_username,

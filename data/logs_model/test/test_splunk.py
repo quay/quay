@@ -311,11 +311,11 @@ def test_splunk_logs_producers(
                     "metadata_json": {"key": "value"},
                     "performer": "fake_username",
                     "repository": None,
-                    # ESS EOI fields
+                    # ESS EOI fields - performer_email is None when extended logging disabled
                     "request_url": None,
                     "http_method": None,
                     "performer_username": "fake_username",
-                    "performer_email": "fake_email@123",
+                    "performer_email": None,
                     "performer_kind": None,
                     "auth_type": None,
                     "user_agent": None,
@@ -440,11 +440,11 @@ def test_splunk_hec_logs_producer(
                     "metadata_json": {"key": "value"},
                     "performer": "fake_username",
                     "repository": None,
-                    # ESS EOI fields
+                    # ESS EOI fields - performer_email is None when extended logging disabled
                     "request_url": None,
                     "http_method": None,
                     "performer_username": "fake_username",
-                    "performer_email": "fake_email@123",
+                    "performer_email": None,
                     "performer_kind": None,
                     "auth_type": None,
                     "user_agent": None,
