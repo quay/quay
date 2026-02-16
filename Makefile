@@ -202,14 +202,16 @@ local-dev-build-images:
 .PHONY: local-dev-up
 local-dev-up: local-dev-clean node_modules | build-image-quay
 	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) up -d --force-recreate local-dev-frontend
+	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) up -d --force-recreate local-dev-react
 	$(DOCKER_COMPOSE) up -d redis quay-db
-	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	$(DOCKER) exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) stop quay  # we need to restart quay after local-dev-clean
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
 	# Waiting until the frontend is built...
 	# Use '$(DOCKER_COMPOSE) logs -f local-dev-frontend' to see the progress
 	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
-	@echo "You can now access the frontend at http://localhost:8080"
+	@echo "Angular frontend: http://localhost:8080"
+	@echo "React dev server: http://localhost:9000"
 
 .PHONY: update-testdata
 update-testdata: local-dev-clean node_modules | build-image-quay
@@ -235,9 +237,9 @@ update-testdata: local-dev-clean node_modules | build-image-quay
 local-dev-up-react: local-dev-clean | build-image-quay
 	BUILD_ANGULAR=false DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) up -d --force-recreate local-dev-react
 	$(DOCKER_COMPOSE) up -d redis quay-db
-	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	# Wait for React files to be copied
-	while ! test -e ./static/patternfly/index.html; do echo "Waiting for React files..."; sleep 2; done
+	$(DOCKER) exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	# Wait for React dev server to be ready
+	while ! curl -sf http://localhost:9000 > /dev/null 2>&1; do echo "Waiting for React dev server..."; sleep 2; done
 	BUILD_ANGULAR=false DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) stop quay
 	BUILD_ANGULAR=false DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
 	# Wait for backend to be ready
