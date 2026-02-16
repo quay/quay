@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
 
-from deprecated import deprecated
+from deprecation import deprecated
 from six import add_metaclass
 
 
@@ -58,7 +58,7 @@ class SecurityScannerInterface(object):
         """
 
     @abstractproperty
-    @deprecated(reason="Only exposed for the legacy notification worker")
+    @deprecated(details="Only exposed for the legacy notification worker")
     def legacy_api_handler(self):
         """
         Exposes the legacy security scan API for legacy workers that need it or None if none.
