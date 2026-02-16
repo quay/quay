@@ -51,6 +51,17 @@ class TestOrgImmutabilityPolicies:
                 400,
             )
 
+    def test_create_redos_pattern_rejected(self, initialized_db, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                OrgImmutabilityPolicies,
+                "POST",
+                {"orgname": "buynlarge"},
+                {"tagPattern": "(a+)+"},
+                400,
+            )
+
     def test_create_duplicate_policy(self, initialized_db, app):
         with client_with_identity("devtable", app) as cl:
             # Create first policy

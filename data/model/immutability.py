@@ -21,6 +21,7 @@ from data.model import (
     repository,
 )
 from data.model.user import get_active_namespace_user_by_username
+from util.regex_safety import check_regex_safety
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,8 @@ def _validate_policy(policy_config: PolicyConfig) -> None:
     except re.error as e:
         raise InvalidImmutabilityPolicy(f"Invalid regex pattern: {e}")
 
+    check_regex_safety(tag_pattern)
+
     tag_pattern_matches = policy_config.get("tag_pattern_matches")
     if tag_pattern_matches is not None and not isinstance(tag_pattern_matches, bool):
         raise InvalidImmutabilityPolicy("tag_pattern_matches must be a boolean")
@@ -90,7 +93,8 @@ def _compile_pattern(pattern: str) -> Pattern[str]:
 def _matches_policy(tag_name: str, tag_pattern: str, tag_pattern_matches: bool) -> bool:
     """Check if tag should be immutable based on pattern."""
     try:
-        matches = bool(_compile_pattern(tag_pattern).match(tag_name))
+        compiled = _compile_pattern(tag_pattern)
+        matches = bool(compiled.match(tag_name))
     except re.error:
         return False
     return matches if tag_pattern_matches else not matches
