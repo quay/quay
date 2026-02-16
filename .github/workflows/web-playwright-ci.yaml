@@ -18,6 +18,9 @@ jobs:
 
       - name: Setup Quay
         uses: ./.github/actions/setup-quay
+        with:
+          extra-config: |
+            FEATURE_MAILING: true
 
       - name: Set up Node.js with npm caching
         uses: actions/setup-node@v6

@@ -19,6 +19,7 @@ from data import model
 from data.database import SourceRegistryType, Visibility
 from data.encryption import DecryptionFailureException
 from data.model import DataModelException, InvalidOrganizationException
+from data.model.immutability import namespace_has_immutable_tags
 from endpoints.api import (
     ApiResource,
     allow_if_superuser_with_full_access,
@@ -252,6 +253,15 @@ class OrgMirrorConfig(ApiResource):
         if existing:
             raise InvalidRequest("Mirror configuration already exists for this organization")
 
+        # Check for immutable tags in the organization
+        if features.IMMUTABLE_TAGS:
+            if namespace_has_immutable_tags(org.id):
+                logger.warning(
+                    "Blocking mirror creation for org '%s': immutable tags exist",
+                    orgname,
+                )
+                raise InvalidRequest("Cannot convert organization to mirror: immutable tags exist")
+
         data = request.get_json()
 
         # Validate and look up robot account
@@ -329,6 +339,8 @@ class OrgMirrorConfig(ApiResource):
                 "external_registry_type": registry_type_str.lower(),
                 "external_registry_url": data.get("external_registry_url"),
                 "external_namespace": data.get("external_namespace"),
+                "sync_interval": sync_interval,
+                "robot_username": robot_username,
             },
         )
 
@@ -439,11 +451,20 @@ class OrgMirrorConfig(ApiResource):
         except DataModelException as e:
             raise InvalidRequest(str(e))
 
-        # Log the action
+        # Log the action with both old and new external_reference
+        old_external_reference = f"{existing.external_registry_url}/{existing.external_namespace}"
+        new_url = data.get("external_registry_url", existing.external_registry_url)
+        new_namespace = data.get("external_namespace", existing.external_namespace)
+        new_external_reference = f"{new_url}/{new_namespace}"
+
         log_action(
             "org_mirror_config_changed",
             orgname,
-            {"updated_fields": list(data.keys())},
+            {
+                "updated_fields": list(data.keys()),
+                "old_external_reference": old_external_reference,
+                "external_reference": new_external_reference,
+            },
         )
 
         return "", 200
@@ -461,12 +482,25 @@ class OrgMirrorConfig(ApiResource):
         except InvalidOrganizationException:
             raise NotFound()
 
-        deleted = model.org_mirror.delete_org_mirror_config(org)
+        # Get config before deleting to capture external_reference for audit log
+        mirror = model.org_mirror.get_org_mirror_config(org)
+        if not mirror:
+            raise NotFound()
+
+        external_reference = f"{mirror.external_registry_url}/{mirror.external_namespace}"
+
+        deleted = model.org_mirror.delete_org_mirror_config(mirror)
         if not deleted:
             raise NotFound()
 
         # Log the action
-        log_action("org_mirror_disabled", orgname, {})
+        log_action(
+            "org_mirror_disabled",
+            orgname,
+            {
+                "external_reference": external_reference,
+            },
+        )
 
         return "", 204
 
@@ -508,7 +542,9 @@ class OrgMirrorSyncNow(ApiResource):
         log_action(
             "org_mirror_sync_now_requested",
             orgname,
-            {},
+            {
+                "external_reference": f"{mirror.external_registry_url}/{mirror.external_namespace}",
+            },
         )
 
         return "", 204
@@ -553,7 +589,9 @@ class OrgMirrorSyncCancel(ApiResource):
         log_action(
             "org_mirror_sync_cancelled",
             orgname,
-            {},
+            {
+                "external_reference": f"{mirror.external_registry_url}/{mirror.external_namespace}",
+            },
         )
 
         return "", 204

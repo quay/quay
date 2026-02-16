@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   ButtonVariant,
   DatePicker,
@@ -16,6 +17,7 @@ import {
 import {useEffect, useState} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useSetExpiration} from 'src/hooks/UseTags';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
 
 export default function EditExpirationModal(props: EditExpirationModalProps) {
@@ -31,6 +33,12 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
   const initialDate: Date = isNullOrUndefined(props.expiration)
     ? null
     : new Date(props.expiration);
+
+  // Compute mutable tags by filtering out immutable ones
+  const mutableTags = props.tags.filter(
+    (tag) => !props.immutableTags?.includes(tag),
+  );
+  const allTagsImmutable = mutableTags.length === 0 && props.tags.length > 0;
 
   const isToday = (date: Date) => {
     const today = new Date();
@@ -51,8 +59,8 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
         ? 'never'
         : formatDate(date.getTime() / 1000);
       const title: string =
-        props.tags.length === 1
-          ? `Successfully set expiration for tag ${props.tags[0]} to ${dateMessage}`
+        mutableTags.length === 1
+          ? `Successfully set expiration for tag ${mutableTags[0]} to ${dateMessage}`
           : `Successfully updated tag expirations to ${dateMessage}`;
       addAlert({variant: AlertVariant.Success, title: title});
       props.loadTags();
@@ -66,15 +74,16 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
   useEffect(() => {
     if (errorSetExpiration) {
       const title: string =
-        props.tags.length === 1
-          ? `Could not set expiration for tag ${props.tags[0]}`
+        mutableTags.length === 1
+          ? `Could not set expiration for tag ${mutableTags[0]}`
           : 'Could not update tag expirations';
       const errorDisplayMessage = (
         <>
           {Array.from(errorSetExpirationDetails.getErrors()).map(
             ([tag, error]) => (
               <p key={tag}>
-                Could not update expiration for tag {tag}: {error.error.message}
+                Could not update expiration for tag {tag}:{' '}
+                {getErrorMessageFromUnknown(error.error)}
               </p>
             ),
           )}
@@ -167,7 +176,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
   const onSave = () => {
     const requestedDate =
       date === null || date === undefined ? null : date.getTime() / 1000;
-    setExpiration({tags: props.tags, expiration: requestedDate});
+    setExpiration({tags: mutableTags, expiration: requestedDate});
   };
 
   const onClose = () => {
@@ -211,7 +220,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
           <Button
             key="modal-action-button"
             variant="primary"
-            isDisabled={!validDate}
+            isDisabled={!validDate || allTagsImmutable}
             onClick={onSave}
           >
             Change Expiration
@@ -222,11 +231,38 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
           overflowY: 'visible',
         }}
       >
+        {allTagsImmutable ? (
+          <Alert
+            isInline
+            variant="danger"
+            title="All selected tags are immutable"
+            data-testid="all-tags-immutable-error"
+          >
+            None of the selected tags can have their expiration changed because
+            they are all immutable.
+          </Alert>
+        ) : (
+          props.immutableTags &&
+          props.immutableTags.length > 0 && (
+            <>
+              <Alert
+                isInline
+                variant="warning"
+                title="Immutable tags will be skipped"
+                data-testid="immutable-tags-expiration-warning"
+              >
+                The following tags are immutable and will not have their
+                expiration changed: {props.immutableTags.join(', ')}
+              </Alert>
+              <div style={{marginBottom: '1rem'}} />
+            </>
+          )
+        )}
         <DescriptionList>
           <DescriptionListGroup>
             <DescriptionListTerm>Tags that will be updated</DescriptionListTerm>
             <DescriptionListDescription id="edit-expiration-tags">
-              {props.tags.map((tag) => (
+              {mutableTags.map((tag) => (
                 <Label key={tag}>{tag}</Label>
               ))}
             </DescriptionListDescription>
@@ -284,4 +320,5 @@ interface EditExpirationModalProps {
   loadTags: () => void;
   expiration?: string;
   onComplete?: () => void;
+  immutableTags?: string[];
 }

@@ -10,7 +10,6 @@ from peewee import JOIN, SQL, Case, IntegrityError, fn
 
 import data
 from data.database import (
-    ApprTag,
     BlobUpload,
     DeletedRepository,
     ExternalNotificationEvent,
@@ -365,32 +364,6 @@ def get_visible_repositories(
         query = query.limit(limit).order_by(SQL("rid"))
 
     return query
-
-
-def get_app_repository(namespace_name, repository_name):
-    """
-    Find an application repository.
-    """
-    try:
-        return _basequery.get_existing_repository(
-            namespace_name, repository_name, kind_filter="application"
-        )
-    except Repository.DoesNotExist:
-        return None
-
-
-def get_app_search(lookup, search_fields=None, username=None, limit=50):
-    if search_fields is None:
-        search_fields = set([SEARCH_FIELDS.name.name])
-
-    return get_filtered_matching_repositories(
-        lookup,
-        filter_username=username,
-        search_fields=search_fields,
-        repo_kind="application",
-        offset=0,
-        limit=limit,
-    )
 
 
 def _get_namespace_user(username):

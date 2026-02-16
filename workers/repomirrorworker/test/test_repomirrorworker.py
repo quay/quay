@@ -8,6 +8,7 @@ import pytest
 
 from app import storage
 from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
+from data.encryption import DecryptionFailureException
 from data.model.test.test_repo_mirroring import create_mirror_repo_robot
 from data.model.user import retrieve_robot_token
 from data.registry_model import registry_model
@@ -17,8 +18,12 @@ from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
 from workers.repomirrorworker import (
+    PreemptedException,
     _get_v2_bearer_token,
+    copy_filtered_architectures,
     delete_obsolete_tags,
+    perform_mirror,
+    process_mirrors,
     push_sparse_manifest_list,
 )
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
@@ -1533,3 +1538,380 @@ def test_push_sparse_manifest_list_string_manifest(
     call_kwargs = mock_put.call_args[1]
     assert isinstance(call_kwargs["data"], bytes)
     assert call_kwargs["data"] == manifest_str.encode("utf-8")
+
+
+# =============================================================================
+# Tests for process_mirrors() edge cases
+# =============================================================================
+
+
+@mock.patch("workers.repomirrorworker.features")
+def test_process_mirrors_feature_disabled(mock_features, initialized_db, app):
+    """
+    When REPO_MIRROR feature is disabled, process_mirrors returns None immediately.
+    """
+    mock_features.REPO_MIRROR = False
+
+    result = process_mirrors(mock.Mock())
+    assert result is None
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.perform_mirror")
+@mock.patch("workers.repomirrorworker.model")
+@mock.patch("workers.repomirrorworker.features")
+def test_process_mirrors_preempted_exception(
+    mock_features, mock_model, mock_perform, initialized_db, app
+):
+    """
+    When perform_mirror raises PreemptedException, the abort signal is set and iteration continues.
+    """
+    from workers.repomirrorworker import PreemptedException
+
+    mock_features.REPO_MIRROR = True
+    mock_abt = mock.Mock()
+    mock_mirror = mock.Mock()
+    mock_model.repositories_to_mirror.return_value = (
+        iter([(mock_mirror, mock_abt, 5)]),
+        "next_token",
+    )
+    mock_perform.side_effect = PreemptedException()
+
+    result = process_mirrors(mock.Mock())
+
+    mock_abt.set.assert_called_once()
+    assert result == "next_token"
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.perform_mirror")
+@mock.patch("workers.repomirrorworker.model")
+@mock.patch("workers.repomirrorworker.features")
+def test_process_mirrors_generic_exception(
+    mock_features, mock_model, mock_perform, initialized_db, app
+):
+    """
+    When perform_mirror raises a generic Exception, process_mirrors returns None.
+    """
+    mock_features.REPO_MIRROR = True
+    mock_abt = mock.Mock()
+    mock_mirror = mock.Mock()
+    mock_model.repositories_to_mirror.return_value = (
+        iter([(mock_mirror, mock_abt, 5)]),
+        "next_token",
+    )
+    mock_perform.side_effect = RuntimeError("unexpected error")
+
+    result = process_mirrors(mock.Mock())
+
+    assert result is None
+
+
+# =============================================================================
+# Tests for copy_filtered_architectures() edge cases
+# =============================================================================
+
+
+@disable_existing_mirrors
+def test_copy_filtered_architectures_inspect_failure(initialized_db, app):
+    """
+    When skopeo inspect_raw fails, copy_filtered_architectures returns failure result.
+    """
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+
+    mock_skopeo = mock.Mock()
+    mock_skopeo.inspect_raw.return_value = SkopeoResults(False, [], "", "inspect failed")
+
+    result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64"])
+
+    assert result.success is False
+    assert "inspect failed" in result.stderr
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+def test_copy_filtered_architectures_arch_copy_failure(mock_token, initialized_db, app):
+    """
+    When copying an architecture by digest fails, copy_filtered_architectures returns failure.
+    """
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+    mock_token.return_value = "robot_token"
+
+    mock_skopeo = mock.Mock()
+    mock_skopeo.inspect_raw.return_value = SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, "")
+    mock_skopeo.copy_by_digest.return_value = SkopeoResults(False, [], "", "digest copy failed")
+
+    result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64"])
+
+    assert result.success is False
+    assert "digest copy failed" in result.stderr
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.push_sparse_manifest_list")
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+def test_copy_filtered_architectures_manifest_push_failure(
+    mock_token, mock_push, initialized_db, app
+):
+    """
+    When pushing the sparse manifest list fails, copy_filtered_architectures returns failure.
+    """
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+    mock_token.return_value = "robot_token"
+    mock_push.return_value = False
+
+    mock_skopeo = mock.Mock()
+    mock_skopeo.inspect_raw.return_value = SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, "")
+    mock_skopeo.copy_by_digest.return_value = SkopeoResults(True, [], "copied", "")
+
+    result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64"])
+
+    assert result.success is False
+    assert "sparse manifest" in result.stderr.lower()
+
+
+# =============================================================================
+# Tests for perform_mirror() edge cases
+# =============================================================================
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_perform_mirror_empty_tags(run_skopeo_mock, initialized_db, app):
+    """
+    When tags_to_mirror returns an empty list (no tags match pattern),
+    mirror succeeds with no sync.
+    """
+    mirror, _repo = create_mirror_repo_robot(["nonexistent-pattern*"])
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=True",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest", "v1.0"]}', ""),
+        },
+    ]
+
+    def skopeo_test(args, _proxy, timeout=300):
+        skopeo_call = skopeo_calls.pop(0)
+        assert args == skopeo_call["args"]
+        return skopeo_call["results"]
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    assert [] == skopeo_calls
+    mirror = RepoMirrorConfig.get_by_id(mirror.id)
+    assert mirror.sync_status == RepoMirrorStatus.SUCCESS
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+@mock.patch("workers.repomirrorworker.check_repo_mirror_sync_status")
+def test_perform_mirror_cancel_during_sync(mock_check_status, run_skopeo_mock, initialized_db, app):
+    """
+    When cancel is detected during tag sync, mirror is cancelled.
+    """
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
+        },
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "copy",
+                "--all",
+                "--remove-signatures",
+                "--src-tls-verify=False",
+                "--dest-tls-verify=True",
+                "--dest-creds",
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/repo:latest",
+            ],
+            "results": SkopeoResults(True, [], "stdout", "stderr"),
+        },
+    ]
+
+    def skopeo_test(args, _proxy, timeout=300):
+        skopeo_call = skopeo_calls.pop(0)
+        assert args == skopeo_call["args"]
+        return skopeo_call["results"]
+
+    run_skopeo_mock.side_effect = skopeo_test
+    mock_check_status.return_value = RepoMirrorStatus.CANCEL
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    assert [] == skopeo_calls
+    mirror = RepoMirrorConfig.get_by_id(mirror.id)
+    assert mirror.sync_status == RepoMirrorStatus.CANCEL
+
+
+# =============================================================================
+# Tests for perform_mirror() error paths
+# =============================================================================
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.claim_mirror")
+def test_perform_mirror_claim_fails(mock_claim, initialized_db, app):
+    """
+    When claim_mirror() returns None, PreemptedException is raised.
+    """
+    mirror, _repo = create_mirror_repo_robot(["latest"])
+    mock_claim.return_value = None
+
+    skopeo = mock.Mock()
+    with pytest.raises(PreemptedException):
+        perform_mirror(skopeo, mirror)
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.release_mirror")
+@mock.patch("workers.repomirrorworker.tags_to_mirror")
+@mock.patch("workers.repomirrorworker.logs_model")
+def test_perform_mirror_generic_exception_during_tags(
+    _mock_logs, mock_tags, mock_release, initialized_db, app
+):
+    """
+    When tags_to_mirror() raises a generic Exception, mirror is released with FAIL status.
+    """
+    mirror, _repo = create_mirror_repo_robot(["latest"])
+
+    mock_tags.side_effect = RuntimeError("unexpected tag listing error")
+
+    skopeo = mock.Mock()
+    perform_mirror(skopeo, mirror)
+
+    mock_release.assert_called_once_with(mirror, RepoMirrorStatus.FAIL)
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.release_mirror")
+@mock.patch("workers.repomirrorworker.logs_model")
+@mock.patch("workers.repomirrorworker.tags_to_mirror")
+@mock.patch("workers.repomirrorworker.claim_mirror")
+def test_perform_mirror_decryption_failure(
+    mock_claim, mock_tags, _mock_logs, mock_release, initialized_db, app
+):
+    """
+    When credential decryption raises DecryptionFailureException during tag sync,
+    the inner except re-raises it and the outer except Exception catches it,
+    releasing the mirror with FAIL status.
+    """
+    mirror, _repo = create_mirror_repo_robot(["latest"])
+
+    # claim_mirror returns a mock with decrypt that raises
+    mock_claimed = mock.MagicMock()
+    mock_claimed.id = mirror.id
+    mock_claimed.external_reference = mirror.external_reference
+    mock_claimed.root_rule.rule_value = ["latest"]
+    mock_claimed.repository = mirror.repository
+    mock_claimed.skopeo_timeout = 300
+    mock_claimed.architecture_filter = []
+    mock_claimed.external_registry_config = {}
+
+    # Make username decryption fail
+    mock_username = mock.MagicMock()
+    mock_username.decrypt.side_effect = DecryptionFailureException("decrypt failed")
+    mock_username.__bool__ = mock.MagicMock(return_value=True)
+    mock_claimed.external_registry_username = mock_username
+
+    mock_claim.return_value = mock_claimed
+    mock_tags.return_value = ["latest"]
+
+    skopeo = mock.Mock()
+    perform_mirror(skopeo, mock_claimed)
+
+    # DecryptionFailureException is re-raised but caught by outer except Exception,
+    # which releases the mirror with FAIL status
+    fail_calls = [c for c in mock_release.call_args_list if c[0][1] == RepoMirrorStatus.FAIL]
+    assert len(fail_calls) >= 1
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.release_mirror")
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+@mock.patch("workers.repomirrorworker.logs_model")
+@mock.patch("workers.repomirrorworker.tags_to_mirror")
+@mock.patch("workers.repomirrorworker.claim_mirror")
+def test_perform_mirror_preempted_during_sync(
+    mock_claim, mock_tags, _mock_logs, mock_token, mock_release, initialized_db, app
+):
+    """
+    When PreemptedException occurs during tag sync loop, mirror is released with FAIL.
+    """
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+
+    mock_claim.return_value = mirror
+    mock_tags.return_value = ["latest"]
+    mock_token.return_value = "robot_token"
+
+    skopeo = mock.Mock()
+    skopeo.copy.side_effect = PreemptedException()
+
+    result = perform_mirror(skopeo, mirror)
+
+    # The PreemptedException during sync is caught internally and mirror released with FAIL
+    assert mock_release.call_count >= 1
+    # Check that at least one release call was with FAIL status
+    fail_calls = [c for c in mock_release.call_args_list if c[0][1] == RepoMirrorStatus.FAIL]
+    assert len(fail_calls) >= 1
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.release_mirror")
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+@mock.patch("workers.repomirrorworker.logs_model")
+@mock.patch("workers.repomirrorworker.tags_to_mirror")
+@mock.patch("workers.repomirrorworker.claim_mirror")
+def test_perform_mirror_generic_exception_during_sync(
+    mock_claim, mock_tags, _mock_logs, mock_token, mock_release, initialized_db, app
+):
+    """
+    When a generic Exception occurs during tag sync loop, mirror is released with FAIL.
+    """
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+
+    mock_claim.return_value = mirror
+    mock_tags.return_value = ["latest"]
+    mock_token.return_value = "robot_token"
+
+    skopeo = mock.Mock()
+    skopeo.copy.side_effect = RuntimeError("unexpected sync error")
+
+    result = perform_mirror(skopeo, mirror)
+
+    # The exception during sync is caught and mirror released with FAIL
+    assert mock_release.call_count >= 1
+    fail_calls = [c for c in mock_release.call_args_list if c[0][1] == RepoMirrorStatus.FAIL]
+    assert len(fail_calls) >= 1

@@ -96,26 +96,11 @@ def test_list_starred_repos(app):
 
 def test_list_repos(initialized_db, app):
     with client_with_identity("devtable", app) as cl:
-        params = {"starred": "true", "repo_kind": "application"}
+        params = {"starred": "true", "repo_kind": "image"}
         response = conduct_api_call(cl, RepositoryList, "GET", params).json
         repo_states = {r["state"] for r in response["repositories"]}
         for state in repo_states:
             assert state in ["NORMAL", "MIRROR", "ORG_MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
-
-
-def test_list_starred_app_repos(initialized_db, app):
-    with client_with_identity("devtable", app) as cl:
-        params = {"starred": "true", "repo_kind": "application"}
-
-        devtable = model.user.get_user("devtable")
-        repo = model.repository.create_repository(
-            "devtable", "someappr", devtable, repo_kind="application"
-        )
-        model.repository.star_repository(model.user.get_user("devtable"), repo)
-
-        response = conduct_api_call(cl, RepositoryList, "GET", params).json
-        repos = {r["namespace"] + "/" + r["name"] for r in response["repositories"]}
-        assert "devtable/someappr" in repos
 
 
 def test_list_repositories_last_modified(app):

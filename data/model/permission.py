@@ -1,5 +1,3 @@
-import itertools
-
 from peewee import JOIN
 
 from data.database import (
@@ -105,7 +103,8 @@ def _get_user_repo_permissions(
         .where(UserThroughTeam.id == user)
     )
 
-    return itertools.chain(direct, team)
+    # Use UNION to combine both queries into a single DB round-trip
+    return direct.union_all(team)
 
 
 def delete_prototype_permission(org, uid):
@@ -177,7 +176,7 @@ def get_org_wide_permissions(user, org_filter=None):
     with_user = with_org.switch(Team).join(TeamMember).join(User)
 
     if org_filter:
-        with_user.where(Org.username == org_filter)
+        with_user = with_user.where(Org.username == org_filter)
 
     return with_user.where(User.id == user, Org.organization == True)
 

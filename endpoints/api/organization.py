@@ -26,6 +26,7 @@ from data import model
 from data.billing import get_plan, get_plan_using_rh_sku
 from data.database import ProxyCacheConfig
 from data.model import organization_skus
+from data.model.immutability import namespace_has_immutable_tags
 from endpoints.api import (
     ApiResource,
     allow_if_any_superuser,
@@ -1005,6 +1006,18 @@ class OrganizationProxyCacheConfig(ApiResource):
             raise request_error("Proxy Cache Configuration already exists")
         except model.InvalidProxyCacheConfigException:
             pass
+
+        # Check for immutable tags in the organization
+        if features.IMMUTABLE_TAGS:
+            org = model.organization.get_organization(orgname)
+            if namespace_has_immutable_tags(org.id):
+                logger.warning(
+                    "Blocking proxy cache creation for org '%s': immutable tags exist",
+                    orgname,
+                )
+                raise request_error(
+                    "Cannot convert organization to proxy cache: immutable tags exist"
+                )
 
         data = request.get_json()
         # filter None values

@@ -745,8 +745,13 @@ CONFIG_SCHEMA = {
         },
         "FEATURE_IMMUTABLE_TAGS": {
             "type": "boolean",
-            "description": "Whether tag immutability enforcement is enabled. When enabled, immutable tags cannot be deleted or overwritten. Defaults to True.",
+            "description": "Whether tag immutability enforcement is enabled. When enabled, immutable tags cannot be deleted or overwritten. Defaults to False.",
             "x-example": True,
+        },
+        "FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": {
+            "type": "boolean",
+            "description": "Whether immutable tags can have expiration dates set. When False (default), setting expiration on immutable tags is blocked, and tags with expiration cannot be made immutable.",
+            "x-example": False,
         },
         "DEFAULT_TAG_EXPIRATION": {
             "type": "string",
@@ -2388,12 +2393,6 @@ CONFIG_SCHEMA = {
         "x-example": False,
         "x-reference": "https://docs.redhat.com/en/documentation/red_hat_quay/3.12/html/configure_red_hat_quay/config-fields-intro#config-fields-aci",
     },
-    "FEATURE_APP_REGISTRY": {
-        "type": "boolean",
-        "description": "[QUAY.IO] FEATURE_APP_REGISTRY. Defaults to False",
-        "x-example": False,
-        "x-reference": None,
-    },
     "GITLAB_TRIGGER_KIND": {
         "type": "object",
         "description": "[QUAY.IO] GITLAB_TRIGGER_KIND.",
@@ -2493,8 +2492,8 @@ CONFIG_SCHEMA = {
     },
     "LDAP_CACHE_TTL": {
         "type": "number",
-        "description": "Time-to-live in seconds for cached LDAP permission results. Defaults to 60.",
-        "x-example": 60,
+        "description": "Time-to-live in seconds for cached LDAP permission results. Defaults to 5.",
+        "x-example": 10,
         "x-reference": None,
     },
     "GLOBAL_PROMETHEUS_STATS_FREQUENCY": {

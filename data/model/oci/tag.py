@@ -22,7 +22,7 @@ from data.database import (
     db_transaction,
     get_epoch_timestamp_ms,
 )
-from data.model import ImmutableTagException, config, user
+from data.model import DataModelException, ImmutableTagException, config, user
 from data.model.notification import delete_tag_notifications_for_tag
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -654,11 +654,23 @@ def change_tag_expiration(tag_id, expiration_datetime):
 
     If the expiration datetime is None, then the tag is marked as not expiring. Returns a tuple of
     the previous expiration timestamp in seconds (if any), and whether the operation succeeded.
+
+    Raises ImmutableTagException if trying to set expiration on an immutable tag when
+    FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is False.
     """
     try:
         tag = Tag.get(id=tag_id)
     except Tag.DoesNotExist:
         return (None, False)
+
+    # Block setting expiration on immutable tags if config disallows
+    if (
+        features.IMMUTABLE_TAGS
+        and tag.immutable
+        and expiration_datetime is not None
+        and not config.app_config.get("FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False)
+    ):
+        raise ImmutableTagException(tag.name, "set expiration on", tag.repository_id)
 
     new_end_ms = None
     min_expire_sec = convert_to_timedelta(config.app_config.get("LABELED_EXPIRATION_MINIMUM", "1h"))
@@ -911,6 +923,7 @@ def fetch_paginated_autoprune_repo_tags_by_number(
                 Tag.repository_id == repo_id,
                 (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
                 Tag.hidden == False,
+                Tag.immutable == False,
             )
             # TODO: Ignoring type error for now, but it seems order_by doesn't
             # return anything to be modified by offset. Need to investigate
@@ -957,6 +970,7 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(
             (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
             (now_ms - Tag.lifetime_start_ms) > tag_lifetime_ms,
             Tag.hidden == False,
+            Tag.immutable == False,
         )
         if tag_pattern is not None:
             query = db_regex_search(
@@ -1022,10 +1036,24 @@ def set_tag_immutable(
     Sets the immutability status of a tag.
 
     Returns (previous_immutable, success) tuple.
+
+    Raises DataModelException if trying to make an expiring tag immutable when
+    FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is False.
     """
     tag = get_tag(repository_id, tag_name)
     if tag is None:
         return (None, False)
+
+    # Block making expiring tag immutable if config disallows coexistence
+    if (
+        immutable
+        and tag.lifetime_end_ms is not None
+        and not config.app_config.get("FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False)
+    ):
+        raise DataModelException(
+            f"Cannot make tag '{tag_name}' immutable: tag has expiration set. "
+            "Clear expiration first or enable FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE."
+        )
 
     previous_immutable = tag.immutable
 

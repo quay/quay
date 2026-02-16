@@ -1,5 +1,6 @@
 import {
   ActionGroup,
+  Alert,
   Button,
   Card,
   CardBody,
@@ -171,6 +172,18 @@ export default function ImmutabilityPolicyForm(
   // Form content (shared between inline and card modes)
   const formContent = (
     <Form id={`immutability-policy-form-${props.index}`}>
+      {!uuid && (
+        <Alert
+          variant="warning"
+          isInline
+          title="Immutability is permanent per tag."
+          className="pf-v5-u-mb-md"
+        >
+          Removing this policy will not remove immutability from tags that have
+          already been made immutable. Tags must be individually updated to
+          remove immutability.
+        </Alert>
+      )}
       <FormGroup
         label="Tag Pattern"
         fieldId={`tag-pattern-${props.index}`}

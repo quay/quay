@@ -291,19 +291,6 @@ def disallow_for_user_namespace(func):
     return wrapped
 
 
-def disallow_for_app_repositories(func):
-    @wraps(func)
-    def wrapped(self, namespace_name, repository_name, *args, **kwargs):
-        # Lookup the repository with the given namespace and name and ensure it is not an application
-        # repository.
-        if model.is_app_repository(namespace_name, repository_name):
-            abort(501)
-
-        return func(self, namespace_name, repository_name, *args, **kwargs)
-
-    return wrapped
-
-
 def disallow_for_non_normal_repositories(func):
     @wraps(func)
     def wrapped(self, namespace_name, repository_name, *args, **kwargs):

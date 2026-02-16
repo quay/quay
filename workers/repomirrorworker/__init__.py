@@ -3,12 +3,13 @@ import json
 import logging
 import os
 import re
+import time
 import traceback
 from typing import Optional
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
-from prometheus_client import Gauge
+from prometheus_client import Counter, Gauge, Histogram
 
 import features
 from app import app
@@ -75,6 +76,38 @@ unmirrored_org_repositories = Gauge(
 pending_org_mirror_discovery = Gauge(
     "quay_org_mirror_configs_pending_discovery",
     "number of org-level mirror configs pending repository discovery",
+)
+
+org_mirror_discovery_total = Counter(
+    "quay_org_mirror_discovery_total",
+    "total number of org-level mirror discovery operations",
+    labelnames=["status"],
+)
+
+org_mirror_discovery_duration_seconds = Histogram(
+    "quay_org_mirror_discovery_duration_seconds",
+    "duration of org-level mirror discovery operations in seconds",
+)
+
+org_mirror_repos_discovered = Gauge(
+    "quay_org_mirror_repos_discovered",
+    "number of repositories discovered in last org-level mirror discovery",
+)
+
+org_mirror_repos_created_total = Counter(
+    "quay_org_mirror_repos_created_total",
+    "total number of repositories created by org-level mirroring",
+)
+
+org_mirror_repo_sync_total = Counter(
+    "quay_org_mirror_repo_sync_total",
+    "total number of org-level mirror repository sync operations",
+    labelnames=["status"],
+)
+
+org_mirror_repo_sync_duration_seconds = Histogram(
+    "quay_org_mirror_repo_sync_duration_seconds",
+    "duration of org-level mirror repository sync operations in seconds",
 )
 
 # Used only for testing - should not be set in production
@@ -876,6 +909,8 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
     Raises:
         PreemptedException: If another worker claimed this config first
     """
+    discovery_start_time = time.monotonic()
+
     # Remember the original status before claiming (claim changes it to SYNCING)
     original_status = org_mirror_config.sync_status
 
@@ -912,6 +947,8 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
 
         # Release with CANCEL status
         release_org_mirror_config(claimed_config, OrgMirrorStatus.CANCEL)
+        org_mirror_discovery_total.labels(status="cancel").inc()
+        org_mirror_discovery_duration_seconds.observe(time.monotonic() - discovery_start_time)
         return
 
     logger.info(
@@ -949,6 +986,8 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             f"Failed to decrypt source registry credentials: {e}",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        org_mirror_discovery_total.labels(status="fail").inc()
+        org_mirror_discovery_duration_seconds.observe(time.monotonic() - discovery_start_time)
         return
 
     # Create registry adapter
@@ -974,6 +1013,8 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             f"Failed to create registry adapter: {e}",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        org_mirror_discovery_total.labels(status="fail").inc()
+        org_mirror_discovery_duration_seconds.observe(time.monotonic() - discovery_start_time)
         return
 
     # Fetch repositories from source
@@ -992,6 +1033,8 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             f"Failed to fetch repositories from source: {e}",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        org_mirror_discovery_total.labels(status="fail").inc()
+        org_mirror_discovery_duration_seconds.observe(time.monotonic() - discovery_start_time)
         return
 
     # Apply glob filters
@@ -1051,6 +1094,13 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
         _repos_created=newly_created,
     )
 
+    # Record Prometheus metrics for successful discovery
+    org_mirror_discovery_total.labels(status="success").inc()
+    org_mirror_discovery_duration_seconds.observe(time.monotonic() - discovery_start_time)
+    org_mirror_repos_discovered.set(total_count)
+    if newly_created > 0:
+        org_mirror_repos_created_total.inc(newly_created)
+
 
 def _emit_org_config_log(
     config: OrgMirrorConfig,
@@ -1078,6 +1128,63 @@ def _emit_org_config_log(
             "org_mirror_config_id": config.id,
             "external_registry_url": config.external_registry_url,
             "external_namespace": config.external_namespace,
+        },
+    )
+
+
+def _emit_org_repo_created_log(
+    config: OrgMirrorConfig,
+    org_mirror_repo: OrgMirrorRepository,
+):
+    """
+    Emit an audit log when a repository is created via org mirror.
+
+    Args:
+        config: The OrgMirrorConfig
+        org_mirror_repo: The OrgMirrorRepository that was created
+    """
+    org = config.organization
+    external_reference = _build_external_reference(config, org_mirror_repo.repository_name)
+
+    logs_model.log_action(
+        "org_mirror_repo_created",
+        namespace_name=org.username,
+        repository_name=org_mirror_repo.repository_name,
+        performer=config.internal_robot,
+        ip=None,
+        metadata={
+            "external_reference": external_reference,
+            "visibility": config.visibility.name,
+            "via_org_mirror": True,
+        },
+    )
+
+
+def _emit_org_repo_creation_failed_log(
+    config: OrgMirrorConfig,
+    org_mirror_repo: OrgMirrorRepository,
+    error: str,
+):
+    """
+    Emit an audit log when repository creation fails via org mirror.
+
+    Args:
+        config: The OrgMirrorConfig
+        org_mirror_repo: The OrgMirrorRepository that failed to create
+        error: The error message
+    """
+    org = config.organization
+    external_reference = _build_external_reference(config, org_mirror_repo.repository_name)
+
+    logs_model.log_action(
+        "org_mirror_repo_creation_failed",
+        namespace_name=org.username,
+        repository_name=org_mirror_repo.repository_name,
+        performer=config.internal_robot,
+        ip=None,
+        metadata={
+            "external_reference": external_reference,
+            "error": error,
         },
     )
 
@@ -1138,6 +1245,7 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         OrgMirrorRepoStatus indicating the result
     """
     verbose_logs = os.getenv("DEBUGLOG", "false").lower() == "true"
+    repo_sync_start_time = time.monotonic()
 
     # Claim the repo for this worker
     claimed_repo = claim_org_mirror_repo(org_mirror_repo)
@@ -1170,6 +1278,8 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             f"Failed to create local repository for '{claimed_repo.repository_name}'",
         )
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        org_mirror_repo_sync_total.labels(status="fail").inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
         return OrgMirrorRepoStatus.FAIL
 
     # Fetch all tags from remote
@@ -1187,6 +1297,8 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             stderr=e.stderr,
         )
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        org_mirror_repo_sync_total.labels(status="fail").inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
         return OrgMirrorRepoStatus.FAIL
     except Exception:
         emit_org_mirror_log(
@@ -1198,6 +1310,8 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             stderr=traceback.format_exc(),
         )
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        org_mirror_repo_sync_total.labels(status="fail").inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
         return OrgMirrorRepoStatus.FAIL
 
     if not tags:
@@ -1209,6 +1323,8 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             f"No tags found for '{external_reference}'",
         )
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.SUCCESS)
+        org_mirror_repo_sync_total.labels(status="success").inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
         return OrgMirrorRepoStatus.SUCCESS
 
     # Sync each tag
@@ -1233,6 +1349,8 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             claimed_repo.repository_name,
         )
         release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        org_mirror_repo_sync_total.labels(status="fail").inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
         return OrgMirrorRepoStatus.FAIL
 
     dest_server = (
@@ -1305,6 +1423,12 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         )
 
     release_org_mirror_repo(claimed_repo, overall_status)
+
+    # Record Prometheus metrics
+    status_label = overall_status.name.lower()
+    org_mirror_repo_sync_total.labels(status=status_label).inc()
+    org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+
     return overall_status
 
 
@@ -1389,9 +1513,16 @@ def _ensure_local_repository(
                 org.username,
                 repo_name,
             )
+
+            # Emit audit event for repository creation
+            _emit_org_repo_created_log(config, org_mirror_repo)
+
             return repo_db
-    except Exception:
+    except Exception as e:
         logger.exception("Failed to create repository %s/%s", org.username, repo_name)
+
+        # Emit audit event for repository creation failure
+        _emit_org_repo_creation_failed_log(config, org_mirror_repo, str(e))
 
     return None
 

@@ -328,42 +328,6 @@ def test_push_pull_formerly_bad_repo_name(
     )
 
 
-def test_application_repo(
-    pusher,
-    puller,
-    basic_images,
-    liveserver_session,
-    app_reloader,
-    registry_server_executor,
-    liveserver,
-):
-    """Test: Attempting to push or pull from an *application* repository raises a 405."""
-    credentials = ("devtable", "password")
-    registry_server_executor.on(liveserver).create_app_repository("devtable", "someapprepo")
-
-    # Attempt to push to the repository.
-    pusher.push(
-        liveserver_session,
-        "devtable",
-        "someapprepo",
-        "latest",
-        basic_images,
-        credentials=credentials,
-        expected_failure=Failures.APP_REPOSITORY,
-    )
-
-    # Attempt to pull from the repository.
-    puller.pull(
-        liveserver_session,
-        "devtable",
-        "someapprepo",
-        "latest",
-        basic_images,
-        credentials=credentials,
-        expected_failure=Failures.APP_REPOSITORY,
-    )
-
-
 def test_middle_layer_different_sha(v2_protocol, v1_protocol, liveserver_session, app_reloader):
     """Test: Pushing of a 3-layer image with the *same* V1 ID's, but the middle layer having
     different bytes, must result in new IDs being generated for the leaf layer, as
@@ -3153,3 +3117,206 @@ def test_attempt_pull_by_tag_reference_for_deleted_tag(
         credentials=credentials,
         expected_failure=Failures.UNKNOWN_TAG,
     )
+
+
+def test_push_immutable_tag_blocked(
+    manifest_protocol,
+    basic_images,
+    different_images,
+    liveserver_session,
+    app_reloader,
+    liveserver,
+    registry_server_executor,
+):
+    """Test: Pushing to an immutable tag is blocked with a 409 error."""
+    credentials = ("devtable", "password")
+
+    with FeatureFlagValue("IMMUTABLE_TAGS", True, registry_server_executor.on(liveserver)):
+        # Push an image to a new repository.
+        manifest_protocol.push(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            basic_images,
+            credentials=credentials,
+        )
+
+        # Make the tag immutable via the live server executor.
+        registry_server_executor.on(liveserver).make_tag_immutable("devtable", "newrepo", "latest")
+
+        # Attempt to push a different image to the same tag, which should fail.
+        manifest_protocol.push(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            different_images,
+            credentials=credentials,
+            expected_failure=Failures.TAG_IMMUTABLE,
+        )
+
+        # Verify the original image is still intact.
+        manifest_protocol.pull(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            basic_images,
+            credentials=credentials,
+        )
+
+
+def test_delete_immutable_tag_blocked(
+    manifest_protocol,
+    basic_images,
+    liveserver_session,
+    app_reloader,
+    liveserver,
+    registry_server_executor,
+):
+    """Test: Deleting an immutable tag is blocked with a 409 error."""
+    credentials = ("devtable", "password")
+
+    with FeatureFlagValue("IMMUTABLE_TAGS", True, registry_server_executor.on(liveserver)):
+        # Push an image.
+        manifest_protocol.push(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            basic_images,
+            credentials=credentials,
+        )
+
+        # Make the tag immutable.
+        registry_server_executor.on(liveserver).make_tag_immutable("devtable", "newrepo", "latest")
+
+        # Attempt to delete the tag, which should fail.
+        manifest_protocol.delete(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            credentials=credentials,
+            expected_failure=Failures.TAG_IMMUTABLE,
+        )
+
+        # Verify the tag is still accessible.
+        manifest_protocol.pull(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            basic_images,
+            credentials=credentials,
+        )
+
+
+def test_push_different_tag_with_immutable_tag_succeeds(
+    manifest_protocol,
+    basic_images,
+    different_images,
+    liveserver_session,
+    app_reloader,
+    liveserver,
+    registry_server_executor,
+):
+    """Test: Pushing a different tag succeeds when other immutable tags exist in the repo."""
+    credentials = ("devtable", "password")
+
+    # Push an image and make it immutable.
+    manifest_protocol.push(
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "immutable",
+        basic_images,
+        credentials=credentials,
+    )
+    registry_server_executor.on(liveserver).make_tag_immutable("devtable", "newrepo", "immutable")
+
+    # Push a different image to a different tag in the same repo - should succeed.
+    manifest_protocol.push(
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "mutable",
+        different_images,
+        credentials=credentials,
+    )
+
+    # Verify both tags are accessible.
+    manifest_protocol.pull(
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "immutable",
+        basic_images,
+        credentials=credentials,
+    )
+    manifest_protocol.pull(
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "mutable",
+        different_images,
+        credentials=credentials,
+    )
+
+
+def test_push_and_delete_immutable_tag_allowed_when_feature_disabled(
+    manifest_protocol,
+    basic_images,
+    different_images,
+    liveserver_session,
+    app_reloader,
+    liveserver,
+    registry_server_executor,
+):
+    """Test: Immutability is not enforced when FEATURE_IMMUTABLE_TAGS is disabled."""
+    credentials = ("devtable", "password")
+
+    # Push an image and mark the tag immutable.
+    manifest_protocol.push(
+        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
+    )
+    registry_server_executor.on(liveserver).make_tag_immutable("devtable", "newrepo", "latest")
+
+    # Disable the feature flag — enforcement should be bypassed.
+    with FeatureFlagValue("IMMUTABLE_TAGS", False, registry_server_executor.on(liveserver)):
+        # Pushing a different image to the same tag should succeed.
+        manifest_protocol.push(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            different_images,
+            credentials=credentials,
+        )
+
+        # Pull to confirm the new image replaced the old one.
+        manifest_protocol.pull(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            different_images,
+            credentials=credentials,
+        )
+
+        # Deleting the tag should also succeed.
+        manifest_protocol.delete(
+            liveserver_session, "devtable", "newrepo", "latest", credentials=credentials
+        )
+
+        # Pull to confirm the tag is gone.
+        manifest_protocol.pull(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            different_images,
+            credentials=credentials,
+            expected_failure=Failures.UNKNOWN_TAG,
+        )

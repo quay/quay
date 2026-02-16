@@ -17,6 +17,7 @@ from data.database import (
     get_epoch_timestamp_ms,
 )
 from data.model import (
+    ImmutableTagException,
     QuotaExceededException,
     TagDoesNotExist,
     namespacequota,
@@ -625,6 +626,97 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
             .count()
         )
         assert conn_count == 1
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_retarget_tag_returns_existing_immutable_tag(self, create_repo):
+        """
+        Test that when retarget_tag raises ImmutableTagException for an immutable tag,
+        the proxy model returns the existing immutable tag instead of failing.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # First create the manifest and tag normally
+        manifest, tag = proxy_model._create_manifest_and_retarget_tag(
+            repo_ref, input_manifest, self.tag
+        )
+        assert manifest is not None
+        assert tag is not None
+
+        # Make the tag immutable
+        db_tag = oci.tag.get_tag(repo_ref.id, self.tag)
+        Tag.update(immutable=True).where(Tag.id == db_tag.id).execute()
+        # Refetch to get updated immutable flag
+        db_tag_immutable = oci.tag.get_tag(repo_ref.id, self.tag)
+        assert db_tag_immutable.immutable is True
+
+        # Now try to retarget the same tag with a different manifest - should return existing
+        # Since the tag is immutable, it should catch the exception and return existing
+        with patch(
+            "data.registry_model.registry_proxy_model.oci.tag.retarget_tag",
+            side_effect=ImmutableTagException(self.tag, "retarget", repo_ref.id),
+        ):
+            # Mock get_tag to return the immutable tag
+            with patch(
+                "data.registry_model.registry_proxy_model.oci.tag.get_tag",
+                return_value=db_tag_immutable,
+            ):
+                manifest2, tag2 = proxy_model._create_manifest_and_retarget_tag(
+                    repo_ref, input_manifest, self.tag
+                )
+                assert manifest2 is not None
+                assert tag2 is not None
+                # The returned tag should be the existing immutable tag
+                assert tag2.name == self.tag
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_retarget_tag_raises_if_not_immutable(self, create_repo):
+        """
+        Test that when retarget_tag raises ImmutableTagException but the existing tag
+        is not actually immutable, the exception is re-raised.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # First create the manifest and tag normally
+        manifest, tag = proxy_model._create_manifest_and_retarget_tag(
+            repo_ref, input_manifest, self.tag
+        )
+        assert manifest is not None
+        assert tag is not None
+
+        db_tag = oci.tag.get_tag(repo_ref.id, self.tag)
+        # Keep tag mutable (immutable=False)
+
+        # Now try to retarget - if exception is raised but tag is not immutable, should re-raise
+        with patch(
+            "data.registry_model.registry_proxy_model.oci.tag.retarget_tag",
+            side_effect=ImmutableTagException(self.tag, "retarget", repo_ref.id),
+        ):
+            with patch(
+                "data.registry_model.registry_proxy_model.oci.tag.get_tag",
+                return_value=db_tag,
+            ):
+                with pytest.raises(ImmutableTagException):
+                    proxy_model._create_manifest_and_retarget_tag(
+                        repo_ref, input_manifest, self.tag
+                    )
 
 
 @pytest.mark.xdist_group("registry_proxy_serial")

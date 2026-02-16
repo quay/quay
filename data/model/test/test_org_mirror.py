@@ -25,9 +25,11 @@ from data.model.org_mirror import (
     delete_org_mirror_config,
     expire_org_mirror_repo,
     get_eligible_org_mirror_repos,
+    get_enabled_org_mirror_config_count,
     get_max_id_for_org_mirror_repo,
     get_min_id_for_org_mirror_repo,
     get_org_mirror_config,
+    get_org_mirror_config_count,
     release_org_mirror_repo,
     update_org_mirror_config,
 )
@@ -341,21 +343,10 @@ class TestDeleteOrgMirrorConfig:
         assert get_org_mirror_config(org) is not None
 
         # Delete the config
-        result = delete_org_mirror_config(org)
+        result = delete_org_mirror_config(config)
 
         assert result is True
         assert get_org_mirror_config(org) is None
-
-    def test_delete_org_mirror_config_not_found(self, initialized_db):
-        """
-        Deleting a config that doesn't exist should return False.
-        """
-        org, _ = _create_org_and_robot("delete_test2")
-
-        # No config exists for this org
-        result = delete_org_mirror_config(org)
-
-        assert result is False
 
     def test_delete_org_mirror_config_with_discovered_repos(self, initialized_db):
         """
@@ -390,7 +381,7 @@ class TestDeleteOrgMirrorConfig:
         assert repo_count == 3
 
         # Delete the config
-        result = delete_org_mirror_config(org)
+        result = delete_org_mirror_config(config)
 
         assert result is True
         assert get_org_mirror_config(org) is None
@@ -426,7 +417,7 @@ class TestDeleteOrgMirrorConfig:
         )
 
         # Delete config1
-        result = delete_org_mirror_config(org1)
+        result = delete_org_mirror_config(config1)
 
         assert result is True
         assert get_org_mirror_config(org1) is None
@@ -464,7 +455,7 @@ class TestDeleteOrgMirrorConfig:
         )
 
         # Delete it
-        delete_org_mirror_config(org)
+        delete_org_mirror_config(config1)
 
         # Create a new config
         config2 = create_org_mirror_config(
@@ -1872,3 +1863,39 @@ class TestCheckOrgMirrorRepoSyncStatus:
         result = check_org_mirror_repo_sync_status(repo)
 
         assert result == OrgMirrorRepoStatus.CANCEL
+
+
+class TestGetOrgMirrorConfigCount:
+    """Tests for get_org_mirror_config_count and get_enabled_org_mirror_config_count."""
+
+    def test_get_org_mirror_config_count(self, initialized_db):
+        """
+        Creating 3 configs should result in a count of 3 (plus any pre-existing).
+        """
+        baseline = get_org_mirror_config_count()
+
+        org1, robot1 = _create_org_and_robot("count_test1a")
+        org2, robot2 = _create_org_and_robot("count_test1b")
+        org3, robot3 = _create_org_and_robot("count_test1c")
+
+        _create_org_mirror_config(org1, robot1)
+        _create_org_mirror_config(org2, robot2)
+        _create_org_mirror_config(org3, robot3)
+
+        assert get_org_mirror_config_count() == baseline + 3
+
+    def test_get_enabled_org_mirror_config_count(self, initialized_db):
+        """
+        Creating 3 configs and disabling 1 should result in enabled count of 2 (plus baseline).
+        """
+        baseline = get_enabled_org_mirror_config_count()
+
+        org1, robot1 = _create_org_and_robot("count_test2a")
+        org2, robot2 = _create_org_and_robot("count_test2b")
+        org3, robot3 = _create_org_and_robot("count_test2c")
+
+        _create_org_mirror_config(org1, robot1, is_enabled=True)
+        _create_org_mirror_config(org2, robot2, is_enabled=True)
+        _create_org_mirror_config(org3, robot3, is_enabled=False)
+
+        assert get_enabled_org_mirror_config_count() == baseline + 2

@@ -52,6 +52,20 @@ def get_org_mirror_config(org):
         return None
 
 
+def get_org_mirror_config_count():
+    """
+    Return the total number of OrgMirrorConfig entries.
+    """
+    return OrgMirrorConfig.select().count()
+
+
+def get_enabled_org_mirror_config_count():
+    """
+    Return the number of enabled OrgMirrorConfig entries.
+    """
+    return OrgMirrorConfig.select().where(OrgMirrorConfig.is_enabled == True).count()
+
+
 def create_org_mirror_config(
     organization,
     internal_robot,
@@ -230,20 +244,16 @@ def update_org_mirror_config(
     return config
 
 
-def delete_org_mirror_config(org):
+def delete_org_mirror_config(config):
     """
     Delete the organization-level mirror configuration and all associated discovered repositories.
 
     Args:
-        org: A User object representing the organization.
+        config: The OrgMirrorConfig instance to delete.
 
     Returns:
-        True if the configuration was deleted, False if no configuration existed.
+        True if the configuration was deleted.
     """
-    config = get_org_mirror_config(org)
-    if config is None:
-        return False
-
     with db_transaction():
         # Delete all associated discovered repositories first
         OrgMirrorRepository.delete().where(

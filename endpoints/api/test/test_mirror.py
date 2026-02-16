@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 
 from data import model
+from data.database import SourceRegistryType, Visibility
 from endpoints.api.mirror import RepoMirrorResource, RepoMirrorSyncCancelResource
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
@@ -74,7 +75,7 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
 
     # Check the status of the robot.
     permissions = model.permission.get_user_repository_permissions(mirror_bot, "devtable", "simple")
-    permission = next(permissions, None)
+    permission = next(iter(permissions), None)
     assert permission and permission.role.name == expected_permission
 
     config = model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
@@ -379,3 +380,108 @@ def test_create_mirror_with_invalid_architecture_filter(app):
             "architecture_filter": ["invalid_arch"],
         }
         conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 400)
+
+
+def _create_org_mirror_config(orgname, robot_username):
+    """Helper to create an org mirror config for testing."""
+    org = model.organization.get_organization(orgname)
+    robot = model.user.lookup_robot(robot_username)
+    return model.org_mirror.create_org_mirror_config(
+        organization=org,
+        internal_robot=robot,
+        external_registry_type=SourceRegistryType.HARBOR,
+        external_registry_url="https://harbor.example.com",
+        external_namespace="test-project",
+        visibility=Visibility.get(name="private"),
+        sync_interval=3600,
+        sync_start_date=datetime(2025, 1, 1, 0, 0, 0),
+    )
+
+
+def test_create_repo_mirror_blocked_by_org_mirror(app):
+    """
+    Verify that creating a repo mirror config is rejected when the repository's
+    organization has an org-level mirror config.
+    """
+    config = _create_org_mirror_config("buynlarge", "buynlarge+coolrobot")
+
+    try:
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "buynlarge/orgrepo"}
+            request_body = {
+                "external_reference": "quay.io/foobar/barbaz",
+                "sync_interval": 100,
+                "skopeo_timeout_interval": 300,
+                "sync_start_date": "2019-08-20T17:51:00Z",
+                "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+                "robot_username": "buynlarge+coolrobot",
+            }
+            resp = conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 400)
+            assert resp.json["error_type"] == "invalid_request"
+    finally:
+        config.delete_instance()
+
+
+def test_update_repo_mirror_blocked_by_org_mirror(app):
+    """
+    Verify that updating a repo mirror config is rejected when the repository's
+    organization has an org-level mirror config.
+    """
+    # First create a repo mirror config (before org mirror exists)
+    repo = model.repository.get_repository("buynlarge", "orgrepo")
+    robot = model.user.lookup_robot("buynlarge+coolrobot")
+    rule = model.repo_mirror.create_rule(repo, ["latest"])
+    mirror = model.repo_mirror.enable_mirroring_for_repository(
+        repo,
+        root_rule=rule,
+        internal_robot=robot,
+        external_reference="quay.io/test/repo",
+        sync_interval=3600,
+        sync_start_date=datetime(2025, 1, 1, 0, 0, 0),
+        skopeo_timeout_interval=300,
+    )
+    assert mirror
+
+    # Now create an org mirror config
+    config = _create_org_mirror_config("buynlarge", "buynlarge+coolrobot")
+
+    try:
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "buynlarge/orgrepo"}
+            request_body = {"sync_interval": 7200}
+            resp = conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, 400)
+            assert resp.json["error_type"] == "invalid_request"
+    finally:
+        config.delete_instance()
+        mirror.delete_instance()
+        rule.delete_instance()
+
+
+def test_create_repo_mirror_allowed_without_org_mirror(app):
+    """
+    Verify that creating a repo mirror config still works for organizations
+    that do NOT have an org-level mirror config.
+    """
+    # Ensure no org mirror config exists for buynlarge
+    org = model.organization.get_organization("buynlarge")
+    assert model.org_mirror.get_org_mirror_config(org) is None
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "buynlarge/orgrepo"}
+        request_body = {
+            "external_reference": "quay.io/foobar/barbaz",
+            "sync_interval": 100,
+            "skopeo_timeout_interval": 300,
+            "sync_start_date": "2019-08-20T17:51:00Z",
+            "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+            "robot_username": "buynlarge+coolrobot",
+        }
+        conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 201)
+
+    # Clean up
+    repo = model.repository.get_repository("buynlarge", "orgrepo")
+    mirror = model.repo_mirror.get_mirror(repo)
+    if mirror:
+        rule = mirror.root_rule
+        mirror.delete_instance()
+        rule.delete_instance()
