@@ -102,7 +102,7 @@ python-redis-lock==4.0.0
 python-swiftclient==4.4.0
 pytz==2019.3
 PyYAML==6.0.2
-sentry-sdk[flask]==1.40.0
+sentry-sdk[flask]==2.53.0
 recaptcha2==0.1
 redis==7.1.0
 rehash==1.0.1
