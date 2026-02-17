@@ -4,23 +4,12 @@ on:
     workflows: ["QE Tests"]
     types:
       - completed
-  workflow_dispatch:
-    inputs:
-      run_id:
-        description: 'GitHub Actions run ID to download artifacts from'
-        required: true
-        type: string
-      pr_number:
-        description: 'PR number to post results to'
-        required: true
-        type: string
 
 jobs:
   publish-results:
     name: Publish Test Results
     runs-on: ubuntu-22.04
-    # Run on workflow_run for pull_request events OR manual dispatch
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'pull_request'
+    if: github.event.workflow_run.event == 'pull_request'
 
     permissions:
       # Required to post comments on PRs
@@ -31,17 +20,10 @@ jobs:
       actions: read
 
     steps:
-    - name: Set run ID and PR number
+    - name: Set run ID
       id: setup
       run: |
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          echo "run_id=${{ inputs.run_id }}" >> $GITHUB_OUTPUT
-          echo "pr_number=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
-          echo "Using manual inputs: run_id=${{ inputs.run_id }}, pr_number=${{ inputs.pr_number }}"
-        else
-          echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
-          echo "Using workflow_run: run_id=${{ github.event.workflow_run.id }}"
-        fi
+        echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
 
     - name: Download test artifacts
       uses: dawidd6/action-download-artifact@v14
@@ -54,11 +36,7 @@ jobs:
     - name: Read PR number
       id: pr
       run: |
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          PR_NUMBER="${{ steps.setup.outputs.pr_number }}"
-          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          echo "Using manual PR number: $PR_NUMBER"
-        elif [ -f test-results/pr_number.txt ]; then
+        if [ -f test-results/pr_number.txt ]; then
           PR_NUMBER=$(cat test-results/pr_number.txt)
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "Found PR number from artifact: $PR_NUMBER"

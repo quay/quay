@@ -26,12 +26,9 @@ jobs:
           extra-config: |
             FEATURE_USER_INITIALIZE: true
             FEATURE_USER_METADATA: false
-            FEATURE_MAILING: false
             FEATURE_SUPERUSER_CONFIGDUMP: true
             PERMANENTLY_DELETE_TAGS: true
             CREATE_NAMESPACE_ON_PUSH: true
-            FEATURE_QUOTA_MANAGEMENT: true
-            FEATURE_PROXY_CACHE: true
 
       - name: Use Quay Initialize API to create the 1st Super User
         run: |
