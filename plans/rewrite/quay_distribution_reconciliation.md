@@ -213,8 +213,8 @@ Mapping:
 ### 6.3 Go version
 
 - **quay-distribution**: Go 1.24.0
-- **Plan**: Go 1.23.x
-- **Action**: Update plan to Go 1.24+. The existing code already works on 1.24, and Go 1.23 will be out of support before the rewrite ships.
+- **Plan**: Go 1.24+ (updated from 1.23.x)
+- **Action**: Resolved. Plan updated to Go 1.24+ across all documents.
 
 ### 6.4 CLI framework
 

@@ -23,7 +23,7 @@ Primary source anchors:
 ## 3. Dependencies and version policy
 
 Implementation baseline:
-- Go: `1.23.x`
+- Go: `1.24+`
 - Distribution integration: `github.com/distribution/distribution/v3` (pinned minor)
 - Routing: `github.com/go-chi/chi/v5`
 - Auth/JWT: `github.com/golang-jwt/jwt/v5`

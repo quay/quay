@@ -202,7 +202,7 @@ This section is written to be executed by multiple people (and agentic AI) in pa
 **PR-sized tasks:**
 1. Create a new top-level directory for Go code:
 
-```
+```text
 go/
   cmd/
     edge-router/
@@ -867,7 +867,7 @@ Cross-cutting rules:
 
 ### 12.1 Service skeleton
 
-```
+```text
 go/cmd/core-api/main.go
 go/internal/coreapi/server.go
 go/internal/httpx/middleware.go

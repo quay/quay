@@ -1,7 +1,7 @@
 # Rewrite Decision Log
 
 Status: Active
-Last updated: 2026-02-09
+Last updated: 2026-02-12
 
 ## 1. Purpose
 
@@ -21,7 +21,9 @@ Record approvals and final outcomes for open rewrite decisions.
 
 | Decision ID | Current status | Notes |
 |---|---|---|
-| `none` | n/a | all current listed decisions are approved |
+| `D-006` | open | Go HTTP router choice: `chi/v5` vs `net/http` (stdlib). Recommendation: `net/http` with thin internal helpers. Blocks WS3/WS4 handler registration. |
+| `D-007` | open | Coexistence deployment topology: where does Go binary run during M1-M4? Recommendation: hybrid (same container for standalone, separate Deployments for K8s). Blocks M1, WS2, WS11. |
+| `D-008` | open | Upload hasher state cross-runtime strategy. Recommendation: capability-level read/write split (pull→Go, push→Python) instead of UUID pinning or shared hasher format. Eliminates cross-runtime serialization problem entirely. Blocks WS3. |
 
 ## 4. Requirements
 

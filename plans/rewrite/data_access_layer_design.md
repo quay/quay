@@ -92,15 +92,29 @@ sql:
         out: "internal/dal/repositories/sqlite/sqlc"
 ```
 
+### 5.2.1 Mirror-mode dbcore wiring
+
+The `dbcore` package (§8) is built around `pgx/v5` and `pgxpool` — pool management, retry classification, and the `Runner` interface are pgx-specific. Mirror mode with SQLite requires a different wiring path:
+
+- A `database/sql`-backed `Runner` implementation (matching the `Runner` interface in §7 but using `database/sql` instead of pgx). sqlc generates `database/sql`-compatible code for the SQLite engine.
+- No connection pool — SQLite uses WAL mode with a single file. The `Runner` wraps a `*sql.DB` opened with `modernc.org/sqlite`.
+- No read replicas — mirror mode is single-node.
+- No field-level encryption — mirror mode stores public content only.
+
+The repository interfaces (`RepositoryStore` etc. in §7) abstract over both backends. Mode selection in `internal/cli/serve.go` wires the correct `Runner` and repository implementation based on `--mode=mirror` vs `--mode=standalone|full`.
+
+**Implementation sequence**: The mirror-mode `database/sql` wiring is a prerequisite for the MM milestone (first Go deliverable). This should be implemented alongside the initial `dbcore` scaffold in WS0/WS8.
+
 ### 5.3 MySQL (deprecation)
 
 MySQL is formally deprecated for Go DAL support. The current Python codebase has MySQL-specific code paths (MATCH/AGAINST full-text search, `fn.Rand()`, charset configuration in `data/database.py:74-80`), but these will not be ported to the Go DAL.
 
 **Migration path for MySQL deployments:**
-1. MySQL remains supported in the Python runtime through M4.
-2. Operators on MySQL must migrate to PostgreSQL before adopting Go-served capabilities.
-3. Migration tooling (pg_loader or equivalent) guidance will be provided in operator documentation by M3.
-4. MySQL-specific Python code paths may be removed after M5 (Python retirement gate).
+1. MySQL deprecation announced in release notes by M0, giving operators advance notice before M1.
+2. MySQL remains supported in the Python runtime through M4.
+3. Operators on MySQL must migrate to PostgreSQL before adopting Go-served capabilities.
+4. Migration tooling (pg_loader or equivalent) guidance will be provided in operator documentation by M3.
+5. MySQL-specific Python code paths may be removed after M5 (Python retirement gate).
 
 ## 6. Dependencies and version pins
 
@@ -114,8 +128,12 @@ Pin exact dependencies in `go.mod`:
 
 Crypto dependencies:
 - `golang.org/x/crypto/bcrypt` (credential hashing)
-- AES-CCM library: requires candidate selection and FIPS validation. Evaluate `github.com/pion/dtls/v2/pkg/crypto/ccm` or a standalone CCM implementation wrapping `crypto/aes`. The selected library must:
-  - Pass FIPS validation or be wrappable with a FIPS-validated AES primitive.
+- AES-CCM library: requires candidate selection and FIPS validation. Candidates:
+  1. **Standalone CCM wrapping `crypto/aes`** (recommended). CCM is specified in NIST SP 800-38C and is a thin mode-of-operation construction over a block cipher. A standalone implementation (~200 LOC) using `crypto/aes` as the underlying primitive means the AES operations are covered by Go 1.24's `GOFIPS140` module. The CCM mode construction itself is not separately FIPS-validated, but this may satisfy auditors since the cryptographic primitive (AES) is validated. Security owner must confirm.
+  2. **`github.com/pion/dtls/v2/pkg/crypto/ccm`**. Existing implementation but: (a) not FIPS-validated, (b) imports the full pion/dtls dependency tree, (c) originated from `bocajim/dtls`, not extensively audited.
+  3. **Migrate to AES-GCM** (long-term alternative). Re-encrypt all existing CCM-encrypted DB fields to GCM during M4-M5 data migration. GCM is natively supported by `crypto/cipher` and covered by `GOFIPS140`. Eliminates CCM dependency entirely but requires a one-time data migration with dual-format read support during transition.
+- **FIPS note**: Go 1.24's `GOFIPS140` module covers AES-GCM but does **not** include AES-CCM. Any CCM implementation used in FIPS builds operates outside the validated module boundary for the mode-of-operation layer. This is the key risk for FIPS certification and must be resolved with security owner guidance before implementation begins.
+- The selected library must:
   - Reproduce the exact nonce+ciphertext byte layout used by Python's `cryptography` library.
   - Be vetted by security owner before any implementation begins.
 
@@ -278,7 +296,7 @@ Required tests:
 - Replica routing tests (normal, degraded, bypass).
 - Transaction boundary tests for queue producer side effects.
 - Encrypted field backward-compatibility tests.
-- Encrypted field golden test corpus: produce encrypted values from Python for all 12 encrypted field instances across the schema, covering each `convert_secret_key` parsing mode (integer string, UUID hex, raw bytes). Go must decrypt every value and re-encrypt to produce byte-identical ciphertext (given the same nonce).
+- Encrypted field golden test corpus: produce encrypted values from Python for all 12 encrypted field instances across the schema, covering each `convert_secret_key` parsing mode (integer string, UUID hex, raw bytes). Tests must verify: (1) Go decrypts Python-produced ciphertext and recovers identical plaintext, (2) Go encrypts the same plaintext and Python decrypts it successfully (round-trip), (3) Go-to-Go encrypt-decrypt round-trip works. Note: byte-identical ciphertext after re-encryption is only achievable with a deterministically supplied nonce (test-only constraint); production encryption uses random nonces and will produce different ciphertext for the same plaintext.
 - `convert_secret_key` test vectors: explicit input/output pairs for each of the three parsing modes, including edge cases (empty string, max-length input, non-ASCII bytes). These vectors are a gate for any Go crypto implementation.
 - Delete cascade ordering tests: for User (28+ dependent models) and Repository (19+ dependent models), verify that Go delete workflows produce the same deletion order and skip-set behavior as Python's `delete_instance_filtered`. Include verification that post-delete cleanup callbacks fire in the correct order.
 

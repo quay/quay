@@ -1,7 +1,7 @@
 # Rewrite Program Gates Dashboard
 
 Status: Active
-Last updated: 2026-02-09
+Last updated: 2026-02-17
 
 ## 1. Purpose
 
@@ -19,7 +19,7 @@ Provide milestone-level readiness view across all rewrite planning artifacts.
 | G5 | Runtime support component execution waves defined | ready | `runtime_component_execution_plan.md`, runtime mapping wave fields |
 | G6 | Rollout/rollback playbooks complete | ready | `rollout_playbooks.md`, route/worker sequence artifacts |
 | G7 | Operational tooling migration disposition complete | mostly-ready | D-004 baseline complete; transition-period script validation still required |
-| G8 | Data access layer architecture approved | blocked | `data_access_layer_design.md` + `go_module_strategy.md` drafted; approval and scaffold init pending |
+| G8 | Data access layer architecture approved | blocked | `data_access_layer_design.md` + `go_module_strategy.md` drafted; approval and scaffold init pending. Sub-gates: (a) mirror-mode SQLite DAL wiring validated, (b) schema drift CI gate operational, (c) `sqlalchemybridge.py` retirement tracked — bridge cannot be removed until Go migration tooling passes M5 switchover gate per `db_migration_policy.md` §10.7 |
 | G9 | FIPS/crypto migration plan approved | blocked | `fips_crypto_migration.md` drafted; compatibility test corpus pending |
 | G10 | Storage backend migration plan approved | blocked | `storage_backend_inventory.md` + `generated/storage_driver_migration_tracker.csv` drafted |
 | G11 | Registryd architecture approved (`/v1` + `/v2`) | blocked | `registryd_design.md` drafted |

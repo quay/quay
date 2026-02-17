@@ -139,6 +139,30 @@ A CI job must run on every PR that modifies any of:
 | Go build failure | Schema change broke existing queries | Update affected `.sql` query files, regenerate, fix compilation errors |
 | Parity test failure | Schema change altered query behavior | Update parity test fixtures and Python oracle expected values |
 
-### 10.5 Tooling
+### 10.5 Ownership
+
+- **db-architecture** owns the correctness of the schema drift check: what constitutes a valid diff, what divergences are acceptable (e.g., comment differences), and the normalization rules for deterministic comparison.
+- **CI/platform** owns the infrastructure: running the job, providing ephemeral PostgreSQL instances, integrating into the merge pipeline.
+- In practice, db-architecture writes the comparison script and CI/platform integrates it. The comparison script is a WS0 deliverable.
+
+### 10.6 Tooling
 
 Provide a developer script (`scripts/sync-sqlc-schema.sh`) that automates steps 1-3 locally, so developers can resolve drift before pushing.
+
+### 10.7 Go migration authority switchover gate (M5)
+
+Go migration tooling becomes the primary authority at M5, replacing Alembic. The switchover requires all of the following:
+
+1. The schema drift CI gate (§10.2) has been green for all migrations across at least 2 milestones (M3-M4).
+2. Go migration tooling has been used to produce at least 5 production-equivalent migrations that pass the `pg_dump --schema-only` parity diff.
+3. A rollback drill has been executed: apply a Go migration, roll back, verify Alembic can resume cleanly from the same state.
+4. db-architecture owner signs off with evidence linking to CI runs, migration PRs, and rollback drill results.
+
+At M5 switchover:
+- Go migrations become the sole authority applied to production databases.
+- Alembic migrations are frozen (no new migrations authored).
+- `data/model/sqlalchemybridge.py` and Peewee model definitions become eligible for removal (tracked in `program_gates.md` under G8).
+
+### 10.8 PR requirements during coexistence
+
+Every PR that includes an Alembic migration (`data/migrations/versions/`) must also include the corresponding Go migration file. CI blocks the merge if one is present without the other. This ensures the parallel migration definitions stay synchronized from the start, not as a retroactive catch-up effort.
