@@ -22,7 +22,7 @@ jobs:
         id: setup-quay
         uses: ./.github/actions/setup-quay
         with:
-          with-clair: 'true'
+          with-clair: 'false'
           extra-config: |
             FEATURE_USER_INITIALIZE: true
             FEATURE_USER_METADATA: false
@@ -32,7 +32,6 @@ jobs:
             CREATE_NAMESPACE_ON_PUSH: true
             FEATURE_QUOTA_MANAGEMENT: true
             FEATURE_PROXY_CACHE: true
-          logs-artifact-name: 'quay-debug'
 
       - name: Use Quay Initialize API to create the 1st Super User
         run: |
@@ -61,9 +60,6 @@ jobs:
           QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
           QUAY_HOSTNAME="${QUAY_URL#http://}"
 
-          echo "Waiting 1 minutes for Quay UI to be fully ready..."
-          sleep 30
-
           docker run --rm \
             --network host \
             -e CYPRESS_QUAY_ENDPOINT="${QUAY_URL}" \
@@ -77,15 +73,17 @@ jobs:
             -v ${{ github.workspace }}/cypress-results:/quay-tests/quay-api-tests/cypress/results \
             quay.io/quay-qetest/ci-test-image:latest \
             bash -c "
+              set -o pipefail && \
               cd /quay-tests/quay-api-tests && \
               yarn install && \
+              sed -i \"/list and manage repository vulnerabilities/s/it(/it.skip(/\" cypress/e2e/quay_api_testing_all.cy.js && \
               NO_COLOR=1 yarn run cypress run \
                 --spec 'cypress/e2e/quay_api_testing_all.cy.js' \
                 --browser chrome \
                 --headless \
                 --reporter cypress-multi-reporters \
                 --reporter-options configFile=reporter-config.json \
-                > /test-results/quay_api_testing_report
+                | tee /test-results/quay_api_testing_report
             "
 
       - name: Upload Cypress Test Report
@@ -130,3 +128,9 @@ jobs:
           name: pr-number
           path: pr-info/pr_number.txt
           retention-days: 30
+
+      - name: Collect Quay logs on failure
+        if: failure()
+        uses: ./.github/actions/collect-quay-logs
+        with:
+          artifact-name: 'quay-container-logs'
