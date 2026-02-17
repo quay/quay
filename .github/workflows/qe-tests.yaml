@@ -1,0 +1,90 @@
+name: QE Tests
+on:
+  pull_request:
+    branches:
+      - "*"
+    paths:
+      - "endpoints/**"
+      - ".github/actions/setup-quay/**"
+      - ".github/workflows/qe-tests.yaml"
+
+jobs:
+  qe-api-tests:
+    name: QE API Tests
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v6
+
+      - name: Setup Quay
+        id: setup-quay
+        uses: ./.github/actions/setup-quay
+        with:
+          with-clair: 'false'
+          extra-config: |
+            FEATURE_USER_INITIALIZE: true
+            FEATURE_USER_METADATA: false
+            FEATURE_SUPERUSER_CONFIGDUMP: true
+            PERMANENTLY_DELETE_TAGS: true
+            CREATE_NAMESPACE_ON_PUSH: true
+
+      - name: Use Quay Initialize API to create the 1st Super User
+        run: |
+          response=$(curl -X POST ${{ steps.setup-quay.outputs.quay-url }}/api/v1/user/initialize --header 'Content-Type: application/json' \
+          --data '{ "username": "admin", "password": "password", "email": "quayqe@redhat.com", "access_token": true }')
+          echo "Initialization response: $response"
+
+      - name: Get PR number
+        id: pr
+        run: |
+          mkdir -p test-results
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "$PR_NUMBER" > test-results/pr_number.txt
+          echo "Saved PR number: $PR_NUMBER"
+
+      - name: Run Cypress tests
+        run: |
+          QUAY_URL="${{ steps.setup-quay.outputs.quay-url }}"
+          QUAY_HOSTNAME="${QUAY_URL#http://}"
+
+          docker run --rm \
+            --network host \
+            -e CYPRESS_QUAY_ENDPOINT="${QUAY_URL}" \
+            -e CYPRESS_QUAY_HOSTNAME="${QUAY_HOSTNAME}" \
+            -e CYPRESS_QUAY_USER="admin" \
+            -e CYPRESS_QUAY_PASSWORD="password" \
+            -e CYPRESS_QUAY_VERSION="3.16" \
+            -v ${{ github.workspace }}/test-results:/test-results \
+            quay.io/quay-qetest/ci-test-image:latest \
+            bash -c "
+              set -o pipefail && \
+              cd /quay-tests/quay-api-tests && \
+              yarn install && \
+              sed -i \"/list and manage repository vulnerabilities/s/it(/it.skip(/\" cypress/e2e/quay_api_testing_all.cy.js && \
+              NO_COLOR=1 yarn run cypress run \
+                --spec 'cypress/e2e/quay_api_testing_all.cy.js' \
+                --browser chrome \
+                --headless \
+                --reporter cypress-multi-reporters \
+                --reporter-options configFile=reporter-config.json \
+                | tee /test-results/quay_api_testing_report; \
+              cp -r cypress/videos cypress/screenshots cypress/results /test-results/ 2>/dev/null; true
+            "
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: qe-test-artifacts
+          path: ${{ github.workspace }}/test-results
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Collect Quay logs on failure
+        if: failure()
+        uses: ./.github/actions/collect-quay-logs
+        with:
+          artifact-name: 'quay-container-logs'

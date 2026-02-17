@@ -1,0 +1,75 @@
+name: QE Tests Results
+on:
+  workflow_run:
+    workflows: ["QE Tests"]
+    types:
+      - completed
+
+jobs:
+  publish-results:
+    name: Publish Test Results
+    runs-on: ubuntu-22.04
+    if: github.event.workflow_run.event == 'pull_request'
+
+    permissions:
+      # Required to post comments on PRs
+      pull-requests: write
+      # Required to add annotations
+      checks: write
+      # Required to download artifacts
+      actions: read
+
+    steps:
+    - name: Set run ID
+      id: setup
+      run: |
+        echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
+
+    - name: Download test artifacts
+      uses: dawidd6/action-download-artifact@v14
+      with:
+        name: qe-test-artifacts
+        workflow: qe-tests.yaml
+        run_id: ${{ steps.setup.outputs.run_id }}
+        path: ./test-results
+
+    - name: Read PR number
+      id: pr
+      run: |
+        if [ -f test-results/pr_number.txt ]; then
+          PR_NUMBER=$(cat test-results/pr_number.txt)
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "Found PR number from artifact: $PR_NUMBER"
+        else
+          echo "Error: pr_number.txt not found"
+          exit 1
+        fi
+
+    - name: Check for CTRF report
+      id: check-report
+      run: |
+        if [ -f test-results/results/ctrf-report.json ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "CTRF report found"
+          cat test-results/results/ctrf-report.json
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "Warning: CTRF report not found"
+        fi
+
+    - name: Publish test results to PR
+      if: steps.check-report.outputs.exists == 'true'
+      uses: ctrf-io/github-test-reporter@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        report-path: test-results/results/ctrf-report.json
+        issue: ${{ steps.pr.outputs.number }}
+        title: 'Quay QE Test Results'
+        annotate: true
+        on-fail-only: false
+        overwrite-comment: true
+        collapse-large-reports: true
+        summary-report: true
+        community-report: true
+        community-report-name: failed-detailed
