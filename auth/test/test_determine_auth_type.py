@@ -99,7 +99,7 @@ class TestDetermineAuthTypeAndPerformerKind:
 
     def test_basic_header_fallback(self):
         """Falls back to Authorization header for basic auth."""
-        with app.test_request_context(headers={"Authorization": "Basic dXNlcjpwYXNz"}):
+        with app.test_request_context(headers={"Authorization": "Basic not-a-real-credential"}):
             auth_type, performer_kind = determine_auth_type_and_performer_kind(auth_context=None)
         assert auth_type == "basic"
         assert performer_kind == "anonymous"
@@ -162,7 +162,7 @@ class TestDetermineAuthTypeAndPerformerKind:
 
     def test_case_insensitive_basic_header(self):
         """Basic header is matched case-insensitively."""
-        with app.test_request_context(headers={"Authorization": "BASIC dXNlcjpwYXNz"}):
+        with app.test_request_context(headers={"Authorization": "BASIC not-a-real-credential"}):
             auth_type, performer_kind = determine_auth_type_and_performer_kind(auth_context=None)
         assert auth_type == "basic"
 
