@@ -350,9 +350,9 @@ test.describe(
       const syncStartDate = new Date();
       syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
       await api.raw.createOrgMirrorConfig(org.name, {
-        external_registry_type: 'harbor',
-        external_registry_url: 'https://harbor.example.com',
-        external_namespace: 'library',
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
         robot_username: robot.fullName,
         visibility: 'private',
         sync_interval: 3600,
@@ -614,7 +614,7 @@ test.describe(
       // Fill in required fields with Harbor registry type
       await fillRequiredFields(authenticatedPage, robot.fullName, {
         registryType: 'Harbor',
-        registryUrl: 'https://harbor.example.com',
+        registryUrl: 'https://quay.io',
         namespace: 'library',
       });
 
@@ -630,7 +630,7 @@ test.describe(
       // Verify Harbor type saved via API
       const config = await api.raw.getOrgMirrorConfig(org.name);
       expect(config?.external_registry_type).toBe('harbor');
-      expect(config?.external_registry_url).toBe('https://harbor.example.com');
+      expect(config?.external_registry_url).toBe('https://quay.io');
     });
 
     test('changes visibility from private to public and saves', async ({
