@@ -111,6 +111,10 @@ export default function TagActions(props: TagActionsProps) {
         isOpen={isOpen}
         onOpenChange={(isOpen) => setIsOpen(isOpen)}
         shouldFocusToggleOnSelect
+        popperProps={{
+          enableFlip: true,
+          position: 'center',
+        }}
       >
         <DropdownList>{dropdownItems}</DropdownList>
       </Dropdown>
