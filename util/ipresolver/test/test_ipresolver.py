@@ -101,3 +101,49 @@ def test_amazon_only_parses_ec2_and_codebuild():
     assert IPAddress("1.0.0.1") in ipset
     assert IPAddress("2.0.0.1") not in ipset
     assert IPAddress("3.0.0.1") in ipset
+
+
+class TestIPLocateMMDB:
+    """Integration tests that validate the embedded ip-to-country.mmdb file.
+
+    These use the real database (no mocking) to ensure the file is loadable,
+    the schema matches what IPResolver expects, and lookups return sane results.
+    """
+
+    @pytest.fixture()
+    def real_resolver(self, app):
+        return IPResolver(app)
+
+    def test_mmdb_loads_successfully(self, real_resolver):
+        assert real_resolver.geoip_db is not None
+
+    @pytest.mark.parametrize(
+        "ip, expected_country, expected_continent",
+        [
+            ("8.8.8.8", "US", "NA"),
+            ("1.1.1.1", "AU", "OC"),
+        ],
+    )
+    def test_known_ip_lookups(self, real_resolver, ip, expected_country, expected_continent):
+        result = real_resolver.resolve_ip(ip)
+        assert result is not None
+        assert result.country_iso_code == expected_country
+        assert result.continent == expected_continent
+
+    def test_resolve_ip_returns_expected_fields(self, real_resolver):
+        result = real_resolver.resolve_ip("8.8.8.8")
+        assert isinstance(result.country_iso_code, str)
+        assert len(result.country_iso_code) == 2
+        assert isinstance(result.continent, str)
+        assert len(result.continent) == 2
+
+    def test_private_ip_returns_no_geo(self, real_resolver):
+        result = real_resolver.resolve_ip("192.168.1.1")
+        assert result.provider == "internet"
+        assert result.country_iso_code is None
+        assert result.continent is None
+
+    def test_loopback_returns_no_geo(self, real_resolver):
+        result = real_resolver.resolve_ip("127.0.0.1")
+        assert result.provider == "internet"
+        assert result.country_iso_code is None
