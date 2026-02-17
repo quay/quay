@@ -51,6 +51,20 @@ class LogEntry(Document):
     metadata = Object()
     datetime = Date()
 
+    # Enhanced logging fields for ESS Events of Interest (EOI) compliance
+    # These fields provide additional context for security auditing and debugging
+    request_url = Text()  # Full request URL including path and query parameters
+    http_method = Keyword()  # HTTP method (GET, POST, PUT, DELETE, etc.)
+    performer_username = Keyword()  # Username of the performer for direct lookup
+    performer_email = Keyword()  # Email of the performer
+    performer_kind = Keyword()  # Type: user, robot, token, oauth, app_specific_token, anonymous
+    auth_type = Keyword()  # Authentication type: basic, bearer, oauth, session, anonymous
+    user_agent = Text()  # Request User-Agent header
+    namespace_name = Keyword()  # Namespace/organization name for direct lookup
+    repository_name = Keyword()  # Repository name for direct lookup
+    request_id = Keyword()  # Unique request ID for correlation/tracing
+    x_forwarded_for = Text()  # Original client IP when behind proxy/load balancer
+
     _initialized = False
 
     @classmethod
