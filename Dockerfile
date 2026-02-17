@@ -19,7 +19,7 @@ ENV PYTHONUSERBASE=/app
 ENV TZ=UTC
 RUN set -ex\
 	; microdnf -y module enable nginx:1.24 \
-	; microdnf update -y \
+	; microdnf update -y --nobest \
 	; microdnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
 		memcached \
@@ -39,7 +39,7 @@ RUN set -ex\
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE=1
 RUN set -ex\
-	; microdnf -y --setopt=tsflags=nodocs install \
+	; microdnf -y --setopt=tsflags=nodocs --nobest install \
 		gcc-c++ \
 		git \
 		openldap-devel \
@@ -119,7 +119,7 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:bb08f2300cb8d12a7
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.11.1
 RUN set -ex\
-	; microdnf update -y \
+	; microdnf update -y --nobest \
 	; microdnf -y --setopt=tsflags=nodocs install tar gzip \
 	; ARCH=$(uname -m) ; echo $ARCH \
 	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
