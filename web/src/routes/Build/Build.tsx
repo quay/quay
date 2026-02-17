@@ -151,7 +151,7 @@ export default function Build() {
   return (
     <>
       <Card ouiaId="build-info-card">
-        <CardTitle>Build Information</CardTitle>
+        <CardTitle>Build information</CardTitle>
         <CardBody>
           <Flex>
             <FlexItem>
@@ -207,7 +207,7 @@ export default function Build() {
         </CardBody>
       </Card>
       <Card ouiaId="build-logs-card">
-        <CardTitle>Build Logs</CardTitle>
+        <CardTitle>Build logs</CardTitle>
         <CardBody>
           <Conditional if={!isLogsError && !isLoadingLogs}>
             <CodeBlock

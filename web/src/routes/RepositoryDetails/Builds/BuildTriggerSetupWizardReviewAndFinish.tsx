@@ -23,7 +23,7 @@ export default function ReviewAndFinishProps(props: ReviewAndFinishProps) {
   return (
     <>
       <Title headingLevel="h1" size="lg">
-        Review and Finish
+        Review and finish
       </Title>
       <DescriptionList>
         <DescriptionListGroup>
@@ -34,7 +34,7 @@ export default function ReviewAndFinishProps(props: ReviewAndFinishProps) {
         </DescriptionListGroup>
         <Conditional if={tagTemplates?.length > 0}>
           <DescriptionListGroup>
-            <DescriptionListTerm>Tag Templates</DescriptionListTerm>
+            <DescriptionListTerm>Tag templates</DescriptionListTerm>
             <DescriptionListDescription id="tag-templates">
               {tagTemplates.map((template) => (
                 <div key={template}>{template}</div>
@@ -43,14 +43,14 @@ export default function ReviewAndFinishProps(props: ReviewAndFinishProps) {
           </DescriptionListGroup>
         </Conditional>
         <DescriptionListGroup>
-          <DescriptionListTerm>Tag With Branch or Tag Name</DescriptionListTerm>
+          <DescriptionListTerm>Tag with branch or tag name</DescriptionListTerm>
           <DescriptionListDescription id="tag-with-branch-or-tag">
             {tagWithBranchOrTag ? 'enabled' : 'disabled'}
           </DescriptionListDescription>
         </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>
-            Add The <code>latest</code> Tag
+            Add the <code>latest</code> tag
           </DescriptionListTerm>
           <DescriptionListDescription id="tag-with-latest">
             {addLatestTag ? 'enabled' : 'disabled'}
@@ -63,14 +63,14 @@ export default function ReviewAndFinishProps(props: ReviewAndFinishProps) {
           </DescriptionListDescription>
         </DescriptionListGroup>
         <DescriptionListGroup>
-          <DescriptionListTerm>Path to Context</DescriptionListTerm>
+          <DescriptionListTerm>Path to context</DescriptionListTerm>
           <DescriptionListDescription id="context-path">
             {contextPath}
           </DescriptionListDescription>
         </DescriptionListGroup>
         <Conditional if={!isNullOrUndefined(robotAccount)}>
           <DescriptionListGroup>
-            <DescriptionListTerm>Robot Account</DescriptionListTerm>
+            <DescriptionListTerm>Robot account</DescriptionListTerm>
             <DescriptionListDescription id="robot-account">
               {robotAccount}
             </DescriptionListDescription>

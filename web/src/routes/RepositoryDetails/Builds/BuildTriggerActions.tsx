@@ -35,7 +35,7 @@ export default function BuildTriggerActions(props: BuildTriggerActionsProps) {
         setIsViewCredentialsModalOpen(true);
       }}
     >
-      View Credentials
+      View credentials
     </DropdownItem>,
     <DropdownItem
       key="run-trigger-action"
@@ -45,7 +45,7 @@ export default function BuildTriggerActions(props: BuildTriggerActionsProps) {
       }}
       isDisabled={!props.trigger?.enabled}
     >
-      Run Trigger Now
+      Run trigger now
     </DropdownItem>,
     <DropdownItem
       key="toggle-trigger-action"
@@ -54,7 +54,7 @@ export default function BuildTriggerActions(props: BuildTriggerActionsProps) {
         setIsToggleTriggerModalOpen(true);
       }}
     >
-      {props.enabled ? 'Disable Trigger' : 'Enable Trigger'}
+      {props.enabled ? 'Disable trigger' : 'Enable trigger'}
     </DropdownItem>,
     <DropdownItem
       key="delete-trigger-action"
@@ -64,7 +64,7 @@ export default function BuildTriggerActions(props: BuildTriggerActionsProps) {
       }}
       style={{color: 'red'}}
     >
-      Delete Trigger
+      Delete trigger
     </DropdownItem>,
   ];
 

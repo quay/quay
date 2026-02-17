@@ -30,7 +30,7 @@ export default function StartBuildModal(props: StartNewBuildModalProps) {
         overflowY: 'visible',
       }}
     >
-      <Title headingLevel="h4">Start Repository Build</Title>
+      <Title headingLevel="h4">Start repository build</Title>
       <Tabs
         activeKey={activeTabKey}
         onSelect={(_, eventKey) => setActiveTabKey(eventKey)}
@@ -39,7 +39,7 @@ export default function StartBuildModal(props: StartNewBuildModalProps) {
       >
         <Tab
           eventKey={0}
-          title={<TabTitleText>Invoke Build Trigger</TabTitleText>}
+          title={<TabTitleText>Invoke build trigger</TabTitleText>}
           aria-label="invoke build trigger tab"
         >
           <p>
@@ -50,7 +50,7 @@ export default function StartBuildModal(props: StartNewBuildModalProps) {
           <Table variant="compact">
             <Thead>
               <Tr>
-                <Th>Trigger Description</Th>
+                <Th>Trigger description</Th>
                 <Th>Branches/Tags</Th>
                 <Th></Th>
               </Tr>
@@ -72,7 +72,7 @@ export default function StartBuildModal(props: StartNewBuildModalProps) {
                   <Td>
                     <Conditional if={trigger.can_invoke && trigger.enabled}>
                       <a onClick={() => props.onSelectTrigger(trigger)}>
-                        Run Trigger Now
+                        Run trigger now
                       </a>
                     </Conditional>
                     <Conditional if={!trigger.can_invoke}>

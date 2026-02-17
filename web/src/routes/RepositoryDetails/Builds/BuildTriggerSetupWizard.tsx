@@ -79,7 +79,7 @@ export default function BuildTriggerSetupWizard(
 
   const customGitSteps = [
     <WizardStep
-      name="Enter Repository"
+      name="Enter repository"
       id="enter-repository"
       key="enter-repository"
       isHidden={!isCustomGit}
@@ -96,7 +96,7 @@ export default function BuildTriggerSetupWizard(
 
   const hostedGitSteps = [
     <WizardStep
-      name="Select Organization"
+      name="Select organization"
       id="select-organization"
       key="select-organization"
       isHidden={isCustomGit}
@@ -112,7 +112,7 @@ export default function BuildTriggerSetupWizard(
       />
     </WizardStep>,
     <WizardStep
-      name="Select Repository"
+      name="Select repository"
       id="enter-hosted-repository"
       key="enter-hosted-repository"
       isHidden={isCustomGit}
@@ -132,7 +132,7 @@ export default function BuildTriggerSetupWizard(
       />
     </WizardStep>,
     <WizardStep
-      name="Configure Trigger"
+      name="Configure trigger"
       id="configure-trigger"
       key="configure-trigger"
       isHidden={isCustomGit}
@@ -165,7 +165,7 @@ export default function BuildTriggerSetupWizard(
     >
       {isCustomGit ? customGitSteps : hostedGitSteps}
       <WizardStep
-        name="Tagging Options"
+        name="Tagging options"
         id="tagging-options"
         key="tagging-options"
         footer={{
@@ -201,7 +201,7 @@ export default function BuildTriggerSetupWizard(
         />
       </WizardStep>
       <WizardStep
-        name="Select Context"
+        name="Select context"
         id="select-context"
         key="select-context"
         footer={{isNextDisabled: !contextPathValid, cancelButtonText: ''}}
@@ -220,7 +220,7 @@ export default function BuildTriggerSetupWizard(
         />
       </WizardStep>
       <WizardStep
-        name="Robot Accounts"
+        name="Robot accounts"
         id="robot-accounts"
         key="robot-accounts"
         footer={{isNextDisabled: !robotAccountValid, cancelButtonText: ''}}
@@ -239,7 +239,7 @@ export default function BuildTriggerSetupWizard(
         />
       </WizardStep>
       <WizardStep
-        name="Review and Finish"
+        name="Review and finish"
         id="review-and-finish"
         key="review-and-finish"
         footer={{

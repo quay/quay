@@ -34,7 +34,7 @@ export default function TaggingOptionsStep(props: TaggingOptionsStepProps) {
   };
   return (
     <>
-      <Title headingLevel="h2">Configure Tagging</Title>
+      <Title headingLevel="h2">Configure tagging</Title>
       <br />
       <Form>
         <Title headingLevel="h5">Confirm basic tagging options</Title>
