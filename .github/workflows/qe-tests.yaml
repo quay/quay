@@ -1,4 +1,4 @@
-name: QE API Tests
+name: QE Tests
 on:
   pull_request:
     branches:
@@ -6,10 +6,10 @@ on:
     paths:
       - "endpoints/**"
       - ".github/actions/setup-quay/**"
-      - ".github/workflows/qe-api-tests.yaml"
+      - ".github/workflows/qe-tests.yaml"
 
 jobs:
-  cypress:
+  qe-api-tests:
     name: QE API Tests
     runs-on: ubuntu-22.04
     permissions:
@@ -42,18 +42,11 @@ jobs:
       - name: Get PR number
         id: pr
         run: |
-          mkdir -p pr-info
+          mkdir -p test-results
           PR_NUMBER="${{ github.event.pull_request.number }}"
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          echo "$PR_NUMBER" > pr-info/pr_number.txt
+          echo "$PR_NUMBER" > test-results/pr_number.txt
           echo "Saved PR number: $PR_NUMBER"
-
-      - name: Create test results directory
-        run: |
-          mkdir -p ${{ github.workspace }}/test-results
-          mkdir -p ${{ github.workspace }}/cypress-videos
-          mkdir -p ${{ github.workspace }}/cypress-screenshots
-          mkdir -p ${{ github.workspace }}/cypress-results
 
       - name: Run Cypress tests
         run: |
@@ -68,9 +61,6 @@ jobs:
             -e CYPRESS_QUAY_PASSWORD="password" \
             -e CYPRESS_QUAY_VERSION="3.16" \
             -v ${{ github.workspace }}/test-results:/test-results \
-            -v ${{ github.workspace }}/cypress-videos:/quay-tests/quay-api-tests/cypress/videos \
-            -v ${{ github.workspace }}/cypress-screenshots:/quay-tests/quay-api-tests/cypress/screenshots \
-            -v ${{ github.workspace }}/cypress-results:/quay-tests/quay-api-tests/cypress/results \
             quay.io/quay-qetest/ci-test-image:latest \
             bash -c "
               set -o pipefail && \
@@ -83,51 +73,18 @@ jobs:
                 --headless \
                 --reporter cypress-multi-reporters \
                 --reporter-options configFile=reporter-config.json \
-                | tee /test-results/quay_api_testing_report
+                | tee /test-results/quay_api_testing_report; \
+              cp -r cypress/videos cypress/screenshots cypress/results /test-results/ 2>/dev/null; true
             "
 
-      - name: Upload Cypress Test Report
+      - name: Upload test artifacts
         uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: quay-api-test-report
-          path: ${{ github.workspace }}/test-results/quay_api_testing_report
-          retention-days: 30
-
-      - name: Upload Cypress Videos
-        uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: cypress-videos
-          path: ${{ github.workspace }}/cypress-videos
+          name: qe-test-artifacts
+          path: ${{ github.workspace }}/test-results
           retention-days: 30
           if-no-files-found: ignore
-
-      - name: Upload Cypress Screenshots
-        uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: cypress-screenshots
-          path: ${{ github.workspace }}/cypress-screenshots
-          retention-days: 30
-          if-no-files-found: ignore
-
-      - name: Upload Cypress CTRF Report
-        uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: cypress-ctrf-report
-          path: ${{ github.workspace }}/cypress-results/ctrf-report.json
-          retention-days: 30
-          if-no-files-found: ignore
-
-      - name: Upload PR number
-        uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: pr-number
-          path: pr-info/pr_number.txt
-          retention-days: 30
 
       - name: Collect Quay logs on failure
         if: failure()

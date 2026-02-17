@@ -1,7 +1,7 @@
-name: QE API Tests Results
+name: QE Tests Results
 on:
   workflow_run:
-    workflows: ["QE API Tests"]
+    workflows: ["QE Tests"]
     types:
       - completed
   workflow_dispatch:
@@ -43,22 +43,13 @@ jobs:
           echo "Using workflow_run: run_id=${{ github.event.workflow_run.id }}"
         fi
 
-    - name: Download test results
+    - name: Download test artifacts
       uses: dawidd6/action-download-artifact@v14
       with:
-        name: cypress-ctrf-report
-        workflow: qe-api-tests.yaml
+        name: qe-test-artifacts
+        workflow: qe-tests.yaml
         run_id: ${{ steps.setup.outputs.run_id }}
         path: ./test-results
-
-    - name: Download PR number artifact
-      if: github.event_name != 'workflow_dispatch'
-      uses: dawidd6/action-download-artifact@v14
-      with:
-        name: pr-number
-        workflow: qe-api-tests.yaml
-        run_id: ${{ steps.setup.outputs.run_id }}
-        path: ./pr-info
 
     - name: Read PR number
       id: pr
@@ -67,8 +58,8 @@ jobs:
           PR_NUMBER="${{ steps.setup.outputs.pr_number }}"
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "Using manual PR number: $PR_NUMBER"
-        elif [ -f pr-info/pr_number.txt ]; then
-          PR_NUMBER=$(cat pr-info/pr_number.txt)
+        elif [ -f test-results/pr_number.txt ]; then
+          PR_NUMBER=$(cat test-results/pr_number.txt)
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "Found PR number from artifact: $PR_NUMBER"
         else
@@ -79,10 +70,10 @@ jobs:
     - name: Check for CTRF report
       id: check-report
       run: |
-        if [ -f test-results/ctrf-report.json ]; then
+        if [ -f test-results/results/ctrf-report.json ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "CTRF report found"
-          cat test-results/ctrf-report.json
+          cat test-results/results/ctrf-report.json
         else
           echo "exists=false" >> $GITHUB_OUTPUT
           echo "Warning: CTRF report not found"
@@ -94,9 +85,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        report-path: test-results/ctrf-report.json
+        report-path: test-results/results/ctrf-report.json
         issue: ${{ steps.pr.outputs.number }}
-        title: 'Quay QE API Test Results'
+        title: 'Quay QE Test Results'
         annotate: true
         on-fail-only: false
         overwrite-comment: true
