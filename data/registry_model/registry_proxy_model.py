@@ -561,7 +561,8 @@ class ProxyModel(OCIModel):
                     try:
                         ManifestChild.get(manifest=db_manifest.id, child_manifest=m.id)
                     except ManifestChild.DoesNotExist:
-                        manifests_to_connect.append(m)
+                        if m not in manifests_to_connect:
+                            manifests_to_connect.append(m)
 
                 oci.manifest.connect_manifests(manifests_to_connect, db_manifest, repository_ref.id)
 
