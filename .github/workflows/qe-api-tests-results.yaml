@@ -1,7 +1,7 @@
-name: Quay QE API Test Results
+name: QE API Tests Results
 on:
   workflow_run:
-    workflows: ["Quay QE API Tests"]
+    workflows: ["QE API Tests"]
     types:
       - completed
   workflow_dispatch:
@@ -44,19 +44,19 @@ jobs:
         fi
 
     - name: Download test results
-      uses: dawidd6/action-download-artifact@v8
+      uses: dawidd6/action-download-artifact@v14
       with:
         name: cypress-ctrf-report
-        workflow: quay-qe-api-test.yaml
+        workflow: qe-api-tests.yaml
         run_id: ${{ steps.setup.outputs.run_id }}
         path: ./test-results
 
     - name: Download PR number artifact
       if: github.event_name != 'workflow_dispatch'
-      uses: dawidd6/action-download-artifact@v8
+      uses: dawidd6/action-download-artifact@v14
       with:
         name: pr-number
-        workflow: quay-qe-api-test.yaml
+        workflow: qe-api-tests.yaml
         run_id: ${{ steps.setup.outputs.run_id }}
         path: ./pr-info
 

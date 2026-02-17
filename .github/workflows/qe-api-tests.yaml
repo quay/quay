@@ -1,4 +1,4 @@
-name: Quay QE API Tests
+name: QE API Tests
 on:
   pull_request:
     branches:
@@ -6,48 +6,23 @@ on:
     paths:
       - "endpoints/**"
       - ".github/actions/setup-quay/**"
-      - ".github/workflows/quay-qe-api-test.yaml"
-  issue_comment:
-    types: [created]
+      - ".github/workflows/qe-api-tests.yaml"
 
 jobs:
   cypress:
-    name: Quay QE API Tests
+    name: QE API Tests
     runs-on: ubuntu-22.04
     permissions:
       contents: read
-    # Only run on PR comments containing "/quay-qe-api-test" or on pull_request events
-    if: |
-      (github.event_name == 'pull_request') ||
-      (github.event_name == 'issue_comment' &&
-       github.event.issue.pull_request &&
-       contains(github.event.comment.body, '/quay-qe-api-test') &&
-       (github.event.comment.author_association == 'MEMBER' ||
-        github.event.comment.author_association == 'OWNER' ||
-        github.event.comment.author_association == 'COLLABORATOR'))
     steps:
-      - name: React to comment
-        if: github.event_name == 'issue_comment'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: 'rocket'
-            })
-
       - name: Checkout PR code
         uses: actions/checkout@v6
-        with:
-          # For issue_comment trigger, checkout the PR head ref
-          ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
 
       - name: Setup Quay
         id: setup-quay
         uses: ./.github/actions/setup-quay
         with:
+          with-clair: 'true'
           extra-config: |
             FEATURE_USER_INITIALIZE: true
             FEATURE_USER_METADATA: false
@@ -69,11 +44,7 @@ jobs:
         id: pr
         run: |
           mkdir -p pr-info
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            PR_NUMBER="${{ github.event.pull_request.number }}"
-          elif [ "${{ github.event_name }}" == "issue_comment" ]; then
-            PR_NUMBER="${{ github.event.issue.number }}"
-          fi
+          PR_NUMBER="${{ github.event.pull_request.number }}"
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "$PR_NUMBER" > pr-info/pr_number.txt
           echo "Saved PR number: $PR_NUMBER"
@@ -118,7 +89,7 @@ jobs:
             "
 
       - name: Upload Cypress Test Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: quay-api-test-report
@@ -126,7 +97,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Cypress Videos
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: cypress-videos
@@ -135,7 +106,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Cypress Screenshots
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: cypress-screenshots
@@ -144,7 +115,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Cypress CTRF Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: cypress-ctrf-report
@@ -153,7 +124,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload PR number
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: pr-number
