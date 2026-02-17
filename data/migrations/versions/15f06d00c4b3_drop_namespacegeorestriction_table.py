@@ -1,13 +1,13 @@
 """drop namespacegeorestriction table
 
-Revision ID: efdc6dd27755
+Revision ID: 15f06d00c4b3
 Revises: b1c2d3e4f5a6
-Create Date: 2026-02-11 00:00:00.000000
+Create Date: 2026-02-17 14:09:48.577946
 
 """
 
 # revision identifiers, used by Alembic.
-revision = "efdc6dd27755"
+revision = "15f06d00c4b3"
 down_revision = "b1c2d3e4f5a6"
 
 import sqlalchemy as sa
