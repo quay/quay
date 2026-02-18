@@ -22,6 +22,7 @@ from botocore.credentials import (
 )
 from botocore.signers import CloudFrontSigner
 from cachetools.func import lru_cache
+from cryptography import exceptions as crypto_exceptions
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -1348,6 +1349,32 @@ class CloudFrontedS3Storage(S3Storage):
     @lru_cache(maxsize=1)
     def _get_rsa_signer(self):
         private_key = self.cloudfront_privatekey
+
+        try:
+            # Test if SHA1 signing works with this system's crypto policy
+            private_key.sign(b"test", padding.PKCS1v15(), hashes.SHA1())
+        except crypto_exceptions.UnsupportedAlgorithm:
+            # SHA1 blocked by system crypto policy (e.g., RHEL9).
+            # Fall back to pure-Python rsa library which bypasses OpenSSL.
+            import rsa as rsa_lib
+
+            pn = private_key.private_numbers()
+            rsa_key = rsa_lib.PrivateKey(
+                n=pn.public_numbers.n,
+                e=pn.public_numbers.e,
+                d=pn.d,
+                p=pn.p,
+                q=pn.q,
+            )
+            logger.warning(
+                "SHA1 not supported by system crypto policy for RSA signing. "
+                "Using pure-Python RSA for CloudFront URL signing."
+            )
+
+            def handler(message):
+                return rsa_lib.sign(message, rsa_key, "SHA-1")
+
+            return handler
 
         def handler(message):
             return private_key.sign(message, padding.PKCS1v15(), hashes.SHA1())
