@@ -41,14 +41,6 @@ def for_catalog_page(auth_context_key, start_id, limit, cache_config):
     return CacheKey("catalog_page__%s_%s_%s" % params, cache_ttl)
 
 
-def for_namespace_geo_restrictions(namespace_name, cache_config):
-    """
-    Returns a cache key for the geo restrictions for a namespace.
-    """
-    cache_ttl = cache_config.get("namespace_geo_restrictions_cache_ttl", "240s")
-    return CacheKey("geo_restrictions__%s" % namespace_name, cache_ttl)
-
-
 def for_active_repo_tags(repository_id, last_pagination_tag_name, limit, cache_config):
     """
     Returns a cache key for the active tags in a repository.

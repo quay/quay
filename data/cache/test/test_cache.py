@@ -22,7 +22,6 @@ DATA: Dict[str, Any] = {}
 TEST_CACHE_CONFIG = {
     "repository_blob_cache_ttl": "240s",
     "catalog_page_cache_ttl": "240s",
-    "namespace_geo_restrictions_cache_ttl": "240s",
     "active_repo_tags_cache_ttl": "240s",
 }
 

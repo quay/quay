@@ -410,13 +410,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_cached_namespace_region_blacklist(self, model_cache, namespace_name):
-        """
-        Returns a cached set of ISO country codes blacklisted for pulls for the namespace or None if
-        the list could not be loaded.
-        """
-
-    @abstractmethod
     def get_cached_repo_blob(self, model_cache, namespace_name, repo_name, blob_digest):
         """
         Returns the blob in the repository with the given digest if any or None if none.
