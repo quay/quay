@@ -275,6 +275,7 @@ export const logKinds = {
   update_immutability_policy: 'Update Immutability Policy',
   delete_immutability_policy: 'Delete Immutability Policy',
   oauth_token_assigned: 'OAuth token assigned',
+  oauth_token_revoked: 'OAuth token revoked',
   enable_team_sync: 'Enable Team Sync',
   disable_team_sync: 'Disable Team Sync',
   add_repo_webhook: 'Add webhook',
