@@ -87,7 +87,11 @@ class IPResolver(IPResolverInterface):
         # resolve absolute path to file
         path = os.path.dirname(os.path.abspath(__file__))
         file_path = os.path.join(path, "ip-to-country.mmdb")
-        self.geoip_db = maxminddb.open_database(file_path)
+        try:
+            self.geoip_db = maxminddb.open_database(file_path)
+        except Exception:
+            logger.exception("Failed to open GeoIP database at %s", file_path)
+            self.geoip_db = None
 
         self.amazon_ranges: Dict[str, IPSet] = None
         self.sync_token = None
@@ -149,7 +153,7 @@ class IPResolver(IPResolverInterface):
             return ResolvedLocation("invalid_ip", None, self.sync_token, None, None, None)
 
         # Try geoip classification
-        geoinfo = self.geoip_db.get(ip_address)
+        geoinfo = self.geoip_db.get(ip_address) if self.geoip_db else None
         aws_region = self.get_aws_ip_region(parsed_ip)
 
         iso_code = geoinfo.get("country_code", None) if geoinfo else None
