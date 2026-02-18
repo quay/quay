@@ -10,7 +10,7 @@ from flask import request
 from ua_parser import user_agent_parser
 
 import features
-from app import app, usermanager
+from app import app
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from data.database import RepositoryState
 from data.model import InvalidProxyCacheConfigException, PushesDisabledException

@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from netaddr import IPAddress
 
 from test.fixtures import *
 from util.ipresolver import IPResolver, ResolvedLocation
@@ -96,8 +97,6 @@ def test_amazon_only_parses_ec2_and_codebuild():
     }
     parsed = IPResolver._parse_amazon_ranges(ranges)
     ipset = parsed["us-east-1"]
-    from netaddr import IPAddress
-
     assert IPAddress("1.0.0.1") in ipset
     assert IPAddress("2.0.0.1") not in ipset
     assert IPAddress("3.0.0.1") in ipset

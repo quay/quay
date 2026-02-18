@@ -34,6 +34,7 @@ def test_empty_ip_range_cache(empty_range_data):
     all_amazon = IPResolver._parse_amazon_ranges(empty_range_data)
     return {
         "sync_token": sync_token,
+        "all_amazon": all_amazon,
     }
 
 
@@ -56,16 +57,13 @@ def test_direct_download(
 ):
     ipresolver = mock_ipresolver
     if ipranges_populated:
-        ipresolver.sync_token = (
-            test_ip_range_cache["sync_token"]
-            if ipranges_populated
-            else test_empty_ip_range_cache["sync_token"]
-        )
-        ipresolver.amazon_ranges = (
-            test_ip_range_cache["all_amazon"]
-            if ipranges_populated
-            else test_empty_ip_range_cache["all_amazon"]
-        )
+        ipresolver.sync_token = test_ip_range_cache["sync_token"]
+        ipresolver.amazon_ranges = test_ip_range_cache["all_amazon"]
+    else:
+        ipresolver.sync_token = test_empty_ip_range_cache["sync_token"]
+        ipresolver.amazon_ranges = test_empty_ip_range_cache["all_amazon"]
+
+    if ipranges_populated:
         context = StorageContext("nyc", None, config_provider, ipresolver)
 
         # Create a test bucket and put some test content.
@@ -152,7 +150,7 @@ def test_direct_download(
 
 
 @mock_s3
-def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populated, mock_ipresolver):
+def test_direct_download_no_ip(mock_ipresolver):
     ipresolver = mock_ipresolver
     context = StorageContext("nyc", None, config_provider, ipresolver)
 
@@ -178,9 +176,7 @@ def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populate
 
 
 @mock_s3
-def test_direct_download_with_username(
-    test_aws_ip, aws_ip_range_data, ipranges_populated, mock_ipresolver
-):
+def test_direct_download_with_username(mock_ipresolver):
     ipresolver = mock_ipresolver
     context = StorageContext("nyc", None, config_provider, ipresolver)
 
@@ -206,9 +202,7 @@ def test_direct_download_with_username(
 
 
 @mock_s3
-def test_direct_download_with_repo_name(
-    test_aws_ip, aws_ip_range_data, ipranges_populated, mock_ipresolver
-):
+def test_direct_download_with_repo_name(mock_ipresolver):
     ipresolver = mock_ipresolver
     context = StorageContext("nyc", None, config_provider, ipresolver)
 
