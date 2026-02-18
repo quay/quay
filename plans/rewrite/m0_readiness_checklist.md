@@ -21,7 +21,7 @@ Track exact readiness against M0 exit criteria from `plans/rewrite/quay_rewrite.
 | `registryd_design.md` approved | blocked | `plans/rewrite/registryd_design.md` | Draft exists; approval pending. |
 | `redis_usage_inventory.md` approved | blocked | `plans/rewrite/redis_usage_inventory.md` | Draft exists; approval pending. |
 | `performance_budget.md` baselines captured | blocked | `plans/rewrite/performance_budget.md` | Budget doc exists; baseline capture not yet attached. |
-| deployment/config/image/TLS plans approved | blocked | `plans/rewrite/deployment_architecture.md`, `plans/rewrite/config_tool_evolution.md`, `plans/rewrite/image_strategy.md`, `plans/rewrite/tls_security_posture.md` | Drafts exist; approvals pending. |
+| deployment/config/image/TLS/observability plans approved | blocked | `plans/rewrite/deployment_architecture.md`, `plans/rewrite/config_tool_evolution.md`, `plans/rewrite/image_strategy.md`, `plans/rewrite/tls_security_posture.md`, `plans/rewrite/observability_migration.md` | Drafts exist; approvals pending. |
 | auth backend + notification plans approved | blocked | `plans/rewrite/auth_backend_inventory.md`, `plans/rewrite/notification_driver_inventory.md` | Drafts exist; approvals pending. |
 | `ai_agent_guide.md` approved and task packets created | blocked | `plans/rewrite/ai_agent_guide.md` | Guide exists; task packets still need owner review and creation across WS3-WS11. |
 | Contract fixture set established for all route families and queues | blocked | `plans/rewrite/test_implementation_plan.md`, `plans/rewrite/generated/route_contract_tests.csv`, `plans/rewrite/generated/queue_worker_contract_tests.csv` | Mapping exists; runnable fixture implementation not complete. |

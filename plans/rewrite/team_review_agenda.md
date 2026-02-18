@@ -117,7 +117,7 @@ All docs are under `plans/rewrite/`. Start with the master plan, then go to your
 | Data layer | `data_access_layer_design.md` | `db_migration_policy.md`, `go_module_strategy.md` |
 | Workers/queues | `workers_inventory.md` | `queue_contracts.md`, `queue_cutover_dependencies.md`, `generated/worker_phase_sequence.md` |
 | Auth/security | `auth_backend_inventory.md` | `fips_crypto_migration.md`, `tls_security_posture.md` |
-| Deployment | `deployment_architecture.md` | `image_strategy.md`, `config_tool_evolution.md` |
+| Deployment | `deployment_architecture.md` | `image_strategy.md`, `config_tool_evolution.md`, `observability_migration.md` |
 | Testing | `test_strategy.md` | `test_implementation_plan.md`, `performance_budget.md` |
 | Migration controls | `switch_spec.md` | `switch_transport_design.md`, `cutover_matrix.md` |
 
