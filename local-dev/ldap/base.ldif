@@ -104,3 +104,32 @@ gecos: Test User
 loginShell: /bin/bash
 homeDirectory: /home/testuser
 mail: testuser@example.com
+
+# Organizational unit for groups (for team sync testing)
+dn: ou=groups,dc=example,dc=org
+objectClass: organizationalUnit
+ou: groups
+
+# Group: developers (for team sync testing)
+dn: cn=developers,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: developers
+description: Developer team
+member: uid=user1,ou=users,dc=example,dc=org
+member: uid=testuser,ou=users,dc=example,dc=org
+
+# Group: admins (for team sync testing)
+dn: cn=admins,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: admins
+description: Admin team
+member: uid=admin,ou=users,dc=example,dc=org
+member: uid=quayadmin,ou=users,dc=example,dc=org
+
+# Group: readonly-users (for team sync testing)
+dn: cn=readonly-users,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: readonly-users
+description: Read-only users
+member: uid=readonly,ou=users,dc=example,dc=org
+member: uid=quayadmin,ou=users,dc=example,dc=org

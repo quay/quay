@@ -20,6 +20,19 @@ if [ $timeout -eq 0 ]; then
     exit 1
 fi
 
+# Enable dynamic plugins (allows plugin changes without restart)
+echo "Enabling dynamic plugins..."
+dsconf localhost config replace nsslapd-dynamic-plugins=on
+
+# Enable memberOf plugin for team sync support
+if dsconf localhost plugin memberof status 2>&1 | grep -q "disabled"; then
+    echo "Enabling memberOf plugin..."
+    dsconf localhost plugin memberof enable
+    echo "memberOf plugin enabled!"
+else
+    echo "memberOf plugin already enabled"
+fi
+
 # Check if backend already exists
 if dsconf localhost backend suffix list | grep -q "dc=example,dc=org"; then
     echo "Backend already exists, skipping creation"
@@ -35,6 +48,12 @@ else
     echo "Importing LDIF from /data/ldif/base.ldif..."
     ldapadd -x -H ldap://localhost:3389 -D "cn=Directory Manager" -w admin -f /data/ldif/base.ldif
     echo "LDIF imported successfully!"
+
+    # Run memberOf fixup to populate memberOf attributes for imported entries
+    echo "Running memberOf fixup task..."
+    dsconf localhost plugin memberof fixup "dc=example,dc=org"
+    sleep 2
+    echo "memberOf attributes populated!"
 fi
 
 echo "389 DS initialization complete!"
