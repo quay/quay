@@ -197,6 +197,7 @@ RUN set -ex\
 	; chown -R 1001:0 /etc/pki/ \
 	; chown -R 1001:0 /etc/ssl/ \
 	; chown -R 1001:0 /quay-registry \
+	; chmod ug+w /etc/pki/ca-trust \
 	; chmod ug+w -R /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors \
 	; chmod ug+w -R /etc/ssl/certs
 
