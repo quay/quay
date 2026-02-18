@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict fxmrevWdeqvsJK2qrfDBibqaVDzkdGEOr3EJHZQ3whLLSJmC0pjEOeA6rHwY82y
+\restrict dYNdsa74qkPNa8NsuYfdKWCEVd2YbrgNjdp261tPUyyJNrGFkQQEdwVkSDH6ywJ
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg13+2)
 -- Dumped by pg_dump version 18.1 (Debian 18.1-1.pgdg13+2)
@@ -42,7 +42,6 @@ ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXIS
 ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_method_id;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_linked_tag_id_tag;
-ALTER TABLE IF EXISTS ONLY public.tagpullstatistics DROP CONSTRAINT IF EXISTS fk_tagpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.servicekey DROP CONSTRAINT IF EXISTS fk_servicekey_approval_id_servicekeyapproval;
@@ -119,7 +118,6 @@ ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXIS
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_label_id_label;
-ALTER TABLE IF EXISTS ONLY public.manifestpullstatistics DROP CONSTRAINT IF EXISTS fk_manifestpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_child_manifest_id_manifest;
@@ -3125,7 +3123,8 @@ CREATE TABLE public.orgmirrorconfig (
     sync_retries_remaining integer DEFAULT 3 NOT NULL,
     sync_status integer DEFAULT 0 NOT NULL,
     sync_transaction_id character varying(36),
-    skopeo_timeout bigint DEFAULT 300 NOT NULL
+    skopeo_timeout bigint DEFAULT 300 NOT NULL,
+    architecture_filter text DEFAULT '[]'::text NOT NULL
 );
 
 
@@ -3168,7 +3167,9 @@ CREATE TABLE public.orgmirrorrepository (
     sync_expiration_date timestamp without time zone,
     last_sync_date timestamp without time zone,
     status_message text,
-    creation_date timestamp without time zone NOT NULL
+    creation_date timestamp without time zone NOT NULL,
+    sync_retries_remaining integer DEFAULT 3 NOT NULL,
+    sync_transaction_id character varying(36)
 );
 
 
@@ -5068,7 +5069,8 @@ CREATE TABLE public."user" (
     location character varying(255),
     maximum_queued_builds_count integer,
     creation_date timestamp without time zone,
-    last_accessed timestamp without time zone
+    last_accessed timestamp without time zone,
+    contact_email character varying(255)
 );
 
 
@@ -6083,7 +6085,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-285f36ce97fd
+727297654e7d
 \.
 
 
@@ -6799,6 +6801,7 @@ COPY public.logentrykind (id, name) FROM stdin;
 130	create_immutability_policy
 131	update_immutability_policy
 132	delete_immutability_policy
+133	org_mirror_repo_creation_failed
 \.
 
 
@@ -7066,7 +7069,7 @@ COPY public.organizationrhskus (id, subscription_id, org_id, user_id, quantity) 
 -- Data for Name: orgmirrorconfig; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.orgmirrorconfig (id, organization_id, creation_date, is_enabled, mirror_type, external_registry_type, external_registry_url, external_namespace, external_registry_username, external_registry_password, external_registry_config, internal_robot_id, repository_filters, visibility_id, delete_stale_repos, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, skopeo_timeout) FROM stdin;
+COPY public.orgmirrorconfig (id, organization_id, creation_date, is_enabled, mirror_type, external_registry_type, external_registry_url, external_namespace, external_registry_username, external_registry_password, external_registry_config, internal_robot_id, repository_filters, visibility_id, delete_stale_repos, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, skopeo_timeout, architecture_filter) FROM stdin;
 \.
 
 
@@ -7074,7 +7077,7 @@ COPY public.orgmirrorconfig (id, organization_id, creation_date, is_enabled, mir
 -- Data for Name: orgmirrorrepository; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.orgmirrorrepository (id, org_mirror_config_id, repository_name, repository_id, discovery_date, sync_status, sync_start_date, sync_expiration_date, last_sync_date, status_message, creation_date) FROM stdin;
+COPY public.orgmirrorrepository (id, org_mirror_config_id, repository_name, repository_id, discovery_date, sync_status, sync_start_date, sync_expiration_date, last_sync_date, status_message, creation_date, sync_retries_remaining, sync_transaction_id) FROM stdin;
 \.
 
 
@@ -7127,8 +7130,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2026-01-22 19:36:20.881382	t	2026-01-22 22:31:20.868721	5	d6ad2871-2ca4-430c-a193-50693557d841
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2026-01-22 19:36:25.891006	t	2026-01-22 22:31:25.8845	5	6f99ab1d-bb41-41c1-9f3e-dbbc9d8031ad
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2026-02-17 23:33:35.288025	t	2026-02-18 02:28:35.268528	5	24d1d8b5-f2f2-4535-a1d3-f217a807f577
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2026-02-17 23:33:40.301645	t	2026-02-18 02:28:40.291199	5	f5499db3-ffde-41ed-b3ec-c85f8b4244ad
 \.
 
 
@@ -8321,7 +8324,7 @@ COPY public.role (id, name) FROM stdin;
 --
 
 COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, expiration_date, rotation_duration, approval_id) FROM stdin;
-3	https://quaydev.io:443	SWe5UENywVJhTOLDAV_DFpN_7Y4tdFqMAROiWsdulrg	quay	{"n": "vMcd7RirlR3JKPZLiQ5mgWLcSTyV7Gdiy3eu27qHp6k7zAuI435m_1q6wj8x040WQJhCPxCDuq1_2YxCHof7DxXWvazJrROEEU8jDbst7N90jupr9Y7XKvIckrCgClCRgJrMipNiso5uSKV3WSu7Typ0AQU8eaa-fCMVpGuH9XrtFeUPxpTZZFnGkJVt5oWin5fxjOwLDGQO_Te0LNah5O0L14hd84-9TFhdkBCVKvYyhq4u0eA8YruuURGpDdB4Wc9DSUkqRbHvUvBu5fgx8TGR9t5QF2mIo8J6GOj3ccEG0xnMwrVEjlE1txDvhl7E6dqtyeyggmCL0O7C3-1YfQ", "e": "AQAB", "kty": "RSA", "kid": "SWe5UENywVJhTOLDAV_DFpN_7Y4tdFqMAROiWsdulrg"}	{"created_by": "CLI tool"}	2024-07-16 21:55:25.70086	2024-07-16 23:55:25.65144	\N	3
+4	http://localhost:8080	S_9FjfwaxgOC54Oj9GXDp2AFQKyJVGZdghD3e9abQks	quay	{"n": "xvLoQeWQLKDwNxwSpmGduMxBiRhNjgUnOufXTXmsVv2nuJiYqhZoA7XyS5VoouEjaP3IsdGnlFEvR8CXUAf-uGjn30Z1ARd9gVlWYQAeXx9f9Xe0E2jHzgF2yoo_9RPEI1SP3lZVTmm-e-QzGadeLzpR4VxCwqnw2A-8Yii0mRiubxZVJBgldOZg0-ckFG6CpH5dgcgBavm0v-FyVITvXg1lN-1PZwUvFcm2HIHTUIGAqg7j5zPC_0vveDAq2bdlxkwbbxcWZ9jB4aMv4q55ogJctC40I8E4iLIUxmiHa7DwI9Kp9o-0ICfFZ3Vo2PaBBYWhbRJzpN_QM--qb7NwMw", "e": "AQAB", "kty": "RSA", "kid": "S_9FjfwaxgOC54Oj9GXDp2AFQKyJVGZdghD3e9abQks"}	{"created_by": "CLI tool"}	2026-02-17 23:29:07.675043	2026-02-18 01:29:07.651565	\N	4
 \.
 
 
@@ -8332,6 +8335,7 @@ COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, exp
 COPY public.servicekeyapproval (id, approver_id, approval_type, approved_date, notes) FROM stdin;
 2	\N	ServiceKeyApprovalType.AUTOMATIC	2024-06-07 15:53:13.57574	
 3	\N	ServiceKeyApprovalType.AUTOMATIC	2024-07-16 21:55:25.709753	
+4	\N	ServiceKeyApprovalType.AUTOMATIC	2026-02-17 23:29:07.677675	
 \.
 
 
@@ -8592,42 +8596,42 @@ COPY public.uploadedblob (id, repository_id, blob_id, uploaded_at, expires_at) F
 -- Data for Name: user; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public."user" (id, uuid, username, password_hash, email, verified, stripe_id, organization, robot, invoice_email, invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled, invoice_email_address, company, family_name, given_name, location, maximum_queued_builds_count, creation_date, last_accessed) FROM stdin;
-2	478983be-9239-479c-9ca6-86d85eb5bcae	89aced10-1ceb-4fa0-a21d-eea28b821060	\N	eba37a66-0b41-4352-86c5-438a1875d5e5	f	\N	t	f	f	0	2022-11-21 18:49:53.667717	1209600	f	\N	\N	\N	\N	\N	\N	2022-11-21 18:49:53.667738	\N
-3	b72c9d43-eb51-4dee-996a-ef6e78c92db7	aee7990b-975d-42f2-b9be-b357a5aa3f3f	\N	33b3d332-b72f-4754-b9d3-816aca5261b3	f	\N	t	f	f	0	2022-11-21 18:50:35.411588	1209600	f	\N	\N	\N	\N	\N	\N	2022-11-21 18:50:35.411606	\N
-4	ec029590-9f7f-4886-9bec-d11925542ed6	projectquay	\N	4e003156-02a9-4d51-8c22-a110e7c86aa9	f	\N	t	f	f	0	2022-11-21 18:51:23.259811	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:51:23.259828	\N
-5	06cedae8-05d2-4449-8f66-1624493f3fd7	openshift-release-dev	\N	1616e6db-a68c-48ef-a1ce-7bfec0ebdc70	f	\N	t	f	f	0	2022-11-21 18:52:21.603187	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:52:21.6032	\N
-6	481e82b1-6bda-48c8-af55-2772bdfa0dae	prometheus	\N	02a65677-c97e-4998-ad50-6097a7608d10	f	\N	t	f	f	0	2022-11-21 18:52:35.747294	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:52:35.747312	\N
-7	1e388f93-d292-4936-ab7a-b10eaac270cc	jetstack	\N	fb58e839-d4e0-42fc-b1bc-7d9d1fb09646	f	\N	t	f	f	0	2022-11-21 18:52:44.887303	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:52:44.887318	\N
-8	0df740c0-f0e2-42da-8773-e72c17483a7c	unleash	\N	5aea0114-13bc-4d55-a4c7-49e69823598c	f	\N	t	f	f	0	2022-11-21 18:52:51.961513	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:52:51.961532	\N
-9	3000a186-4c7a-4bfd-8c0b-e8e9a6546bd9	calico	\N	8f6e0877-e1a8-4e13-a93c-1c62a5b575b3	f	\N	t	f	f	0	2022-11-21 18:53:03.702691	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:53:03.702753	\N
-10	49428d6a-d491-4929-9e9b-3b6bb15c0795	coreos	\N	9b2418ff-f146-499b-a04a-ace3b039298a	f	\N	t	f	f	0	2022-11-21 18:53:13.316536	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:53:13.316553	\N
-11	36865adb-12f6-454f-93ef-9838cbef753f	openshift	\N	22bdcc81-2635-4cc2-8386-62382fc0eafa	f	\N	t	f	f	0	2022-11-21 18:53:27.566407	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:53:27.566425	\N
-12	3102af81-a22c-48a3-b388-7b9c86231bc0	oauth2-proxy	\N	0c98c50a-cfa6-4c69-a220-848558b2e8ba	f	\N	t	f	f	0	2022-11-21 18:53:38.461308	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:53:38.461324	\N
-13	13c26785-7939-4bb2-9492-4e3335a3b4f5	wildfly	\N	9f5dddee-46f3-4885-ba12-1e45b90d4bbb	f	\N	t	f	f	0	2022-11-21 18:53:49.695342	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:53:49.695355	\N
-14	31622f50-696f-4e5e-8312-95fddc734328	rhacs-eng	\N	d7a6a611-3f49-434e-9dcb-6527fc217474	f	\N	t	f	f	0	2022-11-21 18:54:05.199793	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:54:05.199809	\N
-15	69561fa8-d9dd-4939-82e3-7ccd6d8798b5	vexxhost	\N	7996a4c6-cd3e-45bf-bb25-6b62abaf6096	f	\N	t	f	f	0	2022-11-21 18:54:10.484561	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:54:10.484579	\N
-16	50101a53-1c86-494e-8f3a-e6de3ed3ec3c	keycloak	\N	bfb04280-1c35-406b-9696-b3e72e78c330	f	\N	t	f	f	0	2022-11-21 18:54:30.650272	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:54:30.650291	\N
-17	61573646-ae87-418c-9834-074aa8f27a13	operatorhubio	\N	394b7971-c584-4c5c-b627-9c4d0a9711ce	f	\N	t	f	f	0	2022-11-21 18:54:54.010609	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:54:54.010631	\N
-18	3889f8f9-6034-42a8-bcde-f4860f5924aa	sysdig	\N	4871d033-c213-4402-a42a-d87445b8e8a7	f	\N	t	f	f	0	2022-11-21 18:55:02.038662	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:02.038677	\N
-19	496a28f1-4d2a-4805-9f99-d069b17e3548	operator-framework	\N	1e0a2dbd-1790-40a8-892b-8e099fb12878	f	\N	t	f	f	0	2022-11-21 18:55:10.277329	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:10.277349	\N
-20	4ef770b1-850d-46c0-ae24-372f83c06145	cillium	\N	2a4ba114-0f01-4003-9910-49834f783267	f	\N	t	f	f	0	2022-11-21 18:55:22.699958	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:22.699975	\N
-21	181aa9b9-78b9-4c25-945d-bb71fffb8c1b	kubernetes-ingress-controller	\N	10d98c47-06f1-4f89-a4cb-3f33afcd17f8	f	\N	t	f	f	0	2022-11-21 18:55:33.516279	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:33.516296	\N
-22	13473b47-0aec-4977-9618-bc82d05ff6fd	metallb	\N	83efaa01-2a76-4545-bf9c-e50ad2059929	f	\N	t	f	f	0	2022-11-21 18:55:43.990124	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:43.990137	\N
-23	8f48d189-e992-4f2c-bfd3-13226dc56383	gitlab	\N	f91d8923-5c70-4662-b253-0e2345bc0b01	f	\N	t	f	f	0	2022-11-21 18:55:57.342883	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:57.342897	\N
-24	0f3f6fd1-b1b6-42cd-bfd3-85bda8e87f0a	fairwinds	\N	fac885ae-a5a5-4cc7-9053-dd07ad807a27	f	\N	t	f	f	0	2022-11-21 18:56:06.898168	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:06.898189	\N
-25	ce824049-c743-463a-a15b-5dacdbdd9174	minio	\N	9b2204ea-0cbf-46f5-b9e9-43fd0c28117e	f	\N	t	f	f	0	2022-11-21 18:56:21.537146	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:21.537163	\N
-26	df00c09a-f39b-4afe-b676-91d5bee4e507	centos	\N	ae63b4ec-f66a-48b2-a5fb-5f46d8a3e953	f	\N	t	f	f	0	2022-11-21 18:56:36.90184	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:36.901869	\N
-27	06580557-80cb-4b69-83cd-09b9c538330b	ceph	\N	3260450e-c0b6-4cf6-90ca-ce31c882fa80	f	\N	t	f	f	0	2022-11-21 18:56:42.081825	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:42.081839	\N
-28	45c1c5df-3c10-4aa3-acba-5a15ea53e420	testorg	\N	c50be933-debc-4ed0-b1a0-df461c2f7456	f	\N	t	f	f	0	2022-11-29 13:46:30.797525	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:46:30.797539	\N
-30	824e31bd-e531-4a2a-838d-cfdc7442978f	testorg+testrobot	\N	b4a78057-79f2-440a-b089-e2779be746b9	f	\N	f	t	f	0	2022-11-29 13:48:38.924504	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:48:38.924541	\N
-31	87860588-5674-4bc4-a297-abda8f99e877	testorg+testrobot2	\N	c117d71c-c3cb-4513-ab37-32f0dcb16007	f	\N	f	t	f	0	2022-11-30 21:23:53.656399	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-30 21:23:53.656402	\N
-32	80d4d7c4-c3f0-442b-94a6-1e151aca9ecd	user2org1	\N	user2org1@redhat.com	f	\N	t	f	f	0	2023-06-28 18:15:16.210544	1209600	t	\N	\N	\N	\N	\N	\N	2023-06-28 18:15:16.210558	\N
-33	e53eca92-4bbe-4853-b047-ceb86c1bb12a	collaborator1	$2b$12$R0hWaRhKGFdJ16WCJ7KUzesYIxzF0o57Lq9.pUhlc4EQTXUTXmrw2	collaborator1@gmail.com	t	\N	f	f	f	0	2023-08-23 17:51:10.548163	1209600	t	\N	\N	\N	\N	\N	\N	2023-08-23 17:51:10.548165	\N
-34	03a7d59f-6269-418a-b359-219562dfce16	orgforpermission	\N	orgforpermission@gmail.com	f	\N	t	f	f	0	2023-10-17 17:17:04.051938	1209600	t	\N	\N	\N	\N	\N	\N	2023-10-17 17:17:04.05194	\N
-35	decaf020-b68a-40ce-9475-84b2d346cd4d	orgforpermission+robotaccnt1	\N	7b092025-6bdc-4479-a1b6-01f869432be1	f	\N	f	t	f	0	2023-10-17 17:18:15.082751	1209600	t	\N	\N	\N	\N	\N	\N	2023-10-17 17:18:15.082753	\N
-1	0786ea63-9149-42ee-ba47-ca83dc1c3a26	user1	$2b$12$c4u19A/x6a.6Ihm2pAin7.nXUCIqI0vtf7miS7tZ.oXhHtsKVS.Bq	user1@redhat.com	t	\N	f	f	f	0	2022-10-31 18:50:36.685961	1209600	t	\N	\N	\N	\N	\N	\N	2022-10-31 18:50:36.685976	\N
-29	7c0cc290-7126-4919-961f-620afe46a736	user2	$2b$12$XA6iXw/.Ug.F8s7bWVz3VuWcOz0SVKsmnvkgl.l6ZnmWWllTgzLT6	user2@redhat.com	t	\N	f	f	f	0	2022-11-29 13:47:39.871581	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:47:39.87159	\N
+COPY public."user" (id, uuid, username, password_hash, email, verified, stripe_id, organization, robot, invoice_email, invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled, invoice_email_address, company, family_name, given_name, location, maximum_queued_builds_count, creation_date, last_accessed, contact_email) FROM stdin;
+2	478983be-9239-479c-9ca6-86d85eb5bcae	89aced10-1ceb-4fa0-a21d-eea28b821060	\N	eba37a66-0b41-4352-86c5-438a1875d5e5	f	\N	t	f	f	0	2022-11-21 18:49:53.667717	1209600	f	\N	\N	\N	\N	\N	\N	2022-11-21 18:49:53.667738	\N	\N
+3	b72c9d43-eb51-4dee-996a-ef6e78c92db7	aee7990b-975d-42f2-b9be-b357a5aa3f3f	\N	33b3d332-b72f-4754-b9d3-816aca5261b3	f	\N	t	f	f	0	2022-11-21 18:50:35.411588	1209600	f	\N	\N	\N	\N	\N	\N	2022-11-21 18:50:35.411606	\N	\N
+4	ec029590-9f7f-4886-9bec-d11925542ed6	projectquay	\N	4e003156-02a9-4d51-8c22-a110e7c86aa9	f	\N	t	f	f	0	2022-11-21 18:51:23.259811	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:51:23.259828	\N	\N
+5	06cedae8-05d2-4449-8f66-1624493f3fd7	openshift-release-dev	\N	1616e6db-a68c-48ef-a1ce-7bfec0ebdc70	f	\N	t	f	f	0	2022-11-21 18:52:21.603187	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:52:21.6032	\N	\N
+6	481e82b1-6bda-48c8-af55-2772bdfa0dae	prometheus	\N	02a65677-c97e-4998-ad50-6097a7608d10	f	\N	t	f	f	0	2022-11-21 18:52:35.747294	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:52:35.747312	\N	\N
+7	1e388f93-d292-4936-ab7a-b10eaac270cc	jetstack	\N	fb58e839-d4e0-42fc-b1bc-7d9d1fb09646	f	\N	t	f	f	0	2022-11-21 18:52:44.887303	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:52:44.887318	\N	\N
+8	0df740c0-f0e2-42da-8773-e72c17483a7c	unleash	\N	5aea0114-13bc-4d55-a4c7-49e69823598c	f	\N	t	f	f	0	2022-11-21 18:52:51.961513	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:52:51.961532	\N	\N
+9	3000a186-4c7a-4bfd-8c0b-e8e9a6546bd9	calico	\N	8f6e0877-e1a8-4e13-a93c-1c62a5b575b3	f	\N	t	f	f	0	2022-11-21 18:53:03.702691	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:53:03.702753	\N	\N
+10	49428d6a-d491-4929-9e9b-3b6bb15c0795	coreos	\N	9b2418ff-f146-499b-a04a-ace3b039298a	f	\N	t	f	f	0	2022-11-21 18:53:13.316536	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:53:13.316553	\N	\N
+11	36865adb-12f6-454f-93ef-9838cbef753f	openshift	\N	22bdcc81-2635-4cc2-8386-62382fc0eafa	f	\N	t	f	f	0	2022-11-21 18:53:27.566407	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:53:27.566425	\N	\N
+12	3102af81-a22c-48a3-b388-7b9c86231bc0	oauth2-proxy	\N	0c98c50a-cfa6-4c69-a220-848558b2e8ba	f	\N	t	f	f	0	2022-11-21 18:53:38.461308	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:53:38.461324	\N	\N
+13	13c26785-7939-4bb2-9492-4e3335a3b4f5	wildfly	\N	9f5dddee-46f3-4885-ba12-1e45b90d4bbb	f	\N	t	f	f	0	2022-11-21 18:53:49.695342	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:53:49.695355	\N	\N
+14	31622f50-696f-4e5e-8312-95fddc734328	rhacs-eng	\N	d7a6a611-3f49-434e-9dcb-6527fc217474	f	\N	t	f	f	0	2022-11-21 18:54:05.199793	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:54:05.199809	\N	\N
+15	69561fa8-d9dd-4939-82e3-7ccd6d8798b5	vexxhost	\N	7996a4c6-cd3e-45bf-bb25-6b62abaf6096	f	\N	t	f	f	0	2022-11-21 18:54:10.484561	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:54:10.484579	\N	\N
+16	50101a53-1c86-494e-8f3a-e6de3ed3ec3c	keycloak	\N	bfb04280-1c35-406b-9696-b3e72e78c330	f	\N	t	f	f	0	2022-11-21 18:54:30.650272	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:54:30.650291	\N	\N
+17	61573646-ae87-418c-9834-074aa8f27a13	operatorhubio	\N	394b7971-c584-4c5c-b627-9c4d0a9711ce	f	\N	t	f	f	0	2022-11-21 18:54:54.010609	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:54:54.010631	\N	\N
+18	3889f8f9-6034-42a8-bcde-f4860f5924aa	sysdig	\N	4871d033-c213-4402-a42a-d87445b8e8a7	f	\N	t	f	f	0	2022-11-21 18:55:02.038662	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:02.038677	\N	\N
+19	496a28f1-4d2a-4805-9f99-d069b17e3548	operator-framework	\N	1e0a2dbd-1790-40a8-892b-8e099fb12878	f	\N	t	f	f	0	2022-11-21 18:55:10.277329	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:10.277349	\N	\N
+20	4ef770b1-850d-46c0-ae24-372f83c06145	cillium	\N	2a4ba114-0f01-4003-9910-49834f783267	f	\N	t	f	f	0	2022-11-21 18:55:22.699958	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:22.699975	\N	\N
+21	181aa9b9-78b9-4c25-945d-bb71fffb8c1b	kubernetes-ingress-controller	\N	10d98c47-06f1-4f89-a4cb-3f33afcd17f8	f	\N	t	f	f	0	2022-11-21 18:55:33.516279	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:33.516296	\N	\N
+22	13473b47-0aec-4977-9618-bc82d05ff6fd	metallb	\N	83efaa01-2a76-4545-bf9c-e50ad2059929	f	\N	t	f	f	0	2022-11-21 18:55:43.990124	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:43.990137	\N	\N
+23	8f48d189-e992-4f2c-bfd3-13226dc56383	gitlab	\N	f91d8923-5c70-4662-b253-0e2345bc0b01	f	\N	t	f	f	0	2022-11-21 18:55:57.342883	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:55:57.342897	\N	\N
+24	0f3f6fd1-b1b6-42cd-bfd3-85bda8e87f0a	fairwinds	\N	fac885ae-a5a5-4cc7-9053-dd07ad807a27	f	\N	t	f	f	0	2022-11-21 18:56:06.898168	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:06.898189	\N	\N
+25	ce824049-c743-463a-a15b-5dacdbdd9174	minio	\N	9b2204ea-0cbf-46f5-b9e9-43fd0c28117e	f	\N	t	f	f	0	2022-11-21 18:56:21.537146	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:21.537163	\N	\N
+26	df00c09a-f39b-4afe-b676-91d5bee4e507	centos	\N	ae63b4ec-f66a-48b2-a5fb-5f46d8a3e953	f	\N	t	f	f	0	2022-11-21 18:56:36.90184	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:36.901869	\N	\N
+27	06580557-80cb-4b69-83cd-09b9c538330b	ceph	\N	3260450e-c0b6-4cf6-90ca-ce31c882fa80	f	\N	t	f	f	0	2022-11-21 18:56:42.081825	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:42.081839	\N	\N
+28	45c1c5df-3c10-4aa3-acba-5a15ea53e420	testorg	\N	c50be933-debc-4ed0-b1a0-df461c2f7456	f	\N	t	f	f	0	2022-11-29 13:46:30.797525	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:46:30.797539	\N	\N
+30	824e31bd-e531-4a2a-838d-cfdc7442978f	testorg+testrobot	\N	b4a78057-79f2-440a-b089-e2779be746b9	f	\N	f	t	f	0	2022-11-29 13:48:38.924504	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:48:38.924541	\N	\N
+31	87860588-5674-4bc4-a297-abda8f99e877	testorg+testrobot2	\N	c117d71c-c3cb-4513-ab37-32f0dcb16007	f	\N	f	t	f	0	2022-11-30 21:23:53.656399	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-30 21:23:53.656402	\N	\N
+32	80d4d7c4-c3f0-442b-94a6-1e151aca9ecd	user2org1	\N	user2org1@redhat.com	f	\N	t	f	f	0	2023-06-28 18:15:16.210544	1209600	t	\N	\N	\N	\N	\N	\N	2023-06-28 18:15:16.210558	\N	\N
+33	e53eca92-4bbe-4853-b047-ceb86c1bb12a	collaborator1	$2b$12$R0hWaRhKGFdJ16WCJ7KUzesYIxzF0o57Lq9.pUhlc4EQTXUTXmrw2	collaborator1@gmail.com	t	\N	f	f	f	0	2023-08-23 17:51:10.548163	1209600	t	\N	\N	\N	\N	\N	\N	2023-08-23 17:51:10.548165	\N	\N
+34	03a7d59f-6269-418a-b359-219562dfce16	orgforpermission	\N	orgforpermission@gmail.com	f	\N	t	f	f	0	2023-10-17 17:17:04.051938	1209600	t	\N	\N	\N	\N	\N	\N	2023-10-17 17:17:04.05194	\N	\N
+35	decaf020-b68a-40ce-9475-84b2d346cd4d	orgforpermission+robotaccnt1	\N	7b092025-6bdc-4479-a1b6-01f869432be1	f	\N	f	t	f	0	2023-10-17 17:18:15.082751	1209600	t	\N	\N	\N	\N	\N	\N	2023-10-17 17:18:15.082753	\N	\N
+1	0786ea63-9149-42ee-ba47-ca83dc1c3a26	user1	$2b$12$c4u19A/x6a.6Ihm2pAin7.nXUCIqI0vtf7miS7tZ.oXhHtsKVS.Bq	user1@redhat.com	t	\N	f	f	f	0	2022-10-31 18:50:36.685961	1209600	t	\N	\N	\N	\N	\N	\N	2022-10-31 18:50:36.685976	\N	\N
+29	7c0cc290-7126-4919-961f-620afe46a736	user2	$2b$12$XA6iXw/.Ug.F8s7bWVz3VuWcOz0SVKsmnvkgl.l6ZnmWWllTgzLT6	user2@redhat.com	t	\N	f	f	f	0	2022-11-29 13:47:39.871581	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:47:39.87159	\N	\N
 \.
 
 
@@ -8925,7 +8929,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 132, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 133, true);
 
 
 --
@@ -9023,7 +9027,7 @@ SELECT pg_catalog.setval('public.namespaceimmutabilitypolicy_id_seq', 1, false);
 -- Name: notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notification_id_seq', 2, true);
+SELECT pg_catalog.setval('public.notification_id_seq', 3, true);
 
 
 --
@@ -9296,14 +9300,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 3, true);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 4, true);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 3, true);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 4, true);
 
 
 --
@@ -14073,5 +14077,5 @@ ALTER TABLE ONLY public.userregion
 -- PostgreSQL database dump complete
 --
 
-\unrestrict fxmrevWdeqvsJK2qrfDBibqaVDzkdGEOr3EJHZQ3whLLSJmC0pjEOeA6rHwY82y
+\unrestrict dYNdsa74qkPNa8NsuYfdKWCEVd2YbrgNjdp261tPUyyJNrGFkQQEdwVkSDH6ywJ
 
