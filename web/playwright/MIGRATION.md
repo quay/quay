@@ -770,7 +770,7 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `tag-history-deleted-tags.cy.ts` | | |
 | ⬚ | `tags-expanded-view.cy.ts` | | |
 | ⬚ | `tags-signatures.cy.ts` | | |
-| ⬚ | `teams-and-membership.cy.ts` | | |
+| ✅ | `teams-and-membership.cy.ts` | `organization/teams-and-membership.spec.ts` | @organization, @team, @feature:TEAM_SYNCING, consolidated 12→7 tests |
 | ⬚ | `team-sync.cy.ts` | | @config:OIDC |
 | ✅ | `theme-switcher.cy.ts` | `ui/theme-switcher.spec.ts` | |
 | ✅ | `update-user.cy.ts` | `user/update-user.spec.ts` | @feature:USER_METADATA, consolidated 7→3 tests (OAuth tests TODO) |
