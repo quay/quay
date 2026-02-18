@@ -20,6 +20,18 @@ from util.orgmirror.harbor_adapter import HarborAdapter
 from util.orgmirror.quay_adapter import QuayAdapter
 
 
+@pytest.fixture(autouse=True)
+def _mock_ssrf_validation():
+    """Mock SSRF validation to avoid DNS resolution in unit tests.
+
+    SSRF validation calls socket.getaddrinfo() which fails in CI for fake
+    hostnames like harbor.example.com. SSRF validation is tested separately
+    in util/security/test/test_ssrf.py.
+    """
+    with patch("util.orgmirror.registry_adapter.validate_external_registry_url"):
+        yield
+
+
 class TestQuayAdapter:
     """Tests for QuayAdapter."""
 
@@ -298,6 +310,24 @@ class TestQuayAdapter:
 
         assert "not found" in str(exc_info.value)
         assert "nonexistent" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_redirect_raises_exception(self):
+        """Test that 3xx redirect raises QuayDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            status=301,
+            headers={"Location": "https://quay.io/v2/"},
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "redirect" in str(exc_info.value).lower()
+        assert "301" in str(exc_info.value)
 
     @responses.activate
     def test_list_repositories_500_raises_exception(self):
@@ -693,6 +723,27 @@ class TestHarborAdapter:
 
         assert "not found" in str(exc_info.value)
         assert "nonexistent" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_redirect_raises_exception(self):
+        """Test that 3xx redirect raises HarborDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            status=302,
+            headers={"Location": "https://harbor.example.com/v2/"},
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        with pytest.raises(HarborDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "redirect" in str(exc_info.value).lower()
+        assert "302" in str(exc_info.value)
 
     @responses.activate
     def test_list_repositories_500_raises_exception(self):

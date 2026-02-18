@@ -551,6 +551,10 @@ class DefaultConfig(ImmutableConfig):
     # Organization-level repository mirror
     FEATURE_ORG_MIRROR = False
 
+    # Hostnames or CIDR ranges allowed to bypass SSRF blocklist for organization mirrors.
+    # Use this for enterprise deployments where source registries run on private networks.
+    SSRF_ALLOWED_HOSTS: List[str] = []
+
     # The number of seconds between organization mirror worker iterations
     ORG_MIRROR_INTERVAL = 30
 
@@ -871,6 +875,11 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
+
+    # Feature Flag: Extended action logging for ESS Events of Interest compliance
+    # When enabled, logs include request URL, HTTP method, auth type, user agent, etc.
+    # This increases log volume by ~2.5-3x. Defaults to False (opt-in).
+    FEATURE_EXTENDED_ACTION_LOGGING = False
 
     # Feature Flag: Enable a background worker to check and download missing placeholder blobs
     FEATURE_PROXY_CACHE_BLOB_DOWNLOAD = True

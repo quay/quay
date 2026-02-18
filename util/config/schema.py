@@ -306,6 +306,11 @@ CONFIG_SCHEMA = {
             "description": "Whether pull through proxy cache feature is enabled. Defaults to False",
             "x-example": False,
         },
+        "FEATURE_EXTENDED_ACTION_LOGGING": {
+            "type": "boolean",
+            "description": "Whether extended action logging is enabled for ESS Events of Interest compliance. When enabled, logs include request URL, HTTP method, auth type, user agent, and other request context. Increases log volume by ~2.5-3x. Defaults to False",
+            "x-example": False,
+        },
         "FEATURE_PROXY_CACHE_BLOB_DOWNLOAD": {
             "type": "boolean",
             "description": "Whether to enable a background worker to download placeholder blobs. Defaults to True",
@@ -1081,6 +1086,13 @@ CONFIG_SCHEMA = {
             "type": "number",
             "description": "The number of seconds between organization mirror worker iterations. Defaults to 30.",
             "x-example": 30,
+        },
+        "SSRF_ALLOWED_HOSTS": {
+            "type": "array",
+            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for organization mirror source registries. Use for enterprise deployments where source registries are on private networks.",
+            "uniqueItems": True,
+            "items": {"type": "string"},
+            "x-example": ["internal-harbor.corp.example.com", "10.0.0.0/8"],
         },
         "REPO_MIRROR_TLS_VERIFY": {
             "type": "boolean",
