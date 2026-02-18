@@ -194,7 +194,14 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
                 and kind_name in ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING
             )
             if strict_logging_disabled:
-                logger.exception("log_action failed", extra=({"exception": lse}).update(log_data))
+                logger.exception(
+                    "log_action failed: kind=%s account=%s performer=%s repository=%s",
+                    kind_name,
+                    username,
+                    performer_name,
+                    repo_name,
+                    extra={"exception": lse, **log_data},
+                )
             else:
                 raise
 
