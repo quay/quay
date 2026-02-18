@@ -96,6 +96,11 @@ def org_view(o, teams):
         features.SUPERUSERS_FULL_ACCESS and allow_if_superuser()
     )
 
+    # Grant superusers effective admin/member status for UI visibility
+    if can_view_as_superuser:
+        is_admin = True
+        is_member = True
+
     view = {
         "name": o.username,
         "email": o.email if is_admin or can_view_as_superuser else "",
