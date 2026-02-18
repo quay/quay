@@ -1,14 +1,19 @@
 """
-Add contact_email to user table.
+Add contact_email to user table (early).
 
-Revision ID: 727297654e7d
-Revises: b1c2d3e4f5a6
-Create Date: 2026-02-13 00:00:00.000000
+Revision ID: 154a822bd7e2
+Revises: 224ce4c72c2f
+Create Date: 2026-02-18 00:00:00.000000
+
+This migration is positioned early in the chain (before cleanup_old_robots)
+to ensure the contact_email column exists before any migration that queries
+the User model via Peewee. Peewee generates SQL with all model fields,
+so the column must exist in the database before those queries run.
 """
 
 # revision identifiers, used by Alembic.
-revision = "727297654e7d"
-down_revision = "b1c2d3e4f5a6"
+revision = "154a822bd7e2"
+down_revision = "224ce4c72c2f"
 
 import sqlalchemy as sa
 
@@ -19,10 +24,6 @@ def upgrade(op, tables, tester):
     columns = [c["name"] for c in inspector.get_columns("user")]
     if "contact_email" not in columns:
         op.add_column("user", sa.Column("contact_email", sa.String(length=255), nullable=True))
-
-    # ### population of test data ### #
-    tester.populate_column("user", "contact_email", tester.TestDataType.String)
-    # ### end population of test data ### #
 
 
 def downgrade(op, tables, tester):

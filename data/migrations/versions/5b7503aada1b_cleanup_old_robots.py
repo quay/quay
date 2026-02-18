@@ -2,13 +2,13 @@
 Cleanup old robots.
 
 Revision ID: 5b7503aada1b
-Revises: 224ce4c72c2f
+Revises: 154a822bd7e2
 Create Date: 2018-05-09 17:18:52.230504
 """
 
 # revision identifiers, used by Alembic.
 revision = "5b7503aada1b"
-down_revision = "224ce4c72c2f"
+down_revision = "154a822bd7e2"
 
 import sqlalchemy as sa
 
