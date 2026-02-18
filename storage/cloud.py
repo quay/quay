@@ -197,9 +197,9 @@ class _CloudStorage(BaseStorageV2):
                 request.headers["x-b3-spanid"] = hex(sctx.span_id)[2:]
                 request.headers["x-b3-parentspanid"] = hex(sctx.span_id)[2:]
                 request.headers["x-b3-sampled"] = "1"
-                logger.error(f"[OTEL] request {request.headers}")
+                logger.debug(f"[OTEL] request {request.headers}")
             except Exception as trerr:
-                logger.error(f"OTEL {trerr}")
+                logger.debug(f"OTEL {trerr}")
 
     def create_trace(self, operation_name, params, **kwargs):
         try:
@@ -212,7 +212,7 @@ class _CloudStorage(BaseStorageV2):
                     span.set_attribute(k, str(kwargs[k]))
                 span.set_status(StatusCode.OK)
         except Exception as trerr:
-            logger.error(f"OTEL createtraces {trerr}")
+            logger.debug(f"OTEL createtraces {trerr}")
 
     def _initialize_cloud_conn(self):
         if not self._initialized:
