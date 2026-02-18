@@ -40,6 +40,7 @@ packages = [
     "greenlet",
     "gunicorn",
     "Jinja2",
+    "maxminddb",
     "mixpanel",
     "netaddr",
     "psutil",
