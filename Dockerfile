@@ -189,10 +189,10 @@ RUN set -ex\
 # Harden /etc/passwd – no group write.
     ; chown root:root /etc/passwd \
     ; chmod 0644      /etc/passwd \
-	; chown -R 1001:0 /etc/pki/ \
+	; find /etc/pki/ -not -path '/etc/pki/entitlement*' -not -path '/etc/pki/consumer*' -exec chown 1001:0 {} + \
 	; chown -R 1001:0 /etc/ssl/ \
 	; chown -R 1001:0 /quay-registry \
-	; chmod ug+wx -R /etc/pki/ \
+	; find /etc/pki/ -not -path '/etc/pki/entitlement*' -not -path '/etc/pki/consumer*' -exec chmod ug+wx {} + \
 	; chmod ug+wx -R /etc/ssl/
 
 
