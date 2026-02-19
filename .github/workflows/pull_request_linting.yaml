@@ -16,5 +16,5 @@ jobs:
         id: check-for-cc
         uses: agenthunt/conventional-commit-checker-action@v2.0.0
         with:
-          pr-title-regex: '^(?:PROJQUAY-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
+          pr-title-regex: '^(?:\[redhat-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
           pr-body-regex: '(.*)?'
