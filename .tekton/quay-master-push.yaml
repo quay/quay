@@ -8,7 +8,9 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "master"
+      == "master" && files.all.exists(f, !f.startsWith(".github/") && !f.startsWith("docs/")
+      && !f.startsWith("agent_docs/") && !f.startsWith(".chglog/") && !f.startsWith(".claude/")
+      && !f.endsWith(".md"))
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: quay-master
