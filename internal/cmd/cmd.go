@@ -15,6 +15,8 @@ func Run(args []string) int {
 	}
 
 	switch args[1] {
+	case "config":
+		return runConfig(args[2:])
 	case "version":
 		return runVersion()
 	case "help", "-h", "--help":
@@ -31,5 +33,6 @@ func usage() {
 	fmt.Fprintln(os.Stderr, `usage: quay <command> [flags]
 
 commands:
+  config            Configuration tools (validate)
   version           Print version information`)
 }
