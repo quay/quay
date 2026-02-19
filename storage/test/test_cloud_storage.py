@@ -57,6 +57,29 @@ def test_build_endpoint_url(hostname, port, is_secure, expected):
     assert _build_endpoint_url(hostname, port, is_secure) == expected
 
 
+def test_storage_engine_custom_overwrites():
+    engine = S3Storage(
+        _TEST_CONTEXT,
+        "some/path",
+        _TEST_BUCKET,
+        _TEST_USER,
+        _TEST_PASSWORD,
+        _TEST_REGION,
+        host="custom-host-overwrite.example.com",
+    )
+    assert engine._connect_kwargs["endpoint_url"] == "https://custom-host-overwrite.example.com"
+    engine = S3Storage(
+        _TEST_CONTEXT,
+        "some/path",
+        _TEST_BUCKET,
+        _TEST_USER,
+        _TEST_PASSWORD,
+        _TEST_REGION,
+        endpoint_url="http://custom-endpoint-overwrite.example.com",
+    )
+    assert engine._connect_kwargs["endpoint_url"] == "http://custom-endpoint-overwrite.example.com"
+
+
 def test_basicop(storage_engine):
     # Ensure the content exists.
     assert storage_engine.exists(_TEST_PATH)
