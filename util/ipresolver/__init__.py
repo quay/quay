@@ -7,8 +7,7 @@ from collections import namedtuple
 from threading import Lock, Thread
 from typing import Dict
 
-import geoip2.database
-import geoip2.errors
+import maxminddb
 import requests
 from cachetools.func import lru_cache, ttl_cache
 from netaddr import AddrFormatError, IPAddress, IPNetwork, IPSet
@@ -87,8 +86,12 @@ class IPResolver(IPResolverInterface):
 
         # resolve absolute path to file
         path = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(path, "GeoLite2-Country.mmdb")
-        self.geoip_db = geoip2.database.Reader(file_path)
+        file_path = os.path.join(path, "ip-to-country.mmdb")
+        try:
+            self.geoip_db = maxminddb.open_database(file_path)
+        except Exception:
+            logger.exception("Failed to open GeoIP database at %s", file_path)
+            self.geoip_db = None
 
         self.amazon_ranges: Dict[str, IPSet] = None
         self.sync_token = None
@@ -150,23 +153,17 @@ class IPResolver(IPResolverInterface):
             return ResolvedLocation("invalid_ip", None, self.sync_token, None, None, None)
 
         # Try geoip classification
-        try:
-            geoinfo = self.geoip_db.country(ip_address)
-        except geoip2.errors.AddressNotFoundError:
-            geoinfo = None
-
+        geoinfo = self.geoip_db.get(ip_address) if self.geoip_db else None
         aws_region = self.get_aws_ip_region(parsed_ip)
+
+        iso_code = geoinfo.get("country_code", None) if geoinfo else None
+        continent_code = geoinfo.get("continent_code", None) if geoinfo else None
 
         # Not an AWS IP
         if not aws_region:
             if geoinfo:
                 return ResolvedLocation(
-                    "internet",
-                    geoinfo.country.iso_code,
-                    self.sync_token,
-                    geoinfo.country.iso_code,
-                    None,
-                    geoinfo.continent.code,
+                    "internet", iso_code, self.sync_token, iso_code, None, continent_code
                 )
 
             return ResolvedLocation("internet", None, self.sync_token, None, None, None)
@@ -175,9 +172,9 @@ class IPResolver(IPResolverInterface):
             "aws",
             None,
             self.sync_token,
-            geoinfo.country.iso_code if geoinfo else None,
+            iso_code,
             aws_region,
-            geoinfo.continent.code if geoinfo else None,
+            continent_code,
         )
 
     def get_aws_ip_region(self, ip_address: IPAddress):

@@ -11,6 +11,7 @@ import './Tags.css';
 import {isNullOrUndefined} from 'src/libs/utils';
 import Conditional from 'src/components/empty/Conditional';
 import {useDeleteTag} from 'src/hooks/UseTags';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {AlertDetails, AlertVariant, useUI} from 'src/contexts/UIContext';
 
 export interface ModalOptions {
@@ -87,7 +88,8 @@ export function DeleteModal(props: ModalProps) {
         <>
           {Array.from(errorDeleteTagDetails.getErrors()).map(([tag, error]) => (
             <p key={tag}>
-              Could not delete tag {tag}: {error.error.message}
+              Could not delete tag {tag}:{' '}
+              {getErrorMessageFromUnknown(error.error)}
             </p>
           ))}
         </>

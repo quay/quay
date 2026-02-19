@@ -1,0 +1,11 @@
+LOGS_MODEL: splunk
+LOGS_MODEL_CONFIG:
+  producer: splunk
+  splunk_config:
+    host: quay-splunk
+    port: 8089
+    bearer_token: BEARER_TOKEN_PLACEHOLDER
+    url_scheme: https
+    verify_ssl: false
+    index_prefix: quay_logs
+ALLOW_WITHOUT_STRICT_LOGGING: true

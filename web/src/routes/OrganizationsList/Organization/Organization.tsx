@@ -9,7 +9,7 @@ import {
   TabTitleText,
   Title,
 } from '@patternfly/react-core';
-import {useCallback, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useParams, useSearchParams} from 'react-router-dom';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import {useOrganization} from 'src/hooks/UseOrganization';
@@ -27,12 +27,30 @@ import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers
 import OAuthApplicationsList from './Tabs/OAuthApplications/OAuthApplicationsList';
 import ExternalLoginsList from './Tabs/ExternalLogins/ExternalLoginsList';
 import {useExternalLogins} from 'src/hooks/UseExternalLogins';
+import {OrgMirroring} from './Tabs/OrgMirroring/OrgMirroring';
 
 export enum OrganizationDrawerContentType {
   None,
   AddNewTeamMemberDrawer,
   CreatePermissionSpecificUser,
 }
+
+const normalizeTabKey = (tab: string): string => {
+  const normalizedTab = tab.toLowerCase();
+  const tabMap: Record<string, string> = {
+    external: 'Externallogins',
+    externallogins: 'Externallogins',
+    repositories: 'Repositories',
+    teamsandmembership: 'Teamsandmembership',
+    robotaccounts: 'Robotaccounts',
+    defaultpermissions: 'Defaultpermissions',
+    oauthapplications: 'OAuthApplications',
+    mirroring: 'Mirroring',
+    logs: 'Logs',
+    settings: 'Settings',
+  };
+  return tabMap[normalizedTab] || tab;
+};
 
 export default function Organization() {
   const quayConfig = useQuayConfig();
@@ -52,28 +70,16 @@ export default function Organization() {
   }, [loading, user, isUserOrganization, organizationName]);
 
   const [activeTabKey, setActiveTabKey] = useState<string>(() => {
-    const tab = searchParams.get('tab') || 'Repositories';
-    const normalizedTab = tab.toLowerCase();
-    return normalizedTab === 'external'
-      ? 'Externallogins'
-      : normalizedTab === 'externallogins'
-      ? 'Externallogins'
-      : normalizedTab === 'repositories'
-      ? 'Repositories'
-      : normalizedTab === 'teamsandmembership'
-      ? 'Teamsandmembership'
-      : normalizedTab === 'robotaccounts'
-      ? 'Robotaccounts'
-      : normalizedTab === 'defaultpermissions'
-      ? 'Defaultpermissions'
-      : normalizedTab === 'oauthapplications'
-      ? 'OAuthApplications'
-      : normalizedTab === 'logs'
-      ? 'Logs'
-      : normalizedTab === 'settings'
-      ? 'Settings'
-      : tab;
+    return normalizeTabKey(searchParams.get('tab') || 'Repositories');
   });
+
+  // Sync activeTabKey when searchParams change (e.g., from child component navigation)
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTabKey(normalizeTabKey(tab));
+    }
+  }, [searchParams]);
 
   const onTabSelect = useCallback(
     (_event: React.MouseEvent<HTMLElement, MouseEvent>, tabKey: string) => {
@@ -183,6 +189,14 @@ export default function Organization() {
       name: 'OAuth Applications',
       component: <OAuthApplicationsList orgName={organizationName} />,
       visible: !isUserOrganization && organization?.is_admin,
+    },
+    {
+      name: 'Mirroring',
+      component: <OrgMirroring orgName={organizationName} />,
+      visible:
+        !isUserOrganization &&
+        (organization?.is_admin || organization?.is_org_admin) &&
+        quayConfig?.features?.ORG_MIRROR,
     },
     {
       name: 'Logs',

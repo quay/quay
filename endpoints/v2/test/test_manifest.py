@@ -439,4 +439,10 @@ def test_write_manifest_by_tagname_immutable_returns_409(client, app):
         # Verify TAG_IMMUTABLE error in response
         response_data = json.loads(rv.data)
         assert "errors" in response_data
-        assert response_data["errors"][0]["code"] == "TAG_IMMUTABLE"
+        assert len(response_data["errors"]) == 1
+
+        error = response_data["errors"][0]
+        assert error["code"] == "TAG_IMMUTABLE"
+        assert "immutable" in error["message"].lower()
+        assert "detail" in error
+        assert "latest" in error["detail"]["message"]

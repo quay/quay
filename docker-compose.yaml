@@ -25,12 +25,12 @@ services:
       start_period: 10s
 
   clair-db:
-    user: postgres
     container_name: clair-db
     image: docker.io/library/postgres:18
     command: -c 'max_connections=300'
     environment:
       POSTGRES_USER: "clair"
+      POSTGRES_PASSWORD: "clair"
       POSTGRES_DB: "clair"
     volumes:
       - "clair-db-data:/var/lib/postgresql"
@@ -69,6 +69,27 @@ services:
       bash /data/init-389ds.sh &&
       wait
       "
+
+  # Splunk Enterprise - local audit log testing
+  # Web UI: http://localhost:8000 (admin/changeme1)
+  splunk:
+    container_name: quay-splunk
+    image: docker.io/splunk/splunk:latest
+    environment:
+      SPLUNK_START_ARGS: "--accept-license"
+      SPLUNK_GENERAL_TERMS: "--accept-sgt-current-at-splunk-com"
+      SPLUNK_PASSWORD: "changeme1"
+    volumes:
+      - "./local-dev/splunk/init-splunk.sh:/tmp/init-splunk.sh:ro"
+    ports:
+      - "8000:8000"   # Web UI
+      - "8089:8089"   # Management/SDK API
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -k -u admin:changeme1 https://localhost:8089/services/server/health/splunkd || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
 
   local-dev-frontend:
     user: ${DOCKER_USER:-root}

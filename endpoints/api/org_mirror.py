@@ -13,6 +13,7 @@ from datetime import datetime
 from flask import request
 
 import features
+from app import app
 from auth import scopes
 from auth.permissions import AdministerOrganizationPermission
 from data import model
@@ -34,6 +35,39 @@ from endpoints.api import (
 from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from util.names import parse_robot_username
 from util.orgmirror import get_registry_adapter
+from util.security.ssrf import SSRFBlockedError, validate_external_registry_url
+
+# Generic error message for SSRF rejections. Avoids leaking internal network topology
+# by not distinguishing between blocked hostnames, private IPs, and DNS results.
+SSRF_GENERIC_ERROR = "The provided registry URL is not allowed"
+
+
+def _get_ssrf_allowed_hosts():
+    """Return the configured SSRF allowlist from app config."""
+    return app.config.get("SSRF_ALLOWED_HOSTS", [])
+
+
+def _validate_registry_url(url):
+    """
+    Validate an external registry URL for SSRF and raise InvalidRequest on failure.
+
+    SSRF-specific rejection details are normalized to a generic error message
+    to avoid leaking internal network topology.
+    """
+    try:
+        validate_external_registry_url(url, allowed_hosts=_get_ssrf_allowed_hosts())
+    except SSRFBlockedError:
+        raise InvalidRequest(SSRF_GENERIC_ERROR)
+    except ValueError as e:
+        raise InvalidRequest(str(e))
+
+
+def _dt_to_string(dt):
+    """Convert DateTime to ISO 8601 formatted String."""
+    if dt is None:
+        return None
+    assert isinstance(dt, datetime)
+    return dt.isoformat() + "Z"
 
 
 def require_org_admin(orgname):
@@ -206,12 +240,12 @@ class OrgMirrorConfig(ApiResource):
             "robot_username": mirror.internal_robot.username if mirror.internal_robot else None,
             "visibility": mirror.visibility.name,
             "sync_interval": mirror.sync_interval,
-            "sync_start_date": self._dt_to_string(mirror.sync_start_date),
-            "sync_expiration_date": self._dt_to_string(mirror.sync_expiration_date),
+            "sync_start_date": _dt_to_string(mirror.sync_start_date),
+            "sync_expiration_date": _dt_to_string(mirror.sync_expiration_date),
             "sync_status": mirror.sync_status.name,
             "sync_retries_remaining": mirror.sync_retries_remaining,
             "skopeo_timeout": mirror.skopeo_timeout,
-            "creation_date": self._dt_to_string(mirror.creation_date),
+            "creation_date": _dt_to_string(mirror.creation_date),
         }
 
     def _decrypt_username(self, username):
@@ -219,13 +253,6 @@ class OrgMirrorConfig(ApiResource):
         if username is None:
             return None
         return username.decrypt()
-
-    def _dt_to_string(self, dt):
-        """Convert DateTime to ISO 8601 formatted String."""
-        if dt is None:
-            return None
-        assert isinstance(dt, datetime)
-        return dt.isoformat() + "Z"
 
     def _string_to_dt(self, string):
         """Convert ISO 8601 string to datetime."""
@@ -310,6 +337,9 @@ class OrgMirrorConfig(ApiResource):
         if skopeo_timeout < 30 or skopeo_timeout > 3600:
             raise InvalidRequest("skopeo_timeout must be between 30 and 3600 seconds")
 
+        # Validate external_registry_url to prevent SSRF (CWE-918)
+        _validate_registry_url(data.get("external_registry_url"))
+
         # Create the mirror config
         try:
             mirror = model.org_mirror.create_org_mirror_config(
@@ -327,6 +357,7 @@ class OrgMirrorConfig(ApiResource):
                 external_registry_config=data.get("external_registry_config", {}),
                 repository_filters=data.get("repository_filters", []),
                 skopeo_timeout=skopeo_timeout,
+                allowed_hosts=_get_ssrf_allowed_hosts(),
             )
         except DataModelException as e:
             raise InvalidRequest(str(e))
@@ -376,6 +407,8 @@ class OrgMirrorConfig(ApiResource):
 
         # Handle external_registry_url
         if "external_registry_url" in data:
+            # Validate URL to prevent SSRF (CWE-918)
+            _validate_registry_url(data["external_registry_url"])
             update_kwargs["external_registry_url"] = data["external_registry_url"]
 
         # Handle external_namespace
@@ -447,7 +480,9 @@ class OrgMirrorConfig(ApiResource):
 
         # Update the mirror config
         try:
-            model.org_mirror.update_org_mirror_config(org, **update_kwargs)
+            model.org_mirror.update_org_mirror_config(
+                org, allowed_hosts=_get_ssrf_allowed_hosts(), **update_kwargs
+            )
         except DataModelException as e:
             raise InvalidRequest(str(e))
 
@@ -489,7 +524,7 @@ class OrgMirrorConfig(ApiResource):
 
         external_reference = f"{mirror.external_registry_url}/{mirror.external_namespace}"
 
-        deleted = model.org_mirror.delete_org_mirror_config(org, config=mirror)
+        deleted = model.org_mirror.delete_org_mirror_config(mirror)
         if not deleted:
             raise NotFound()
 
@@ -647,6 +682,18 @@ class OrgMirrorVerify(ApiResource):
             logger.warning("Failed to decrypt credentials for mirror config: %s", e)
             return {"success": False, "message": "Failed to decrypt source registry credentials"}
 
+        # Re-validate URL with DNS resolution to prevent TOCTOU/DNS rebinding attacks.
+        # The URL was validated at config creation time, but DNS records may have changed.
+        allowed_hosts = _get_ssrf_allowed_hosts()
+        try:
+            validate_external_registry_url(
+                mirror.external_registry_url,
+                resolve_dns=True,
+                allowed_hosts=allowed_hosts,
+            )
+        except ValueError:
+            return {"success": False, "message": "The provided URL is not allowed"}
+
         # Create adapter for the source registry type
         try:
             adapter = get_registry_adapter(
@@ -656,7 +703,10 @@ class OrgMirrorVerify(ApiResource):
                 username=username,
                 password=password,
                 config=mirror.external_registry_config,
+                allowed_hosts=allowed_hosts,
             )
+        except SSRFBlockedError:
+            return {"success": False, "message": SSRF_GENERIC_ERROR}
         except ValueError as e:
             return {"success": False, "message": str(e)}
 
@@ -729,8 +779,8 @@ class OrgMirrorRepositories(ApiResource):
                 {
                     "name": r.repository_name,
                     "sync_status": r.sync_status.name,
-                    "discovery_date": self._dt_to_string(r.discovery_date),
-                    "last_sync_date": self._dt_to_string(r.last_sync_date),
+                    "discovery_date": _dt_to_string(r.discovery_date),
+                    "last_sync_date": _dt_to_string(r.last_sync_date),
                     "status_message": r.status_message,
                     "quay_repository": (
                         f"{orgname}/{r.repository_name}" if r.repository_id else None
@@ -743,9 +793,3 @@ class OrgMirrorRepositories(ApiResource):
             "total": total,
             "has_next": (page * limit) < total,
         }
-
-    def _dt_to_string(self, dt):
-        """Convert DateTime to ISO 8601 formatted string."""
-        if dt is None:
-            return None
-        return dt.isoformat() + "Z"

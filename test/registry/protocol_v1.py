@@ -71,9 +71,7 @@ class V1Protocol(RegistryProtocol):
             Failures.MIRROR_ROBOT_MISSING: 400,
             Failures.READONLY_REGISTRY: 405,
         },
-        V1ProtocolSteps.GET_LAYER: {
-            Failures.GEO_BLOCKED: 403,
-        },
+        V1ProtocolSteps.GET_LAYER: {},
         V1ProtocolSteps.GET_TAG: {
             Failures.UNKNOWN_TAG: 404,
         },

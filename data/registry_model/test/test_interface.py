@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 import pytest
-from mock import patch
+from mock import MagicMock, patch
 from playhouse.test_utils import assert_query_count
 
 from app import docker_v2_signing_key, model_cache, storage
@@ -217,20 +217,21 @@ def test_manifest_label_handlers(registry_model):
 
 def test_immutable_label_handler(registry_model):
     """Test that quay.immutable=true label sets tag as immutable."""
-    repo = model.repository.get_repository("devtable", "simple")
-    repository_ref = RepositoryReference.for_repo_obj(repo)
-    found_tag = registry_model.get_repo_tag(repository_ref, "latest")
-    found_manifest = registry_model.get_manifest_for_tag(found_tag)
+    with patch("data.registry_model.label_handlers.features", MagicMock(IMMUTABLE_TAGS=True)):
+        repo = model.repository.get_repository("devtable", "simple")
+        repository_ref = RepositoryReference.for_repo_obj(repo)
+        found_tag = registry_model.get_repo_tag(repository_ref, "latest")
+        found_manifest = registry_model.get_manifest_for_tag(found_tag)
 
-    # Ensure tag is not immutable
-    assert not found_tag.immutable
+        # Ensure tag is not immutable
+        assert not found_tag.immutable
 
-    # Create label with quay.immutable=true
-    registry_model.create_manifest_label(found_manifest, "quay.immutable", "true", "api")
+        # Create label with quay.immutable=true
+        registry_model.create_manifest_label(found_manifest, "quay.immutable", "true", "api")
 
-    # Ensure tag is now immutable
-    updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
-    assert updated_tag.immutable
+        # Ensure tag is now immutable
+        updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
+        assert updated_tag.immutable
 
 
 @pytest.mark.parametrize(
@@ -239,20 +240,21 @@ def test_immutable_label_handler(registry_model):
 )
 def test_immutable_label_case_insensitive(registry_model, label_value):
     """Test quay.immutable label works with various case formats."""
-    repo = model.repository.get_repository("devtable", "simple")
-    repository_ref = RepositoryReference.for_repo_obj(repo)
-    found_tag = registry_model.get_repo_tag(repository_ref, "latest")
-    found_manifest = registry_model.get_manifest_for_tag(found_tag)
+    with patch("data.registry_model.label_handlers.features", MagicMock(IMMUTABLE_TAGS=True)):
+        repo = model.repository.get_repository("devtable", "simple")
+        repository_ref = RepositoryReference.for_repo_obj(repo)
+        found_tag = registry_model.get_repo_tag(repository_ref, "latest")
+        found_manifest = registry_model.get_manifest_for_tag(found_tag)
 
-    # Ensure tag is not immutable initially
-    assert not found_tag.immutable
+        # Ensure tag is not immutable initially
+        assert not found_tag.immutable
 
-    # Create label with various case/whitespace formats
-    registry_model.create_manifest_label(found_manifest, "quay.immutable", label_value, "api")
+        # Create label with various case/whitespace formats
+        registry_model.create_manifest_label(found_manifest, "quay.immutable", label_value, "api")
 
-    # Ensure tag is now immutable
-    updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
-    assert updated_tag.immutable
+        # Ensure tag is now immutable
+        updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
+        assert updated_tag.immutable
 
 
 @pytest.mark.parametrize(

@@ -55,12 +55,6 @@ function provideRoutes($routeProvider: ng.route.IRouteProvider,
     // Search
     .route('/search', 'search')
 
-    // Application View
-    .route('/application/:namespace/:name', 'app-view')
-
-    // Repo List
-    .route('/application/', 'app-list')
-
     // Image View
     .route('/repository/:namespace/:name*\/manifest/:manifest_digest', 'manifest-view')
 

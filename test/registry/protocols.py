@@ -71,12 +71,12 @@ class Failures(Enum):
     INVALID_BLOB = "invalid-blob"
     NAMESPACE_DISABLED = "namespace-disabled"
     UNAUTHORIZED_FOR_MOUNT = "unauthorized-for-mount"
-    GEO_BLOCKED = "geo-blocked"
     READ_ONLY = "read-only"
     MIRROR_ONLY = "mirror-only"
     MIRROR_MISCONFIGURED = "mirror-misconfigured"
     MIRROR_ROBOT_MISSING = "mirror-robot-missing"
     READONLY_REGISTRY = "readonly-registry"
+    TAG_IMMUTABLE = "tag-immutable"
 
 
 class ProtocolOptions(object):

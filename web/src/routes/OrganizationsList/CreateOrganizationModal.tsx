@@ -18,6 +18,7 @@ import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useUI} from 'src/contexts/UIContext';
 import {AlertVariant} from 'src/contexts/UIContext';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 interface Validation {
   message: string;
@@ -43,6 +44,8 @@ export const CreateOrganizationModal = (
 
   const {createOrganization} = useOrganizations();
   const {addAlert} = useUI();
+  const quayConfig = useQuayConfig();
+  const mailingEnabled = quayConfig?.features?.MAILING === true;
 
   const handleNameInputChange = (value: string) => {
     const regex = /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/;
@@ -79,7 +82,10 @@ export const CreateOrganizationModal = (
 
   const createOrganizationHandler = async () => {
     try {
-      await createOrganization(organizationName, organizationEmail);
+      await createOrganization(
+        organizationName,
+        mailingEnabled ? organizationEmail : undefined,
+      );
       addAlert({
         variant: AlertVariant.Success,
         title: `Successfully created organization ${organizationName}`,
@@ -120,7 +126,7 @@ export const CreateOrganizationModal = (
           isDisabled={
             invalidEmailFlag ||
             !organizationName ||
-            !organizationEmail ||
+            (mailingEnabled && !organizationEmail) ||
             !validation.isValid
           }
         >
@@ -166,39 +172,41 @@ export const CreateOrganizationModal = (
             </HelperText>
           </FormHelperText>
         </FormGroup>
-        <FormGroup
-          label="Organization Email"
-          isRequired
-          fieldId="create-org-email"
-        >
-          <TextInput
+        {mailingEnabled && (
+          <FormGroup
+            label="Organization Email"
             isRequired
-            type="email"
-            id="create-org-email-input"
-            name="create-org-email-input"
-            value={organizationEmail}
-            onChange={(_event, value) => handleEmailInputChange(value)}
-            validated={invalidEmailFlag ? 'error' : 'default'}
-            onBlur={onInputBlur}
-          />
+            fieldId="create-org-email"
+          >
+            <TextInput
+              isRequired
+              type="email"
+              id="create-org-email-input"
+              name="create-org-email-input"
+              value={organizationEmail}
+              onChange={(_event, value) => handleEmailInputChange(value)}
+              validated={invalidEmailFlag ? 'error' : 'default'}
+              onBlur={onInputBlur}
+            />
 
-          <FormHelperText>
-            <HelperText>
-              {invalidEmailFlag ? (
-                <HelperTextItem
-                  variant="error"
-                  icon={<ExclamationCircleIcon />}
-                >
-                  Enter a valid email: email@provider.com
-                </HelperTextItem>
-              ) : (
-                <HelperTextItem>
-                  {"This address must be different from your account's email"}
-                </HelperTextItem>
-              )}
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
+            <FormHelperText>
+              <HelperText>
+                {invalidEmailFlag ? (
+                  <HelperTextItem
+                    variant="error"
+                    icon={<ExclamationCircleIcon />}
+                  >
+                    Enter a valid email: email@provider.com
+                  </HelperTextItem>
+                ) : (
+                  <HelperTextItem>
+                    {"This address must be different from your account's email"}
+                  </HelperTextItem>
+                )}
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+        )}
         <br />
       </Form>
     </Modal>

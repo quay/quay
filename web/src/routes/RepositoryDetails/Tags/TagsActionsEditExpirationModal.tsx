@@ -17,6 +17,7 @@ import {
 import {useEffect, useState} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useSetExpiration} from 'src/hooks/UseTags';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
 
 export default function EditExpirationModal(props: EditExpirationModalProps) {
@@ -81,7 +82,8 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
           {Array.from(errorSetExpirationDetails.getErrors()).map(
             ([tag, error]) => (
               <p key={tag}>
-                Could not update expiration for tag {tag}: {error.error.message}
+                Could not update expiration for tag {tag}:{' '}
+                {getErrorMessageFromUnknown(error.error)}
               </p>
             ),
           )}
