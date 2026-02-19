@@ -155,7 +155,12 @@ RUN set -ex\
 # Final is the end container, where all the work from the other
 # containers are copied in.
 FROM base AS final
-LABEL maintainer="quay-devel@redhat.com"
+LABEL maintainer="quay-devel@redhat.com" \
+      io.containers.capabilities="NET_BIND_SERVICE" \
+      io.k8s.security.capabilities.drop="ALL" \
+      io.k8s.security.capabilities.add="NET_BIND_SERVICE" \
+      io.k8s.security.allow-privilege-escalation="false" \
+      io.k8s.security.run-as-non-root="true"
 
 ENV QUAYDIR=/quay-registry
 ENV QUAYCONF=/quay-registry/conf
@@ -192,6 +197,8 @@ RUN set -ex\
 	; find /etc/pki/ -not -path '/etc/pki/entitlement*' -not -path '/etc/pki/consumer*' -exec chown 1001:0 {} + \
 	; chown -R 1001:0 /etc/ssl/ \
 	; chown -R 1001:0 /quay-registry \
+	; chmod ug+w /etc/pki/ca-trust \
+	; chmod ug+w -R /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors \
 	; find /etc/pki/ -not -path '/etc/pki/entitlement*' -not -path '/etc/pki/consumer*' -exec chmod ug+wx {} + \
 	; chmod ug+wx -R /etc/ssl/
 
@@ -205,6 +212,10 @@ COPY --from=build-python /opt/app-root/lib/python3.12/site-packages /opt/app-roo
 COPY --from=build-python /opt/app-root/bin /opt/app-root/bin
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=build-quaydir /quaydir $QUAYDIR
+
+# Strip setuid/setgid bits — with allowPrivilegeEscalation: false these are
+# inert at runtime; removing them reduces scanner noise and attack surface.
+RUN find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true
 
 EXPOSE 8080 8443 7443 9091 55443
 # Don't expose /var/log as a volume, because we just configured it
