@@ -3,6 +3,9 @@ import logging
 import os
 from collections import namedtuple
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
 from util.security.secret import convert_secret_key
@@ -95,3 +98,22 @@ class FieldEncrypter(object):
             raise DecryptionFailureException("Unknown version prefix %s" % version_prefix)
 
         return _VERSIONS[version_prefix].decrypt(self._secret_key, data)
+
+
+def aes256_encrypt(value, secret_key, iv):
+    """
+    AES-256 encryption to encrypt the value using an encryption key and Initialization Vector.
+    """
+    # Pad the value to make it a multiple of 16 bytes
+    padder = padding.PKCS7(algorithms.AES256.block_size).padder()
+    padded_data = padder.update(value.encode()) + padder.finalize()
+
+    # Encrypt
+    cipher = Cipher(
+        algorithms.AES256(secret_key.encode("utf-8")),
+        modes.CBC(iv),
+        backend=default_backend(),
+    )
+    encryptor = cipher.encryptor()
+    encoded_string = encryptor.update(padded_data) + encryptor.finalize()
+    return encoded_string
