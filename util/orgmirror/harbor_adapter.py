@@ -46,8 +46,9 @@ class HarborAdapter(RegistryAdapter):
         password: Optional[str] = None,
         config: Optional[Dict] = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
+        allowed_hosts: Optional[List[str]] = None,
     ):
-        super().__init__(url, namespace, username, password, config, max_retries)
+        super().__init__(url, namespace, username, password, config, max_retries, allowed_hosts)
         self.page_size = self._config.get("page_size", DEFAULT_PAGE_SIZE)
 
     def list_repositories(self) -> List[str]:
@@ -76,6 +77,7 @@ class HarborAdapter(RegistryAdapter):
                     verify=self.verify_tls,
                     proxies=self._build_proxies(),
                     timeout=self.timeout,
+                    allow_redirects=False,
                 )
 
                 # Handle HTTP errors with specific messages
@@ -88,6 +90,10 @@ class HarborAdapter(RegistryAdapter):
                 elif response.status_code == 403:
                     raise HarborDiscoveryException(
                         f"Access forbidden to project '{self.namespace}'"
+                    )
+                elif 300 <= response.status_code < 400:
+                    raise HarborDiscoveryException(
+                        f"Registry returned redirect ({response.status_code})"
                     )
 
                 try:
@@ -157,6 +163,7 @@ class HarborAdapter(RegistryAdapter):
                 verify=self.verify_tls,
                 proxies=self._build_proxies(),
                 timeout=10,
+                allow_redirects=False,
             )
 
             if response.status_code == 200:

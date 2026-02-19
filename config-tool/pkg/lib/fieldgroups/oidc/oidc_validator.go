@@ -47,7 +47,12 @@ func (fg *OIDCFieldGroup) Validate(opts shared.Options) []shared.ValidationError
 			continue
 		}
 
-		if ok, err := shared.ValidateOIDCServer(opts, provider.OIDCServer, provider.ClientID, provider.ClientSecret, provider.ServiceName, provider.LoginScopes, fgName); !ok {
+		// Build the redirect URL dynamically to match runtime behavior.
+		// This avoids OIDC providers (e.g., ADFS) rejecting the request
+		// due to a mismatched redirect_uri.
+		redirectURL := fg.RedirectURL(provider)
+
+		if ok, err := shared.ValidateOIDCServer(opts, provider.OIDCServer, provider.ClientID, provider.ClientSecret, provider.ServiceName, provider.LoginScopes, redirectURL, fgName); !ok {
 			errors = append(errors, err)
 		}
 
