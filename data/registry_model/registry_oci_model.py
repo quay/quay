@@ -1026,28 +1026,6 @@ class OCIModel(RegistryDataInterface):
                 repository_ref, last_pagination_tag_name, limit
             )
 
-    def get_cached_namespace_region_blacklist(self, model_cache, namespace_name):
-        """
-        Returns a cached set of ISO country codes blacklisted for pulls for the namespace or None if
-        the list could not be loaded.
-        """
-
-        def load_blacklist():
-            restrictions = model.user.list_namespace_geo_restrictions(namespace_name)
-            if restrictions is None:
-                return None
-
-            return [restriction.restricted_region_iso_code for restriction in restrictions]
-
-        blacklist_cache_key = cache_key.for_namespace_geo_restrictions(
-            namespace_name, model_cache.cache_config
-        )
-        result = model_cache.retrieve(blacklist_cache_key, load_blacklist)
-        if result is None:
-            return None
-
-        return set(result)
-
     def get_cached_repo_blob(self, model_cache, namespace_name, repo_name, blob_digest):
         """
         Returns the blob in the repository with the given digest if any or None if none.

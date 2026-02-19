@@ -71,9 +71,7 @@ class V2Protocol(RegistryProtocol):
             Failures.DISALLOWED_LIBRARY_NAMESPACE: 400,
             Failures.ANONYMOUS_NOT_ALLOWED: 401,
         },
-        V2ProtocolSteps.GET_BLOB: {
-            Failures.GEO_BLOCKED: 403,
-        },
+        V2ProtocolSteps.GET_BLOB: {},
         V2ProtocolSteps.BLOB_HEAD_CHECK: {
             Failures.DISALLOWED_LIBRARY_NAMESPACE: 400,
         },

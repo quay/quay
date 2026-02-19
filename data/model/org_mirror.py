@@ -25,6 +25,7 @@ from data.database import (
 from data.fields import DecryptedValue
 from data.model import DataModelException
 from util.names import parse_robot_username
+from util.security.ssrf import validate_external_registry_url
 
 # Constants for sync management
 MAX_SYNC_RETRIES = 3
@@ -81,6 +82,7 @@ def create_org_mirror_config(
     external_registry_config=None,
     repository_filters=None,
     skopeo_timeout=300,
+    allowed_hosts=None,
 ):
     """
     Create an organization-level mirror configuration.
@@ -100,6 +102,7 @@ def create_org_mirror_config(
         external_registry_config: Dict with TLS/proxy settings (optional)
         repository_filters: List of glob patterns for filtering (optional)
         skopeo_timeout: Timeout for Skopeo operations in seconds (default: 300)
+        allowed_hosts: Optional list of hostnames/CIDRs that bypass SSRF blocklist
 
     Returns:
         Created OrgMirrorConfig instance
@@ -107,6 +110,15 @@ def create_org_mirror_config(
     Raises:
         DataModelException: If robot doesn't belong to the organization or config already exists
     """
+    # Validate URL to prevent SSRF (CWE-918) - defense-in-depth
+    # DNS resolution is skipped here; the API layer performs the full check.
+    try:
+        validate_external_registry_url(
+            external_registry_url, resolve_dns=False, allowed_hosts=allowed_hosts
+        )
+    except ValueError as e:
+        raise DataModelException(str(e))
+
     if not internal_robot.robot:
         raise DataModelException("Robot account must belong to the organization")
 
@@ -167,6 +179,7 @@ def update_org_mirror_config(
     sync_interval=None,
     sync_start_date=None,
     skopeo_timeout=None,
+    allowed_hosts=None,
 ):
     """
     Update an organization-level mirror configuration.
@@ -189,6 +202,7 @@ def update_org_mirror_config(
         sync_interval: Seconds between syncs
         sync_start_date: Next sync datetime
         skopeo_timeout: Timeout for Skopeo operations in seconds
+        allowed_hosts: Optional list of hostnames/CIDRs that bypass SSRF blocklist
 
     Returns:
         Updated OrgMirrorConfig instance, or None if no config exists
@@ -199,6 +213,16 @@ def update_org_mirror_config(
     config = get_org_mirror_config(org)
     if config is None:
         return None
+
+    # Validate URL to prevent SSRF (CWE-918) - defense-in-depth
+    # DNS resolution is skipped here; the API layer performs the full check.
+    if external_registry_url is not None:
+        try:
+            validate_external_registry_url(
+                external_registry_url, resolve_dns=False, allowed_hosts=allowed_hosts
+            )
+        except ValueError as e:
+            raise DataModelException(str(e))
 
     # Validate robot belongs to organization if provided
     if internal_robot is not None:

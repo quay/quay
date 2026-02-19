@@ -95,7 +95,6 @@ jobs:
           endpoint: [127.0.0.1, 18080]
           repository_blob_cache_ttl: 60s
           catalog_page_cache_ttl: 60s
-          namespace_geo_restrictions_cache_ttl: 240s
           # OCI Conformance tests don't expect tags to be cached.
           # If we implement cache invalidation, we can enable it back.
           active_repo_tags_cache_ttl: 0s

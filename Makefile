@@ -350,3 +350,31 @@ enable-splunk:
 	@echo "  Backup: local-dev/stack/config.yaml.backup"
 	@echo "  Splunk UI: http://localhost:8000 (admin/changeme1)"
 	@echo "  Apply changes: $(DOCKER_COMPOSE) restart quay"
+
+##############
+# Go targets #
+##############
+
+GO_BINARY_NAME = quay
+GO_BUILD_DIR = bin
+GO_CMD_DIR = cmd/quay
+
+.PHONY: go-build go-test go-fmt go-vet go-clean
+
+go-build:
+	@mkdir -p $(GO_BUILD_DIR)
+	go build -o $(GO_BUILD_DIR)/$(GO_BINARY_NAME) ./$(GO_CMD_DIR)
+
+go-test:
+	go test -cover -race ./...
+
+go-fmt:
+	go fmt ./...
+
+go-vet:
+	go vet ./...
+	golangci-lint ./...
+
+go-clean:
+	rm -rf $(GO_BUILD_DIR)
+	go mod tidy

@@ -77,7 +77,7 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
 
         # Caching options
         enable_caching = config.get("FEATURE_LDAP_CACHING", False)
-        cache_ttl = config.get("LDAP_CACHE_TTL", 60)
+        cache_ttl = config.get("LDAP_CACHE_TTL", 5)
 
         allow_tls_fallback = config.get("LDAP_ALLOW_INSECURE_FALLBACK", False)
         return LDAPUsers(

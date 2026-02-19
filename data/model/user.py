@@ -18,7 +18,6 @@ from data.database import (
     LoginService,
     Namespace,
     NamespaceAutoPrunePolicy,
-    NamespaceGeoRestriction,
     OAuthApplication,
     OauthAssignedToken,
     QuotaNamespaceSize,
@@ -1570,13 +1569,6 @@ def get_federated_logins(user_ids, service_name):
         .join(LoginService)
         .where(FederatedLogin.user << user_ids, LoginService.name == service_name)
     )
-
-
-def list_namespace_geo_restrictions(namespace_name):
-    """
-    Returns all of the defined geographic restrictions for the given namespace.
-    """
-    return NamespaceGeoRestriction.select().join(User).where(User.username == namespace_name)
 
 
 def get_minimum_user_id():
