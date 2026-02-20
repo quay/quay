@@ -267,7 +267,12 @@ class SuperUserRegistrySize(ApiResource):
                     "running": registry_size.running,
                 }
             else:
-                return {"size_bytes": 0, "last_ran": None, "running": False, "queued": False}
+                return {
+                    "size_bytes": 0,
+                    "last_ran": None,
+                    "running": False,
+                    "queued": False,
+                }
 
         raise Unauthorized()
 
@@ -318,8 +323,11 @@ class SuperUserUserQuotaList(ApiResource):
                     "properties": {
                         "limit": {
                             "type": "string",
-                            "description": "Human readable storage capacity of the organization",
-                            "pattern": r"^(\d+\s?(B|KiB|MiB|GiB|TiB|PiB|EiB|ZiB|YiB|Ki|Mi|Gi|Ti|Pi|Ei|Zi|Yi|KB|MB|GB|TB|PB|EB|ZB|YB|K|M|G|T|P|E|Z|Y)?)$",
+                            "description": "Human readable storage capacity of the organization"
+                            + "Maximum supported limit is less than 8 EiB",
+                            "pattern": r"^(\d+(|\.\d+)\s?("
+                            + "|".join(bitmath.ALL_UNIT_TYPES)
+                            + ")?)$",
                         },
                     },
                 },
@@ -360,7 +368,10 @@ class SuperUserUserQuotaList(ApiResource):
                 try:
                     limit_bytes = bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
                 except ValueError:
-                    raise request_error(message="Invalid limit format")
+                    units = "|".join(bitmath.ALL_UNIT_TYPES)
+                    ex = f"supported units ^(\d+(|\.\d+)\s?({units})?)$"  # noqa: W605
+                    raise request_error(message="Invalid limit format", error_description=ex)
+
             else:
                 limit_bytes = quota_data["limit_bytes"]
 
@@ -370,12 +381,19 @@ class SuperUserUserQuotaList(ApiResource):
             if quotas:
                 raise request_error(message="Quota for '%s' already exists" % namespace)
 
+            if not limit_bytes <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1:
+                # the Postgres maximum of an BigInteger is 9223372036854775807
+                raise request_error(
+                    message="Invalid limit format",
+                    error_description="Maximum supported Quota is less than 8 EiB",
+                    error_detail="Postgres maximum is 9223372036854775807",
+                )
+
             try:
                 newquota = namespacequota.create_namespace_quota(namespace_user, limit_bytes)
                 return "Created", 201
             except DataModelException as ex:
                 raise request_error(exception=ex)
-
         raise Unauthorized()
 
 
@@ -406,8 +424,11 @@ class SuperUserUserQuota(ApiResource):
                     "properties": {
                         "limit": {
                             "type": "string",
-                            "description": "Human readable storage capacity of the organization",
-                            "pattern": r"^(\d+\s?(B|KiB|MiB|GiB|TiB|PiB|EiB|ZiB|YiB|Ki|Mi|Gi|Ti|Pi|Ei|Zi|Yi|KB|MB|GB|TB|PB|EB|ZB|YB|K|M|G|T|P|E|Z|Y)?)$",
+                            "description": "Human readable storage capacity of the organization"
+                            + "Maximum supported limit is less than 8 EiB",
+                            "pattern": r"^(\d+(|\.\d+)\s?("
+                            + "|".join(bitmath.ALL_UNIT_TYPES)
+                            + ")?)$",
                         },
                     },
                     "required": ["limit"],
@@ -445,15 +466,28 @@ class SuperUserUserQuota(ApiResource):
                             bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
                         )
                     except ValueError:
-                        raise request_error(message="Invalid limit format")
+                        units = "|".join(bitmath.ALL_UNIT_TYPES)
+                        ex = f"supported units ^(\d+(|\.\d+)\s?({units})?)$"  # noqa: W605
+                        raise request_error(message="Invalid limit format", error_description=ex)
+
                 elif "limit_bytes" in quota_data:
                     limit_bytes = quota_data["limit_bytes"]
 
                 if limit_bytes:
+                    if (
+                        not limit_bytes
+                        <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1
+                    ):
+                        # the Postgres maximum of an BigInteger is 9223372036854775807
+                        raise request_error(
+                            message="Invalid limit format",
+                            error_description="Maximum supported Quota is less than 8 EiB",
+                            error_detail="Postgres maximum is 9223372036854775807",
+                        )
+
                     namespacequota.update_namespace_quota_size(quota, limit_bytes)
             except DataModelException as ex:
                 raise request_error(exception=ex)
-
             return quota_view(quota)
 
         raise Unauthorized()
@@ -501,7 +535,10 @@ class SuperUserList(ApiResource):
     @nickname("listAllUsers")
     @parse_args()
     @query_param(
-        "disabled", "If false, only enabled users will be returned.", type=truthy_bool, default=True
+        "disabled",
+        "If false, only enabled users will be returned.",
+        type=truthy_bool,
+        default=True,
     )
     @query_param(
         "limit",
@@ -565,7 +602,11 @@ class SuperUserList(ApiResource):
             log_action(
                 "user_create",
                 username,
-                {"email": email, "username": username, "superuser": authed_user.username},
+                {
+                    "email": email,
+                    "username": username,
+                    "superuser": authed_user.username,
+                },
             )
 
             if features.MAILING:
@@ -640,7 +681,10 @@ class SuperUserManagement(ApiResource):
                     "type": "string",
                     "description": "The new e-mail address for the user",
                 },
-                "enabled": {"type": "boolean", "description": "Whether the user is enabled"},
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Whether the user is enabled",
+                },
             },
         },
     }
@@ -731,7 +775,11 @@ class SuperUserManagement(ApiResource):
                 log_action(
                     "user_change_email",
                     username,
-                    {"old_email": old_email, "email": new_email, "superuser": authed_user.username},
+                    {
+                        "old_email": old_email,
+                        "email": new_email,
+                        "superuser": authed_user.username,
+                    },
                 )
 
             if "enabled" in user_data:
@@ -877,7 +925,11 @@ class SuperUserOrganizationManagement(ApiResource):
             log_action(
                 "org_change_name",
                 name,
-                {"old_name": name, "new_name": new_name, "superuser": authed_user.username},
+                {
+                    "old_name": name,
+                    "new_name": new_name,
+                    "superuser": authed_user.username,
+                },
             )
 
             org = pre_oci_model.change_organization_name(name, new_name)
@@ -1002,7 +1054,10 @@ class SuperUserServiceKeyManagement(ApiResource):
             )
             # Auto-approve the service key.
             pre_oci_model.approve_service_key(
-                key_id, user, ServiceKeyApprovalType.SUPERUSER, notes=body.get("notes", "")
+                key_id,
+                user,
+                ServiceKeyApprovalType.SUPERUSER,
+                notes=body.get("notes", ""),
             )
 
             # Log the creation and auto-approval of the service key.
