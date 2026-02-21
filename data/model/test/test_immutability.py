@@ -68,6 +68,20 @@ class TestValidation:
     def test_pattern_at_max_length(self):
         _validate_policy({"tag_pattern": "a" * 256})
 
+    def test_dangerous_nested_quantifier_rejected(self):
+        with pytest.raises(InvalidImmutabilityPolicy, match="too complex"):
+            _validate_policy({"tag_pattern": "(a+)+"})
+
+    def test_dangerous_wildcard_quantifier_rejected(self):
+        with pytest.raises(InvalidImmutabilityPolicy, match="too complex"):
+            _validate_policy({"tag_pattern": "(.*)*"})
+
+    def test_safe_semver_pattern_accepted(self):
+        _validate_policy({"tag_pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"})
+
+    def test_safe_alternation_pattern_accepted(self):
+        _validate_policy({"tag_pattern": "^(dev|staging)-.*$"})
+
 
 class TestMatchesPolicy:
     def test_matches_semver(self):
