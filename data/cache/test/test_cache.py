@@ -70,6 +70,52 @@ def test_memcache():
         assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
 
 
+def test_memcache_invalid_size_limit_config():
+    invalid_cache_config = TEST_CACHE_CONFIG.copy()
+    invalid_cache_config["value_size_limit"] = "invalid_size"
+
+    with pytest.raises(ValueError) as excinfo:
+        _ = MemcachedModelCache(invalid_cache_config, ("127.0.0.1", "-1"))
+
+    assert "Invalid size string for memcached size limit" in str(excinfo.value)
+
+
+def test_memcache_valid_size_limit_config():
+    valid_cache_config = TEST_CACHE_CONFIG.copy()
+    valid_cache_config["value_size_limit"] = "10MiB"
+
+    cache = MemcachedModelCache(valid_cache_config, ("127.0.0.1", "-1"))
+
+    assert cache.value_size_limit_bytes == 10 * 1024 * 1024
+
+
+def test_memcache_default_size_limit_config():
+    cache = MemcachedModelCache(TEST_CACHE_CONFIG, ("127.0.0.1", "-1"))
+
+    assert cache.value_size_limit_bytes == 1024 * 1024
+
+
+def test_memcache_handle_large_value():
+    global DATA
+    DATA = {}
+
+    key = CacheKey("foo", "60m")
+    large_value = "a" * (1024 * 1024 + 1)  # a string larger than 1MB
+
+    with patch("data.cache.impl.PooledClient", MockClient):
+        cache = MemcachedModelCache(TEST_CACHE_CONFIG, ("127.0.0.1", "-1"))
+
+        with patch("logging.Logger.warning") as mock_warning:
+            retrieved_value = cache.retrieve(key, lambda: large_value)
+            assert retrieved_value == large_value
+
+            mock_warning.assert_called_once()
+            call_args = mock_warning.call_args[0]
+
+            assert any("foo" in arg for arg in call_args if isinstance(arg, str))
+            assert not any(large_value in arg for arg in call_args if isinstance(arg, str))
+
+
 def test_memcache_should_cache():
     global DATA
     DATA = {}
