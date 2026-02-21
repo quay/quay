@@ -208,25 +208,15 @@ if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
     has_local_storage = False
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
     if features.STORAGE_REPLICATION:
         for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
             if storage_type == "LocalStorage":
                 has_local_storage = True
                 break
 
-    if not features.STORAGE_REPLICATION or has_local_storage:
-        if has_local_storage:
-            logger.error("Storage replication can't be used with local storage")
-        else:
-            logger.debug("Full storage replication disabled; skipping")
-        while True:
-            time.sleep(10000)
+    if has_local_storage:
+        logger.error("Storage replication can't be used with local storage")
+        raise SystemExit(1)
 
     logger.debug("Starting replication worker")
     worker = StorageReplicationWorker(

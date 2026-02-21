@@ -17,7 +17,7 @@ class GunicornWorker:
     feature_flag:   a boolean value determine if the worker thread should be launched
     """
 
-    def __init__(self, name, app, worker, feature_flag):
+    def __init__(self, name, app, worker, feature_flag=True):
         logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
         self.app = app

@@ -1,7 +1,6 @@
 import argparse
 import logging.config
 import os
-import time
 
 import features
 from app import app, repo_mirror_api
@@ -103,16 +102,6 @@ if __name__ == "__main__":
         "mode", metavar="MODE", type=str, nargs="?", default="", choices=["mirror", ""]
     )
     args = parser.parse_args()
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.REPO_MIRROR:
-        logger.debug("Repository mirror disabled; skipping RepoMirrorWorker")
-        while True:
-            time.sleep(100000)
 
     worker = RepoMirrorWorker()
     worker.start()

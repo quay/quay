@@ -1,7 +1,5 @@
 import logging.config
 import os
-import sys
-import time
 
 import features
 from app import app
@@ -163,15 +161,6 @@ def create_gunicorn_worker():
 
 
 if __name__ == "__main__":
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.AUTO_PRUNE:
-        logger.debug("Auto-prune disabled; skipping autopruneworker")
-        while True:
-            time.sleep(100000)
 
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
     if app.config.get("DEFAULT_NAMESPACE_AUTOPRUNE_POLICY", None) is not None:
