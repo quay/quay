@@ -33,6 +33,7 @@ from endpoints.api import (
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
+    get_viewable_teams_for_org,
     internal_only,
     log_action,
     nickname,
@@ -74,14 +75,37 @@ def limit_view(limit):
     }
 
 
-def team_view(orgname, team):
+def team_view(orgname, team, viewable_teams=None):
+    """
+    Returns a view of a team for the API response.
+
+    Args:
+        orgname: The organization name
+        team: The team object
+        viewable_teams: Optional set of team names the user can view.
+                       If None, the user is an org admin and can view all teams.
+                       If a set, the user can view teams in the set.
+                       If not provided (default), falls back to per-team permission check.
+    """
+    # Determine if user can view this team
+    if viewable_teams is None:
+        # None means user is org admin - can view all teams
+        can_view = True
+    elif isinstance(viewable_teams, set):
+        # User can view teams they are a member of
+        can_view = team.name in viewable_teams
+    else:
+        # Fallback to legacy per-team permission check (for backward compatibility)
+        can_view = (
+            ViewTeamPermission(orgname, team.name).can() or allow_if_global_readonly_superuser()
+        )
+
     return {
         "name": team.name,
         "description": team.description,
         "role": team.role_name,
         "avatar": avatar.get_data_for_team(team),
-        "can_view": ViewTeamPermission(orgname, team.name).can()
-        or allow_if_global_readonly_superuser(),
+        "can_view": can_view,
         "repo_count": team.repo_count,
         "member_count": team.member_count,
         "is_synced": team.is_synced,
@@ -106,7 +130,17 @@ def org_view(o, teams):
 
     if teams is not None:
         teams = sorted(teams, key=lambda team: team.id)
-        view["teams"] = {t.name: team_view(o.username, t) for t in teams}
+
+        # Pre-compute viewable teams in a single query to avoid N+1 permission checks.
+        # Returns None if user is org admin (can view all teams), or a set of team names.
+        # Superusers and global readonly superusers can also view all teams.
+        if can_view_as_superuser or is_admin:
+            viewable_teams = None  # Can view all teams
+        else:
+            user = get_authenticated_user()
+            viewable_teams = get_viewable_teams_for_org(o.username, user)
+
+        view["teams"] = {t.name: team_view(o.username, t, viewable_teams) for t in teams}
         view["ordered_teams"] = [team.name for team in teams]
 
     if is_admin:
