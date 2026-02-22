@@ -1596,11 +1596,12 @@ export class ApiClient {
           'X-CSRF-Token': token,
         },
         data: {
+          org_name: orgName, // Required by the API endpoint
           upstream_registry: config.upstream_registry,
           expiration_s: config.expiration_s ?? 86400,
           insecure: config.insecure ?? false,
-          upstream_registry_username: config.upstream_registry_username,
-          upstream_registry_password: config.upstream_registry_password,
+          upstream_registry_username: config.upstream_registry_username ?? null,
+          upstream_registry_password: config.upstream_registry_password ?? null,
         },
       },
     );
