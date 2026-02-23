@@ -1,5 +1,10 @@
-import {AxiosError, AxiosResponse, InternalAxiosRequestConfig} from 'axios';
-import axios from 'src/libs/axios';
+import {
+  AxiosError,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+  isAxiosError,
+} from 'axios';
+import axios, {setAnonymousMode} from 'src/libs/axios';
 import {
   fetchUser,
   fetchUsersAsSuperUser,
@@ -31,6 +36,7 @@ vi.mock('src/libs/axios', () => ({
     put: vi.fn(),
     delete: vi.fn(),
   },
+  setAnonymousMode: vi.fn(),
 }));
 
 /** Creates a mock Axios response with the given data and status. */
