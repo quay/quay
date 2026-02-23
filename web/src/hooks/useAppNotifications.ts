@@ -40,7 +40,7 @@ function mapAngularLevelToPF(
   }
 }
 
-export function useAppNotifications() {
+export function useAppNotifications(enabled = true) {
   const queryClient = useQueryClient();
 
   const {data: notifications = [], isLoading: loading} = useQuery({
@@ -53,6 +53,7 @@ export function useAppNotifications() {
       }));
     },
     refetchInterval: 5 * 60 * 1000, // refetch every 5 minutes
+    enabled, // Skip fetch for anonymous users (PROJQUAY-10610)
   });
 
   const dismissMutation = useMutation({

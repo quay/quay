@@ -64,7 +64,6 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const queryClient = useQueryClient();
   const {user} = useCurrentUser();
   const [err, setErr] = useState<string>();
-  const quayConfig = useQuayConfig();
 
   const onDropdownToggle = () => {
     setIsDropdownOpen((prev) => !prev);
@@ -322,13 +321,14 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
     </div>
   );
 
-  const signInButtonText = quayConfig?.config?.REGISTRY_TITLE_SHORT
-    ? `Sign in to ${quayConfig.config.REGISTRY_TITLE_SHORT}`
-    : 'Sign In';
+  const signInButton = (
+    <Button component="a" href="/signin">
+      Sign In
+    </Button>
+  );
 
-  const signInButton = <Button>{signInButtonText}</Button>;
-
-  const {unreadCount} = useAppNotifications();
+  const isAuthenticated = !!user?.username;
+  const {unreadCount} = useAppNotifications(isAuthenticated);
 
   return (
     <>
@@ -340,30 +340,32 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
             align={{default: 'alignRight'}}
             spacer={{default: 'spacerNone', md: 'spacerMd'}}
           >
-            <ToolbarItem
-              spacer={{
-                default: 'spacerNone',
-                md: 'spacerSm',
-                lg: 'spacerMd',
-                xl: 'spacerLg',
-              }}
-            >
-              <NotificationBadge
-                variant={
-                  unreadCount > 0
-                    ? NotificationBadgeVariant.unread
-                    : NotificationBadgeVariant.read
-                }
-                count={unreadCount}
-                onClick={toggleDrawer}
-                aria-label="Notifications"
-                data-testid="notification-bell"
+            {isAuthenticated && (
+              <ToolbarItem
+                spacer={{
+                  default: 'spacerNone',
+                  md: 'spacerSm',
+                  lg: 'spacerMd',
+                  xl: 'spacerLg',
+                }}
               >
-                <BellIcon />
-              </NotificationBadge>
-            </ToolbarItem>
+                <NotificationBadge
+                  variant={
+                    unreadCount > 0
+                      ? NotificationBadgeVariant.unread
+                      : NotificationBadgeVariant.read
+                  }
+                  count={unreadCount}
+                  onClick={toggleDrawer}
+                  aria-label="Notifications"
+                  data-testid="notification-bell"
+                >
+                  <BellIcon />
+                </NotificationBadge>
+              </ToolbarItem>
+            )}
             <ToolbarItem>
-              {user.username ? menuContainer : signInButton}
+              {isAuthenticated ? menuContainer : signInButton}
             </ToolbarItem>
           </ToolbarGroup>
         </ToolbarContent>

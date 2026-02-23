@@ -8,6 +8,7 @@ import {
 import {OrgSearchState} from 'src/components/toolbar/SearchTypes';
 import {
   fetchAllRepos,
+  fetchRepositories,
   fetchRepositoriesForNamespace,
   IRepository,
 } from 'src/resources/RepositoryResource';
@@ -26,7 +27,9 @@ export function useRepositories(organization?: string) {
 
   const listOfOrgNames: string[] = currentOrganization
     ? [currentOrganization]
-    : user?.organizations.map((org) => org.name).concat(user.username);
+    : user?.anonymous
+    ? [] // Anonymous users have no namespaces to fetch
+    : user?.organizations?.map((org) => org.name).concat(user.username) || [];
 
   const handlePartialResults = useCallback((newRepos: IRepository[]) => {
     setPartialResults((prev) => [...prev, ...newRepos]);
@@ -44,6 +47,11 @@ export function useRepositories(organization?: string) {
     queryFn: async ({signal}): Promise<IRepository[]> => {
       // Reset partial results at the start of a new query
       setPartialResults([]);
+
+      // Anonymous users without a specific org: show all public repos
+      if (user?.anonymous && !currentOrganization) {
+        return fetchRepositories();
+      }
 
       const result = currentOrganization
         ? fetchRepositoriesForNamespace(currentOrganization, {
