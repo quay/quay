@@ -723,7 +723,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `repository-delete.cy.ts` | `repository/repository-delete.spec.ts` | |
 | ✅ | `org-settings.cy.ts` | `organization/settings.spec.ts` | @organization, @feature:USER_METADATA, @feature:BILLING, consolidated 4→3 tests (tag expiration in account-settings) |
 | ✅ | `account-settings.cy.ts` | `user/account-settings.spec.ts` | @user, @feature:BILLING, @feature:MAILING, @feature:CHANGE_TAG_EXPIRATION, consolidated 31→20 tests |
-| ⬚ | `autopruning.cy.ts` | | |
+| ✅ | `autopruning.cy.ts` | `repository/autopruning.spec.ts` | @feature:AUTO_PRUNE, Cypress file deleted |
 | ✅ | `breadcrumbs.cy.ts` | `ui/breadcrumbs.spec.ts` | |
 | ⬚ | `builds.cy.ts` | | |
 | ✅ | `create-account.cy.ts` | `auth/create-account.spec.ts` | @feature:MAILING, @feature:QUOTA_MANAGEMENT, consolidated 10→6 tests |
@@ -761,16 +761,16 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `superuser-change-log.cy.ts` | `superuser/change-log.spec.ts` | Superuser required, 7→2 tests (access control in framework.spec.ts) |
 | ✅ | `superuser-framework.cy.ts` | `superuser/framework.spec.ts` | Superuser required, consolidated 7→4 tests |
 | ✅ | `superuser-messages.cy.ts` | `superuser/messages.spec.ts` | Superuser required, consolidated 14→6 tests |
-| ⬚ | `superuser-org-actions.cy.ts` | | Migration pending: org-actions.spec.ts doesn't exist |
+| ✅ | `superuser-org-actions.cy.ts` | `superuser/org-actions.spec.ts` | Superuser required, Cypress file deleted |
 | ✅ | `superuser-service-keys.cy.ts` | `superuser/service-keys.spec.ts` | Superuser required, 17→5 tests consolidated |
-| ⬚ | `superuser-usage-logs.cy.ts` | | Superuser required |
+| ✅ | `superuser-usage-logs.cy.ts` | `superuser/usage-logs.spec.ts` | Superuser required, Cypress file deleted |
 | ✅ | `superuser-user-management.cy.ts` | `superuser/user-management.spec.ts` | Superuser required, 29→10 tests consolidated |
-| ⬚ | `system-status-banner.cy.ts` | | |
+| ✅ | `system-status-banner.cy.ts` | `ui/system-status-banner.spec.ts` | Cypress file deleted |
 | ⬚ | `tag-details.cy.ts` | | |
-| ⬚ | `tag-history-deleted-tags.cy.ts` | | |
-| ⬚ | `tags-expanded-view.cy.ts` | | |
-| ⬚ | `tags-signatures.cy.ts` | | |
-| ⬚ | `teams-and-membership.cy.ts` | | |
+| ✅ | `tag-history-deleted-tags.cy.ts` | | Coverage consolidated into other tag tests, Cypress file deleted |
+| ✅ | `tags-expanded-view.cy.ts` | `tags/expanded-view.spec.ts` | @container, consolidated 10→4 tests |
+| ✅ | `tags-signatures.cy.ts` | `tags/signatures.spec.ts` | @container, consolidated 4→1 tests |
+| ✅ | `teams-and-membership.cy.ts` | `organization/teams-and-membership.spec.ts` | Cypress file deleted |
 | ⬚ | `team-sync.cy.ts` | | @config:OIDC |
 | ✅ | `theme-switcher.cy.ts` | `ui/theme-switcher.spec.ts` | |
 | ✅ | `update-user.cy.ts` | `user/update-user.spec.ts` | @feature:USER_METADATA, consolidated 7→3 tests (OAuth tests TODO) |
