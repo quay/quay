@@ -46,8 +46,10 @@ location / {
 
     # Show new UI if cookie or default is set to react
     if ($user_requested_ui ~* "^react$") {
-        # catch new static paths and direct to /index.html
+        # catch known React UI routes and direct to /index.html
         rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth-error|/oauth/localapp|/oauth2/[^/]+/callback(/attach|/cli)?|/updateuser|/user/(.*)|/service-keys|/change-log|/usage-logs|/messages|/build-logs|/about|/security) /index.html break;
+        # catch-all for shorthand URLs (/<org>, /<org>/<repo>) handled by React Router
+        rewrite ^/[^.]*$ /index.html break;
     }
 
     # Show old UI if cookie is set to angular
