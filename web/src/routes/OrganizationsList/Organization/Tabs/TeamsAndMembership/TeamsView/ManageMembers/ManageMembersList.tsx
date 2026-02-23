@@ -153,6 +153,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     },
     initialPerPage: 20,
     initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: Team member ascending
+    filter: search.query
+      ? (item: ITeamMember) => item.name.includes(search.query)
+      : undefined,
   });
 
   const {teams} = useFetchTeams(organizationName);
