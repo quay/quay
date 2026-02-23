@@ -6,6 +6,15 @@ if (process.env.MOCK_API === 'true') {
   require('src/tests/fake-db/ApiMock');
 }
 
+// Track whether user is browsing anonymously. When true, 401 responses
+// from other endpoints (e.g. /api/v1/user/notifications) won't trigger
+// a redirect to /signin. Set by fetchUser() in UserResource.ts.
+let _anonymousMode = false;
+
+export function setAnonymousMode(enabled: boolean) {
+  _anonymousMode = enabled;
+}
+
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
@@ -92,7 +101,18 @@ axiosIns.interceptors.response.use(
 
       // Handle regular session expiry
       if (!isFreshLoginRequired) {
-        if (window?.insights?.chrome?.auth) {
+        // Don't redirect on 401 from /api/v1/user/ (let fetchUser() return
+        // an anonymous user object instead — PROJQUAY-10610), or when already
+        // in anonymous mode (other endpoints like /api/v1/user/notifications
+        // will also 401 for anonymous users).
+        const requestUrl = error.config?.url || '';
+        const isUserEndpoint =
+          requestUrl === '/api/v1/user/' ||
+          requestUrl.endsWith('/api/v1/user/');
+
+        if (isUserEndpoint || _anonymousMode) {
+          // Skip redirect — handled by fetchUser or component error boundaries
+        } else if (window?.insights?.chrome?.auth) {
           // Refresh token for plugin
           GlobalAuthState.bearerToken =
             await window.insights.chrome.auth.getToken();

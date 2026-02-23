@@ -9,6 +9,7 @@ import {OrgSearchState} from 'src/components/toolbar/SearchTypes';
 import {
   fetchAllRepos,
   fetchAllReposAsSuperUser,
+  fetchRepositories,
   fetchRepositoriesForNamespace,
   IRepository,
   SuperUserReposResult,
@@ -29,7 +30,9 @@ export function useRepositories(organization?: string) {
 
   const listOfOrgNames: string[] = currentOrganization
     ? [currentOrganization]
-    : user?.organizations.map((org) => org.name).concat(user.username);
+    : user?.anonymous
+      ? [] // Anonymous users have no namespaces to fetch
+      : user?.organizations?.map((org) => org.name).concat(user.username) || [];
 
   const handlePartialResults = useCallback((newRepos: IRepository[]) => {
     setPartialResults((prev) => [...prev, ...newRepos]);
@@ -45,7 +48,7 @@ export function useRepositories(organization?: string) {
       'organization',
       organization || 'all',
       'repositories',
-      isSuperUser ? 'superuser' : 'user',
+      isSuperUser ? 'superuser' : user?.anonymous ? 'anonymous' : 'user',
     ],
     keepPreviousData: true,
     placeholderData: [],
@@ -53,6 +56,11 @@ export function useRepositories(organization?: string) {
       // Reset partial results at the start of a new query
       setPartialResults([]);
       setTruncated(false);
+
+      // Anonymous users without a specific org: show all public repos
+      if (user?.anonymous && !currentOrganization) {
+        return fetchRepositories();
+      }
 
       if (currentOrganization) {
         return fetchRepositoriesForNamespace(currentOrganization, {
