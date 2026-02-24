@@ -441,9 +441,53 @@ wheel==0.46.2 \
     #   uritools
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==82.0.0 \
-    --hash=sha256:22e0a2d69474c6ae4feb01951cb69d515ed23728cf96d05513d36e42b62b37cb \
-    --hash=sha256:70b18734b607bd1da571d097d236cfcfacaf01de45717d59e6e04b96877532e0
+setuptools==78.1.1 \
+    --hash=sha256:c3a9c4211ff4c309edb8b8c4f1cbfa7ae324c4ba9f91ff254e3d305b9fd54561 \
+    --hash=sha256:fcc17fd9cd898242f6b4adfaca46137a9edef687f43e6f78469692a5e70d851d
     # via
-    #   python-dateutil
+    #   Authlib
+    #   Mako
+    #   PyJWT
+    #   PyMySQL
+    #   PyNaCl
+    #   PyYAML
+    #   alembic
+    #   attrs
+    #   bcrypt
+    #   blinker
+    #   cachetools
+    #   calver
+    #   cffi
+    #   chardet
+    #   cryptography
+    #   gevent
+    #   googleapis-common-protos
+    #   greenlet
+    #   gunicorn
+    #   importlib-metadata
+    #   jsonschema
+    #   kafka-python
+    #   maturin
+    #   maxminddb
+    #   netaddr
+    #   pathspec
+    #   pillow
+    #   pluggy
+    #   pyHanko
+    #   pyasn1-modules
+    #   pyhanko-certvalidator
+    #   pyrsistent
+    #   python-redis-lock
+    #   pyyaml
+    #   reportlab
+    #   resumablesha256
+    #   setuptools-rust
     #   setuptools-scm
+    #   toposort
+    #   trove-classifiers
+    #   tzdata
+    #   tzlocal
+    #   uritools
+    #   wrapt
+    #   xhtml2pdf
+    #   zipp
