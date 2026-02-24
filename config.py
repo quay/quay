@@ -706,7 +706,6 @@ class DefaultConfig(ImmutableConfig):
         "endpoint": ("127.0.0.1", 18080),
         "repository_blob_cache_ttl": "60s",
         "catalog_page_cache_ttl": "60s",
-        "namespace_geo_restrictions_cache_ttl": "240s",
         "active_repo_tags_cache_ttl": "120s",
         "value_size_limit": "1MiB",
     }

@@ -38,6 +38,9 @@ import {useQuayState} from 'src/hooks/UseQuayState';
 import ManifestListSize from 'src/components/Table/ManifestListSize';
 import {useTagPullStatistics} from 'src/hooks/UseTags';
 import TagExpiration from './TagsTableExpiration';
+import {useManifestTracks, TrackEntry} from './useManifestTracks';
+import ManifestTrackCell from './ManifestTrackCell';
+import './Tags.css';
 
 function SubRow(props: SubRowProps) {
   const isMissing = props.manifest.is_present === false;
@@ -136,6 +139,17 @@ function SubRow(props: SubRowProps) {
         </Td>
       ) : (
         <Td />
+      )}
+      {props.trackCount > 0 && (
+        <Td className="manifest-track-cell">
+          <ManifestTrackCell
+            trackCount={props.trackCount}
+            rowIndex={props.parentRowIndex}
+            getTrackEntry={props.getTrackEntry}
+            getLineClass={props.getLineClass}
+            mode="continuation"
+          />
+        </Td>
       )}
       <Td
         colSpan={
@@ -285,6 +299,18 @@ function TagsTableRow(props: RowProps) {
         <Td dataLabel={ColumnNames.digest}>
           {tag.manifest_digest.substring(0, 19)}
         </Td>
+        {props.trackCount > 0 && (
+          <Td className="manifest-track-cell">
+            <ManifestTrackCell
+              trackCount={props.trackCount}
+              rowIndex={rowIndex}
+              getTrackEntry={props.getTrackEntry}
+              getLineClass={props.getLineClass}
+              onDotClick={props.selectTagsByManifest}
+              mode="tag"
+            />
+          </Td>
+        )}
         <Conditional if={config?.features?.IMAGE_PULL_STATS}>
           <Td dataLabel={ColumnNames.lastPulled}>
             {isLoadingPullStats ? (
@@ -340,16 +366,20 @@ function TagsTableRow(props: RowProps) {
         </Conditional>
       </Tr>
       {tag.manifest_list
-        ? tag.manifest_list.manifests.map((manifest, rowIndex) => (
+        ? tag.manifest_list.manifests.map((manifest, manifestIdx) => (
             <SubRow
-              key={rowIndex}
+              key={manifestIdx}
               org={props.org}
               repo={props.repo}
               tag={tag}
-              rowIndex={rowIndex}
+              rowIndex={manifestIdx}
               manifest={manifest}
               isTagExpanded={props.isTagExpanded}
               config={config}
+              trackCount={props.trackCount}
+              parentRowIndex={rowIndex}
+              getTrackEntry={props.getTrackEntry}
+              getLineClass={props.getLineClass}
             />
           ))
         : null}
@@ -419,6 +449,17 @@ function TagsTableRow(props: RowProps) {
               )}
             </div>
           </Td>
+          {props.trackCount > 0 && (
+            <Td className="manifest-track-cell">
+              <ManifestTrackCell
+                trackCount={props.trackCount}
+                rowIndex={rowIndex}
+                getTrackEntry={props.getTrackEntry}
+                getLineClass={props.getLineClass}
+                mode="continuation"
+              />
+            </Td>
+          )}
           <Conditional if={props.repoDetails?.can_write && !inReadOnlyMode}>
             <Td />
           </Conditional>
@@ -443,6 +484,22 @@ export default function TagsTable(props: TableProps) {
         : otherExpandedtagNames;
     });
   const isTagExpanded = (tag: Tag) => expandedTags.includes(tag.name);
+
+  // Calculate manifest tracks for visual grouping of tags sharing the same digest
+  const {tracks, getTrackEntry, getLineClass, trackCount} = useManifestTracks(
+    props.allTags,
+  );
+
+  // Page offset converts local row index to global index for track lookup
+  const pageOffset = (props.page - 1) * props.perPage;
+
+  // Select all tags sharing a given manifest digest
+  const selectTagsByManifest = (manifestDigest: string) => {
+    const tagsWithManifest = props.allTags.filter(
+      (t) => t.manifest_digest === manifestDigest,
+    );
+    tagsWithManifest.forEach((t) => props.selectTag(t, undefined, true));
+  };
 
   return (
     <>
@@ -473,6 +530,12 @@ export default function TagsTable(props: TableProps) {
             <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
               Manifest
             </Th>
+            {trackCount > 0 && (
+              <Th
+                className="manifest-track-header"
+                aria-label="Manifest tracks"
+              />
+            )}
             <Conditional if={config?.features?.IMAGE_PULL_STATS}>
               <Th modifier="wrap" sort={props.getSortableSort?.(8)}>
                 Last Pulled
@@ -485,13 +548,13 @@ export default function TagsTable(props: TableProps) {
             <Th />
           </Tr>
         </Thead>
-        {props.tags.map((tag: Tag, rowIndex: number) => (
+        {props.tags.map((tag: Tag, localIndex: number) => (
           <TagsTableRow
-            key={rowIndex}
+            key={localIndex}
             org={props.org}
             repo={props.repo}
             tag={tag}
-            rowIndex={rowIndex}
+            rowIndex={pageOffset + localIndex}
             selectedTags={props.selectedTags}
             isTagExpanded={isTagExpanded}
             setTagExpanded={setTagExpanded}
@@ -500,6 +563,10 @@ export default function TagsTable(props: TableProps) {
             repoDetails={props.repoDetails}
             labelCache={props.labelCache}
             setLabelCache={props.setLabelCache}
+            trackCount={trackCount}
+            getTrackEntry={getTrackEntry}
+            getLineClass={getLineClass}
+            selectTagsByManifest={selectTagsByManifest}
           />
         ))}
       </Table>
@@ -516,6 +583,9 @@ interface TableProps {
   org: string;
   repo: string;
   tags: Tag[];
+  allTags: Tag[];
+  page: number;
+  perPage: number;
   loading: boolean;
   selectAllTags: (isSelecting: boolean) => void;
   selectedTags: string[];
@@ -540,6 +610,13 @@ interface RowProps {
   repoDetails: RepositoryDetails;
   labelCache?: Record<string, ManifestLabel[]>;
   setLabelCache?: (cache: Record<string, ManifestLabel[]>) => void;
+  trackCount: number;
+  getTrackEntry: (trackIndex: number, rowIndex: number) => TrackEntry | null;
+  getLineClass: (
+    trackIndex: number,
+    rowIndex: number,
+  ) => 'start' | 'middle' | 'end' | '';
+  selectTagsByManifest: (manifestDigest: string) => void;
 }
 
 interface SubRowProps {
@@ -555,4 +632,11 @@ interface SubRowProps {
       SECURITY_SCANNER?: boolean;
     };
   } | null;
+  trackCount: number;
+  parentRowIndex: number;
+  getTrackEntry: (trackIndex: number, rowIndex: number) => TrackEntry | null;
+  getLineClass: (
+    trackIndex: number,
+    rowIndex: number,
+  ) => 'start' | 'middle' | 'end' | '';
 }

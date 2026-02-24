@@ -9,6 +9,7 @@ on:
       - 'go.sum'
       - '.golangci.yml'
       - '.github/workflows/go.yaml'
+      - 'util/config/schema.py'
       - '!config-tool/**'
   pull_request:
     paths:
@@ -17,6 +18,7 @@ on:
       - 'go.sum'
       - '.golangci.yml'
       - '.github/workflows/go.yaml'
+      - 'util/config/schema.py'
       - '!config-tool/**'
 
 jobs:

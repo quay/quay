@@ -29,7 +29,6 @@ from endpoints.decorators import (
     anon_protect,
     check_pushes_disabled,
     check_readonly,
-    check_region_blacklisted,
     disallow_for_account_recovery_mode,
     inject_registry_model,
     parse_repository_name,
@@ -37,7 +36,6 @@ from endpoints.decorators import (
 from endpoints.metrics import image_pulled_bytes
 from endpoints.v2 import get_input_stream, require_repo_read, require_repo_write, v2_bp
 from endpoints.v2.errors import (
-    BlobDownloadGeoBlocked,
     BlobUnknown,
     BlobUploadInvalid,
     BlobUploadUnknown,
@@ -94,7 +92,6 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_allowed
-@check_region_blacklisted(BlobDownloadGeoBlocked)
 @cache_control(max_age=31536000)
 @inject_registry_model()
 def download_blob(namespace_name, repo_name, digest, registry_model):
