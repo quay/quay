@@ -268,8 +268,5 @@ class SplunkLogMapper:
         try:
             return model.user.get_namespace_users_by_usernames(usernames)
         except Exception:
-            logger.exception(
-                "Failed to batch lookup users, falling back to None: usernames=%s",
-                usernames,
-            )
+            logger.exception("Failed to batch lookup users, falling back to None")
             return {username: None for username in usernames}
