@@ -285,6 +285,15 @@ local-dev-down:
 	$(DOCKER_COMPOSE) down
 	$(MAKE) local-dev-clean
 
+.PHONY: local-dev-reset-db
+local-dev-reset-db:
+	$(DOCKER_COMPOSE) rm -fsv quay-db quay
+	$(DOCKER) volume rm -f quay_quay-db-data
+	$(DOCKER_COMPOSE) up -d quay-db
+	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
+	@echo "Database has been reset. Quay will run migrations on startup."
+
 .PHONY: enable-ldap
 enable-ldap:
 	@echo "Merging LDAP config into local-dev/stack/config.yaml..."
