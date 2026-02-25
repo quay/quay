@@ -649,15 +649,16 @@ class OCIModel(RegistryDataInterface):
         Deletes all tags pointing to the given manifest, making the manifest inaccessible for
         pulling.
 
-        Returns the tags (ShallowTag) deleted. Returns None on error.
+        Returns the tags (ShallowTag) deleted. Raises ImmutableTagException if any tag is immutable.
         """
         with db_disallow_replica_use():
+            deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
+
             manifest_cache_key = cache_key.for_repository_manifest(
                 manifest.repository.id, manifest.digest, model_cache.cache_config
             )
             model_cache.invalidate(manifest_cache_key)
 
-            deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
             return [ShallowTag.for_tag(tag) for tag in deleted_tags]
 
     def change_repository_tag_expiration(self, tag, expiration_date):

@@ -549,7 +549,8 @@ def delete_tags_for_manifest(manifest):
     """
     Deletes all tags pointing to the given manifest.
 
-    Returns the list of tags deleted. Immutable tags are skipped.
+    Returns the list of tags deleted.
+    Raises ImmutableTagException if any tag is immutable.
     """
     query = Tag.select().where(Tag.manifest == manifest)
     query = filter_to_alive_tags(query)
@@ -557,19 +558,10 @@ def delete_tags_for_manifest(manifest):
     tags = list(query)
     now_ms = get_epoch_timestamp_ms()
 
-    # Filter out immutable tags
     if features.IMMUTABLE_TAGS:
-        mutable_tags = []
         for tag in tags:
             if tag.immutable:
-                logger.info(
-                    "Skipping deletion of immutable tag '%s' in repository %s",
-                    tag.name,
-                    manifest.repository_id,
-                )
-            else:
-                mutable_tags.append(tag)
-        tags = mutable_tags
+                raise ImmutableTagException(tag.name, "delete", tag.repository_id)
 
     with db_transaction():
         for tag in tags:
