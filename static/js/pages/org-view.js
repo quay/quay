@@ -85,7 +85,7 @@
     var loadOrganization = function() {
       $scope.orgResource = ApiService.getOrganizationAsResource({'orgname': orgname}).get(function(org) {
         $scope.organization = org;
-        $scope.orgScope.organizationEmail = org.email;
+        $scope.orgScope.organizationEmail = org.contact_email || '';
         $scope.isAdmin = org.is_admin;
         $scope.isMember = org.is_member;
 
@@ -121,7 +121,7 @@
 
     $scope.showChangeEmail = function() {
       $scope.changeEmailInfo = {
-        'email': $scope.organization.email
+        'contact_email': $scope.organization.contact_email || ''
       };
     };
 
@@ -131,13 +131,13 @@
       };
 
       var details = {
-        'email': $scope.changeEmailInfo.email
+        'contact_email': $scope.changeEmailInfo.contact_email
       };
 
-      var errorDisplay = ApiService.errorDisplay('Could not change email address', callback);
+      var errorDisplay = ApiService.errorDisplay('Could not change contact email', callback);
 
       ApiService.changeOrganizationDetails(details, params).then(function() {
-        $scope.organization.email = $scope.changeEmailInfo.email;
+        $scope.organization.contact_email = $scope.changeEmailInfo.contact_email;
         callback(true);
       }, errorDisplay);
     };

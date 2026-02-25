@@ -98,9 +98,8 @@
               <td ng-class="tablePredicateClass('name', options.predicate, options.reverse)">
                 <a ng-click="orderBy('name')">Name</a>
               </td>
-              <td ng-class="tablePredicateClass('email', options.predicate, options.reverse)"
-                  ng-if="Features.MAILING">
-                <a ng-click="orderBy('email')">Admin Email</a>
+              <td ng-class="tablePredicateClass('contact_email', options.predicate, options.reverse)">
+                <a ng-click="orderBy('contact_email')">Contact Email</a>
               </td>
               <td ng-class="tablePredicateClass('quota', options.predicate, options.reverse)"
                   ng-if="Features.QUOTA_MANAGEMENT && Features.EDIT_QUOTA">
@@ -119,8 +118,9 @@
                 <td>
                   {{ current_org.name }}
                 </td>
-                <td ng-if="Features.MAILING">
-                  <a href="mailto:{{ current_org.email }}">{{ current_org.email }}</a>
+                <td>
+                  <span ng-if="current_org.contact_email"><a href="mailto:{{ current_org.contact_email }}">{{ current_org.contact_email }}</a></span>
+                  <span ng-if="!current_org.contact_email">-</span>
                 </td>
                 <td ng-if="Features && Features.EDIT_QUOTA">
                   <span ng-if="current_org.quota_report.quota_bytes">

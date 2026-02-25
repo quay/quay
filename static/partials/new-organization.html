@@ -52,13 +52,13 @@
                 <span class="description">This will also be the namespace for your repositories. Must be alphanumeric, all lowercase, at least 2 characters long and at most 255 characters long.</span>
               </div>
 
-              <div class="form-group nested" quay-require="['MAILING']">
-                <label for="orgName">Organization Email</label>
+              <div class="form-group nested">
+                <label for="orgEmail">Contact Email (Optional)</label>
                 <div class="field-row">
                   <span class="field-container">
-                    <input id="orgEmail" name="orgEmail" type="email" class="form-control" placeholder="Organization Email"
-                           ng-model="org.email" required>
-                    <span class="description">This address must be different from your account's email.</span>
+                    <input id="orgEmail" name="orgEmail" type="email" class="form-control" placeholder="Contact Email"
+                           ng-model="org.contact_email">
+                    <span class="description">Optional. Used for organization recovery and notifications.</span>
                   </span>
                 </div>
               </div>

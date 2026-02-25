@@ -141,14 +141,13 @@
                   <td>
                     <span class="avatar" size="48" data="organization.avatar"></span>
                     <div class="help-text" ng-if="Config.AVATAR_KIND == 'local'">Avatar is generated based off the organization's name.</div>
-                    <div class="help-text" ng-if="Config.AVATAR_KIND == 'gravatar' && Features.MAILING">Avatar is served by <a href="http://gravatar.com" rel="nofollow" target="_blank">Gravatar</a> based on the {{ organization.email }} e-mail address.</div>
-                    <div class="help-text" ng-if="Config.AVATAR_KIND == 'gravatar' && !Features.MAILING">Avatar is served by <a href="http://gravatar.com" rel="nofollow" target="_blank">Gravatar</a> based on the unique ID: {{ organization.email }}.</div>
+                    <div class="help-text" ng-if="Config.AVATAR_KIND == 'gravatar'">Avatar is served by <a href="http://gravatar.com" rel="nofollow" target="_blank">Gravatar</a> based on the organization name.</div>
                   </td>
                 </tr>
-                <tr quay-show="Features.MAILING">
-                  <td>Email Address:</td>
+                <tr>
+                  <td>Contact Email:</td>
                   <td>
-                    <a class="co-modify-link" ng-click="showChangeEmail()">{{ organization.email }}</a>
+                    <a class="co-modify-link" ng-click="showChangeEmail()">{{ organization.contact_email || 'Not set' }}</a>
                   </td>
                 </tr>
               </table>
@@ -192,17 +191,17 @@
     </cor-tab-panel>
   </div>
 
-  <!-- Change email dialog -->
+  <!-- Change contact email dialog -->
   <div class="cor-confirm-dialog"
      dialog-context="changeEmailInfo"
      dialog-action="changeEmail(info, callback)"
-     dialog-title="Change E-mail Address"
+     dialog-title="Change Contact Email"
      dialog-action-title="Change Email"
      dialog-form="context.emailform">
      <form name="context.emailform" class="co-single-field-dialog">
-       Please enter a new email address.
-       <input type="email" class="form-control" placeholder="Your new e-mail address"
-              ng-model="changeEmailInfo.email" required>
+       Enter a contact email for organization recovery and notifications. Leave empty to clear.
+       <input type="email" class="form-control" placeholder="Contact email address"
+              ng-model="changeEmailInfo.contact_email">
      </form>
   </div>
 </div>
