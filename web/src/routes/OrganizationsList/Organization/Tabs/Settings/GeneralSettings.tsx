@@ -146,7 +146,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   // Email
   const namespaceEmail = isUserOrganization
     ? user?.email || ''
-    : organization?.email || '';
+    : organization?.contact_email || '';
 
   // Password modal state
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -346,7 +346,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
         const orgUpdateData = {
           tag_expiration_s: tagExpirationSeconds,
-          email: data.email !== namespaceEmail ? data.email : null,
+          contact_email: data.email !== namespaceEmail ? data.email : null,
           isUser: isUserOrganization,
         };
 
@@ -465,16 +465,16 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           name="email"
           control={control}
           errors={errors}
-          label="Email"
+          label={isUserOrganization ? 'Email' : 'Contact Email'}
           fieldId="org-settings-email"
           type="email"
           helperText={
             isUserOrganization
               ? 'The e-mail address associated with your account.'
-              : 'The e-mail address associated with the organization.'
+              : 'Optional. Used for organization recovery and billing notifications.'
           }
           customValidation={(value: string) =>
-            isValidEmail(value) || 'Please enter a valid email address'
+            !value || isValidEmail(value) || 'Please enter a valid email address'
           }
         />
       )}
