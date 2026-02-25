@@ -237,3 +237,121 @@ class TestProxyCacheConfigWithImmutableTags:
         has_immutable = namespace_has_immutable_tags(org.id)
         # Initially there should be no immutable tags
         assert isinstance(has_immutable, bool)
+
+
+class TestContactEmail:
+    """Tests for contact_email in organization API endpoints."""
+
+    def test_create_org_with_contact_email(self, app):
+        """Test creating org with contact_email field."""
+        body = {"name": "contactorg1", "contact_email": "contact@example.com"}
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        # Verify contact_email is returned in GET
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl, Organization, "GET", {"orgname": "contactorg1"}, expected_code=200
+            )
+            assert resp.json["contact_email"] == "contact@example.com"
+            assert resp.json["email"] == "contact@example.com"
+
+    def test_create_org_without_email(self, app):
+        """Test creating org without any email succeeds."""
+        body = {"name": "noemailorg"}
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl, Organization, "GET", {"orgname": "noemailorg"}, expected_code=200
+            )
+            assert resp.json["contact_email"] is None
+            assert resp.json["email"] == ""
+
+    def test_create_org_with_email_backward_compat(self, app):
+        """Test creating org with email field maps to contact_email."""
+        body = {"name": "backcompatorg", "email": "compat@example.com"}
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl, Organization, "GET", {"orgname": "backcompatorg"}, expected_code=200
+            )
+            assert resp.json["contact_email"] == "compat@example.com"
+
+    def test_update_contact_email(self, app):
+        """Test updating org contact_email via PUT."""
+        body = {"name": "updateemailorg", "contact_email": "old@example.com"}
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "updateemailorg"},
+                body={"contact_email": "new@example.com"},
+                expected_code=200,
+            )
+            assert resp.json["contact_email"] == "new@example.com"
+            assert resp.json["email"] == "new@example.com"
+
+    def test_update_email_backward_compat(self, app):
+        """Test updating org via email field maps to contact_email."""
+        body = {"name": "updatecompat", "contact_email": "old@example.com"}
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "updatecompat"},
+                body={"email": "updated@example.com"},
+                expected_code=200,
+            )
+            assert resp.json["contact_email"] == "updated@example.com"
+
+    def test_duplicate_contact_email_allowed(self, app):
+        """Test that two orgs can share the same contact_email."""
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                OrganizationList,
+                "POST",
+                None,
+                body={"name": "dupeorg1", "contact_email": "shared@example.com"},
+                expected_code=201,
+            )
+            conduct_api_call(
+                cl,
+                OrganizationList,
+                "POST",
+                None,
+                body={"name": "dupeorg2", "contact_email": "shared@example.com"},
+                expected_code=201,
+            )
+
+    def test_create_org_with_invalid_email(self, app):
+        """Test creating org with invalid email format returns error."""
+        body = {"name": "invalidemail", "contact_email": "not-an-email"}
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=400)
+
+    def test_get_org_non_admin_no_contact_email(self, app):
+        """Test that non-admin users cannot see contact_email."""
+        # Use buynlarge which has freshuser as non-admin member
+        # Set contact_email on buynlarge first
+        org = model.organization.get_organization("buynlarge")
+        model.organization.set_contact_email(org, "hidden@example.com")
+
+        with client_with_identity("freshuser", app) as cl:
+            resp = conduct_api_call(
+                cl, Organization, "GET", {"orgname": "buynlarge"}, expected_code=200
+            )
+            assert resp.json["contact_email"] is None
+            assert resp.json["email"] == ""

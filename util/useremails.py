@@ -167,17 +167,20 @@ def send_repo_authorization_email(namespace, repository, email, token):
     )
 
 
-def send_org_recovery_email(org, admin_users):
+def send_org_recovery_email(org, admin_users, contact_email=None):
     subject = "Organization %s recovery" % (org.username)
-    send_email(
-        org.email,
-        subject,
-        "orgrecovery",
-        {
-            "organization": org.username,
-            "admin_usernames": [user.username for user in admin_users],
-        },
-    )
+    params = {
+        "organization": org.username,
+        "admin_usernames": [user.username for user in admin_users],
+    }
+
+    if contact_email:
+        send_email(contact_email, subject, "orgrecovery", params)
+    else:
+        # Fallback: send to each admin user's personal email
+        for admin in admin_users:
+            if admin.email:
+                send_email(admin.email, subject, "orgrecovery", params)
 
 
 def send_recovery_email(email, token):
