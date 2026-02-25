@@ -1,6 +1,8 @@
 import pytest
+from peewee import IntegrityError
 from playhouse.test_utils import assert_query_count
 
+from data.database import OrganizationContactEmail
 from data.model.organization import (
     create_organization,
     get_organization,
@@ -175,3 +177,49 @@ class TestGetOrganizationMemberSet:
             members = get_organization_member_set(org)
 
         assert len(members) > 0
+
+
+class TestOrganizationContactEmail:
+    """Tests for the OrganizationContactEmail model."""
+
+    def test_create_with_email(self, initialized_db):
+        """Test creating an OrganizationContactEmail with a contact email."""
+        org = get_organization("buynlarge")
+        record = OrganizationContactEmail.create(
+            organization=org, contact_email="contact@example.com"
+        )
+        assert record.contact_email == "contact@example.com"
+        assert record.organization_id == org.id
+
+    def test_create_with_null_email(self, initialized_db):
+        """Test creating an OrganizationContactEmail with a null contact email."""
+        org = get_organization("buynlarge")
+        record = OrganizationContactEmail.create(organization=org, contact_email=None)
+        assert record.contact_email is None
+        assert record.organization_id == org.id
+
+    def test_unique_constraint_on_organization(self, initialized_db):
+        """Test that only one contact email record can exist per organization."""
+        org = get_organization("buynlarge")
+        OrganizationContactEmail.create(organization=org, contact_email="first@example.com")
+
+        with pytest.raises(IntegrityError):
+            OrganizationContactEmail.create(organization=org, contact_email="second@example.com")
+
+    def test_multiple_orgs_can_share_email(self, initialized_db):
+        """Test that multiple organizations can have the same contact email."""
+        org1 = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org2 = create_organization("testsharedorg", "shared@example.com", admin)
+
+        shared_email = "shared@example.com"
+        record1 = OrganizationContactEmail.create(
+            organization=org1, contact_email=shared_email
+        )
+        record2 = OrganizationContactEmail.create(
+            organization=org2, contact_email=shared_email
+        )
+
+        assert record1.contact_email == shared_email
+        assert record2.contact_email == shared_email
+        assert record1.organization_id != record2.organization_id
