@@ -1116,16 +1116,31 @@ class Recovery(ApiResource):
 
         email = recovery_data["email"]
         user = model.user.find_user_by_email(email)
+
         if not user:
+            # Try to find org by contact_email (new orgs have UUID internal emails)
+            orgs = list(model.organization.find_organizations_by_contact_email(email))
+            if orgs:
+                for org in orgs:
+                    contact_email = model.organization.get_contact_email(org)
+                    admin_users = model.organization.get_admin_users(org)
+                    send_org_recovery_email(org, admin_users, contact_email=contact_email)
+                return {
+                    "status": "org",
+                    "orgemail": email,
+                    "orgname": redact(orgs[0].username),
+                }
             return {
                 "status": "sent",
             }
 
         if user.organization:
-            send_org_recovery_email(user, model.organization.get_admin_users(user))
+            contact_email = model.organization.get_contact_email(user)
+            admin_users = model.organization.get_admin_users(user)
+            send_org_recovery_email(user, admin_users, contact_email=contact_email)
             return {
                 "status": "org",
-                "orgemail": email,
+                "orgemail": contact_email or email,
                 "orgname": redact(user.username),
             }
 
