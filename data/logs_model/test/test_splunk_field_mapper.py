@@ -280,6 +280,14 @@ class TestSplunkLogMapperBatchLookupUsers:
         result = field_mapper._batch_lookup_users([])
         assert result == {}
 
+    def test_batch_user_lookup_falls_back_on_exception(self, field_mapper, mock_model):
+        """Test that _batch_lookup_users returns None values when query raises."""
+        mock_model.user.get_namespace_users_by_usernames = Mock(side_effect=Exception("db error"))
+
+        result = field_mapper._batch_lookup_users(["user1", "user2"])
+
+        assert result == {"user1": None, "user2": None}
+
 
 class TestSplunkLogMapperHandlesDeletedUser:
     """Tests for handling deleted users."""
