@@ -275,18 +275,18 @@ class TestSplunkLogMapperBatchLookupUsers:
         assert result["user1"] is not None
         assert result["nonexistent"] is None
 
-    def test_batch_user_lookup_uses_cache(self, field_mapper):
-        """Test that _batch_lookup_users caches results."""
-        field_mapper._batch_lookup_users(["user1"])
-        field_mapper._batch_lookup_users(["user1", "user2"])
-
-        assert "user1" in field_mapper._user_cache
-        assert "user2" in field_mapper._user_cache
-
     def test_batch_user_lookup_empty_list(self, field_mapper):
         """Test that _batch_lookup_users handles empty list."""
         result = field_mapper._batch_lookup_users([])
         assert result == {}
+
+    def test_batch_user_lookup_falls_back_on_exception(self, field_mapper, mock_model):
+        """Test that _batch_lookup_users returns None values when query raises."""
+        mock_model.user.get_namespace_users_by_usernames = Mock(side_effect=Exception("db error"))
+
+        result = field_mapper._batch_lookup_users(["user1", "user2"])
+
+        assert result == {"user1": None, "user2": None}
 
 
 class TestSplunkLogMapperHandlesDeletedUser:
@@ -321,20 +321,3 @@ class TestSplunkLogMapperHandlesDeletedUser:
         assert logs[0].account_username == "deleted_user"
         assert logs[0].account_email is None
         assert logs[0].account_organization is None
-
-
-class TestSplunkLogMapperClearCache:
-    """Tests for clear_cache method."""
-
-    def test_clear_cache(self, field_mapper):
-        """Test that clear_cache clears internal caches."""
-        field_mapper._batch_lookup_users(["user1"])
-        field_mapper._get_kind_id("push_repo")
-
-        assert len(field_mapper._user_cache) > 0
-        assert field_mapper._kind_map is not None
-
-        field_mapper.clear_cache()
-
-        assert len(field_mapper._user_cache) == 0
-        assert field_mapper._kind_map is None
