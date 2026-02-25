@@ -96,9 +96,15 @@ def org_view(o, teams):
         features.SUPERUSERS_FULL_ACCESS and allow_if_superuser()
     )
 
+    # Fetch contact_email from separate table
+    contact_email = None
+    if is_admin or can_view_as_superuser:
+        contact_email = model.organization.get_contact_email(o)
+
     view = {
         "name": o.username,
-        "email": o.email if is_admin or can_view_as_superuser else "",
+        "email": contact_email or "" if (is_admin or can_view_as_superuser) else "",
+        "contact_email": contact_email if (is_admin or can_view_as_superuser) else None,
         "avatar": avatar.get_data_for_user(o),
         "is_admin": is_admin,
         "is_member": is_member,
@@ -143,7 +149,11 @@ class OrganizationList(ApiResource):
                 },
                 "email": {
                     "type": "string",
-                    "description": "Organization contact email",
+                    "description": "Organization contact email (backward compat)",
+                },
+                "contact_email": {
+                    "type": "string",
+                    "description": "Optional contact email for organization recovery and notifications",
                 },
                 "recaptcha_response": {
                     "type": "string",
@@ -186,8 +196,13 @@ class OrganizationList(ApiResource):
             msg = "A user or organization with this name already exists"
             raise request_error(message=msg)
 
-        if features.MAILING and not org_data.get("email"):
-            raise request_error(message="Email address is required")
+        # Extract contact_email (prefer contact_email, fall back to email for backward compat)
+        contact_email = org_data.get("contact_email") or org_data.get("email")
+        if contact_email:
+            from util.validation import validate_email
+
+            if not validate_email(contact_email):
+                raise request_error(message="Invalid email address")
 
         # If recaptcha is enabled, then verify the user is a human.
         if features.RECAPTCHA:
@@ -206,13 +221,13 @@ class OrganizationList(ApiResource):
                 org_data["name"],
                 org_data.get("email"),
                 user,
-                email_required=features.MAILING,
                 is_possible_abuser=is_possible_abuser,
+                contact_email=contact_email,
             )
             log_action(
                 "org_create",
                 org_data["name"],
-                {"email": org_data.get("email"), "namespace": org_data["name"]},
+                {"contact_email": contact_email, "namespace": org_data["name"]},
             )
             return "Created", 201
         except model.DataModelException as ex:
@@ -234,7 +249,11 @@ class Organization(ApiResource):
             "properties": {
                 "email": {
                     "type": "string",
-                    "description": "Organization contact email",
+                    "description": "Organization contact email (backward compat)",
+                },
+                "contact_email": {
+                    "type": "string",
+                    "description": "Contact email for organization recovery and notifications",
                 },
                 "invoice_email": {
                     "type": "boolean",
@@ -312,20 +331,27 @@ class Organization(ApiResource):
                     {"invoice_email_address": new_email, "namespace": orgname},
                 )
 
-            if "email" in org_data and org_data["email"] != org.email:
-                new_email = org_data["email"]
-                old_email = org.email
+            new_contact = org_data.get("contact_email") or org_data.get("email")
+            if new_contact is not None:
+                current_contact = model.organization.get_contact_email(org)
+                if new_contact != current_contact:
+                    if new_contact:
+                        from util.validation import validate_email
 
-                if model.user.find_user_by_email(new_email):
-                    raise request_error(message="E-mail address already used")
+                        if not validate_email(new_contact):
+                            raise request_error(message="Invalid email address")
 
-                logger.debug("Changing email address for organization: %s", org.username)
-                model.user.update_email(org, new_email)
-                log_action(
-                    "org_change_email",
-                    orgname,
-                    {"email": new_email, "namespace": orgname, "old_email": old_email},
-                )
+                    logger.debug("Changing contact email for organization: %s", org.username)
+                    model.organization.set_contact_email(org, new_contact)
+                    log_action(
+                        "org_change_email",
+                        orgname,
+                        {
+                            "contact_email": new_contact,
+                            "namespace": orgname,
+                            "old_email": current_contact or "",
+                        },
+                    )
 
             if features.CHANGE_TAG_EXPIRATION and "tag_expiration_s" in org_data:
                 logger.debug(

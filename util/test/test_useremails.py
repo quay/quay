@@ -3,7 +3,7 @@ from test.fixtures import *
 import mock
 import pytest
 
-from util.useremails import render_email, send_recovery_email
+from util.useremails import render_email, send_org_recovery_email, send_recovery_email
 
 
 def test_render_email():
@@ -109,3 +109,56 @@ def test_send_recovery_email(mock_send_email, initialized_db):
     mock_send_email.assert_called_once_with(
         email, subject, template_file, parameters, action=action
     )
+
+
+@mock.patch("util.useremails.send_email")
+def test_send_org_recovery_email_with_contact_email(mock_send_email, initialized_db):
+    """Test that send_org_recovery_email sends to contact_email when provided."""
+    org = mock.MagicMock()
+    org.username = "testorg"
+    admin1 = mock.MagicMock()
+    admin1.username = "admin1"
+    admin1.email = "admin1@example.com"
+
+    send_org_recovery_email(org, [admin1], contact_email="contact@example.com")
+
+    mock_send_email.assert_called_once_with(
+        "contact@example.com",
+        "Organization testorg recovery",
+        "orgrecovery",
+        {"organization": "testorg", "admin_usernames": ["admin1"]},
+    )
+
+
+@mock.patch("util.useremails.send_email")
+def test_send_org_recovery_email_fallback_to_admins(mock_send_email, initialized_db):
+    """Test that send_org_recovery_email falls back to admin emails when no contact_email."""
+    org = mock.MagicMock()
+    org.username = "testorg"
+    admin1 = mock.MagicMock()
+    admin1.username = "admin1"
+    admin1.email = "admin1@example.com"
+    admin2 = mock.MagicMock()
+    admin2.username = "admin2"
+    admin2.email = "admin2@example.com"
+
+    send_org_recovery_email(org, [admin1, admin2])
+
+    assert mock_send_email.call_count == 2
+    calls = mock_send_email.call_args_list
+    assert calls[0][0][0] == "admin1@example.com"
+    assert calls[1][0][0] == "admin2@example.com"
+
+
+@mock.patch("util.useremails.send_email")
+def test_send_org_recovery_email_no_contact_no_admins(mock_send_email, initialized_db):
+    """Test that no emails are sent when no contact_email and no admin emails."""
+    org = mock.MagicMock()
+    org.username = "testorg"
+    admin = mock.MagicMock()
+    admin.username = "admin1"
+    admin.email = None
+
+    send_org_recovery_email(org, [admin])
+
+    mock_send_email.assert_not_called()

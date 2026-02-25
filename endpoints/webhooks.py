@@ -69,12 +69,21 @@ def stripe_webhook():
                 invoice = stripe.Invoice.retrieve(invoice_id)
                 if invoice:
                     invoice_html = renderInvoiceToHtml(invoice, namespace)
-                    send_invoice_email(
-                        namespace.invoice_email_address or namespace.email, invoice_html
-                    )
+                    recipient = namespace.invoice_email_address
+                    if not recipient and namespace.organization:
+                        from data.model.organization import get_contact_email
+
+                        recipient = get_contact_email(namespace)
+                    if not recipient:
+                        recipient = namespace.email
+                    send_invoice_email(recipient, invoice_html)
 
     elif event_type.startswith("customer.subscription."):
         cust_email = namespace.email if namespace is not None else "unknown@domain.com"
+        if namespace and namespace.organization:
+            from data.model.organization import get_contact_email
+
+            cust_email = get_contact_email(namespace) or cust_email
         quay_username = namespace.username if namespace is not None else "unknown"
 
         change_type = ""
@@ -98,7 +107,12 @@ def stripe_webhook():
 
     elif event_type == "invoice.payment_failed":
         if namespace:
-            send_payment_failed(namespace.email, namespace.username)
+            recipient = namespace.email
+            if namespace.organization:
+                from data.model.organization import get_contact_email
+
+                recipient = get_contact_email(namespace) or recipient
+            send_payment_failed(recipient, namespace.username)
 
     elif event_type == "checkout.session.completed":
         mode = request_data["data"]["object"]["mode"]
