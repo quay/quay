@@ -5,10 +5,14 @@ from playhouse.test_utils import assert_query_count
 from data.database import OrganizationContactEmail
 from data.model.organization import (
     create_organization,
+    delete_contact_email,
+    find_organizations_by_contact_email,
+    get_contact_email,
     get_organization,
     get_organization_member_set,
     get_organizations,
     is_org_admin,
+    set_contact_email,
 )
 from data.model.team import add_user_to_team, get_organization_team
 from data.model.user import (
@@ -223,3 +227,116 @@ class TestOrganizationContactEmail:
         assert record1.contact_email == shared_email
         assert record2.contact_email == shared_email
         assert record1.organization_id != record2.organization_id
+
+
+class TestContactEmailCRUD:
+    """Tests for contact_email CRUD functions."""
+
+    def test_get_contact_email_returns_none_when_no_record(self, initialized_db):
+        """Test get_contact_email returns None when no record exists."""
+        org = get_organization("buynlarge")
+        assert get_contact_email(org) is None
+
+    def test_get_contact_email_returns_email(self, initialized_db):
+        """Test get_contact_email returns the stored email."""
+        org = get_organization("buynlarge")
+        OrganizationContactEmail.create(organization=org, contact_email="test@example.com")
+        assert get_contact_email(org) == "test@example.com"
+
+    def test_set_contact_email_creates_record(self, initialized_db):
+        """Test set_contact_email creates a new record."""
+        org = get_organization("buynlarge")
+        record = set_contact_email(org, "new@example.com")
+        assert record.contact_email == "new@example.com"
+        assert get_contact_email(org) == "new@example.com"
+
+    def test_set_contact_email_updates_existing(self, initialized_db):
+        """Test set_contact_email updates an existing record."""
+        org = get_organization("buynlarge")
+        set_contact_email(org, "first@example.com")
+        set_contact_email(org, "updated@example.com")
+        assert get_contact_email(org) == "updated@example.com"
+
+    def test_delete_contact_email(self, initialized_db):
+        """Test delete_contact_email removes the record."""
+        org = get_organization("buynlarge")
+        set_contact_email(org, "delete-me@example.com")
+        assert get_contact_email(org) == "delete-me@example.com"
+
+        delete_contact_email(org)
+        assert get_contact_email(org) is None
+
+    def test_delete_contact_email_no_record(self, initialized_db):
+        """Test delete_contact_email is safe when no record exists."""
+        org = get_organization("buynlarge")
+        delete_contact_email(org)  # Should not raise
+
+    def test_find_organizations_by_contact_email_single(self, initialized_db):
+        """Test find_organizations_by_contact_email returns matching org."""
+        admin = get_user("devtable")
+        org = create_organization("findorg1", None, admin, contact_email="find@example.com")
+        results = list(find_organizations_by_contact_email("find@example.com"))
+        assert len(results) == 1
+        assert results[0].username == "findorg1"
+
+    def test_find_organizations_by_contact_email_multiple(self, initialized_db):
+        """Test find_organizations_by_contact_email returns multiple matching orgs."""
+        admin = get_user("devtable")
+        create_organization("findorg2", None, admin, contact_email="shared@example.com")
+        create_organization("findorg3", None, admin, contact_email="shared@example.com")
+        results = list(find_organizations_by_contact_email("shared@example.com"))
+        assert len(results) == 2
+        names = {r.username for r in results}
+        assert names == {"findorg2", "findorg3"}
+
+    def test_find_organizations_by_contact_email_no_match(self, initialized_db):
+        """Test find_organizations_by_contact_email returns empty for no match."""
+        results = list(find_organizations_by_contact_email("nonexistent@example.com"))
+        assert len(results) == 0
+
+
+class TestCreateOrganizationContactEmail:
+    """Tests for create_organization() with contact_email support."""
+
+    def test_create_org_generates_uuid_email(self, initialized_db):
+        """Test that create_organization generates a UUID for User.email."""
+        admin = get_user("devtable")
+        org = create_organization("uuidorg", "ignored@example.com", admin)
+        # User.email should be a UUID, not the passed email
+        assert org.email != "ignored@example.com"
+        # UUID format: 8-4-4-4-12 hex chars
+        assert len(org.email) == 36
+        assert org.email.count("-") == 4
+
+    def test_create_org_no_contact_email(self, initialized_db):
+        """Test creating org without contact_email."""
+        admin = get_user("devtable")
+        org = create_organization("nocontactorg", None, admin)
+        assert get_contact_email(org) is None
+
+    def test_create_org_with_contact_email(self, initialized_db):
+        """Test creating org with contact_email stores it in separate table."""
+        admin = get_user("devtable")
+        org = create_organization(
+            "contactorg", None, admin, contact_email="contact@example.com"
+        )
+        assert get_contact_email(org) == "contact@example.com"
+
+    def test_create_two_orgs_same_contact_email(self, initialized_db):
+        """Test two orgs can share the same contact_email."""
+        admin = get_user("devtable")
+        org1 = create_organization(
+            "shareorg1", None, admin, contact_email="same@example.com"
+        )
+        org2 = create_organization(
+            "shareorg2", None, admin, contact_email="same@example.com"
+        )
+        assert get_contact_email(org1) == "same@example.com"
+        assert get_contact_email(org2) == "same@example.com"
+
+    def test_create_org_backward_compat(self, initialized_db):
+        """Test that existing callers (without contact_email) still work."""
+        admin = get_user("devtable")
+        org = create_organization("compatorg", "compat@example.com", admin)
+        assert org.organization is True
+        assert org.username == "compatorg"
