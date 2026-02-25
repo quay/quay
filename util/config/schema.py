@@ -2312,7 +2312,7 @@ CONFIG_SCHEMA = {
         "x-reference": None,
     },
     "PYROSCOPE_SERVER_ADDRESS": {
-        "type": "string",
+        "type": ["string", "null"],
         "description": "Pyroscope server URL when PROFILING_TYPE is Pyroscope.",
         "x-example": "http://localhost:4040",
         "x-reference": None,

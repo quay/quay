@@ -18,7 +18,7 @@ def init_pyroscope(app):
         )
         return
     try:
-        response = requests.get(server_address, timeout=60)
+        response = requests.get(server_address, timeout=5)
         if response.status_code != requests.codes.ok:
             logger.warning(
                 "Pyroscope server not reachable. Status code: %s", response.status_code
