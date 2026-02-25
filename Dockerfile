@@ -145,12 +145,12 @@ COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
 # Copy in source and update local copy of AWS IP Ranges.
 # This is a bad place to do the curl, but there's no good place to do
 # it except to have it checked in.
-COPY --chown=0:0 . .
-RUN set -ex\
-	; chmod -R g=u ./conf\
-    ; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json 2>/dev/null \
-    || cp /cachi2/output/deps/generic/aws-ip-ranges.json util/ipresolver/aws-ip-ranges.json \
-	;
+# COPY --chown=0:0 . .
+# RUN set -ex\
+# 	; chmod -R g=u ./conf\
+#     ; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json 2>/dev/null \
+#     || cp /cachi2/output/deps/generic/aws-ip-ranges.json util/ipresolver/aws-ip-ranges.json \
+# 	;
 
 # Final is the end container, where all the work from the other
 # containers are copied in.
