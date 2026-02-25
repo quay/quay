@@ -118,3 +118,7 @@ FEATURE_USER_METADATA: True
 #  PREFERRED_USERNAME_CLAIM_NAME: preferred_username
 #  LOGIN_SCOPES: ['openid']
 DEFAULT_UI: "angular"
+
+# Pyroscope continuous profiling is disabled by default. To enable, uncomment and restart:
+# PROFILING_TYPE: Pyroscope
+# PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040

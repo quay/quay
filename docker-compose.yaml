@@ -51,6 +51,13 @@ services:
     ports:
       - "6379:6379"
 
+  # Pyroscope server for continuous profiling (optional). UI: http://localhost:4040
+  pyroscope:
+    container_name: quay-pyroscope
+    image: docker.io/grafana/pyroscope:latest
+    ports:
+      - "4040:4040"
+
   ldap:
     container_name: quay-ldap
     image: docker.io/389ds/dirsrv:latest

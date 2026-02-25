@@ -265,6 +265,16 @@ log_archive = LogArchive(app, storage)
 analytics = Analytics(app)
 billing = Billing(app)
 sentry = Sentry(app)
+# Pyroscope: only when enabled; check server reachable then start profiling
+if app.config.get("PROFILING_TYPE") == "Pyroscope":
+    if app.config.get("PYROSCOPE_SERVER_ADDRESS"):
+        from util.profiling.pyroscope import init_pyroscope
+
+        init_pyroscope(app)
+    else:
+        logger.warning(
+            "Pyroscope enabled but PYROSCOPE_SERVER_ADDRESS not set. Profiling disabled."
+        )
 build_logs = BuildLogs(app)
 userevents = UserEventsBuilderModule(app)
 pullmetrics = PullMetricsBuilderModule(app)
