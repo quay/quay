@@ -48,10 +48,11 @@
 - **File:** `data/users/externaljwt.py`
 - **Flow:** Loads PEM public key certificate, verifies externally-signed JWTs for federated auth
 
-### Docker Schema1 Manifest Signing
+### Docker Schema1 Manifest Signing (v1 registry — dropping)
 - **File:** `image/docker/schema1.py`
 - **Algorithm:** RS256 via `authlib.jose.JsonWebSignature`
 - **Flow:** Signs/verifies Docker v2 schema1 manifests (legacy format)
+- **Status:** Will not be ported to Go. Schema1 is superseded by schema2/OCI manifests.
 
 ### Go migration considerations
 - Go equivalents: `github.com/golang-jwt/jwt/v5`, `github.com/lestrrat-go/jwx/v2`
@@ -148,7 +149,13 @@ config["DATABASE_SECRET_KEY"]
 - **Files:** `digest/digest_tools.py`, `digest/checksums.py`
 - **Algorithm:** SHA-256 (primary), SHA-1 (legacy schema1)
 - **Library:** `hashlib`
-- **Usage:** OCI image content addressing (`sha256:<hex>`), layer checksums, tarsum
+- **Usage:** OCI image content addressing (`sha256:<hex>`), layer checksums
+
+### Tarsum (v1 registry — dropping)
+- **File:** `digest/checksums.py`
+- **Algorithm:** `tarsum+sha256` — SHA-256 of sorted per-file tar header + content hashes
+- **Usage:** Docker v1 registry layer verification only (`endpoints/v1/registry.py`)
+- **Status:** Deprecated. Docker removed tarsum in 2015 due to non-reproducibility across tar implementations. Only used by the v1 registry protocol which will not be carried forward to Go.
 
 ### PKCE Code Challenge
 - **File:** `oauth/pkce.py`
@@ -157,7 +164,7 @@ config["DATABASE_SECRET_KEY"]
 
 ### Go migration considerations
 - Go stdlib `crypto/sha256`, `crypto/sha1` — straightforward
-- Tarsum implementation needs porting (`digest/checksums.py`)
+- Tarsum, Docker v1 manifest signing (schema1 JWS), and other v1 registry protocol crypto will not be ported to Go
 
 ---
 
@@ -261,7 +268,8 @@ config["DATABASE_SECRET_KEY"]
 | OIDC/JWKS | Medium | Medium | Must replicate key fetching, caching, validation |
 | HMAC/CSRF | Low | Low | Trivial in Go |
 | Fernet | Medium | Medium | No Go stdlib equivalent; consider replacing with AES-GCM |
-| Docker schema1 JWS | Medium | Low | Legacy format, may not need long-term support |
+| Docker schema1 JWS | N/A | **None** | Legacy v1 protocol — will not be ported to Go |
+| Tarsum | N/A | **None** | Legacy v1 protocol — will not be ported to Go |
 | FIPS mode | Medium | Medium | Go 1.24 native FIPS module; different algorithm surface than Python/OpenSSL |
 
 ---
