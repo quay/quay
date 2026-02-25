@@ -13,9 +13,10 @@
 | `Authlib` | 1.6.5 | JOSE (JWK, JWS, JWE), OAuth/OIDC, JWT signing/verification |
 | `PyJWT` | 2.8.0 | JWT encode/decode |
 | `pyOpenSSL` | 25.3.0 | X.509 certificate loading, validation, SAN extraction |
-| `bcrypt` | 3.1.7 | Password hashing (users, robot tokens) |
+| `bcrypt` | 3.1.7 | Password and credential hashing (`CredentialField`) |
+| `rsa` | 4.9.1 | CloudFront SHA-1 signing fallback in FIPS-restricted environments |
 | `PyNaCl` | 1.5.0 | NaCl bindings (indirect dependency) |
-| `pyHanko` | 0.28.0 | PDF signing |
+| `pyHanko` | 0.28.0 | Dependency present (no direct in-tree usage found in this audit) |
 
 **System packages (Dockerfile):** `openssl`, `openssl-devel`, `libffi-devel`
 
@@ -69,7 +70,7 @@
 - **Files:** `data/model/service_keys.py`, `util/security/instancekeys.py`
 - **Key size:** RSA-2048
 - **Library:** `cryptography.hazmat.primitives.asymmetric.rsa`, Authlib `JsonWebKey`
-- **Operations:** Key generation, JWK thumbprint (RFC 7638) for key ID, PEM serialization, LRU-cached public key lookups
+- **Operations:** Key generation, JWK thumbprint (RFC 7638) for key ID, PEM serialization, expiry-cached key lookups, cached JWK→public-key conversion
 - **Config:** `INSTANCE_SERVICE_KEY_LOCATION`, `INSTANCE_SERVICE_KEY_KID_LOCATION`, `INSTANCE_SERVICE_KEY_EXPIRATION` (default 120 min)
 
 ### SSH Key Generation
@@ -104,7 +105,7 @@
 - **Format:** `v0$$<base64(nonce + ciphertext + tag)>`
 - **Usage:** `FieldEncrypter` class encrypts sensitive DB columns via `EncryptedCharField` / `EncryptedTextField`
 
-**Affected database models (7 models, 10 fields):**
+**Affected database models (8 models, 12 fields):**
 
 | Model | Field(s) | Location |
 |-------|----------|----------|
@@ -112,7 +113,7 @@
 | `AccessToken` | `token_code` | `data/database.py:1153` |
 | `RepositoryBuildTrigger` | `secure_auth_token`, `secure_private_key` | `data/database.py:1179-1180` |
 | `OAuthApplication` | `secure_client_secret` | `data/database.py:1473` |
-| `AppSpecificToken` | `token_secret` | `data/database.py:1692` |
+| `AppSpecificAuthToken` | `token_secret` | `data/database.py:1692` |
 | `RepoMirrorConfig` | `external_registry_username`, `external_registry_password` | `data/database.py:1902-1903` |
 | `OrgMirrorConfig` | `external_registry_username`, `external_registry_password` | `data/database.py:1992-1993` |
 | `ProxyCacheConfig` | `upstream_registry_username`, `upstream_registry_password` | `data/database.py:2111-2112` |
@@ -147,9 +148,13 @@ config["DATABASE_SECRET_KEY"]
 
 ### Content-Addressable Digests
 - **Files:** `digest/digest_tools.py`, `digest/checksums.py`
-- **Algorithm:** SHA-256 (primary), SHA-1 (legacy schema1)
+- **Algorithm:** SHA-256 (primary), SHA-1 (legacy and utility paths)
 - **Library:** `hashlib`
 - **Usage:** OCI image content addressing (`sha256:<hex>`), layer checksums
+
+### Additional SHA-1 Usage (Non-primary)
+- **Swift temp URL signing:** `storage/swift.py` uses HMAC-SHA1 for temporary download URL signatures (`temp_url_sig`).
+- **Kinesis partitioning utility hash:** `data/logs_model/logs_producer/kinesis_stream_logs_producer.py` uses SHA-1 for partition-key derivation (distribution utility, not credential/integrity verification).
 
 ### Tarsum (v1 registry — dropping)
 - **File:** `digest/checksums.py`
@@ -173,8 +178,9 @@ config["DATABASE_SECRET_KEY"]
 - **Files:** `data/model/user.py`, `data/fields.py`, `auth/credentials.py`
 - **Algorithm:** bcrypt
 - **Library:** `bcrypt` (3.1.7)
-- **Operations:** `bcrypt.hashpw()` for hashing, `bcrypt.checkpw()` equivalent via `Credential.matches()`
-- **Usage:** User passwords, robot account tokens, app-specific tokens
+- **Operations:** `bcrypt.hashpw()` for hashing, `bcrypt.checkpw()`-equivalent via `Credential.matches()`
+- **Usage:** User password hashes and other `CredentialField` values (e.g. OAuth auth code/access token credentials).
+- **Important distinction:** Robot account tokens and app-specific token secrets are stored with `EncryptedCharField` (AES-CCM), not bcrypt.
 
 ### Go migration considerations
 - Go: `golang.org/x/crypto/bcrypt` — drop-in compatible, same hash format
@@ -209,12 +215,18 @@ config["DATABASE_SECRET_KEY"]
 
 ---
 
-## 8. HMAC & CSRF
+## 8. CSRF Token Comparison & HMAC
 
+### CSRF token comparison
 - **File:** `endpoints/csrf.py`
-- **Algorithm:** HMAC (implicit via `hmac.compare_digest`)
-- **Usage:** Constant-time CSRF token comparison to prevent timing attacks
+- **Algorithm/primitive:** Constant-time comparison via `hmac.compare_digest`
+- **Usage:** Compares session and request CSRF tokens to mitigate timing side channels
 - **Token generation:** 48 bytes from `os.urandom`, base64url-encoded
+
+### HMAC signing
+- **File:** `storage/swift.py`
+- **Algorithm:** HMAC-SHA1
+- **Usage:** Swift temporary URL signature generation (`temp_url_sig`) for direct download URLs
 
 ### Go migration considerations
 - Go stdlib `crypto/hmac`, `crypto/subtle.ConstantTimeCompare`
@@ -229,6 +241,8 @@ config["DATABASE_SECRET_KEY"]
 - **Impact:** When FIPS is enabled, must avoid MD5, SHA-1 in security contexts
 
 ### Go FIPS support (Go 1.24+)
+**Note:** The bullets below are external/runtime assumptions for migration planning, not properties validated from this Python repository.
+
 - Go 1.24 includes a **native FIPS 140-3 cryptographic module** (`crypto/internal/fips140`)
 - Enabled at runtime via `GODEBUG=fips140=on` (or `fips140=only` for strict mode)
 - No cgo or BoringCrypto dependency required — pure Go implementation
@@ -278,7 +292,7 @@ config["DATABASE_SECRET_KEY"]
 
 ### Problem
 
-The current `v0` database field encryption uses AES-CCM. Go 1.24's native FIPS 140-3 module does not include AES-CCM — it supports AES-GCM, AES-CBC, AES-CTR, and CMAC. Python and Go must coexist reading/writing the same database during migration, and customer-paced upgrades mean we cannot force a hard cutover.
+The current `v0` database field encryption uses AES-CCM. **External Go assumption:** if Go runtime FIPS mode is required and AES-CCM is unavailable in that mode, we need a non-CCM target cipher. Python and Go must coexist reading/writing the same database during migration, and customer-paced upgrades mean we cannot force a hard cutover.
 
 ### Target: `v1` Encryption Scheme
 
@@ -293,7 +307,7 @@ The current `v0` database field encryption uses AES-CCM. Go 1.24's native FIPS 1
 | FIPS status (Go 1.24 native) | **Not available** | Approved |
 
 **Why AES-256-GCM:**
-- FIPS-approved and present in Go 1.24's native FIPS module (`crypto/internal/fips140/aes/gcm`)
+- FIPS-approved and expected to be available in Go FIPS runtime mode (external assumption to validate in Go environment)
 - FIPS-approved in Python's `cryptography` library (OpenSSL FIPS provider)
 - AEAD like AES-CCM — provides both confidentiality and authenticity, no security regression
 - First-class Go stdlib support via `crypto/aes` + `crypto/cipher.NewGCM`
@@ -347,7 +361,7 @@ Release N+2:         reads v0 + v1              reads v1 only
 |-------|-----------------|-------|
 | `RobotAccountToken` | High | One per robot account |
 | `AccessToken` | High | Accumulates over time |
-| `AppSpecificToken` | Medium | User-created |
+| `AppSpecificAuthToken` | Medium | User-created |
 | `OAuthApplication` | Low | One per OAuth app |
 | `RepositoryBuildTrigger` | Low-Medium | One per build trigger |
 | `RepoMirrorConfig` | Low | One per mirrored repo |
