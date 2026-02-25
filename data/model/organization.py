@@ -1,7 +1,10 @@
+import uuid
+
 from data.database import (
     DeletedNamespace,
     FederatedLogin,
     Namespace,
+    OrganizationContactEmail,
     Repository,
     RepositoryPermission,
     Team,
@@ -20,15 +23,24 @@ from data.model import (
 )
 
 
-def create_organization(name, email, creating_user, email_required=True, is_possible_abuser=False):
+def create_organization(
+    name, email, creating_user, email_required=True, is_possible_abuser=False, contact_email=None
+):
     with db_transaction():
         try:
-            # Create the org
+            # Auto-generate internal email — never shown to users
+            internal_email = str(uuid.uuid4())
             new_org = user.create_user_noverify(
-                name, email, email_required=email_required, is_possible_abuser=is_possible_abuser
+                name, internal_email, email_required=False, is_possible_abuser=is_possible_abuser
             )
             new_org.organization = True
             new_org.save()
+
+            # Store contact_email in separate table if provided
+            if contact_email:
+                OrganizationContactEmail.create(
+                    organization=new_org, contact_email=contact_email
+                )
 
             # Create a team for the owners
             owners_team = team.create_team("owners", new_org, "admin")
@@ -209,4 +221,44 @@ def is_org_admin(user, org):
         .join(TeamRole)
         .where(Team.organization == org, TeamRole.name == "admin", TeamMember.user == user)
         .exists()
+    )
+
+
+def get_contact_email(org):
+    """Returns contact_email string or None."""
+    try:
+        record = OrganizationContactEmail.get(OrganizationContactEmail.organization == org)
+        return record.contact_email
+    except OrganizationContactEmail.DoesNotExist:
+        return None
+
+
+def set_contact_email(org, contact_email):
+    """Upserts contact_email (get_or_create + update)."""
+    record, created = OrganizationContactEmail.get_or_create(
+        organization=org,
+        defaults={"contact_email": contact_email},
+    )
+    if not created:
+        record.contact_email = contact_email
+        record.save()
+    return record
+
+
+def delete_contact_email(org):
+    """Removes the contact_email record."""
+    OrganizationContactEmail.delete().where(
+        OrganizationContactEmail.organization == org
+    ).execute()
+
+
+def find_organizations_by_contact_email(contact_email):
+    """Returns query of User records (orgs) matching a contact_email."""
+    return (
+        User.select()
+        .join(OrganizationContactEmail)
+        .where(
+            OrganizationContactEmail.contact_email == contact_email,
+            User.organization == True,
+        )
     )
