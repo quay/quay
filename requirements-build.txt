@@ -488,4 +488,3 @@ setuptools==78.1.1 \
     #   wrapt
     #   xhtml2pdf
     #   zipp
-
