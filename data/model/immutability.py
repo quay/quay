@@ -1,8 +1,8 @@
 import logging
+import re
 from functools import lru_cache
+from re import Pattern
 from typing import Optional, TypedDict
-
-import re2
 
 from data.database import (
     NamespaceImmutabilityPolicy as NamespaceImmutabilityPolicyTable,
@@ -73,10 +73,9 @@ def _validate_policy(policy_config: PolicyConfig) -> None:
         raise InvalidImmutabilityPolicy("tag_pattern must be 256 characters or less")
 
     try:
-        re2.compile(tag_pattern)
-    except re2.error as e:
-        msg = e.args[0].decode("utf-8") if isinstance(e.args[0], bytes) else str(e)
-        raise InvalidImmutabilityPolicy(f"Invalid regex pattern: {msg}")
+        re.compile(tag_pattern)
+    except re.error as e:
+        raise InvalidImmutabilityPolicy(f"Invalid regex pattern: {e}")
 
     tag_pattern_matches = policy_config.get("tag_pattern_matches")
     if tag_pattern_matches is not None and not isinstance(tag_pattern_matches, bool):
@@ -84,16 +83,15 @@ def _validate_policy(policy_config: PolicyConfig) -> None:
 
 
 @lru_cache(maxsize=256)
-def _compile_pattern(pattern: str):
-    return re2.compile(pattern)
+def _compile_pattern(pattern: str) -> Pattern[str]:
+    return re.compile(pattern)
 
 
 def _matches_policy(tag_name: str, tag_pattern: str, tag_pattern_matches: bool) -> bool:
     """Check if tag should be immutable based on pattern."""
     try:
-        compiled = _compile_pattern(tag_pattern)
-        matches = bool(compiled.match(tag_name))
-    except re2.error:
+        matches = bool(_compile_pattern(tag_pattern).match(tag_name))
+    except re.error:
         return False
     return matches if tag_pattern_matches else not matches
 
