@@ -213,12 +213,8 @@ class TestOrganizationContactEmail:
         org2 = create_organization("testsharedorg", "shared@example.com", admin)
 
         shared_email = "shared@example.com"
-        record1 = OrganizationContactEmail.create(
-            organization=org1, contact_email=shared_email
-        )
-        record2 = OrganizationContactEmail.create(
-            organization=org2, contact_email=shared_email
-        )
+        record1 = OrganizationContactEmail.create(organization=org1, contact_email=shared_email)
+        record2 = OrganizationContactEmail.create(organization=org2, contact_email=shared_email)
 
         assert record1.contact_email == shared_email
         assert record2.contact_email == shared_email
