@@ -78,3 +78,31 @@ def test_encryption_value(secret_key, encrypted_value, expected_decrypted_value)
     decrypted = encrypter.decrypt_value(encrypted_value)
 
     assert decrypted == expected_decrypted_value
+
+
+@pytest.mark.parametrize(
+    "secret_key, encrypted_value, expected_decrypted_value",
+    [
+        ("test1234", "v1$$KeHii9PxEjCRCz0vP+7+492VY29BypjJWesd/w==", ""),
+        ("test1234", "v1$$ycGiFF7IH9QmsxHoVRRkFzHSkR0cTthX1neza30kHGmpTXVypT3k", "hello world"),
+        (
+            "\1\2\3\4\5\6",
+            "v1$$zHTuvZ3QxWdYt9G5EFLgKm2V9/4Ys8Zrz6BSusy/wnf5fwVVXY39NMc2p20M/w==",
+            "hello world, again",
+        ),
+    ],
+)
+def test_encryption_value_v1(secret_key, encrypted_value, expected_decrypted_value):
+    encrypter = FieldEncrypter(secret_key, "v1")
+    decrypted = encrypter.decrypt_value(encrypted_value)
+
+    assert decrypted == expected_decrypted_value
+
+
+def test_cross_version_decrypt():
+    v0_enc = FieldEncrypter("test1234", "v0")
+    v1_enc = FieldEncrypter("test1234", "v1")
+    v0_val = v0_enc.encrypt_value("hello")
+    v1_val = v1_enc.encrypt_value("hello")
+    assert v0_enc.decrypt_value(v1_val) == "hello"
+    assert v1_enc.decrypt_value(v0_val) == "hello"
