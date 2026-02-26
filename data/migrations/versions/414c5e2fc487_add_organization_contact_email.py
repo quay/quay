@@ -41,26 +41,18 @@ def upgrade(op, tables, tester):
         unique=False,
     )
 
-    # Data migration: copy existing org emails to new table
+    # Data migration: copy existing org emails to new table in a single statement
     conn = op.get_bind()
-    orgs_with_real_email = conn.execute(
+    conn.execute(
         sa.text("""
+            INSERT INTO organizationcontactemail (organization_id, contact_email)
             SELECT id, email FROM "user"
             WHERE organization = true
-              AND email NOT LIKE '%placeholder.invalid'
               AND email IS NOT NULL
               AND length(email) < 64
+            ON CONFLICT (organization_id) DO NOTHING
         """)
     )
-    for org_id, email in orgs_with_real_email:
-        conn.execute(
-            sa.text("""
-                INSERT INTO organizationcontactemail (organization_id, contact_email)
-                VALUES (:org_id, :email)
-                ON CONFLICT (organization_id) DO NOTHING
-            """),
-            {"org_id": org_id, "email": email},
-        )
 
     tester.populate_table(
         "organizationcontactemail",
