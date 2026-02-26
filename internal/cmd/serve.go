@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -19,10 +20,13 @@ import (
 )
 
 func runServe(args []string) int {
-	fs := flag.NewFlagSet("serve", flag.ExitOnError)
-	addr := fs.String("addr", ":5000", "listen address (host:port)")
+	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
+	addr := fs.String("addr", "127.0.0.1:5000", "listen address (host:port)")
 	root := fs.String("root", "/var/lib/registry", "root directory for image storage")
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
 		return 1
 	}
 
@@ -51,21 +55,29 @@ func runServe(args []string) int {
 	app := handlers.NewApp(ctx, cfg)
 
 	srv := &http.Server{
-		Addr:    *addr,
-		Handler: app,
+		Addr:              *addr,
+		Handler:           app,
+		ReadHeaderTimeout: 10 * time.Second,
 
 		// Derive request contexts from root so shutdown cancels in-flight requests.
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
 
+	errCh := make(chan error, 1)
 	go func() {
 		fmt.Fprintf(os.Stderr, "registry listening on %s (storage: %s)\n", *addr, *root)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
 		}
 	}()
 
-	<-ctx.Done()
+	select {
+	case err := <-errCh:
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	case <-ctx.Done():
+	}
+
 	stop() // Restore default signal handling; second Ctrl-C kills immediately.
 
 	fmt.Fprintln(os.Stderr, "\nshutting down...")
