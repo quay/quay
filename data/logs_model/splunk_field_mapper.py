@@ -8,7 +8,7 @@ and batch lookups for performance.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from dateutil import parser as dateutil_parser
@@ -214,7 +214,7 @@ class SplunkLogMapper:
 
         if isinstance(datetime_value, (int, float)):
             try:
-                return datetime.utcfromtimestamp(datetime_value)
+                return datetime.fromtimestamp(datetime_value, tz=timezone.utc)
             except (ValueError, OSError, OverflowError) as e:
                 logger.warning("Failed to parse epoch timestamp '%s': %s", datetime_value, e)
                 return None
