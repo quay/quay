@@ -197,10 +197,11 @@ class SplunkLogMapper:
         """
         Parse Splunk datetime string to Python datetime.
 
-        Handles various formats including ISO format and Splunk's default format.
+        Handles various formats including ISO format, Splunk's default format,
+        and Unix epoch timestamps (int/float).
 
         Args:
-            datetime_value: Datetime as string or datetime object
+            datetime_value: Datetime as string, datetime object, or epoch timestamp
 
         Returns:
             Python datetime object or None if parsing fails
@@ -210,6 +211,13 @@ class SplunkLogMapper:
 
         if isinstance(datetime_value, datetime):
             return datetime_value
+
+        if isinstance(datetime_value, (int, float)):
+            try:
+                return datetime.utcfromtimestamp(datetime_value)
+            except (ValueError, OSError, OverflowError) as e:
+                logger.warning("Failed to parse epoch timestamp '%s': %s", datetime_value, e)
+                return None
 
         if isinstance(datetime_value, str):
             try:
