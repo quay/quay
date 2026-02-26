@@ -589,7 +589,12 @@ def configure(config_object, testing=False):
     db_concat_func.initialize(
         SCHEME_SPECIALIZED_CONCAT.get(parsed_write_uri.drivername, function_concat)
     )
-    db_encrypter.initialize(FieldEncrypter(config_object.get("DATABASE_SECRET_KEY")))
+    db_encrypter.initialize(
+        FieldEncrypter(
+            config_object.get("DATABASE_SECRET_KEY"),
+            version=config_object.get("DATABASE_ENCRYPTION_VERSION", "v0"),
+        )
+    )
     db_count_estimator.initialize(SCHEME_ESTIMATOR_FUNCTION[parsed_write_uri.drivername])
     db_regex_search.initialize(SCHEME_REGEX_FUNCTION.get(parsed_write_uri.drivername, regex_search))
 
