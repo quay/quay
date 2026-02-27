@@ -220,6 +220,28 @@ class TestSplunkLogMapperParseDatetime:
         dt = field_mapper._parse_datetime("not a date")
         assert dt is None
 
+    def test_parse_datetime_epoch_int(self, field_mapper):
+        """Test parsing integer epoch timestamp (UTC)."""
+        # 1705314600 = 2024-01-15 10:30:00 UTC
+        dt = field_mapper._parse_datetime(1705314600)
+
+        assert isinstance(dt, datetime)
+        assert dt.year == 2024
+        assert dt.month == 1
+        assert dt.day == 15
+
+    def test_parse_datetime_epoch_float(self, field_mapper):
+        """Test parsing float epoch timestamp."""
+        dt = field_mapper._parse_datetime(1705314600.5)
+
+        assert isinstance(dt, datetime)
+        assert dt.year == 2024
+
+    def test_parse_datetime_invalid_epoch_returns_none(self, field_mapper):
+        """Test that _parse_datetime returns None for overflow epoch."""
+        dt = field_mapper._parse_datetime(99999999999999)
+        assert dt is None
+
 
 class TestSplunkLogMapperParseMetadata:
     """Tests for _parse_metadata method."""

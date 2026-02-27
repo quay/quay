@@ -1,5 +1,9 @@
 import React from 'react';
-import {isNullOrUndefined, humanizeTimeForExpiry} from 'src/libs/utils';
+import {
+  isNullOrUndefined,
+  humanizeTimeForExpiry,
+  formatDate,
+} from 'src/libs/utils';
 import {useEvents} from './UseEvents';
 
 export function useLogDescriptions() {
@@ -75,13 +79,20 @@ export function useLogDescriptions() {
     return metadata.kid ? metadata.kid.substr(0, 12) : '';
   };
 
-  // Helper function to format Unix timestamps (mimics Angular's date filters)
-  const formatUnixTimestamp = (timestamp: string | number) => {
-    if (!timestamp) return '';
-    // Handle both string and number timestamps
-    const unixTime =
-      typeof timestamp === 'string' ? parseInt(timestamp) : timestamp;
-    return new Date(unixTime * 1000).toLocaleString();
+  // Helper to normalize timestamps that may be in milliseconds or numeric strings.
+  // formatDate expects seconds; values from tag.lifetime_end_ms are in ms.
+  // Epoch seconds won't exceed 1e10 until year ~2286, so values above that
+  // threshold are treated as milliseconds and divided by 1000.
+  // Metadata values are always strings, so numeric epoch strings like
+  // "1709251200" must be coerced to numbers for formatDate to work correctly.
+  const normalizeTimestamp = (ts: string | number): string | number => {
+    if (typeof ts === 'string' && /^\d+(\.\d+)?$/.test(ts)) {
+      ts = Number(ts);
+    }
+    if (typeof ts === 'number' && ts > 1e10) {
+      return ts / 1000;
+    }
+    return ts;
   };
 
   // Helper function to wrap variables with styling (mimics Angular's code tag styling)
@@ -341,7 +352,9 @@ export function useLogDescriptions() {
           }
         case 'sync_start_date':
           metadata.changed = 'Sync Start Date';
-          return `Mirror ${metadata.changed} changed to ${metadata.to}`;
+          return `Mirror ${metadata.changed} changed to ${formatDate(
+            normalizeTimestamp(metadata.to),
+          )}`;
         case 'sync_interval':
           metadata.changed = 'Sync Interval';
           return `Mirror ${metadata.changed} changed to ${metadata.to}`;
@@ -981,8 +994,10 @@ export function useLogDescriptions() {
     },
     service_key_extend: function (metadata: Metadata) {
       const keyName = formatServiceKeyName(metadata);
-      const oldDate = formatUnixTimestamp(metadata.old_expiration_date);
-      const newDate = formatUnixTimestamp(metadata.expiration_date);
+      const oldDate = formatDate(
+        normalizeTimestamp(metadata.old_expiration_date),
+      );
+      const newDate = formatDate(normalizeTimestamp(metadata.expiration_date));
       return (
         <>
           Change of expiration of service key {wrapVariable(keyName)} from{' '}
@@ -1027,14 +1042,22 @@ export function useLogDescriptions() {
 
     change_tag_expiration: function (metadata: Metadata) {
       if (metadata.expiration_date && metadata.old_expiration_date) {
-        const newDate = formatUnixTimestamp(metadata.expiration_date);
-        const oldDate = formatUnixTimestamp(metadata.old_expiration_date);
+        const newDate = formatDate(
+          normalizeTimestamp(metadata.expiration_date),
+        );
+        const oldDate = formatDate(
+          normalizeTimestamp(metadata.old_expiration_date),
+        );
         return `Tag ${metadata.tag} set to expire on ${newDate} (previously ${oldDate})`;
       } else if (metadata.expiration_date) {
-        const newDate = formatUnixTimestamp(metadata.expiration_date);
+        const newDate = formatDate(
+          normalizeTimestamp(metadata.expiration_date),
+        );
         return `Tag ${metadata.tag} set to expire on ${newDate}`;
       } else if (metadata.old_expiration_date) {
-        const oldDate = formatUnixTimestamp(metadata.old_expiration_date);
+        const oldDate = formatDate(
+          normalizeTimestamp(metadata.old_expiration_date),
+        );
         return `Tag ${metadata.tag} set to no longer expire (previously ${oldDate})`;
       } else {
         return `Tag ${metadata.tag} set to no longer expire`;
