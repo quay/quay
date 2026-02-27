@@ -74,7 +74,8 @@ services:
   # Web UI: http://localhost:8000 (admin/changeme1)
   splunk:
     container_name: quay-splunk
-    image: docker.io/splunk/splunk:latest
+    platform: linux/amd64
+    image: docker.io/splunk/splunk:8.2
     environment:
       SPLUNK_START_ARGS: "--accept-license"
       SPLUNK_GENERAL_TERMS: "--accept-sgt-current-at-splunk-com"

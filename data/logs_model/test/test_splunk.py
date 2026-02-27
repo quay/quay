@@ -13,10 +13,15 @@ from dateutil.parser import parse
 from mock import Mock, patch
 from splunklib.binding import AuthenticationError  # type: ignore[import]
 
-from ..logs_producer.splunk_logs_producer import SplunkLogsProducer
-from .test_elasticsearch import logs_model, mock_db_model
 from data.logs_model import configure
 from data.logs_model.logs_producer import LogSendException
+from data.logs_model.logs_producer.splunk_hec_logs_producer import (
+    _splunk_json_serialize as hec_splunk_json_serialize,
+)
+from data.logs_model.logs_producer.splunk_logs_producer import (
+    _splunk_json_serialize as sdk_splunk_json_serialize,
+)
+from data.logs_model.test.test_elasticsearch import logs_model, mock_db_model
 from data.model import config as _config
 from test.fixtures import *
 
@@ -514,7 +519,10 @@ def test_splunk_hec_logs_producer(
                         logs_model._logs_producer.hec_url,
                         headers=logs_model._logs_producer.headers,
                         data=json.dumps(
-                            expected_call, sort_keys=True, default=str, ensure_ascii=False
+                            expected_call,
+                            sort_keys=True,
+                            default=hec_splunk_json_serialize,
+                            ensure_ascii=False,
                         ).encode("utf-8"),
                         verify=splunk_hec_logs_model_config["LOGS_MODEL_CONFIG"][
                             "splunk_hec_config"
@@ -665,3 +673,31 @@ def test_connect_with_invalid_ssl_cert(
                     False,
                 )
                 mock_send.assert_not_called()
+
+
+class TestSplunkJsonSerialize:
+    """Tests for _splunk_json_serialize in both HEC and SDK producers."""
+
+    def test_hec_serializer_datetime_returns_epoch(self):
+        from calendar import timegm
+
+        dt = datetime(2024, 1, 15, 10, 30, 0)
+        result = hec_splunk_json_serialize(dt)
+        assert isinstance(result, int)
+        assert result == timegm(dt.utctimetuple())
+
+    def test_hec_serializer_non_datetime_returns_str(self):
+        result = hec_splunk_json_serialize({"key": "value"})
+        assert result == "{'key': 'value'}"
+
+    def test_sdk_serializer_datetime_returns_epoch(self):
+        from calendar import timegm
+
+        dt = datetime(2024, 1, 15, 10, 30, 0)
+        result = sdk_splunk_json_serialize(dt)
+        assert isinstance(result, int)
+        assert result == timegm(dt.utctimetuple())
+
+    def test_sdk_serializer_non_datetime_returns_str(self):
+        result = sdk_splunk_json_serialize(42)
+        assert result == "42"
