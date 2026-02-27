@@ -24,6 +24,12 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-commit]
+    -   id: requirements-build-sync
+        name: Check requirements-build.txt is updated
+        entry: .github/hooks/check-requirements-build.sh
+        language: script
+        pass_filenames: false
+        stages: [pre-commit]
     -   id: eslint
         name: ESLint
         entry: web/node_modules/.bin/eslint --fix
