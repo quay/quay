@@ -34,6 +34,21 @@ jobs:
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
           echo "version=${BRANCH_NAME/${{ env.BRANCH_PREFIX }}/}" >> $GITHUB_OUTPUT
 
+      - name: install ibmcli and setup ibm login
+        run: |
+          curl -fsSL https://clis.cloud.ibm.com/install/linux | sh
+          ibmcloud login -q --apikey ${{ secrets.IBMCLOUD_API_KEY }} -r eu-gb
+          ibmcloud plugin install vpc-infrastructure
+
+      - name: Add rule to VPC
+        id: sg-rule-id
+        run: |
+          cidr=$(dig +short myip.opendns.com @resolver1.opendns.com)
+          echo $cidr
+          SGRID=$(ibmcloud is security-group-rule-add --sg ${{ secrets.SG_ID }} --direction=inbound --protocol=tcp --port-min=22 --port-max=22 --remote=$cidr --output JSON | jq -r '.id')
+          echo $SGRID
+          echo "RID=${SGRID}" >> $GITHUB_ENV
+
       - name: Setup SSH config for builders
         env:
           BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
@@ -89,11 +104,6 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAY_USER }}
           password: ${{ secrets.QUAY_TOKEN }}
-
-      - name: Remove pip from requirements.txt
-        run: |
-          # Having pip in the requirements.txt interferes with the workflow
-          sed -i '/^pip=/d' requirements.txt
 
       - name: Build and push
         id: docker_build
