@@ -12,5 +12,5 @@ SD-010,MultiCDNStorage,driver,defer,WS3,pending,registryd,PT-STORAGE-MULTICDN-00
 SD-011,IBMCloudStorage,driver,s3-compatible-adapter,WS3,pending,registryd,PT-STORAGE-IBM-001,endpoint and signing compatibility
 SD-012,STSS3Storage,driver,s3-compatible-adapter,WS3,pending,registryd,PT-STORAGE-STS-001,credential refresh and role assumption timing
 SD-013,AkamaiS3Storage,driver,s3-compatible-adapter,WS3,pending,registryd,PT-STORAGE-AKAMAI-001,auth and signed URL behavior
-SD-014,DistributedStorage,support-component,native-sdk,WS10,pending,runtime-platform,PT-STORAGE-DIST-001,multi-location routing invariants
+SD-014,DistributedStorage,support-component,native-sdk,WS3,pending,registryd,PT-STORAGE-DIST-001,multi-location routing invariants; moved from WS10 - required for any multi-location testing
 SD-015,DownloadProxy,support-component,native-sdk,WS10,pending,runtime-platform,PT-STORAGE-DLPROXY-001,proxy auth contract and cache headers
