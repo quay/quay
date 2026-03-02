@@ -8,7 +8,7 @@ and batch lookups for performance.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from dateutil import parser as dateutil_parser
@@ -35,7 +35,6 @@ class SplunkLogMapper:
 
     def __init__(self):
         self._kind_map: Optional[Dict[str, int]] = None
-        self._user_cache: Dict[str, Any] = {}
 
     def map_logs(
         self,
@@ -74,7 +73,7 @@ class SplunkLogMapper:
 
         logs = []
         for result in splunk_results:
-            log = self._map_single_log_with_cache(result, username_user_map)
+            log = self._map_single_log(result, username_user_map)
             if log is not None:
                 logs.append(log)
 
@@ -107,13 +106,13 @@ class SplunkLogMapper:
         # Fall back to top-level fields (for indexed field extraction)
         return result
 
-    def _map_single_log_with_cache(
+    def _map_single_log(
         self,
         result: Dict[str, Any],
         username_user_map: Dict[str, Any],
     ) -> Optional[Log]:
         """
-        Map a single Splunk result to Log using cached user lookups.
+        Map a single Splunk result to a Log object.
 
         Args:
             result: Splunk result dictionary
@@ -198,10 +197,11 @@ class SplunkLogMapper:
         """
         Parse Splunk datetime string to Python datetime.
 
-        Handles various formats including ISO format and Splunk's default format.
+        Handles various formats including ISO format, Splunk's default format,
+        and Unix epoch timestamps (int/float).
 
         Args:
-            datetime_value: Datetime as string or datetime object
+            datetime_value: Datetime as string, datetime object, or epoch timestamp
 
         Returns:
             Python datetime object or None if parsing fails
@@ -211,6 +211,13 @@ class SplunkLogMapper:
 
         if isinstance(datetime_value, datetime):
             return datetime_value
+
+        if isinstance(datetime_value, (int, float)):
+            try:
+                return datetime.fromtimestamp(datetime_value, tz=timezone.utc)
+            except (ValueError, OSError, OverflowError) as e:
+                logger.warning("Failed to parse epoch timestamp '%s': %s", datetime_value, e)
+                return None
 
         if isinstance(datetime_value, str):
             try:
@@ -254,6 +261,8 @@ class SplunkLogMapper:
         Batch lookup users by username.
 
         Uses a single query with IN clause for efficiency.
+        No cross-request caching — each call does a fresh lookup,
+        similar to how the Elasticsearch model handles user lookups.
 
         Args:
             usernames: List of usernames to look up
@@ -264,34 +273,8 @@ class SplunkLogMapper:
         if not usernames:
             return {}
 
-        username_user_map = {}
-        usernames_to_lookup = []
-
-        for username in usernames:
-            if username in self._user_cache:
-                username_user_map[username] = self._user_cache[username]
-            else:
-                usernames_to_lookup.append(username)
-
-        if usernames_to_lookup:
-            try:
-                batch_results = model.user.get_namespace_users_by_usernames(usernames_to_lookup)
-                for username, user in batch_results.items():
-                    self._user_cache[username] = user
-                    username_user_map[username] = user
-            except Exception:
-                logger.exception(
-                    "Failed to batch lookup users, falling back to None: usernames=%s",
-                    usernames_to_lookup,
-                )
-                # Fallback: mark all as None on batch query failure
-                for username in usernames_to_lookup:
-                    self._user_cache[username] = None
-                    username_user_map[username] = None
-
-        return username_user_map
-
-    def clear_cache(self) -> None:
-        """Clear the internal user cache."""
-        self._user_cache.clear()
-        self._kind_map = None
+        try:
+            return model.user.get_namespace_users_by_usernames(usernames)
+        except Exception:
+            logger.exception("Failed to batch lookup users, falling back to None")
+            return {username: None for username in usernames}

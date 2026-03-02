@@ -999,27 +999,64 @@ class TestDeleteTagsForManifestImmutable:
     """Test delete_tags_for_manifest with immutable tags."""
 
     @patch("data.model.oci.tag.features", MagicMock(IMMUTABLE_TAGS=True))
-    def test_delete_tags_for_manifest_skips_immutable(self, initialized_db):
-        """Immutable tags are skipped when deleting tags for manifest."""
+    def test_delete_tags_for_manifest_raises_on_immutable(self, initialized_db):
+        """Raises ImmutableTagException when any tag is immutable."""
         repo = model.repository.create_repository("devtable", "newrepo", None)
         manifest, _ = create_manifest_for_testing(repo, "1")
 
         # Create two tags pointing to same manifest
         tag1 = retarget_tag("v1.0", manifest)
-        tag2 = retarget_tag("v2.0", manifest)
+        retarget_tag("v2.0", manifest)
 
         # Make one immutable
         Tag.update(immutable=True).where(Tag.id == tag1.id).execute()
 
-        # Delete should skip immutable tag
+        with pytest.raises(ImmutableTagException) as exc_info:
+            delete_tags_for_manifest(manifest)
+
+        assert exc_info.value.tag_name == "v1.0"
+        assert exc_info.value.operation == "delete"
+
+        # Both tags should still exist (no partial deletion)
+        assert get_tag(repo.id, "v1.0") is not None
+        assert get_tag(repo.id, "v2.0") is not None
+
+    @patch("data.model.oci.tag.features", MagicMock(IMMUTABLE_TAGS=True))
+    def test_delete_tags_for_manifest_raises_all_immutable(self, initialized_db):
+        """Raises ImmutableTagException when all tags are immutable."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        tag1 = retarget_tag("v1.0", manifest)
+        tag2 = retarget_tag("v2.0", manifest)
+
+        # Make both immutable
+        Tag.update(immutable=True).where(Tag.id << [tag1.id, tag2.id]).execute()
+
+        with pytest.raises(ImmutableTagException):
+            delete_tags_for_manifest(manifest)
+
+        # Both tags should still exist
+        assert get_tag(repo.id, "v1.0") is not None
+        assert get_tag(repo.id, "v2.0") is not None
+
+    @patch("data.model.oci.tag.features", MagicMock(IMMUTABLE_TAGS=True))
+    def test_delete_tags_for_manifest_succeeds_all_mutable(self, initialized_db):
+        """Succeeds when no tags are immutable."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        retarget_tag("v1.0", manifest)
+        retarget_tag("v2.0", manifest)
+
         deleted = delete_tags_for_manifest(manifest)
 
-        # Only v2.0 should be deleted
-        assert len(deleted) == 1
-        assert deleted[0].name == "v2.0"
+        assert len(deleted) == 2
+        assert {t.name for t in deleted} == {"v1.0", "v2.0"}
 
-        # v1.0 should still exist
-        assert get_tag(repo.id, "v1.0") is not None
+        # Both tags should be gone
+        assert get_tag(repo.id, "v1.0") is None
+        assert get_tag(repo.id, "v2.0") is None
 
 
 class TestSetTagsImmutabilityForManifest:
