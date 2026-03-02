@@ -93,3 +93,14 @@ def for_manifest_referrers(repository_id, manifest_digest, cache_config):
     """
     cache_ttl = cache_config.get("manifest_referrers_cache_ttl", "60s")
     return CacheKey(f"manifest_referrers__{repository_id}_{manifest_digest}", cache_ttl)
+
+
+def for_manifest_children(repository_id, manifest_id, cache_config):
+    """
+    Returns a cache key for the child manifests of a manifest list.
+
+    Since manifests are immutable (content-addressed), child relationships
+    never change once created, so this can be cached with a long TTL.
+    """
+    cache_ttl = cache_config.get("manifest_children_cache_ttl", "3600s")  # 1 hour default
+    return CacheKey(f"manifest_children__{repository_id}_{manifest_id}", cache_ttl)
