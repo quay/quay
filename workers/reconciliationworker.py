@@ -286,10 +286,6 @@ def create_gunicorn_worker():
 
 
 if __name__ == "__main__":
-    if not features.ENTITLEMENT_RECONCILIATION:
-        logger.debug("Reconciliation worker disabled; skipping")
-        while True:
-            time.sleep(1000)
     GlobalLock.configure(app.config)
     logger.debug("Starting reconciliation worker")
     worker = ReconciliationWorker()
