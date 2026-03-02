@@ -1,7 +1,7 @@
 # Data Access Layer Migration Design (Peewee -> Go)
 
 Status: Draft (blocking)
-Last updated: 2026-02-12
+Last updated: 2026-03-02
 
 ## 1. Purpose
 
@@ -91,6 +91,8 @@ sql:
         package: "sqlitequeries"
         out: "internal/dal/repositories/sqlite/sqlc"
 ```
+
+**Schema file generation:** Both `schema/postgres/schema.sql` and `schema/sqlite/schema.sql` are generated artifacts derived from Alembic migrations — not hand-maintained. See `schema_sql_generation.md` §4 (PostgreSQL: `pg_dump` after `alembic upgrade head`) and §4A (SQLite: `sqlite3 .schema` after `alembic upgrade head`). Developer workflow: `make generate-schema-sql generate-schema-sql-sqlite` after any Alembic migration change.
 
 ### 5.2.1 Mirror-mode dbcore wiring
 
@@ -289,6 +291,74 @@ Implementation requirement:
 3. Selective write enablement after deterministic write parity is proven.
 4. Full owner switch only after rollback drill and contract evidence review.
 
+## 13A. Database coexistence during feature-by-feature migration
+
+The routing/switching mechanism for transitioning individual capabilities from Python to Go is documented in `switch_spec.md` and `cutover_matrix.md`. This section covers the database-side concerns only.
+
+### 13A.1 Shared database, separate connection pools
+
+Both Python and Go connect to the **same PostgreSQL instance** (and same read replicas) with independent connection pools:
+
+- **Python**: Peewee `PooledPostgresqlDatabase`, one pool per gunicorn worker process. Controlled by `DB_CONNECTION_POOLING` (default off) and `DB_CONNECTION_ARGS.max_connections`.
+- **Go**: `pgxpool` with persistent connections (default on — behavior change from Python, see §8 note 6).
+- **No coordination needed between runtimes**: PostgreSQL handles multiple connection streams natively. There is no shared pool state.
+
+**Capacity planning**: Operators must size PostgreSQL `max_connections` to accommodate both runtimes simultaneously during coexistence. This must be documented in the operator migration guide.
+
+### 13A.2 Feature takeover sequence (database perspective)
+
+When an individual capability transitions from Python to Go, the database-level concerns at each phase (matching §13) are:
+
+**Phase 1: Read-only parity (Go reads, Python still writes)**
+- Go executes `IntentRead` queries against the same tables Python uses.
+- Go may use read replicas (`ReplicaAllowed=true`) — same replica set as Python.
+- No write contention — Go is read-only.
+- Oracle parity tests (§14.1) verify Go reads return identical results to Python.
+- **Go needs**: sqlc queries for the tables this feature touches, enum cache loaded (§19), encrypted field decryption working (§6).
+
+**Phase 2: Dual-read with diffing metrics**
+- Both runtimes execute the same read queries (canary traffic goes to Go, rest to Python).
+- Metrics compare: latency, result set size, error rate.
+- **Go needs**: Same as Phase 1 + metric instrumentation matching Python dashboard dimensions (§8 note 3).
+
+**Phase 3: Selective write enablement**
+- Go starts executing `IntentWrite` queries for this feature.
+- Python stops writing for this feature (owner switch flips).
+- **Critical invariant**: Only ONE runtime writes for a given capability at any moment. The owner switch enforces this — there is no dual-write period.
+- **Go needs**: Write queries (INSERT/UPDATE/DELETE) in sqlc, transaction handling (`WithTx`), retry policy (§8), `state_id` regeneration for queue items (§16), correct delete ordering for cascade operations (§17).
+
+**Phase 4: Full owner switch**
+- Owner = `go` for this capability globally (no canary scoping).
+- Python code path is dormant but deployed for rollback.
+- **Go needs**: All of the above, battle-tested under production load.
+
+**Rollback at any phase**: Flip owner switch back to `python` in config. Propagation < 30s. No code deploy needed. Database state is shared — Python picks up where it left off because both runtimes operate on the same tables with the same semantics.
+
+### 13A.3 Readiness checklist for Go feature takeover
+
+Before Go can take over a capability at the database layer:
+
+1. **Schema access**: All tables touched by this feature exist in `schema.sql` (they always do — full schema snapshot per `schema_sql_generation.md`).
+2. **sqlc queries**: `.sql` query files written and code generated for every database operation this feature performs.
+3. **Repository wrappers**: Go repository methods implementing the same semantics as the corresponding `data/model/` Python functions.
+4. **Enum cache**: All enum tables referenced by this feature loaded at startup (§19).
+5. **Encrypted field handling**: If this feature reads/writes encrypted fields, Go crypto (`internal/dal/crypto/`) must decrypt/encrypt compatibly (§6, §14).
+6. **Credential verification**: If this feature verifies credentials, Go bcrypt implementation must verify existing Python-generated hashes (§15).
+7. **Connection pool config**: Go pool sized appropriately for combined Python+Go pool budget.
+8. **Read replica awareness**: Read queries marked `ReplicaAllowed=true` where Python used replicas, with staleness tolerance documented (§9).
+9. **Oracle parity tests passing**: For every database operation, Python oracle and Go produce identical results (§14.1).
+10. **Metrics parity**: Go emits the same metric dimensions as Python for this feature's database operations.
+
+### 13A.4 Schema changes during coexistence (expand→migrate→contract)
+
+During coexistence, schema changes follow `db_migration_policy.md` §3. From Go's perspective:
+
+- **Expand**: Alembic adds a new nullable column. Go's `schema.sql` is regenerated. If Go queries for this feature don't reference the new column, nothing else changes. If they do, update `.sql` queries and run `sqlc generate`.
+- **Migrate**: Alembic backfills data. This is invisible to Go — data changes happen at the database level via Python migration scripts.
+- **Contract**: Alembic removes an old column. This can ONLY happen after all owners are `go` for features that used that column. Go's `schema.sql` is regenerated (column disappears). sqlc queries that referenced it must have been updated in the Expand phase.
+
+**Key rule**: No column/table can be contracted (removed) while any Python code path still references it. The owner switch evidence + compatibility metrics gate contraction.
+
 ## 14. Required tests and fixture format
 
 Required tests:
@@ -306,6 +376,68 @@ Fixture format:
   - `python_expected`: serialized result payload
   - `go_expected`: serialized result payload
   - `notes`: behavior caveats
+
+### 14.1 Oracle test harness architecture
+
+No oracle test pattern exists in the codebase today — the harness must be built. The oracle approach uses the existing Python code as a live source of truth: Go tests call Python (via subprocess) to compute expected values, then compare against Go's own implementation. This keeps parity tests always current with the Python codebase without manually maintaining static fixtures.
+
+**Python oracle CLI** (`internal/dal/testkit/oracle/oracle.py`):
+
+A thin CLI wrapper that imports directly from the Quay codebase. Subcommands:
+
+| Subcommand | Wraps | Input | Output |
+|---|---|---|---|
+| `encrypt` | `data/encryption.py:_encrypt_ccm` | `--secret-key KEY --plaintext VALUE` | ciphertext string |
+| `decrypt` | `data/encryption.py:_decrypt_ccm` | `--secret-key KEY --ciphertext VALUE` | plaintext string |
+| `hash-credential` | `data/fields.py:Credential` | `--plaintext VALUE` | bcrypt hash |
+| `verify-credential` | `data/fields.py:Credential.matches` | `--plaintext VALUE --hash HASH` | `true`/`false` |
+| `convert-secret-key` | `util/security/secret.py:convert_secret_key` | `--input VALUE` | hex-encoded 32-byte key |
+| `query` | Direct Peewee query execution | `--db-uri URI --sql SQL --params JSON` | JSON rows |
+| `delete-order` | `data/database.py:delete_instance_filtered` | `--db-uri URI --model MODEL --id ID` | JSON list of (table, id) pairs |
+
+**Go test helper** (`internal/dal/testkit/oracle/oracle.go`):
+
+Runs the Python oracle as a subprocess, parses JSON output, provides typed Go helpers:
+
+```go
+func OracleDecrypt(t *testing.T, secretKey, ciphertext string) string
+func OracleConvertSecretKey(t *testing.T, input string) []byte
+func OracleQuery(t *testing.T, dbURI, sql string, params map[string]any) []map[string]any
+```
+
+**CI requirement**: Python 3.12 + Quay Python dependencies in PATH. Use `-tags=oracle` build tag so oracle tests can be skipped when Python is unavailable (e.g., developer machines without the full Python environment). CI always sets this tag.
+
+**Shared test database**: Ephemeral PostgreSQL or SQLite, schema from Alembic, seeded with test data using the existing `PopulateTestDataTester` pattern (`data/migrations/tester.py`).
+
+### 14.2 Parity test layers
+
+| Layer | What | When | Blocks Merge? |
+|-------|------|------|---------------|
+| L1 | Schema snapshot matches Alembic HEAD | Every PR touching schema | Yes |
+| L2 | `sqlc generate` produces no uncommitted changes | Every PR touching schema/queries | Yes |
+| L3 | `go build` + `go test` on `internal/dal/...` | Every PR | Yes |
+| L4 | Encryption round-trip (Python encrypts → Go decrypts, and vice versa) | PRs touching `internal/dal/crypto/` | Yes |
+| L5 | Cross-runtime query parity (Python oracle vs Go for P0 queries) | PRs touching `data/model/` or `internal/dal/repositories/` | Yes |
+| L6 | PG/SQLite logical schema parity | PRs touching `internal/dal/sql/schema/` | Yes |
+| L7 | Migration round-trip (upgrade→downgrade→re-upgrade) | Weekly / pre-release | Advisory |
+
+### 14.3 Edge cases requiring explicit test coverage
+
+- **NULL vs zero value**: Peewee returns `None` for NULL; Go may return `""` or `0` depending on scan target. Configure sqlc's `emit_pointers_for_null_types` or use `sql.NullString`/`sql.NullInt64` as appropriate.
+- **DateTime timezone**: Peewee stores naive datetimes (no timezone info). Go `time.Time` includes timezone. Normalize to UTC for comparison.
+- **BigInteger boundaries**: `manifestblob.id` was altered to `BIGINT` via migration `e8ed3fb547da`. Test values > 2^31 to verify `int64` handling.
+- **JSON field empty state**: Python `JSONField` returns `{}` for null/empty string. Go must match this behavior.
+- **Enum cache miss**: A new enum value added by migration while Go is running should trigger the runtime fallback to direct query (§19, item 5).
+
+### 14.4 Fields requiring parity testing (inventory)
+
+| Field Type | Instances | Parity Requirement |
+|------------|-----------|-------------------|
+| `EncryptedCharField` | 7 (`RobotAccountToken.token`, `AccessToken.token_code`, `RepositoryBuildTrigger.secure_auth_token`, `OAuthApplication.secure_client_secret`, `AppSpecificAuthToken.token_secret`, `RepoMirrorConfig.external_registry_username/password`, `ProxyCacheConfig.upstream_registry_username/password`) | Bidirectional encrypt/decrypt with identical secret key derivation |
+| `EncryptedTextField` | 2 (`RepositoryBuildTrigger.secure_private_key`) | Bidirectional encrypt/decrypt |
+| `CredentialField` | 3 (`OAuthAuthorizationCode.code_credential`, `OAuthAccessToken.token_code`, `EmailConfirmation.verification_code`) | Go verifies Python-generated bcrypt hashes; Python verifies Go-generated hashes |
+| `JSONField` | Multiple models | Canonical JSON serialization; `{}` default for null/empty |
+| `EnumField` (FK-based) | 16 enum tables (`RepositoryKind`, `TeamRole`, `Visibility`, `Role`, `MediaType`, `TagKind`, `LoginService`, `BuildTriggerService`, `AccessTokenKind`, `DisableReason`, `ApprType`, `NotificationKind`, `ExternalNotificationEvent`, `ExternalNotificationMethod`, `RepositoryNotificationEvent`, `RepositoryState`) | ID↔name bidirectional lookup parity |
 
 ## 15. Credential hashing compatibility (bcrypt)
 
