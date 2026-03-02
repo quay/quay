@@ -636,6 +636,19 @@ export function useLogDescriptions() {
         </>
       );
     },
+    change_tag_immutability: function (metadata: Metadata) {
+      const action =
+        String(metadata.immutable) === 'true'
+          ? 'set as immutable'
+          : 'set as mutable';
+      return (
+        <>
+          Tag {wrapVariable(metadata.tag)} {action} in repository{' '}
+          {wrapVariable(`${metadata.namespace}/${metadata.repo}`)} by user{' '}
+          {wrapVariable(metadata.username)}
+        </>
+      );
+    },
     delete_tag: function (metadata: Metadata) {
       return (
         <>
