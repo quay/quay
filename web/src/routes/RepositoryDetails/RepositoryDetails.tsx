@@ -275,6 +275,9 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.Logs}
                     title={<TabTitleText>Logs</TabTitleText>}
+                    isHidden={
+                      !repoDetails?.can_write && !repoDetails?.can_admin
+                    }
                     {...({} as any)}
                   >
                     <UsageLogs

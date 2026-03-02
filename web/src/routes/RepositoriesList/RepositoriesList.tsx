@@ -292,6 +292,8 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     );
   }
 
+  const isAuthenticated = !!user?.username;
+
   // Return component Empty state - only if there are truly no repositories
   // If filtered results are empty but repos exist, show the table with toolbar
   if (!loading && !repos?.length) {
@@ -299,15 +301,21 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       <Empty
         icon={CubesIcon}
         title="There are no viewable repositories"
-        body="Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository."
+        body={
+          isAuthenticated
+            ? 'Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository.'
+            : 'No public repositories found. Sign in to view your private repositories.'
+        }
         button={
-          <ToolbarButton
-            id=""
-            buttonValue="Create Repository"
-            Modal={createRepoModal}
-            isModalOpen={isCreateRepoModalOpen}
-            setModalOpen={setCreateRepoModalOpen}
-          />
+          isAuthenticated ? (
+            <ToolbarButton
+              id=""
+              buttonValue="Create Repository"
+              Modal={createRepoModal}
+              isModalOpen={isCreateRepoModalOpen}
+              setModalOpen={setCreateRepoModalOpen}
+            />
+          ) : null
         }
       />
     );
@@ -336,15 +344,15 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           setSearch={setSearch}
           total={paginationProps.total}
           currentOrg={currentOrg}
-          pageModal={createRepoModal}
-          showPageButton={true}
+          pageModal={isAuthenticated ? createRepoModal : null}
+          showPageButton={isAuthenticated}
           buttonText="Create Repository"
           isModalOpen={isCreateRepoModalOpen}
           setModalOpen={setCreateRepoModalOpen}
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
-          kebabItems={kebabItems}
-          selectedRepoNames={selectedRepoNames}
+          kebabItems={isAuthenticated ? kebabItems : []}
+          selectedRepoNames={isAuthenticated ? selectedRepoNames : []}
           deleteModal={deleteRepositoryModal}
           deleteKebabIsOpen={isDeleteModalOpen}
           makePublicModalOpen={makePublicModalOpen}
@@ -364,7 +372,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
-              <Th />
+              {isAuthenticated && <Th />}
               <Th modifier="wrap" sort={getSortableSort(0)}>
                 {RepositoryListColumnNames.name}
               </Th>
@@ -395,15 +403,17 @@ export default function RepositoriesList(props: RepositoriesListProps) {
             ) : (
               paginatedRepositoryList.map((repo, rowIndex) => (
                 <Tr key={rowIndex}>
-                  <Td
-                    select={{
-                      rowIndex,
-                      onSelect: (_event, isSelecting) =>
-                        onSelectRepo(repo, rowIndex, isSelecting),
-                      isSelected: isRepoSelected(repo),
-                      isDisabled: !isRepoSelectable(repo),
-                    }}
-                  />
+                  {isAuthenticated && (
+                    <Td
+                      select={{
+                        rowIndex,
+                        onSelect: (_event, isSelecting) =>
+                          onSelectRepo(repo, rowIndex, isSelecting),
+                        isSelected: isRepoSelected(repo),
+                        isDisabled: !isRepoSelectable(repo),
+                      }}
+                    />
+                  )}
                   <Td dataLabel={RepositoryListColumnNames.name}>
                     <Flex alignItems={{default: 'alignItemsCenter'}}>
                       <FlexItem spacer={{default: 'spacerSm'}}>

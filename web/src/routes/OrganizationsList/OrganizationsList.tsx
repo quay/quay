@@ -448,6 +448,8 @@ export default function OrganizationsList() {
     );
   }
 
+  const isAuthenticated = !!user?.username;
+
   // Return component Empty state
   if (!loading && !organizationsTableDetails?.length) {
     return (
@@ -465,15 +467,21 @@ export default function OrganizationsList() {
         <Empty
           icon={CubesIcon}
           title="Collaborate and share projects across teams"
-          body="Create a shared space of public and private repositories for your developers to collaborate in. Organizations make it easy to add and manage people and permissions"
+          body={
+            isAuthenticated
+              ? 'Create a shared space of public and private repositories for your developers to collaborate in. Organizations make it easy to add and manage people and permissions'
+              : 'Sign in to create organizations and manage repositories.'
+          }
           button={
-            <ToolbarButton
-              id="create-organization-button"
-              buttonValue="Create Organization"
-              Modal={createOrgModal}
-              isModalOpen={isOrganizationModalOpen}
-              setModalOpen={setOrganizationModalOpen}
-            />
+            isAuthenticated ? (
+              <ToolbarButton
+                id="create-organization-button"
+                buttonValue="Create Organization"
+                Modal={createOrgModal}
+                isModalOpen={isOrganizationModalOpen}
+                setModalOpen={setOrganizationModalOpen}
+              />
+            ) : null
           }
         />
       </>
@@ -518,7 +526,7 @@ export default function OrganizationsList() {
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
           kebabItems={kebabItems}
-          selectedOrganization={selectedOrganization}
+          selectedOrganization={isAuthenticated ? selectedOrganization : []}
           deleteKebabIsOpen={deleteModalIsOpen}
           deleteModal={deleteModal}
           organizationsList={sortedOrgs}
@@ -530,11 +538,12 @@ export default function OrganizationsList() {
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
           isExternalAuth={!!isExternalAuth}
+          isAuthenticated={isAuthenticated}
         />
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
-              <Th />
+              {isAuthenticated && <Th />}
               <Th sort={getSortableSort(1)} modifier="wrap">
                 {ColumnNames.name}
               </Th>
@@ -556,18 +565,19 @@ export default function OrganizationsList() {
           <Tbody>
             {paginatedOrganizationsList?.map((org, rowIndex) => (
               <Tr key={org.name}>
-                {isOrgSelectable(org) ? (
-                  <Td
-                    select={{
-                      rowIndex,
-                      onSelect: (_event, isSelecting) =>
-                        onSelectOrganization(org, rowIndex, isSelecting),
-                      isSelected: isOrganizationSelected(org),
-                    }}
-                  />
-                ) : (
-                  <Td />
-                )}
+                {isAuthenticated &&
+                  (isOrgSelectable(org) ? (
+                    <Td
+                      select={{
+                        rowIndex,
+                        onSelect: (_event, isSelecting) =>
+                          onSelectOrganization(org, rowIndex, isSelecting),
+                        isSelected: isOrganizationSelected(org),
+                      }}
+                    />
+                  ) : (
+                    <Td />
+                  ))}
                 <OrgTableData
                   name={org.name}
                   isUser={org.isUser}

@@ -1,5 +1,5 @@
 import {AxiosResponse, AxiosError} from 'axios';
-import axios from 'src/libs/axios';
+import axios, {setAnonymousMode} from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
 import {IAvatar, IOrganization} from './OrganizationResource';
 import {IQuotaReport} from 'src/libs/quotaUtils';
@@ -10,22 +10,20 @@ export interface IUserResource {
   avatar: IAvatar;
   can_create_repo: boolean;
   is_me: boolean;
-  verified: true;
+  verified: boolean;
   email: string;
-  logins: [
-    {
-      service: string;
-      service_identifier: string;
-      metadata: {
-        service_username: string;
-      };
-    },
-  ];
+  logins: Array<{
+    service: string;
+    service_identifier: string;
+    metadata: {
+      service_username: string;
+    };
+  }>;
   invoice_email: boolean;
   invoice_email_address: string;
   preferred_namespace: boolean;
   tag_expiration_s: number;
-  prompts: [];
+  prompts: string[];
   super_user: boolean;
   global_readonly_super_user?: boolean;
   enabled?: boolean; // User enabled/disabled status (for superuser user management)
@@ -39,11 +37,49 @@ export interface IUserResource {
   quota_report?: IQuotaReport; // Quota report for the user's namespace
 }
 
+// Sentinel anonymous user object returned when the backend returns 401.
+// Matches the Angular UI pattern from static/js/services/user-service.js.
+const ANONYMOUS_USER: IUserResource = {
+  anonymous: true,
+  username: '',
+  avatar: {name: '', hash: '', color: '', kind: 'user'},
+  can_create_repo: false,
+  is_me: false,
+  verified: false,
+  email: '',
+  logins: [],
+  invoice_email: false,
+  invoice_email_address: '',
+  preferred_namespace: false,
+  tag_expiration_s: 0,
+  prompts: [],
+  super_user: false,
+  company: '',
+  family_name: '',
+  given_name: '',
+  location: '',
+  is_free_account: true,
+  has_password_set: false,
+  organizations: [],
+};
+
 export async function fetchUser() {
-  const response: AxiosResponse<IUserResource> =
-    await axios.get('/api/v1/user/');
-  assertHttpCode(response.status, 200);
-  return response.data;
+  try {
+    const response: AxiosResponse<IUserResource> =
+      await axios.get('/api/v1/user/');
+    assertHttpCode(response.status, 200);
+    setAnonymousMode(false);
+    return response.data;
+  } catch (error) {
+    if ((error as AxiosError)?.response?.status === 401) {
+      // Not authenticated — return anonymous user object instead of throwing.
+      // This matches Angular UI behavior and enables anonymous browsing of
+      // public repos when FEATURE_ANONYMOUS_ACCESS is enabled (PROJQUAY-10610).
+      setAnonymousMode(true);
+      return ANONYMOUS_USER;
+    }
+    throw error;
+  }
 }
 
 export interface AllUsers {
