@@ -106,7 +106,9 @@ class QuayAdapter(RegistryAdapter):
         try:
             while True:
                 url = f"{self.base_url}/api/v1/repository"
-                params: Dict[str, str] = {"namespace": self.namespace, "public": "true"}
+                params: Dict[str, str] = {"namespace": self.namespace}
+                if not self._api_token:
+                    params["public"] = "true"
                 if next_page:
                     params["next_page"] = next_page
 
@@ -172,9 +174,10 @@ class QuayAdapter(RegistryAdapter):
             raise QuayDiscoveryException("Unexpected error during repository discovery", cause=e)
 
         logger.info(
-            "Discovered %d repositories from Quay namespace %s",
+            "Discovered %d repositories from Quay namespace %s (%s)",
             len(repos),
             self.namespace,
+            "authenticated" if self._api_token else "public only",
         )
         return repos
 
