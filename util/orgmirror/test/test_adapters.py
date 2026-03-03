@@ -451,6 +451,49 @@ class TestQuayAdapter:
         assert adapter.session.auth is None
 
     @responses.activate
+    def test_list_repositories_authenticated_excludes_public_param(self):
+        """Test that authenticated adapter does NOT send public=true in URL."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="my-api-token",
+        )
+
+        adapter.list_repositories()
+
+        assert len(responses.calls) == 1
+        assert "public=true" not in responses.calls[0].request.url
+        assert "namespace=testorg" in responses.calls[0].request.url
+
+    @responses.activate
+    def test_list_repositories_unauthenticated_includes_public_param(self):
+        """Test that unauthenticated adapter sends public=true in URL."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+        )
+
+        adapter.list_repositories()
+
+        assert len(responses.calls) == 1
+        assert "public=true" in responses.calls[0].request.url
+        assert "namespace=testorg" in responses.calls[0].request.url
+
+    @responses.activate
     def test_bearer_token_sent_in_request(self):
         """Test that Bearer token is actually sent in HTTP requests."""
         responses.add(
