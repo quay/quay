@@ -44,9 +44,24 @@ async function fillRequiredFields(
 
   const futureDate = new Date();
   futureDate.setMinutes(futureDate.getMinutes() + 5);
-  await page
-    .locator('#sync_start_date')
-    .fill(futureDate.toISOString().slice(0, 16));
+
+  // Fill DatePicker with locale-formatted date string
+  const dateString = futureDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const dateInput = page.getByLabel('Sync start date');
+  await dateInput.clear();
+  await dateInput.fill(dateString);
+
+  // Fill TimePicker with HH:MM
+  const hours = String(futureDate.getHours()).padStart(2, '0');
+  const minutes = String(futureDate.getMinutes()).padStart(2, '0');
+  const timeInput = page.getByRole('textbox', {name: 'Sync start time'});
+  await timeInput.clear();
+  await timeInput.fill(`${hours}:${minutes}`);
 
   await page.locator('#robot-user-select').click();
   await page.getByRole('option', {name: robotFullName}).click();
