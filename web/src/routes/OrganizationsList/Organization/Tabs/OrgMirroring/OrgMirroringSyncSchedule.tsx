@@ -40,13 +40,23 @@ export const OrgMirroringSyncSchedule: React.FC<
     return isNaN(d.getTime()) ? null : d;
   };
 
-  const dateFormat = (date: Date): string =>
-    date.toLocaleDateString(navigator.language, {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+  const dateFormat = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const dateParse = (str: string): Date => {
+    if (!str) return new Date(NaN);
+    const match = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return new Date(NaN);
+    return new Date(
+      parseInt(match[1]),
+      parseInt(match[2]) - 1,
+      parseInt(match[3]),
+    );
+  };
 
   const formatTime = (date: Date | null): string => {
     if (!date) return '';
@@ -108,7 +118,7 @@ export const OrgMirroringSyncSchedule: React.FC<
           <DatePicker
             value={current ? dateFormat(current) : ''}
             dateFormat={dateFormat}
-            dateParse={(str: string) => new Date(str)}
+            dateParse={dateParse}
             onChange={onDateChange}
             aria-label="Sync start date"
           />

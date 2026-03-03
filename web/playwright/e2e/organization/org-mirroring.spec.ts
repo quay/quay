@@ -45,13 +45,11 @@ async function fillRequiredFields(
   const futureDate = new Date();
   futureDate.setMinutes(futureDate.getMinutes() + 5);
 
-  // Fill DatePicker with locale-formatted date string
-  const dateString = futureDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  // Fill DatePicker with YYYY-MM-DD format (matches component's dateFormat)
+  const year = futureDate.getFullYear();
+  const month = String(futureDate.getMonth() + 1).padStart(2, '0');
+  const day = String(futureDate.getDate()).padStart(2, '0');
+  const dateString = `${year}-${month}-${day}`;
   const dateInput = page.getByLabel('Sync start date');
   await dateInput.clear();
   await dateInput.fill(dateString);
