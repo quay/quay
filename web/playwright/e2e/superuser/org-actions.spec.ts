@@ -143,5 +143,50 @@ test.describe(
         superuserPage.getByTestId('owners-team-dropdown-toggle'),
       ).toBeVisible();
     });
+
+    test('superuser can see all org tabs on a foreign organization', async ({
+      superuserPage,
+      api,
+      quayConfig,
+    }) => {
+      // Create org as regular user — foreign to the superuser
+      const org = await api.organization('foreignorg');
+
+      await superuserPage.goto(`/organization/${org.name}`);
+
+      // Repositories tab is always visible
+      await expect(
+        superuserPage.getByRole('tab', {name: 'Repositories'}),
+      ).toBeVisible({timeout: 15000});
+
+      // Tabs gated by is_member
+      await expect(
+        superuserPage.getByRole('tab', {name: 'Teams and membership'}),
+      ).toBeVisible();
+
+      // Tabs gated by is_admin
+      await expect(
+        superuserPage.getByRole('tab', {name: 'Robot accounts'}),
+      ).toBeVisible();
+      await expect(
+        superuserPage.getByRole('tab', {name: 'Default permissions'}),
+      ).toBeVisible();
+      await expect(
+        superuserPage.getByRole('tab', {name: 'OAuth Applications'}),
+      ).toBeVisible();
+      await expect(
+        superuserPage.getByRole('tab', {name: 'Logs'}),
+      ).toBeVisible();
+      await expect(
+        superuserPage.getByRole('tab', {name: 'Settings'}),
+      ).toBeVisible();
+
+      // Mirroring tab depends on ORG_MIRROR feature
+      if (quayConfig?.features?.ORG_MIRROR) {
+        await expect(
+          superuserPage.getByRole('tab', {name: 'Mirroring'}),
+        ).toBeVisible();
+      }
+    });
   },
 );

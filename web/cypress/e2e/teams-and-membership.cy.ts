@@ -224,6 +224,14 @@ describe('Teams and membership page', () => {
     const team = 'teamforreadonly';
     const organization = 'user2org1';
     const user = 'user1';
+    // Mock non-admin permissions (user1 is a superuser with full access,
+    // so we intercept the API to simulate a regular member without admin)
+    cy.intercept('GET', '/api/v1/organization/user2org1', (req) => {
+      req.continue((res) => {
+        res.body.is_admin = false;
+        res.body.is_member = true;
+      });
+    });
     cy.visit(`/organization/${organization}?tab=Teamsandmembership`);
     cy.get('#Teams').click();
 
