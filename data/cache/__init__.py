@@ -1,3 +1,5 @@
+import redis
+
 from data.cache.impl import (
     DisconnectWrapper,
     InMemoryDataModelCache,
@@ -6,6 +8,7 @@ from data.cache.impl import (
     RedisDataModelCache,
 )
 from data.cache.redis_cache import redis_cache_from_config
+from data.cache.revocation_list import PermissionRevocationList
 
 
 def get_model_cache(config):
@@ -44,3 +47,28 @@ def get_model_cache(config):
         return RedisDataModelCache(cache_config, redis_client)
 
     raise Exception("Unknown model cache engine `%s`" % engine)
+
+
+def get_revocation_list(config, model_cache=None):
+    """
+    Returns a PermissionRevocationList backed by Redis.
+
+    Tries PERMISSION_REVOCATION_REDIS config first (dedicated shared Redis).
+    Falls back to the model_cache's Redis client if model_cache is Redis-based.
+    Returns None if no Redis is available.
+    """
+    revocation_config = config.get("PERMISSION_REVOCATION_REDIS")
+    if revocation_config:
+        args = dict(revocation_config)
+        args.setdefault("socket_connect_timeout", 1)
+        args.setdefault("socket_timeout", 2)
+        redis_client = redis.StrictRedis(**args)
+        return PermissionRevocationList(redis_client)
+
+    # Fall back to model_cache's Redis client
+    if model_cache is not None:
+        redis_client = getattr(model_cache, "client", None)
+        if redis_client is not None:
+            return PermissionRevocationList(redis_client)
+
+    return None

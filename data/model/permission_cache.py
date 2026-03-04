@@ -9,7 +9,6 @@ immediately, even before the database is updated.
 import logging
 
 from data.cache import cache_key
-from data.cache.revocation_list import PermissionRevocationList
 
 logger = logging.getLogger(__name__)
 
@@ -19,35 +18,35 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _get_revocation_list(model_cache):
-    """Get a PermissionRevocationList from the cache's Redis client."""
-    if model_cache is None:
-        return None
+def _get_revocation_list():
+    """Get the app-level PermissionRevocationList singleton.
 
-    redis_client = getattr(model_cache, "client", None)
-    if redis_client is None:
-        return None
+    The revocation list uses a dedicated shared Redis (PERMISSION_REVOCATION_REDIS)
+    or falls back to the model_cache's Redis client. This decoupling ensures
+    revocations work even when model_cache uses a local backend (memcached).
+    """
+    from app import revocation_list
 
-    return PermissionRevocationList(redis_client)
+    return revocation_list
 
 
-def is_repo_permission_revoked(user_id, namespace_name, repo_name, model_cache):
+def is_repo_permission_revoked(user_id, namespace_name, repo_name):
     """
     Check if a user's repository permission has been recently revoked.
 
     Called during provides loading to prevent stale cached permissions
     from granting access after revocation.
 
-    Returns False (not revoked) if caching is disabled or Redis is unavailable.
+    Returns False (not revoked) if no revocation list is configured.
     """
-    revocation_list = _get_revocation_list(model_cache)
-    if revocation_list is None:
+    rl = _get_revocation_list()
+    if rl is None:
         return False
 
-    return revocation_list.is_repo_revoked(user_id, namespace_name, repo_name)
+    return rl.is_repo_revoked(user_id, namespace_name, repo_name)
 
 
-def add_repo_revocation(user_id, namespace_name, repo_name, model_cache):
+def add_repo_revocation(user_id, namespace_name, repo_name):
     """
     Add a repository permission to the revocation list.
 
@@ -56,12 +55,12 @@ def add_repo_revocation(user_id, namespace_name, repo_name, model_cache):
     Returns:
         bool: True if successful, False if failed
     """
-    revocation_list = _get_revocation_list(model_cache)
-    if revocation_list is None:
-        return True  # Caching disabled, nothing to do
+    rl = _get_revocation_list()
+    if rl is None:
+        return True  # No revocation list configured, nothing to do
 
     try:
-        revocation_list.add_repo_revocation(user_id, namespace_name, repo_name)
+        rl.add_repo_revocation(user_id, namespace_name, repo_name)
         return True
     except Exception as e:
         logger.error(f"Failed to add permission revocation: {e}", exc_info=True)
@@ -155,7 +154,7 @@ def revoke_and_invalidate_repo(user_id, repo_id, namespace_name, repo_name, mode
 
     from data.model import DataModelException
 
-    success = add_repo_revocation(user_id, namespace_name, repo_name, model_cache)
+    success = add_repo_revocation(user_id, namespace_name, repo_name)
     if not success:
         raise DataModelException(
             "Permission revocation failed - cache service unavailable. "
@@ -270,7 +269,7 @@ def invalidate_user_team_removal(user_obj, team_obj, org_name, model_cache):
         )
 
         if not has_direct:
-            add_repo_revocation(user_obj.id, org_name, repo.name, model_cache)
+            add_repo_revocation(user_obj.id, org_name, repo.name)
 
         invalidate_repository_permission(
             user_obj.id, repo.id, model_cache,
@@ -329,7 +328,7 @@ def invalidate_org_member_removal(user_obj, org, model_cache):
     )
 
     for perm in direct_perms:
-        add_repo_revocation(user_obj.id, org_name, perm.repository.name, model_cache)
+        add_repo_revocation(user_obj.id, org_name, perm.repository.name)
         invalidate_repository_permission(
             user_obj.id, perm.repository.id, model_cache,
             namespace_name=org_name, repo_name=perm.repository.name,
@@ -354,7 +353,7 @@ def invalidate_org_member_removal(user_obj, org, model_cache):
             # Only add revocation if we didn't already handle it above (direct perm)
             direct_repo_ids = {p.repository.id for p in direct_perms}
             if repo.id not in direct_repo_ids:
-                add_repo_revocation(user_obj.id, org_name, repo.name, model_cache)
+                add_repo_revocation(user_obj.id, org_name, repo.name)
             invalidate_repository_permission(
                 user_obj.id, repo.id, model_cache,
                 namespace_name=org_name, repo_name=repo.name,
@@ -393,7 +392,7 @@ def invalidate_bulk_team_member_removal(team, removed_user_ids, model_cache):
             )
 
             if not has_direct:
-                add_repo_revocation(user_id, org_name, repo.name, model_cache)
+                add_repo_revocation(user_id, org_name, repo.name)
 
             invalidate_repository_permission(
                 user_id, repo.id, model_cache,

@@ -28,7 +28,7 @@ from data import database, logs_model, model
 from data.archivedlogs import LogArchive
 from data.billing import Billing
 from data.buildlogs import BuildLogs
-from data.cache import get_model_cache
+from data.cache import get_model_cache, get_revocation_list
 from data.model.user import LoginWrappedDBUser
 from data.queue import WorkQueue
 from data.registry_model import registry_model
@@ -252,6 +252,7 @@ Principal(app, use_sessions=False)
 tf = app.config["DB_TRANSACTION_FACTORY"]
 
 model_cache = get_model_cache(app.config)
+revocation_list = get_revocation_list(app.config, model_cache)
 avatar = Avatar(app)
 login_manager = LoginManager(app)
 mail = Mail(app)
