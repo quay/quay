@@ -75,7 +75,7 @@ def add_user_to_team(user_obj, team, model_cache=None):
     # Invalidate cached provides so the user picks up new team permissions.
     # This is a grant (more access), so only cache invalidation is needed — no revocation.
     if model_cache:
-        from data.model import permission_cache
+        from data.cache import permission_cache
 
         permission_cache.invalidate_user_team_grant(user_obj, team, model_cache)
 
@@ -104,7 +104,7 @@ def remove_user_from_team(org_name, team_name, username, removed_by_username, mo
     user_in_team = found[0]
 
     if model_cache:
-        from data.model import permission_cache
+        from data.cache import permission_cache
 
         permission_cache.invalidate_user_team_removal(
             user_in_team.user, user_in_team.team, org_name, model_cache
@@ -126,7 +126,7 @@ def set_team_org_permission(team, team_role_name, set_by_username, model_cache=N
             raise DataModelException(msg)
 
     if model_cache:
-        from data.model import permission_cache
+        from data.cache import permission_cache
 
         permission_cache.invalidate_team_org_role(
             team.id, team.organization.username, model_cache
@@ -167,7 +167,7 @@ def remove_team(org_name, team_name, removed_by_username, model_cache=None):
             raise DataModelException(msg % (team_name, removed_by_username, org_name))
 
     if model_cache:
-        from data.model import permission_cache
+        from data.cache import permission_cache
 
         permission_cache.invalidate_team_removal(team, org_name, model_cache)
 
@@ -603,7 +603,7 @@ def delete_members_not_present(team, member_id_set, model_cache=None):
         to_delete = list(user_ids - member_id_set)
         if to_delete:
             if model_cache:
-                from data.model import permission_cache
+                from data.cache import permission_cache
 
                 permission_cache.invalidate_bulk_team_member_removal(team, to_delete, model_cache)
 
@@ -636,7 +636,7 @@ def delete_all_team_members(team, model_cache=None):
         user_ids = set([u.id for u in list_team_users(team)])
         if user_ids:
             if model_cache:
-                from data.model import permission_cache
+                from data.cache import permission_cache
 
                 permission_cache.invalidate_bulk_team_member_removal(team, user_ids, model_cache)
 

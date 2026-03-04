@@ -118,7 +118,7 @@ def remove_organization_member(org, user_obj, model_cache=None):
         raise DataModelException("Cannot remove user as they are the only organization admin")
 
     if model_cache:
-        from data.model import permission_cache
+        from data.cache import permission_cache
 
         permission_cache.invalidate_org_member_removal(user_obj, org, model_cache)
 

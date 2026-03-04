@@ -363,7 +363,7 @@ def delete_user_permission(username, namespace_name, repository_name, model_cach
 
     # Revoke + invalidate cache BEFORE deleting from DB (fail-safe)
     if model_cache and user_id and repo_id:
-        from data.model import permission_cache
+        from data.cache import permission_cache
 
         permission_cache.revoke_and_invalidate_repo(
             user_id, repo_id, namespace_name, repository_name, model_cache
@@ -397,7 +397,7 @@ def delete_team_permission(team_name, namespace_name, repository_name, model_cac
     perm = fetched[0]
 
     if model_cache and perm.team:
-        from data.model import permission_cache
+        from data.cache import permission_cache
 
         permission_cache.revoke_and_invalidate_team_members(
             perm.team.id, perm.repository.id, namespace_name, repository_name, model_cache
@@ -494,7 +494,7 @@ def set_user_repo_permission(
 
     # For downgrades: revoke first, then invalidate cache, then update DB
     if is_downgrade and model_cache and user and repo:
-        from data.model import permission_cache
+        from data.cache import permission_cache
 
         permission_cache.revoke_and_invalidate_repo(
             user.id, repo.id, namespace_name, repository_name, model_cache
@@ -507,7 +507,7 @@ def set_user_repo_permission(
 
     # For grants/upgrades, invalidate cache after database update (best effort)
     if not is_downgrade and model_cache and user and repo:
-        from data.model import permission_cache
+        from data.cache import permission_cache
 
         permission_cache.invalidate_repository_permission(
             user.id, repo.id, model_cache,
@@ -565,7 +565,7 @@ def set_team_repo_permission(team_name, namespace_name, repository_name, role_na
             pass
 
         if is_downgrade:
-            from data.model import permission_cache
+            from data.cache import permission_cache
 
             permission_cache.revoke_and_invalidate_team_members(
                 team.id, repo.id, namespace_name, repository_name, model_cache
@@ -575,7 +575,7 @@ def set_team_repo_permission(team_name, namespace_name, repository_name, role_na
 
     # For grants/upgrades, invalidate after DB change (best effort)
     if model_cache and not is_downgrade:
-        from data.model import permission_cache
+        from data.cache import permission_cache
 
         permission_cache.invalidate_team_members(
             team.id, repo.id, namespace_name, repository_name, model_cache

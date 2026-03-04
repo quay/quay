@@ -219,7 +219,7 @@ class QuayDeferredPermissionUser(Identity):
         import features
 
         if getattr(features, "PERMISSION_CACHE", False) and namespace_filter and repository_name:
-            from data.model.permission_cache import is_repo_permission_revoked
+            from data.cache.permission_cache import is_repo_permission_revoked
 
             # Check revocation list before loading provides.
             if is_repo_permission_revoked(
