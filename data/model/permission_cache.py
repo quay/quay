@@ -128,7 +128,17 @@ def invalidate_repository_permission(
 
 # ---------------------------------------------------------------------------
 # Composite operations — used by data/model/permission.py and team.py
+#
+# All composite operations are gated by FEATURE_PERMISSION_CACHE.
+# When disabled, they no-op immediately.
 # ---------------------------------------------------------------------------
+
+
+def _is_enabled():
+    """Check if FEATURE_PERMISSION_CACHE is enabled."""
+    import features
+
+    return bool(getattr(features, "PERMISSION_CACHE", False))
 
 
 def revoke_and_invalidate_repo(user_id, repo_id, namespace_name, repo_name, model_cache):
@@ -140,6 +150,9 @@ def revoke_and_invalidate_repo(user_id, repo_id, namespace_name, repo_name, mode
     Raises:
         DataModelException: If the revocation entry could not be added (fail-safe).
     """
+    if not _is_enabled():
+        return
+
     from data.model import DataModelException
 
     success = add_repo_revocation(user_id, namespace_name, repo_name, model_cache)
@@ -166,6 +179,9 @@ def revoke_and_invalidate_team_members(
 
     Raises DataModelException if any revocation fails (fail-safe).
     """
+    if not _is_enabled():
+        return
+
     from data.model import organization as org_model
 
     for member in org_model.get_organization_team_members(team_id):
@@ -182,6 +198,9 @@ def invalidate_team_members(
 
     Used after granting or upgrading a team's repo permission.
     """
+    if not _is_enabled():
+        return
+
     from data.model import organization as org_model
 
     for member in org_model.get_organization_team_members(team_id):
@@ -199,6 +218,9 @@ def invalidate_user_team_grant(user_obj, team_obj, model_cache):
     more access, not revoking it. Best-effort: failures are logged but don't
     block the operation.
     """
+    if not _is_enabled():
+        return
+
     from data.model import permission as perm_model
 
     org_name = team_obj.organization.username
@@ -227,6 +249,9 @@ def invalidate_user_team_removal(user_obj, team_obj, org_name, model_cache):
     - org_provides__ for the user in this org
     - repo_provides__ for each repo the team has permissions on
     """
+    if not _is_enabled():
+        return
+
     from data.database import RepositoryPermission
     from data.model import permission as perm_model
 
@@ -257,6 +282,9 @@ def invalidate_team_org_role(team_id, org_name, model_cache):
     """
     Invalidate org provides for all team members when a team's org role changes.
     """
+    if not _is_enabled():
+        return
+
     from data.model import organization as org_model
 
     for member in org_model.get_organization_team_members(team_id):
@@ -269,6 +297,9 @@ def invalidate_team_removal(team, org_name, model_cache):
 
     Calls invalidate_user_team_removal for each member.
     """
+    if not _is_enabled():
+        return
+
     from data.model import organization as org_model
 
     for member in org_model.get_organization_team_members(team.id):

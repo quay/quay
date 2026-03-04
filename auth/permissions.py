@@ -151,10 +151,9 @@ class QuayDeferredPermissionUser(Identity):
 
         This method does *not* add any provides for specific repositories.
 
-        Uses Redis cache when available to avoid hitting the database on every request.
+        Uses Redis cache when available and FEATURE_PERMISSION_CACHE is enabled.
         """
-        from app import model_cache
-        from data.cache import cache_key
+        import features
 
         def _load_org_provides():
             results = []
@@ -170,14 +169,19 @@ class QuayDeferredPermissionUser(Identity):
                 )
             return results
 
-        # Try cache, fall back to DB
-        try:
-            org_cache_key = cache_key.for_user_org_provides(
-                user_object.id, namespace_filter, model_cache.cache_config
-            )
-            org_provides = model_cache.retrieve(org_cache_key, _load_org_provides)
-        except Exception:
-            logger.debug("Cache unavailable for org provides, querying DB")
+        if getattr(features, "PERMISSION_CACHE", False):
+            from app import model_cache
+            from data.cache import cache_key
+
+            try:
+                org_cache_key = cache_key.for_user_org_provides(
+                    user_object.id, namespace_filter, model_cache.cache_config
+                )
+                org_provides = model_cache.retrieve(org_cache_key, _load_org_provides)
+            except Exception:
+                logger.debug("Cache unavailable for org provides, querying DB")
+                org_provides = _load_org_provides()
+        else:
             org_provides = _load_org_provides()
 
         for entry in org_provides:
@@ -206,20 +210,19 @@ class QuayDeferredPermissionUser(Identity):
         """
         Populates the repository-specific provides for a particular user and repository.
 
-        Uses Redis cache when available to avoid hitting the database on every request.
-        The UNION query that resolves both direct and team-based permissions is cached.
+        When FEATURE_PERMISSION_CACHE is enabled:
+        - Checks the revocation list first to block recently revoked permissions
+        - Caches the UNION query result in Redis
 
-        Checks the revocation list first — if the user's permission on this repo
-        has been recently revoked, no provides are added regardless of cache/DB state.
+        When disabled, queries the database directly on every request.
         """
-        from app import model_cache
-        from data.cache import cache_key
-        from data.model.permission_cache import is_repo_permission_revoked
+        import features
 
-        # Check revocation list before loading provides.
-        # If revoked, don't add any provides — blocks access immediately
-        # even if the DB delete hasn't completed yet.
-        if namespace_filter and repository_name:
+        if getattr(features, "PERMISSION_CACHE", False) and namespace_filter and repository_name:
+            from app import model_cache
+            from data.model.permission_cache import is_repo_permission_revoked
+
+            # Check revocation list before loading provides.
             if is_repo_permission_revoked(
                 user_object.id, namespace_filter, repository_name, model_cache
             ):
@@ -249,7 +252,10 @@ class QuayDeferredPermissionUser(Identity):
             return results
 
         # Only use cache for scoped lookups (namespace+repo), not "all permissions"
-        if namespace_filter and repository_name:
+        if getattr(features, "PERMISSION_CACHE", False) and namespace_filter and repository_name:
+            from app import model_cache
+            from data.cache import cache_key
+
             try:
                 repo_cache_key = cache_key.for_user_repo_provides(
                     user_object.id, namespace_filter, repository_name, model_cache.cache_config
@@ -259,7 +265,6 @@ class QuayDeferredPermissionUser(Identity):
                 logger.debug("Cache unavailable for repo provides, querying DB")
                 repo_provides = _load_repo_provides()
         else:
-            # "All permissions" queries are too broad to cache effectively
             repo_provides = _load_repo_provides()
 
         for entry in repo_provides:
