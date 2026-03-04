@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 def _get_revocation_list():
-    from app import revocation_list
+    from app import model_cache
 
-    return revocation_list
+    return getattr(model_cache, "revocation_list", None)
 
 
 def is_repo_permission_revoked(user_id, namespace_name, repo_name):
