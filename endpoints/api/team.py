@@ -315,7 +315,7 @@ class OrganizationTeamSyncing(ApiResource):
 
             if app.config["AUTHENTICATION_TYPE"] == "OIDC":
                 # delete existing team members, team membership will be synced with OIDC group
-                model.team.delete_all_team_members(team)
+                model.team.delete_all_team_members(team, model_cache=model_cache)
 
             return team_view(orgname, team)
 

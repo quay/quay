@@ -112,10 +112,15 @@ def get_admin_users(org):
     return __get_org_admin_users(org)
 
 
-def remove_organization_member(org, user_obj):
+def remove_organization_member(org, user_obj, model_cache=None):
     org_admins = [u.username for u in __get_org_admin_users(org)]
     if len(org_admins) == 1 and user_obj.username in org_admins:
         raise DataModelException("Cannot remove user as they are the only organization admin")
+
+    if model_cache:
+        from data.model import permission_cache
+
+        permission_cache.invalidate_org_member_removal(user_obj, org, model_cache)
 
     with db_transaction():
         # Find and remove the user from any repositories under the org.

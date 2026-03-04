@@ -594,7 +594,7 @@ def update_sync_status(team_sync_info):
     return query.execute() == 1
 
 
-def delete_members_not_present(team, member_id_set):
+def delete_members_not_present(team, member_id_set, model_cache=None):
     """
     Deletes all members of the given team that are not found in the member ID set.
     """
@@ -602,6 +602,11 @@ def delete_members_not_present(team, member_id_set):
         user_ids = set([u.id for u in list_team_users(team)])
         to_delete = list(user_ids - member_id_set)
         if to_delete:
+            if model_cache:
+                from data.model import permission_cache
+
+                permission_cache.invalidate_bulk_team_member_removal(team, to_delete, model_cache)
+
             query = TeamMember.delete().where(TeamMember.team == team, TeamMember.user << to_delete)
             return query.execute()
 
@@ -623,13 +628,18 @@ def get_federated_user_teams(user_obj, login_service_name):
     return query
 
 
-def delete_all_team_members(team):
+def delete_all_team_members(team, model_cache=None):
     """
     Delete all users that are a member of the given team
     """
     with db_transaction():
         user_ids = set([u.id for u in list_team_users(team)])
         if user_ids:
+            if model_cache:
+                from data.model import permission_cache
+
+                permission_cache.invalidate_bulk_team_member_removal(team, user_ids, model_cache)
+
             query = TeamMember.delete().where(TeamMember.team == team, TeamMember.user << user_ids)
             return query.execute()
 
