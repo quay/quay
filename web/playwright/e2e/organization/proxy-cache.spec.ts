@@ -1,5 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
+import {tryPushImage} from '../../utils/container';
 
 test.describe(
   'Organization Proxy Cache',
@@ -101,5 +102,63 @@ test.describe(
         authenticatedPage.getByText('Proxy Cache'),
       ).not.toBeVisible();
     });
+
+    test(
+      'push to proxy cache organization is blocked',
+      {tag: ['@container', '@PROJQUAY-9516']},
+      async ({api}) => {
+        // Create organization and configure as proxy cache
+        const org = await api.organization('pushblock');
+        await api.raw.createProxyCacheConfig(org.name, {
+          upstream_registry: 'docker.io',
+        });
+
+        // Attempt to push an image to the proxy cache org
+        // This should fail because proxy cache orgs are read-only
+        const result = await tryPushImage(
+          org.name,
+          'testpush',
+          'latest',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        );
+
+        // Push should fail
+        expect(result.success).toBe(false);
+
+        // Error should indicate access was denied
+        // The registry returns "denied" or "unauthorized" when push permissions are blocked
+        expect(result.error?.toLowerCase()).toMatch(
+          /denied|unauthorized|access/,
+        );
+      },
+    );
+
+    test(
+      'repository creation via push is blocked for proxy cache organizations',
+      {tag: ['@container', '@PROJQUAY-9516']},
+      async ({api}) => {
+        // Create organization and configure as proxy cache
+        const org = await api.organization('repocreateblock');
+        await api.raw.createProxyCacheConfig(org.name, {
+          upstream_registry: 'docker.io',
+        });
+
+        // Attempt to push to a non-existent repo (would create it normally)
+        const result = await tryPushImage(
+          org.name,
+          'newrepo',
+          'v1.0.0',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        );
+
+        // Push should fail - can't create repos in proxy cache orgs
+        expect(result.success).toBe(false);
+        expect(result.error?.toLowerCase()).toMatch(
+          /denied|unauthorized|access/,
+        );
+      },
+    );
   },
 );
