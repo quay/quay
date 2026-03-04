@@ -1,14 +1,20 @@
 import os
 import time
-from test.fixtures import *
 
 import pytest
 from mock import patch
 
 from app import export_action_logs_queue
-from endpoints.api.logs import ExportOrgLogs, OrgLogs, _validate_logs_arguments
+from data.logs_model.shared import SearchNotConfiguredError
+from endpoints.api.logs import (
+    ExportOrgLogs,
+    OrgAggregateLogs,
+    OrgLogs,
+    _validate_logs_arguments,
+)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 
 @pytest.mark.skipif(
@@ -36,6 +42,42 @@ def test_export_logs(app):
 
             # Ensure the request was queued.
             assert export_action_logs_queue.get() is not None
+
+
+def test_org_logs_search_not_configured(app):
+    """Test that OrgLogs returns 200 with search_unavailable when search is not configured."""
+    with patch("endpoints.api.logs.logs_model") as mock_logs_model:
+        mock_logs_model.lookup_logs.side_effect = SearchNotConfiguredError("search_token missing")
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl,
+                OrgLogs,
+                "GET",
+                {"orgname": "buynlarge"},
+                {},
+                expected_code=200,
+            )
+            assert resp.json["search_unavailable"] is True
+            assert resp.json["logs"] == []
+
+
+def test_org_aggregate_logs_search_not_configured(app):
+    """Test that OrgAggregateLogs returns 200 with search_unavailable."""
+    with patch("endpoints.api.logs.logs_model") as mock_logs_model:
+        mock_logs_model.get_aggregated_log_counts.side_effect = SearchNotConfiguredError(
+            "search_token missing"
+        )
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl,
+                OrgAggregateLogs,
+                "GET",
+                {"orgname": "buynlarge"},
+                {},
+                expected_code=200,
+            )
+            assert resp.json["search_unavailable"] is True
+            assert resp.json["aggregated"] == []
 
 
 def test_invalid_date_range(app):
