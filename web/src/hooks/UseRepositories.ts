@@ -8,13 +8,15 @@ import {
 import {OrgSearchState} from 'src/components/toolbar/SearchTypes';
 import {
   fetchAllRepos,
+  fetchAllReposAsSuperUser,
   fetchRepositoriesForNamespace,
   IRepository,
+  SuperUserReposResult,
 } from 'src/resources/RepositoryResource';
 import {useCurrentUser} from './UseCurrentUser';
 
 export function useRepositories(organization?: string) {
-  const {user} = useCurrentUser();
+  const {user, isSuperUser} = useCurrentUser();
 
   // Keep state of current search in this hook
   const [page, setPage] = useState(1);
@@ -23,6 +25,7 @@ export function useRepositories(organization?: string) {
   const searchFilter = useRecoilValue(searchReposFilterState);
   const [currentOrganization, setCurrentOrganization] = useState(organization);
   const [partialResults, setPartialResults] = useState<IRepository[]>([]);
+  const [truncated, setTruncated] = useState(false);
 
   const listOfOrgNames: string[] = currentOrganization
     ? [currentOrganization]
@@ -38,26 +41,43 @@ export function useRepositories(organization?: string) {
     isLoading: loading,
     isPlaceholderData,
   } = useQuery({
-    queryKey: ['organization', organization || 'all', 'repositories'],
+    queryKey: [
+      'organization',
+      organization || 'all',
+      'repositories',
+      isSuperUser ? 'superuser' : 'user',
+    ],
     keepPreviousData: true,
     placeholderData: [],
     queryFn: async ({signal}): Promise<IRepository[]> => {
       // Reset partial results at the start of a new query
       setPartialResults([]);
+      setTruncated(false);
 
-      const result = currentOrganization
-        ? fetchRepositoriesForNamespace(currentOrganization, {
-            signal,
-            onPartialResult: handlePartialResults,
-          })
-        : fetchAllRepos(listOfOrgNames, {
-            flatten: true,
-            signal,
-            onPartialResult: handlePartialResults,
-          });
+      if (currentOrganization) {
+        return fetchRepositoriesForNamespace(currentOrganization, {
+          signal,
+          onPartialResult: handlePartialResults,
+        });
+      }
 
-      // Ensure we always return IRepository[]
-      return result as Promise<IRepository[]>;
+      // Superusers: single paginated API call returns all repos across all namespaces
+      if (isSuperUser) {
+        const result: SuperUserReposResult = await fetchAllReposAsSuperUser({
+          signal,
+          onPartialResult: handlePartialResults,
+        });
+        setTruncated(result.truncated);
+        return result.repos;
+      }
+
+      // Normal users: fan out per namespace
+      const result = await fetchAllRepos(listOfOrgNames, {
+        flatten: true,
+        signal,
+        onPartialResult: handlePartialResults,
+      });
+      return result as IRepository[];
     },
   });
 
@@ -69,7 +89,7 @@ export function useRepositories(organization?: string) {
     repos: displayedRepos,
 
     // Fetching State
-    loading: loading || isPlaceholderData || !listOfOrgNames,
+    loading: loading || isPlaceholderData || (!isSuperUser && !listOfOrgNames),
     error,
 
     // Search Query State
@@ -85,5 +105,6 @@ export function useRepositories(organization?: string) {
 
     // Useful Metadata
     totalResults: displayedRepos?.length || 0,
+    truncated,
   };
 }
