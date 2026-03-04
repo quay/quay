@@ -532,6 +532,14 @@ describe('Repository Details Page', () => {
   });
 
   it('does not render tag actions for non-writable repositories', () => {
+    // Mock non-writable permissions (user1 is a superuser with full access,
+    // so we intercept the API to simulate a regular user without write perms)
+    cy.intercept('GET', '/api/v1/repository/user2org1/hello-world*', (req) => {
+      req.continue((res) => {
+        res.body.can_write = false;
+        res.body.can_admin = false;
+      });
+    });
     cy.visit('/repository/user2org1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
@@ -1184,6 +1192,14 @@ describe('Tag history Tab', () => {
   });
 
   it('cannot revert or delete if user has no write permissions', () => {
+    // Mock non-writable permissions (user1 is a superuser with full access,
+    // so we intercept the API to simulate a regular user without write perms)
+    cy.intercept('GET', '/api/v1/repository/user2org1/hello-world*', (req) => {
+      req.continue((res) => {
+        res.body.can_write = false;
+        res.body.can_admin = false;
+      });
+    });
     cy.visit('/repository/user2org1/hello-world?tab=history');
     cy.contains('latest was created pointing to sha256f54a58bc1aac5e').should(
       'exist',
