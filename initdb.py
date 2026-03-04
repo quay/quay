@@ -39,6 +39,7 @@ from data.database import (
     MediaType,
     NotificationKind,
     OAuthAuthorizationCode,
+    OrganizationContactEmail,
     ProxyCacheConfig,
     QuayRegion,
     QuayService,
@@ -941,6 +942,8 @@ def populate_database(minimal=False):
     org = model.organization.create_organization("buynlarge", "quay@devtable.com", new_user_1)
     org.stripe_id = TEST_STRIPE_ID
     org.save()
+
+    OrganizationContactEmail.create(organization=org, contact_email="quay@devtable.com")
 
     QuotaType.create(name="Warning")
     QuotaType.create(name="Reject")
