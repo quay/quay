@@ -19,26 +19,12 @@ logger = logging.getLogger(__name__)
 
 
 def _get_revocation_list():
-    """Get the app-level PermissionRevocationList singleton.
-
-    The revocation list uses a dedicated shared Redis (PERMISSION_REVOCATION_REDIS)
-    or falls back to the model_cache's Redis client. This decoupling ensures
-    revocations work even when model_cache uses a local backend (memcached).
-    """
     from app import revocation_list
 
     return revocation_list
 
 
 def is_repo_permission_revoked(user_id, namespace_name, repo_name):
-    """
-    Check if a user's repository permission has been recently revoked.
-
-    Called during provides loading to prevent stale cached permissions
-    from granting access after revocation.
-
-    Returns False (not revoked) if no revocation list is configured.
-    """
     rl = _get_revocation_list()
     if rl is None:
         return False
@@ -47,17 +33,9 @@ def is_repo_permission_revoked(user_id, namespace_name, repo_name):
 
 
 def add_repo_revocation(user_id, namespace_name, repo_name):
-    """
-    Add a repository permission to the revocation list.
-
-    Called BEFORE database changes to ensure concurrent requests are blocked.
-
-    Returns:
-        bool: True if successful, False if failed
-    """
     rl = _get_revocation_list()
     if rl is None:
-        return True  # No revocation list configured, nothing to do
+        return True
 
     try:
         rl.add_repo_revocation(user_id, namespace_name, repo_name)
@@ -68,14 +46,6 @@ def add_repo_revocation(user_id, namespace_name, repo_name):
 
 
 def invalidate_org_permission(user_id, namespace_name, model_cache):
-    """
-    Invalidate cached org-wide permission provides for a user.
-
-    Called when a user's team membership or team org role changes.
-
-    Returns:
-        bool: True if successful (or caching disabled), False if failed
-    """
     if model_cache is None:
         return True
 
@@ -94,15 +64,6 @@ def invalidate_org_permission(user_id, namespace_name, model_cache):
 def invalidate_repository_permission(
     user_id, repo_id, model_cache=None, namespace_name=None, repo_name=None
 ):
-    """
-    Invalidate cached permission provides for a user/repo combination.
-
-    Called after adding to the revocation list. Invalidates the provides
-    cache so subsequent requests go back to the database.
-
-    Returns:
-        bool: True if successful (or caching disabled), False if failed
-    """
     if model_cache is None:
         return True
 
@@ -134,21 +95,12 @@ def invalidate_repository_permission(
 
 
 def _is_enabled():
-    """Check if FEATURE_PERMISSION_CACHE is enabled."""
     import features
 
     return bool(getattr(features, "PERMISSION_CACHE", False))
 
 
 def revoke_and_invalidate_repo(user_id, repo_id, namespace_name, repo_name, model_cache):
-    """
-    Revoke + invalidate cached permission for a single user/repo.
-
-    Adds a revocation entry first, then invalidates the cache.
-
-    Raises:
-        DataModelException: If the revocation entry could not be added (fail-safe).
-    """
     if not _is_enabled():
         return
 
@@ -170,14 +122,6 @@ def revoke_and_invalidate_repo(user_id, repo_id, namespace_name, repo_name, mode
 def revoke_and_invalidate_team_members(
     team_id, repo_id, namespace_name, repo_name, model_cache
 ):
-    """
-    Revoke + invalidate for all members of a team on a specific repo.
-
-    Used before deleting or downgrading a team's repo permission to ensure
-    no team member retains stale cached access.
-
-    Raises DataModelException if any revocation fails (fail-safe).
-    """
     if not _is_enabled():
         return
 
@@ -192,11 +136,6 @@ def revoke_and_invalidate_team_members(
 def invalidate_team_members(
     team_id, repo_id, namespace_name, repo_name, model_cache
 ):
-    """
-    Invalidate cache (no revocation) for all members of a team on a repo.
-
-    Used after granting or upgrading a team's repo permission.
-    """
     if not _is_enabled():
         return
 
@@ -210,13 +149,6 @@ def invalidate_team_members(
 
 
 def invalidate_user_team_grant(user_obj, team_obj, model_cache):
-    """
-    Invalidate cached provides when a user is ADDED to a team (grant scenario).
-
-    Only invalidates cache — no revocation entries needed since we're granting
-    more access, not revoking it. Best-effort: failures are logged but don't
-    block the operation.
-    """
     if not _is_enabled():
         return
 
@@ -235,19 +167,6 @@ def invalidate_user_team_grant(user_obj, team_obj, model_cache):
 
 
 def invalidate_user_team_removal(user_obj, team_obj, org_name, model_cache):
-    """
-    Invalidate cached provides when a user is REMOVED from a team.
-
-    For each repo the team has access to:
-    - If the user has NO direct permission on the repo, adds a revocation entry
-      to block the race window between cache invalidation and DB change.
-    - If the user HAS a direct permission, only invalidates cache (revocation
-      would incorrectly block their direct access for 5 minutes).
-
-    Always invalidates:
-    - org_provides__ for the user in this org
-    - repo_provides__ for each repo the team has permissions on
-    """
     if not _is_enabled():
         return
 
@@ -278,9 +197,6 @@ def invalidate_user_team_removal(user_obj, team_obj, org_name, model_cache):
 
 
 def invalidate_team_org_role(team_id, org_name, model_cache):
-    """
-    Invalidate org provides for all team members when a team's org role changes.
-    """
     if not _is_enabled():
         return
 
@@ -291,11 +207,6 @@ def invalidate_team_org_role(team_id, org_name, model_cache):
 
 
 def invalidate_team_removal(team, org_name, model_cache):
-    """
-    Invalidate cached permissions for all members when a team is being deleted.
-
-    Calls invalidate_user_team_removal for each member.
-    """
     if not _is_enabled():
         return
 
@@ -306,13 +217,6 @@ def invalidate_team_removal(team, org_name, model_cache):
 
 
 def invalidate_org_member_removal(user_obj, org, model_cache):
-    """
-    Invalidate cached permissions when a user is removed from an organization.
-
-    The user loses ALL permissions under this org (direct repo permissions
-    and team-based permissions). Adds revocation entries for every repo the
-    user has direct permissions on, and invalidates all org/repo provides.
-    """
     if not _is_enabled():
         return
 
@@ -350,7 +254,6 @@ def invalidate_org_member_removal(user_obj, org, model_cache):
     for user_team in user_teams:
         for team_perm in perm_model.list_team_permissions(user_team):
             repo = team_perm.repository
-            # Only add revocation if we didn't already handle it above (direct perm)
             direct_repo_ids = {p.repository.id for p in direct_perms}
             if repo.id not in direct_repo_ids:
                 add_repo_revocation(user_obj.id, org_name, repo.name)
@@ -361,11 +264,6 @@ def invalidate_org_member_removal(user_obj, org, model_cache):
 
 
 def invalidate_bulk_team_member_removal(team, removed_user_ids, model_cache):
-    """
-    Invalidate cached permissions for users being bulk-removed from a team.
-
-    Used by delete_members_not_present() and delete_all_team_members().
-    """
     if not _is_enabled():
         return
 
