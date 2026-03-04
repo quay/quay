@@ -6,7 +6,7 @@ from .permission_models_interface import (
     TeamPermission,
     UserPermission,
 )
-from app import avatar
+from app import avatar, model_cache
 from data import model
 
 
@@ -77,7 +77,7 @@ class PreOCIModel(PermissionDataInterface):
     def set_repo_permission_for_user(self, username, namespace_name, repository_name, role_name):
         try:
             perm = model.permission.set_user_repo_permission(
-                username, namespace_name, repository_name, role_name
+                username, namespace_name, repository_name, role_name, model_cache=model_cache
             )
             org = None
             try:
@@ -95,7 +95,7 @@ class PreOCIModel(PermissionDataInterface):
 
     def delete_repo_permission_for_user(self, username, namespace_name, repository_name):
         try:
-            model.permission.delete_user_permission(username, namespace_name, repository_name)
+            model.permission.delete_user_permission(username, namespace_name, repository_name, model_cache=model_cache)
         except model.DataModelException as ex:
             raise DeleteException(ex)
 
@@ -114,7 +114,7 @@ class PreOCIModel(PermissionDataInterface):
         try:
             return self._team_permission(
                 model.permission.set_team_repo_permission(
-                    team_name, namespace_name, repository_name, role_name
+                    team_name, namespace_name, repository_name, role_name, model_cache=model_cache
                 ),
                 team_name,
             )
@@ -123,7 +123,7 @@ class PreOCIModel(PermissionDataInterface):
 
     def delete_repo_permission_for_team(self, team_name, namespace_name, repository_name):
         try:
-            model.permission.delete_team_permission(team_name, namespace_name, repository_name)
+            model.permission.delete_team_permission(team_name, namespace_name, repository_name, model_cache=model_cache)
         except model.DataModelException as ex:
             raise DeleteException(ex)
 

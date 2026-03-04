@@ -144,7 +144,9 @@ def sync_team(authentication, stale_team_sync):
                 },
             )
 
-            model.team.add_user_to_team(quay_user, stale_team_sync.team)
+            from app import model_cache
+
+            model.team.add_user_to_team(quay_user, stale_team_sync.team, model_cache=model_cache)
         except model.UserAlreadyInTeam:
             # If the user is already present, nothing more to do for them.
             pass

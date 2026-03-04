@@ -443,7 +443,9 @@ def confirm_team_invite(code, user_obj):
         # Add the user to the team.
         try:
             code_found = True
-            add_user_to_team(user_obj, invite.team)
+            from app import model_cache
+
+            add_user_to_team(user_obj, invite.team, model_cache=model_cache)
         except UserAlreadyInTeam:
             # Ignore.
             pass

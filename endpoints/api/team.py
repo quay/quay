@@ -8,7 +8,7 @@ from functools import wraps
 from flask import request
 
 import features
-from app import app, authentication, avatar
+from app import app, authentication, avatar, model_cache
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
@@ -77,7 +77,7 @@ def try_accept_invite(code, user):
 def handle_addinvite_team(inviter, team, user=None, email=None):
     requires_invite = features.MAILING and features.REQUIRE_TEAM_INVITE
     invite = model.team.add_or_invite_to_team(
-        inviter, team, user, email, requires_invite=requires_invite
+        inviter, team, user, email, requires_invite=requires_invite, model_cache=model_cache
     )
     if not invite:
         # User was added to the team directly.
@@ -244,7 +244,7 @@ class OrganizationTeam(ApiResource):
                     role = Team.role.get_name(team.role_id)
                     if role != details["role"]:
                         team = model.team.set_team_org_permission(
-                            team, details["role"], get_authenticated_user().username
+                            team, details["role"], get_authenticated_user().username, model_cache=model_cache
                         )
                         log_action(
                             "org_set_team_role",
@@ -264,7 +264,7 @@ class OrganizationTeam(ApiResource):
         """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser_with_full_access():
-            model.team.remove_team(orgname, teamname, get_authenticated_user().username)
+            model.team.remove_team(orgname, teamname, get_authenticated_user().username, model_cache=model_cache)
             log_action("org_delete_team", orgname, {"team": teamname})
             return "", 204
 
@@ -495,7 +495,7 @@ class TeamMember(ApiResource):
                 )
                 return "", 204
 
-            model.team.remove_user_from_team(orgname, teamname, membername, invoking_user)
+            model.team.remove_user_from_team(orgname, teamname, membername, invoking_user, model_cache=model_cache)
             if features.RH_MARKETPLACE:
                 org_id = model.organization.get_organization(orgname).id
                 model.organization_skus.remove_all_owner_subscriptions_from_org(member.id, org_id)
