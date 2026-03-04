@@ -39,6 +39,7 @@ from data.database import (
     MediaType,
     NotificationKind,
     OAuthAuthorizationCode,
+    OrganizationContactEmail,
     ProxyCacheConfig,
     QuayRegion,
     QuayService,
@@ -1460,6 +1461,7 @@ WHITELISTED_EMPTY_MODELS = [
     "ManifestPullStatistics",
     "NamespaceImmutabilityPolicy",
     "RepositoryImmutabilityPolicy",
+    "OrganizationContactEmail",
 ]
 
 
