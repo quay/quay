@@ -1070,6 +1070,12 @@ CONFIG_SCHEMA = {
             "description": "If set to true, only namespaces listed in V1_PUSH_WHITELIST support V1 push. Defaults to True",
             "x-example": False,
         },
+        # Feature Flag: V2 schema1 push restriction.
+        "FEATURE_RESTRICTED_V2_SCHEMA1_PUSH": {
+            "type": "boolean",
+            "description": "If set to true, only namespaces listed in V1_PUSH_WHITELIST support schema1 manifest push via V2 API. Defaults to False",
+            "x-example": False,
+        },
         # Feature Flag: Support Repository Mirroring.
         "FEATURE_REPO_MIRROR": {
             "type": "boolean",
@@ -1112,7 +1118,7 @@ CONFIG_SCHEMA = {
         # Feature Flag: V1 push restriction.
         "V1_PUSH_WHITELIST": {
             "type": "array",
-            "description": "The array of namespace names that support V1 push if FEATURE_RESTRICTED_V1_PUSH is set to true.",
+            "description": "The array of namespace names that support V1 push if FEATURE_RESTRICTED_V1_PUSH is set to true, or schema1 manifest push via V2 API if FEATURE_RESTRICTED_V2_SCHEMA1_PUSH is set to true.",
             "x-example": ["some", "namespaces"],
         },
         # Logs model
