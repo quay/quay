@@ -258,7 +258,9 @@ export default function Organization() {
                     eventKey={nav.name.replace(/ /g, '')}
                     title={<TabTitleText>{nav.name}</TabTitleText>}
                   >
-                    {nav.component}
+                    {activeTabKey === nav.name.replace(/ /g, '')
+                      ? nav.component
+                      : null}
                   </Tab>
                 ))}
             </Tabs>
