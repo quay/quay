@@ -1424,11 +1424,11 @@ CONFIG_SCHEMA = {
                         },
                         "search_token": {
                             "type": "string",
-                            "description": "Bearer token for Splunk search API. Required because HEC tokens are ingest-only and cannot search. See: https://docs.splunk.com/Documentation/SplunkCloud/latest/Config/ManageHECtokens",
+                            "description": "Bearer token for Splunk search API. Optional. HEC tokens are ingest-only and cannot search, so a separate token is needed for reading logs. When not configured, audit log viewing in the UI is unavailable but log forwarding still works. See: https://docs.splunk.com/Documentation/SplunkCloud/latest/Config/ManageHECtokens",
                             "x-example": "your-search-bearer-token",
                         },
                     },
-                    "required": ["host", "hec_token", "search_token"],
+                    "required": ["host", "hec_token"],
                 },
             },
         },
