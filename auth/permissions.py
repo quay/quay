@@ -150,26 +150,54 @@ class QuayDeferredPermissionUser(Identity):
         Populates the namespace-wide provides for a particular user under a particular namespace.
 
         This method does *not* add any provides for specific repositories.
-        """
 
-        for team in model.permission.get_org_wide_permissions(
-            user_object, org_filter=namespace_filter
-        ):
+        Uses Redis cache when available to avoid hitting the database on every request.
+        """
+        from app import model_cache
+        from data.cache import cache_key
+
+        def _load_org_provides():
+            results = []
+            for team in model.permission.get_org_wide_permissions(
+                user_object, org_filter=namespace_filter
+            ):
+                results.append(
+                    {
+                        "org_username": team.organization.username,
+                        "team_name": team.name,
+                        "role": team.role.name,
+                    }
+                )
+            return results
+
+        # Try cache, fall back to DB
+        try:
+            org_cache_key = cache_key.for_user_org_provides(
+                user_object.id, namespace_filter, model_cache.cache_config
+            )
+            org_provides = model_cache.retrieve(org_cache_key, _load_org_provides)
+        except Exception:
+            logger.debug("Cache unavailable for org provides, querying DB")
+            org_provides = _load_org_provides()
+
+        for entry in org_provides:
             team_org_grant = _OrganizationNeed(
-                team.organization.username, self._team_role_for_scopes(team.role.name)
+                entry["org_username"], self._team_role_for_scopes(entry["role"])
             )
             logger.debug("Organization team added permission: {0}".format(team_org_grant))
             self.provides.add(team_org_grant)
 
-            team_repo_role = TEAM_ORGWIDE_REPO_ROLES[team.role.name]
+            team_repo_role = TEAM_ORGWIDE_REPO_ROLES[entry["role"]]
             org_repo_grant = _OrganizationRepoNeed(
-                team.organization.username, self._repo_role_for_scopes(team_repo_role)
+                entry["org_username"], self._repo_role_for_scopes(team_repo_role)
             )
             logger.debug("Organization team added repo permission: {0}".format(org_repo_grant))
             self.provides.add(org_repo_grant)
 
             team_grant = _TeamNeed(
-                team.organization.username, team.name, self._team_role_for_scopes(team.role.name)
+                entry["org_username"],
+                entry["team_name"],
+                self._team_role_for_scopes(entry["role"]),
             )
             logger.debug("Team added permission: {0}".format(team_grant))
             self.provides.add(team_grant)
@@ -177,20 +205,68 @@ class QuayDeferredPermissionUser(Identity):
     def _populate_repository_provides(self, user_object, namespace_filter, repository_name):
         """
         Populates the repository-specific provides for a particular user and repository.
+
+        Uses Redis cache when available to avoid hitting the database on every request.
+        The UNION query that resolves both direct and team-based permissions is cached.
+
+        Checks the revocation list first — if the user's permission on this repo
+        has been recently revoked, no provides are added regardless of cache/DB state.
         """
+        from app import model_cache
+        from data.cache import cache_key
+        from data.model.permission_cache import is_repo_permission_revoked
 
+        # Check revocation list before loading provides.
+        # If revoked, don't add any provides — blocks access immediately
+        # even if the DB delete hasn't completed yet.
         if namespace_filter and repository_name:
-            permissions = model.permission.get_user_repository_permissions(
-                user_object, namespace_filter, repository_name
-            )
-        else:
-            permissions = model.permission.get_all_user_repository_permissions(user_object)
+            if is_repo_permission_revoked(
+                user_object.id, namespace_filter, repository_name, model_cache
+            ):
+                logger.debug(
+                    "Permission revoked for user=%s, repo=%s/%s",
+                    user_object.id, namespace_filter, repository_name,
+                )
+                return
 
-        for perm in permissions:
+        def _load_repo_provides():
+            if namespace_filter and repository_name:
+                permissions = model.permission.get_user_repository_permissions(
+                    user_object, namespace_filter, repository_name
+                )
+            else:
+                permissions = model.permission.get_all_user_repository_permissions(user_object)
+
+            results = []
+            for perm in permissions:
+                results.append(
+                    {
+                        "namespace": perm.repository.namespace_user.username,
+                        "repo_name": perm.repository.name,
+                        "role": perm.role.name,
+                    }
+                )
+            return results
+
+        # Only use cache for scoped lookups (namespace+repo), not "all permissions"
+        if namespace_filter and repository_name:
+            try:
+                repo_cache_key = cache_key.for_user_repo_provides(
+                    user_object.id, namespace_filter, repository_name, model_cache.cache_config
+                )
+                repo_provides = model_cache.retrieve(repo_cache_key, _load_repo_provides)
+            except Exception:
+                logger.debug("Cache unavailable for repo provides, querying DB")
+                repo_provides = _load_repo_provides()
+        else:
+            # "All permissions" queries are too broad to cache effectively
+            repo_provides = _load_repo_provides()
+
+        for entry in repo_provides:
             repo_grant = _RepositoryNeed(
-                perm.repository.namespace_user.username,
-                perm.repository.name,
-                self._repo_role_for_scopes(perm.role.name),
+                entry["namespace"],
+                entry["repo_name"],
+                self._repo_role_for_scopes(entry["role"]),
             )
             logger.debug("User added permission: {0}".format(repo_grant))
             self.provides.add(repo_grant)

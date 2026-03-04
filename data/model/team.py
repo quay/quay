@@ -64,16 +64,25 @@ def create_team(name, org_obj, team_role_name, description=""):
     return Team.create(name=name, organization=org_obj, role=team_role, description=description)
 
 
-def add_user_to_team(user_obj, team):
+def add_user_to_team(user_obj, team, model_cache=None):
     if user_exists_in_team(user_obj, team):
         raise UserAlreadyInTeam(
             "User %s is already a member of team %s" % (user_obj.username, team.name)
         )
 
-    return TeamMember.create(user=user_obj, team=team)
+    member = TeamMember.create(user=user_obj, team=team)
+
+    # Invalidate cached provides so the user picks up new team permissions.
+    # This is a grant (more access), so only cache invalidation is needed — no revocation.
+    if model_cache:
+        from data.model import permission_cache
+
+        permission_cache.invalidate_user_team_grant(user_obj, team, model_cache)
+
+    return member
 
 
-def remove_user_from_team(org_name, team_name, username, removed_by_username):
+def remove_user_from_team(org_name, team_name, username, removed_by_username, model_cache=None):
     Org = User.alias()
     joined = TeamMember.select().join(User).switch(TeamMember).join(Team)
     with_role = joined.join(TeamRole)
@@ -93,10 +102,18 @@ def remove_user_from_team(org_name, team_name, username, removed_by_username):
             raise DataModelException(msg)
 
     user_in_team = found[0]
+
+    if model_cache:
+        from data.model import permission_cache
+
+        permission_cache.invalidate_user_team_removal(
+            user_in_team.user, user_in_team.team, org_name, model_cache
+        )
+
     user_in_team.delete_instance()
 
 
-def set_team_org_permission(team, team_role_name, set_by_username):
+def set_team_org_permission(team, team_role_name, set_by_username, model_cache=None):
     if team.role.name == "admin" and team_role_name != "admin":
         # We need to make sure we're not removing the users only admin role
         user_admin_teams = __get_user_admin_teams(team.organization.username, set_by_username)
@@ -107,6 +124,13 @@ def set_team_org_permission(team, team_role_name, set_by_username):
                 + "would no longer have admin on org '%s'"
             ) % (team.name, team.organization.username)
             raise DataModelException(msg)
+
+    if model_cache:
+        from data.model import permission_cache
+
+        permission_cache.invalidate_team_org_role(
+            team.id, team.organization.username, model_cache
+        )
 
     new_role = TeamRole.get(TeamRole.name == team_role_name)
     team.role = new_role
@@ -125,7 +149,7 @@ def __get_user_admin_teams(org_name, username):
     return admin_teams
 
 
-def remove_team(org_name, team_name, removed_by_username):
+def remove_team(org_name, team_name, removed_by_username, model_cache=None):
     joined = Team.select(Team, TeamRole).join(User).switch(Team).join(TeamRole)
 
     found = list(
@@ -142,10 +166,17 @@ def remove_team(org_name, team_name, removed_by_username):
             msg = "Deleting team '%s' would remove admin ability for user '%s' in organization '%s'"
             raise DataModelException(msg % (team_name, removed_by_username, org_name))
 
+    if model_cache:
+        from data.model import permission_cache
+
+        permission_cache.invalidate_team_removal(team, org_name, model_cache)
+
     team.delete_instance(recursive=True, delete_nullable=True)
 
 
-def add_or_invite_to_team(inviter, team, user_obj=None, email=None, requires_invite=True):
+def add_or_invite_to_team(
+    inviter, team, user_obj=None, email=None, requires_invite=True, model_cache=None
+):
     # If the user is a member of the organization, then we simply add the
     # user directly to the team. Otherwise, an invite is created for the user/email.
     # We return None if the user was directly added and the invite object if the user was invited.
@@ -172,7 +203,7 @@ def add_or_invite_to_team(inviter, team, user_obj=None, email=None, requires_inv
 
     # If we have a valid user and no invite is required, simply add the user to the team.
     if user_obj and not requires_invite:
-        add_user_to_team(user_obj, team)
+        add_user_to_team(user_obj, team, model_cache=model_cache)
         return None
 
     email_address = email if not user_obj else None
