@@ -943,8 +943,6 @@ def populate_database(minimal=False):
     org.stripe_id = TEST_STRIPE_ID
     org.save()
 
-    OrganizationContactEmail.create(organization=org, contact_email="quay@devtable.com")
-
     QuotaType.create(name="Warning")
     QuotaType.create(name="Reject")
 
@@ -1463,6 +1461,7 @@ WHITELISTED_EMPTY_MODELS = [
     "ManifestPullStatistics",
     "NamespaceImmutabilityPolicy",
     "RepositoryImmutabilityPolicy",
+    "OrganizationContactEmail",
 ]
 
 
