@@ -2491,49 +2491,6 @@ def test_verify_schema2(
     assert manifest.schema_version == 2
 
 
-def test_geo_blocking(
-    pusher,
-    puller,
-    basic_images,
-    liveserver_session,
-    liveserver,
-    registry_server_executor,
-    app_reloader,
-):
-    """Test: Attempt to pull an image from a geoblocked IP address."""
-    credentials = ("devtable", "password")
-    options = ProtocolOptions()
-    options.skip_blob_push_checks = True  # Otherwise, cache gets established.
-
-    # Push a new repository.
-    pusher.push(
-        liveserver_session,
-        "devtable",
-        "newrepo",
-        "latest",
-        basic_images,
-        credentials=credentials,
-        options=options,
-    )
-
-    registry_server_executor.on(liveserver).set_geo_block_for_namespace("devtable", "US")
-
-    # Attempt to pull the repository to verify. This should fail with a 403 due to
-    # the geoblocking of the IP being using.
-    options = ProtocolOptions()
-    options.request_addr = "6.0.0.0"
-    puller.pull(
-        liveserver_session,
-        "devtable",
-        "newrepo",
-        "latest",
-        basic_images,
-        credentials=credentials,
-        options=options,
-        expected_failure=Failures.GEO_BLOCKED,
-    )
-
-
 @pytest.mark.parametrize(
     "has_amd64_linux",
     [

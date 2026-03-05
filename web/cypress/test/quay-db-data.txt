@@ -102,6 +102,7 @@ ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_o
 ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS fk_orgmirrorconfig_internal_robot_id_user;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS fk_organizationrhskus_userid;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS fk_organizationrhskus_orgid;
+ALTER TABLE IF EXISTS ONLY public.organizationcontactemail DROP CONSTRAINT IF EXISTS fk_organizationcontactemail_organization_id_user;
 ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS fk_oauthauthorizationcode_application_id_oauthapplication;
 ALTER TABLE IF EXISTS ONLY public.oauthassignedtoken DROP CONSTRAINT IF EXISTS fk_oauthassignedtoken_assigned_user_user;
 ALTER TABLE IF EXISTS ONLY public.oauthassignedtoken DROP CONSTRAINT IF EXISTS fk_oauthassignedtoken_application_oauthapplication;
@@ -351,6 +352,8 @@ DROP INDEX IF EXISTS public.orgmirrorconfig_internal_robot_id;
 DROP INDEX IF EXISTS public.organizationrhskus_subscription_id_org_id_user_id;
 DROP INDEX IF EXISTS public.organizationrhskus_subscription_id_org_id;
 DROP INDEX IF EXISTS public.organizationrhskus_subscription_id;
+DROP INDEX IF EXISTS public.organizationcontactemail_organization_id;
+DROP INDEX IF EXISTS public.organizationcontactemail_contact_email;
 DROP INDEX IF EXISTS public.oauthauthorizationcode_code_name;
 DROP INDEX IF EXISTS public.oauthauthorizationcode_application_id;
 DROP INDEX IF EXISTS public.oauthassignedtoken_uuid;
@@ -586,6 +589,7 @@ ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS 
 ALTER TABLE IF EXISTS ONLY public.orgmirrorrepository DROP CONSTRAINT IF EXISTS pk_orgmirrorrepository;
 ALTER TABLE IF EXISTS ONLY public.orgmirrorconfig DROP CONSTRAINT IF EXISTS pk_orgmirrorconfig;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS pk_organizationrhskus;
+ALTER TABLE IF EXISTS ONLY public.organizationcontactemail DROP CONSTRAINT IF EXISTS pk_organizationcontactemail;
 ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS pk_oauthauthorizationcode;
 ALTER TABLE IF EXISTS ONLY public.oauthassignedtoken DROP CONSTRAINT IF EXISTS pk_oauthassignedtoken;
 ALTER TABLE IF EXISTS ONLY public.oauthapplication DROP CONSTRAINT IF EXISTS pk_oauthapplication;
@@ -700,6 +704,7 @@ ALTER TABLE IF EXISTS public.permissionprototype ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.orgmirrorrepository ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.orgmirrorconfig ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.organizationrhskus ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.organizationcontactemail ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthauthorizationcode ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthassignedtoken ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthapplication ALTER COLUMN id DROP DEFAULT;
@@ -871,6 +876,8 @@ DROP SEQUENCE IF EXISTS public.orgmirrorconfig_id_seq;
 DROP TABLE IF EXISTS public.orgmirrorconfig;
 DROP SEQUENCE IF EXISTS public.organizationrhskus_id_seq;
 DROP TABLE IF EXISTS public.organizationrhskus;
+DROP SEQUENCE IF EXISTS public.organizationcontactemail_id_seq;
+DROP TABLE IF EXISTS public.organizationcontactemail;
 DROP SEQUENCE IF EXISTS public.oauthauthorizationcode_id_seq;
 DROP TABLE IF EXISTS public.oauthauthorizationcode;
 DROP SEQUENCE IF EXISTS public.oauthassignedtoken_id_seq;
@@ -3097,6 +3104,41 @@ ALTER SEQUENCE public.organizationrhskus_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.organizationrhskus_id_seq OWNED BY public.organizationrhskus.id;
+
+
+--
+-- Name: organizationcontactemail; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.organizationcontactemail (
+    id integer NOT NULL,
+    organization_id integer NOT NULL,
+    contact_email character varying(255)
+);
+
+
+ALTER TABLE public.organizationcontactemail OWNER TO quay;
+
+--
+-- Name: organizationcontactemail_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.organizationcontactemail_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.organizationcontactemail_id_seq OWNER TO quay;
+
+--
+-- Name: organizationcontactemail_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.organizationcontactemail_id_seq OWNED BY public.organizationcontactemail.id;
 
 
 --
@@ -5662,6 +5704,13 @@ ALTER TABLE ONLY public.organizationrhskus ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: organizationcontactemail id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.organizationcontactemail ALTER COLUMN id SET DEFAULT nextval('public.organizationcontactemail_id_seq'::regclass);
+
+
+--
 -- Name: orgmirrorconfig id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -6083,7 +6132,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-285f36ce97fd
+414c5e2fc487
 \.
 
 
@@ -7059,6 +7108,14 @@ COPY public.oauthauthorizationcode (id, application_id, scope, data, code_creden
 --
 
 COPY public.organizationrhskus (id, subscription_id, org_id, user_id, quantity) FROM stdin;
+\.
+
+
+--
+-- Data for Name: organizationcontactemail; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.organizationcontactemail (id, organization_id, contact_email) FROM stdin;
 \.
 
 
@@ -9069,6 +9126,13 @@ SELECT pg_catalog.setval('public.organizationrhskus_id_seq', 1, false);
 
 
 --
+-- Name: organizationcontactemail_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.organizationcontactemail_id_seq', 1, false);
+
+
+--
 -- Name: orgmirrorconfig_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
@@ -9921,6 +9985,14 @@ ALTER TABLE ONLY public.oauthauthorizationcode
 
 ALTER TABLE ONLY public.organizationrhskus
     ADD CONSTRAINT pk_organizationrhskus PRIMARY KEY (id);
+
+
+--
+-- Name: organizationcontactemail pk_organizationcontactemail; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.organizationcontactemail
+    ADD CONSTRAINT pk_organizationcontactemail PRIMARY KEY (id);
 
 
 --
@@ -11637,6 +11709,20 @@ CREATE UNIQUE INDEX organizationrhskus_subscription_id_org_id ON public.organiza
 --
 
 CREATE UNIQUE INDEX organizationrhskus_subscription_id_org_id_user_id ON public.organizationrhskus USING btree (subscription_id, org_id, user_id);
+
+
+--
+-- Name: organizationcontactemail_organization_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX organizationcontactemail_organization_id ON public.organizationcontactemail USING btree (organization_id);
+
+
+--
+-- Name: organizationcontactemail_contact_email; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX organizationcontactemail_contact_email ON public.organizationcontactemail USING btree (contact_email);
 
 
 --
@@ -13427,6 +13513,14 @@ ALTER TABLE ONLY public.organizationrhskus
 
 ALTER TABLE ONLY public.organizationrhskus
     ADD CONSTRAINT fk_organizationrhskus_userid FOREIGN KEY (user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: organizationcontactemail fk_organizationcontactemail_organization_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.organizationcontactemail
+    ADD CONSTRAINT fk_organizationcontactemail_organization_id_user FOREIGN KEY (organization_id) REFERENCES public."user"(id);
 
 
 --
