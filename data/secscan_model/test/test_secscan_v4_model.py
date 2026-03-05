@@ -916,7 +916,7 @@ def test_has_container_layers_with_oci_image_layers():
     layer_info = MockLayerInfo(internal_layer=internal_layer)
     layer = ManifestLayer(layer_info=layer_info, blob=None)
 
-    assert _has_container_layers([layer]) == True
+    assert _has_container_layers([layer])
 
 
 def test_has_container_layers_with_docker_schema2_layers():
@@ -933,7 +933,7 @@ def test_has_container_layers_with_docker_schema2_layers():
     layer_info = MockLayerInfo(internal_layer=internal_layer)
     layer = ManifestLayer(layer_info=layer_info, blob=None)
 
-    assert _has_container_layers([layer]) == True
+    assert _has_container_layers([layer])
 
 
 def test_has_container_layers_with_non_container_artifact():
@@ -951,14 +951,14 @@ def test_has_container_layers_with_non_container_artifact():
     layer_info = MockLayerInfo(internal_layer=internal_layer)
     layer = ManifestLayer(layer_info=layer_info, blob=None)
 
-    assert _has_container_layers([layer]) == False
+    assert not _has_container_layers([layer])
 
 
 def test_has_container_layers_empty_list():
     """
     Checks if manifests that do not contain layers (such as manifest lists) are properly detected.
     """
-    assert _has_container_layers([]) == False
+    assert not _has_container_layers([])
 
 
 def test_has_container_layers_no_internal_layers():
@@ -969,7 +969,7 @@ def test_has_container_layers_no_internal_layers():
     layer_info = MockLayerInfoNoInternal(digest="sha256:abc123")
     layer = ManifestLayer(layer_info=layer_info, blob=None)
 
-    assert _has_container_layers([layer]) == False
+    assert not _has_container_layers([layer])
 
 
 def test_has_container_layers_no_blob_layer():
@@ -983,7 +983,7 @@ def test_has_container_layers_no_blob_layer():
     layer_info = MockLayerInfo(internal_layer=internal_layer)
     layer = ManifestLayer(layer_info=layer_info, blob=None)
 
-    assert _has_container_layers([layer]) == False
+    assert not _has_container_layers([layer])
 
 
 def test_has_container_layers_no_media_type():
@@ -999,7 +999,7 @@ def test_has_container_layers_no_media_type():
     layer_info = MockLayerInfo(internal_layer=internal_layer)
     layer = ManifestLayer(layer_info=layer_info, blob=None)
 
-    assert _has_container_layers([layer]) == False
+    assert not _has_container_layers([layer])
 
 
 def test_perform_indexing_schema2_manifest(initialized_db, set_secscan_config):
@@ -1031,7 +1031,7 @@ def test_perform_indexing_schema2_manifest(initialized_db, set_secscan_config):
     assert layers is not None
     assert len(layers) > 0
 
-    assert _has_container_layers(layers) == True
+    assert _has_container_layers(layers)
 
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
