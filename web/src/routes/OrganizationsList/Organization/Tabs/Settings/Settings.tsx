@@ -2,6 +2,8 @@ import React, {useState} from 'react';
 import {Tabs, Tab, TabTitleText, Flex, FlexItem} from '@patternfly/react-core';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useHasOrgMirrorConfig} from 'src/hooks/UseHasOrgMirrorConfig';
+import {useHasProxyCacheConfig} from 'src/hooks/UseHasProxyCacheConfig';
 import AutoPruning from './AutoPruning';
 import {BillingInformation} from './BillingInformation';
 import {CliConfiguration} from './CLIConfiguration';
@@ -15,11 +17,16 @@ export default function Settings(props: SettingsProps) {
   const organizationName = location.pathname.split('/')[2];
   const {isUserOrganization} = useOrganization(organizationName);
 
-  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [activeTabId, setActiveTabId] = useState<string>('generalsettings');
   const quayConfig = useQuayConfig();
+  const {hasOrgMirrorConfig} = useHasOrgMirrorConfig(organizationName);
+  const {hasProxyCacheConfig} = useHasProxyCacheConfig(organizationName);
 
-  const handleTabClick = (event: React.MouseEvent, tabIndex: number) => {
-    setActiveTabIndex(tabIndex);
+  const handleTabClick = (
+    event: React.MouseEvent,
+    tabIndex: string | number,
+  ) => {
+    setActiveTabId(String(tabIndex));
   };
 
   const tabs = [
@@ -60,7 +67,10 @@ export default function Settings(props: SettingsProps) {
       name: 'Immutability Policies',
       id: 'immutabilitypolicies',
       content: () => <ImmutabilityPolicies org={props.organizationName} />,
-      visible: quayConfig?.features?.IMMUTABLE_TAGS,
+      visible:
+        quayConfig?.features?.IMMUTABLE_TAGS &&
+        !hasOrgMirrorConfig &&
+        !hasProxyCacheConfig,
     },
     {
       name: 'Proxy Cache',
@@ -71,7 +81,10 @@ export default function Settings(props: SettingsProps) {
           isUser={props.isUserOrganization}
         />
       ),
-      visible: quayConfig?.features?.PROXY_CACHE && !props.isUserOrganization,
+      visible:
+        quayConfig?.features?.PROXY_CACHE &&
+        !props.isUserOrganization &&
+        !hasOrgMirrorConfig,
     },
     {
       name: 'Organization state',
@@ -97,33 +110,35 @@ export default function Settings(props: SettingsProps) {
     },
   ];
 
+  const visibleTabs = tabs.filter((tab) => tab.visible === true);
+  const activeTab =
+    visibleTabs.find((tab) => tab.id === activeTabId) ?? visibleTabs[0];
+
   return (
     <Flex flexWrap={{default: 'nowrap'}}>
       <FlexItem>
         <Tabs
-          activeKey={activeTabIndex}
+          activeKey={activeTab?.id}
           onSelect={handleTabClick}
           isVertical
           aria-label="Tabs in the vertical example"
           role="region"
         >
-          {tabs
-            ?.filter((tab) => tab.visible === true)
-            ?.map((tab, tabIndex) => (
-              <Tab
-                key={tab.id}
-                eventKey={tabIndex}
-                data-testid={tab.name}
-                title={
-                  <TabTitleText
-                    className="pf-v5-u-text-nowrap"
-                    id={`pf-tab-${tabIndex}-${tab.id}`}
-                  >
-                    {tab.name}
-                  </TabTitleText>
-                }
-              />
-            )) || []}
+          {visibleTabs.map((tab) => (
+            <Tab
+              key={tab.id}
+              eventKey={tab.id}
+              data-testid={tab.name}
+              title={
+                <TabTitleText
+                  className="pf-v5-u-text-nowrap"
+                  id={`pf-tab-${tab.id}`}
+                >
+                  {tab.name}
+                </TabTitleText>
+              }
+            />
+          ))}
         </Tabs>
       </FlexItem>
 
@@ -131,9 +146,7 @@ export default function Settings(props: SettingsProps) {
         alignSelf={{default: 'alignSelfCenter'}}
         style={{padding: '20px'}}
       >
-        {tabs
-          ?.filter((tab) => tab.visible === true)
-          [activeTabIndex]?.content?.()}
+        {activeTab?.content?.()}
       </FlexItem>
     </Flex>
   );

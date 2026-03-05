@@ -1012,9 +1012,10 @@ class OrganizationProxyCacheConfig(ApiResource):
         except model.InvalidProxyCacheConfigException:
             pass
 
+        org = model.organization.get_organization(orgname)
+
         # Check for immutable tags in the organization
         if features.IMMUTABLE_TAGS:
-            org = model.organization.get_organization(orgname)
             if namespace_has_immutable_tags(org.id):
                 logger.warning(
                     "Blocking proxy cache creation for org '%s': immutable tags exist",
@@ -1022,6 +1023,18 @@ class OrganizationProxyCacheConfig(ApiResource):
                 )
                 raise request_error(
                     "Cannot convert organization to proxy cache: immutable tags exist"
+                )
+
+        # Check for active organization mirror configuration
+        if features.ORG_MIRROR:
+            mirror = model.org_mirror.get_org_mirror_config(org)
+            if mirror is not None:
+                logger.warning(
+                    "Blocking proxy cache creation for org '%s': organization mirroring is configured",
+                    orgname,
+                )
+                raise request_error(
+                    "Cannot enable proxy cache: organization mirroring is already configured"
                 )
 
         data = request.get_json()

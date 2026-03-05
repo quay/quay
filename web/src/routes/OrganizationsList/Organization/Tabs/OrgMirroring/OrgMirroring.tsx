@@ -12,6 +12,7 @@ import {
 } from 'src/hooks/UseOrgMirroringForm';
 import {OrgMirroringFormData} from './types';
 import {
+  Alert,
   Form,
   Button,
   ButtonVariant,
@@ -173,6 +174,16 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
         data-testid="org-mirror-form"
         onSubmit={formHook.handleSubmit(onSubmit)}
       >
+        <Alert
+          isInline
+          variant="info"
+          title={
+            configHook.config
+              ? 'Proxy Cache is unavailable while organization mirroring is active.'
+              : 'Proxy Cache will become unavailable once organization mirroring is configured.'
+          }
+          className="pf-v5-u-mb-md"
+        />
         <OrgMirroringConfiguration
           control={formHook.control}
           errors={formHook.errors}

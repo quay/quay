@@ -289,6 +289,17 @@ class OrgMirrorConfig(ApiResource):
                 )
                 raise InvalidRequest("Cannot convert organization to mirror: immutable tags exist")
 
+        # Check for existing proxy cache configuration
+        if features.PROXY_CACHE:
+            if model.proxy_cache.has_proxy_cache_config(orgname):
+                logger.warning(
+                    "Blocking mirror creation for org '%s': proxy cache is configured",
+                    orgname,
+                )
+                raise InvalidRequest(
+                    "Cannot enable organization mirroring: proxy cache is already configured"
+                )
+
         data = request.get_json()
 
         # Validate and look up robot account

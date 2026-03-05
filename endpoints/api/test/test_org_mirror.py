@@ -1426,6 +1426,73 @@ class TestCreateOrgMirrorWithImmutableTags:
 
 
 @pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
+class TestCreateOrgMirrorWithProxyCache:
+    """Tests for blocking mirror creation when proxy cache is configured."""
+
+    def _cleanup_proxy_cache_config(self, orgname):
+        """Clean up proxy cache config."""
+        try:
+            model.proxy_cache.delete_proxy_cache_config(orgname)
+        except Exception:
+            pass
+
+    def test_create_org_mirror_blocked_with_proxy_cache(self, app):
+        """
+        Test that creating mirror config is blocked when org has proxy cache configured.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            # Create proxy cache config first
+            model.proxy_cache.create_proxy_cache_config("buynlarge", "docker.io")
+
+            # Try to create mirror config - should be blocked
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                request_body = {
+                    "external_registry_type": "harbor",
+                    "external_registry_url": "https://harbor.example.com",
+                    "external_namespace": "my-project",
+                    "robot_username": "buynlarge+coolrobot",
+                    "visibility": "private",
+                    "sync_interval": 3600,
+                    "sync_start_date": "2025-01-01T00:00:00Z",
+                }
+                resp = conduct_api_call(
+                    cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
+                )
+                assert "proxy cache" in resp.json.get("error_message", "").lower()
+
+        # Clean up
+        self._cleanup_proxy_cache_config("buynlarge")
+
+    def test_create_org_mirror_allowed_without_proxy_cache(self, app):
+        """
+        Test that creating mirror config is allowed when org has no proxy cache.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                request_body = {
+                    "external_registry_type": "harbor",
+                    "external_registry_url": "https://harbor.example.com",
+                    "external_namespace": "my-project",
+                    "robot_username": "buynlarge+coolrobot",
+                    "visibility": "private",
+                    "sync_interval": 3600,
+                    "sync_start_date": "2025-01-01T00:00:00Z",
+                }
+                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestOrgMirrorAuditLogging:
     """Tests for audit event logging in organization mirror API endpoints."""
 
