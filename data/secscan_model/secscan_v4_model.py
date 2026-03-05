@@ -38,6 +38,7 @@ from data.secscan_model.interface import (
     InvalidConfigurationException,
     SecurityScannerInterface,
 )
+from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from util.metrics.prometheus import secscan_result_duration
 from util.migrate.allocator import yield_random_entries
 from util.secscan import (
@@ -437,8 +438,6 @@ class V4SecurityScanner(SecurityScannerInterface):
 
             # We need to verify that the image layers are actual container images. Since Docker v2 schema 1 images
             # cannot be anything other than container images, for them specifically we should skip the layer check.
-            from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
-
             if manifest.media_type not in DOCKER_SCHEMA1_CONTENT_TYPES:
                 if not _has_container_layers(layers):
                     logger.info(
