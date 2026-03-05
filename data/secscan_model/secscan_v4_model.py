@@ -121,18 +121,26 @@ def _has_container_layers(layers):
 
     CONTAINER_LAYER_TYPES = set(OCI_IMAGE_LAYER_CONTENT_TYPES + [DOCKER_SCHEMA2_LAYER_CONTENT_TYPE])
 
+    if not layers:
+        return False
+
     for layer in layers:
-        if hasattr(layer.layer_info, "internal_layer"):
-            internal = layer.layer_info.internal_layer
+        if not hasattr(layer.layer_info, "internal_layer"):
+            return False
 
-            # Docker Schema2 layers don't have a mediatype attribute - they're always container images
-            if isinstance(internal, DockerV2ManifestImageLayer):
-                continue
+        internal = layer.layer_info.internal_layer
 
-            # OCI layers have explicit mediatype
-            if hasattr(internal, "blob_layer") and hasattr(internal.blob_layer, "mediatype"):
-                if internal.blob_layer.mediatype not in CONTAINER_LAYER_TYPES:
-                    return False
+        # Docker Schema2 layers don't have a mediatype attribute - they're always container images
+        if isinstance(internal, DockerV2ManifestImageLayer):
+            continue
+
+        # OCI layers have explicit mediatype
+        if not hasattr(internal, "blob_layer") or not hasattr(internal.blob_layer, "mediatype"):
+            return False
+
+        if internal.blob_layer.mediatype not in CONTAINER_LAYER_TYPES:
+            return False
+
     return True
 
 
