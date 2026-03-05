@@ -11,6 +11,7 @@ metadata:
       == "master" && files.all.exists(f, !f.startsWith(".github/") && !f.startsWith("docs/")
       && !f.startsWith("agent_docs/") && !f.startsWith(".chglog/") && !f.startsWith(".claude/")
       && !f.endsWith(".md"))
+    pipelinesascode.tekton.dev/target-namespace: "quay-eng-tenant"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: quay-master
