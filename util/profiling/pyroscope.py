@@ -20,9 +20,7 @@ def init_pyroscope(app):
     try:
         response = requests.get(server_address, timeout=5)
         if response.status_code != requests.codes.ok:
-            logger.warning(
-                "Pyroscope server not reachable. Status code: %s", response.status_code
-            )
+            logger.warning("Pyroscope server not reachable. Status code: %s", response.status_code)
             return
         logger.info("Pyroscope server reachable at %s", server_address)
         import pyroscope
@@ -39,8 +37,6 @@ def init_pyroscope(app):
     except requests.exceptions.RequestException as e:
         logger.warning("Error connecting to Pyroscope server: %s", e)
     except ImportError:
-        logger.warning(
-            "Pyroscope enabled but pyroscope-io not installed. pip install pyroscope-io"
-        )
+        logger.warning("Pyroscope enabled but pyroscope-io not installed. pip install pyroscope-io")
     except Exception as e:
         logger.warning("Pyroscope startup failed: %s", e)
