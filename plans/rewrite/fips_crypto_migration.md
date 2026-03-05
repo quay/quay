@@ -63,7 +63,7 @@ Supporting documents:
 | AES-CCM field decrypt (`v0` legacy) | Not needed — migrated before Go deployment | N/A | Startup gate rejects `v0` rows |
 | HKDF-SHA256 key derivation (`v1`) | `crypto/hkdf` | FIPS-approved (SP 800-56C) | Identical salt/info constants as Python |
 | AES-CBC legacy helper | `crypto/aes` + CBC mode wrapper | Allowed with approved key/IV handling | Preserve wire format where still active |
-| Fernet envelopes | Compatibility wrapper or replace with AES-GCM | Validate format parity | Golden-token parse/verify tests |
+| Fernet envelopes (page tokens) | AES-256-GCM via `cryptoapi` | Ephemeral tokens; no migration needed | Round-trip tests; graceful degradation during rolling deploy |
 | RS256 JWS signing | `github.com/golang-jwt/jwt/v5` or `lestrrat-go/jwx` | Must use FIPS-allowed backend keys | Cross-runtime token issue/verify tests |
 | Registry JWT RS256 | `github.com/golang-jwt/jwt/v5` | Critical auth path | Must replicate strict claim validation (nbf, iat, exp), `none` rejection |
 | OIDC JWT verify | `github.com/golang-jwt/jwt/v5` or `lestrrat-go/jwx` | Must preserve issuer/audience/clock-skew behavior | JWKS fetching + caching parity |
@@ -308,7 +308,7 @@ Go requirement:
 | JWT (RS256/RS384) | Medium | **High** | Core auth; must be bit-compatible |
 | Service key management (JWK) | Medium | **High** | Key format must remain interoperable |
 | OIDC/JWKS | Medium | Medium | Must replicate key fetching, caching, validation |
-| Fernet | Medium | Medium | No Go stdlib equivalent; consider AES-GCM replacement |
+| Fernet (page tokens) | Low | Low | Replace with AES-256-GCM; ephemeral tokens, no migration |
 | CloudFront signing (SHA-1) | Medium | Medium | SHA-1 + FIPS fallback path |
 | AES-CBC | Low | Low | Standard algorithm |
 | X.509/TLS | Low | Low | Go stdlib has excellent support |
@@ -321,7 +321,7 @@ Go requirement:
 ## 9. Open questions
 
 1. **`v0` removal timeline:** When can `v0` read support be removed from Python? Requires confidence that no customer deployment has `v0` values remaining. Consider telemetry or a health check endpoint reporting encryption version distribution.
-2. **Fernet migration:** `util/security/crypto.py` uses Fernet for transient data. Should this also move to AES-256-GCM, or is `github.com/fernet/fernet-go` acceptable as a transitional measure?
+2. **Fernet migration:** ~~`util/security/crypto.py` uses Fernet for transient data. Should this also move to AES-256-GCM, or is `github.com/fernet/fernet-go` acceptable as a transitional measure?~~ **Resolved — replace with AES-256-GCM.** Fernet is used only by `util/pagination.py` to encrypt ephemeral page tokens (`PAGE_TOKEN_KEY`, 2-day TTL) for `endpoints/v2/` and `endpoints/api/`. Tokens are never persisted, decryption failure gracefully returns the first page, and the config comment notes this is for ID-range obfuscation, not security. Reusing the `cryptoapi` AES-256-GCM implementation avoids adding a Go dependency (`fernet-go`) for one non-critical caller. No data migration is needed — during rolling deploys, a token from the old format hitting the new code simply restarts pagination.
 3. **AES-CBC:** `util/security/aes.py` uses unauthenticated AES-CBC. Determine if this is still in active use and whether it should be migrated or removed.
 4. **SHA-1 signing policy:** Define policy decision for SHA-1 paths (CloudFront/Swift temp URLs) under `fips-strict`.
 5. **CRAM-MD5:** Confirm handling strategy for SMTP edge cases in FIPS mode.
