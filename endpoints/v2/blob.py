@@ -103,6 +103,9 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
     # Build the response headers.
     headers = {"Docker-Content-Digest": digest}
 
+    if blob.compressed_size == 0:
+        return Response(headers=headers)
+
     # If our storage supports range requests, let the client know.
     if storage.get_supports_resumable_downloads(blob.placements):
         headers["Accept-Ranges"] = "bytes"
