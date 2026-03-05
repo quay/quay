@@ -110,6 +110,32 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
         raise NotImplementedError("Unsupported for this security scanner version")
 
 
+def _has_container_layers(layers):
+    """
+    Checks if the layers are proper container image layers. For images that do not contain image layers, such as
+    Singularity containers, Helm charts, artifacts and similar, we skip the scanning process.
+    """
+    from image.docker.schema2 import DOCKER_SCHEMA2_LAYER_CONTENT_TYPE
+    from image.docker.schema2.manifest import DockerV2ManifestImageLayer
+    from image.oci import OCI_IMAGE_LAYER_CONTENT_TYPES
+
+    CONTAINER_LAYER_TYPES = set(OCI_IMAGE_LAYER_CONTENT_TYPES + [DOCKER_SCHEMA2_LAYER_CONTENT_TYPE])
+
+    for layer in layers:
+        if hasattr(layer.layer_info, "internal_layer"):
+            internal = layer.layer_info.internal_layer
+
+            # Docker Schema2 layers don't have a mediatype attribute - they're always container images
+            if isinstance(internal, DockerV2ManifestImageLayer):
+                return True
+
+            # OCI layers have explicit mediatype
+            if hasattr(internal, "blob_layer") and hasattr(internal.blob_layer, "mediatype"):
+                if internal.blob_layer.mediatype in CONTAINER_LAYER_TYPES:
+                    return True
+    return False
+
+
 def maybe_urlencoded(fixed_in: str) -> str:
     """
     Handles Clair's `fixed_in_version`, which _may_ be URL-encoded.
@@ -387,7 +413,21 @@ class V4SecurityScanner(SecurityScannerInterface):
                 mark_manifest_unsupported(manifest)
                 continue
 
-            layers = registry_model.list_manifest_layers(manifest, self.storage, True)
+            try:
+                layers = registry_model.list_manifest_layers(manifest, self.storage, True)
+            except Exception as e:
+                logger.warning(
+                    "Cannot index %s/%s@%s due to error listing layers: %s"
+                    % (
+                        candidate.repository.namespace_user,
+                        candidate.repository.name,
+                        manifest.digest,
+                        str(e),
+                    )
+                )
+                mark_manifest_unsupported(manifest)
+                continue
+
             if layers is None or len(layers) == 0:
                 logger.warning(
                     "Cannot index %s/%s@%s due to manifest being invalid (manifest has no layers)"
@@ -399,6 +439,23 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
                 mark_manifest_unsupported(manifest)
                 continue
+
+            # We need to verify that the image layers are actual container images. Since Docker v2 schema 1 images
+            # cannot be anything other than container images, for them specifically we should skip the layer check.
+            from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
+
+            if manifest.media_type not in DOCKER_SCHEMA1_CONTENT_TYPES:
+                if not _has_container_layers(layers):
+                    logger.info(
+                        "Cannot index %s/%s@%s due to manifest being invalid (manifest appears to be an artifact image),"
+                        % (
+                            candidate.repository.namespace_user,
+                            candidate.repository.name,
+                            manifest.digest,
+                        )
+                    )
+                    mark_manifest_unsupported(manifest)
+                    continue
 
             if should_skip_indexing(candidate):
                 logger.debug("Another worker preempted this worker")
