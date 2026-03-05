@@ -1,91 +1,334 @@
 # FIPS and Crypto Migration Plan
 
 Status: Draft (blocking)
-Last updated: 2026-02-09
+Last updated: 2026-02-26
+JIRA: PROJQUAY-10634
 
 ## 1. Purpose
 
-Provide a source-anchored migration map for all cryptographic primitives used by Python Quay and define FIPS-compatible Go replacements.
+Provide a source-anchored migration map for all cryptographic primitives used by Python Quay, define FIPS-compatible Go replacements, and detail the phased AES-CCM → AES-GCM database encryption migration required for Go coexistence.
+
+Supporting documents:
+- [Cryptographic Usage Report](crypto_usage_report.md) — full audit of every crypto primitive in the Python codebase
 
 ## 2. Source inventory (must preserve behavior)
 
 | Area | Python source anchors | Current primitive(s) | Compatibility risk |
 |---|---|---|---|
-| DB field encryption | `data/encryption.py` | AES-CCM | High (existing ciphertext readability) |
-| Legacy symmetric helper | `util/security/aes.py` | AES-CBC | Medium |
-| Token/secret helper | `util/security/crypto.py` | Fernet-style envelope | High |
-| Registry schema1 signing | `image/docker/schema1.py` | JWS RS256 | High |
-| Registry bearer token signing | `util/security/registry_jwt.py` | JWT RS256 | High |
-| OIDC JWT verification | `oauth/oidc.py` | JWT verify (`RS256`/allowed list) | High |
+| DB field encryption | `data/encryption.py` | AES-CCM | **Critical** — not in Go FIPS module |
+| Legacy symmetric helper | `util/security/aes.py` | AES-CBC (unauthenticated) | Medium |
+| Token/secret helper | `util/security/crypto.py` | Fernet | Medium — no Go stdlib equivalent |
+| Registry bearer token signing | `util/security/registry_jwt.py` | JWT RS256 | **High** — core auth path |
+| Build token signing | `buildman/build_token.py` | JWT RS256 | High |
+| OIDC JWT verification | `oauth/oidc.py` | JWT RS256/RS384 via Authlib | High |
 | Security scanner API auth | `util/secscan/v4/api.py` | JWT HS256 | Medium/high |
-| PKCE challenge generation | `oauth/pkce.py` | SHA-256 | Low/medium |
+| External JWT auth | `data/users/externaljwt.py` | JWT verify (PEM public key) | Medium |
+| Docker schema1 signing | `image/docker/schema1.py` | JWS RS256 | N/A — will not be ported |
+| PKCE challenge generation | `oauth/pkce.py` | SHA-256 | Low |
+| Password hashing | `data/fields.py`, `auth/credentials.py` | bcrypt | **None** — portable |
+| Content digests | `digest/digest_tools.py` | SHA-256 | **None** — OCI standard |
 | Swift temporary URL signing | `storage/swift.py` | HMAC-SHA1 | High in FIPS-strict |
-| SSH keypair generation | `util/security/ssh.py` | RSA-2048 key generation | Medium |
-| CDN signed URLs (CloudFront) | `storage/cloud.py` | RSA PKCS1v15 + SHA1 | High in FIPS-strict |
-| CDN signed URLs (CloudFlare) | `storage/cloudflarestorage.py` | RSA PKCS1v15 + SHA256 | Medium |
+| SSH keypair generation | `util/security/ssh.py` | RSA-2048 | Medium |
+| CDN signed URLs (CloudFront) | `storage/cloud.py` | RSA PKCS1v15 + SHA-1 | High in FIPS-strict |
+| CDN signed URLs (CloudFlare) | `storage/cloudflarestorage.py` | RSA PKCS1v15 + SHA-256 | Medium |
 | CDN signed URLs (Akamai) | `storage/akamaistorage.py` | HMAC token (EdgeAuth) | Medium |
-| FIPS runtime patching | `util/fips.py` | MD5 restrictions/CRAM-MD5 handling | High |
-| Avatar hashing path | `avatars/avatars.py` | MD5 (blocked in FIPS mode) | Low/medium |
+| CSRF token comparison | `endpoints/csrf.py` | `hmac.compare_digest` | Low |
+| X.509 / TLS | `util/security/ssl.py` | pyOpenSSL | Low |
+| FIPS runtime patching | `util/fips.py` | MD5 restrictions / CRAM-MD5 | High |
+| Tarsum (v1 registry) | `digest/checksums.py` | `tarsum+sha256` | N/A — will not be ported |
+
+### Python crypto dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `cryptography` | 46.0.5 | AES-CBC, AES-CCM, AES-GCM, RSA, Fernet, HKDF |
+| `Authlib` | 1.6.5 | JOSE (JWK, JWS, JWE), OAuth/OIDC, JWT |
+| `PyJWT` | 2.8.0 | JWT encode/decode |
+| `pyOpenSSL` | 25.3.0 | X.509 certificate handling |
+| `bcrypt` | 3.1.7 | Password and credential hashing |
+| `rsa` | 4.9.1 | CloudFront SHA-1 signing fallback in FIPS environments |
 
 ## 3. Implementation decisions
 
 1. All crypto operations route through a Go `internal/cryptoapi` package (no direct ad-hoc crypto in handlers).
-2. Go runtime must support two verified profiles:
-- `fips-strict`
-- `standard`
+2. Go runtime must support two verified profiles: `fips-strict` and `standard`.
 3. Python ciphertext compatibility is mandatory before any Go-side write path for encrypted fields.
+4. Go FIPS mode enabled via `GODEBUG=fips140=on` in production, built with `GOFIPS140=v1.0.0` to pin the certified module version.
 
 ## 4. Algorithm mapping plan
 
 | Contract | Go candidate | FIPS notes | Required action |
 |---|---|---|---|
-| AES-CCM field decrypt/encrypt | `crypto/cipher` + vetted CCM implementation | Confirm availability/validation under selected FIPS build | Build fixture test corpus and run in FIPS CI |
-| AES-CBC legacy helper | `crypto/aes` + CBC mode wrapper | Allowed with approved key/IV handling policy | Preserve wire format where still active |
-| Fernet-like envelopes | compatibility wrapper over AES/HMAC primitives | Validate timestamp/token format parity | Golden-token parse/verify tests |
-| RS256 JWS signing | JOSE library with RS256 support | Must use FIPS-allowed backend keys | Schema1 manifest signing/parsing parity tests |
-| Registry JWT RS256 | `github.com/golang-jwt/jwt/v5` + FIPS-approved crypto backend | Critical auth path for registry operations | Cross-runtime token issue/verify tests with existing keys |
-| OIDC JWT verify | `github.com/golang-jwt/jwt/v5` or `lestrrat-go/jwx` | Must preserve issuer/audience/clock-skew behavior | OIDC token validation fixture corpus |
-| Secscan JWT HS256 | `github.com/golang-jwt/jwt/v5` | Validate HMAC key handling in FIPS profiles | Clair API auth interoperability tests |
-| PKCE SHA256 | `crypto/sha256` + base64url | Generally FIPS-allowed | RFC7636 vector tests |
-| Swift temp URL HMAC-SHA1 | `crypto/hmac` + `sha1` | SHA1 policy must be explicitly allowed or phased migration defined | Temp URL validation tests against Swift |
-| CloudFront URL signing | `crypto/rsa` PKCS1v15 + SHA1 | SHA1 signing risk in strict profiles | Fixture tests + policy/exception signoff |
-| CloudFlare URL signing | `crypto/rsa` PKCS1v15 + SHA256 | Preferred over SHA1 for strict profiles | URL signature fixture tests |
-| Akamai URL signing | provider token/HMAC equivalent | Validate algorithm parity with EdgeAuth behavior | Signed token fixture tests |
+| AES-GCM field encrypt/decrypt (`v1`) | `crypto/aes` + `crypto/cipher.NewGCM` | Approved in Go 1.24 FIPS module | Cross-language test vectors (see PoC) |
+| AES-CCM field decrypt (`v0` legacy) | Not needed — migrated before Go deployment | N/A | Startup gate rejects `v0` rows |
+| HKDF-SHA256 key derivation (`v1`) | `crypto/hkdf` | FIPS-approved (SP 800-56C) | Identical salt/info constants as Python |
+| AES-CBC legacy helper | `crypto/aes` + CBC mode wrapper | Allowed with approved key/IV handling | Preserve wire format where still active |
+| Fernet envelopes | Compatibility wrapper or replace with AES-GCM | Validate format parity | Golden-token parse/verify tests |
+| RS256 JWS signing | `github.com/golang-jwt/jwt/v5` or `lestrrat-go/jwx` | Must use FIPS-allowed backend keys | Cross-runtime token issue/verify tests |
+| Registry JWT RS256 | `github.com/golang-jwt/jwt/v5` | Critical auth path | Must replicate strict claim validation (nbf, iat, exp), `none` rejection |
+| OIDC JWT verify | `github.com/golang-jwt/jwt/v5` or `lestrrat-go/jwx` | Must preserve issuer/audience/clock-skew behavior | JWKS fetching + caching parity |
+| Secscan JWT HS256 | `github.com/golang-jwt/jwt/v5` | Validate HMAC key handling in FIPS | Clair API auth interop tests |
+| PKCE SHA256 | `crypto/sha256` + base64url | FIPS-allowed | RFC 7636 vector tests |
+| bcrypt | `golang.org/x/crypto/bcrypt` | Drop-in compatible | No migration needed |
+| SHA-256 digests | `crypto/sha256` | OCI standard | No migration needed |
+| Swift temp URL HMAC-SHA1 | `crypto/hmac` + `sha1` | SHA-1 policy must be explicitly allowed or phased out | Temp URL validation tests |
+| CloudFront URL signing | `crypto/rsa` PKCS1v15 + SHA-1 | SHA-1 risk in strict profiles | Fixture tests + policy signoff |
+| CloudFlare URL signing | `crypto/rsa` PKCS1v15 + SHA-256 | Preferred over SHA-1 | URL signature fixture tests |
+| Akamai URL signing | Provider token/HMAC equivalent | Validate algorithm parity with EdgeAuth | Signed token fixture tests |
+| RSA key management | `crypto/rsa` + `lestrrat-go/jwx/jwk` | Standard | JWK format interoperability tests |
+| X.509 / TLS | `crypto/x509`, `crypto/tls` | Comprehensive stdlib support | SAN matching parity |
+| CSRF / HMAC | `crypto/hmac`, `crypto/subtle` | Standard | Trivial |
 
-## 5. AES key derivation compatibility (`convert_secret_key`)
+## 5. AES-CCM → AES-GCM Database Encryption Migration
 
-Current Python behavior:
-- `util/security/secret.py` derives AES key bytes by repeating raw secret bytes with `itertools.cycle` until exactly 32 bytes.
-- This is explicitly not a modern KDF, but is compatibility-critical for existing encrypted values.
+This is the highest-risk crypto migration item. AES-CCM is not available in Go 1.24's FIPS module, so all encrypted database fields must be migrated to AES-GCM before Go can read them.
+
+### Affected database fields
+
+8 models, 12 encrypted fields:
+
+| Model | Field(s) | Expected Row Volume |
+|-------|----------|-------------------|
+| `RobotAccountToken` | `token` | High |
+| `AccessToken` | `token_code` | High |
+| `AppSpecificAuthToken` | `token_secret` | Medium |
+| `RepositoryBuildTrigger` | `secure_auth_token`, `secure_private_key` | Low–Medium |
+| `OAuthApplication` | `secure_client_secret` | Low |
+| `RepoMirrorConfig` | `external_registry_username`, `external_registry_password` | Low |
+| `OrgMirrorConfig` | `external_registry_username`, `external_registry_password` | Low |
+| `ProxyCacheConfig` | `upstream_registry_username`, `upstream_registry_password` | Low |
+
+All fields flow through `FieldEncrypter` (`data/encryption.py`) using `DATABASE_SECRET_KEY`.
+
+### Encryption versions
+
+| Parameter | `v0` (current) | `v1` (target) |
+|-----------|----------------|---------------|
+| Cipher | AES-256-CCM | AES-256-GCM |
+| KDF | Byte-cycling (`convert_secret_key`) | HKDF-SHA256 (`derive_key_hkdf`) |
+| Nonce | 13 bytes, random | 12 bytes, random |
+| Auth tag | CCM tag (appended) | 16-byte GCM tag (appended) |
+| Wire format | `v0$$<base64(nonce+ct+tag)>` | `v1$$<base64(nonce+ct+tag)>` |
+| FIPS (Python/OpenSSL) | Approved | Approved |
+| FIPS (Go 1.24 native) | **Not available** | Approved |
+
+**Why AES-256-GCM:** Present in Go 1.24's FIPS module, AEAD like CCM (no security regression), first-class stdlib support in both languages, dominant industry AEAD mode.
+
+**Why HKDF-SHA256:** Replaces the weak byte-cycling KDF in `util/security/secret.py` (which has a TODO acknowledging this). FIPS-approved (SP 800-56C), available in both Go and Python.
+
+### HKDF parameters (protocol constants)
+
+These values must be identical in Python and Go. They are not configurable.
+
+| Parameter | Value |
+|-----------|-------|
+| Hash | SHA-256 |
+| Salt | `b"quay-field-encryption-v1"` |
+| Info | `b"aes-256-gcm"` |
+| Output | 32 bytes (AES-256 key) |
+
+### Phased rollout
+
+The migration spans three releases. Each is independently deployable and rollback-safe.
+
+```
+                     Python behavior           Go behavior
+                     ──────────────────         ─────────────────
+Release N:           reads v0 + v1              (not deployed)
+                     writes v0
+
+Release N+1:         reads v0 + v1              (not deployed)
+                     writes v1
+                     migration: v0 → v1
+
+Release N+2:         reads v0 + v1              reads v1 only
+                     writes v1                  writes v1
+                                                startup gate: rejects v0
+```
+
+#### Release N — Add `v1` read support
+
+**Goal:** Establish the rollback safety net. No behavior change, no data migration.
+
+**Status:** PoC complete — see branch `PROJQUAY-10634-fips-poc`.
+
+**Python changes:**
+
+1. `data/encryption.py` — Add `v1` entry to `_VERSIONS` dict with `_encrypt_gcm` / `_decrypt_gcm` using AESGCM
+2. `util/security/secret.py` — Add `derive_key_hkdf()` using HKDF-SHA256 with fixed salt and info constants. Keep `convert_secret_key()` untouched for `v0` compatibility
+3. `data/encryption.py` — `FieldEncrypter.__init__` continues to default to `version="v0"` for writes. The `v1` decrypt path is available but only exercised if a `v1$$` prefixed value is encountered
+4. `data/database.py` — `DATABASE_ENCRYPTION_VERSION` config key controls write version (defaults to `"v0"`)
+
+**What this enables:** If a customer upgrades to Release N+1 and rolls back, this release can still read any `v1$$` values written during the N+1 window.
+
+**Testing:**
+- Unit test: encrypt with `v1`, decrypt with `v1`
+- Unit test: encrypt with `v0`, verify still decryptable
+- Unit test: `FieldEncrypter` with `version="v0"` can read `v1$$` values via `decrypt_value()`
+- Integration test: round-trip through `EncryptedCharField` with mixed `v0`/`v1` values
+
+#### Release N+1 — Switch writes to `v1`, run migration
+
+**Goal:** All new encrypted values written as `v1`. Existing `v0` values batch-migrated.
+
+**Python changes:**
+
+1. `data/encryption.py` — Change `FieldEncrypter.__init__` default to `version="v1"`
+2. Alembic migration — Batch re-encrypt all `v0$$` rows to `v1$$`
+
+**Alembic migration design:**
+
+```python
+def upgrade():
+    for table, columns in ENCRYPTED_FIELDS.items():
+        _migrate_table(table, columns)
+
+def _migrate_table(table, columns):
+    conn = op.get_bind()
+    encrypter_v0 = FieldEncrypter(secret_key, version="v0")
+    encrypter_v1 = FieldEncrypter(secret_key, version="v1")
+
+    for column in columns:
+        while True:
+            rows = conn.execute(
+                sa.text(f"SELECT id, {column} FROM {table} "
+                        f"WHERE {column} LIKE 'v0$$%' LIMIT 1000")
+            ).fetchall()
+
+            if not rows:
+                break
+
+            for row in rows:
+                plaintext = encrypter_v0.decrypt_value(row[column])
+                new_value = encrypter_v1.encrypt_value(plaintext)
+                conn.execute(
+                    sa.text(f"UPDATE {table} SET {column} = :val WHERE id = :id"),
+                    {"val": new_value, "id": row.id}
+                )
+            conn.commit()
+```
+
+**Migration properties:**
+- **Batched:** 1000 rows per transaction to avoid long-held locks
+- **Idempotent:** `WHERE column LIKE 'v0$$%'` naturally skips already-migrated rows
+- **Resumable:** Safe to re-run after interruption
+- **No downtime required:** Python reads both versions, so migration runs while serving traffic
+
+**Precedent:** Migration `34c8ef052ec9_repo_mirror_columns.py` already implements a re-encryption pattern for `RepoMirrorConfig` fields.
+
+**Scale considerations:** `RobotAccountToken` and `AccessToken` are the highest-volume tables. At ~5,000–10,000 rows/second (1 decrypt + 1 encrypt + 1 UPDATE per row), a table with 500K rows takes ~1–2 minutes. Release notes should call out that migration time scales with these table sizes.
+
+**Testing:**
+- Unit test: migration correctly re-encrypts `v0` → `v1`
+- Unit test: migration skips `v1$$` rows
+- Unit test: migration is resumable after partial completion
+- Scale test: run against representative row counts
+
+#### Release N+2 — Go deployment with startup gate
+
+**Goal:** Go service comes online, reading and writing `v1` only.
+
+**Go implementation:**
+1. `v1` encryption/decryption using `crypto/aes` + `crypto/cipher.NewGCM`
+2. Key derivation using `crypto/hkdf` with the same salt and info constants
+3. Same wire format: `v1$$<base64(nonce+ct+tag)>`
+
+**Startup gate:** Before accepting traffic, Go queries each encrypted table for remaining `v0$$` values:
+
+```sql
+SELECT EXISTS(
+  SELECT 1 FROM robotaccounttoken WHERE token LIKE 'v0$$%' LIMIT 1
+);
+-- repeated for each table/column
+```
+
+If any `v0` rows are found, Go logs a clear error and exits:
+
+```
+FATAL: Found v0-encrypted rows in <table>.<column>.
+       Complete the Alembic migration from Release N+1 before starting the Go service.
+       Run: alembic upgrade head
+```
+
+**Python continues unchanged** — reads both `v0` and `v1`, writes `v1` for coexistence.
+
+### Rollback safety matrix
+
+| Scenario | Outcome |
+|----------|---------|
+| On N+1, roll back to N | Safe — Release N reads both `v0` and `v1` |
+| On N+2, roll back to N+1 | Safe — Release N+1 reads both `v0` and `v1` |
+| Migration interrupted midway | Safe — mix of `v0`/`v1` in DB; Python reads both; re-run to complete |
+| Go encounters `v0` row at startup | Blocked — refuses to start with actionable error |
+| Go encounters `v0` row at runtime (bug) | `DecryptionFailureException` — `v0` not in Go's version map |
+
+### Customer upgrade path
+
+1. **Upgrade to Release N** — No action required. No behavior change. Quay can now read `v1` values if encountered.
+2. **Upgrade to Release N+1** — Alembic migration runs automatically. For large instances, migration may take longer than usual. After migration, all encrypted fields are `v1`.
+3. **Upgrade to Release N+2** — Go service becomes available. If migration from N+1 didn't complete, Go startup gate blocks with a clear error.
+
+**Customers who skip releases:** Jumping from pre-N to N+2 gets both `v1` read support and the migration in a single Alembic upgrade. Go startup gate verifies completion.
+
+### Interoperability validation
+
+Before shipping, validate Python ↔ Go ciphertext interoperability:
+
+1. **Python encrypts, Go decrypts** — test vectors
+2. **Go encrypts, Python decrypts** — test vectors
+3. **HKDF output matches** — same `DATABASE_SECRET_KEY` → same 32-byte key
+4. **Wire format matches** — both produce and parse `v1$$<base64(...)>` identically
+
+Cross-language test vectors must be committed to both repositories.
+
+## 6. Legacy key derivation compatibility (`convert_secret_key`)
+
+Current Python behavior (`util/security/secret.py`):
+- Derives AES key bytes by repeating raw secret bytes with `itertools.cycle` until exactly 32 bytes
+- This is explicitly not a modern KDF, but is compatibility-critical for existing `v0` encrypted values
 
 Go requirement:
-- Reproduce byte-for-byte equivalent derivation for legacy compatibility.
-- Do not substitute Argon2/PBKDF2/salt-based KDF for existing key material without a formal migration plan.
+- `v0` decryption is **not** needed in Go — the migration in Release N+1 converts all values to `v1` (HKDF-derived key) before Go deployment
+- The `convert_secret_key` byte-cycling logic does **not** need to be ported to Go
 
-Mandatory compatibility tests:
-1. Fixed input secret -> expected 32-byte derived output vector (Python oracle).
-2. Python-encrypted value decrypts in Go.
-3. Go-encrypted value decrypts in Python (during mixed runtime).
-4. FIPS profile run confirms selected implementation is accepted in target environment.
+## 7. Test matrix (blocking)
 
-## 6. Test matrix (blocking)
+1. Python `v1` encrypt → Go decrypt fixture tests (cross-language vectors)
+2. Go `v1` encrypt → Python decrypt backward tests (during coexistence)
+3. HKDF output comparison tests (same key → same derived bytes)
+4. FIPS mode startup and smoke test in CI for each target architecture
+5. Negative tests for disallowed algorithms when `fips-strict` is enabled
+6. Schema1 manifest sign/verify — not ported (v1 protocol dropped)
 
-1. Python-encrypted -> Go-decrypted fixture tests.
-2. Go-encrypted -> Python-decrypted backward tests (until Python retirement).
-3. Schema1 manifest sign/verify cross-runtime tests.
-4. FIPS mode startup and smoke test in CI for each target architecture.
-5. Negative tests for disallowed algorithms when `fips-strict` is enabled.
+## 8. Migration risk matrix
 
-## 7. Open technical checks
+| Area | Complexity | Risk | Notes |
+|------|-----------|------|-------|
+| AES-CCM → AES-GCM DB encryption | High | **Critical** | Phased migration plan defined; PoC complete |
+| JWT (RS256/RS384) | Medium | **High** | Core auth; must be bit-compatible |
+| Service key management (JWK) | Medium | **High** | Key format must remain interoperable |
+| OIDC/JWKS | Medium | Medium | Must replicate key fetching, caching, validation |
+| Fernet | Medium | Medium | No Go stdlib equivalent; consider AES-GCM replacement |
+| CloudFront signing (SHA-1) | Medium | Medium | SHA-1 + FIPS fallback path |
+| AES-CBC | Low | Low | Standard algorithm |
+| X.509/TLS | Low | Low | Go stdlib has excellent support |
+| HMAC/CSRF | Low | Low | Trivial in Go |
+| bcrypt passwords | Low | **None** | Hash format is cross-platform compatible |
+| SHA-256 digests | Low | **None** | OCI standard, identical in Go |
+| Docker schema1 JWS | N/A | **None** | Legacy v1 protocol — will not be ported |
+| Tarsum | N/A | **None** | Legacy v1 protocol — will not be ported |
 
-- Confirm final Go toolchain/build profile for FIPS (`GOFIPS140` + toolchain constraints).
-- Confirm AES-CCM implementation acceptance in target compliance environment.
-- Confirm CRAM-MD5 handling strategy for SMTP edge cases in FIPS mode.
-- Define policy decision for SHA1-signing paths (CloudFront/Swift temp URLs) under `fips-strict`.
+## 9. Open questions
 
-## 8. Milestone requirements
+1. **`v0` removal timeline:** When can `v0` read support be removed from Python? Requires confidence that no customer deployment has `v0` values remaining. Consider telemetry or a health check endpoint reporting encryption version distribution.
+2. **Fernet migration:** `util/security/crypto.py` uses Fernet for transient data. Should this also move to AES-256-GCM, or is `github.com/fernet/fernet-go` acceptable as a transitional measure?
+3. **AES-CBC:** `util/security/aes.py` uses unauthenticated AES-CBC. Determine if this is still in active use and whether it should be migrated or removed.
+4. **SHA-1 signing policy:** Define policy decision for SHA-1 paths (CloudFront/Swift temp URLs) under `fips-strict`.
+5. **CRAM-MD5:** Confirm handling strategy for SMTP edge cases in FIPS mode.
+
+## 10. Milestone requirements
 
 M0 cannot exit until:
-- crypto inventory is complete and approved.
-- compatibility test corpus exists.
-- explicit fallback behavior is defined for unsupported algorithms.
+- Crypto inventory is complete and approved.
+- Compatibility test corpus exists.
+- Explicit fallback behavior is defined for unsupported algorithms.
