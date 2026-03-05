@@ -14,7 +14,7 @@
 | `PyJWT` | 2.8.0 | JWT encode/decode |
 | `pyOpenSSL` | 25.3.0 | X.509 certificate loading, validation, SAN extraction |
 | `bcrypt` | 3.1.7 | Password and credential hashing (`CredentialField`) |
-| `rsa` | 4.9.1 | CloudFront SHA-1 signing fallback in FIPS-restricted environments |
+| `rsa` | 4.9.1 | Transitive dependency via `google-auth`; no direct Quay usage |
 | `PyNaCl` | 1.5.0 | NaCl bindings (indirect dependency) |
 | `pyHanko` | 0.28.0 | Dependency present (no direct in-tree usage found in this audit) |
 
@@ -83,7 +83,6 @@
 | CDN | File | Algorithm | Library |
 |-----|------|-----------|---------|
 | CloudFront | `storage/cloud.py` | RSA-PKCS1v15 + SHA-1 | `botocore.signers.CloudFrontSigner` |
-| CloudFront (FIPS fallback) | `storage/cloud.py` | Pure-Python RSA (when SHA-1 blocked by system crypto policy) | `rsa` |
 | CloudFlare | `storage/cloudflarestorage.py` | RSA-PKCS1v15 + SHA-256 | `cryptography` |
 | Akamai | `storage/akamaistorage.py` | Edge token signing | `akamai.edgeauth.EdgeAuth` |
 
@@ -91,7 +90,7 @@
 - Go stdlib `crypto/rsa` covers all RSA operations
 - JWK handling: `github.com/lestrrat-go/jwx/v2/jwk`
 - CloudFront: AWS SDK for Go has native CloudFront signer
-- SHA-1 signing may conflict with FIPS mode in Go as well — need equivalent fallback strategy
+- CloudFront: Go must use SHA-256 (SHA-1 digital signatures disallowed under FIPS 140-3; AWS supports SHA-256 since 2022)
 
 ---
 
@@ -237,8 +236,7 @@ config["DATABASE_SECRET_KEY"]
 
 - **Config flag:** `FEATURE_FIPS` (default: false)
 - **File:** `util/fips.py` — Removes CRAM-MD5 from SMTP auth (MD5 not FIPS compliant)
-- **CloudFront fallback:** `storage/cloud.py` — Falls back to pure-Python RSA when system crypto policy blocks SHA-1
-- **Impact:** When FIPS is enabled, must avoid MD5, SHA-1 in security contexts
+- **Impact:** When FIPS is enabled, must avoid MD5 and SHA-1 for digital signatures. HMAC-SHA1 remains FIPS-allowed (SP 800-107).
 
 ### Go FIPS support (Go 1.24+)
 **Note:** The bullets below are external/runtime assumptions for migration planning, not properties validated from this Python repository.

@@ -27,14 +27,14 @@ Supporting documents:
 | PKCE challenge generation | `oauth/pkce.py` | SHA-256 | Low |
 | Password hashing | `data/fields.py`, `auth/credentials.py` | bcrypt | **None** — portable |
 | Content digests | `digest/digest_tools.py` | SHA-256 | **None** — OCI standard |
-| Swift temporary URL signing | `storage/swift.py` | HMAC-SHA1 | High in FIPS-strict |
+| Swift temporary URL signing | `storage/swift.py` | HMAC-SHA1 | **None** — HMAC-SHA1 is FIPS-allowed |
 | SSH keypair generation | `util/security/ssh.py` | RSA-2048 | Medium |
-| CDN signed URLs (CloudFront) | `storage/cloud.py` | RSA PKCS1v15 + SHA-1 | High in FIPS-strict |
+| CDN signed URLs (CloudFront) | `storage/cloud.py` | RSA PKCS1v15 + SHA-1 | Low — use SHA-256 in Go |
 | CDN signed URLs (CloudFlare) | `storage/cloudflarestorage.py` | RSA PKCS1v15 + SHA-256 | Medium |
 | CDN signed URLs (Akamai) | `storage/akamaistorage.py` | HMAC token (EdgeAuth) | Medium |
 | CSRF token comparison | `endpoints/csrf.py` | `hmac.compare_digest` | Low |
 | X.509 / TLS | `util/security/ssl.py` | pyOpenSSL | Low |
-| FIPS runtime patching | `util/fips.py` | MD5 restrictions / CRAM-MD5 | High |
+| FIPS runtime patching | `util/fips.py` | MD5 restrictions / CRAM-MD5 | **None** — use `smtp.PlainAuth` in Go |
 | Tarsum (v1 registry) | `digest/checksums.py` | `tarsum+sha256` | N/A — will not be ported |
 
 ### Python crypto dependencies
@@ -62,7 +62,7 @@ Supporting documents:
 | AES-GCM field encrypt/decrypt (`v1`) | `crypto/aes` + `crypto/cipher.NewGCM` | Approved in Go 1.24 FIPS module | Cross-language test vectors (see PoC) |
 | AES-CCM field decrypt (`v0` legacy) | Not needed — migrated before Go deployment | N/A | Startup gate rejects `v0` rows |
 | HKDF-SHA256 key derivation (`v1`) | `crypto/hkdf` | FIPS-approved (SP 800-56C) | Identical salt/info constants as Python |
-| AES-CBC legacy helper | `crypto/aes` + CBC mode wrapper | Allowed with approved key/IV handling | Preserve wire format where still active |
+| AES-CBC encrypted basic auth | AES-256-GCM via `cryptoapi` | CBC not needed in Go | Users regenerate encrypted passwords on switchover; no wire-format compat required |
 | Fernet envelopes (page tokens) | AES-256-GCM via `cryptoapi` | Ephemeral tokens; no migration needed | Round-trip tests; graceful degradation during rolling deploy |
 | RS256 JWS signing | `github.com/golang-jwt/jwt/v5` or `lestrrat-go/jwx` | Must use FIPS-allowed backend keys | Cross-runtime token issue/verify tests |
 | Registry JWT RS256 | `github.com/golang-jwt/jwt/v5` | Critical auth path | Must replicate strict claim validation (nbf, iat, exp), `none` rejection |
@@ -71,8 +71,8 @@ Supporting documents:
 | PKCE SHA256 | `crypto/sha256` + base64url | FIPS-allowed | RFC 7636 vector tests |
 | bcrypt | `golang.org/x/crypto/bcrypt` | Drop-in compatible | No migration needed |
 | SHA-256 digests | `crypto/sha256` | OCI standard | No migration needed |
-| Swift temp URL HMAC-SHA1 | `crypto/hmac` + `sha1` | SHA-1 policy must be explicitly allowed or phased out | Temp URL validation tests |
-| CloudFront URL signing | `crypto/rsa` PKCS1v15 + SHA-1 | SHA-1 risk in strict profiles | Fixture tests + policy signoff |
+| Swift temp URL HMAC-SHA1 | `crypto/hmac` + `sha1` (or `sha256`) | HMAC-SHA1 is FIPS-allowed; default to SHA-256 for new deployments | Temp URL validation tests with both hash algorithms |
+| CloudFront URL signing | `crypto/rsa` PKCS1v15 + **SHA-256** | SHA-1 digital signatures disallowed under FIPS; use SHA-256 | Fixture tests against AWS CloudFront |
 | CloudFlare URL signing | `crypto/rsa` PKCS1v15 + SHA-256 | Preferred over SHA-1 | URL signature fixture tests |
 | Akamai URL signing | Provider token/HMAC equivalent | Validate algorithm parity with EdgeAuth | Signed token fixture tests |
 | RSA key management | `crypto/rsa` + `lestrrat-go/jwx/jwk` | Standard | JWK format interoperability tests |
@@ -309,8 +309,8 @@ Go requirement:
 | Service key management (JWK) | Medium | **High** | Key format must remain interoperable |
 | OIDC/JWKS | Medium | Medium | Must replicate key fetching, caching, validation |
 | Fernet (page tokens) | Low | Low | Replace with AES-256-GCM; ephemeral tokens, no migration |
-| CloudFront signing (SHA-1) | Medium | Medium | SHA-1 + FIPS fallback path |
-| AES-CBC | Low | Low | Standard algorithm |
+| CloudFront signing | Low | Low | Switch to SHA-256; AWS supports it since 2022 |
+| AES-CBC (encrypted basic auth) | Low | Low | Client-held tokens; replace with AES-256-GCM, users regenerate |
 | X.509/TLS | Low | Low | Go stdlib has excellent support |
 | HMAC/CSRF | Low | Low | Trivial in Go |
 | bcrypt passwords | Low | **None** | Hash format is cross-platform compatible |
@@ -322,9 +322,9 @@ Go requirement:
 
 1. **`v0` removal timeline:** When can `v0` read support be removed from Python? Requires confidence that no customer deployment has `v0` values remaining. Consider telemetry or a health check endpoint reporting encryption version distribution.
 2. **Fernet migration:** ~~`util/security/crypto.py` uses Fernet for transient data. Should this also move to AES-256-GCM, or is `github.com/fernet/fernet-go` acceptable as a transitional measure?~~ **Resolved — replace with AES-256-GCM.** Fernet is used only by `util/pagination.py` to encrypt ephemeral page tokens (`PAGE_TOKEN_KEY`, 2-day TTL) for `endpoints/v2/` and `endpoints/api/`. Tokens are never persisted, decryption failure gracefully returns the first page, and the config comment notes this is for ID-range obfuscation, not security. Reusing the `cryptoapi` AES-256-GCM implementation avoids adding a Go dependency (`fernet-go`) for one non-critical caller. No data migration is needed — during rolling deploys, a token from the old format hitting the new code simply restarts pagination.
-3. **AES-CBC:** `util/security/aes.py` uses unauthenticated AES-CBC. Determine if this is still in active use and whether it should be migrated or removed.
-4. **SHA-1 signing policy:** Define policy decision for SHA-1 paths (CloudFront/Swift temp URLs) under `fips-strict`.
-5. **CRAM-MD5:** Confirm handling strategy for SMTP edge cases in FIPS mode.
+3. **AES-CBC:** ~~`util/security/aes.py` uses unauthenticated AES-CBC. Determine if this is still in active use and whether it should be migrated or removed.~~ **Resolved — still active; replace with AES-256-GCM in Go, no data migration.** `AESCipher` has a single consumer: `data/users/__init__.py` (`UserAuthentication.encrypt_user_password` / `_decrypt_user_password`). This implements the "encrypted basic auth" feature (`FEATURE_REQUIRE_ENCRYPTED_BASIC_AUTH`) for external auth backends (LDAP, JWT, Keystone, OIDC). The server encrypts the user's password and returns it via API; the user stores it in `~/.docker/config.json` and presents it in basic auth headers. Encrypted passwords are **never persisted to the database** — they are client-held tokens. Key derivation uses `convert_secret_key(SECRET_KEY)` (byte-cycling KDF, separate from `DATABASE_SECRET_KEY`). When Go takes over these endpoints, implement using AES-256-GCM with HKDF. Users must regenerate their encrypted passwords after the switchover (document in release notes). During Python-only coexistence, no action is needed. The unauthenticated CBC mode is also a security improvement — AES-GCM adds authentication.
+4. **SHA-1 signing policy:** ~~Define policy decision for SHA-1 paths (CloudFront/Swift temp URLs) under `fips-strict`.~~ **Resolved — different treatments per FIPS 140-3 / SP 800-131A Rev 2.** SHA-1 for digital signatures is disallowed; SHA-1 for HMAC is allowed. **CloudFront** (`storage/cloud.py:1186`): Uses RSA-PKCS1v15 + SHA-1, which is a digital signature — disallowed under FIPS. AWS has supported SHA-256 for CloudFront signed URLs since 2022 and the Go AWS SDK supports it natively. Go must use SHA-256 for both `fips-strict` and `standard` profiles. **Swift** (`storage/swift.py:231-232`): Uses HMAC-SHA1, which is FIPS-allowed (SP 800-107 places no restriction on SHA-1 for HMAC). No FIPS blocker. Default to HMAC-SHA256 for new deployments (Swift has supported it since Mitaka/2016 via `temp_url_digest`), but HMAC-SHA1 fallback is acceptable even under `fips-strict`. Note: the `rsa` package (4.9.1) listed in the crypto report as a "CloudFront FIPS fallback" is a transitive dependency via `google-auth` with no direct Quay usage — the fallback claim is inaccurate and should be corrected.
+5. **CRAM-MD5:** ~~Confirm handling strategy for SMTP edge cases in FIPS mode.~~ **Resolved — trivial; never offer CRAM-MD5 in Go.** Python monkey-patches `smtplib.SMTP.login` via `util/fips.py` to remove CRAM-MD5 (MD5 not FIPS-compliant), leaving only PLAIN and LOGIN. Used in `util/useremails.py` (3 sites) and `notifications/notificationmethod.py` (1 site), all gated on `features.FIPS` with a `MAIL_USE_TLS` assertion. In Go, use `smtp.PlainAuth` exclusively — never `smtp.CRAMMD5Auth`. This requires TLS, which aligns with the existing Python requirement. No feature flag needed; CRAM-MD5 offers no benefit even in `standard` mode.
 
 ## 10. Milestone requirements
 
