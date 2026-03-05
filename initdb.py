@@ -328,7 +328,7 @@ def __generate_repository(
             __create_manifest_and_tags(repo, leaf, user_obj.username, tag_map)
     else:
         if use_schema2:
-            __create_schema2_manifest_and_tags(repo, structure, tag_map)
+            create_schema2_manifest_for_testing(repo, structure, tag_map)
         else:
             __create_manifest_and_tags(repo, structure, user_obj.username, tag_map)
 

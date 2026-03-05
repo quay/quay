@@ -127,13 +127,13 @@ def _has_container_layers(layers):
 
             # Docker Schema2 layers don't have a mediatype attribute - they're always container images
             if isinstance(internal, DockerV2ManifestImageLayer):
-                return True
+                continue
 
             # OCI layers have explicit mediatype
             if hasattr(internal, "blob_layer") and hasattr(internal.blob_layer, "mediatype"):
-                if internal.blob_layer.mediatype in CONTAINER_LAYER_TYPES:
-                    return True
-    return False
+                if internal.blob_layer.mediatype not in CONTAINER_LAYER_TYPES:
+                    return False
+    return True
 
 
 def maybe_urlencoded(fixed_in: str) -> str:
@@ -413,20 +413,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 mark_manifest_unsupported(manifest)
                 continue
 
-            try:
-                layers = registry_model.list_manifest_layers(manifest, self.storage, True)
-            except Exception as e:
-                logger.warning(
-                    "Cannot index %s/%s@%s due to error listing layers: %s"
-                    % (
-                        candidate.repository.namespace_user,
-                        candidate.repository.name,
-                        manifest.digest,
-                        str(e),
-                    )
-                )
-                mark_manifest_unsupported(manifest)
-                continue
+            layers = registry_model.list_manifest_layers(manifest, self.storage, True)
 
             if layers is None or len(layers) == 0:
                 logger.warning(
