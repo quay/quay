@@ -117,8 +117,12 @@ class HarborAdapter(RegistryAdapter):
                         name = full_name
                     repos.append(name)
 
-                if len(data) < self.page_size:
+                # Check Link header for rel="next" (Harbor API v2.0 spec)
+                has_next = "next" in response.links
+
+                if not has_next:
                     break
+
                 page += 1
 
         except HarborDiscoveryException:
