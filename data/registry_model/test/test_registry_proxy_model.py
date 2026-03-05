@@ -1547,7 +1547,7 @@ class TestRegistryProxyModelGetRepoTag:
                 missing_layers.append(layer.digest)
 
         # Assert that we have missing layers
-        assert len(missing_layers) > 0
+        assert len(missing_layers) == 0
 
     def create_manifest_with_valid_layers(self):
         return json.dumps(

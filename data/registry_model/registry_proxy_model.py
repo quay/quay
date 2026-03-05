@@ -404,7 +404,7 @@ class ProxyModel(OCIModel):
         or the retrieved manifest is invalid (for docker manifest schema v1).
         """
         self._proxy.manifest_exists(manifest_ref, ACCEPTED_MEDIA_TYPES)
-        upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
+        upstream_manifest = self._pull_upstream_manifest(repo_ref, manifest_ref)
         manifest, tag = create_manifest_fn(repo_ref, upstream_manifest, manifest_ref)
         return manifest, tag
 
@@ -442,7 +442,7 @@ class ProxyModel(OCIModel):
         # manifest_exists will return an empty/None digest when the upstream
         # registry omits the docker-content-digest header.
         if not upstream_digest:
-            upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
+            upstream_manifest = self._pull_upstream_manifest(repo_ref, manifest_ref)
             upstream_digest = upstream_manifest.digest
 
         logger.debug(f"Found upstream manifest with digest {upstream_digest}, {manifest_ref=}")
@@ -452,12 +452,12 @@ class ProxyModel(OCIModel):
         if up_to_date and not placeholder:
             if tag.expired:
                 if upstream_manifest is None:
-                    upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
+                    upstream_manifest = self._pull_upstream_manifest(repo_ref, manifest_ref)
                 self._check_image_upload_possible_or_prune(repo_ref, upstream_manifest)
             return tag, False
 
         if upstream_manifest is None:
-            upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
+            upstream_manifest = self._pull_upstream_manifest(repo_ref, manifest_ref)
 
         if up_to_date and placeholder:
             self._check_image_upload_possible_or_prune(repo_ref, upstream_manifest)
@@ -759,7 +759,10 @@ class ProxyModel(OCIModel):
             upstream_repo_name = parts[1]
         return upstream_repo_name
 
-    def _pull_upstream_manifest(self, repo: str, manifest_ref: str) -> ManifestInterface:
+    def _pull_upstream_manifest(
+        self, repository_ref: RepositoryReference, manifest_ref: str
+    ) -> ManifestInterface:
+        repo = repository_ref.name
         try:
             raw_manifest, content_type = self._proxy.get_manifest(
                 manifest_ref, ACCEPTED_MEDIA_TYPES
@@ -776,6 +779,7 @@ class ProxyModel(OCIModel):
         valid = self._validate_schema1_manifest(upstream_namespace, upstream_repo_name, manifest)
         if not valid:
             raise ManifestDoesNotExist("invalid schema 1 manifest")
+        self._download_missing_layers(repository_ref, manifest)
         return manifest
 
     def _validate_schema1_manifest(
@@ -797,3 +801,15 @@ class ProxyModel(OCIModel):
             return False
 
         return True
+
+    def _download_missing_layers(self, repository_ref: RepositoryReference, manifest):
+        """
+        Check for all layers in the stored manifest and download any that are missing
+        from the proxy cache repository.
+        """
+        for layer in manifest.filesystem_layers:
+            layer_digest = layer.digest
+
+            # Check if the layer already exists in the proxy cache repository
+            if not self.get_repo_blob_by_digest(repository_ref, layer_digest):
+                self._download_blob(repository_ref, layer_digest)
