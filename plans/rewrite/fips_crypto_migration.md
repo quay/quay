@@ -129,7 +129,11 @@ These values must be identical in Python and Go. They are not configurable.
 
 ### Phased rollout
 
-The migration spans three releases. Each is independently deployable and rollback-safe.
+The migration spans three phases. Each is independently deployable and rollback-safe.
+
+**Why three phases:** This plan must support two deployment models with very different rollback characteristics:
+- **Quay.io (continuous deployment):** Deploys frequently; rollbacks between deploys are routine operations. The three-phase approach is primarily designed for this model, where reverting a deploy that switched to `v1` writes must not leave the database in an unreadable state.
+- **Red Hat Quay (versioned releases):** y-stream rollbacks (e.g. 3.16 → 3.15) are not supported; z-stream rollbacks are extreme-circumstances-only with support involvement. The phased approach still benefits these customers by protecting against interrupted migrations and providing operational confidence, even though cross-release rollback isn't a supported path.
 
 ```
                      Python behavior           Go behavior
@@ -254,15 +258,19 @@ FATAL: Found v0-encrypted rows in <table>.<column>.
 
 ### Rollback safety matrix
 
-| Scenario | Outcome |
-|----------|---------|
-| On N+1, roll back to N | Safe — Release N reads both `v0` and `v1` |
-| On N+2, roll back to N+1 | Safe — Release N+1 reads both `v0` and `v1` |
-| Migration interrupted midway | Safe — mix of `v0`/`v1` in DB; Python reads both; re-run to complete |
-| Go encounters `v0` row at startup | Blocked — refuses to start with actionable error |
-| Go encounters `v0` row at runtime (bug) | `DecryptionFailureException` — `v0` not in Go's version map |
+| Scenario | Deployment model | Outcome |
+|----------|-----------------|---------|
+| Revert deploy after phase N+1 | Quay.io (CD) | Safe — previous deploy reads both `v0` and `v1` |
+| Revert deploy after phase N+2 | Quay.io (CD) | Safe — previous deploy reads both `v0` and `v1` |
+| Migration interrupted midway | Both | Safe — mix of `v0`/`v1` in DB; Python reads both; re-run to complete |
+| Go encounters `v0` row at startup | Both | Blocked — refuses to start with actionable error |
+| Go encounters `v0` row at runtime (bug) | Both | `DecryptionFailureException` — `v0` not in Go's version map |
 
-### Customer upgrade path
+### Upgrade paths
+
+**Quay.io (continuous deployment):** Phases roll out as successive deploys. The primary risk mitigated is rollback between deploys — phase N ensures that reverting a phase N+1 deploy doesn't strand `v1` values in the database.
+
+**Red Hat Quay (versioned releases):**
 
 1. **Upgrade to Release N** — No action required. No behavior change. Quay can now read `v1` values if encountered.
 2. **Upgrade to Release N+1** — Alembic migration runs automatically. For large instances, migration may take longer than usual. After migration, all encrypted fields are `v1`.
