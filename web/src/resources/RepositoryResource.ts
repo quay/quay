@@ -144,6 +144,51 @@ export async function fetchRepositories() {
   return response.data?.repositories as IRepository[];
 }
 
+/**
+ * Result from fetching all superuser repos, including whether results were truncated.
+ */
+export interface SuperUserReposResult {
+  repos: IRepository[];
+  truncated: boolean;
+}
+
+const MAX_SUPERUSER_REPO_PAGES = 100; // 10,000 repos at 100/page
+
+/**
+ * Fetch all repositories across the registry as a superuser.
+ * Uses a single paginated API call with public=true (no namespace filter).
+ * The backend returns all repos (public + private) when the caller is a superuser.
+ * Stops after MAX_SUPERUSER_REPO_PAGES to prevent unbounded memory growth.
+ */
+export async function fetchAllReposAsSuperUser(
+  options: FetchRepositoriesOptions = {},
+  _pageCount = 0,
+): Promise<SuperUserReposResult> {
+  const {signal, next_page_token = null, onPartialResult} = options;
+  const url = next_page_token
+    ? `/api/v1/repository?next_page=${next_page_token}&last_modified=true&public=true`
+    : `/api/v1/repository?last_modified=true&public=true`;
+  const response: AxiosResponse = await axios.get(url, {signal});
+  assertHttpCode(response.status, 200);
+
+  const repos = response.data?.repositories as IRepository[];
+  if (onPartialResult) {
+    onPartialResult(repos);
+  }
+
+  if (response.data?.next_page) {
+    if (_pageCount + 1 >= MAX_SUPERUSER_REPO_PAGES) {
+      return {repos, truncated: true};
+    }
+    const more = await fetchAllReposAsSuperUser(
+      {signal, next_page_token: response.data.next_page, onPartialResult},
+      _pageCount + 1,
+    );
+    return {repos: repos.concat(more.repos), truncated: more.truncated};
+  }
+  return {repos, truncated: false};
+}
+
 export interface RepositoryStats {
   date: string;
   count: number;
