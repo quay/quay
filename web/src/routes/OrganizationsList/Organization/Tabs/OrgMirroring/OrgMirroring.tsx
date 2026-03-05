@@ -44,7 +44,15 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   const {addAlert} = useUI();
   const queryClient = useQueryClient();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [isInSetupMode, setIsInSetupMode] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Persist setup flag in state so it survives tab switches that clear URL params
+  React.useEffect(() => {
+    if (searchParams.get('setup') === 'true') {
+      setIsInSetupMode(true);
+    }
+  }, [searchParams]);
 
   // Initialize form hook (no external dependencies)
   const formHook = useOrgMirroringForm();
@@ -122,8 +130,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   }
 
   // When no config exists and user hasn't opted to set up, show the "state is NORMAL" message
-  const isSetupMode = searchParams.get('setup') === 'true';
-  if (!configHook.config && !isSetupMode) {
+  if (!configHook.config && !isInSetupMode) {
     return (
       <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
         <TextContent>
@@ -149,6 +156,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
       await deleteOrgMirrorConfig(orgName);
       queryClient.invalidateQueries({queryKey: ['org-mirror-repos', orgName]});
       configHook.setConfig(null);
+      setIsInSetupMode(false);
       formHook.reset(defaultFormValues);
       formHook.setSelectedRobot(null);
       addAlert({
