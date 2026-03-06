@@ -231,7 +231,6 @@ def create_schema2_manifest_for_testing(repo, structure, tag_map):
     """
     num_layers, subtrees, tag_names = structure
     num_layers = num_layers or 1
-    tag_names = tag_names
 
     tag_names = tag_names or []
     tag_names = [tag_names] if not isinstance(tag_names, list) else tag_names
@@ -248,7 +247,6 @@ def create_schema2_manifest_for_testing(repo, structure, tag_map):
         "history": [],
     }
 
-    layer_digests = []
     layer_data = []
 
     for layer_index in range(num_layers):
@@ -262,8 +260,6 @@ def create_schema2_manifest_for_testing(repo, structure, tag_map):
         # Mark the blob as no longer uploading
         blob.uploading = False
         blob.save()
-
-        layer_digests.append(digest)
 
         config_json["rootfs"]["diff_ids"].append(digest)
         config_json["history"].append(
