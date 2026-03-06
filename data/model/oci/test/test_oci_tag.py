@@ -752,11 +752,11 @@ def _create_manifest_list(repository):
     manifest_2 = manifest_2_builder.build()
 
     # Write the manifests.
-    v1_created = get_or_create_manifest(repository, manifest_1, storage)
+    v1_created = get_or_create_manifest(repository.id, manifest_1, storage)
     assert v1_created
     assert v1_created.manifest.digest == manifest_1.digest
 
-    v2_created = get_or_create_manifest(repository, manifest_2, storage)
+    v2_created = get_or_create_manifest(repository.id, manifest_2, storage)
     assert v2_created
     assert v2_created.manifest.digest == manifest_2.digest
 
@@ -767,7 +767,7 @@ def _create_manifest_list(repository):
     manifest_list = list_builder.build()
 
     # Write the manifest list, which should also write the manifests themselves.
-    created_tuple = get_or_create_manifest(repository, manifest_list, storage)
+    created_tuple = get_or_create_manifest(repository.id, manifest_list, storage)
     assert created_tuple is not None
 
     return retarget_tag("manifestlist", created_tuple.manifest)

@@ -804,8 +804,8 @@ def test_create_manifest_and_retarget_tag_with_quota(registry_model):
         rejected = True
     assert rejected
 
-    # Assert that a temporary tag outside the time machine window was created since the manifest was rejected
-    # Get the tag that has beeen created in the last second
+    # Assert that a temporary tag outside the time machine window was created since the
+    # manifest was rejected. Get the tag that has beeen created in the last second
     tag = (
         Tag.select()
         .where(
@@ -875,7 +875,12 @@ def test_create_manifest_and_retarget_tag_with_labels(registry_model):
     # Create another tag and retarget it to an existing manifest; it should have an end date.
     # This is from a Quay's tag api, so it will not attempt to create a manifest first.
     yet_another_tag = registry_model.retarget_tag(
-        model_cache, repository_ref, "yet_another_tag", another_manifest, storage, docker_v2_signing_key
+        model_cache,
+        repository_ref,
+        "yet_another_tag",
+        another_manifest,
+        storage,
+        docker_v2_signing_key,
     )
     assert yet_another_tag.lifetime_end_ms is not None
 
