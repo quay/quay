@@ -460,6 +460,7 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
     ],
 )
 def test_retarget_tag_history(use_manifest, registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = registry_model.lookup_repository("devtable", "history")
     history, _ = registry_model.list_repository_tag_history(repository_ref)
 
@@ -475,6 +476,7 @@ def test_retarget_tag_history(use_manifest, registry_model):
     # Retarget the tag.
     assert manifest_or_legacy_image
     updated_tag = registry_model.retarget_tag(
+        model_cache,
         repository_ref,
         "latest",
         manifest_or_legacy_image,
@@ -576,6 +578,7 @@ def test_layers_and_blobs(repo_namespace, repo_name, registry_model):
 
 
 def test_manifest_remote_layers(oci_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     # Create a config blob for testing.
     config_json = json.dumps(
         {
@@ -603,7 +606,7 @@ def test_manifest_remote_layers(oci_model):
     manifest = builder.build()
 
     created_manifest, _ = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "sometag", storage
+        model_cache, repository_ref, manifest, "sometag", storage
     )
     assert created_manifest
 
@@ -739,6 +742,7 @@ def test_get_cached_repo_blob(registry_model):
 
 
 def test_create_manifest_and_retarget_tag(registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(latest_tag).get_parsed_manifest()
@@ -749,7 +753,7 @@ def test_create_manifest_and_retarget_tag(registry_model):
     assert sample_manifest is not None
 
     another_manifest, tag = registry_model.create_manifest_and_retarget_tag(
-        repository_ref, sample_manifest, "anothertag", storage, verify_quota=True
+        model_cache, repository_ref, sample_manifest, "anothertag", storage, verify_quota=True
     )
     assert another_manifest is not None
     assert tag is not None
@@ -759,6 +763,7 @@ def test_create_manifest_and_retarget_tag(registry_model):
 
 
 def test_create_manifest_and_retarget_tag_with_quota(registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     CONFIG_LAYER_JSON = json.dumps(
         {
             "config": {},
@@ -788,6 +793,7 @@ def test_create_manifest_and_retarget_tag_with_quota(registry_model):
     rejected = False
     try:
         registry_model.create_manifest_and_retarget_tag(
+            model_cache,
             repository_ref,
             manifest,
             "newtag",
@@ -835,6 +841,7 @@ def test_convert_manifest(registry_model):
 
 
 def test_create_manifest_and_retarget_tag_with_labels(registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(latest_tag).get_parsed_manifest()
@@ -854,7 +861,7 @@ def test_create_manifest_and_retarget_tag_with_labels(registry_model):
     assert sample_manifest is not None
 
     another_manifest, tag = registry_model.create_manifest_and_retarget_tag(
-        repository_ref, sample_manifest, "anothertag", storage
+        model_cache, repository_ref, sample_manifest, "anothertag", storage
     )
     assert another_manifest is not None
     assert tag is not None
@@ -868,7 +875,7 @@ def test_create_manifest_and_retarget_tag_with_labels(registry_model):
     # Create another tag and retarget it to an existing manifest; it should have an end date.
     # This is from a Quay's tag api, so it will not attempt to create a manifest first.
     yet_another_tag = registry_model.retarget_tag(
-        repository_ref, "yet_another_tag", another_manifest, storage, docker_v2_signing_key
+        model_cache, repository_ref, "yet_another_tag", another_manifest, storage, docker_v2_signing_key
     )
     assert yet_another_tag.lifetime_end_ms is not None
 

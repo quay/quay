@@ -517,6 +517,7 @@ def _write_manifest(
     # Create the manifest(s) and retarget the tag to point to it.
     try:
         manifest, tag = registry_model.create_manifest_and_retarget_tag(
+            model_cache,
             repository_ref,
             manifest_impl,
             tag_name,

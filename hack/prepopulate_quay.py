@@ -97,7 +97,9 @@ def _populate_blob(repo: Repository, content: bytes, location: ImageStorageLocat
     return digest
 
 
-def create_tag(repo: Repository, tag_name: str, location: ImageStorageLocation, storage):
+def create_tag(
+    repo: Repository, tag_name: str, location: ImageStorageLocation, storage, model_cache
+):
     # Create a tiny single-layer schema1 manifest and tag it
     ns = repo.namespace_user.username
     builder = DockerSchema1ManifestBuilder(ns, repo.name, "")
@@ -110,7 +112,7 @@ def create_tag(repo: Repository, tag_name: str, location: ImageStorageLocation, 
     repo_ref = RepositoryReference.for_repo_obj(repo)
 
     created_tag, _ = registry_model.create_manifest_and_retarget_tag(
-        repo_ref, manifest, tag_name, storage, raise_on_error=True
+        model_cache, repo_ref, manifest, tag_name, storage, raise_on_error=True
     )
 
     return created_tag
@@ -171,6 +173,7 @@ def main():
 
     # Import the app after setting overrides so configuration picks them up
     from app import app
+    from app import model_cache  # noqa: WPS433 (runtime import by design)
     from app import storage as app_storage  # noqa: WPS433 (runtime import by design)
 
     log_level = os.environ.get("LOGGING_LEVEL", getattr(logging, app.config["LOGGING_LEVEL"]))
@@ -194,7 +197,7 @@ def main():
 
             for ti in range(1, args.tags + 1):
                 tag_name = f"{args.tag_prefix}{ti}"
-                create_tag(repo, tag_name, location, app_storage)
+                create_tag(repo, tag_name, location, app_storage, model_cache)
                 created_summary["tags"] += 1
 
     LOG.info(

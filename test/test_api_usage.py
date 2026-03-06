@@ -22,6 +22,7 @@ from app import (
     config_provider,
     docker_v2_signing_key,
     dockerfile_build_queue,
+    model_cache,
     notification_queue,
     storage,
 )
@@ -3511,7 +3512,7 @@ class TestListAndDeleteTag(ApiTestCase):
             tag_name = "tag" + str(i)
             remaining_tags.add(tag_name)
             assert registry_model.retarget_tag(
-                repo_ref, tag_name, latest_tag.manifest, storage, docker_v2_signing_key
+                model_cache, repo_ref, tag_name, latest_tag.manifest, storage, docker_v2_signing_key
             )
 
         # Make sure we can iterate over all of them.
