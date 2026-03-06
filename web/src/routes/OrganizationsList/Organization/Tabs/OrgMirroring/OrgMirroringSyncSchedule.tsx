@@ -7,7 +7,6 @@ import {
   TextInput,
   Button,
   InputGroup,
-  InputGroupItem,
   InputGroupText,
   Select,
   SelectOption,
@@ -15,10 +14,9 @@ import {
   ValidatedOptions,
   Split,
   SplitItem,
-  DatePicker,
-  TimePicker,
 } from '@patternfly/react-core';
 import {OrgMirrorConfig} from 'src/resources/OrgMirrorResource';
+import {FormDateTimePicker} from 'src/components/FormDateTimePicker';
 import {OrgMirroringFormData} from './types';
 
 interface OrgMirroringSyncScheduleProps {
@@ -33,108 +31,6 @@ export const OrgMirroringSyncSchedule: React.FC<
   OrgMirroringSyncScheduleProps
 > = ({control, errors, config, isSyncingNow, onSyncNow}) => {
   const [isSyncUnitOpen, setIsSyncUnitOpen] = useState(false);
-
-  const parseSyncDate = (value: string): Date | null => {
-    if (!value) return null;
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? null : d;
-  };
-
-  const dateFormat = (date: Date): string => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  };
-
-  const dateParse = (str: string): Date => {
-    if (!str) return new Date(NaN);
-    const match = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!match) return new Date(NaN);
-    return new Date(
-      parseInt(match[1]),
-      parseInt(match[2]) - 1,
-      parseInt(match[3]),
-    );
-  };
-
-  const formatTime = (date: Date | null): string => {
-    if (!date) return '';
-    const h = String(date.getHours()).padStart(2, '0');
-    const m = String(date.getMinutes()).padStart(2, '0');
-    return `${h}:${m}`;
-  };
-
-  const toFormString = (date: Date): string => {
-    const y = date.getFullYear();
-    const mo = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    const h = String(date.getHours()).padStart(2, '0');
-    const mi = String(date.getMinutes()).padStart(2, '0');
-    return `${y}-${mo}-${d}T${h}:${mi}`;
-  };
-
-  const renderDateTimePicker = (
-    value: string,
-    onChange: (val: string) => void,
-  ) => {
-    const current = parseSyncDate(value);
-
-    const onDateChange = (
-      _event: React.FormEvent<HTMLInputElement>,
-      _value: string,
-      dateValue?: Date,
-    ) => {
-      if (dateValue === null || dateValue === undefined) return;
-      const newDate = current ? new Date(current) : new Date();
-      // Set day to 1 first to avoid JS date rollover when changing months
-      newDate.setDate(1);
-      newDate.setFullYear(dateValue.getFullYear());
-      newDate.setMonth(dateValue.getMonth());
-      newDate.setDate(dateValue.getDate());
-      if (!current) {
-        newDate.setHours(0, 0, 0, 0);
-      }
-      onChange(toFormString(newDate));
-    };
-
-    const onTimeChange = (
-      _event: React.FormEvent<HTMLInputElement>,
-      _time: string,
-      hour?: number,
-      minute?: number,
-      _seconds?: number,
-      isValid?: boolean,
-    ) => {
-      if (hour == null || minute == null || !isValid) return;
-      const newDate = current ? new Date(current) : new Date();
-      newDate.setHours(hour, minute);
-      onChange(toFormString(newDate));
-    };
-
-    return (
-      <InputGroup>
-        <InputGroupItem>
-          <DatePicker
-            value={current ? dateFormat(current) : ''}
-            dateFormat={dateFormat}
-            dateParse={dateParse}
-            onChange={onDateChange}
-            aria-label="Sync start date"
-          />
-        </InputGroupItem>
-        <InputGroupItem>
-          <TimePicker
-            time={formatTime(current)}
-            onChange={onTimeChange}
-            is24Hour
-            aria-label="Sync start time"
-            style={{width: '150px'}}
-          />
-        </InputGroupItem>
-      </InputGroup>
-    );
-  };
 
   return (
     <>
@@ -156,7 +52,12 @@ export const OrgMirroringSyncSchedule: React.FC<
                 }}
                 render={({field: {value, onChange}}) => (
                   <>
-                    {renderDateTimePicker(value, onChange)}
+                    <FormDateTimePicker
+                      value={value}
+                      onChange={onChange}
+                      dateAriaLabel="Sync start date"
+                      timeAriaLabel="Sync start time"
+                    />
                     {errors.syncStartDate && (
                       <HelperText>
                         <HelperTextItem variant="error">
@@ -197,7 +98,12 @@ export const OrgMirroringSyncSchedule: React.FC<
             }}
             render={({field: {value, onChange}}) => (
               <>
-                {renderDateTimePicker(value, onChange)}
+                <FormDateTimePicker
+                  value={value}
+                  onChange={onChange}
+                  dateAriaLabel="Sync start date"
+                  timeAriaLabel="Sync start time"
+                />
                 {errors.syncStartDate && (
                   <HelperText>
                     <HelperTextItem variant="error">
