@@ -3,13 +3,37 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.19"></a>
+## [v3.9.19] - 2026-03-05
+### NO-ISSUE: Fix(Ci)
+- [9ef4e59f](https://github.com/quay/quay/commit/9ef4e59f88313d5130a3951866a2943ecb966553): Add step install ibmcli and remove pip from requirements.txt ([#5233](https://github.com/quay/quay/issues/5233))
+- [81cb0dfb](https://github.com/quay/quay/commit/81cb0dfb8d873a27b71e3ce2fe0357ade25db378): Cherrypick build publish to 3.9 ([#5230](https://github.com/quay/quay/issues/5230))
+### [Redhat-3.9] Chore
+- [3d59de79](https://github.com/quay/quay/commit/3d59de79c0e5ff623ddaee7425aae4b61e8f9713): work around tox-docker gateway IP detection failure ([#5068](https://github.com/quay/quay/issues/5068))
+### [Redhat-3.9] Chore(Deps)
+- [5614a1a0](https://github.com/quay/quay/commit/5614a1a007418383c7b0d3d9d2a9acc7b4c6baef): upgrade pypdf to 6.7.2 for CVE-2026-27628 (PROJQUAY-10684) ([#5287](https://github.com/quay/quay/issues/5287))
+### [Redhat-3.9] Chore: PROJQUAY-10552
+- [0d07729c](https://github.com/quay/quay/commit/0d07729cf91500fe0166ad75a12038da12de1d2d): upgrade pillow to 12.1.1 for CVE-2026-25990 ([#5216](https://github.com/quay/quay/issues/5216))
+### [Redhat-3.9] Deps
+- [95250062](https://github.com/quay/quay/commit/95250062c65e4d49a213fcb8e91f5e56bd3c58cd): upgrade of minimatch to version 3.1.5 (PROJQUAY-10647) ([#5227](https://github.com/quay/quay/issues/5227))
+- [60a439a3](https://github.com/quay/quay/commit/60a439a39f7ff0ec6053b660742ecf980d764bc7): upgrade of cryptography from 42.0.5 to 46.0.5 (PROJQUAY-10534) ([#5104](https://github.com/quay/quay/issues/5104))
+### [Redhat-3.9] NO-ISSUE
+- [518ea4e7](https://github.com/quay/quay/commit/518ea4e79d37c9f9451eeb7b384567f358ad44bc): Update setuptool to 78.1.1 and requirements-build.txt ([#5274](https://github.com/quay/quay/issues/5274))
+### [Redhat-3.9] NO-ISSUE: Fix(Ci)
+- [6058df2a](https://github.com/quay/quay/commit/6058df2a5d73dd0727b9831187e1b7e6854faa34): Update requirements-build.txt ([#5252](https://github.com/quay/quay/issues/5252))
+### [Redhat-3.9] PROJQUAY-10506: Deps
+- [c0782894](https://github.com/quay/quay/commit/c078289474eb492098a07c4ada018ef540a50289): upgrade of Authlib to 1.6.6  ([#5306](https://github.com/quay/quay/issues/5306))
+### [Redhat-3.9] PROJQUAY-10545: Deps
+- [e76c135e](https://github.com/quay/quay/commit/e76c135e8c3d2cb6575706e283323e89346e30c6): updated axios version to 1.13.5 ([#5279](https://github.com/quay/quay/issues/5279))
+
 <a name="v3.9.18"></a>
-## [v3.9.18] - 2026-02-05
+## [v3.9.18] - 2026-02-11
 ### Build
 - [c0b036de](https://github.com/quay/quay/commit/c0b036de345f12720494cfaab66a524b3c081949): move quay to python 3.12 for redhat 3.9 (PROJQUAY-10272) ([#4867](https://github.com/quay/quay/issues/4867))
 ### Chore
 - [e85a47e1](https://github.com/quay/quay/commit/e85a47e164e2c84d377b861b5a712c9a56c3b545): remove tekton files (PROJQUAY-0000) ([#4957](https://github.com/quay/quay/issues/4957))
 ### Deps
+- [33059b77](https://github.com/quay/quay/commit/33059b77a22bec2d3ed482cdc5d218e388236187): updated jws package to 4.0.1 (PROJQUAY-10121) ([#4816](https://github.com/quay/quay/issues/4816))
 - [bc21fed5](https://github.com/quay/quay/commit/bc21fed588775e68d971a7b6f46c88d21e475ee4): upgrade of wheel from 0.41.2 to 0.46.2 (PROJQUAY-10374) ([#4967](https://github.com/quay/quay/issues/4967))
 - [2821ab8a](https://github.com/quay/quay/commit/2821ab8a785999a8d6b750934d785ba31965cda5): Update requirements files for Python 3.12 (PROJQUAY-10272) ([#4959](https://github.com/quay/quay/issues/4959))
 - [c4e4d3b8](https://github.com/quay/quay/commit/c4e4d3b806a866f77fcaace5162e84cd4839e514): Update requirements-build.txt (PROJQUAY-10272) ([#4948](https://github.com/quay/quay/issues/4948))
@@ -1627,7 +1651,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.18...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.19...HEAD
+[v3.9.19]: https://github.com/quay/quay/compare/v3.9.18...v3.9.19
 [v3.9.18]: https://github.com/quay/quay/compare/v3.9.17...v3.9.18
 [v3.9.17]: https://github.com/quay/quay/compare/v3.9.16...v3.9.17
 [v3.9.16]: https://github.com/quay/quay/compare/v3.9.15...v3.9.16
