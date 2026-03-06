@@ -107,7 +107,7 @@ def put_tag(namespace_name, repo_name, tag):
         try:
             if (
                 registry_model.retarget_tag(
-                    repository_ref, tag, legacy_image, storage, docker_v2_signing_key
+                    model_cache, repository_ref, tag, legacy_image, storage, docker_v2_signing_key
                 )
                 is None
             ):
