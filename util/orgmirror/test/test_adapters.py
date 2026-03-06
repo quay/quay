@@ -451,6 +451,49 @@ class TestQuayAdapter:
         assert adapter.session.auth is None
 
     @responses.activate
+    def test_list_repositories_authenticated_excludes_public_param(self):
+        """Test that authenticated adapter does NOT send public=true in URL."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="my-api-token",
+        )
+
+        adapter.list_repositories()
+
+        assert len(responses.calls) == 1
+        assert "public=true" not in responses.calls[0].request.url
+        assert "namespace=testorg" in responses.calls[0].request.url
+
+    @responses.activate
+    def test_list_repositories_unauthenticated_includes_public_param(self):
+        """Test that unauthenticated adapter sends public=true in URL."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+        )
+
+        adapter.list_repositories()
+
+        assert len(responses.calls) == 1
+        assert "public=true" in responses.calls[0].request.url
+        assert "namespace=testorg" in responses.calls[0].request.url
+
+    @responses.activate
     def test_bearer_token_sent_in_request(self):
         """Test that Bearer token is actually sent in HTTP requests."""
         responses.add(
@@ -504,15 +547,16 @@ class TestHarborAdapter:
     @responses.activate
     def test_list_repositories_paginated(self):
         """Test fetching repositories with multiple pages."""
-        # First page - full page
+        # First page - full page with Link header indicating next page
         responses.add(
             responses.GET,
             "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
             json=[{"name": f"myproject/repo{i}"} for i in range(100)],
             status=200,
+            headers={"Link": '</api/v2.0/projects/myproject/repositories?page=2>; rel="next"'},
         )
 
-        # Second page - partial page (indicates end)
+        # Second page - partial page (no Link header, indicates end)
         responses.add(
             responses.GET,
             "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
@@ -618,23 +662,25 @@ class TestHarborAdapter:
     @responses.activate
     def test_list_repositories_large_pagination(self):
         """Test fetching 250+ repositories across multiple pages."""
-        # First page - 100 repos
+        # First page - 100 repos with Link header
         responses.add(
             responses.GET,
             "https://harbor.example.com/api/v2.0/projects/largeproject/repositories",
             json=[{"name": f"largeproject/repo{i}"} for i in range(100)],
             status=200,
+            headers={"Link": '</api/v2.0/projects/largeproject/repositories?page=2>; rel="next"'},
         )
 
-        # Second page - 100 repos
+        # Second page - 100 repos with Link header
         responses.add(
             responses.GET,
             "https://harbor.example.com/api/v2.0/projects/largeproject/repositories",
             json=[{"name": f"largeproject/repo{i}"} for i in range(100, 200)],
             status=200,
+            headers={"Link": '</api/v2.0/projects/largeproject/repositories?page=3>; rel="next"'},
         )
 
-        # Third page - 55 repos (final page, less than page_size)
+        # Third page - 55 repos (final page, no Link header)
         responses.add(
             responses.GET,
             "https://harbor.example.com/api/v2.0/projects/largeproject/repositories",
@@ -831,6 +877,120 @@ class TestHarborAdapter:
     def test_exception_hierarchy(self):
         """Test that HarborDiscoveryException inherits from RegistryDiscoveryException."""
         assert issubclass(HarborDiscoveryException, RegistryDiscoveryException)
+
+    @responses.activate
+    def test_list_repositories_link_header_pagination(self):
+        """Test that Link header drives pagination even when pages are full."""
+        url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
+
+        # Three full pages of exactly page_size items
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100)],
+            status=200,
+            headers={"Link": f'<{url}?page=2>; rel="next"'},
+        )
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100, 200)],
+            status=200,
+            headers={"Link": f'<{url}?page=3>; rel="next"'},
+        )
+        # Page 3: full page but no Link header — pagination stops
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(200, 300)],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert len(repos) == 300
+        assert repos[0] == "repo0"
+        assert repos[-1] == "repo299"
+        assert len(responses.calls) == 3
+
+    @responses.activate
+    def test_list_repositories_server_truncated_page_with_link(self):
+        """Test that pagination continues when server returns fewer than page_size
+        items but includes a Link header with rel="next"."""
+        url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
+
+        # Page 1: server returns only 16 items (fewer than page_size=100)
+        # but Link header says there's a next page
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(16)],
+            status=200,
+            headers={"Link": f'<{url}?page=2>; rel="next"'},
+        )
+        # Page 2: full page with next link
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(16, 116)],
+            status=200,
+            headers={"Link": f'<{url}?page=3>; rel="next"'},
+        )
+        # Page 3: final page, no Link header
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(116, 150)],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert len(repos) == 150
+        assert len(responses.calls) == 3
+
+    @responses.activate
+    def test_list_repositories_no_link_header_falls_back_to_empty_page(self):
+        """Test backward compatibility: without Link headers, pagination continues
+        until an empty page is received."""
+        url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
+
+        # Page 1: no Link header
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100)],
+            status=200,
+        )
+        # Page 2: no Link header — pagination stops (no rel="next")
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100, 150)],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        # Without Link header, pagination stops after page 1
+        # because the absence of rel="next" triggers the break
+        assert len(repos) == 100
+        assert len(responses.calls) == 1
 
 
 class TestGetRegistryAdapter:

@@ -1,0 +1,75 @@
+# Playwright E2E test runner for Quay web frontend.
+# Runs tests against a live Quay instance (e.g. on OpenShift).
+#
+# Build (from repo root - web/.dockerignore excludes playwright/):
+#   podman build -f web/Containerfile.playwright -t quay-playwright .
+#
+# Run:
+#   podman run --rm \
+#     -e PLAYWRIGHT_BASE_URL=https://quay.example.com \
+#     -e REACT_QUAY_APP_API_URL=https://quay.example.com \
+#     quay-playwright
+#
+# Run specific tests:
+#   podman run --rm \
+#     -e PLAYWRIGHT_BASE_URL=https://quay.example.com \
+#     -e REACT_QUAY_APP_API_URL=https://quay.example.com \
+#     quay-playwright --grep "signin"
+
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest
+
+# Install Chromium system dependencies
+USER root
+RUN microdnf install -y --setopt=install_weak_deps=0 --nodocs \
+    nss \
+    nspr \
+    atk \
+    at-spi2-atk \
+    at-spi2-core \
+    alsa-lib \
+    cups-libs \
+    libdrm \
+    libxcb \
+    libxkbcommon \
+    libX11 \
+    libXcomposite \
+    libXdamage \
+    libXext \
+    libXfixes \
+    libXrandr \
+    mesa-libgbm \
+    pango \
+    cairo \
+    dbus-libs \
+    expat \
+    glib2 \
+    && microdnf clean all
+
+WORKDIR /app
+
+# Install only Playwright (the only external dependency the tests need).
+# Version is read from package.json so it stays in sync with the project.
+COPY web/package.json /tmp/package.json
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+# Install Playwright and Chromium browser, then clean caches.
+# Version is read from package.json so it stays in sync with the project.
+RUN PW_VERSION=$(node -p "require('/tmp/package.json').devDependencies['@playwright/test']") \
+    && npm init -y > /dev/null 2>&1 \
+    && npm install --no-package-lock "@playwright/test@${PW_VERSION}" \
+    && npx playwright install chromium --only-shell \
+    && rm -rf /tmp/package.json /opt/app-root/src/.npm /tmp/npm-*
+
+# Copy test files only (no app source needed - this is a test runner)
+COPY web/playwright.config.ts ./
+COPY web/playwright/ ./playwright/
+COPY web/tsconfig.json ./
+
+# Environment defaults for CI
+ENV OPENSHIFT_CI=1 \
+    CI=1
+
+# Run as non-root (UBI default UID)
+USER 1001
+
+ENTRYPOINT ["npx", "playwright", "test"]

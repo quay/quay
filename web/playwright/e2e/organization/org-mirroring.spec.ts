@@ -44,9 +44,22 @@ async function fillRequiredFields(
 
   const futureDate = new Date();
   futureDate.setMinutes(futureDate.getMinutes() + 5);
-  await page
-    .locator('#sync_start_date')
-    .fill(futureDate.toISOString().slice(0, 16));
+
+  // Fill DatePicker with YYYY-MM-DD format (matches component's dateFormat)
+  const year = futureDate.getFullYear();
+  const month = String(futureDate.getMonth() + 1).padStart(2, '0');
+  const day = String(futureDate.getDate()).padStart(2, '0');
+  const dateString = `${year}-${month}-${day}`;
+  const dateInput = page.getByLabel('Sync start date');
+  await dateInput.clear();
+  await dateInput.fill(dateString);
+
+  // Fill TimePicker with HH:MM
+  const hours = String(futureDate.getHours()).padStart(2, '0');
+  const minutes = String(futureDate.getMinutes()).padStart(2, '0');
+  const timeInput = page.getByRole('textbox', {name: 'Sync start time'});
+  await timeInput.clear();
+  await timeInput.fill(`${hours}:${minutes}`);
 
   await page.locator('#robot-user-select').click();
   await page.getByRole('option', {name: robotFullName}).click();
