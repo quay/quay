@@ -172,8 +172,8 @@ def main():
         os.environ["QUAY_OVERRIDE_CONFIG"] = json.dumps({"DB_URI": args.db_uri})
 
     # Import the app after setting overrides so configuration picks them up
-    from app import app
     from app import model_cache  # noqa: WPS433 (runtime import by design)
+    from app import app
     from app import storage as app_storage  # noqa: WPS433 (runtime import by design)
 
     log_level = os.environ.get("LOGGING_LEVEL", getattr(logging, app.config["LOGGING_LEVEL"]))
