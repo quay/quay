@@ -54,7 +54,7 @@ MAPPED_STATUSES[ScanLookupStatus.MANIFEST_LAYER_TOO_LARGE] = (
 logger = logging.getLogger(__name__)
 
 
-def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
+def _security_info(manifest_or_legacy_image, include_vulnerabilities=True, raw=False):
     """
     Returns a dict representing the result of a call to the security status API for the given
     manifest or image.
@@ -62,8 +62,14 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
     result = secscan_model.load_security_information(
         manifest_or_legacy_image,
         include_vulnerabilities=include_vulnerabilities,
+        proxy_clair_response=raw,
         model_cache=model_cache,
     )
+
+    # lets see if we can bundle raw in result and status check
+    if raw:
+        return result
+
     if result.status == ScanLookupStatus.UNKNOWN_MANIFEST_OR_IMAGE:
         raise NotFound()
 
@@ -98,6 +104,12 @@ class RepositoryManifestSecurity(RepositoryParamResource):
     @query_param(
         "vulnerabilities", "Include vulnerabilities informations", type=truthy_bool, default=False
     )
+    @query_param(
+        "raw",
+        "Returns a vulnerability report for the specified manifest from Clair",
+        type=truthy_bool,
+        default=False,
+    )
     def get(self, namespace, repository, manifestref, parsed_args):
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
@@ -107,4 +119,4 @@ class RepositoryManifestSecurity(RepositoryParamResource):
         if manifest is None:
             raise NotFound()
 
-        return _security_info(manifest, parsed_args.vulnerabilities)
+        return _security_info(manifest, parsed_args.vulnerabilities, parsed_args.raw)
