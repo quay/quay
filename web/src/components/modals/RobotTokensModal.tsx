@@ -402,7 +402,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               <TabTitleIcon>
                 <DockerIcon />
               </TabTitleIcon>
-              <TabTitleText>Docker</TabTitleText>
+              <TabTitleText>Docker Login</TabTitleText>
             </>
           }
         >
@@ -416,7 +416,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               hoverTip="Copy"
               clickTip="Copied"
               isReadOnly
-              id="docker login"
+              id="docker-login"
             >
               {"docker login -u='" +
                 tokenData.name +
@@ -426,6 +426,70 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
                 domain}
             </ClipboardCopy>
           </TextContent>
+        </Tab>
+        <Tab
+          id="docker-config-tab"
+          data-testid="docker-config-tab"
+          eventKey={4}
+          title={
+            <>
+              <TabTitleIcon>
+                <DockerIcon />
+              </TabTitleIcon>
+              <TabTitleText>Docker Configuration</TabTitleText>
+            </>
+          }
+        >
+          <br />
+          <TextContent>
+            <Text component={TextVariants.h6}>
+              Step 1: Download Docker configuration file
+            </Text>
+            <Text component={TextVariants.p}>
+              The following is a Docker configuration file containing the
+              credentials for this robot account:
+            </Text>
+            <ClipboardCopy
+              isReadOnly
+              isCode
+              hoverTip="Copy"
+              clickTip="Copied"
+              variant={ClipboardCopyVariant.expansion}
+              id="docker-config-content"
+              data-testid="docker-config-content"
+              className="pf-v5-u-mb-sm"
+            >
+              {getDockerConfig()}
+            </ClipboardCopy>
+            <Text component={TextVariants.p}>
+              <a
+                data-testid="docker-config-download"
+                onClick={() =>
+                  downloadFile(
+                    [getDockerConfig()],
+                    getSuffixedFilename('auth.json'),
+                  )
+                }
+              >
+                {'Download ' + getSuffixedFilename('auth.json')}
+              </a>
+            </Text>
+          </TextContent>
+          <br />
+          <Alert
+            title="Note that once you place this file, any existing credentials will be overwritten."
+            variant="warning"
+            isPlain
+            isInline
+          />
+          <ClipboardCopy
+            hoverTip="Copy"
+            clickTip="Copied"
+            isReadOnly
+            id="docker-config-mv"
+          >
+            mv config.json ~/.docker/config.json
+          </ClipboardCopy>
         </Tab>
       </Tabs>
     </>
