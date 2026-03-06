@@ -84,7 +84,7 @@ class OCIModel(RegistryDataInterface):
 
         return Manifest.for_manifest(manifest, self._legacy_image_id_handler), layer_index
 
-    def _get_expiry_label_for_manifest(self, manifest):
+    def _get_expiry_label_for_manifest(self, manifest, model_cache=None):
         """
         Gets the quay.expires-after label for a manifest.
 
@@ -108,20 +108,27 @@ class OCIModel(RegistryDataInterface):
 
         # For manifest lists, check child manifest labels
         if manifest.is_manifest_list:
-            child_manifests = ManifestChild.select(ManifestChild.child_manifest).where(
-                ManifestChild.manifest == manifest._db_id
+            # Use cached child manifest lookup
+            from data.model.oci.tag import get_cached_child_manifests
+
+            child_manifest_ids = get_cached_child_manifests(
+                manifest.repository._db_id, manifest._db_id, model_cache
             )
 
             child_label_dicts = []
-            for child in child_manifests:
-                child_manifest = Manifest.for_manifest(
-                    child.child_manifest, self._legacy_image_id_handler
-                )
-                child_labels = {
-                    label.key: label.value
-                    for label in self.list_manifest_labels(child_manifest, key_prefix="quay")
-                }
-                child_label_dicts.append(child_labels)
+            for child_manifest_id in child_manifest_ids:
+                # Load the child manifest object
+                try:
+                    child = database.Manifest.get(id=child_manifest_id)
+                    child_manifest = Manifest.for_manifest(child, self._legacy_image_id_handler)
+                    child_labels = {
+                        label.key: label.value
+                        for label in self.list_manifest_labels(child_manifest, key_prefix="quay")
+                    }
+                    child_label_dicts.append(child_labels)
+                except database.Manifest.DoesNotExist:
+                    logger.warning(f"Child manifest {child_manifest_id} not found")
+                    continue
 
             if child_label_dicts:
                 # Intersect labels across all children (same logic as manifest.py)
@@ -463,6 +470,7 @@ class OCIModel(RegistryDataInterface):
 
     def create_manifest_and_retarget_tag(
         self,
+        model_cache,
         repository_ref,
         manifest_interface_instance,
         tag_name,
@@ -505,7 +513,7 @@ class OCIModel(RegistryDataInterface):
             #       If we were to define more of these "special" labels in the future, we should use the handlers from
             #       data/registry_model/label_handlers.py
             if not created_manifest.newly_created:
-                label_dict = self._get_expiry_label_for_manifest(wrapped_manifest)
+                label_dict = self._get_expiry_label_for_manifest(wrapped_manifest, model_cache)
             else:
                 label_dict = next(
                     (
@@ -559,6 +567,7 @@ class OCIModel(RegistryDataInterface):
 
     def retarget_tag(
         self,
+        model_cache,
         repository_ref,
         tag_name,
         manifest_or_legacy_image,
@@ -607,7 +616,7 @@ class OCIModel(RegistryDataInterface):
 
                     manifest_id = created.manifest.id
 
-            label_dict = self._get_expiry_label_for_manifest(manifest)
+            label_dict = self._get_expiry_label_for_manifest(manifest, model_cache)
 
             expiration_seconds = None
 

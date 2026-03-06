@@ -16,7 +16,7 @@ from uuid import UUID, uuid4
 from freezegun import freeze_time
 from peewee import SqliteDatabase
 
-from app import app, docker_v2_signing_key
+from app import app, docker_v2_signing_key, model_cache
 from app import storage as store
 from app import tf
 from data import model
@@ -205,7 +205,7 @@ def __create_manifest_and_tags(
 
         with freeze_time(now):
             created_tag, _ = registry_model.create_manifest_and_retarget_tag(
-                repo_ref, manifest, adjusted_tag_name, store, raise_on_error=True
+                model_cache, repo_ref, manifest, adjusted_tag_name, store, raise_on_error=True
             )
             assert created_tag
             tag_map[adjusted_tag_name] = created_tag

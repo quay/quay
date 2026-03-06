@@ -122,6 +122,38 @@ def get_child_manifests(repo_id: int, manifest_id: int):
     )
 
 
+def get_cached_child_manifests(repo_id: int, manifest_id: int, model_cache):
+    """
+    Returns the child manifests for a manifest list, with caching.
+
+    Since manifests are immutable (content-addressed), child relationships never change
+    once created, making this safe to cache with a long TTL.
+
+    Args:
+        repo_id: Repository ID
+        manifest_id: Parent manifest ID
+        model_cache: Cache instance to use for caching
+
+    Returns:
+        List of child manifest IDs
+    """
+    from data.cache import cache_key
+
+    def load_child_manifests():
+        # Query and convert to list of IDs
+        children = get_child_manifests(repo_id, manifest_id)
+        return [child.child_manifest_id for child in children]
+
+    if model_cache is None:
+        return load_child_manifests()
+
+    manifest_children_cache_key = cache_key.for_manifest_children(
+        repo_id, manifest_id, model_cache.cache_config
+    )
+
+    return model_cache.retrieve(manifest_children_cache_key, load_child_manifests)
+
+
 def tag_names_for_manifest(manifest_id, limit=None):
     """
     Returns the names of the tags pointing to the given manifest.
