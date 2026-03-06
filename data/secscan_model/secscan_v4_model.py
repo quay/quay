@@ -126,10 +126,12 @@ def _has_container_layers(layers):
         return False
 
     for layer in layers:
-        if not hasattr(layer.layer_info, "internal_layer"):
+        layer_info = getattr(layer, "layer_info", None)
+
+        if layer_info is None or not hasattr(layer_info, "internal_layer"):
             return False
 
-        internal = layer.layer_info.internal_layer
+        internal = layer_info.internal_layer
 
         # Docker Schema2 layers don't have a mediatype attribute - they're always container images
         if isinstance(internal, DockerV2ManifestImageLayer):
