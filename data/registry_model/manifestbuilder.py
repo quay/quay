@@ -5,6 +5,7 @@ from collections import namedtuple
 
 from flask import session
 
+from app import model_cache
 from data import model
 from data.database import ImageStorage, ImageStoragePlacement, db_transaction
 from data.registry_model import registry_model
@@ -224,7 +225,7 @@ class _ManifestBuilder(object):
 
         # Target the tag at the manifest.
         manifest, tag = registry_model.create_manifest_and_retarget_tag(
-            self._repository_ref, manifest_instance, tag_name, self._storage
+            model_cache, self._repository_ref, manifest_instance, tag_name, self._storage
         )
         if tag is None:
             return None

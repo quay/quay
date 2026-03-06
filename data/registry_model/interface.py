@@ -84,7 +84,13 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def create_manifest_and_retarget_tag(
-        self, repository_ref, manifest_interface_instance, tag_name, storage, raise_on_error=False
+        self,
+        model_cache,
+        repository_ref,
+        manifest_interface_instance,
+        tag_name,
+        storage,
+        raise_on_error=False,
     ):
         """
         Creates a manifest in a repository, adding all of the necessary data in the model.
@@ -220,6 +226,7 @@ class RegistryDataInterface(object):
     @abstractmethod
     def retarget_tag(
         self,
+        model_cache,
         repository_ref,
         tag_name,
         manifest_or_legacy_image,

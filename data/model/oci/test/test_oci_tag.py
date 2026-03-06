@@ -8,6 +8,7 @@ from playhouse.test_utils import assert_query_count
 
 from app import storage
 from data import model
+from data.cache import InMemoryDataModelCache
 from data.database import ImageStorageLocation, ManifestChild, Repository, Tag, User
 from data.model import ImmutableTagException
 from data.model.blob import store_blob_record_and_temp_link
@@ -21,6 +22,7 @@ from data.model.oci.tag import (
     filter_to_alive_tags,
     filter_to_visible_tags,
     find_matching_tag,
+    get_cached_child_manifests,
     get_child_manifests,
     get_current_tag,
     get_epoch_timestamp_ms,
@@ -51,12 +53,12 @@ from test.fixtures import *
 from util.bytes import Bytes
 
 
-def _populate_blob(content):
+def _populate_blob(content, repository):
     content = Bytes.for_string_or_unicode(content).as_encoded_str()
     digest = str(sha256_digest(content))
     location = ImageStorageLocation.get(name="local_us")
     blob = store_blob_record_and_temp_link(
-        "devtable", "newrepo", digest, location, len(content), 120
+        repository.namespace_user.username, repository.name, digest, location, len(content), 120
     )
     storage.put_content(["local_us"], get_layer_path(blob), content)
     return blob, digest
@@ -387,6 +389,45 @@ def test_delete_tag_manifest_list(initialized_db):
             assert child_tag.lifetime_end_ms <= get_epoch_timestamp_ms()
 
 
+def test_get_cached_child_manifests(initialized_db):
+    """Test get_cached_child_manifests with and without caching."""
+    repository = create_repository("devtable", "newrepo", None)
+    tag = _create_manifest_list(repository)
+
+    # Test 1: Without cache (model_cache=None)
+    children_no_cache = get_cached_child_manifests(repository.id, tag.manifest.id, None)
+    assert len(children_no_cache) == 2
+    assert all(isinstance(child_id, int) for child_id in children_no_cache)
+
+    # Test 2: With InMemoryDataModelCache - first call should load from DB
+    cache_config = {"manifest_children_cache_ttl": "3600s"}
+    model_cache = InMemoryDataModelCache(cache_config)
+
+    children_cached = get_cached_child_manifests(repository.id, tag.manifest.id, model_cache)
+    assert len(children_cached) == 2
+    assert children_cached == children_no_cache
+
+    # Test 3: Second call should retrieve from cache without hitting DB
+    # We can verify this by checking that the result is identical
+    children_from_cache = get_cached_child_manifests(repository.id, tag.manifest.id, model_cache)
+    assert children_from_cache == children_cached
+    assert len(children_from_cache) == 2
+
+    # Test 4: Verify the cached values are the actual child manifest IDs
+    expected_child_ids = [
+        cm.child_manifest_id for cm in get_child_manifests(repository.id, tag.manifest.id)
+    ]
+    assert set(children_from_cache) == set(expected_child_ids)
+
+    # Test 5: Different manifest should have different cache key
+    repository2 = create_repository("devtable", "newrepo2", None)
+    tag2 = _create_manifest_list(repository2)
+    children_different = get_cached_child_manifests(repository2.id, tag2.manifest.id, model_cache)
+    assert len(children_different) == 2
+    # Should be different manifest IDs (different repository)
+    assert set(children_different) != set(children_from_cache)
+
+
 def test_delete_tags_for_manifest(initialized_db):
     with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
         for tag in list(filter_to_visible_tags(filter_to_alive_tags(Tag.select()))):
@@ -691,13 +732,13 @@ def _create_manifest_list(repository):
     )
 
     # Add a blob containing the config.
-    _, config_digest = _populate_blob(layer_json)
+    _, config_digest = _populate_blob(layer_json, repository)
 
     # Add a blob of random data.
     random_data_1 = "foo"
-    _, random_digest_1 = _populate_blob(random_data_1)
+    _, random_digest_1 = _populate_blob(random_data_1, repository)
     random_data_2 = "bar"
-    _, random_digest_2 = _populate_blob(random_data_2)
+    _, random_digest_2 = _populate_blob(random_data_2, repository)
 
     # Build the manifests.
     manifest_1_builder = DockerSchema2ManifestBuilder()
@@ -715,7 +756,7 @@ def _create_manifest_list(repository):
     assert v1_created
     assert v1_created.manifest.digest == manifest_1.digest
 
-    v2_created = get_or_create_manifest(repository, manifest_2, storage)
+    v2_created = get_or_create_manifest(repository.id, manifest_2, storage)
     assert v2_created
     assert v2_created.manifest.digest == manifest_2.digest
 
@@ -726,7 +767,7 @@ def _create_manifest_list(repository):
     manifest_list = list_builder.build()
 
     # Write the manifest list, which should also write the manifests themselves.
-    created_tuple = get_or_create_manifest(repository, manifest_list, storage)
+    created_tuple = get_or_create_manifest(repository.id, manifest_list, storage)
     assert created_tuple is not None
 
     return retarget_tag("manifestlist", created_tuple.manifest)

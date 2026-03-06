@@ -460,6 +460,7 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
     ],
 )
 def test_retarget_tag_history(use_manifest, registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = registry_model.lookup_repository("devtable", "history")
     history, _ = registry_model.list_repository_tag_history(repository_ref)
 
@@ -475,6 +476,7 @@ def test_retarget_tag_history(use_manifest, registry_model):
     # Retarget the tag.
     assert manifest_or_legacy_image
     updated_tag = registry_model.retarget_tag(
+        model_cache,
         repository_ref,
         "latest",
         manifest_or_legacy_image,
@@ -576,6 +578,7 @@ def test_layers_and_blobs(repo_namespace, repo_name, registry_model):
 
 
 def test_manifest_remote_layers(oci_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     # Create a config blob for testing.
     config_json = json.dumps(
         {
@@ -603,7 +606,7 @@ def test_manifest_remote_layers(oci_model):
     manifest = builder.build()
 
     created_manifest, _ = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "sometag", storage
+        model_cache, repository_ref, manifest, "sometag", storage
     )
     assert created_manifest
 
@@ -739,6 +742,7 @@ def test_get_cached_repo_blob(registry_model):
 
 
 def test_create_manifest_and_retarget_tag(registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(latest_tag).get_parsed_manifest()
@@ -749,7 +753,7 @@ def test_create_manifest_and_retarget_tag(registry_model):
     assert sample_manifest is not None
 
     another_manifest, tag = registry_model.create_manifest_and_retarget_tag(
-        repository_ref, sample_manifest, "anothertag", storage, verify_quota=True
+        model_cache, repository_ref, sample_manifest, "anothertag", storage, verify_quota=True
     )
     assert another_manifest is not None
     assert tag is not None
@@ -759,6 +763,7 @@ def test_create_manifest_and_retarget_tag(registry_model):
 
 
 def test_create_manifest_and_retarget_tag_with_quota(registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     CONFIG_LAYER_JSON = json.dumps(
         {
             "config": {},
@@ -788,6 +793,7 @@ def test_create_manifest_and_retarget_tag_with_quota(registry_model):
     rejected = False
     try:
         registry_model.create_manifest_and_retarget_tag(
+            model_cache,
             repository_ref,
             manifest,
             "newtag",
@@ -798,8 +804,8 @@ def test_create_manifest_and_retarget_tag_with_quota(registry_model):
         rejected = True
     assert rejected
 
-    # Assert that a temporary tag outside the time machine window was created since the manifest was rejected
-    # Get the tag that has beeen created in the last second
+    # Assert that a temporary tag outside the time machine window was created since the
+    # manifest was rejected. Get the tag that has beeen created in the last second
     tag = (
         Tag.select()
         .where(
@@ -835,6 +841,7 @@ def test_convert_manifest(registry_model):
 
 
 def test_create_manifest_and_retarget_tag_with_labels(registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(latest_tag).get_parsed_manifest()
@@ -854,7 +861,7 @@ def test_create_manifest_and_retarget_tag_with_labels(registry_model):
     assert sample_manifest is not None
 
     another_manifest, tag = registry_model.create_manifest_and_retarget_tag(
-        repository_ref, sample_manifest, "anothertag", storage
+        model_cache, repository_ref, sample_manifest, "anothertag", storage
     )
     assert another_manifest is not None
     assert tag is not None
@@ -868,12 +875,18 @@ def test_create_manifest_and_retarget_tag_with_labels(registry_model):
     # Create another tag and retarget it to an existing manifest; it should have an end date.
     # This is from a Quay's tag api, so it will not attempt to create a manifest first.
     yet_another_tag = registry_model.retarget_tag(
-        repository_ref, "yet_another_tag", another_manifest, storage, docker_v2_signing_key
+        model_cache,
+        repository_ref,
+        "yet_another_tag",
+        another_manifest,
+        storage,
+        docker_v2_signing_key,
     )
     assert yet_another_tag.lifetime_end_ms is not None
 
 
 def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     # Create a config blob for testing.
     config_json = json.dumps(
         {
@@ -905,7 +918,7 @@ def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci
     manifest = builder.build()
 
     some_manifest, some_tag = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "some_tag", storage
+        model_cache, repository_ref, manifest, "some_tag", storage
     )
     assert some_manifest is not None
     assert some_tag is not None
@@ -914,7 +927,7 @@ def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci
     # Create tag and retarget it to an existing manifest; it should have an end date.
     # This is from a push, so it will attempt to create a manifest first.
     some_other_manifest, some_other_tag = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "some_other_tag", storage
+        model_cache, repository_ref, manifest, "some_other_tag", storage
     )
     assert some_other_manifest is not None
     assert some_other_manifest == some_manifest
@@ -924,7 +937,12 @@ def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci
     # Create another tag and retarget it to an existing manifest; it should have an end date.
     # This is from a Quay's tag api, so it will not attempt to create a manifest first.
     yet_another_tag = oci_model.retarget_tag(
-        repository_ref, "yet_another_tag", some_other_manifest, storage, docker_v2_signing_key
+        model_cache,
+        repository_ref,
+        "yet_another_tag",
+        some_other_manifest,
+        storage,
+        docker_v2_signing_key,
     )
     assert yet_another_tag.lifetime_end_ms is not None
 
@@ -1064,6 +1082,7 @@ def test_manifest_list_expiration_multiple_tags(oci_model):
 
     This verifies the fix for PROJQUAY-7245.
     """
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = oci_model.lookup_repository("devtable", "simple")
 
     # Create a config blob with expiry label for child manifest
@@ -1099,7 +1118,7 @@ def test_manifest_list_expiration_multiple_tags(oci_model):
 
     # Create the child manifest in the registry (hidden, no tag)
     child_created, _ = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, child_manifest, "temp_child_tag", storage
+        model_cache, repository_ref, child_manifest, "temp_child_tag", storage
     )
     assert child_created is not None
 
@@ -1110,7 +1129,7 @@ def test_manifest_list_expiration_multiple_tags(oci_model):
 
     # Push the manifest list with the first tag
     manifest1, tag1 = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest_list, "multi-arch-v1", storage
+        model_cache, repository_ref, manifest_list, "multi-arch-v1", storage
     )
     assert manifest1 is not None
     assert tag1 is not None
@@ -1118,7 +1137,7 @@ def test_manifest_list_expiration_multiple_tags(oci_model):
 
     # Push the same manifest list with a second tag
     manifest2, tag2 = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest_list, "multi-arch-v2", storage
+        model_cache, repository_ref, manifest_list, "multi-arch-v2", storage
     )
     assert manifest2 is not None
     assert manifest2.digest == manifest1.digest, "Should be the same manifest"
@@ -1127,7 +1146,7 @@ def test_manifest_list_expiration_multiple_tags(oci_model):
 
     # Also test retarget_tag (used by Quay's tag API)
     tag3 = oci_model.retarget_tag(
-        repository_ref, "multi-arch-v3", manifest1, storage, docker_v2_signing_key
+        model_cache, repository_ref, "multi-arch-v3", manifest1, storage, docker_v2_signing_key
     )
     assert tag3 is not None
     assert tag3.lifetime_end_ms is not None, "Third tag via retarget_tag should have expiration"
@@ -1150,6 +1169,7 @@ def _populate_blob_with_content(content, org_name, repository_name):
 
 
 def test_known_issue_schema1(registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     test_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(test_dir, "../../../image/docker/test/validate_manifest_known_issue.json")
     with open(path, "r") as f:
@@ -1166,7 +1186,7 @@ def test_known_issue_schema1(registry_model):
     # Create the manifest in the database.
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     created_manifest, _ = registry_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "latest", storage
+        model_cache, repository_ref, manifest, "latest", storage
     )
     assert created_manifest
     assert created_manifest.digest == manifest.digest
@@ -1185,6 +1205,7 @@ def test_known_issue_schema1(registry_model):
 
 
 def test_unicode_emoji(registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     builder = DockerSchema1ManifestBuilder("devtable", "simple", "latest")
     builder.add_layer(
         "sha256:abcde",
@@ -1206,7 +1227,7 @@ def test_unicode_emoji(registry_model):
     # Create the manifest in the database.
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     created_manifest, _ = registry_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "latest", storage
+        model_cache, repository_ref, manifest, "latest", storage
     )
     assert created_manifest
     assert created_manifest.digest == manifest.digest
@@ -1232,6 +1253,7 @@ def test_unicode_emoji(registry_model):
     ],
 )
 def test_lookup_active_repository_tags(test_cached, oci_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     latest_tag = oci_model.get_repo_tag(repository_ref, "latest")
     manifest = oci_model.get_manifest_for_tag(latest_tag)
@@ -1245,7 +1267,12 @@ def test_lookup_active_repository_tags(test_cached, oci_model):
     for index in range(0, tag_count):
         tags_expected.add("somenewtag%s" % index)
         oci_model.retarget_tag(
-            repository_ref, "somenewtag%s" % index, manifest, storage, docker_v2_signing_key
+            model_cache,
+            repository_ref,
+            "somenewtag%s" % index,
+            manifest,
+            storage,
+            docker_v2_signing_key,
         )
 
     for tag in existing_tags:

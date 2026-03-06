@@ -527,6 +527,7 @@ class OCIModel(RegistryDataInterface):
 
     def create_manifest_and_retarget_tag(
         self,
+        model_cache,
         repository_ref,
         manifest_interface_instance,
         tag_name,
@@ -569,9 +570,7 @@ class OCIModel(RegistryDataInterface):
             #       applied atomically. The handlers in label_handlers.py are still
             #       used for labels created via the API after initial push.
             if not created_manifest.newly_created:
-                # Note: model_cache=None means no caching for this path
-                # Caching can be enabled by passing model_cache when available
-                label_dict = self._get_expiry_label_for_manifest(wrapped_manifest, model_cache=None)
+                label_dict = self._get_expiry_label_for_manifest(wrapped_manifest, model_cache)
             else:
                 label_dict = next(
                     (
@@ -635,6 +634,7 @@ class OCIModel(RegistryDataInterface):
 
     def retarget_tag(
         self,
+        model_cache,
         repository_ref,
         tag_name,
         manifest_or_legacy_image,
@@ -688,7 +688,7 @@ class OCIModel(RegistryDataInterface):
                 if features.IMMUTABLE_TAGS
                 else False
             )
-            label_dict = self._get_expiry_label_for_manifest(manifest, model_cache=None)
+            label_dict = self._get_expiry_label_for_manifest(manifest, model_cache)
 
             expiration_seconds = None
 
