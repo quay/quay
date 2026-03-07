@@ -119,6 +119,7 @@ def _has_container_layers(layers):
     from image.docker.schema2 import DOCKER_SCHEMA2_LAYER_CONTENT_TYPE
     from image.docker.schema2.manifest import DockerV2ManifestImageLayer
     from image.oci import OCI_IMAGE_LAYER_CONTENT_TYPES
+    from image.oci.manifest import OCIManifestImageLayer
 
     CONTAINER_LAYER_TYPES = set(OCI_IMAGE_LAYER_CONTENT_TYPES + [DOCKER_SCHEMA2_LAYER_CONTENT_TYPE])
 
@@ -137,11 +138,32 @@ def _has_container_layers(layers):
         if isinstance(internal, DockerV2ManifestImageLayer):
             continue
 
-        # OCI layers have explicit mediatype
-        if not hasattr(internal, "blob_layer") or not hasattr(internal.blob_layer, "mediatype"):
-            return False
+        # OCI image layers - check blob_layer.mediatype for artifact detection
+        if isinstance(internal, OCIManifestImageLayer):
+            # If blob_layer is None, it's a processed container image layer
+            if internal.blob_layer is None:
+                continue
+            # If blob_layer exists, check its mediatype
+            elif hasattr(internal.blob_layer, "mediatype"):
+                if internal.blob_layer.mediatype not in CONTAINER_LAYER_TYPES:
+                    return False
+                continue
+            else:
+                # Unknown OCI layer structure
+                return False
 
-        if internal.blob_layer.mediatype not in CONTAINER_LAYER_TYPES:
+        # OCI layers with explicit mediatype (alternative format)
+        if hasattr(internal, "mediatype"):
+            if internal.mediatype not in CONTAINER_LAYER_TYPES:
+                return False
+
+        # Other layer formats with blob_layer
+        elif hasattr(internal, "blob_layer") and hasattr(internal.blob_layer, "mediatype"):
+            if internal.blob_layer.mediatype not in CONTAINER_LAYER_TYPES:
+                return False
+
+        # Unknown layer structure
+        else:
             return False
 
     return True
@@ -443,7 +465,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             if manifest.media_type not in DOCKER_SCHEMA1_CONTENT_TYPES:
                 if not _has_container_layers(layers):
                     logger.info(
-                        "Cannot index %s/%s@%s due to manifest being invalid (manifest appears to be an artifact image),"
+                        "Cannot index %s/%s@%s due to manifest being invalid (manifest appears to be an artifact image)"
                         % (
                             candidate.repository.namespace_user,
                             candidate.repository.name,
