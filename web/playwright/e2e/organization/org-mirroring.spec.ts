@@ -874,6 +874,191 @@ test.describe(
       ).not.toBeVisible();
     });
 
+    test('settings tab shows Mirror selected and Submit disabled when config exists', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrstmr');
+      const robot = await api.robot(org.name, 'stmrbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+      // Click on "Organization state" settings tab
+      await authenticatedPage.getByText('Organization state').click();
+
+      // Mirror radio should be selected
+      await expect(
+        authenticatedPage.getByRole('radio', {name: 'Mirror'}),
+      ).toBeChecked();
+
+      // Submit should be disabled (no change from current state)
+      await expect(
+        authenticatedPage.getByRole('button', {name: 'Submit'}),
+      ).toBeDisabled();
+    });
+
+    test('settings tab shows warning when switching from Mirror to Normal', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrstwn');
+      const robot = await api.robot(org.name, 'stwnbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Organization state').click();
+
+      // Select Normal radio
+      await authenticatedPage.getByRole('radio', {name: 'Normal'}).click();
+
+      // Warning alert should appear
+      await expect(
+        authenticatedPage.getByText(
+          'Switching to Normal will delete the organization mirror configuration and stop all future syncs.',
+        ),
+      ).toBeVisible();
+
+      // Submit should be enabled (state changed)
+      await expect(
+        authenticatedPage.getByRole('button', {name: 'Submit'}),
+      ).toBeEnabled();
+    });
+
+    test('switches org from Mirror to Normal via Settings tab', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrstnm');
+      const robot = await api.robot(org.name, 'stnmbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Organization state').click();
+
+      // Select Normal radio
+      await authenticatedPage.getByRole('radio', {name: 'Normal'}).click();
+
+      // Submit
+      await authenticatedPage.getByRole('button', {name: 'Submit'}).click();
+
+      // Confirmation modal should appear
+      await expect(
+        authenticatedPage
+          .getByText('Are you sure you want to switch back to Normal?')
+          .first(),
+      ).toBeVisible();
+
+      // Click confirm
+      await authenticatedPage
+        .getByTestId('confirm-disable-mirror-button')
+        .click();
+
+      // Verify success message
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration deleted successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify config is gone via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config).toBeNull();
+
+      // Normal radio should now be selected and Submit disabled
+      await expect(
+        authenticatedPage.getByRole('radio', {name: 'Normal'}),
+      ).toBeChecked();
+      await expect(
+        authenticatedPage.getByRole('button', {name: 'Submit'}),
+      ).toBeDisabled();
+    });
+
+    test('cancel disable-mirror modal in Settings keeps config intact', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrstcn');
+      const robot = await api.robot(org.name, 'stcnbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Organization state').click();
+
+      // Select Normal and submit
+      await authenticatedPage.getByRole('radio', {name: 'Normal'}).click();
+      await authenticatedPage.getByRole('button', {name: 'Submit'}).click();
+
+      // Modal should appear
+      await expect(
+        authenticatedPage
+          .getByText('Are you sure you want to switch back to Normal?')
+          .first(),
+      ).toBeVisible();
+
+      // Click Cancel
+      await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
+
+      // Modal should close
+      await expect(
+        authenticatedPage
+          .getByText('Are you sure you want to switch back to Normal?')
+          .first(),
+      ).not.toBeVisible();
+
+      // Config should still exist
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config).not.toBeNull();
+    });
+
     test('cancel delete modal keeps config intact', async ({
       authenticatedPage,
       api,

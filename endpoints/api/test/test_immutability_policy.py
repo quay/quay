@@ -1,5 +1,9 @@
+from datetime import datetime
+
 import pytest
 
+from data import model
+from data.database import SourceRegistryType, Visibility
 from data.model import immutability
 from endpoints.api.immutability_policy import (
     OrgImmutabilityPolicies,
@@ -8,7 +12,7 @@ from endpoints.api.immutability_policy import (
     RepositoryImmutabilityPolicy,
 )
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.test.shared import client_with_identity
+from endpoints.test.shared import client_with_identity, toggle_feature
 from test.fixtures import *  # noqa: F401, F403
 
 
@@ -211,3 +215,116 @@ class TestRepositoryImmutabilityPolicy:
                 {"repository": "devtable/simple", "policy_uuid": policy_uuid},
                 200,
             )
+
+
+class TestCreateImmutabilityPolicyWithOrgMirror:
+    """Tests for blocking immutability policy creation when org mirror is configured."""
+
+    def _cleanup_org_mirror_config(self, orgname):
+        try:
+            org = model.organization.get_organization(orgname)
+            config = model.org_mirror.get_org_mirror_config(org)
+            if config:
+                config.delete_instance()
+        except Exception:
+            pass
+
+    def _create_org_mirror_config(self, orgname):
+        org = model.organization.get_organization(orgname)
+        robot = model.user.lookup_robot(f"{orgname}+coolrobot")
+        return model.org_mirror.create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date=datetime(2025, 1, 1),
+        )
+
+    def test_create_blocked_with_org_mirror(self, app):
+        """Immutability policy creation is blocked when org mirror is configured."""
+        self._cleanup_org_mirror_config("buynlarge")
+
+        with toggle_feature("IMMUTABLE_TAGS", True):
+            with toggle_feature("ORG_MIRROR", True):
+                self._create_org_mirror_config("buynlarge")
+
+                with client_with_identity("devtable", app) as cl:
+                    resp = conduct_api_call(
+                        cl,
+                        OrgImmutabilityPolicies,
+                        "POST",
+                        {"orgname": "buynlarge"},
+                        {"tagPattern": "^v[0-9]+.*$"},
+                        400,
+                    )
+                    assert "organization mirroring" in resp.json.get("error_message", "").lower()
+
+        self._cleanup_org_mirror_config("buynlarge")
+
+    def test_create_allowed_without_org_mirror(self, app):
+        """Immutability policy creation is allowed when no org mirror is configured."""
+        self._cleanup_org_mirror_config("buynlarge")
+
+        with toggle_feature("IMMUTABLE_TAGS", True):
+            with toggle_feature("ORG_MIRROR", True):
+                with client_with_identity("devtable", app) as cl:
+                    resp = conduct_api_call(
+                        cl,
+                        OrgImmutabilityPolicies,
+                        "POST",
+                        {"orgname": "buynlarge"},
+                        {"tagPattern": "^v[0-9]+.*$"},
+                        201,
+                    )
+                    assert resp.json["uuid"] is not None
+
+
+class TestCreateImmutabilityPolicyWithProxyCache:
+    """Tests for blocking immutability policy creation when proxy cache is configured."""
+
+    def _cleanup_proxy_cache_config(self, orgname):
+        try:
+            model.proxy_cache.delete_proxy_cache_config(orgname)
+        except Exception:
+            pass
+
+    def test_create_blocked_with_proxy_cache(self, app):
+        """Immutability policy creation is blocked when proxy cache is configured."""
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("IMMUTABLE_TAGS", True):
+            with toggle_feature("PROXY_CACHE", True):
+                model.proxy_cache.create_proxy_cache_config("buynlarge", "docker.io")
+
+                with client_with_identity("devtable", app) as cl:
+                    resp = conduct_api_call(
+                        cl,
+                        OrgImmutabilityPolicies,
+                        "POST",
+                        {"orgname": "buynlarge"},
+                        {"tagPattern": "^v[0-9]+.*$"},
+                        400,
+                    )
+                    assert "proxy cache" in resp.json.get("error_message", "").lower()
+
+        self._cleanup_proxy_cache_config("buynlarge")
+
+    def test_create_allowed_without_proxy_cache(self, app):
+        """Immutability policy creation is allowed when no proxy cache is configured."""
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("IMMUTABLE_TAGS", True):
+            with toggle_feature("PROXY_CACHE", True):
+                with client_with_identity("devtable", app) as cl:
+                    resp = conduct_api_call(
+                        cl,
+                        OrgImmutabilityPolicies,
+                        "POST",
+                        {"orgname": "buynlarge"},
+                        {"tagPattern": "^v[0-9]+.*$"},
+                        201,
+                    )
+                    assert resp.json["uuid"] is not None

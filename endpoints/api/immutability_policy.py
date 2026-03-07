@@ -10,7 +10,7 @@ from auth.permissions import (
     AdministerRepositoryPermission,
 )
 from data import model
-from data.model import immutability
+from data.model import InvalidOrganizationException, immutability
 from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
@@ -90,6 +90,22 @@ class OrgImmutabilityPolicies(ApiResource):
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser_with_full_access():
             raise Unauthorized()
+
+        # Block if organization has an active mirror configuration
+        if features.ORG_MIRROR:
+            org = model.organization.get_organization(orgname)
+            mirror = model.org_mirror.get_org_mirror_config(org)
+            if mirror is not None:
+                request_error(
+                    message="Cannot create immutability policy: organization mirroring is configured"
+                )
+
+        # Block if organization has an active proxy cache configuration
+        if features.PROXY_CACHE:
+            if model.proxy_cache.has_proxy_cache_config(orgname):
+                request_error(
+                    message="Cannot create immutability policy: proxy cache is configured"
+                )
 
         policy_config = _parse_policy_config(request.get_json())
 
@@ -205,6 +221,25 @@ class RepositoryImmutabilityPolicies(RepositoryParamResource):
 
         if registry_model.lookup_repository(namespace, repository) is None:
             raise NotFound()
+
+        # Block if namespace has an active mirror configuration
+        if features.ORG_MIRROR:
+            try:
+                org = model.organization.get_organization(namespace)
+                mirror = model.org_mirror.get_org_mirror_config(org)
+                if mirror is not None:
+                    request_error(
+                        message="Cannot create immutability policy: organization mirroring is configured"
+                    )
+            except InvalidOrganizationException:
+                pass  # namespace is a user, not an org
+
+        # Block if namespace has an active proxy cache configuration
+        if features.PROXY_CACHE:
+            if model.proxy_cache.has_proxy_cache_config(namespace):
+                request_error(
+                    message="Cannot create immutability policy: proxy cache is configured"
+                )
 
         policy_config = _parse_policy_config(request.get_json())
 

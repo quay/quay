@@ -237,3 +237,91 @@ class TestProxyCacheConfigWithImmutableTags:
         has_immutable = namespace_has_immutable_tags(org.id)
         # Initially there should be no immutable tags
         assert isinstance(has_immutable, bool)
+
+
+class TestProxyCacheConfigWithOrgMirror:
+    """Tests for blocking proxy cache creation when org mirror is configured."""
+
+    def _cleanup_proxy_cache_config(self, orgname):
+        """Clean up proxy cache config."""
+        try:
+            model.proxy_cache.delete_proxy_cache_config(orgname)
+        except Exception:
+            pass
+
+    def _cleanup_org_mirror_config(self, orgname):
+        """Clean up org mirror config."""
+        try:
+            org = model.organization.get_organization(orgname)
+            config = model.org_mirror.get_org_mirror_config(org)
+            if config:
+                config.delete_instance()
+        except Exception:
+            pass
+
+    def _create_org_mirror_config(self, orgname):
+        """Create an org mirror config for the given org."""
+        from datetime import datetime
+
+        from data.database import SourceRegistryType, Visibility
+
+        org = model.organization.get_organization(orgname)
+        robot = model.user.lookup_robot(f"{orgname}+coolrobot")
+        return model.org_mirror.create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date=datetime(2025, 1, 1),
+        )
+
+    def test_create_proxy_cache_blocked_with_org_mirror(self, app):
+        """
+        Test that creating proxy cache config is blocked when org has mirror configured.
+        """
+        self._cleanup_proxy_cache_config("buynlarge")
+        self._cleanup_org_mirror_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with toggle_feature("ORG_MIRROR", True):
+                # Create org mirror config
+                self._create_org_mirror_config("buynlarge")
+
+                # Try to create proxy cache config - should be blocked
+                with client_with_identity("devtable", app) as cl:
+                    params = {"orgname": "buynlarge"}
+                    request_body = {
+                        "upstream_registry": "docker.io",
+                    }
+                    resp = conduct_api_call(
+                        cl, OrganizationProxyCacheConfig, "POST", params, request_body, 400
+                    )
+                    assert "organization mirroring" in resp.json.get("error_message", "").lower()
+
+        # Clean up
+        self._cleanup_org_mirror_config("buynlarge")
+
+    def test_create_proxy_cache_allowed_without_org_mirror(self, app):
+        """
+        Test that creating proxy cache config is allowed when org has no mirror configured.
+        """
+        self._cleanup_proxy_cache_config("buynlarge")
+        self._cleanup_org_mirror_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with toggle_feature("ORG_MIRROR", True):
+                with client_with_identity("devtable", app) as cl:
+                    params = {"orgname": "buynlarge"}
+                    request_body = {
+                        "org_name": "buynlarge",
+                        "upstream_registry": "docker.io",
+                    }
+                    conduct_api_call(
+                        cl, OrganizationProxyCacheConfig, "POST", params, request_body, 201
+                    )
+
+        # Clean up
+        self._cleanup_proxy_cache_config("buynlarge")
