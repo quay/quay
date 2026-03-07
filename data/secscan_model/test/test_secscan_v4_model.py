@@ -10,6 +10,7 @@ from peewee import fn
 
 from app import app as application
 from app import instance_keys, storage
+from data import model
 from data.cache import InMemoryDataModelCache, cache_key
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import (
@@ -22,7 +23,7 @@ from data.database import (
     db_transaction,
 )
 from data.registry_model import registry_model
-from data.registry_model.datatypes import ManifestLayer
+from data.registry_model.datatypes import ManifestLayer, RepositoryReference
 from data.secscan_model.datatypes import (
     NVD,
     CVSSv3,
@@ -46,9 +47,14 @@ from data.secscan_model.secscan_v4_model import (
 )
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
+    DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
-from image.oci import OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE
+from image.oci import (
+    OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+    OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
+)
+from initdb import create_schema2_or_oci_manifest_for_testing
 from test.fixtures import *
 from util.secscan.v4.api import APIRequestFailure
 
@@ -1006,10 +1012,6 @@ def test_perform_indexing_schema2_manifest(initialized_db, set_secscan_config):
     """
     Explicitly test the Docker v2 schema 2 manifest and repository.
     """
-    from data import model
-    from data.registry_model.datatypes import RepositoryReference
-    from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
-    from initdb import create_schema2_manifest_for_testing
 
     # Create a temporary Schema2 repository for this test
     user = model.user.get_user("devtable")
@@ -1019,13 +1021,57 @@ def test_perform_indexing_schema2_manifest(initialized_db, set_secscan_config):
     # Use the initdb helper to create a Schema2 manifest with proper storage
     tag_map = {}
     structure = (3, [], ["latest"])  # 3 layers, no subtrees, tag named "latest"
-    create_schema2_manifest_for_testing(repo, structure, tag_map)
+    create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map)
 
     # Now retrieve and test the manifest
     tag = registry_model.get_repo_tag(repo_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
 
     assert manifest.media_type == DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+
+    layers = registry_model.list_manifest_layers(manifest, storage, True)
+    assert layers is not None
+    assert len(layers) > 0
+
+    assert _has_container_layers(layers)
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.return_value = (
+        {
+            "err": None,
+            "state": IndexReportState.Index_Finished,
+        },
+        "abc",
+    )
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
+
+    secscan.perform_indexing()
+    mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
+    assert mss.index_status == IndexStatus.COMPLETED
+
+
+def test_perform_indexing_oci_manifest(initialized_db, set_secscan_config):
+    """
+    Explicitly test the OCI manifest and repository.
+    """
+
+    # Create a temporary OCI repository for this test
+    user = model.user.get_user("devtable")
+    repo = model.repository.create_repository("devtable", "testocirepo", user)
+    repo_ref = RepositoryReference.for_repo_obj(repo)
+
+    # Use the initdb helper to create an OCI manifest with proper storage
+    tag_map = {}
+    structure = (3, [], ["latest"])  # 3 layers, no subtrees, tag named "latest"
+    create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map, schema_type="oci")
+
+    # Now retrieve and test the manifest
+    tag = registry_model.get_repo_tag(repo_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+
+    assert manifest.media_type == OCI_IMAGE_MANIFEST_CONTENT_TYPE
 
     layers = registry_model.list_manifest_layers(manifest, storage, True)
     assert layers is not None
