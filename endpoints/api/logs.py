@@ -12,7 +12,7 @@ from auth import scopes
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.permissions import AdministerOrganizationPermission
 from data.logs_model import logs_model
-from data.logs_model.shared import InvalidLogsDateRangeError
+from data.logs_model.shared import InvalidLogsDateRangeError, SearchNotConfiguredError
 from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
@@ -81,16 +81,28 @@ def _get_logs(
     (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
         abort(400)
-    log_entry_page = logs_model.lookup_logs(
-        start_time,
-        end_time,
-        performer_name,
-        repository_name,
-        namespace_name,
-        filter_kinds,
-        page_token,
-        app.config["ACTION_LOG_MAX_PAGE"],
-    )
+    try:
+        log_entry_page = logs_model.lookup_logs(
+            start_time,
+            end_time,
+            performer_name,
+            repository_name,
+            namespace_name,
+            filter_kinds,
+            page_token,
+            app.config["ACTION_LOG_MAX_PAGE"],
+        )
+    except SearchNotConfiguredError as e:
+        return (
+            {
+                "start_time": format_date(start_time),
+                "end_time": format_date(end_time),
+                "logs": [],
+                "search_unavailable": True,
+                "message": str(e),
+            },
+            None,
+        )
     include_namespace = namespace_name is None and repository_name is None
     return (
         {
@@ -117,6 +129,12 @@ def _get_aggregate_logs(
             namespace_name=namespace,
             filter_kinds=filter_kinds,
         )
+    except SearchNotConfiguredError as e:
+        return {
+            "aggregated": [],
+            "search_unavailable": True,
+            "message": str(e),
+        }
     except InvalidLogsDateRangeError:
         abort(400, "Invalid date range for logs")
 
