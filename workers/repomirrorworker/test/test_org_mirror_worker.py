@@ -182,7 +182,11 @@ class TestEnsureLocalRepository:
         from data.model import repository as repository_model
 
         existing_repo = repository_model.create_repository(
-            org.username, "linked-repo", robot, visibility="private"
+            org.username,
+            "linked-repo",
+            robot,
+            visibility="private",
+            _skip_org_mirror_check=True,
         )
         repo_db = Repository.get(Repository.id == existing_repo.id)
 
@@ -207,7 +211,11 @@ class TestEnsureLocalRepository:
         from data.model import repository as repository_model
 
         existing_repo = repository_model.create_repository(
-            org.username, "unlinked-repo", robot, visibility="private"
+            org.username,
+            "unlinked-repo",
+            robot,
+            visibility="private",
+            _skip_org_mirror_check=True,
         )
 
         org_mirror_repo = OrgMirrorRepository.create(
@@ -243,6 +251,30 @@ class TestEnsureLocalRepository:
         # Verify link was created
         org_mirror_repo = OrgMirrorRepository.get_by_id(org_mirror_repo.id)
         assert org_mirror_repo.repository is not None
+
+    def test_creates_new_repo_with_feature_flag_enabled(self, initialized_db):
+        """Ensure repo creation succeeds even when ORG_MIRROR feature flag is on.
+
+        The org mirror worker must bypass the org-mirror guard in
+        create_repository() so it can materialise repos in org-mirrored
+        namespaces.
+        """
+        org, robot = _create_org_and_robot("ensure_repo_flag_test")
+        config = _create_org_mirror_config(org, robot)
+
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="flag-test-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        with patch("data.model.repository.features") as mock_features:
+            mock_features.ORG_MIRROR = True
+            result = _ensure_local_repository(config, org_mirror_repo)
+
+        assert result is not None
+        assert result.name == "flag-test-repo"
+        assert result.state == RepositoryState.ORG_MIRROR
 
 
 class TestEmitOrgMirrorLog:
@@ -696,7 +728,11 @@ class TestRepoCreatedAuditLogging:
         from data.model import repository as repository_model
 
         repository_model.create_repository(
-            org.username, "existing-repo", robot, visibility="private"
+            org.username,
+            "existing-repo",
+            robot,
+            visibility="private",
+            _skip_org_mirror_check=True,
         )
 
         org_mirror_repo = OrgMirrorRepository.create(
@@ -725,7 +761,11 @@ class TestRepoCreatedAuditLogging:
         from data.model import repository as repository_model
 
         existing_repo = repository_model.create_repository(
-            org.username, "linked-repo", robot, visibility="private"
+            org.username,
+            "linked-repo",
+            robot,
+            visibility="private",
+            _skip_org_mirror_check=True,
         )
         repo_db = Repository.get(Repository.id == existing_repo.id)
 
