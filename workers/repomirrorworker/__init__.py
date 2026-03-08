@@ -1497,6 +1497,7 @@ def _ensure_local_repository(
             config.internal_robot,
             visibility=visibility_name,
             repo_kind="image",
+            _skip_org_mirror_check=True,
         )
         if new_repo:
             # Set repository state to ORG_MIRROR for org-level mirroring

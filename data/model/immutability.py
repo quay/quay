@@ -16,11 +16,11 @@ from data.model import (
     DuplicateImmutabilityPolicy,
     ImmutabilityPolicyDoesNotExist,
     InvalidImmutabilityPolicy,
+    InvalidNamespaceException,
     InvalidRepositoryException,
     db_transaction,
-    repository,
 )
-from data.model.user import get_active_namespace_user_by_username
+from data.model._basequery import get_existing_repository
 
 logger = logging.getLogger(__name__)
 
@@ -272,7 +272,12 @@ def create_namespace_immutability_policy(
     """Create namespace immutability policy."""
     _validate_policy(policy_config)
     with db_transaction():
-        namespace = get_active_namespace_user_by_username(orgname)
+        try:
+            namespace = User.get(
+                User.username == orgname, User.robot == False, User.enabled == True
+            )
+        except User.DoesNotExist:
+            raise InvalidNamespaceException(f"Username does not exist: {orgname}")
 
         if _is_duplicate_namespace_policy(namespace.id, policy_config):
             raise DuplicateImmutabilityPolicy("A policy with the same tag_pattern already exists")
@@ -317,7 +322,12 @@ def update_namespace_immutability_policy(
     """Update namespace immutability policy."""
     _validate_policy(policy_config)
     with db_transaction():
-        namespace = get_active_namespace_user_by_username(orgname)
+        try:
+            namespace = User.get(
+                User.username == orgname, User.robot == False, User.enabled == True
+            )
+        except User.DoesNotExist:
+            raise InvalidNamespaceException(f"Username does not exist: {orgname}")
 
         old_policy = get_namespace_immutability_policy(orgname, uuid)
         if not old_policy:
@@ -373,7 +383,12 @@ def update_namespace_immutability_policy(
 def delete_namespace_immutability_policy(orgname: str, uuid: str) -> bool:
     """Delete namespace immutability policy."""
     with db_transaction():
-        namespace = get_active_namespace_user_by_username(orgname)
+        try:
+            namespace = User.get(
+                User.username == orgname, User.robot == False, User.enabled == True
+            )
+        except User.DoesNotExist:
+            raise InvalidNamespaceException(f"Username does not exist: {orgname}")
 
         if not get_namespace_immutability_policy(orgname, uuid):
             raise ImmutabilityPolicyDoesNotExist(f"Policy {uuid} not found")
@@ -428,10 +443,15 @@ def create_repository_immutability_policy(
     """Create repository immutability policy."""
     _validate_policy(policy_config)
     with db_transaction():
-        namespace = get_active_namespace_user_by_username(orgname)
-        repo = repository.get_repository(orgname, repo_name)
-
-        if repo is None:
+        try:
+            namespace = User.get(
+                User.username == orgname, User.robot == False, User.enabled == True
+            )
+        except User.DoesNotExist:
+            raise InvalidNamespaceException(f"Username does not exist: {orgname}")
+        try:
+            repo = get_existing_repository(orgname, repo_name)
+        except Repository.DoesNotExist:
             raise InvalidRepositoryException(f"Repository does not exist: {repo_name}")
 
         if _is_duplicate_repository_policy(repo.id, policy_config):
@@ -478,10 +498,15 @@ def update_repository_immutability_policy(
     """Update repository immutability policy."""
     _validate_policy(policy_config)
     with db_transaction():
-        namespace = get_active_namespace_user_by_username(orgname)
-        repo = repository.get_repository(orgname, repo_name)
-
-        if repo is None:
+        try:
+            namespace = User.get(
+                User.username == orgname, User.robot == False, User.enabled == True
+            )
+        except User.DoesNotExist:
+            raise InvalidNamespaceException(f"Username does not exist: {orgname}")
+        try:
+            repo = get_existing_repository(orgname, repo_name)
+        except Repository.DoesNotExist:
             raise InvalidRepositoryException(f"Repository does not exist: {repo_name}")
 
         old_policy = get_repository_immutability_policy(orgname, repo_name, uuid)
@@ -539,10 +564,15 @@ def update_repository_immutability_policy(
 def delete_repository_immutability_policy(orgname: str, repo_name: str, uuid: str) -> bool:
     """Delete repository immutability policy."""
     with db_transaction():
-        namespace = get_active_namespace_user_by_username(orgname)
-        repo = repository.get_repository(orgname, repo_name)
-
-        if repo is None:
+        try:
+            namespace = User.get(
+                User.username == orgname, User.robot == False, User.enabled == True
+            )
+        except User.DoesNotExist:
+            raise InvalidNamespaceException(f"Username does not exist: {orgname}")
+        try:
+            repo = get_existing_repository(orgname, repo_name)
+        except Repository.DoesNotExist:
             raise InvalidRepositoryException(f"Repository does not exist: {repo_name}")
 
         if not get_repository_immutability_policy(orgname, repo_name, uuid):
@@ -607,5 +637,14 @@ def namespace_has_immutable_tags(namespace_id: int) -> bool:
             Tag.hidden == False,  # noqa: E712
             (Tag.lifetime_end_ms.is_null()) | (Tag.lifetime_end_ms > now_ms),
         )
+        .exists()
+    )
+
+
+def namespace_has_immutability_policies(namespace_id: int) -> bool:
+    """Check if the namespace has any immutability policies configured."""
+    return (
+        NamespaceImmutabilityPolicyTable.select()
+        .where(NamespaceImmutabilityPolicyTable.namespace == namespace_id)
         .exists()
     )

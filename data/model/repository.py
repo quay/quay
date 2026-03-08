@@ -9,6 +9,7 @@ from cachetools.func import ttl_cache
 from peewee import JOIN, SQL, Case, IntegrityError, fn
 
 import data
+import features
 from data.database import (
     BlobUpload,
     DeletedRepository,
@@ -48,6 +49,7 @@ from data.model import (
     permission,
     storage,
 )
+from data.model.org_mirror import is_namespace_org_mirrored
 from data.text import prefix_search
 from util.itertoolrecipes import take
 
@@ -132,12 +134,26 @@ def create_repository(
     repo_kind="image",
     description=None,
     proxy_cache=False,
+    _skip_org_mirror_check=False,
 ):
     namespace_user = User.get(username=namespace)
     yesterday = datetime.now() - timedelta(days=1)
 
     try:
         with db_transaction():
+            # Lock the org row to serialize against concurrent org mirror config creation
+            db_for_update(User.select().where(User.id == namespace_user.id)).get()
+
+            if (
+                not _skip_org_mirror_check
+                and features.ORG_MIRROR
+                and is_namespace_org_mirrored(namespace)
+            ):
+                raise DataModelException(
+                    "Cannot create repository: organization is managed by "
+                    "organization-level mirroring"
+                )
+
             # Check if the repository exists to avoid an IntegrityError if possible.
             existing = get_repository(namespace, name)
             if existing is not None:

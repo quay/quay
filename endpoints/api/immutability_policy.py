@@ -11,6 +11,7 @@ from auth.permissions import (
 )
 from data import model
 from data.model import immutability
+from data.model.org_mirror import is_namespace_org_mirrored
 from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
@@ -90,6 +91,12 @@ class OrgImmutabilityPolicies(ApiResource):
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser_with_full_access():
             raise Unauthorized()
+
+        if features.ORG_MIRROR and is_namespace_org_mirrored(orgname):
+            request_error(
+                message="Cannot create immutability policy: organization is managed "
+                "by organization-level mirroring"
+            )
 
         policy_config = _parse_policy_config(request.get_json())
 
