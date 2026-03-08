@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {DatePicker, TimePicker} from '@patternfly/react-core';
+import {formatTime} from 'src/libs/dateTimeUtils';
 
 interface DateTimePickerProps {
   id?: string;
@@ -48,14 +49,6 @@ export default function DateTimePicker(props: DateTimePickerProps) {
     return '';
   }
 
-  function getFormattedTime(date) {
-    return date
-      ? `${date.getHours().toString().padStart(2, '0')}:${date
-          .getMinutes()
-          .toString()
-          .padStart(2, '0')}`
-      : '';
-  }
   return (
     <span id={id || 'date-time-picker'}>
       <DatePicker
@@ -65,9 +58,9 @@ export default function DateTimePicker(props: DateTimePickerProps) {
       />
       <TimePicker
         placeholder="Select time"
-        time={getFormattedTime(date)}
+        time={formatTime(date)}
         onChange={onTimeChange}
-        is24Hour
+        stepMinutes={1}
       />
     </span>
   );
