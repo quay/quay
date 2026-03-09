@@ -1700,8 +1700,8 @@ def test_copy_filtered_architectures_succeeds_with_sparse_index(
     mock_token, mock_push, initialized_db, app
 ):
     """
-    When FEATURE_SPARSE_INDEX is enabled, copy_filtered_architectures proceeds
-    with the sparse manifest list push.
+    When FEATURE_SPARSE_INDEX is enabled, copy_filtered_architectures pushes
+    the sparse manifest list successfully.
     """
     from workers.repomirrorworker import app as worker_app
 
@@ -1715,18 +1715,40 @@ def test_copy_filtered_architectures_succeeds_with_sparse_index(
     mock_skopeo.inspect_raw.return_value = SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, "")
     mock_skopeo.copy_by_digest.return_value = SkopeoResults(True, [], "copied", "")
 
-    original = worker_app.config.get("FEATURE_SPARSE_INDEX")
+    original_feature = worker_app.config.get("FEATURE_SPARSE_INDEX")
     worker_app.config["FEATURE_SPARSE_INDEX"] = True
     try:
         result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64"])
     finally:
-        if original is not None:
-            worker_app.config["FEATURE_SPARSE_INDEX"] = original
+        if original_feature is not None:
+            worker_app.config["FEATURE_SPARSE_INDEX"] = original_feature
         else:
             worker_app.config.pop("FEATURE_SPARSE_INDEX", None)
 
     assert result.success is True
     mock_push.assert_called_once()
+
+
+@disable_existing_mirrors
+def test_copy_filtered_architectures_fails_when_arch_not_upstream(initialized_db, app):
+    """
+    When a configured architecture is not available in the source manifest list,
+    copy_filtered_architectures returns failure with a clear error message.
+    """
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+
+    mock_skopeo = mock.Mock()
+    mock_skopeo.inspect_raw.return_value = SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, "")
+
+    result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64", "s390x"])
+
+    assert result.success is False
+    assert "s390x" in result.stderr
+    assert "not available" in result.stderr.lower()
+    # Should not have attempted any digest copies
+    mock_skopeo.copy_by_digest.assert_not_called()
 
 
 @disable_existing_mirrors

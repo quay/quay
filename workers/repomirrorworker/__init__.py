@@ -766,13 +766,12 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
     missing = [a for a in architecture_filter if a not in available]
 
     if missing:
-        logger.warning("Architectures not in source %s: %s", src_image_tag, missing)
-    if not matching:
         return SkopeoResults(
             False,
             [],
             "",
-            f"No matching architectures. Requested: {architecture_filter}, Available: {available}",
+            f"Configured architectures not available in source {src_image_tag}: {missing}. "
+            f"Available: {available}",
         )
 
     filtered = filter_manifests_by_architecture(manifest_bytes, matching)
