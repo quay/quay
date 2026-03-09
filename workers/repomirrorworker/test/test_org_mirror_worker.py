@@ -899,7 +899,7 @@ class TestDiscoveryAuditLogging:
         call_args = failed_calls[0]
         assert call_args[1]["namespace_name"] == org.username
         metadata = call_args[1]["metadata"]
-        assert "Connection refused" in metadata["message"]
+        assert "Failed to fetch repositories from source" in metadata["message"]
 
 
 # =============================================================================
