@@ -144,7 +144,7 @@ export function DeleteModal(props: ModalProps) {
             onClick={() =>
               deleteTags({tags: props.tags, force: props.modalOptions.force})
             }
-            isDisabled={isReadonly}
+            isDisabled={isReadonly || props.tags.length === 0}
           >
             Delete
           </Button>,
