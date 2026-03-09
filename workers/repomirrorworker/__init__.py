@@ -743,6 +743,18 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
     max_manifest_size = app.config.get("REPO_MIRROR_MAX_MANIFEST_LIST_SIZE", 10 * 1024 * 1024)
     max_manifest_entries = app.config.get("REPO_MIRROR_MAX_MANIFEST_ENTRIES", 1000)
 
+    # Reject oversized manifests before parsing
+    if len(manifest_bytes) > max_manifest_size:
+        logger.error(
+            "Manifest for %s exceeds size limit: %d bytes (limit: %d bytes)",
+            src_image_tag,
+            len(manifest_bytes),
+            max_manifest_size,
+        )
+        return SkopeoResults(
+            False, [], "", f"Manifest exceeds size limit: {len(manifest_bytes)} bytes"
+        )
+
     # Step 2: Check if manifest list
     if not is_manifest_list(manifest_bytes, max_size=max_manifest_size):
         logger.info("Image %s is not a manifest list, using standard copy", src_image_tag)

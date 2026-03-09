@@ -5,6 +5,7 @@ import pytest
 from workers.repomirrorworker.manifest_utils import (
     DEFAULT_MAX_MANIFEST_ENTRIES,
     DEFAULT_MAX_MANIFEST_LIST_SIZE,
+    _check_manifest_size,
     filter_manifests_by_architecture,
     get_available_architectures,
     get_manifest_media_type,
@@ -225,7 +226,7 @@ class TestManifestSizeValidation:
         assert is_manifest_list(SAMPLE_DOCKER_MANIFEST_LIST, max_size=10) is False
 
     def test_is_manifest_list_accepts_within_limit(self):
-        size = len(SAMPLE_DOCKER_MANIFEST_LIST.encode("utf-8"))
+        size = len(SAMPLE_DOCKER_MANIFEST_LIST)
         assert is_manifest_list(SAMPLE_DOCKER_MANIFEST_LIST, max_size=size) is True
 
     def test_filter_rejects_oversized_manifest(self):
@@ -235,7 +236,7 @@ class TestManifestSizeValidation:
         assert result == []
 
     def test_filter_accepts_within_size_limit(self):
-        size = len(SAMPLE_DOCKER_MANIFEST_LIST.encode("utf-8"))
+        size = len(SAMPLE_DOCKER_MANIFEST_LIST)
         result = filter_manifests_by_architecture(
             SAMPLE_DOCKER_MANIFEST_LIST, ["amd64"], max_size=size
         )
@@ -246,7 +247,7 @@ class TestManifestSizeValidation:
         assert result == []
 
     def test_get_available_architectures_accepts_within_limit(self):
-        size = len(SAMPLE_DOCKER_MANIFEST_LIST.encode("utf-8"))
+        size = len(SAMPLE_DOCKER_MANIFEST_LIST)
         result = get_available_architectures(SAMPLE_DOCKER_MANIFEST_LIST, max_size=size)
         assert set(result) == {"amd64", "arm64", "ppc64le"}
 
@@ -278,3 +279,14 @@ class TestManifestEntryCountValidation:
     def test_default_constants_are_sensible(self):
         assert DEFAULT_MAX_MANIFEST_LIST_SIZE == 10 * 1024 * 1024
         assert DEFAULT_MAX_MANIFEST_ENTRIES == 1000
+
+
+class TestCheckManifestSizeCharacterLength:
+    def test_uses_character_length_not_utf8_bytes(self):
+        """_check_manifest_size uses len(str) (character count), not UTF-8 byte length."""
+        # Multi-byte chars: each is 3 UTF-8 bytes but 1 character
+        payload = "\u2603" * 10  # 10 chars, 30 UTF-8 bytes
+        # Should pass with a limit of 10 (character count)
+        assert _check_manifest_size(payload, max_size=10) is True
+        # Should fail with a limit of 9
+        assert _check_manifest_size(payload, max_size=9) is False

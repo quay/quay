@@ -22,11 +22,7 @@ def _check_manifest_size(manifest_bytes, max_size: int) -> bool:
     """Return True if manifest_bytes is within the allowed size limit."""
     if manifest_bytes is None:
         return False
-    size = (
-        len(manifest_bytes.encode("utf-8"))
-        if isinstance(manifest_bytes, str)
-        else len(manifest_bytes)
-    )
+    size = len(manifest_bytes)
     if size > max_size:
         logger.error(
             "Manifest list exceeds maximum size: %d bytes (limit: %d bytes)",
