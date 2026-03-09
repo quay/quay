@@ -306,10 +306,8 @@ test.describe(
 
       await authenticatedPage.getByTestId('bulk-actions-kebab').click();
 
-      const removeAction = authenticatedPage.getByRole('menuitem', {
-        name: 'Remove',
-        exact: true,
-      });
+      const removeAction = authenticatedPage.getByTestId('bulk-remove-action');
+      // PatternFly uses pf-m-disabled class on li elements, not disabled attribute
       await expect(removeAction).toHaveClass(/pf-m-disabled/);
     });
 
