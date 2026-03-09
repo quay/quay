@@ -571,11 +571,19 @@ class DefaultConfig(ImmutableConfig):
     # Defaults to false, to allow partial mirroring of upstream repositories.
     REPO_MIRROR_ROLLBACK = False
 
+    # Maximum size in bytes of manifest list JSON to parse during mirroring.
+    # Prevents DoS via oversized manifests from malicious registries.
+    REPO_MIRROR_MAX_MANIFEST_LIST_SIZE = 10 * 1024 * 1024  # 10MB
+
+    # Maximum number of manifest entries to process during architecture-filtered mirroring.
+    # Prevents DoS via manifest lists with excessive entries.
+    REPO_MIRROR_MAX_MANIFEST_ENTRIES = 1000
+
     # "Secret" key for generating encrypted paging tokens. Only needed to be secret to
     # hide the ID range for production (in which this value is overridden). Should *not*
     # be relied upon for secure encryption otherwise.
     # This value is a Fernet key and should be 32bytes URL-safe base64 encoded.
-    PAGE_TOKEN_KEY = "0OYrc16oBuksR8T3JGB-xxYSlZ2-7I_zzqrLzggBJ58="
+    PAGE_TOKEN_KEY = "0OYrc16oBuksR8T3JGB-xxYSlZ2-7I_zzqrLzggBJ58="  # gitleaks:allow
 
     # The timeout for service key approval.
     UNAPPROVED_SERVICE_KEY_TTL_SEC = 60 * 60 * 24  # One day

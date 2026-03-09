@@ -14,9 +14,37 @@ MANIFEST_LIST_MEDIA_TYPES = {
     OCI_IMAGE_INDEX_CONTENT_TYPE,
 }
 
+DEFAULT_MAX_MANIFEST_LIST_SIZE = 10 * 1024 * 1024  # 10MB
+DEFAULT_MAX_MANIFEST_ENTRIES = 1000
 
-def is_manifest_list(manifest_bytes: str) -> bool:
+
+def _check_manifest_size(manifest_bytes, max_size: int) -> bool:
+    """Return True if manifest_bytes is within the allowed size limit."""
+    if manifest_bytes is None:
+        return False
+    size = (
+        len(manifest_bytes.encode("utf-8"))
+        if isinstance(manifest_bytes, str)
+        else len(manifest_bytes)
+    )
+    if size > max_size:
+        logger.error(
+            "Manifest list exceeds maximum size: %d bytes (limit: %d bytes)",
+            size,
+            max_size,
+        )
+        return False
+    return True
+
+
+def is_manifest_list(
+    manifest_bytes: str,
+    max_size: int = DEFAULT_MAX_MANIFEST_LIST_SIZE,
+) -> bool:
     """Check if manifest JSON represents a manifest list/index."""
+    if not _check_manifest_size(manifest_bytes, max_size):
+        return False
+
     try:
         parsed = json.loads(manifest_bytes)
         media_type = parsed.get("mediaType", "")
@@ -38,19 +66,37 @@ def get_manifest_media_type(manifest_bytes: str) -> Optional[str]:
         return None
 
 
-def filter_manifests_by_architecture(manifest_bytes: str, architectures: list[str]) -> list[dict]:
+def filter_manifests_by_architecture(
+    manifest_bytes: str,
+    architectures: list[str],
+    max_size: int = DEFAULT_MAX_MANIFEST_LIST_SIZE,
+    max_entries: int = DEFAULT_MAX_MANIFEST_ENTRIES,
+) -> list[dict]:
     """
     Filter manifest list entries to only include specified architectures.
 
     Returns list of manifest entries with digest, size, and platform info.
+    Validates manifest size before parsing and caps entry count to prevent DoS.
     """
+    if not _check_manifest_size(manifest_bytes, max_size):
+        return []
+
     try:
         parsed = json.loads(manifest_bytes)
     except json.JSONDecodeError:
         return []
 
+    manifests = parsed.get("manifests", [])
+    if len(manifests) > max_entries:
+        logger.warning(
+            "Manifest list has %d entries, exceeds limit of %d. Truncating.",
+            len(manifests),
+            max_entries,
+        )
+        manifests = manifests[:max_entries]
+
     filtered = []
-    for manifest in parsed.get("manifests", []):
+    for manifest in manifests:
         platform = manifest.get("platform", {})
         arch = platform.get("architecture", "")
         if arch in architectures:
@@ -59,15 +105,31 @@ def filter_manifests_by_architecture(manifest_bytes: str, architectures: list[st
     return filtered
 
 
-def get_available_architectures(manifest_bytes: str) -> list[str]:
+def get_available_architectures(
+    manifest_bytes: str,
+    max_size: int = DEFAULT_MAX_MANIFEST_LIST_SIZE,
+    max_entries: int = DEFAULT_MAX_MANIFEST_ENTRIES,
+) -> list[str]:
     """Get all architectures present in a manifest list."""
+    if not _check_manifest_size(manifest_bytes, max_size):
+        return []
+
     try:
         parsed = json.loads(manifest_bytes)
     except json.JSONDecodeError:
         return []
 
+    manifests = parsed.get("manifests", [])
+    if len(manifests) > max_entries:
+        logger.warning(
+            "Manifest list has %d entries, exceeds limit of %d. Truncating.",
+            len(manifests),
+            max_entries,
+        )
+        manifests = manifests[:max_entries]
+
     return [
         m.get("platform", {}).get("architecture")
-        for m in parsed.get("manifests", [])
+        for m in manifests
         if m.get("platform", {}).get("architecture")
     ]

@@ -740,8 +740,11 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
 
     manifest_bytes = result.stdout
 
+    max_manifest_size = app.config.get("REPO_MIRROR_MAX_MANIFEST_LIST_SIZE", 10 * 1024 * 1024)
+    max_manifest_entries = app.config.get("REPO_MIRROR_MAX_MANIFEST_ENTRIES", 1000)
+
     # Step 2: Check if manifest list
-    if not is_manifest_list(manifest_bytes):
+    if not is_manifest_list(manifest_bytes, max_size=max_manifest_size):
         logger.info("Image %s is not a manifest list, using standard copy", src_image_tag)
         with database.CloseForLongOperation(app.config):
             result = skopeo.copy(
@@ -761,7 +764,9 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
         return result
 
     # Step 3: Filter and validate architectures
-    available = get_available_architectures(manifest_bytes)
+    available = get_available_architectures(
+        manifest_bytes, max_size=max_manifest_size, max_entries=max_manifest_entries
+    )
     matching = [a for a in architecture_filter if a in available]
     missing = [a for a in architecture_filter if a not in available]
 
@@ -775,7 +780,9 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
             f"No matching architectures. Requested: {architecture_filter}, Available: {available}",
         )
 
-    filtered = filter_manifests_by_architecture(manifest_bytes, matching)
+    filtered = filter_manifests_by_architecture(
+        manifest_bytes, matching, max_size=max_manifest_size, max_entries=max_manifest_entries
+    )
     logger.info("Mirroring %d architectures for %s: %s", len(filtered), src_image_tag, matching)
 
     # Step 4: Copy each architecture by digest
