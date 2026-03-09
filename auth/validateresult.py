@@ -11,6 +11,7 @@ class AuthKind(Enum):
     credentials = "credentials"
     ssojwt = "ssojwt"
     federated = "federated"
+    kubernetessa = "kubernetessa"  # Kubernetes ServiceAccount
 
     def __str__(self):
         return "%s" % self.value
