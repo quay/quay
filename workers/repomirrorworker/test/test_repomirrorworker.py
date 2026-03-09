@@ -1652,6 +1652,74 @@ def test_copy_filtered_architectures_arch_copy_failure(mock_token, initialized_d
 
 
 @disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+def test_copy_filtered_architectures_fails_without_sparse_index(mock_token, initialized_db, app):
+    """
+    When FEATURE_SPARSE_INDEX is disabled, copy_filtered_architectures returns failure
+    with a clear error message.
+    """
+    from workers.repomirrorworker import app as worker_app
+
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+    mock_token.return_value = "robot_token"
+
+    mock_skopeo = mock.Mock()
+    mock_skopeo.inspect_raw.return_value = SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, "")
+    mock_skopeo.copy_by_digest.return_value = SkopeoResults(True, [], "copied", "")
+
+    original = worker_app.config.get("FEATURE_SPARSE_INDEX")
+    worker_app.config["FEATURE_SPARSE_INDEX"] = False
+    try:
+        result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64"])
+    finally:
+        if original is not None:
+            worker_app.config["FEATURE_SPARSE_INDEX"] = original
+        else:
+            worker_app.config.pop("FEATURE_SPARSE_INDEX", None)
+
+    assert result.success is False
+    assert "FEATURE_SPARSE_INDEX" in result.stderr
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.push_sparse_manifest_list")
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+def test_copy_filtered_architectures_succeeds_with_sparse_index(
+    mock_token, mock_push, initialized_db, app
+):
+    """
+    When FEATURE_SPARSE_INDEX is enabled, copy_filtered_architectures proceeds
+    with the sparse manifest list push.
+    """
+    from workers.repomirrorworker import app as worker_app
+
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+    mock_token.return_value = "robot_token"
+    mock_push.return_value = True
+
+    mock_skopeo = mock.Mock()
+    mock_skopeo.inspect_raw.return_value = SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, "")
+    mock_skopeo.copy_by_digest.return_value = SkopeoResults(True, [], "copied", "")
+
+    original = worker_app.config.get("FEATURE_SPARSE_INDEX")
+    worker_app.config["FEATURE_SPARSE_INDEX"] = True
+    try:
+        result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64"])
+    finally:
+        if original is not None:
+            worker_app.config["FEATURE_SPARSE_INDEX"] = original
+        else:
+            worker_app.config.pop("FEATURE_SPARSE_INDEX", None)
+
+    assert result.success is True
+    mock_push.assert_called_once()
+
+
+@disable_existing_mirrors
 @mock.patch("workers.repomirrorworker.push_sparse_manifest_list")
 @mock.patch("workers.repomirrorworker.retrieve_robot_token")
 def test_copy_filtered_architectures_manifest_push_failure(
@@ -1660,6 +1728,8 @@ def test_copy_filtered_architectures_manifest_push_failure(
     """
     When pushing the sparse manifest list fails, copy_filtered_architectures returns failure.
     """
+    from workers.repomirrorworker import app as worker_app
+
     mirror, _repo = create_mirror_repo_robot(
         ["latest"], external_registry_config={"verify_tls": False}
     )
@@ -1670,7 +1740,15 @@ def test_copy_filtered_architectures_manifest_push_failure(
     mock_skopeo.inspect_raw.return_value = SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, "")
     mock_skopeo.copy_by_digest.return_value = SkopeoResults(True, [], "copied", "")
 
-    result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64"])
+    original = worker_app.config.get("FEATURE_SPARSE_INDEX")
+    worker_app.config["FEATURE_SPARSE_INDEX"] = True
+    try:
+        result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64"])
+    finally:
+        if original is not None:
+            worker_app.config["FEATURE_SPARSE_INDEX"] = original
+        else:
+            worker_app.config.pop("FEATURE_SPARSE_INDEX", None)
 
     assert result.success is False
     assert "sparse manifest" in result.stderr.lower()
