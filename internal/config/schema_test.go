@@ -169,10 +169,12 @@ var knownUnmapped = map[string]bool{
 	"ENTITLEMENT_RECONCILIATION_USER_ENDPOINT":            true,
 
 	// Repo mirror
-	"REPO_MIRROR_INTERVAL":        true,
-	"REPO_MIRROR_ROLLBACK":        true,
-	"REPO_MIRROR_SERVER_HOSTNAME": true,
-	"REPO_MIRROR_TLS_VERIFY":      true,
+	"REPO_MIRROR_INTERVAL":               true,
+	"REPO_MIRROR_MAX_MANIFEST_ENTRIES":   true,
+	"REPO_MIRROR_MAX_MANIFEST_LIST_SIZE": true,
+	"REPO_MIRROR_ROLLBACK":               true,
+	"REPO_MIRROR_SERVER_HOSTNAME":        true,
+	"REPO_MIRROR_TLS_VERIFY":             true,
 
 	// Quotas
 	"DEFAULT_SYSTEM_REJECT_QUOTA_BYTES": true,
