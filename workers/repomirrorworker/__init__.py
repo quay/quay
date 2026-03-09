@@ -52,6 +52,7 @@ from util.audit import wrap_repository
 from util.orgmirror import get_registry_adapter
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
 from workers.repomirrorworker.manifest_utils import (
+    ManifestSizeLimitExceeded,
     filter_manifests_by_architecture,
     get_available_architectures,
     get_manifest_media_type,
@@ -756,7 +757,13 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
         )
 
     # Step 2: Check if manifest list
-    if not is_manifest_list(manifest_bytes, max_size=max_manifest_size):
+    try:
+        manifest_is_list = is_manifest_list(manifest_bytes, max_size=max_manifest_size)
+    except ManifestSizeLimitExceeded as exc:
+        logger.error("Manifest for %s rejected: %s", src_image_tag, exc)
+        return SkopeoResults(False, [], "", str(exc))
+
+    if not manifest_is_list:
         logger.info("Image %s is not a manifest list, using standard copy", src_image_tag)
         with database.CloseForLongOperation(app.config):
             result = skopeo.copy(

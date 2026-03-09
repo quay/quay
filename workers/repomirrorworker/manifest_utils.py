@@ -18,28 +18,33 @@ DEFAULT_MAX_MANIFEST_LIST_SIZE = 10 * 1024 * 1024  # 10MB
 DEFAULT_MAX_MANIFEST_ENTRIES = 1000
 
 
-def _check_manifest_size(manifest_bytes, max_size: int) -> bool:
-    """Return True if manifest_bytes is within the allowed size limit."""
+class ManifestSizeLimitExceeded(Exception):
+    """Raised when manifest bytes exceed the configured size limit."""
+
+    pass
+
+
+def _check_manifest_size(manifest_bytes, max_size: int) -> None:
+    """Raise ManifestSizeLimitExceeded if manifest_bytes exceeds the allowed size limit."""
     if manifest_bytes is None:
-        return False
+        raise ValueError("manifest_bytes is None")
     size = len(manifest_bytes)
     if size > max_size:
-        logger.error(
-            "Manifest list exceeds maximum size: %d bytes (limit: %d bytes)",
-            size,
-            max_size,
+        raise ManifestSizeLimitExceeded(
+            f"Manifest list exceeds maximum size: {size} bytes (limit: {max_size} bytes)"
         )
-        return False
-    return True
 
 
 def is_manifest_list(
     manifest_bytes: str,
     max_size: int = DEFAULT_MAX_MANIFEST_LIST_SIZE,
 ) -> bool:
-    """Check if manifest JSON represents a manifest list/index."""
-    if not _check_manifest_size(manifest_bytes, max_size):
-        return False
+    """
+    Check if manifest JSON represents a manifest list/index.
+
+    Raises ManifestSizeLimitExceeded if manifest exceeds max_size.
+    """
+    _check_manifest_size(manifest_bytes, max_size)
 
     try:
         parsed = json.loads(manifest_bytes)
@@ -74,8 +79,7 @@ def filter_manifests_by_architecture(
     Returns list of manifest entries with digest, size, and platform info.
     Validates manifest size before parsing and caps entry count to prevent DoS.
     """
-    if not _check_manifest_size(manifest_bytes, max_size):
-        return []
+    _check_manifest_size(manifest_bytes, max_size)
 
     try:
         parsed = json.loads(manifest_bytes)
@@ -107,8 +111,7 @@ def get_available_architectures(
     max_entries: int = DEFAULT_MAX_MANIFEST_ENTRIES,
 ) -> list[str]:
     """Get all architectures present in a manifest list."""
-    if not _check_manifest_size(manifest_bytes, max_size):
-        return []
+    _check_manifest_size(manifest_bytes, max_size)
 
     try:
         parsed = json.loads(manifest_bytes)

@@ -1111,11 +1111,13 @@ CONFIG_SCHEMA = {
         },
         "REPO_MIRROR_MAX_MANIFEST_LIST_SIZE": {
             "type": "integer",
+            "minimum": 1,
             "description": "Maximum size in bytes of manifest list JSON to parse during mirroring. Prevents DoS via oversized manifests. Defaults to 10485760 (10MB).",
             "x-example": 10485760,
         },
         "REPO_MIRROR_MAX_MANIFEST_ENTRIES": {
             "type": "integer",
+            "minimum": 1,
             "description": "Maximum number of manifest entries to process during architecture-filtered mirroring. Prevents DoS via manifest lists with excessive entries. Defaults to 1000.",
             "x-example": 1000,
         },

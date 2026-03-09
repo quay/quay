@@ -5,6 +5,7 @@ import pytest
 from workers.repomirrorworker.manifest_utils import (
     DEFAULT_MAX_MANIFEST_ENTRIES,
     DEFAULT_MAX_MANIFEST_LIST_SIZE,
+    ManifestSizeLimitExceeded,
     _check_manifest_size,
     filter_manifests_by_architecture,
     get_available_architectures,
@@ -99,7 +100,8 @@ class TestIsManifestList:
         assert is_manifest_list("") is False
 
     def test_none_value(self):
-        assert is_manifest_list(None) is False
+        with pytest.raises(ValueError):
+            is_manifest_list(None)
 
 
 class TestGetManifestMediaType:
@@ -221,19 +223,18 @@ def _make_manifest_list(num_entries):
 
 
 class TestManifestSizeValidation:
-    def test_is_manifest_list_rejects_oversized(self):
-        """is_manifest_list returns False when manifest exceeds max_size."""
-        assert is_manifest_list(SAMPLE_DOCKER_MANIFEST_LIST, max_size=10) is False
+    def test_is_manifest_list_raises_on_oversized(self):
+        """is_manifest_list raises ManifestSizeLimitExceeded when manifest exceeds max_size."""
+        with pytest.raises(ManifestSizeLimitExceeded):
+            is_manifest_list(SAMPLE_DOCKER_MANIFEST_LIST, max_size=10)
 
     def test_is_manifest_list_accepts_within_limit(self):
         size = len(SAMPLE_DOCKER_MANIFEST_LIST)
         assert is_manifest_list(SAMPLE_DOCKER_MANIFEST_LIST, max_size=size) is True
 
-    def test_filter_rejects_oversized_manifest(self):
-        result = filter_manifests_by_architecture(
-            SAMPLE_DOCKER_MANIFEST_LIST, ["amd64"], max_size=10
-        )
-        assert result == []
+    def test_filter_raises_on_oversized_manifest(self):
+        with pytest.raises(ManifestSizeLimitExceeded):
+            filter_manifests_by_architecture(SAMPLE_DOCKER_MANIFEST_LIST, ["amd64"], max_size=10)
 
     def test_filter_accepts_within_size_limit(self):
         size = len(SAMPLE_DOCKER_MANIFEST_LIST)
@@ -242,9 +243,9 @@ class TestManifestSizeValidation:
         )
         assert len(result) == 1
 
-    def test_get_available_architectures_rejects_oversized(self):
-        result = get_available_architectures(SAMPLE_DOCKER_MANIFEST_LIST, max_size=10)
-        assert result == []
+    def test_get_available_architectures_raises_on_oversized(self):
+        with pytest.raises(ManifestSizeLimitExceeded):
+            get_available_architectures(SAMPLE_DOCKER_MANIFEST_LIST, max_size=10)
 
     def test_get_available_architectures_accepts_within_limit(self):
         size = len(SAMPLE_DOCKER_MANIFEST_LIST)
@@ -281,12 +282,24 @@ class TestManifestEntryCountValidation:
         assert DEFAULT_MAX_MANIFEST_ENTRIES == 1000
 
 
-class TestCheckManifestSizeCharacterLength:
+class TestCheckManifestSize:
     def test_uses_character_length_not_utf8_bytes(self):
         """_check_manifest_size uses len(str) (character count), not UTF-8 byte length."""
         # Multi-byte chars: each is 3 UTF-8 bytes but 1 character
         payload = "\u2603" * 10  # 10 chars, 30 UTF-8 bytes
         # Should pass with a limit of 10 (character count)
-        assert _check_manifest_size(payload, max_size=10) is True
-        # Should fail with a limit of 9
-        assert _check_manifest_size(payload, max_size=9) is False
+        _check_manifest_size(payload, max_size=10)
+        # Should raise with a limit of 9
+        with pytest.raises(ManifestSizeLimitExceeded):
+            _check_manifest_size(payload, max_size=9)
+
+    def test_raises_value_error_on_none(self):
+        with pytest.raises(ValueError):
+            _check_manifest_size(None, max_size=100)
+
+    def test_raises_on_oversized(self):
+        with pytest.raises(ManifestSizeLimitExceeded):
+            _check_manifest_size("x" * 100, max_size=10)
+
+    def test_passes_within_limit(self):
+        _check_manifest_size("x" * 10, max_size=10)
