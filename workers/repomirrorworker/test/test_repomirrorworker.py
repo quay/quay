@@ -1646,6 +1646,8 @@ def test_copy_filtered_architectures_arch_copy_failure(mock_token, initialized_d
     """
     When copying an architecture by digest fails, copy_filtered_architectures returns failure.
     """
+    from workers.repomirrorworker import app as worker_app
+
     mirror, _repo = create_mirror_repo_robot(
         ["latest"], external_registry_config={"verify_tls": False}
     )
@@ -1655,7 +1657,15 @@ def test_copy_filtered_architectures_arch_copy_failure(mock_token, initialized_d
     mock_skopeo.inspect_raw.return_value = SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, "")
     mock_skopeo.copy_by_digest.return_value = SkopeoResults(False, [], "", "digest copy failed")
 
-    result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64"])
+    original = worker_app.config.get("FEATURE_SPARSE_INDEX")
+    worker_app.config["FEATURE_SPARSE_INDEX"] = True
+    try:
+        result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64"])
+    finally:
+        if original is not None:
+            worker_app.config["FEATURE_SPARSE_INDEX"] = original
+        else:
+            worker_app.config.pop("FEATURE_SPARSE_INDEX", None)
 
     assert result.success is False
     assert "digest copy failed" in result.stderr
@@ -1691,6 +1701,8 @@ def test_copy_filtered_architectures_fails_without_sparse_index(mock_token, init
 
     assert result.success is False
     assert "FEATURE_SPARSE_INDEX" in result.stderr
+    # Guard fires before any copies are attempted
+    mock_skopeo.copy_by_digest.assert_not_called()
 
 
 @disable_existing_mirrors
@@ -1730,10 +1742,10 @@ def test_copy_filtered_architectures_succeeds_with_sparse_index(
 
 
 @disable_existing_mirrors
-def test_copy_filtered_architectures_fails_when_arch_not_upstream(initialized_db, app):
+def test_copy_filtered_architectures_fails_when_no_arch_matches(initialized_db, app):
     """
-    When a configured architecture is not available in the source manifest list,
-    copy_filtered_architectures returns failure with a clear error message.
+    When no configured architectures are available in the source manifest list,
+    copy_filtered_architectures returns failure.
     """
     mirror, _repo = create_mirror_repo_robot(
         ["latest"], external_registry_config={"verify_tls": False}
@@ -1742,13 +1754,49 @@ def test_copy_filtered_architectures_fails_when_arch_not_upstream(initialized_db
     mock_skopeo = mock.Mock()
     mock_skopeo.inspect_raw.return_value = SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, "")
 
-    result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64", "s390x"])
+    result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["s390x", "mips64"])
 
     assert result.success is False
-    assert "s390x" in result.stderr
-    assert "not available" in result.stderr.lower()
-    # Should not have attempted any digest copies
+    assert "No matching architectures" in result.stderr
     mock_skopeo.copy_by_digest.assert_not_called()
+
+
+@disable_existing_mirrors
+@mock.patch("workers.repomirrorworker.push_sparse_manifest_list")
+@mock.patch("workers.repomirrorworker.retrieve_robot_token")
+def test_copy_filtered_architectures_warns_on_partial_match(
+    mock_token, mock_push, initialized_db, app
+):
+    """
+    When some configured architectures are missing from the source, the worker
+    warns but proceeds to mirror the available ones.
+    """
+    from workers.repomirrorworker import app as worker_app
+
+    mirror, _repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False}
+    )
+    mock_token.return_value = "robot_token"
+    mock_push.return_value = True
+
+    mock_skopeo = mock.Mock()
+    mock_skopeo.inspect_raw.return_value = SkopeoResults(True, [], SAMPLE_MANIFEST_LIST, "")
+    mock_skopeo.copy_by_digest.return_value = SkopeoResults(True, [], "copied", "")
+
+    original = worker_app.config.get("FEATURE_SPARSE_INDEX")
+    worker_app.config["FEATURE_SPARSE_INDEX"] = True
+    try:
+        result = copy_filtered_architectures(mock_skopeo, mirror, "latest", ["amd64", "s390x"])
+    finally:
+        if original is not None:
+            worker_app.config["FEATURE_SPARSE_INDEX"] = original
+        else:
+            worker_app.config.pop("FEATURE_SPARSE_INDEX", None)
+
+    assert result.success is True
+    # Only amd64 should have been copied (s390x not in source)
+    mock_skopeo.copy_by_digest.assert_called_once()
+    mock_push.assert_called_once()
 
 
 @disable_existing_mirrors

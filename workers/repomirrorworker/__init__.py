@@ -766,18 +766,31 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
     missing = [a for a in architecture_filter if a not in available]
 
     if missing:
+        logger.warning("Architectures not in source %s: %s", src_image_tag, missing)
+    if not matching:
         return SkopeoResults(
             False,
             [],
             "",
-            f"Configured architectures not available in source {src_image_tag}: {missing}. "
-            f"Available: {available}",
+            f"No matching architectures. Requested: {architecture_filter}, Available: {available}",
         )
 
     filtered = filter_manifests_by_architecture(manifest_bytes, matching)
     logger.info("Mirroring %d architectures for %s: %s", len(filtered), src_image_tag, matching)
 
-    # Step 4: Copy each architecture by digest
+    # Step 4: Verify FEATURE_SPARSE_INDEX is enabled before copying
+    if not app.config.get("FEATURE_SPARSE_INDEX", False):
+        return SkopeoResults(
+            False,
+            [],
+            "",
+            "Sparse manifest list push requires FEATURE_SPARSE_INDEX to be enabled. "
+            "Architecture filtering copies only selected architectures but pushes the "
+            "original manifest list, which references architectures that were not copied. "
+            "Enable FEATURE_SPARSE_INDEX in your Quay configuration to allow this.",
+        )
+
+    # Step 5: Copy each architecture by digest
     all_stdout, all_stderr = [], []
     for entry in filtered:
         digest = entry.get("digest")
@@ -805,18 +818,7 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
             logger.error("Failed to copy arch %s: %s", arch, result.stderr)
             return SkopeoResults(False, [], "\n".join(all_stdout), "\n".join(all_stderr))
 
-    # Step 5: Push original manifest list (sparse push requires FEATURE_SPARSE_INDEX)
-    if not app.config.get("FEATURE_SPARSE_INDEX", False):
-        return SkopeoResults(
-            False,
-            [],
-            "\n".join(all_stdout),
-            "Sparse manifest list push requires FEATURE_SPARSE_INDEX to be enabled. "
-            "Architecture filtering copies only selected architectures but pushes the "
-            "original manifest list, which references architectures that were not copied. "
-            "Enable FEATURE_SPARSE_INDEX in your Quay configuration to allow this.",
-        )
-
+    # Step 6: Push original manifest list
     media_type = get_manifest_media_type(manifest_bytes)
     if not push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
         return SkopeoResults(
