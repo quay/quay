@@ -236,7 +236,7 @@ var knownUnmapped = map[string]bool{
 	"ROBOTS_DISALLOW":                                true,
 	"SECURITY_SCANNER_INDEXING_INTERVAL":             true,
 	"SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE":       true,
-"WEBHOOK_NOTIFICATION_CONFIG":                    true,
+	"WEBHOOK_NOTIFICATION_CONFIG":                    true,
 }
 
 // goOnlyFields lists Go struct fields that intentionally have no corresponding
