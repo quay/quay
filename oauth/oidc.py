@@ -28,6 +28,7 @@ OIDC_WELLKNOWN = ".well-known/openid-configuration"
 PUBLIC_KEY_CACHE_TTL = 3600  # 1 hour
 ALLOWED_ALGORITHMS = ["RS256", "RS384"]
 JWT_CLOCK_SKEW_SECONDS = 30
+DEFAULT_JWKS_TIMEOUT = 5  # seconds
 
 
 class PasswordGrantException(Exception):
@@ -274,9 +275,14 @@ class OIDCLoginService(OAuthService):
             logger.exception("Could not parse OIDC discovery for url: %s", discovery_url)
             raise DiscoveryFailureException("Could not parse OIDC discovery information")
 
-    def decode_user_jwt(self, token, options={}):
+    def decode_user_jwt(self, token, options={}, audience=None):
         """
         Decodes the given JWT under the given provider and returns it.
+
+        Args:
+            token: The JWT token to decode
+            options: Optional dict of JWT decode options
+            audience: Optional audience override. If not provided, uses self.client_id()
 
         Raises an InvalidTokenError exception on an invalid token or a PublicKeyLoadException if the
         public key could not be loaded for decoding.
@@ -287,11 +293,14 @@ class OIDCLoginService(OAuthService):
         if kid is None:
             raise InvalidTokenError("Missing `kid` header")
 
+        # Use provided audience or fall back to client_id
+        expected_audience = audience if audience is not None else self.client_id()
+
         logger.debug(
             "Using key `%s`, attempting to decode token `%s` with aud `%s` and iss `%s`",
             kid,
             token,
-            self.client_id(),
+            expected_audience,
             self._issuer,
         )
 
@@ -304,7 +313,7 @@ class OIDCLoginService(OAuthService):
                 token,
                 key,
                 algorithms=ALLOWED_ALGORITHMS,
-                audience=self.client_id(),
+                audience=expected_audience,
                 issuer=self._issuer,
                 leeway=JWT_CLOCK_SKEW_SECONDS,
                 options=dict(require=["iat", "exp"], **options),
@@ -323,7 +332,7 @@ class OIDCLoginService(OAuthService):
                     token,
                     self._get_public_key(kid, force_refresh=True),
                     algorithms=ALLOWED_ALGORITHMS,
-                    audience=self.client_id(),
+                    audience=expected_audience,
                     issuer=self._issuer,
                     leeway=JWT_CLOCK_SKEW_SECONDS,
                     options=dict(require=["iat", "exp"], **options),
@@ -341,7 +350,7 @@ class OIDCLoginService(OAuthService):
                     token,
                     None,  # No key needed for non-verified decode
                     algorithms=ALLOWED_ALGORITHMS,
-                    audience=self.client_id(),
+                    audience=expected_audience,
                     issuer=self._issuer,
                     leeway=JWT_CLOCK_SKEW_SECONDS,
                     options=dict(require=["iat", "exp"], verify_signature=False, **options),
@@ -419,11 +428,18 @@ class _PublicKeyCache(TTLCache):
 
         # Load the keys.
         try:
-            keys = KeySet(
-                _load_keys_from_url(
-                    keys_url, verify=not self._login_service.config.get("DEBUGGING", False)
-                )
-            )
+            # Check if service has custom SSL verification (e.g., Kubernetes SA with CA bundle)
+            if hasattr(self._login_service, "get_ssl_verification"):
+                verify = self._login_service.get_ssl_verification()
+            else:
+                verify = not self._login_service.config.get("DEBUGGING", False)
+
+            # Check if service provides auth headers for JWKS fetching (e.g., Kubernetes SA)
+            headers = None
+            if hasattr(self._login_service, "get_jwks_auth_headers"):
+                headers = self._login_service.get_jwks_auth_headers()
+
+            keys = KeySet(_load_keys_from_url(keys_url, verify=verify, headers=headers))
         except Exception as ex:
             logger.exception("Exception loading public key")
             raise PublicKeyLoadException(str(ex))
@@ -443,7 +459,7 @@ class _PublicKeyCache(TTLCache):
         return rsa_key
 
 
-def _load_keys_from_url(url, verify=True):
+def _load_keys_from_url(url, verify=True, headers=None):
     """
     Expects something on this form:
         {"keys":
@@ -467,7 +483,14 @@ def _load_keys_from_url(url, verify=True):
     """
 
     keys = []
-    r = request("GET", url, allow_redirects=True, verify=verify)
+    r = request(
+        "GET",
+        url,
+        allow_redirects=True,
+        verify=verify,
+        headers=headers,
+        timeout=DEFAULT_JWKS_TIMEOUT,
+    )
     if r.status_code == 200:
         keys_dict = json.loads(r.text)
         for key_spec in keys_dict["keys"]:

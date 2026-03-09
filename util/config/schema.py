@@ -604,6 +604,70 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        "FEATURE_KUBERNETES_SA_AUTH": {
+            "type": "boolean",
+            "description": "Whether Kubernetes ServiceAccount OIDC authentication is supported. "
+            "When enabled, Kubernetes ServiceAccounts can authenticate to Quay using "
+            "OIDC-federated tokens. Defaults to False.",
+            "x-example": True,
+        },
+        "KUBERNETES_SA_AUTH_CONFIG": {
+            "type": ["object", "null"],
+            "description": "Configuration for Kubernetes ServiceAccount OIDC authentication. "
+            "Enables Kubernetes operators to authenticate using ServiceAccount tokens. "
+            "Only ServiceAccounts listed in ALLOWED_SUBJECTS can authenticate. "
+            "Permissions are granted through normal Quay mechanisms (org membership, team roles). "
+            "Tokens must be created with audience 'quay' "
+            "(or custom EXPECTED_AUDIENCE): kubectl create token <sa> --audience=quay",
+            "properties": {
+                "OIDC_SERVER": {
+                    "type": "string",
+                    "description": "Kubernetes API server OIDC issuer URL. Use for out-of-cluster "
+                    "deployments or custom issuers. Defaults to https://kubernetes.default.svc",
+                    "x-example": "https://kubernetes.default.svc",
+                },
+                "EXPECTED_AUDIENCE": {
+                    "type": "string",
+                    "description": "Expected audience claim in ServiceAccount tokens. Tokens must "
+                    "be created with this audience. Defaults to 'quay'.",
+                    "x-example": "quay",
+                },
+                "SERVICE_NAME": {
+                    "type": "string",
+                    "description": "Display name for the authentication service in logs.",
+                    "x-example": "Kubernetes",
+                },
+                "VERIFY_TLS": {
+                    "type": "boolean",
+                    "description": "Whether to verify TLS certificates when connecting to "
+                    "the Kubernetes API server. Defaults to True.",
+                    "x-example": True,
+                },
+                "CA_BUNDLE": {
+                    "type": ["string", "null"],
+                    "description": "Path to CA certificate bundle for TLS verification. "
+                    "Defaults to /var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+                    "x-example": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+                },
+                "SYSTEM_ORG_NAME": {
+                    "type": "string",
+                    "description": "Organization name that will own robot accounts for "
+                    "authenticated ServiceAccounts. Defaults to 'quay-system'.",
+                    "x-example": "quay-system",
+                },
+                "ALLOWED_SUBJECTS": {
+                    "type": ["array", "null"],
+                    "description": "List of Kubernetes ServiceAccount subjects allowed to "
+                    "authenticate to Quay. Only SAs listed here can authenticate - others "
+                    "will be rejected. Authenticated SAs are mapped to robot accounts in the "
+                    "system org. Format: system:serviceaccount:<namespace>:<name>",
+                    "items": {"type": "string"},
+                    "x-example": [
+                        "system:serviceaccount:quay-operator:quay-operator-controller-manager"
+                    ],
+                },
+            },
+        },
         "GITLAB_TRIGGER_CONFIG": {
             "type": ["object", "null"],
             "description": "Configuration for using Gitlab (Enterprise) for external authentication",

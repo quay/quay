@@ -1,9 +1,11 @@
 import logging
 from datetime import datetime
+from typing import Optional
 
 from flask import request
 from jwt import ExpiredSignatureError, InvalidTokenError
 
+import features
 from app import analytics, app, authentication, oauth_login
 from auth.log import log_action
 from auth.scopes import scopes_from_scope_string
@@ -39,6 +41,15 @@ def validate_bearer_auth(auth_header):
 
 
 def validate_oauth_token(token):
+    # K8s SA tokens lack typ:JWT header so is_jwt() returns False, but they
+    # are structurally JWTs (three dot-separated base64 segments). Check
+    # structure first to avoid calling validate_kubernetes_sa_token() on
+    # app OAuth tokens (the common case for image pulls).
+    if features.KUBERNETES_SA_AUTH and token.count(".") == 2:
+        result = validate_kubernetes_sa_token(token)
+        if result is not None:
+            return result
+
     if is_jwt(token):
         return validate_sso_oauth_token(token)
     else:
@@ -93,6 +104,135 @@ def validate_sso_oauth_token(token):
     ) as ole:
         logger.exception(ole)
         return ValidateResult(AuthKind.ssojwt, error_message=str(ole))
+
+
+def validate_kubernetes_sa_token(token: str) -> Optional[ValidateResult]:
+    """
+    Validate a Kubernetes ServiceAccount JWT token.
+
+    Kubernetes SA tokens are validated via OIDC/JWKS, then mapped to robot accounts
+    in the configured system organization. Permissions are granted through normal
+    Quay mechanisms (org membership, team roles).
+
+    Returns:
+        ValidateResult on success, None if Kubernetes SA auth not configured or
+        token issuer doesn't match
+    """
+    from data import model
+    from data.model import user
+    from oauth.oidc import PublicKeyLoadException
+    from oauth.services.kubernetes_sa import (
+        DEFAULT_KUBERNETES_OIDC_SERVER,
+        KubernetesServiceAccountLoginService,
+    )
+    from util.security.jwtutil import InvalidTokenError
+
+    kubernetes_config = app.config.get("KUBERNETES_SA_AUTH_CONFIG", {})
+    if not kubernetes_config:
+        logger.debug("FEATURE_KUBERNETES_SA_AUTH is enabled but no config provided")
+        return None
+
+    # Get configured OIDC server, falling back to default
+    expected_oidc_server = kubernetes_config.get("OIDC_SERVER", DEFAULT_KUBERNETES_OIDC_SERVER)
+
+    # Cache the service instance to reuse OIDC discovery and JWKS key caches
+    if not hasattr(validate_kubernetes_sa_token, "_service"):
+        validate_kubernetes_sa_token._service = KubernetesServiceAccountLoginService(app.config)  # type: ignore[attr-defined]
+    kubernetes_service = validate_kubernetes_sa_token._service  # type: ignore[attr-defined]
+
+    # Check if token issuer matches our configured Kubernetes OIDC server
+    # This allows other JWT tokens to fall through to generic SSO handling
+    try:
+        issuer = get_jwt_issuer(token)
+        if not issuer:
+            return None
+
+        # Normalize trailing slashes for comparison
+        if issuer.rstrip("/") != expected_oidc_server.rstrip("/"):
+            logger.debug(
+                "Token issuer %s doesn't match Kubernetes OIDC server %s, skipping",
+                issuer,
+                expected_oidc_server,
+            )
+            return None
+    except Exception:
+        # If we can't decode issuer, let it fall through to other handlers
+        return None
+
+    try:
+        # Validate the token
+        decoded_token = kubernetes_service.validate_sa_token(token)
+
+    except (InvalidTokenError, PublicKeyLoadException) as e:
+        logger.warning(f"Kubernetes SA token validation failed: {e}")
+        return ValidateResult(
+            AuthKind.kubernetessa,
+            error_message=f"Token validation failed: {e}",
+        )
+    except Exception as e:
+        logger.warning(f"Kubernetes SA token validation error: {e}")
+        return ValidateResult(
+            AuthKind.kubernetessa,
+            error_message=f"Token validation error: {e}",
+        )
+
+    # Extract subject (required claim)
+    subject = decoded_token.get("sub")
+    if not subject:
+        logger.warning("Kubernetes SA token missing 'sub' claim")
+        return ValidateResult(
+            AuthKind.kubernetessa,
+            error_message="Token missing subject claim",
+        )
+
+    # Parse and validate SA subject format
+    parsed = kubernetes_service.parse_sa_subject(subject)
+    if not parsed:
+        logger.warning(f"Invalid Kubernetes SA subject format: {subject}")
+        return ValidateResult(
+            AuthKind.kubernetessa,
+            error_message=f"Invalid ServiceAccount subject format: {subject}",
+        )
+
+    namespace, sa_name = parsed
+
+    # Verify the subject is in the configured ALLOWED_SUBJECTS allowlist
+    if not kubernetes_service.is_allowed_subject(subject):
+        logger.warning(f"Kubernetes SA subject not in ALLOWED_SUBJECTS: {subject}")
+        return ValidateResult(
+            AuthKind.kubernetessa,
+            error_message=f"ServiceAccount not authorized: {subject}",
+        )
+
+    # Look up the robot account
+    robot_shortname = kubernetes_service.generate_robot_shortname(namespace, sa_name)
+    system_org_name = kubernetes_service.system_org_name
+    robot_username = f"{system_org_name}+{robot_shortname}"
+
+    try:
+        robot = user.lookup_robot(robot_username)
+    except model.InvalidRobotException:
+        # Robot doesn't exist - it should have been created at startup
+        logger.error(
+            f"Robot account {robot_username} not found. "
+            f"Ensure ALLOWED_SUBJECTS is configured and Quay was restarted."
+        )
+        return ValidateResult(
+            AuthKind.kubernetessa,
+            error_message=f"Robot account not found: {robot_username}",
+        )
+
+    # Log successful authentication
+    logger.debug(
+        f"Kubernetes SA authenticated: {subject} -> {robot_username}",
+        extra={
+            "kubernetes_namespace": namespace,
+            "kubernetes_sa_name": sa_name,
+            "robot_username": robot_username,
+        },
+    )
+
+    return ValidateResult(AuthKind.kubernetessa, robot=robot, sso_token=token)
 
 
 def validate_app_oauth_token(token):
