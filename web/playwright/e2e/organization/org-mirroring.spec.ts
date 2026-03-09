@@ -54,12 +54,29 @@ async function fillRequiredFields(
   await dateInput.clear();
   await dateInput.fill(dateString);
 
-  // Fill TimePicker with HH:MM
-  const hours = String(futureDate.getHours()).padStart(2, '0');
-  const minutes = String(futureDate.getMinutes()).padStart(2, '0');
+  // Detect browser locale time format and fill TimePicker accordingly
+  const is24h = await page.evaluate(() => {
+    const resolved = new Intl.DateTimeFormat(undefined, {
+      hour: 'numeric',
+    }).resolvedOptions();
+    return resolved.hour12 !== true;
+  });
+  const hours24 = futureDate.getHours();
+  const mins = String(futureDate.getMinutes()).padStart(2, '0');
+  let timeString: string;
+  if (is24h) {
+    timeString = `${String(hours24).padStart(2, '0')}:${mins}`;
+  } else {
+    const period = hours24 >= 12 ? 'PM' : 'AM';
+    const h12 = hours24 % 12 || 12;
+    timeString = `${h12}:${mins} ${period}`;
+  }
   const timeInput = page.getByRole('textbox', {name: 'Sync start time'});
   await timeInput.clear();
-  await timeInput.fill(`${hours}:${minutes}`);
+  await timeInput.fill(timeString);
+
+  // Dismiss any TimePicker popover before interacting with the robot dropdown
+  await page.keyboard.press('Escape');
 
   await page.locator('#robot-user-select').click();
   await page.getByRole('option', {name: robotFullName}).click();
