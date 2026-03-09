@@ -110,6 +110,7 @@ export function TagsToolbar(props: ToolBarProps) {
       isDisabled={selectedMutableTags.length <= 0}
       tooltipProps={deleteTooltip ? {content: deleteTooltip} : undefined}
       style={{color: 'red'}}
+      data-testid="bulk-remove-action"
     >
       Remove
     </DropdownItem>,
