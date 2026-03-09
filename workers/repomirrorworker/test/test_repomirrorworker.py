@@ -887,8 +887,18 @@ def test_mirror_with_architecture_filter(run_skopeo_mock, push_manifest_mock, in
 
     run_skopeo_mock.side_effect = skopeo_test
 
-    worker = RepoMirrorWorker()
-    worker._process_mirrors()
+    from workers.repomirrorworker import app as worker_app
+
+    original = worker_app.config.get("FEATURE_SPARSE_INDEX")
+    worker_app.config["FEATURE_SPARSE_INDEX"] = True
+    try:
+        worker = RepoMirrorWorker()
+        worker._process_mirrors()
+    finally:
+        if original is not None:
+            worker_app.config["FEATURE_SPARSE_INDEX"] = original
+        else:
+            worker_app.config.pop("FEATURE_SPARSE_INDEX", None)
 
     assert [] == skopeo_calls
     push_manifest_mock.assert_called_once()
