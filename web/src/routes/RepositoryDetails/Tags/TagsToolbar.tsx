@@ -81,6 +81,12 @@ export function TagsToolbar(props: ToolBarProps) {
         return tag && !tag.expiration;
       });
 
+  // Determine tooltip for delete actions when all selected tags are immutable
+  let deleteTooltip: string | undefined;
+  if (selectedTags.length > 0 && selectedMutableTags.length === 0) {
+    deleteTooltip = 'All selected tags are immutable and cannot be deleted';
+  }
+
   const kebabItems: ReactElement[] = [
     <DropdownItem
       key="set-expiration"
@@ -101,7 +107,8 @@ export function TagsToolbar(props: ToolBarProps) {
           isOpen: !prevOptions.isOpen,
         }));
       }}
-      isDisabled={selectedTags.length <= 0}
+      isDisabled={selectedMutableTags.length <= 0}
+      tooltipProps={deleteTooltip ? {content: deleteTooltip} : undefined}
       style={{color: 'red'}}
     >
       Remove
@@ -157,7 +164,8 @@ export function TagsToolbar(props: ToolBarProps) {
             isOpen: !prevOptions.isOpen,
           }));
         }}
-        isDisabled={selectedTags.length <= 0}
+        isDisabled={selectedMutableTags.length <= 0}
+        tooltipProps={deleteTooltip ? {content: deleteTooltip} : undefined}
         style={{color: 'red'}}
       >
         Permanently delete
