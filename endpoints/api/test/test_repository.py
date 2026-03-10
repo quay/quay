@@ -1,11 +1,24 @@
+from datetime import datetime
+
 import pytest
 from mock import ANY, MagicMock, patch
 
 from app import app as realapp
 from app import authentication, usermanager
 from data import database, model
+from data.database import (
+    OrgMirrorConfig,
+    OrgMirrorStatus,
+    SourceRegistryType,
+    Visibility,
+)
 from data.users import UserAuthentication, UserManager
-from endpoints.api.repository import Repository, RepositoryList, RepositoryTrust
+from endpoints.api.repository import (
+    Repository,
+    RepositoryList,
+    RepositoryStateResource,
+    RepositoryTrust,
+)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from features import FeatureNameValue
@@ -267,3 +280,71 @@ def test_create_repo_with_restricted_users_enabled_as_normal_user(app):
             }
 
             resp = conduct_api_call(cl, RepositoryList, "POST", None, body, expected_code=403)
+
+
+def test_create_repository_blocked_in_org_mirror_org(app):
+    """
+    Verify that creating a repository is rejected when the organization
+    has an org-level mirror configuration.
+    """
+    org = model.organization.get_organization("buynlarge")
+    robot = model.user.lookup_robot("buynlarge+coolrobot")
+    config = OrgMirrorConfig.create(
+        organization=org,
+        internal_robot=robot,
+        external_registry_type=SourceRegistryType.HARBOR,
+        external_registry_url="https://harbor.example.com",
+        external_namespace="test-project",
+        visibility=Visibility.get(name="private"),
+        sync_interval=3600,
+        sync_start_date=datetime(2025, 1, 1, 0, 0, 0),
+        sync_status=OrgMirrorStatus.NEVER_RUN,
+        skopeo_timeout=300,
+    )
+
+    try:
+        with patch("features.ORG_MIRROR", FeatureNameValue("ORG_MIRROR", True)):
+            with client_with_identity("devtable", app) as cl:
+                body = {
+                    "namespace": "buynlarge",
+                    "repository": "newrepo",
+                    "visibility": "public",
+                    "description": "should be blocked",
+                }
+                resp = conduct_api_call(cl, RepositoryList, "POST", None, body, expected_code=400)
+                assert "organization-level mirroring" in resp.json["error_message"]
+    finally:
+        config.delete_instance()
+
+
+def test_change_repo_state_blocked_in_org_mirror_org(app):
+    """
+    Verify that changing repository state is rejected when the organization
+    has an org-level mirror configuration.
+    """
+    org = model.organization.get_organization("buynlarge")
+    robot = model.user.lookup_robot("buynlarge+coolrobot")
+    config = OrgMirrorConfig.create(
+        organization=org,
+        internal_robot=robot,
+        external_registry_type=SourceRegistryType.HARBOR,
+        external_registry_url="https://harbor.example.com",
+        external_namespace="test-project",
+        visibility=Visibility.get(name="private"),
+        sync_interval=3600,
+        sync_start_date=datetime(2025, 1, 1, 0, 0, 0),
+        sync_status=OrgMirrorStatus.NEVER_RUN,
+        skopeo_timeout=300,
+    )
+
+    try:
+        with patch("features.ORG_MIRROR", FeatureNameValue("ORG_MIRROR", True)):
+            with client_with_identity("devtable", app) as cl:
+                params = {"repository": "buynlarge/orgrepo"}
+                body = {"state": "MIRROR"}
+                resp = conduct_api_call(
+                    cl, RepositoryStateResource, "PUT", params, body, expected_code=400
+                )
+                assert "organization-level mirroring" in resp.json["detail"]
+    finally:
+        config.delete_instance()

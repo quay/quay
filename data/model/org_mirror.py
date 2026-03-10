@@ -9,6 +9,7 @@ from typing import List, Optional, Tuple
 
 from peewee import JOIN, IntegrityError, fn
 
+import features
 from data.database import (
     OrgMirrorConfig,
     OrgMirrorRepository,
@@ -19,11 +20,13 @@ from data.database import (
     SourceRegistryType,
     User,
     Visibility,
+    db_for_update,
     db_transaction,
     uuid_generator,
 )
 from data.fields import DecryptedValue
 from data.model import DataModelException
+from data.model.immutability import namespace_has_immutability_policies
 from util.names import parse_robot_username
 from util.security.ssrf import validate_external_registry_url
 
@@ -51,6 +54,21 @@ def get_org_mirror_config(org):
         )
     except OrgMirrorConfig.DoesNotExist:
         return None
+
+
+def is_namespace_org_mirrored(namespace: str) -> bool:
+    """
+    Return True if the given namespace is an organization with org-level mirroring enabled.
+
+    Callers must gate on ``features.ORG_MIRROR`` before calling this function
+    to avoid an unnecessary DB query when the feature is disabled.
+    """
+    return (
+        OrgMirrorConfig.select()
+        .join(User, on=(OrgMirrorConfig.organization == User.id))
+        .where(User.username == namespace, User.organization == True)
+        .exists()
+    )
 
 
 def get_org_mirror_config_count():
@@ -131,6 +149,26 @@ def create_org_mirror_config(
         raise DataModelException("Robot account must belong to the organization")
 
     with db_transaction():
+        # Lock the org row to serialize against concurrent repo creation
+        db_for_update(User.select().where(User.id == organization.id)).get()
+
+        if Repository.select().where(Repository.namespace_user == organization).exists():
+            raise DataModelException(
+                "Cannot create organization mirror: the organization already contains "
+                "repositories. Organization mirroring requires an empty organization."
+            )
+
+        if features.IMMUTABLE_TAGS and namespace_has_immutability_policies(organization.id):
+            raise DataModelException(
+                "Cannot create organization mirror: the organization has immutability "
+                "policies configured. Remove all namespace immutability policies first."
+            )
+
+        # Check before INSERT to avoid poisoning the PostgreSQL transaction with
+        # an IntegrityError (which puts the txn into an aborted state).
+        if OrgMirrorConfig.select().where(OrgMirrorConfig.organization == organization).exists():
+            raise DataModelException("Mirror configuration already exists for this organization")
+
         try:
             username = (
                 DecryptedValue(external_registry_username) if external_registry_username else None

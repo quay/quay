@@ -3,7 +3,12 @@ from datetime import datetime
 import pytest
 
 from data import model
-from data.database import SourceRegistryType, Visibility
+from data.database import (
+    OrgMirrorConfig,
+    OrgMirrorStatus,
+    SourceRegistryType,
+    Visibility,
+)
 from endpoints.api.mirror import RepoMirrorResource, RepoMirrorSyncCancelResource
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
@@ -383,18 +388,26 @@ def test_create_mirror_with_invalid_architecture_filter(app):
 
 
 def _create_org_mirror_config(orgname, robot_username):
-    """Helper to create an org mirror config for testing."""
+    """Helper to create an org mirror config for testing.
+
+    Creates the OrgMirrorConfig directly via the ORM to bypass the model-level
+    validation that requires the organization to have no existing repositories.
+    """
     org = model.organization.get_organization(orgname)
     robot = model.user.lookup_robot(robot_username)
-    return model.org_mirror.create_org_mirror_config(
+    return OrgMirrorConfig.create(
         organization=org,
         internal_robot=robot,
+        is_enabled=True,
         external_registry_type=SourceRegistryType.HARBOR,
         external_registry_url="https://harbor.example.com",
         external_namespace="test-project",
         visibility=Visibility.get(name="private"),
         sync_interval=3600,
         sync_start_date=datetime(2025, 1, 1, 0, 0, 0),
+        sync_status=OrgMirrorStatus.NEVER_RUN,
+        sync_retries_remaining=3,
+        skopeo_timeout=300,
     )
 
 

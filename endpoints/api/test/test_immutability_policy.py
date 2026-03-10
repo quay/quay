@@ -8,7 +8,7 @@ from endpoints.api.immutability_policy import (
     RepositoryImmutabilityPolicy,
 )
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.test.shared import client_with_identity
+from endpoints.test.shared import client_with_identity, toggle_feature
 from test.fixtures import *  # noqa: F401, F403
 
 
@@ -211,3 +211,44 @@ class TestRepositoryImmutabilityPolicy:
                 {"repository": "devtable/simple", "policy_uuid": policy_uuid},
                 200,
             )
+
+
+class TestOrgImmutabilityPolicyBlockedByOrgMirror:
+    """Test that namespace immutability policy creation is blocked when org mirror is configured."""
+
+    def test_create_policy_rejected_when_org_mirror_configured(self, initialized_db, app):
+        from data import model as data_model
+        from data.database import OrgMirrorConfig as OrgMirrorConfigTable
+        from data.database import OrgMirrorStatus, SourceRegistryType, Visibility
+
+        org = data_model.organization.get_organization("buynlarge")
+        robot = data_model.user.lookup_robot("buynlarge+coolrobot")
+
+        # Create an org mirror config directly via ORM
+        mirror = OrgMirrorConfigTable.create(
+            organization=org,
+            is_enabled=True,
+            external_registry_type=SourceRegistryType.QUAY,
+            external_registry_url="https://quay.io",
+            external_namespace="projectquay",
+            internal_robot=robot,
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date="2025-01-01T00:00:00Z",
+            sync_status=OrgMirrorStatus.NEVER_RUN,
+        )
+
+        try:
+            with toggle_feature("ORG_MIRROR", True):
+                with client_with_identity("devtable", app) as cl:
+                    resp = conduct_api_call(
+                        cl,
+                        OrgImmutabilityPolicies,
+                        "POST",
+                        {"orgname": "buynlarge"},
+                        {"tagPattern": "v.*", "tagPatternMatches": True},
+                        400,
+                    )
+                    assert "organization-level mirroring" in resp.json.get("error_message", "")
+        finally:
+            mirror.delete_instance()
