@@ -59,9 +59,12 @@ test.describe(
       ).not.toBeVisible();
 
       // Assert: no selection checkboxes (row selection is hidden for readonly)
-      await expect(readonlyPage.locator('input[type="checkbox"]')).toHaveCount(
-        0,
-      );
+      // Scope to the active tab panel to avoid matching checkboxes from hidden tabs
+      await expect(
+        readonlyPage.locator(
+          '[role="tabpanel"]:not([hidden]) input[type="checkbox"]',
+        ),
+      ).toHaveCount(0);
     });
   },
 );
