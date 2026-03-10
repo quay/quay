@@ -186,11 +186,8 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
 
       // Credentials modal should appear (allow extra time for API round-trip)
       await expect(
-        authenticatedPage.getByTestId('credentials-modal'),
-      ).toBeVisible({timeout: 15000});
-      await expect(
         authenticatedPage.getByText(`Credentials for ${username}`),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 15000});
 
       // Verify all credential format tabs exist
       await expect(
