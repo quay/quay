@@ -8,9 +8,8 @@ import {
   Alert,
 } from '@patternfly/react-core';
 import {useSearchParams} from 'react-router-dom';
-import {useQuery} from '@tanstack/react-query';
-import {isAxiosError} from 'axios';
-import {getOrgMirrorConfig} from 'src/resources/OrgMirrorResource';
+import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
+import {useProxyCacheExists} from 'src/hooks/UseProxyCacheExists';
 import {useNamespaceImmutabilityPolicies} from 'src/hooks/UseNamespaceImmutabilityPolicies';
 
 interface OrgMirroringStateProps {
@@ -26,23 +25,17 @@ export const OrgMirroringState = ({
   const [, setSearchParams] = useSearchParams();
 
   const {
-    data: hasConfig,
+    isOrgMirrored: hasConfig,
     isLoading,
-    error: queryError,
-  } = useQuery<boolean>({
-    queryKey: ['org-mirror-config-exists', organizationName],
-    queryFn: async () => {
-      try {
-        await getOrgMirrorConfig(organizationName);
-        return true;
-      } catch (err) {
-        if (isAxiosError(err) && err.response?.status === 404) {
-          return false;
-        }
-        throw err;
-      }
-    },
-  });
+    isSuccess: isOrgMirrorSuccess,
+    isError: isOrgMirrorError,
+  } = useOrgMirrorExists(organizationName);
+
+  const {
+    isProxyCacheConfigured,
+    isLoading: isProxyCacheLoading,
+    isError: isProxyCacheError,
+  } = useProxyCacheExists(organizationName);
 
   const {nsPolicies: immutabilityPolicies, isLoading: isPoliciesLoading} =
     useNamespaceImmutabilityPolicies(organizationName);
@@ -52,14 +45,12 @@ export const OrgMirroringState = ({
     immutabilityPolicies &&
     immutabilityPolicies.length > 0;
 
-  const error = queryError ? 'Failed to load organization mirror state' : null;
-
   // Sync selectedState when query result arrives
   useEffect(() => {
-    if (hasConfig !== undefined) {
+    if (isOrgMirrorSuccess) {
       setSelectedState(hasConfig ? 'MIRROR' : 'NORMAL');
     }
-  }, [hasConfig]);
+  }, [isOrgMirrorSuccess, hasConfig]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +65,15 @@ export const OrgMirroringState = ({
 
   return (
     <Form onSubmit={handleSubmit}>
-      {error && <Alert variant="danger" isInline title={error} />}
+      {isOrgMirrorError && (
+        <Alert
+          isInline
+          variant="danger"
+          title="Unable to determine current organization mirror status."
+          className="pf-v5-u-mb-md"
+          data-testid="org-mirror-error-alert"
+        />
+      )}
       <FormGroup fieldId="organization-state">
         <Radio
           isChecked={selectedState === 'NORMAL'}
@@ -110,9 +109,32 @@ export const OrgMirroringState = ({
               data-testid="immutability-conflict-alert"
             />
           )}
+        {selectedState === 'MIRROR' && isProxyCacheError && (
+          <Alert
+            isInline
+            variant="danger"
+            title="Unable to determine proxy cache status. Organization mirroring is disabled until the proxy cache status can be verified."
+            className="pf-v5-u-mb-md"
+            data-testid="proxy-cache-error-alert"
+          />
+        )}
+        {selectedState === 'MIRROR' &&
+          !isProxyCacheLoading &&
+          isProxyCacheConfigured && (
+            <Alert
+              isInline
+              variant="warning"
+              title="Organization mirroring cannot be enabled while a proxy cache is configured. Remove the proxy cache configuration first."
+              className="pf-v5-u-mb-md"
+              data-testid="proxy-cache-conflict-alert"
+            />
+          )}
         {selectedState === 'MIRROR' &&
           !isPoliciesLoading &&
-          !hasImmutabilityPolicies && (
+          !hasImmutabilityPolicies &&
+          !isProxyCacheLoading &&
+          !isProxyCacheError &&
+          !isProxyCacheConfigured && (
             <Alert
               isInline
               variant="info"
@@ -127,7 +149,10 @@ export const OrgMirroringState = ({
           isDisabled={
             selectedState === 'NORMAL' ||
             isPoliciesLoading ||
-            (selectedState === 'MIRROR' && hasImmutabilityPolicies)
+            isProxyCacheLoading ||
+            isProxyCacheError ||
+            (selectedState === 'MIRROR' && hasImmutabilityPolicies) ||
+            (selectedState === 'MIRROR' && isProxyCacheConfigured)
           }
         >
           Submit

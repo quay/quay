@@ -1,4 +1,11 @@
-import {Flex, FlexItem, Tab, Tabs, TabTitleText} from '@patternfly/react-core';
+import {
+  Alert,
+  Flex,
+  FlexItem,
+  Tab,
+  Tabs,
+  TabTitleText,
+} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {DrawerContentType} from 'src/routes/RepositoryDetails/Types';
 import DeleteRepository from './DeleteRepository';
@@ -44,7 +51,9 @@ export default function Settings(props: SettingsProps) {
           },
         ]
       : []),
-    ...(config?.features?.IMMUTABLE_TAGS && props.repoDetails?.can_write
+    ...(config?.features?.IMMUTABLE_TAGS &&
+    props.repoDetails?.can_write &&
+    props.repoDetails?.state !== 'ORG_MIRROR'
       ? [
           {
             name: 'Immutability Policies',
@@ -134,6 +143,15 @@ export default function Settings(props: SettingsProps) {
         alignSelf={{default: 'alignSelfFlexStart'}}
         style={{padding: '20px', width: '100%'}}
       >
+        {props.repoDetails?.state === 'ORG_MIRROR' && (
+          <Alert
+            isInline
+            variant="info"
+            title="This repository is managed by organization-level mirroring. Some settings may be restricted."
+            className="pf-v5-u-mb-md"
+            data-testid="org-mirror-repo-settings-banner"
+          />
+        )}
         {activeTab?.content}
       </FlexItem>
     </Flex>
