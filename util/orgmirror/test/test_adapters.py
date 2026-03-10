@@ -194,6 +194,40 @@ class TestQuayAdapter:
         assert proxies["http"] == "http://proxy:8080"
         assert proxies["https"] == "https://proxy:8443"
 
+    def test_no_proxy_configuration(self):
+        """Test that no_proxy setting is correctly applied."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            config={
+                "proxy": {
+                    "http_proxy": "http://proxy:8080",
+                    "https_proxy": "https://proxy:8443",
+                    "no_proxy": "localhost,.internal",
+                }
+            },
+        )
+
+        proxies = adapter._build_proxies()
+
+        assert proxies["http"] == "http://proxy:8080"
+        assert proxies["https"] == "https://proxy:8443"
+        assert proxies["no_proxy"] == "localhost,.internal"
+
+        # Verify no_proxy is omitted when not configured
+        adapter_no_noproxy = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            config={
+                "proxy": {
+                    "http_proxy": "http://proxy:8080",
+                }
+            },
+        )
+
+        proxies_no_noproxy = adapter_no_noproxy._build_proxies()
+        assert "no_proxy" not in proxies_no_noproxy
+
     def test_tls_verification_disabled(self):
         """Test that TLS verification can be disabled."""
         adapter = QuayAdapter(
