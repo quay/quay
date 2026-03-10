@@ -184,10 +184,10 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
         .fill(password);
       await authenticatedPage.locator('#submit').click();
 
-      // Credentials modal should appear
+      // Credentials modal should appear (allow extra time for API round-trip)
       await expect(
         authenticatedPage.getByTestId('credentials-modal'),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 15000});
       await expect(
         authenticatedPage.getByText(`Credentials for ${username}`),
       ).toBeVisible();
