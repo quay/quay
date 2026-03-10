@@ -19,6 +19,7 @@ import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useSetExpiration} from 'src/hooks/UseTags';
 import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
+import {is24HourFormat} from 'src/libs/dateTimeUtils';
 
 export default function EditExpirationModal(props: EditExpirationModalProps) {
   const [date, setDate] = useState<Date>(null);
@@ -187,12 +188,6 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
   const onClear = () => {
     setDate(null);
     setValidDate(true);
-  };
-
-  const is24HourFormat = () => {
-    const dateString = new Date().toLocaleTimeString();
-    const lastTwoCharacters = dateString.slice(-2);
-    return lastTwoCharacters !== 'AM' && lastTwoCharacters !== 'PM';
   };
 
   const minExpirationDateTime = () => {

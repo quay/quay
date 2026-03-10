@@ -14,6 +14,7 @@ import {
 import {useCreateServiceKey} from 'src/hooks/UseCreateServiceKey';
 import {useUI} from 'src/contexts/UIContext';
 import FormError from 'src/components/errors/FormError';
+import {FormDateTimePicker} from 'src/components/FormDateTimePicker';
 
 interface CreateServiceKeyFormProps {
   isOpen: boolean;
@@ -133,12 +134,11 @@ export const CreateServiceKeyForm: React.FC<CreateServiceKeyFormProps> = ({
             control={formHook.control}
             rules={formHook.validationRules.expiration}
             render={({field}) => (
-              <TextInput
-                {...field}
-                id="expiration"
-                type="datetime-local"
-                placeholder="YYYY-MM-DDTHH:MM"
-                validated={formHook.errors.expiration ? 'error' : 'default'}
+              <FormDateTimePicker
+                value={field.value}
+                onChange={field.onChange}
+                dateAriaLabel="Expiration date"
+                timeAriaLabel="Expiration time"
               />
             )}
           />
