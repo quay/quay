@@ -187,29 +187,32 @@ test.describe(
         .click();
 
       // CREATE FIRST POLICY: By number of tags (25)
-      await authenticatedPage
+      const firstForm = authenticatedPage.locator('#autoprune-policy-form-0');
+      // Wait for form to be fully loaded before interacting
+      await expect(firstForm.getByTestId('auto-prune-method')).toBeVisible();
+      await expect(firstForm.getByTestId('auto-prune-method')).toContainText(
+        'None',
+      );
+      await firstForm
         .getByTestId('auto-prune-method')
         .selectOption('number_of_tags');
 
       // Wait for input to appear and have default value
-      const tagCountInput = authenticatedPage.locator(
+      const tagCountInput = firstForm.locator(
         'input[aria-label="number of tags"]',
       );
       await expect(tagCountInput).toHaveValue('20');
 
-      // Use triple-click to select all, then type new value
-      await tagCountInput.click({clickCount: 3});
       await tagCountInput.fill('25');
 
-      await authenticatedPage.getByRole('button', {name: 'Save'}).click();
+      await firstForm.getByRole('button', {name: 'Save'}).click();
 
+      // Wait for success message to appear then disappear
       await expect(
         authenticatedPage.getByText(
           'Successfully created repository auto-prune policy',
         ),
       ).toBeVisible();
-
-      // Wait for success message to disappear before adding second policy
       await expect(
         authenticatedPage.getByText(
           'Successfully created repository auto-prune policy',
@@ -223,77 +226,108 @@ test.describe(
       ).toBeVisible();
 
       // CREATE SECOND POLICY: By age of tags (2 weeks) in second form
-      const secondForm = authenticatedPage.locator('#autoprune-policy-form-1');
-      await secondForm
+      const secondFormCreate = authenticatedPage.locator(
+        '#autoprune-policy-form-1',
+      );
+      await secondFormCreate
         .getByTestId('auto-prune-method')
         .selectOption('creation_date');
-      await secondForm
+      await secondFormCreate
         .locator('input[aria-label="tag creation date value"]')
         .fill('2');
-      await secondForm
+      await secondFormCreate
         .locator('select[aria-label="tag creation date unit"]')
         .selectOption('w');
-      await secondForm.getByRole('button', {name: 'Save'}).click();
+      await secondFormCreate.getByRole('button', {name: 'Save'}).click();
 
       await expect(
         authenticatedPage.getByText(
           'Successfully created repository auto-prune policy',
         ),
       ).toBeVisible();
-
-      // Wait for success message to disappear before update
       await expect(
         authenticatedPage.getByText(
           'Successfully created repository auto-prune policy',
         ),
       ).not.toBeVisible({timeout: 10000});
 
-      // UPDATE SECOND POLICY: Change to "By number of tags"
-      await secondForm
+      // UPDATE: Find the form that has "By age of tags" (creation_date)
+      // After refetch, policy order from the API is non-deterministic,
+      // so locate the form by the presence of the creation date input
+      // (only visible when method is "creation_date"), get its ID, then
+      // use a stable locator since changing method hides the date input
+      const creationDateFormEl = authenticatedPage
+        .locator('form[id^="autoprune-policy-form-"]')
+        .filter({
+          has: authenticatedPage.locator(
+            'input[aria-label="tag creation date value"]',
+          ),
+        });
+      const formId = await creationDateFormEl.getAttribute('id');
+      const updateForm = authenticatedPage.locator(`#${formId}`);
+      await updateForm
         .getByTestId('auto-prune-method')
         .selectOption('number_of_tags');
-      await secondForm.getByRole('button', {name: 'Save'}).click();
+      await updateForm.getByRole('button', {name: 'Save'}).click();
 
       await expect(
         authenticatedPage.getByText(
           'Successfully updated repository auto-prune policy',
         ),
       ).toBeVisible();
-      await expect(
-        secondForm.locator('input[aria-label="number of tags"]'),
-      ).toHaveValue('20');
 
-      // Wait for success message to disappear before delete
+      // After update, both policies are now "By number of tags".
+      // Verify we have two forms with tag count inputs: one with 25, one with 20.
+      // Use polling because the API refetch may reorder policies,
+      // causing React to re-render form values asynchronously.
+      const tagCountInputs = authenticatedPage.locator(
+        'input[aria-label="number of tags"]',
+      );
+      await expect(tagCountInputs).toHaveCount(2);
+      await expect(async () => {
+        const values = await tagCountInputs.evaluateAll(
+          (inputs: HTMLInputElement[]) => inputs.map((i) => i.value).sort(),
+        );
+        expect(values).toEqual(['20', '25']);
+      }).toPass({timeout: 10000});
+
       await expect(
         authenticatedPage.getByText(
           'Successfully updated repository auto-prune policy',
         ),
       ).not.toBeVisible({timeout: 10000});
 
-      // DELETE SECOND POLICY
-      await secondForm.getByTestId('auto-prune-method').selectOption('none');
-      await secondForm.getByRole('button', {name: 'Save'}).click();
+      // DELETE one of the policies - just delete from the last form
+      // (order doesn't matter, we just need to verify deletion works)
+      const lastForm = authenticatedPage
+        .locator('form[id^="autoprune-policy-form-"]')
+        .last();
+      await lastForm.getByTestId('auto-prune-method').selectOption('none');
+      await lastForm.getByRole('button', {name: 'Save'}).click();
 
       await expect(
         authenticatedPage.getByText(
           'Successfully deleted repository auto-prune policy',
         ),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.locator('#autoprune-policy-form-1'),
-      ).not.toBeVisible();
 
-      // Wait for success message to disappear before deleting first policy
+      // Should only have one form left
+      await expect(
+        authenticatedPage.locator('form[id^="autoprune-policy-form-"]'),
+      ).toHaveCount(1);
+
       await expect(
         authenticatedPage.getByText(
           'Successfully deleted repository auto-prune policy',
         ),
       ).not.toBeVisible({timeout: 10000});
 
-      // DELETE FIRST POLICY
-      const firstForm = authenticatedPage.locator('#autoprune-policy-form-0');
-      await firstForm.getByTestId('auto-prune-method').selectOption('none');
-      await firstForm.getByRole('button', {name: 'Save'}).click();
+      // DELETE REMAINING POLICY
+      const remainingForm = authenticatedPage.locator(
+        '#autoprune-policy-form-0',
+      );
+      await remainingForm.getByTestId('auto-prune-method').selectOption('none');
+      await remainingForm.getByRole('button', {name: 'Save'}).click();
 
       await expect(
         authenticatedPage.getByText(
