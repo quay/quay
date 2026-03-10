@@ -60,6 +60,7 @@ interface UsageLogsTableProps {
   repo: string;
   type: string;
   isSuperuser?: boolean;
+  enabled?: boolean;
 }
 
 interface LogEntry {
@@ -119,6 +120,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     },
     initialPageParam: undefined,
     getNextPageParam: (lastPage: LogPage) => lastPage.nextPage,
+    enabled: props.enabled !== false,
   });
 
   // Flatten all log pages into a single array for our table hook

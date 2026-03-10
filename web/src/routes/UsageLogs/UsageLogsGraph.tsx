@@ -23,6 +23,7 @@ interface UsageLogsGraphProps {
   type: string;
   isSuperuser?: boolean;
   isHidden?: boolean;
+  enabled?: boolean;
 }
 
 export default function UsageLogsGraph(props: UsageLogsGraphProps) {
@@ -55,8 +56,8 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     isError: errorFetchingLogs,
     error: fetchError,
     isLoading: loadingAggregateLogs,
-  } = useQuery(
-    [
+  } = useQuery({
+    queryKey: [
       'usageLogs',
       props.starttime,
       props.endtime,
@@ -67,7 +68,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
         isSuperuser: props.isSuperuser,
       },
     ],
-    async () => {
+    queryFn: async () => {
       return await getAggregateLogs(
         props.org,
         props.repo,
@@ -76,7 +77,8 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
         props.isSuperuser,
       );
     },
-  );
+    enabled: props.enabled !== false,
+  });
 
   // tslint:disable-next-line:curly
   if (loadingAggregateLogs) return <Spinner />;

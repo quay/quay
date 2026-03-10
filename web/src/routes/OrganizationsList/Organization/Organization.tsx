@@ -205,6 +205,7 @@ export default function Organization() {
           organization={organizationName}
           repository={null}
           type="org"
+          isActive={activeTabKey === 'Logs'}
         />
       ),
       visible: isUserOrganization
@@ -258,9 +259,7 @@ export default function Organization() {
                     eventKey={nav.name.replace(/ /g, '')}
                     title={<TabTitleText>{nav.name}</TabTitleText>}
                   >
-                    {activeTabKey === nav.name.replace(/ /g, '')
-                      ? nav.component
-                      : null}
+                    {nav.component}
                   </Tab>
                 ))}
             </Tabs>
