@@ -1447,8 +1447,9 @@ class TestManifestUtils:
         assert is_manifest_list("not valid json") is False
 
     def test_is_manifest_list_none_input(self):
-        """None input returns False (TypeError path)."""
-        assert is_manifest_list(None) is False
+        """None input raises ValueError."""
+        with pytest.raises(ValueError):
+            is_manifest_list(None)
 
     def test_is_manifest_list_no_media_type_no_manifests(self):
         """Non-list manifest without mediaType or manifests key returns False."""
