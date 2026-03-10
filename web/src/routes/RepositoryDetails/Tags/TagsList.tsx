@@ -168,6 +168,9 @@ export default function TagsList(props: TagsProps) {
           org={props.organization}
           repo={props.repository}
           tags={paginatedTags}
+          allTags={sortedTags}
+          page={paginationProps.page}
+          perPage={paginationProps.perPage}
           loading={loading}
           selectAllTags={selectAllTags}
           selectedTags={selectedTags}

@@ -906,7 +906,7 @@ func ValidateLDAPServer(opts Options, ldapUri, ldapAdminDn, ldapAdminPasswd, lda
 }
 
 // ValidateOIDCServer validates that the provided oidc server is valid
-func ValidateOIDCServer(opts Options, oidcServer, clientID, clientSecret, serviceName string, loginScopes []interface{}, fgName string) (bool, ValidationError) {
+func ValidateOIDCServer(opts Options, oidcServer, clientID, clientSecret, serviceName string, loginScopes []interface{}, redirectURL, fgName string) (bool, ValidationError) {
 
 	// Create http client
 	config, err := GetTlsConfig(opts)
@@ -947,11 +947,15 @@ func ValidateOIDCServer(opts Options, oidcServer, clientID, clientSecret, servic
 		}
 	}
 
+	if redirectURL == "" {
+		redirectURL = "http://quay/oauth2/auth0/callback"
+	}
+
 	oauth2Config := oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Endpoint:     p.Endpoint(),
-		RedirectURL:  "http://quay/oauth2/auth0/callback",
+		RedirectURL:  redirectURL,
 		Scopes:       InterfaceArrayToStringArray(loginScopes),
 	}
 
