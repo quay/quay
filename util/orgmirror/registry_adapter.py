@@ -68,6 +68,8 @@ class RegistryAdapter(ABC):
             proxies["http"] = self.proxy["http_proxy"]
         if self.proxy.get("https_proxy"):
             proxies["https"] = self.proxy["https_proxy"]
+        if self.proxy.get("no_proxy"):
+            proxies["no_proxy"] = self.proxy["no_proxy"]
         return proxies
 
     def _create_session(self) -> requests.Session:
