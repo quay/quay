@@ -25,6 +25,8 @@ from auth.permissions import (
     ReadRepositoryPermission,
 )
 from data.database import RepositoryState
+from data.model import DataModelException
+from data.model.org_mirror import is_namespace_org_mirrored
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
@@ -174,15 +176,25 @@ class RepositoryList(ApiResource):
             if not valid_repository_name:
                 raise InvalidRequest("Invalid repository name")
 
+            if features.ORG_MIRROR and is_namespace_org_mirrored(namespace_name):
+                raise InvalidRequest(
+                    "Cannot create repository: organization is managed by "
+                    "organization-level mirroring"
+                )
+
             kind = req.get("repo_kind", "image") or "image"
-            created = model.create_repo(
-                namespace_name,
-                repository_name,
-                owner,
-                req["description"],
-                visibility=visibility,
-                repo_kind=kind,
-            )
+            try:
+                created = model.create_repo(
+                    namespace_name,
+                    repository_name,
+                    owner,
+                    req["description"],
+                    visibility=visibility,
+                    repo_kind=kind,
+                )
+            except DataModelException as e:
+                raise InvalidRequest(str(e)) from e
+
             if created is None:
                 raise InvalidRequest("Could not create repository")
 
@@ -543,6 +555,12 @@ class RepositoryStateResource(RepositoryParamResource):
 
         if state == RepositoryState.ORG_MIRROR:
             return {"detail": "ORG_MIRROR state is managed by organization-level mirroring"}, 400
+
+        if features.ORG_MIRROR and is_namespace_org_mirrored(namespace):
+            return {
+                "detail": "Repository state changes are not allowed in an "
+                "organization managed by organization-level mirroring"
+            }, 400
 
         if state is None:
             return {"detail": "%s is not a valid Repository state." % state_name}, 400

@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   EmptyState,
   EmptyStateActions,
@@ -12,8 +13,11 @@ import {
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {LockIcon, PencilAltIcon, TrashIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
+import {useQuery} from '@tanstack/react-query';
+import {isAxiosError} from 'axios';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import RequestError from 'src/components/errors/RequestError';
+import {getOrgMirrorConfig} from 'src/resources/OrgMirrorResource';
 import {
   useCreateNamespaceImmutabilityPolicy,
   useDeleteNamespaceImmutabilityPolicy,
@@ -63,6 +67,22 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
   );
   const [isAddingNew, setIsAddingNew] = useState(false);
   const {addAlert} = useUI();
+
+  const {data: isOrgMirrored, isLoading: isOrgMirrorLoading} =
+    useQuery<boolean>({
+      queryKey: ['org-mirror-config-exists', props.org],
+      queryFn: async () => {
+        try {
+          await getOrgMirrorConfig(props.org);
+          return true;
+        } catch (err) {
+          if (isAxiosError(err) && err.response?.status === 404) {
+            return false;
+          }
+          throw err;
+        }
+      },
+    });
 
   const {
     error,
@@ -173,7 +193,7 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
             variant="primary"
             onClick={handleAddNew}
             data-testid="add-immutability-policy-btn"
-            isDisabled={isAddingNew}
+            isDisabled={isAddingNew || isOrgMirrorLoading || !!isOrgMirrored}
           >
             Add Policy
           </Button>
@@ -184,6 +204,14 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
         matching. Tags that match the configured patterns cannot be modified or
         deleted.
       </p>
+      {!!isOrgMirrored && (
+        <Alert
+          isInline
+          variant="warning"
+          title="Immutability policies cannot be added while organization-level mirroring is active. Remove the organization mirror configuration first."
+          className="pf-v5-u-mb-md"
+        />
+      )}
 
       {!hasPolicies && !isAddingNew && (
         <EmptyState>
@@ -202,6 +230,7 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
                 variant="primary"
                 onClick={handleAddNew}
                 data-testid="add-immutability-policy-btn"
+                isDisabled={isOrgMirrorLoading || !!isOrgMirrored}
               >
                 Add Policy
               </Button>
