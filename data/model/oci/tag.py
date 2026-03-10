@@ -416,6 +416,7 @@ def retarget_tag(
     now_ms=None,
     raise_on_error=False,
     expiration_seconds=None,
+    immutable_from_label=False,
 ):
     """
     Creates or updates a tag with the specified name to point to the given manifest under its
@@ -484,12 +485,14 @@ def retarget_tag(
             delete_tag_notifications_for_tag(existing_tag)
             Tag.update(lifetime_end_ms=now_ms).where(Tag.id == existing_tag.id).execute()
 
-        # Check if tag should be immutable based on policies
+        # Check if tag should be immutable based on manifest label or policies
         immutable = False
+        immutable_from_policy = False
         if features.IMMUTABLE_TAGS:
-            immutable = immutability.evaluate_immutability_policies(
+            immutable_from_policy = immutability.evaluate_immutability_policies(
                 manifest.repository_id, repo.namespace_user_id, tag_name
             )
+            immutable = immutable_from_label or immutable_from_policy
 
         # Compute lifetime_end_ms, clearing it for immutable tags when config disallows
         lifetime_end_ms = (now_ms + expiration_seconds * 1000) if expiration_seconds else None
@@ -512,12 +515,12 @@ def retarget_tag(
         )
 
         # Capture values for logging outside the transaction
-        namespace_name = repo.namespace_user.username if immutable else None
-        repo_name = repo.name if immutable else None
+        namespace_name = repo.namespace_user.username if immutable_from_policy else None
+        repo_name = repo.name if immutable_from_policy else None
 
     # Best-effort audit log outside the transaction so a logging failure
     # does not roll back the tag creation.
-    if immutable:
+    if immutable_from_policy:
         try:
             from data.logs_model import logs_model
 
