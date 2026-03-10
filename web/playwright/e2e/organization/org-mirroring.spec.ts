@@ -949,7 +949,7 @@ test.describe(
           .first(),
       ).toBeVisible();
 
-      // Click Cancel instead of confirm
+      // Click Cancel instead of confirm (exact: true to avoid matching "Cancel Sync")
       await authenticatedPage
         .getByRole('button', {name: 'Cancel', exact: true})
         .click();
