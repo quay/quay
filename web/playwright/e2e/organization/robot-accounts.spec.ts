@@ -216,6 +216,76 @@ test.describe(
       ).toContainText(encodedExpectedAuthJsonRegistry);
     });
 
+    test('Docker Configuration tab shows auth.json content and download link', async ({
+      authenticatedPage,
+      authenticatedRequest,
+      api,
+    }) => {
+      const org = await api.organization('dockercfgorg');
+      const robot = await api.robot(
+        org.name,
+        'dockerbot',
+        'Robot for Docker config test',
+      );
+
+      // Get server hostname from config
+      const configResponse = await authenticatedRequest.get(
+        `${API_URL}/config`,
+      );
+      const config = await configResponse.json();
+      const serverHostname = config.config.SERVER_HOSTNAME;
+
+      // Get robot token from API
+      const robotResponse = await authenticatedRequest.get(
+        `${API_URL}/api/v1/organization/${org.name}/robots/${robot.shortname}`,
+      );
+      const robotData = await robotResponse.json();
+      const robotToken = robotData.token;
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Robotaccounts`,
+      );
+
+      // Wait for table and click on robot
+      await expect(
+        authenticatedPage.getByTestId('robot-accounts-table'),
+      ).toBeVisible({timeout: 15000});
+      await authenticatedPage
+        .locator('a')
+        .filter({hasText: robot.fullName})
+        .click();
+
+      // Switch to Docker Configuration tab
+      await authenticatedPage.getByTestId('docker-config-tab').click();
+
+      // Expand the config content
+      await authenticatedPage
+        .getByTestId('docker-config-content')
+        .locator('button[aria-label="Show content"]')
+        .click();
+
+      // Verify the Docker config contains correct auth encoding (organization scope)
+      const robotCredential = `${robot.fullName}:${robotToken}`;
+      const encodedRobotCredential =
+        Buffer.from(robotCredential).toString('base64');
+
+      await expect(
+        authenticatedPage.getByTestId('docker-config-content').locator('pre'),
+      ).toContainText(encodedRobotCredential);
+
+      // Verify download link is present with correct filename
+      const escapedName = robot.fullName.replace(/[^a-zA-Z0-9]/g, '-');
+      const expectedFilename = `${escapedName}-auth.json`;
+      await expect(
+        authenticatedPage.getByTestId('docker-config-download'),
+      ).toContainText(expectedFilename);
+
+      // Verify mv command is shown (ClipboardCopy stores value in an input)
+      await expect(
+        authenticatedPage.locator('#docker-config-mv input'),
+      ).toHaveValue(`mv ${escapedName}-auth.json ~/.docker/config.json`);
+    });
+
     test('robot repository permissions: update single permission', async ({
       authenticatedPage,
       api,
