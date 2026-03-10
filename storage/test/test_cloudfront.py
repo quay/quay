@@ -1,9 +1,11 @@
 import os
 import urllib.parse
 from contextlib import contextmanager
+from unittest.mock import MagicMock
 
 import boto3
 import pytest
+from cryptography import exceptions as crypto_exceptions
 from mock import patch
 from moto import mock_s3
 
@@ -289,3 +291,51 @@ def test_direct_download_regions(
         parsed = urllib.parse.urlparse(presign)
         region = urllib.parse.unquote(parsed.query.split("&")[1]).split("/")[2]
         assert region == region_name
+
+
+@mock_s3
+def test_rsa_sha1_fallback_when_crypto_policy_blocks_sha1(
+    test_aws_ip, aws_ip_range_data, ipranges_populated, app
+):
+    """Verify CloudFront URL signing falls back to pure-Python rsa library
+    when the system crypto policy blocks SHA-1 (e.g., RHEL9)."""
+    ipresolver = IPResolver(app)
+    context = StorageContext("nyc", None, config_provider, ipresolver)
+
+    boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
+
+    engine = CloudFrontedS3Storage(
+        context,
+        "cloudfrontdomain",
+        "keyid",
+        "test/data/test.pem",
+        "some/path",
+        _TEST_BUCKET,
+        _TEST_REGION,
+        None,
+        _TEST_USER,
+        _TEST_PASSWORD,
+    )
+    engine.put_content(_TEST_PATH, _TEST_CONTENT)
+    assert engine.exists(_TEST_PATH)
+
+    # Clear the cached signer so our mock takes effect
+    engine._get_rsa_signer.cache_clear()
+    engine._get_cloudfront_signer.cache_clear()
+
+    # Build a mock private key that raises UnsupportedAlgorithm on sign()
+    # but delegates private_numbers() to the real key, so the rsa fallback
+    # can extract key material.
+    real_key = engine.cloudfront_privatekey
+    mock_key = MagicMock()
+    mock_key.sign.side_effect = crypto_exceptions.UnsupportedAlgorithm(
+        "SHA1 blocked by crypto policy"
+    )
+    mock_key.private_numbers.return_value = real_key.private_numbers()
+    engine.cloudfront_privatekey = mock_key
+
+    url = engine.get_direct_download_url(_TEST_PATH, request_ip="1.2.3.4")
+
+    assert "cloudfrontdomain" in url
+    assert "Signature=" in url or "Signature" in url
+    assert "Key-Pair-Id=keyid" in url
