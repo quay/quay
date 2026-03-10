@@ -9,6 +9,7 @@ from cachetools.func import ttl_cache
 from peewee import JOIN, SQL, Case, IntegrityError, fn
 
 import data
+import features
 from data.database import (
     BlobUpload,
     DeletedRepository,
@@ -138,6 +139,10 @@ def create_repository(
 
     try:
         with db_transaction():
+            if features.ORG_MIRROR:
+                # Lock the org row to serialize against concurrent org mirror config creation
+                db_for_update(User.select().where(User.id == namespace_user.id)).get()
+
             # Check if the repository exists to avoid an IntegrityError if possible.
             existing = get_repository(namespace, name)
             if existing is not None:

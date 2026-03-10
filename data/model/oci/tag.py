@@ -22,7 +22,13 @@ from data.database import (
     db_transaction,
     get_epoch_timestamp_ms,
 )
-from data.model import DataModelException, ImmutableTagException, config, user
+from data.model import (
+    DataModelException,
+    ImmutableTagException,
+    config,
+    immutability,
+    user,
+)
 from data.model.notification import delete_tag_notifications_for_tag
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -481,8 +487,6 @@ def retarget_tag(
         # Check if tag should be immutable based on policies
         immutable = False
         if features.IMMUTABLE_TAGS:
-            from data.model import immutability
-
             immutable = immutability.evaluate_immutability_policies(
                 manifest.repository_id, repo.namespace_user_id, tag_name
             )
