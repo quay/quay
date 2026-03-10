@@ -77,11 +77,11 @@ test.describe('Theme Switcher', {tag: ['@ui']}, () => {
     // Emulate dark mode preference
     await authenticatedPage.emulateMedia({colorScheme: 'dark'});
     await authenticatedPage.goto('/overview');
+    await authenticatedPage.waitForLoadState('networkidle');
 
     // With auto theme (default), should show dark
     await expect(authenticatedPage.locator('html')).toHaveClass(
       /pf-v5-theme-dark/,
-      {timeout: 10000},
     );
 
     // Verify auto is still selected
