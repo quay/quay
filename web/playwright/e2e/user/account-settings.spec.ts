@@ -183,11 +183,12 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
         .locator('#delete-confirmation-input')
         .fill(password);
       await authenticatedPage.locator('#submit').click();
+      await authenticatedPage.waitForLoadState('networkidle');
 
-      // Credentials modal should appear (allow extra time for API round-trip)
+      // Credentials modal should appear
       await expect(
         authenticatedPage.getByText(`Credentials for ${username}`),
-      ).toBeVisible({timeout: 15000});
+      ).toBeVisible();
 
       // Verify all credential format tabs exist
       await expect(
