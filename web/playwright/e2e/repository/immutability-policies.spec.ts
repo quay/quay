@@ -542,6 +542,41 @@ test.describe(
       });
     });
 
+    test.describe('Org Mirror Conflict', () => {
+      test('cannot add immutability policy when org mirror is configured', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('immpolmirr');
+        const robot = await api.robot(org.name, 'mirrorbot');
+
+        const syncStartDate = new Date();
+        syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+        await api.raw.createOrgMirrorConfig(org.name, {
+          external_registry_type: 'quay',
+          external_registry_url: 'https://quay.io',
+          external_namespace: 'projectquay',
+          robot_username: robot.fullName,
+          visibility: 'private',
+          sync_interval: 3600,
+          sync_start_date: syncStartDate
+            .toISOString()
+            .replace(/\.\d{3}Z$/, 'Z'),
+        });
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+        await authenticatedPage.getByTestId('Immutability Policies').click();
+
+        // Verify warning and disabled add button
+        await expect(
+          authenticatedPage.getByText(/organization-level mirroring/i),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('add-immutability-policy-btn'),
+        ).toBeDisabled();
+      });
+    });
+
     test.describe('Permanence Warning', () => {
       test('shows warning when creating a new org policy', async ({
         authenticatedPage,

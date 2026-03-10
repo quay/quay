@@ -874,6 +874,26 @@ test.describe(
       ).not.toBeVisible();
     });
 
+    test('cannot enable org mirror when immutability policies exist', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrimm');
+      await api.orgImmutabilityPolicy(org.name, 'v.*', true);
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Organization state').click();
+      await authenticatedPage.getByRole('radio', {name: 'Mirror'}).click();
+
+      // Verify warning alert is shown and submit is disabled
+      await expect(
+        authenticatedPage.getByTestId('immutability-conflict-alert'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('button', {name: 'Submit'}),
+      ).toBeDisabled();
+    });
+
     test('cancel delete modal keeps config intact', async ({
       authenticatedPage,
       api,
@@ -913,7 +933,9 @@ test.describe(
       ).toBeVisible();
 
       // Click Cancel instead of confirm
-      await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
+      await authenticatedPage
+        .getByRole('button', {name: 'Cancel', exact: true})
+        .click();
 
       // Modal should be closed
       await expect(
