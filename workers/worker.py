@@ -10,6 +10,7 @@ from threading import Event
 
 import sentry_sdk
 from apscheduler.schedulers.background import BackgroundScheduler
+from prometheus_client import Gauge, Histogram
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
@@ -22,6 +23,21 @@ from util.log import logfile_path
 from util.saas.exceptionlog import _sentry_before_send_ignore_known
 
 logger = logging.getLogger(__name__)
+
+WORKER_DURATION_BUCKETS = (1, 5, 10, 30, 60, 120, 300, 600, 1800, 3600, float("inf"))
+
+worker_operation_duration = Histogram(
+    "quay_worker_operation_duration_seconds",
+    "Duration of worker operations in seconds",
+    labelnames=["worker", "operation"],
+    buckets=WORKER_DURATION_BUCKETS,
+)
+
+worker_operation_in_progress = Gauge(
+    "quay_worker_operation_in_progress",
+    "Whether a worker operation is currently running",
+    labelnames=["worker", "operation"],
+)
 
 
 def with_exponential_backoff(backoff_multiplier=10, max_backoff=3600, max_retries=10):
@@ -122,15 +138,29 @@ class Worker(object):
         pass
 
     def add_operation(self, operation_func, operation_sec):
+        worker_name = self.__class__.__name__
+        operation_name = operation_func.__name__
+
+        duration_metric = worker_operation_duration.labels(
+            worker=worker_name, operation=operation_name
+        )
+        in_progress_metric = worker_operation_in_progress.labels(
+            worker=worker_name, operation=operation_name
+        )
+
         @wraps(operation_func)
         def _operation_func():
+            in_progress_metric.inc()
+            start = time.monotonic()
             try:
                 with UseThenDisconnect(app.config):
                     return operation_func()
             except Exception:
                 logger.exception("Operation raised exception")
-                # Sentry SDK automatically captures exceptions when configured
                 sentry_sdk.capture_exception()
+            finally:
+                duration_metric.observe(time.monotonic() - start)
+                in_progress_metric.dec()
 
         self._operations.append((_operation_func, operation_sec))
 
