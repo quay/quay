@@ -23,6 +23,8 @@ from data.model import DataModelException, InvalidOrganizationException
 from data.model.immutability import namespace_has_immutable_tags
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
     allow_if_superuser_with_full_access,
     log_action,
     nickname,
@@ -208,7 +210,13 @@ class OrgMirrorConfig(ApiResource):
         """
         Get the organization-level mirror configuration.
         """
-        require_org_admin(orgname)
+        permission = AdministerOrganizationPermission(orgname)
+        if (
+            not permission.can()
+            and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
+            raise Unauthorized()
 
         try:
             org = model.organization.get_organization(orgname)
@@ -750,7 +758,13 @@ class OrgMirrorRepositories(ApiResource):
                 - total: Total number of matching repositories
                 - has_next: Whether there are more pages
         """
-        require_org_admin(orgname)
+        permission = AdministerOrganizationPermission(orgname)
+        if (
+            not permission.can()
+            and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
+            raise Unauthorized()
 
         try:
             org = model.organization.get_organization(orgname)
