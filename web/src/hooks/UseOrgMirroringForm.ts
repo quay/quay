@@ -22,6 +22,7 @@ export const defaultFormValues: OrgMirroringFormData = {
   httpsProxy: '',
   noProxy: '',
   skopeoTimeout: 300,
+  preserveSignatures: false,
 };
 
 export const useOrgMirroringForm = () => {

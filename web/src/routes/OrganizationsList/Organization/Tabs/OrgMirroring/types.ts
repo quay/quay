@@ -22,4 +22,5 @@ export interface OrgMirroringFormData {
   httpsProxy: string;
   noProxy: string;
   skopeoTimeout: number | null;
+  preserveSignatures: boolean;
 }

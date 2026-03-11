@@ -1531,3 +1531,67 @@ class TestOrgMirrorSSRFProtection:
             assert "not allowed" in resp.json.get("error_message", "")
 
         _cleanup_org_mirror_config("buynlarge")
+
+
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
+class TestPreserveSignaturesConfig:
+    """Tests for preserve_signatures in external_registry_config."""
+
+    def test_create_with_preserve_signatures(self, app):
+        """POST with preserve_signatures in external_registry_config stores the value."""
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": _EMPTY_ORG}
+            request_body = {
+                "external_registry_type": "harbor",
+                "external_registry_url": "https://harbor.example.com",
+                "external_namespace": "my-project",
+                "robot_username": _EMPTY_ORG_ROBOT,
+                "visibility": "private",
+                "sync_interval": 3600,
+                "sync_start_date": "2025-01-01T00:00:00Z",
+                "external_registry_config": {
+                    "verify_tls": True,
+                    "preserve_signatures": True,
+                },
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+
+        # Verify via GET roundtrip
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": _EMPTY_ORG}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+            ext_config = resp.json.get("external_registry_config", {})
+            assert ext_config.get("preserve_signatures") is True
+            assert ext_config.get("verify_tls") is True
+
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+
+    def test_update_preserve_signatures_roundtrip(self, app):
+        """PUT with preserve_signatures updates the value and GET returns it."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_config={"verify_tls": True, "preserve_signatures": False},
+        )
+
+        # Update to enable preserve_signatures
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_config": {
+                    "verify_tls": True,
+                    "preserve_signatures": True,
+                },
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, request_body, 200)
+
+        # Verify via GET
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+            ext_config = resp.json.get("external_registry_config", {})
+            assert ext_config.get("preserve_signatures") is True
+
+        _cleanup_org_mirror_config("buynlarge")

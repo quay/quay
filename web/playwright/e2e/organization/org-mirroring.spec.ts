@@ -734,6 +734,11 @@ test.describe(
       // Uncheck TLS verification
       await authenticatedPage.getByTestId('verify-tls-checkbox').click();
 
+      // Enable preserve signatures
+      await authenticatedPage
+        .getByTestId('preserve-signatures-checkbox')
+        .click();
+
       // Fill in proxy settings
       await authenticatedPage
         .getByTestId('http-proxy-input')
@@ -766,6 +771,7 @@ test.describe(
       expect(config?.external_registry_config?.proxy?.no_proxy).toBe(
         'localhost,127.0.0.1',
       );
+      expect(config?.external_registry_config?.preserve_signatures).toBe(true);
     });
 
     test('saves credentials (username and password)', async ({

@@ -29,6 +29,15 @@ export const OrgMirroringAdvancedSettings: React.FC<
         data-testid="verify-tls-checkbox"
       />
 
+      <FormCheckbox
+        name="preserveSignatures"
+        control={control}
+        label="Preserve image signatures"
+        fieldId="preserve_signatures"
+        description="Keep existing image signatures (GPG, DCT) during mirroring instead of stripping them."
+        data-testid="preserve-signatures-checkbox"
+      />
+
       <FormTextInput
         name="httpProxy"
         control={control}
