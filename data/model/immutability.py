@@ -25,6 +25,35 @@ from data.model._basequery import get_existing_repository
 logger = logging.getLogger(__name__)
 
 
+def _log_tags_made_immutable_by_policy(
+    namespace: str,
+    repo_name: Optional[str],
+    policy_config: "PolicyConfig",
+    count: int,
+) -> None:
+    """Best-effort audit log when existing tags are retroactively made immutable by policy."""
+    try:
+        from data.logs_model import logs_model
+
+        metadata: dict = {
+            "namespace": namespace,
+            "tag_pattern": policy_config["tag_pattern"],
+            "tag_pattern_matches": policy_config.get("tag_pattern_matches", True),
+            "count": count,
+        }
+        if repo_name is not None:
+            metadata["repo"] = repo_name
+
+        logs_model.log_action(
+            "tags_made_immutable_by_policy",
+            namespace_name=namespace,
+            repository_name=repo_name,
+            metadata=metadata,
+        )
+    except Exception:
+        logger.exception("Failed to log tags_made_immutable_by_policy for namespace %s", namespace)
+
+
 class PolicyConfig(TypedDict, total=False):
     tag_pattern: str
     tag_pattern_matches: bool
@@ -294,7 +323,7 @@ def create_namespace_immutability_policy(
     # Retroactively apply policy to existing tags (outside transaction to avoid long locks)
     # If this fails, delete the policy and re-raise the exception
     try:
-        apply_immutability_policy_to_existing_tags(
+        total_marked = apply_immutability_policy_to_existing_tags(
             namespace_id=namespace_id,
             repository_id=None,
             tag_pattern=policy_config["tag_pattern"],
@@ -315,6 +344,9 @@ def create_namespace_immutability_policy(
                 policy_uuid,
             )
         raise
+
+    if total_marked > 0:
+        _log_tags_made_immutable_by_policy(orgname, None, policy_config, total_marked)
 
     return policy
 
@@ -349,7 +381,7 @@ def update_namespace_immutability_policy(
     # Retroactively apply policy to existing tags (outside transaction to avoid long locks)
     # If this fails, restore the old config and re-raise the exception
     try:
-        apply_immutability_policy_to_existing_tags(
+        total_marked = apply_immutability_policy_to_existing_tags(
             namespace_id=namespace_id,
             repository_id=None,
             tag_pattern=policy_config["tag_pattern"],
@@ -374,6 +406,9 @@ def update_namespace_immutability_policy(
                 old_config,
             )
         raise
+
+    if total_marked > 0:
+        _log_tags_made_immutable_by_policy(orgname, None, policy_config, total_marked)
 
     return True
 
@@ -455,7 +490,7 @@ def create_repository_immutability_policy(
     # Retroactively apply policy to existing tags (outside transaction to avoid long locks)
     # If this fails, delete the policy and re-raise the exception
     try:
-        apply_immutability_policy_to_existing_tags(
+        total_marked = apply_immutability_policy_to_existing_tags(
             namespace_id=namespace_id,
             repository_id=repo_id,
             tag_pattern=policy_config["tag_pattern"],
@@ -476,6 +511,9 @@ def create_repository_immutability_policy(
                 policy_uuid,
             )
         raise
+
+    if total_marked > 0:
+        _log_tags_made_immutable_by_policy(orgname, repo_name, policy_config, total_marked)
 
     return policy
 
@@ -515,7 +553,7 @@ def update_repository_immutability_policy(
     # Retroactively apply policy to existing tags (outside transaction to avoid long locks)
     # If this fails, restore the old config and re-raise the exception
     try:
-        apply_immutability_policy_to_existing_tags(
+        total_marked = apply_immutability_policy_to_existing_tags(
             namespace_id=namespace_id,
             repository_id=repo_id,
             tag_pattern=policy_config["tag_pattern"],
@@ -540,6 +578,9 @@ def update_repository_immutability_policy(
                 old_config,
             )
         raise
+
+    if total_marked > 0:
+        _log_tags_made_immutable_by_policy(orgname, repo_name, policy_config, total_marked)
 
     return True
 
