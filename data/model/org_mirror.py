@@ -5,7 +5,7 @@ Business logic for organization-level mirror configuration.
 
 import fnmatch
 from datetime import datetime, timedelta
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 from peewee import JOIN, IntegrityError, fn
 
@@ -461,6 +461,8 @@ def sync_discovered_repos(
     Creates new OrgMirrorRepository entries for newly discovered repos.
     Does NOT delete repos that are no longer in the source (that's a separate operation).
 
+    Uses batch SELECT + INSERT to avoid N+1 queries.
+
     Args:
         config: The OrgMirrorConfig instance
         discovered_names: List of repository names discovered from source
@@ -468,15 +470,63 @@ def sync_discovered_repos(
     Returns:
         Tuple of (total_count, newly_created_count)
     """
-    newly_created = 0
+    if not discovered_names:
+        return 0, 0
+
+    # Deduplicate while preserving order
+    discovered_names = list(dict.fromkeys(discovered_names))
+
+    # COUNT before transaction to measure net rows created accurately.
+    # The FK column org_mirror_config_id is indexed, so this is cheap.
+    count_before = (
+        OrgMirrorRepository.select(fn.COUNT(OrgMirrorRepository.id))
+        .where(OrgMirrorRepository.org_mirror_config == config)
+        .scalar()
+    )
 
     with db_transaction():
-        for repo_name in discovered_names:
-            _, created = get_or_create_org_mirror_repo(config, repo_name)
-            if created:
-                newly_created += 1
+        # Batch SELECT: fetch all existing repo names in one query
+        # Chunk the IN clause for SQLite compatibility (max ~999 variables)
+        existing_names: Set[str] = set()
+        for i in range(0, len(discovered_names), 900):
+            chunk = discovered_names[i : i + 900]
+            existing_names.update(
+                row.repository_name
+                for row in OrgMirrorRepository.select(OrgMirrorRepository.repository_name).where(
+                    (OrgMirrorRepository.org_mirror_config == config)
+                    & (OrgMirrorRepository.repository_name << chunk)
+                )
+            )
 
-    return len(discovered_names), newly_created
+        # Filter to only new repos
+        new_names = [name for name in discovered_names if name not in existing_names]
+
+        # Batch INSERT: bulk insert all new repos
+        if new_names:
+            now = datetime.utcnow()
+            rows = [
+                {
+                    "org_mirror_config": config,
+                    "repository_name": name,
+                    "discovery_date": now,
+                    "sync_status": OrgMirrorRepoStatus.NEVER_RUN,
+                    "creation_date": now,
+                    "sync_retries_remaining": MAX_SYNC_RETRIES,
+                    "sync_transaction_id": uuid_generator(),
+                }
+                for name in new_names
+            ]
+            # Chunk inserts for SQLite compatibility
+            for i in range(0, len(rows), 100):
+                OrgMirrorRepository.insert_many(rows[i : i + 100]).on_conflict_ignore().execute()
+
+    count_after = (
+        OrgMirrorRepository.select(fn.COUNT(OrgMirrorRepository.id))
+        .where(OrgMirrorRepository.org_mirror_config == config)
+        .scalar()
+    )
+
+    return len(discovered_names), count_after - count_before
 
 
 def get_eligible_org_mirror_repos():
