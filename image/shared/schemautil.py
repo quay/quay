@@ -96,29 +96,9 @@ class LazyManifestLoader(object):
         """Check if sparse index feature is enabled."""
         return self._app_config.get("FEATURE_SPARSE_INDEX", False)
 
-    def _get_required_archs(self):
-        """Get the list of required architectures for sparse index."""
-        return self._app_config.get("SPARSE_INDEX_REQUIRED_ARCHS", [])
-
     def _is_architecture_required(self):
-        """
-        Check if this manifest's architecture is in the required list.
-        Returns True if the architecture is required or if sparse index is not enabled.
-        """
-        if not self._is_sparse_index_enabled():
-            return True
-
-        required_archs = self._get_required_archs()
-        if not required_archs:
-            # If no required archs specified, all architectures are required
-            return True
-
-        arch = self.architecture
-        if arch is None:
-            # If no architecture specified in manifest, treat as required
-            return True
-
-        return arch in required_archs
+        """Returns False when sparse index is enabled (all archs optional), True otherwise."""
+        return not self._is_sparse_index_enabled()
 
     @property
     def manifest_obj(self):
