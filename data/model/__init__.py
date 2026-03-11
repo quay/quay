@@ -254,6 +254,7 @@ from data.model import (
     build,
     entitlements,
     gc,
+    immutability,
     label,
     log,
     message,

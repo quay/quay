@@ -38,6 +38,7 @@ from data.secscan_model.interface import (
     InvalidConfigurationException,
     SecurityScannerInterface,
 )
+from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from util.metrics.prometheus import secscan_result_duration
 from util.migrate.allocator import yield_random_entries
 from util.secscan import (
@@ -108,6 +109,64 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
 
     def garbage_collect_manifest_report(self, manifest_digest):
         raise NotImplementedError("Unsupported for this security scanner version")
+
+
+def _has_container_layers(layers):
+    """
+    Checks if the layers are proper container image layers. For images that do not contain image layers, such as
+    Singularity containers, Helm charts, artifacts and similar, we skip the scanning process.
+    """
+    from image.docker.schema2 import DOCKER_SCHEMA2_LAYER_CONTENT_TYPE
+    from image.docker.schema2.manifest import DockerV2ManifestImageLayer
+    from image.oci import OCI_IMAGE_LAYER_CONTENT_TYPES
+    from image.oci.manifest import OCIManifestImageLayer
+
+    CONTAINER_LAYER_TYPES = set(OCI_IMAGE_LAYER_CONTENT_TYPES + [DOCKER_SCHEMA2_LAYER_CONTENT_TYPE])
+
+    if not layers:
+        return False
+
+    for layer in layers:
+        layer_info = getattr(layer, "layer_info", None)
+
+        if layer_info is None or not hasattr(layer_info, "internal_layer"):
+            return False
+
+        internal = layer_info.internal_layer
+
+        # Docker Schema2 layers don't have a mediatype attribute - they're always container images
+        if isinstance(internal, DockerV2ManifestImageLayer):
+            continue
+
+        # OCI image layers - check blob_layer.mediatype for artifact detection
+        if isinstance(internal, OCIManifestImageLayer):
+            # If blob_layer is None, it's a processed container image layer
+            if internal.blob_layer is None:
+                continue
+            # If blob_layer exists, check its mediatype
+            elif hasattr(internal.blob_layer, "mediatype"):
+                if internal.blob_layer.mediatype not in CONTAINER_LAYER_TYPES:
+                    return False
+                continue
+            else:
+                # Unknown OCI layer structure
+                return False
+
+        # OCI layers with explicit mediatype (alternative format)
+        if hasattr(internal, "mediatype"):
+            if internal.mediatype not in CONTAINER_LAYER_TYPES:
+                return False
+
+        # Other layer formats with blob_layer
+        elif hasattr(internal, "blob_layer") and hasattr(internal.blob_layer, "mediatype"):
+            if internal.blob_layer.mediatype not in CONTAINER_LAYER_TYPES:
+                return False
+
+        # Unknown layer structure
+        else:
+            return False
+
+    return True
 
 
 def maybe_urlencoded(fixed_in: str) -> str:
@@ -388,6 +447,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 continue
 
             layers = registry_model.list_manifest_layers(manifest, self.storage, True)
+
             if layers is None or len(layers) == 0:
                 logger.warning(
                     "Cannot index %s/%s@%s due to manifest being invalid (manifest has no layers)"
@@ -399,6 +459,21 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
                 mark_manifest_unsupported(manifest)
                 continue
+
+            # We need to verify that the image layers are actual container images. Since Docker v2 schema 1 images
+            # cannot be anything other than container images, for them specifically we should skip the layer check.
+            if manifest.media_type not in DOCKER_SCHEMA1_CONTENT_TYPES:
+                if not _has_container_layers(layers):
+                    logger.info(
+                        "Cannot index %s/%s@%s due to manifest being invalid (manifest appears to be an artifact image)"
+                        % (
+                            candidate.repository.namespace_user,
+                            candidate.repository.name,
+                            manifest.digest,
+                        )
+                    )
+                    mark_manifest_unsupported(manifest)
+                    continue
 
             if should_skip_indexing(candidate):
                 logger.debug("Another worker preempted this worker")

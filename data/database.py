@@ -843,6 +843,7 @@ class User(BaseModel):
                 ManifestPullStatistics,
                 OrgMirrorConfig,
                 OrgMirrorRepository,
+                OrganizationContactEmail,
             } | v22_classes
             delete_instance_filtered(self, User, delete_nullable, skip_transitive_deletes)
 
@@ -2055,6 +2056,15 @@ class OrgMirrorRepository(BaseModel):
             # Composite index for efficient status counting per org mirror config
             (("org_mirror_config", "sync_status"), False),
         )
+
+
+class OrganizationContactEmail(BaseModel):
+    organization = QuayUserField(index=True, allows_robots=False, unique=True)
+    contact_email = CharField(null=True, index=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
 
 
 @unique

@@ -25,9 +25,12 @@ from auth.permissions import (
     ReadRepositoryPermission,
 )
 from data.database import RepositoryState
+from data.model import DataModelException
+from data.model.org_mirror import is_namespace_org_mirrored
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
     format_date,
@@ -173,15 +176,25 @@ class RepositoryList(ApiResource):
             if not valid_repository_name:
                 raise InvalidRequest("Invalid repository name")
 
+            if features.ORG_MIRROR and is_namespace_org_mirrored(namespace_name):
+                raise InvalidRequest(
+                    "Cannot create repository: organization is managed by "
+                    "organization-level mirroring"
+                )
+
             kind = req.get("repo_kind", "image") or "image"
-            created = model.create_repo(
-                namespace_name,
-                repository_name,
-                owner,
-                req["description"],
-                visibility=visibility,
-                repo_kind=kind,
-            )
+            try:
+                created = model.create_repo(
+                    namespace_name,
+                    repository_name,
+                    owner,
+                    req["description"],
+                    visibility=visibility,
+                    repo_kind=kind,
+                )
+            except DataModelException as e:
+                raise InvalidRequest(str(e)) from e
+
             if created is None:
                 raise InvalidRequest("Could not create repository")
 
@@ -323,6 +336,14 @@ class Repository(RepositoryParamResource):
         repo_data = repo.to_dict()
         repo_data["can_write"] = has_write_permission
         repo_data["can_admin"] = AdministerRepositoryPermission(namespace, repository).can()
+
+        # Grant superusers effective permissions for UI visibility
+        if allow_if_global_readonly_superuser():
+            repo_data["can_admin"] = True
+        elif features.SUPERUSERS_FULL_ACCESS and allow_if_superuser():
+            repo_data["can_admin"] = True
+            if repo.state == RepositoryState.NORMAL:
+                repo_data["can_write"] = True
 
         if parsed_args["includeStats"]:
             stats = []
@@ -534,6 +555,12 @@ class RepositoryStateResource(RepositoryParamResource):
 
         if state == RepositoryState.ORG_MIRROR:
             return {"detail": "ORG_MIRROR state is managed by organization-level mirroring"}, 400
+
+        if features.ORG_MIRROR and is_namespace_org_mirrored(namespace):
+            return {
+                "detail": "Repository state changes are not allowed in an "
+                "organization managed by organization-level mirroring"
+            }, 400
 
         if state is None:
             return {"detail": "%s is not a valid Repository state." % state_name}, 400

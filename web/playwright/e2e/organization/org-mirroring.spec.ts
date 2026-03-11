@@ -44,9 +44,39 @@ async function fillRequiredFields(
 
   const futureDate = new Date();
   futureDate.setMinutes(futureDate.getMinutes() + 5);
-  await page
-    .locator('#sync_start_date')
-    .fill(futureDate.toISOString().slice(0, 16));
+
+  // Fill DatePicker with YYYY-MM-DD format (matches component's dateFormat)
+  const year = futureDate.getFullYear();
+  const month = String(futureDate.getMonth() + 1).padStart(2, '0');
+  const day = String(futureDate.getDate()).padStart(2, '0');
+  const dateString = `${year}-${month}-${day}`;
+  const dateInput = page.getByLabel('Sync start date');
+  await dateInput.clear();
+  await dateInput.fill(dateString);
+
+  // Detect browser locale time format and fill TimePicker accordingly
+  const is24h = await page.evaluate(() => {
+    const resolved = new Intl.DateTimeFormat(undefined, {
+      hour: 'numeric',
+    }).resolvedOptions();
+    return resolved.hour12 !== true;
+  });
+  const hours24 = futureDate.getHours();
+  const mins = String(futureDate.getMinutes()).padStart(2, '0');
+  let timeString: string;
+  if (is24h) {
+    timeString = `${String(hours24).padStart(2, '0')}:${mins}`;
+  } else {
+    const period = hours24 >= 12 ? 'PM' : 'AM';
+    const h12 = hours24 % 12 || 12;
+    timeString = `${h12}:${mins} ${period}`;
+  }
+  const timeInput = page.getByRole('textbox', {name: 'Sync start time'});
+  await timeInput.clear();
+  await timeInput.fill(timeString);
+
+  // Dismiss any TimePicker popover before interacting with the robot dropdown
+  await page.keyboard.press('Escape');
 
   await page.locator('#robot-user-select').click();
   await page.getByRole('option', {name: robotFullName}).click();
@@ -861,6 +891,26 @@ test.describe(
       ).not.toBeVisible();
     });
 
+    test('cannot enable org mirror when immutability policies exist', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrimm');
+      await api.orgImmutabilityPolicy(org.name, 'v.*', true);
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Organization state').click();
+      await authenticatedPage.getByRole('radio', {name: 'Mirror'}).click();
+
+      // Verify warning alert is shown and submit is disabled
+      await expect(
+        authenticatedPage.getByTestId('immutability-conflict-alert'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('button', {name: 'Submit'}),
+      ).toBeDisabled();
+    });
+
     test('cancel delete modal keeps config intact', async ({
       authenticatedPage,
       api,
@@ -899,8 +949,10 @@ test.describe(
           .first(),
       ).toBeVisible();
 
-      // Click Cancel instead of confirm
-      await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
+      // Click Cancel instead of confirm (exact: true to avoid matching "Cancel Sync")
+      await authenticatedPage
+        .getByRole('button', {name: 'Cancel', exact: true})
+        .click();
 
       // Modal should be closed
       await expect(

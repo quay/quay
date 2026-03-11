@@ -109,22 +109,24 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeVisible();
   });
 
-  test('shows Splunk error message when logs are not implemented', async ({
+  test('shows info alert when Splunk search is not configured', async ({
     authenticatedPage,
     api,
   }) => {
     const org = await api.organization('splunk');
 
-    // Mock 501 error for logs API
+    // Mock 200 response with search_unavailable flag
     await authenticatedPage.route(
       '**/api/v1/organization/*/logs*',
       async (route) => {
         await route.fulfill({
-          status: 501,
+          status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
+            logs: [],
+            search_unavailable: true,
             message:
-              'Method not implemented, Splunk does not support log lookups',
+              'Audit log viewing requires a search_token to be configured for Splunk HEC.',
           }),
         });
       },
@@ -133,11 +135,13 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
       '**/api/v1/organization/*/aggregatelogs*',
       async (route) => {
         await route.fulfill({
-          status: 501,
+          status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
+            aggregated: [],
+            search_unavailable: true,
             message:
-              'Method not implemented, Splunk does not support log lookups',
+              'Audit log viewing requires a search_token to be configured for Splunk HEC.',
           }),
         });
       },
@@ -148,7 +152,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     await expect(
       authenticatedPage
         .getByText(
-          'Method not implemented, Splunk does not support log lookups',
+          'Audit log viewing requires a search_token to be configured for Splunk HEC.',
         )
         .first(),
     ).toBeVisible();

@@ -392,6 +392,61 @@ def test_delete_manifest_by_tag_immutable_returns_409(client, app):
         assert response_data["errors"][0]["code"] == "TAG_IMMUTABLE"
 
 
+def test_delete_manifest_by_digest_immutable_returns_409(client, app):
+    """Test that DELETE manifest by digest returns 409 when any tag is immutable."""
+    with toggle_feature("IMMUTABLE_TAGS", True):
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        manifest = registry_model.get_manifest_for_tag(tag)
+
+        # Make the tag immutable
+        set_tag_immutable(repo_ref.id, "latest", True)
+
+        params = {
+            "repository": "devtable/simple",
+            "manifest_ref": manifest.digest,
+        }
+
+        user = model.user.get_user("devtable")
+        access = [
+            {
+                "type": "repository",
+                "name": "devtable/simple",
+                "actions": ["pull", "push"],
+            }
+        ]
+
+        context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+        token = generate_bearer_token(
+            realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+        )
+
+        headers = {
+            "Authorization": "Bearer %s" % token,
+        }
+
+        rv = conduct_call(
+            client,
+            "v2.delete_manifest_by_digest",
+            url_for,
+            "DELETE",
+            params,
+            expected_code=409,
+            headers=headers,
+        )
+
+        # Verify TAG_IMMUTABLE error in response
+        response_data = json.loads(rv.data)
+        assert "errors" in response_data
+        assert len(response_data["errors"]) == 1
+
+        error = response_data["errors"][0]
+        assert error["code"] == "TAG_IMMUTABLE"
+        assert "immutable" in error["message"].lower()
+        assert "detail" in error
+        assert "latest" in error["detail"]["message"]
+
+
 def test_write_manifest_by_tagname_immutable_returns_409(client, app):
     """Test that PUT manifest on an immutable tag returns 409 with TAG_IMMUTABLE error."""
     with toggle_feature("IMMUTABLE_TAGS", True):

@@ -702,6 +702,51 @@ test.describe(
       ).not.toBeVisible();
     });
 
+    // PROJQUAY-10779: Verify usage logs show description for tag immutability changes
+    test('logs tag immutability change in usage logs', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await pushImage(
+        repo.namespace,
+        repo.name,
+        'v1.0.0',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Set tag as immutable to generate a log entry
+      await api.raw.setTagImmutability(
+        repo.namespace,
+        repo.name,
+        'v1.0.0',
+        true,
+      );
+
+      // Navigate to org Usage Logs tab
+      await authenticatedPage.goto(`/organization/${repo.namespace}?tab=Logs`);
+
+      // Wait for table to load
+      await expect(
+        authenticatedPage.getByTestId('usage-logs-table'),
+      ).toBeVisible();
+
+      // Filter by "immutable" to find our log entry
+      await authenticatedPage.getByPlaceholder('Filter logs').fill('immutable');
+
+      await authenticatedPage.waitForTimeout(500);
+
+      // Find the row for our specific repo (repo.name is unique per test)
+      const logRow = authenticatedPage
+        .getByTestId('usage-logs-table')
+        .getByRole('row')
+        .filter({hasText: repo.name});
+
+      // Verify the description shows the action, not "No description available"
+      await expect(logRow.getByText('set as immutable')).toBeVisible();
+    });
+
     // PROJQUAY-10500: Verify error messages show server details, not "Undefined"
     test('deleting an immutable tag shows server error message', async ({
       authenticatedPage,

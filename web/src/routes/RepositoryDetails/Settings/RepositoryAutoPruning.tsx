@@ -243,7 +243,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
           onSave={onSave}
           policy={policy}
           index={index}
-          key={index}
+          key={policy.uuid || index}
           successFetchingPolicies={successFetchingRepoPolicies}
         />
       ))}

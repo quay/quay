@@ -39,6 +39,7 @@ from data.database import (
     MediaType,
     NotificationKind,
     OAuthAuthorizationCode,
+    OrganizationContactEmail,
     ProxyCacheConfig,
     QuayRegion,
     QuayService,
@@ -72,6 +73,7 @@ from data.model.autoprune import (
     create_repository_autoprune_policy,
 )
 from data.model.oauth import assign_token_to_user
+from data.model.storage import get_layer_path
 from data.queue import WorkQueue
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
@@ -84,7 +86,10 @@ from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
 from image.docker.schema2.config import DockerSchema2Config
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci import OCI_CONTENT_TYPES
+from image.oci.config import OCIConfig
+from image.oci.manifest import OCIManifestBuilder
 from storage.basestorage import StoragePaths
+from util.bytes import Bytes
 from workers import repositoryactioncounter
 
 logger = logging.getLogger(__name__)
@@ -168,9 +173,6 @@ def __create_manifest_and_tags(
         else DockerSchema1ManifestBuilder(repo.namespace_user.username, repo.name, "")
     )
 
-    # TODO: Change this to a mixture of Schema1 and Schema2 manifest once we no longer need to
-    # read from storage for Schema2.
-
     # Populate layers. Note, we do this in reverse order using insert_layer, as it is easier to
     # add the leaf last (even though Schema1 has it listed first).
     parent_id = last_leaf_id
@@ -221,7 +223,99 @@ def __create_manifest_and_tags(
         )
 
 
-def __generate_repository(user_obj, name, description, is_public, permissions, structure):
+def create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map, schema_type="docker"):
+    """
+    Creates a Docker v2 schema 2 manifest with the given structure.
+    TODO: Consider reimporting the function after resolving persistency problem. Schema 2 validation
+    expects that config layer is available in storage, but storage doesn't appear to persist across
+    tests.
+    """
+    num_layers, subtrees, tag_names = structure
+    num_layers = num_layers or 1
+
+    tag_names = tag_names or []
+    tag_names = [tag_names] if not isinstance(tag_names, list) else tag_names
+
+    repo_ref = RepositoryReference.for_repo_obj(repo)
+
+    config_json = {
+        "architecture": "amd64",
+        "os": "linux",
+        "config": {},
+        "rootfs": {
+            "type": "layers",
+            "diff_ids": [],
+        },
+        "history": [],
+    }
+
+    layer_data = []
+
+    for layer_index in range(num_layers):
+        if schema_type == "oci":
+            content = "oci-layer-%s-%s" % (layer_index, get_epoch_timestamp_ms())
+        else:
+            content = "schema2-layer-%s-%s" % (layer_index, get_epoch_timestamp_ms())
+        content_bytes = content.encode("ascii")
+        blob, digest = _populate_blob(repo, content_bytes)
+
+        # Store the actual blob content in storage
+        store.put_content(["local_us"], get_layer_path(blob), content_bytes)
+
+        # Mark the blob as no longer uploading
+        blob.uploading = False
+        blob.save()
+
+        config_json["rootfs"]["diff_ids"].append(digest)
+        config_json["history"].append(
+            {
+                "created": datetime.utcnow().isoformat() + "Z",
+                "created_by": "/bin/sh -c layer %s" % layer_index,
+            }
+        )
+
+        layer_data.append((digest, blob.image_size))
+
+    config_bytes = json.dumps(config_json).encode("utf-8")
+    config_blob, config_digest = _populate_blob(repo, config_bytes)
+
+    # Store the config blob content in storage
+    store.put_content(["local_us"], get_layer_path(config_blob), config_bytes)
+
+    # Mark the config blob as no longer uploading
+    config_blob.uploading = False
+    config_blob.save()
+
+    for tag_name in tag_names:
+        adjusted_tag_name = tag_name
+        now = datetime.utcnow()
+        if tag_name[0] == "#":
+            adjusted_tag_name = tag_name[1:]
+            now = now - timedelta(seconds=1)
+
+        if schema_type == "oci":
+            builder = OCIManifestBuilder()
+            oci_config = OCIConfig(Bytes.for_string_or_unicode(config_bytes))
+            builder.set_config(oci_config)
+        else:
+            builder = DockerSchema2ManifestBuilder()
+            builder.set_config_digest(config_digest, len(config_bytes))
+
+        for digest, size in layer_data:
+            builder.add_layer(digest, size)
+
+        manifest = builder.build()
+        with freeze_time(now):
+            created_tag, _ = registry_model.create_manifest_and_retarget_tag(
+                repo_ref, manifest, adjusted_tag_name, store, raise_on_error=True
+            )
+            assert created_tag
+            tag_map[adjusted_tag_name] = created_tag
+
+
+def __generate_repository(
+    user_obj, name, description, is_public, permissions, structure, use_schema2=False
+):
     repo = model.repository.create_repository(user_obj.username, name, user_obj)
 
     if is_public:
@@ -239,7 +333,10 @@ def __generate_repository(user_obj, name, description, is_public, permissions, s
         for leaf in structure:
             __create_manifest_and_tags(repo, leaf, user_obj.username, tag_map)
     else:
-        __create_manifest_and_tags(repo, structure, user_obj.username, tag_map)
+        if use_schema2:
+            create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map)
+        else:
+            __create_manifest_and_tags(repo, structure, user_obj.username, tag_map)
 
     return repo
 
@@ -842,7 +939,9 @@ def populate_database(minimal=False):
         (10, [], "latest"),
     )
 
-    __generate_repository(outside_org, "coolrepo", "Some cool repo.", False, [], (5, [], "latest"))
+    __generate_repository(
+        outside_org, "coolrepo", "Some cool repo.", False, [], (5, [], ["latest"])
+    )
 
     __generate_repository(
         new_user_1,
@@ -1460,6 +1559,7 @@ WHITELISTED_EMPTY_MODELS = [
     "ManifestPullStatistics",
     "NamespaceImmutabilityPolicy",
     "RepositoryImmutabilityPolicy",
+    "OrganizationContactEmail",
 ]
 
 

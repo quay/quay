@@ -87,7 +87,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
       setTableItems(props.repos);
     }
     updateTable();
-  }, [props.robotPermissions]);
+  }, [props.robotPermissions, props.repos]);
 
   const updateTable = () => {
     if (!props.robotPermissions?.length) {

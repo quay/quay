@@ -22,6 +22,7 @@ from auth.permissions import SuperUserPermission
 from data import model
 from data.database import ServiceKeyApprovalType
 from data.logs_model import logs_model
+from data.logs_model.shared import SearchNotConfiguredError
 from data.model import DataModelException, InvalidNamespaceQuota, namespacequota, user
 from data.model.quota import get_registry_size, queue_registry_size_calculation
 from endpoints.api import (
@@ -99,7 +100,14 @@ class SuperUserAggregateLogs(ApiResource):
             (start_time, end_time) = _validate_logs_arguments(
                 parsed_args["starttime"], parsed_args["endtime"]
             )
-            aggregated_logs = logs_model.get_aggregated_log_counts(start_time, end_time)
+            try:
+                aggregated_logs = logs_model.get_aggregated_log_counts(start_time, end_time)
+            except SearchNotConfiguredError as e:
+                return {
+                    "aggregated": [],
+                    "search_unavailable": True,
+                    "message": str(e),
+                }
             return {"aggregated": [log.to_dict() for log in aggregated_logs]}
 
         raise Unauthorized()
@@ -133,7 +141,19 @@ class SuperUserLogs(ApiResource):
             end_time = parsed_args["endtime"]
 
             (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
-            log_entry_page = logs_model.lookup_logs(start_time, end_time, page_token=page_token)
+            try:
+                log_entry_page = logs_model.lookup_logs(start_time, end_time, page_token=page_token)
+            except SearchNotConfiguredError as e:
+                return (
+                    {
+                        "start_time": format_date(start_time),
+                        "end_time": format_date(end_time),
+                        "logs": [],
+                        "search_unavailable": True,
+                        "message": str(e),
+                    },
+                    None,
+                )
             return (
                 {
                     "start_time": format_date(start_time),

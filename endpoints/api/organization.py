@@ -20,7 +20,6 @@ from auth.permissions import (
     GlobalReadOnlySuperUserPermission,
     OrganizationMemberPermission,
     SuperUserPermission,
-    ViewTeamPermission,
 )
 from data import model
 from data.billing import get_plan, get_plan_using_rh_sku
@@ -33,6 +32,7 @@ from endpoints.api import (
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
+    get_viewable_teams_for_org,
     internal_only,
     log_action,
     nickname,
@@ -74,14 +74,26 @@ def limit_view(limit):
     }
 
 
-def team_view(orgname, team):
+def team_view(team, viewable_teams):
+    """
+    Returns a view of a team for the API response.
+
+    Args:
+        team: The team object
+        viewable_teams: Set of team names the user can view, or None if the
+                       user is an org admin and can view all teams.
+    """
+    if viewable_teams is None:
+        can_view = True
+    else:
+        can_view = team.name in viewable_teams
+
     return {
         "name": team.name,
         "description": team.description,
         "role": team.role_name,
         "avatar": avatar.get_data_for_team(team),
-        "can_view": ViewTeamPermission(orgname, team.name).can()
-        or allow_if_global_readonly_superuser(),
+        "can_view": can_view,
         "repo_count": team.repo_count,
         "member_count": team.member_count,
         "is_synced": team.is_synced,
@@ -96,6 +108,11 @@ def org_view(o, teams):
         features.SUPERUSERS_FULL_ACCESS and allow_if_superuser()
     )
 
+    # Grant superusers effective admin/member status for UI visibility
+    if can_view_as_superuser:
+        is_admin = True
+        is_member = True
+
     view = {
         "name": o.username,
         "email": o.email if is_admin or can_view_as_superuser else "",
@@ -106,7 +123,17 @@ def org_view(o, teams):
 
     if teams is not None:
         teams = sorted(teams, key=lambda team: team.id)
-        view["teams"] = {t.name: team_view(o.username, t) for t in teams}
+
+        # Pre-compute viewable teams in a single query to avoid N+1 permission checks.
+        # Returns None if user is org admin (can view all teams), or a set of team names.
+        # Superusers and global readonly superusers can also view all teams.
+        if can_view_as_superuser or is_admin:
+            viewable_teams = None  # Can view all teams
+        else:
+            user = get_authenticated_user()
+            viewable_teams = get_viewable_teams_for_org(o.username, user)
+
+        view["teams"] = {t.name: team_view(t, viewable_teams) for t in teams}
         view["ordered_teams"] = [team.name for team in teams]
 
     if is_admin:

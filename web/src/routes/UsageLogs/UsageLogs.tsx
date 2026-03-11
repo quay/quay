@@ -17,6 +17,7 @@ interface UsageLogsProps {
   organization: string;
   repository: string;
   type: string;
+  isActive?: boolean;
 }
 
 function formatDate(date: string) {
@@ -151,6 +152,7 @@ export default function UsageLogs(props: UsageLogsProps) {
             org={props.organization}
             type={props.type}
             isHidden={chartHidden}
+            enabled={props.isActive !== false}
           />
         </FlexItem>
         <FlexItem>
@@ -160,6 +162,7 @@ export default function UsageLogs(props: UsageLogsProps) {
             repo={props.repository}
             org={props.organization}
             type={props.type}
+            enabled={props.isActive !== false}
           />
         </FlexItem>
       </Flex>
@@ -256,6 +259,17 @@ export const logKinds = {
   repo_mirror_sync_test_success: 'Test Repository Mirror success',
   repo_mirror_sync_test_failed: 'Test Repository Mirror failed',
   repo_mirror_sync_test_started: 'Test Repository Mirror started',
+  org_mirror_enabled: 'Enable Organization Mirror',
+  org_mirror_disabled: 'Disable Organization Mirror',
+  org_mirror_config_changed: 'Change Organization Mirror Configuration',
+  org_mirror_sync_started: 'Start Organization Mirror Sync',
+  org_mirror_sync_success: 'Organization Mirror Sync Success',
+  org_mirror_sync_failed: 'Organization Mirror Sync Failed',
+  org_mirror_sync_now_requested: 'Organization Mirror Immediate Sync Requested',
+  org_mirror_sync_cancelled: 'Organization Mirror Sync Cancelled',
+  org_mirror_repo_created: 'Organization Mirror Repository Created',
+  org_mirror_repo_creation_failed:
+    'Organization Mirror Repository Creation Failed',
   create_proxy_cache_config: 'Create Proxy Cache Config',
   delete_proxy_cache_config: 'Delete Proxy Cache Config',
   start_build_trigger: 'Manual build trigger',

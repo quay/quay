@@ -1032,3 +1032,148 @@ class TestUserAPIGlobalReadOnlySuperuserField:
                 assert "global_readonly_super_user" not in resp.json
                 # Regular user should also NOT see super_user field
                 assert "super_user" not in resp.json
+
+
+# =============================================================================
+# Org Mirror Access Tests (PROJQUAY-10835)
+# =============================================================================
+
+
+class TestOrgMirrorGlobalReadOnlySuperuser:
+    """
+    Test that global readonly superusers can read org mirror configuration
+    but are blocked from write operations.
+
+    Fixes PROJQUAY-10835 where the require_org_admin() helper blocked global
+    readonly superusers from GET endpoints.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        """Configure test environment with SUPERUSERS_FULL_ACCESS disabled."""
+        import features
+
+        original = {
+            name: getattr(features, name)
+            for name in ("SUPER_USERS", "SUPERUSERS_FULL_ACCESS", "ORG_MIRROR")
+        }
+
+        features.SUPER_USERS = True
+        features.SUPERUSERS_FULL_ACCESS = False
+        features.ORG_MIRROR = True
+        yield
+        for name, value in original.items():
+            setattr(features, name, value)
+
+    def test_global_readonly_superuser_can_get_org_mirror_config(self, app):
+        """
+        Test that global readonly superusers can GET org mirror configuration.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from endpoints.api.org_mirror import OrgMirrorConfig
+
+        mock_mirror = MagicMock()
+        mock_mirror.is_enabled = True
+        mock_mirror.external_registry_type.name = "harbor"
+        mock_mirror.external_registry_url = "https://registry.example.com"
+        mock_mirror.external_namespace = "myproject"
+        mock_mirror.external_registry_username = None
+        mock_mirror.external_registry_config = {}
+        mock_mirror.repository_filters = []
+        mock_mirror.internal_robot = None
+        mock_mirror.visibility.name = "private"
+        mock_mirror.sync_interval = 3600
+        mock_mirror.sync_start_date = None
+        mock_mirror.sync_expiration_date = None
+        mock_mirror.sync_status.name = "NEVER_RUN"
+        mock_mirror.sync_retries_remaining = 3
+        mock_mirror.skopeo_timeout = 300
+        mock_mirror.creation_date = None
+
+        with (
+            patch("endpoints.api.org_mirror.model.organization.get_organization") as mock_get_org,
+            patch(
+                "endpoints.api.org_mirror.model.org_mirror.get_org_mirror_config",
+                return_value=mock_mirror,
+            ),
+        ):
+            mock_get_org.return_value = MagicMock()
+
+            with client_with_identity("globalreadonlysuperuser", app) as cl:
+                resp = conduct_api_call(
+                    cl, OrgMirrorConfig, "GET", {"orgname": "buynlarge"}, None, 200
+                )
+                assert resp.status_code == 200
+                assert resp.json["is_enabled"] is True
+                assert resp.json["external_registry_type"] == "harbor"
+
+    def test_global_readonly_superuser_can_get_org_mirror_repositories(self, app):
+        """
+        Test that global readonly superusers can GET org mirror repositories.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from endpoints.api.org_mirror import OrgMirrorRepositories
+
+        mock_mirror = MagicMock()
+
+        with (
+            patch("endpoints.api.org_mirror.model.organization.get_organization") as mock_get_org,
+            patch(
+                "endpoints.api.org_mirror.model.org_mirror.get_org_mirror_config",
+                return_value=mock_mirror,
+            ),
+            patch(
+                "endpoints.api.org_mirror.model.org_mirror.get_org_mirror_repos",
+                return_value=([], 0),
+            ),
+        ):
+            mock_get_org.return_value = MagicMock()
+
+            with client_with_identity("globalreadonlysuperuser", app) as cl:
+                resp = conduct_api_call(
+                    cl, OrgMirrorRepositories, "GET", {"orgname": "buynlarge"}, None, 200
+                )
+                assert resp.status_code == 200
+                assert resp.json["repositories"] == []
+                assert resp.json["total"] == 0
+
+    def test_global_readonly_superuser_blocked_from_create_mirror_config(self, app):
+        """
+        Test that global readonly superusers are blocked from POST (create) on org mirror.
+        """
+        from endpoints.api.org_mirror import OrgMirrorConfig
+
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            mirror_data = {
+                "external_registry_type": "harbor",
+                "external_registry_url": "https://registry.example.com",
+                "external_namespace": "myproject",
+                "robot_username": "buynlarge+robot",
+                "visibility": "private",
+                "sync_interval": 3600,
+                "sync_start_date": "2026-01-01T00:00:00Z",
+            }
+            conduct_api_call(
+                cl, OrgMirrorConfig, "POST", {"orgname": "buynlarge"}, mirror_data, 403
+            )
+
+    def test_global_readonly_superuser_blocked_from_update_mirror_config(self, app):
+        """
+        Test that global readonly superusers are blocked from PUT (update) on org mirror.
+        """
+        from endpoints.api.org_mirror import OrgMirrorConfig
+
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            update_data = {"is_enabled": False}
+            conduct_api_call(cl, OrgMirrorConfig, "PUT", {"orgname": "buynlarge"}, update_data, 403)
+
+    def test_global_readonly_superuser_blocked_from_delete_mirror_config(self, app):
+        """
+        Test that global readonly superusers are blocked from DELETE on org mirror.
+        """
+        from endpoints.api.org_mirror import OrgMirrorConfig
+
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            conduct_api_call(cl, OrgMirrorConfig, "DELETE", {"orgname": "buynlarge"}, None, 403)
