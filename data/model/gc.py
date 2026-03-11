@@ -398,7 +398,12 @@ def _check_manifest_used(manifest_id):
             Manifest.select()
             .where(
                 Manifest.id == manifest_id,
-                fn.EXISTS(Referrer.select().where(Referrer.subject == Manifest.digest)),
+                fn.EXISTS(
+                    Referrer.select().where(
+                        Referrer.subject == Manifest.digest,
+                        Referrer.repository == Manifest.repository,
+                    )
+                ),
             )
             .exists()
         ):
