@@ -8,6 +8,7 @@ from data.model import (
     ImmutabilityPolicyDoesNotExist,
     InvalidImmutabilityPolicy,
 )
+from data.model import config as model_config
 from data.model.immutability import (
     _matches_policy,
     _validate_policy,
@@ -823,3 +824,76 @@ class TestImmutabilityAuditLogging:
             assert call_args[0][0] == "tags_made_immutable_by_policy"
             assert call_args[1]["metadata"]["tag_pattern"] == "^release-.*$"
             assert call_args[1]["metadata"]["count"] == 1
+
+
+class TestRetroactiveImmutabilityClearsExpiration:
+    def test_retroactive_policy_clears_expiration(self, initialized_db):
+        """Verify that applying a policy clears lifetime_end_ms when
+        FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is False."""
+        org = create_org(
+            "expclruser1", "expclr1@example.com", "expclrorg1", "expclrorg1@example.com"
+        )
+        repo = create_repository(org.username, "expclrrepo1", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+        assert manifest is not None
+
+        # Create a tag with an expiration
+        now_ms = get_epoch_timestamp_ms()
+        tag = Tag.create(
+            name="v1.0.0",
+            repository=repo.id,
+            manifest=manifest,
+            lifetime_start_ms=now_ms - 10000,
+            lifetime_end_ms=now_ms + 86400000,  # expires in 1 day
+            hidden=False,
+            immutable=False,
+            reversion=False,
+            tag_kind=Tag.tag_kind.get_id("tag"),
+        )
+
+        # Verify expiration is set
+        assert Tag.get(Tag.id == tag.id).lifetime_end_ms is not None
+
+        with patch.dict(model_config.app_config, {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": False}):
+            create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        # Tag should be immutable AND expiration should be cleared
+        updated_tag = Tag.get(Tag.id == tag.id)
+        assert updated_tag.immutable is True
+        assert updated_tag.lifetime_end_ms is None
+
+    def test_retroactive_policy_preserves_expiration_when_can_expire(self, initialized_db):
+        """Verify that applying a policy preserves lifetime_end_ms when
+        FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is True."""
+        org = create_org(
+            "expclruser2", "expclr2@example.com", "expclrorg2", "expclrorg2@example.com"
+        )
+        repo = create_repository(org.username, "expclrrepo2", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+        assert manifest is not None
+
+        now_ms = get_epoch_timestamp_ms()
+        expected_end_ms = now_ms + 86400000
+        tag = Tag.create(
+            name="v1.0.0",
+            repository=repo.id,
+            manifest=manifest,
+            lifetime_start_ms=now_ms - 10000,
+            lifetime_end_ms=expected_end_ms,
+            hidden=False,
+            immutable=False,
+            reversion=False,
+            tag_kind=Tag.tag_kind.get_id("tag"),
+        )
+
+        with patch.dict(model_config.app_config, {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": True}):
+            create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        # Tag should be immutable but expiration should be preserved
+        updated_tag = Tag.get(Tag.id == tag.id)
+        assert updated_tag.immutable is True
+        assert updated_tag.lifetime_end_ms == expected_end_ms
