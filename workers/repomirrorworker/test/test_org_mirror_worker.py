@@ -298,8 +298,6 @@ class TestEmitOrgMirrorLog:
             "Test message",
             tag="v1.0",
             tags="v1.0, v2.0",
-            stdout="output",
-            stderr="errors",
         )
 
         mock_logs_model.log_action.assert_called_once()
@@ -312,8 +310,8 @@ class TestEmitOrgMirrorLog:
         assert metadata["message"] == "Test message"
         assert metadata["tag"] == "v1.0"
         assert metadata["tags"] == "v1.0, v2.0"
-        assert metadata["stdout"] == "output"
-        assert metadata["stderr"] == "errors"
+        assert "stdout" not in metadata
+        assert "stderr" not in metadata
 
 
 class TestProcessOrgMirrorDiscovery:
@@ -901,7 +899,7 @@ class TestDiscoveryAuditLogging:
         call_args = failed_calls[0]
         assert call_args[1]["namespace_name"] == org.username
         metadata = call_args[1]["metadata"]
-        assert "Connection refused" in metadata["message"]
+        assert "Failed to fetch repositories from source" in metadata["message"]
 
 
 # =============================================================================
@@ -1449,8 +1447,9 @@ class TestManifestUtils:
         assert is_manifest_list("not valid json") is False
 
     def test_is_manifest_list_none_input(self):
-        """None input returns False (TypeError path)."""
-        assert is_manifest_list(None) is False
+        """None input raises ValueError."""
+        with pytest.raises(ValueError):
+            is_manifest_list(None)
 
     def test_is_manifest_list_no_media_type_no_manifests(self):
         """Non-list manifest without mediaType or manifests key returns False."""

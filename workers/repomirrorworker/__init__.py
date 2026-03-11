@@ -52,6 +52,7 @@ from util.audit import wrap_repository
 from util.orgmirror import get_registry_adapter
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
 from workers.repomirrorworker.manifest_utils import (
+    ManifestSizeLimitExceeded,
     filter_manifests_by_architecture,
     get_available_architectures,
     get_manifest_media_type,
@@ -157,7 +158,7 @@ def process_mirrors(skopeo, token=None):
                 )
                 abt.set()
             except Exception as e:  # TODO: define exceptions
-                logger.exception("Repository Mirror service unavailable: %s" % e)
+                logger.exception("Repository Mirror service unavailable")
                 return None
 
             unmirrored_repositories.set(num_remaining)
@@ -575,7 +576,7 @@ def _get_v2_bearer_token(server, scheme, namespace, repo_name, username, passwor
         service_match = re.search(r'service="([^"]+)"', www_auth)
 
         if not realm_match:
-            logger.warning("Could not parse realm from WWW-Authenticate: %s", www_auth)
+            logger.warning("Could not parse realm from WWW-Authenticate header")
             return None
 
         realm = realm_match.group(1)
@@ -613,15 +614,13 @@ def _get_v2_bearer_token(server, scheme, namespace, repo_name, username, passwor
             token_url, auth=(username, password), verify=verify_tls, timeout=30
         )
         if token_resp.status_code != 200:
-            logger.error(
-                "Failed to get bearer token: %s %s", token_resp.status_code, token_resp.text
-            )
+            logger.error("Failed to get bearer token: %s", token_resp.status_code)
             return None
 
         try:
             token_data = token_resp.json()
         except json.JSONDecodeError:
-            logger.error("Token endpoint returned non-JSON response: %s", token_resp.text[:200])
+            logger.error("Token endpoint returned non-JSON response")
             return None
 
         return token_data.get("token") or token_data.get("access_token")
@@ -684,10 +683,10 @@ def push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
         if response.status_code in (200, 201):
             logger.info("Pushed sparse manifest list for %s/%s:%s", namespace, repo_name, tag)
             return True
-        logger.error("Failed to push manifest list: %s %s", response.status_code, response.text)
+        logger.error("Failed to push manifest list: %s", response.status_code)
         return False
     except requests.RequestException as e:
-        logger.exception("Request failed pushing manifest list: %s", e)
+        logger.exception("Request failed pushing manifest list")
         return False
 
 
@@ -735,13 +734,34 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
         )
 
     if not result.success:
-        logger.error("Failed to inspect manifest for %s: %s", src_image_tag, result.stderr)
+        logger.error("Failed to inspect manifest for %s", src_image_tag)
         return SkopeoResults(False, [], result.stdout, result.stderr)
 
     manifest_bytes = result.stdout
 
+    max_manifest_size = app.config.get("REPO_MIRROR_MAX_MANIFEST_LIST_SIZE", 10 * 1024 * 1024)
+    max_manifest_entries = app.config.get("REPO_MIRROR_MAX_MANIFEST_ENTRIES", 1000)
+
+    # Reject oversized manifests before parsing
+    if len(manifest_bytes) > max_manifest_size:
+        logger.error(
+            "Manifest for %s exceeds size limit: %d bytes (limit: %d bytes)",
+            src_image_tag,
+            len(manifest_bytes),
+            max_manifest_size,
+        )
+        return SkopeoResults(
+            False, [], "", f"Manifest exceeds size limit: {len(manifest_bytes)} bytes"
+        )
+
     # Step 2: Check if manifest list
-    if not is_manifest_list(manifest_bytes):
+    try:
+        manifest_is_list = is_manifest_list(manifest_bytes, max_size=max_manifest_size)
+    except ManifestSizeLimitExceeded as exc:
+        logger.error("Manifest for %s rejected: %s", src_image_tag, exc)
+        return SkopeoResults(False, [], "", str(exc))
+
+    if not manifest_is_list:
         logger.info("Image %s is not a manifest list, using standard copy", src_image_tag)
         with database.CloseForLongOperation(app.config):
             result = skopeo.copy(
@@ -761,7 +781,9 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
         return result
 
     # Step 3: Filter and validate architectures
-    available = get_available_architectures(manifest_bytes)
+    available = get_available_architectures(
+        manifest_bytes, max_size=max_manifest_size, max_entries=max_manifest_entries
+    )
     matching = [a for a in architecture_filter if a in available]
     missing = [a for a in architecture_filter if a not in available]
 
@@ -775,7 +797,9 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
             f"No matching architectures. Requested: {architecture_filter}, Available: {available}",
         )
 
-    filtered = filter_manifests_by_architecture(manifest_bytes, matching)
+    filtered = filter_manifests_by_architecture(
+        manifest_bytes, matching, max_size=max_manifest_size, max_entries=max_manifest_entries
+    )
     logger.info("Mirroring %d architectures for %s: %s", len(filtered), src_image_tag, matching)
 
     # Step 4: Verify FEATURE_SPARSE_INDEX is enabled before copying
@@ -815,7 +839,7 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
         all_stdout.append(f"[{arch}] {result.stdout}")
         all_stderr.append(f"[{arch}] {result.stderr}")
         if not result.success:
-            logger.error("Failed to copy arch %s: %s", arch, result.stderr)
+            logger.error("Failed to copy arch %s", arch)
             return SkopeoResults(False, [], "\n".join(all_stdout), "\n".join(all_stderr))
 
     # Step 6: Push original manifest list
@@ -841,8 +865,6 @@ def emit_log(mirror, log_kind, verb, message, tag=None, tags=None, stdout=None, 
             "message": message,
             "tag": tag,
             "tags": tags,
-            "stdout": stdout,
-            "stderr": stderr,
         },
     )
 
@@ -895,7 +917,7 @@ def process_org_mirror_discovery(token=None):
                 )
                 abt.set()
             except Exception as e:
-                logger.exception("Organization Mirror discovery failed: %s" % e)
+                logger.exception("Organization Mirror discovery failed")
                 # Continue to next config instead of returning
                 continue
 
@@ -987,15 +1009,14 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             password = claimed_config.external_registry_password.decrypt()
     except DecryptionFailureException as e:
         logger.error(
-            "Failed to decrypt credentials for org mirror config %s: %s",
+            "Failed to decrypt credentials for org mirror config %s",
             claimed_config.id,
-            e,
         )
         _emit_org_config_log(
             claimed_config,
             "org_mirror_sync_failed",
             "end",
-            f"Failed to decrypt source registry credentials: {e}",
+            "Failed to decrypt source registry credentials",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
         org_mirror_discovery_total.labels(status="fail").inc()
@@ -1014,15 +1035,14 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
         )
     except ValueError as e:
         logger.error(
-            "Failed to create registry adapter for org mirror config %s: %s",
+            "Failed to create registry adapter for org mirror config %s",
             claimed_config.id,
-            e,
         )
         _emit_org_config_log(
             claimed_config,
             "org_mirror_sync_failed",
             "end",
-            f"Failed to create registry adapter: {e}",
+            "Failed to create registry adapter",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
         org_mirror_discovery_total.labels(status="fail").inc()
@@ -1034,15 +1054,14 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
         all_repos = adapter.list_repositories()
     except Exception as e:
         logger.error(
-            "Failed to list repositories from source registry for org mirror config %s: %s",
+            "Failed to list repositories from source registry for org mirror config %s",
             claimed_config.id,
-            e,
         )
         _emit_org_config_log(
             claimed_config,
             "org_mirror_sync_failed",
             "end",
-            f"Failed to fetch repositories from source: {e}",
+            "Failed to fetch repositories from source",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
         org_mirror_discovery_total.labels(status="fail").inc()
@@ -1235,7 +1254,7 @@ def process_org_mirrors(skopeo, token=None):
                 )
                 abt.set()
             except Exception as e:
-                logger.exception("Organization Mirror service unavailable: %s" % e)
+                logger.exception("Organization Mirror service unavailable")
                 return None
 
             unmirrored_org_repositories.set(num_remaining)
@@ -1644,7 +1663,5 @@ def emit_org_mirror_log(
             "message": message,
             "tag": tag,
             "tags": tags,
-            "stdout": stdout,
-            "stderr": stderr,
         },
     )
