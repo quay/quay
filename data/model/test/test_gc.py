@@ -4,6 +4,7 @@ import random
 import string
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from unittest.mock import patch as mock_patch
 
 import pytest
 from freezegun import freeze_time
@@ -1052,3 +1053,118 @@ def test_gc_removes_manifest_stats_when_unreferenced(default_tag_policy, initial
             .count()
             == 0
         ), "Manifest was GC'd but its pull statistics were not cleaned up"
+
+
+def test_gc_skips_immutable_tags(default_tag_policy, initialized_db):
+    """
+    Verify that GC does not delete immutable tags even if they have lifetime_end_ms set,
+    when FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is False.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, built = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    # Create a tag with immutable=True and an expiration in the past
+    now_ms = database.get_epoch_timestamp_ms()
+    tag = Tag.create(
+        name="immutable-tag",
+        repository=repo.id,
+        manifest=manifest,
+        lifetime_start_ms=now_ms - 100000,
+        lifetime_end_ms=now_ms - 50000,  # expired
+        hidden=False,
+        immutable=True,
+        reversion=False,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+
+    # Set time machine to 0 so expired tags are immediately eligible for GC
+    _set_tag_expiration_policy(repo.namespace_user.username, 0)
+
+    with mock_patch("features.IMMUTABLE_TAGS", True):
+        with mock_patch.dict(
+            "data.model.oci.tag.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": False}
+        ):
+            # GC should skip the immutable tag
+            gc_now(repo)
+
+    # Tag should still exist
+    assert Tag.select().where(Tag.id == tag.id).count() == 1
+
+
+def test_gc_collects_immutable_tags_when_can_expire(default_tag_policy, initialized_db):
+    """
+    Verify that GC collects expired immutable tags when FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is True.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, built = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    # Create a tag with immutable=True and an expiration in the past
+    now_ms = database.get_epoch_timestamp_ms()
+    tag = Tag.create(
+        name="immutable-expiring-tag",
+        repository=repo.id,
+        manifest=manifest,
+        lifetime_start_ms=now_ms - 100000,
+        lifetime_end_ms=now_ms - 50000,  # expired
+        hidden=False,
+        immutable=True,
+        reversion=False,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+
+    # Set time machine to 0 so expired tags are immediately eligible for GC
+    _set_tag_expiration_policy(repo.namespace_user.username, 0)
+
+    with mock_patch("features.IMMUTABLE_TAGS", True):
+        with mock_patch.dict(
+            "data.model.oci.tag.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": True}
+        ):
+            gc_now(repo)
+
+    # Tag should be deleted
+    assert Tag.select().where(Tag.id == tag.id).count() == 0
+
+
+def test_gc_purge_oci_tag_guard_skips_immutable(default_tag_policy, initialized_db):
+    """
+    Verify the defense-in-depth guard in _purge_oci_tag directly skips immutable tags
+    during GC, but allows them during repository deletion (allow_non_expired=True).
+    """
+    from data.model.gc import _GarbageCollectorContext, _purge_oci_tag
+
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    now_ms = database.get_epoch_timestamp_ms()
+    tag = Tag.create(
+        name="guarded-tag",
+        repository=repo.id,
+        manifest=manifest,
+        lifetime_start_ms=now_ms - 100000,
+        lifetime_end_ms=now_ms - 50000,
+        hidden=False,
+        immutable=True,
+        reversion=False,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+
+    context = _GarbageCollectorContext(repo)
+
+    with mock_patch("features.IMMUTABLE_TAGS", True):
+        with mock_patch.dict(
+            "data.model.gc.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": False}
+        ):
+            # GC path (allow_non_expired=False) should skip the tag
+            result = _purge_oci_tag(tag, context, allow_non_expired=False)
+            assert result is False
+            assert Tag.select().where(Tag.id == tag.id).count() == 1
+
+            # Repository deletion path (allow_non_expired=True) should proceed
+            result = _purge_oci_tag(tag, context, allow_non_expired=True)
+            assert result is not False
