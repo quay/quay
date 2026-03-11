@@ -285,6 +285,8 @@ export const logKinds = {
   create_immutability_policy: 'Create Immutability Policy',
   update_immutability_policy: 'Update Immutability Policy',
   delete_immutability_policy: 'Delete Immutability Policy',
+  tag_made_immutable_by_policy: 'Tag Made Immutable by Policy',
+  tags_made_immutable_by_policy: 'Tags Made Immutable by Policy',
   oauth_token_assigned: 'OAuth token assigned',
   enable_team_sync: 'Enable Team Sync',
   disable_team_sync: 'Disable Team Sync',
