@@ -24,7 +24,20 @@ from util.saas.exceptionlog import _sentry_before_send_ignore_known
 
 logger = logging.getLogger(__name__)
 
-WORKER_DURATION_BUCKETS = (1, 5, 10, 30, 60, 120, 300, 600, 1800, 3600, float("inf"))
+WORKER_DURATION_BUCKETS = (
+    60,
+    300,
+    600,
+    1800,
+    3600,
+    7200,
+    14400,
+    28800,
+    43200,
+    57600,
+    86400,
+    float("inf"),
+)
 
 worker_operation_duration = Histogram(
     "quay_worker_operation_duration_seconds",
