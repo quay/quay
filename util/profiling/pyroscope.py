@@ -1,10 +1,36 @@
 """Pyroscope profiling: enable only when configured and server is reachable."""
 
 import logging
+from urllib.parse import urlparse, urlunparse
 
 import requests
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_url(url):
+    """Return URL with credentials stripped for safe logging. Does not modify the original."""
+    if not url:
+        return url
+    try:
+        parsed = urlparse(url)
+        if parsed.username or parsed.password:
+            netloc = parsed.hostname or ""
+            if parsed.port is not None:
+                netloc = f"{netloc}:{parsed.port}"
+            return urlunparse(
+                (parsed.scheme, netloc, parsed.path or "", parsed.params, parsed.query, parsed.fragment)
+            )
+        return url
+    except Exception:
+        return "<redacted>"
+
+
+def _sanitize_message(msg, server_address):
+    """Replace server_address in msg with credential-free URL for safe logging."""
+    if not msg or not server_address:
+        return msg
+    return str(msg).replace(server_address, _safe_url(server_address))
 
 
 def init_pyroscope(app):
@@ -22,7 +48,7 @@ def init_pyroscope(app):
         if response.status_code != requests.codes.ok:
             logger.warning("Pyroscope server not reachable. Status code: %s", response.status_code)
             return
-        logger.info("Pyroscope server reachable at %s", server_address)
+        logger.info("Pyroscope server reachable at %s", _safe_url(server_address))
         import pyroscope
 
         application_name = app.config.get("PYROSCOPE_APPLICATION_NAME", "quay")
@@ -35,8 +61,14 @@ def init_pyroscope(app):
         )
         logger.info("Pyroscope profiling started")
     except requests.exceptions.RequestException as e:
-        logger.warning("Error connecting to Pyroscope server: %s", e)
+        logger.warning(
+            "Error connecting to Pyroscope server: %s",
+            _sanitize_message(e, server_address),
+        )
     except ImportError:
         logger.warning("Pyroscope enabled but pyroscope-io not installed. pip install pyroscope-io")
     except Exception as e:
-        logger.warning("Pyroscope startup failed: %s", e)
+        logger.warning(
+            "Pyroscope startup failed: %s",
+            _sanitize_message(e, server_address),
+        )

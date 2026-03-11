@@ -59,6 +59,7 @@ from util.marketplace import MarketplaceSubscriptionApi, MarketplaceUserApi
 from util.metrics.otel import init_exporter
 from util.metrics.prometheus import PrometheusPlugin
 from util.names import urn_generator
+from util.profiling.pyroscope import init_pyroscope
 from util.pullmetrics import PullMetricsBuilderModule
 from util.repomirror.api import RepoMirrorAPI
 from util.saas.analytics import Analytics
@@ -265,16 +266,7 @@ log_archive = LogArchive(app, storage)
 analytics = Analytics(app)
 billing = Billing(app)
 sentry = Sentry(app)
-# Pyroscope: only when enabled; check server reachable then start profiling
-if app.config.get("PROFILING_TYPE") == "Pyroscope":
-    if app.config.get("PYROSCOPE_SERVER_ADDRESS"):
-        from util.profiling.pyroscope import init_pyroscope
-
-        init_pyroscope(app)
-    else:
-        logger.warning(
-            "Pyroscope enabled but PYROSCOPE_SERVER_ADDRESS not set. Profiling disabled."
-        )
+init_pyroscope(app)
 build_logs = BuildLogs(app)
 userevents = UserEventsBuilderModule(app)
 pullmetrics = PullMetricsBuilderModule(app)

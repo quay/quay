@@ -1,13 +1,15 @@
 # Pyroscope profiling
 
-Optional CPU profiling via [Grafana Pyroscope](https://grafana.com/docs/pyroscope/latest/). Off by default (no overhead). Set in config.yaml.
+Optional CPU profiling via [Grafana Pyroscope](https://grafana.com/docs/pyroscope/latest/). Off by default (no overhead). Set in config.yaml. To enable in production without editing config files, use the `QUAY_OVERRIDE_CONFIG` environment variable.
 
 ## Enable
 
-1. Start Pyroscope:
+1. Start a Pyroscope server explicitly, e.g.:
+
    ```bash
-   docker run -d --name pyroscope -p 4040:4040 grafana/pyroscope:latest
+   docker run -d -p 4040:4040 grafana/pyroscope:latest
    ```
+
 2. In config.yaml set `PROFILING_TYPE: Pyroscope` and `PYROSCOPE_SERVER_ADDRESS` **for your environment**:
    - **Quay on host** (e.g. `make run`, tests): `http://localhost:4040`
    - **Quay in Docker on Mac/Windows**: `http://host.docker.internal:4040` (container reaches Pyroscope on the host)

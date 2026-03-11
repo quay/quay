@@ -51,7 +51,9 @@ services:
     ports:
       - "6379:6379"
 
-  # Pyroscope server for continuous profiling (optional). UI: http://localhost:4040
+  # Pyroscope server for continuous profiling (optional). Start explicitly when needed:
+  #   docker compose up -d pyroscope
+  # UI: http://localhost:4040. Set PROFILING_TYPE and PYROSCOPE_SERVER_ADDRESS in config when using.
   pyroscope:
     container_name: quay-pyroscope
     image: docker.io/grafana/pyroscope:latest
