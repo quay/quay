@@ -41,12 +41,12 @@ Supporting documents:
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `cryptography` | 46.0.5 | AES-CBC, AES-CCM, AES-GCM, RSA, Fernet, HKDF |
+| `cryptography` | 44.0.1 | AES-CBC, AES-CCM, AES-GCM, RSA, Fernet, HKDF |
 | `Authlib` | 1.6.5 | JOSE (JWK, JWS, JWE), OAuth/OIDC, JWT |
 | `PyJWT` | 2.8.0 | JWT encode/decode |
-| `pyOpenSSL` | 25.3.0 | X.509 certificate handling |
+| `pyOpenSSL` | 25.1.0 | X.509 certificate handling |
 | `bcrypt` | 3.1.7 | Password and credential hashing |
-| `rsa` | 4.9.1 | CloudFront SHA-1 signing fallback in FIPS environments |
+| `rsa` | (transitive) | Not a direct dependency; RSA functionality comes from `cryptography` |
 
 ## 3. Implementation decisions
 
@@ -143,7 +143,8 @@ Release N:           reads v0 + v1              (not deployed)
 
 Release N+1:         reads v0 + v1              (not deployed)
                      writes v1
-                     migration: v0 → v1
+                     encrypt-upgrade: v0 → v1
+                     (separate CLI command / k8s Job)
 
 Release N+2:         reads v0 + v1              reads v1 only
                      writes v1                  writes v1
@@ -178,54 +179,104 @@ Release N+2:         reads v0 + v1              reads v1 only
 **Python changes:**
 
 1. `data/encryption.py` — Change `FieldEncrypter.__init__` default to `version="v1"`
-2. Alembic migration — Batch re-encrypt all `v0$$` rows to `v1$$`
 
-**Alembic migration design:**
+**Why not an Alembic migration for re-encryption:** Quay runs `alembic upgrade head` synchronously at pod startup (`conf/init/runmigration.sh`), blocking the process before supervisord starts. A data-intensive re-encryption in this path creates several critical problems:
+
+- **Startup blocking:** A high-volume table (500K+ rows) takes minutes to re-encrypt. The pod is unresponsive during this time, triggering Kubernetes liveness probe failures and restart loops.
+- **Concurrent execution:** In a multi-pod deployment, every pod runs `alembic upgrade head` at startup. Alembic's migration lock prevents concurrent *schema* changes but does not prevent concurrent data manipulation within a single migration revision. Multiple pods re-encrypting the same rows simultaneously causes lock contention and duplicate work.
+- **No throttling:** Alembic provides no mechanism for rate-limiting, sleeping between batches, or backing off based on database load.
+
+The existing precedent migrations (`703298a825c2`, `34c8ef052ec9`) use `BATCH_SIZE = 10` within a single transaction and operate on low-volume tables. They are not a suitable model for high-volume re-encryption.
+
+**Design: Separate CLI command**
+
+The re-encryption runs as a dedicated CLI entrypoint (`quay-entrypoint.sh encrypt-upgrade`), not as an Alembic migration. This decouples it from pod startup entirely.
+
+```
+quay-entrypoint.sh encrypt-upgrade [--batch-size=500] [--sleep-ms=100] [--table=robotaccounttoken]
+```
+
+Operators run this as a one-shot Kubernetes Job (Quay.io) or `podman run` (Red Hat Quay), independent of normal pod lifecycle.
+
+Implementation outline:
 
 ```python
-def upgrade():
-    for table, columns in ENCRYPTED_FIELDS.items():
-        _migrate_table(table, columns)
+ENCRYPTED_FIELDS = {
+    "robotaccounttoken": ["token"],
+    "accesstoken": ["token_code"],
+    "appspecificauthtoken": ["token_secret"],
+    "repositorybuildtrigger": ["secure_auth_token", "secure_private_key"],
+    "oauthapplication": ["secure_client_secret"],
+    "repomirrorconfig": ["external_registry_username", "external_registry_password"],
+    "orgmirrorconfig": ["external_registry_username", "external_registry_password"],
+    "proxycacheconfig": ["upstream_registry_username", "upstream_registry_password"],
+}
 
-def _migrate_table(table, columns):
-    conn = op.get_bind()
+def migrate_table(conn, table, columns, batch_size=500, sleep_ms=100):
     encrypter_v0 = FieldEncrypter(secret_key, version="v0")
     encrypter_v1 = FieldEncrypter(secret_key, version="v1")
 
     for column in columns:
+        total_migrated = 0
         while True:
             rows = conn.execute(
                 sa.text(f"SELECT id, {column} FROM {table} "
-                        f"WHERE {column} LIKE 'v0$$%' LIMIT 1000")
+                        f"WHERE {column} LIKE 'v0$$%' "
+                        f"ORDER BY id LIMIT :batch"),
+                {"batch": batch_size}
             ).fetchall()
 
             if not rows:
+                logger.info("%s.%s complete: %d rows migrated", table, column, total_migrated)
                 break
 
-            for row in rows:
-                plaintext = encrypter_v0.decrypt_value(row[column])
-                new_value = encrypter_v1.encrypt_value(plaintext)
-                conn.execute(
-                    sa.text(f"UPDATE {table} SET {column} = :val WHERE id = :id"),
-                    {"val": new_value, "id": row.id}
-                )
-            conn.commit()
+            with conn.begin():
+                for row in rows:
+                    plaintext = encrypter_v0.decrypt_value(row[column])
+                    new_value = encrypter_v1.encrypt_value(plaintext)
+                    conn.execute(
+                        sa.text(f"UPDATE {table} SET {column} = :val "
+                                f"WHERE id = :id AND {column} = :old"),
+                        {"val": new_value, "id": row.id, "old": row[column]}
+                    )
+
+            total_migrated += len(rows)
+            logger.info("%s.%s: %d rows migrated (last id: %d)",
+                        table, column, total_migrated, rows[-1].id)
+
+            if sleep_ms > 0:
+                time.sleep(sleep_ms / 1000.0)
 ```
 
-**Migration properties:**
-- **Batched:** 1000 rows per transaction to avoid long-held locks
-- **Idempotent:** `WHERE column LIKE 'v0$$%'` naturally skips already-migrated rows
-- **Resumable:** Safe to re-run after interruption
-- **No downtime required:** Python reads both versions, so migration runs while serving traffic
+**Database risk mitigations:**
 
-**Precedent:** Migration `34c8ef052ec9_repo_mirror_columns.py` already implements a re-encryption pattern for `RepoMirrorConfig` fields.
+| Risk | Mitigation |
+|------|------------|
+| **Startup blocking** | Separate CLI command; pods start and serve traffic normally. Operator runs `encrypt-upgrade` as a Kubernetes Job or `podman run`. |
+| **Concurrent execution** | Acquire a PostgreSQL advisory lock (`pg_try_advisory_lock`) at the start. If another instance is already running, exit cleanly with a message. |
+| **Row lock contention** | Small batch size (default 500, configurable). `ORDER BY id` ensures predictable lock ordering, preventing deadlocks. `WHERE {column} = :old` provides optimistic concurrency — avoids clobbering concurrent application writes. |
+| **WAL generation / replication lag** | Configurable sleep between batches (default 100ms). For replicated PostgreSQL, operators can increase `--sleep-ms` or reduce `--batch-size`. Release notes should recommend monitoring replication lag during migration. |
+| **Table bloat** | Smaller batches give autovacuum time to reclaim dead tuples between rounds. Release notes should recommend a manual `VACUUM` after migration completes for very large tables. |
+| **Interruption / resumability** | `WHERE column LIKE 'v0$$%'` naturally skips already-migrated rows. Safe to kill and restart at any time. |
+| **Progress visibility** | Logs total migrated count and last processed ID after each batch. `--dry-run` flag reports row counts per table without modifying data. |
+| **Per-table targeting** | `--table` flag allows migrating one table at a time, useful for prioritizing high-volume tables or running during low-traffic windows. |
 
-**Scale considerations:** `RobotAccountToken` and `AccessToken` are the highest-volume tables. At ~5,000–10,000 rows/second (1 decrypt + 1 encrypt + 1 UPDATE per row), a table with 500K rows takes ~1–2 minutes. Release notes should call out that migration time scales with these table sizes.
+**Scale estimates:**
+
+| Table | Expected rows | Est. time (batch=500, sleep=100ms) |
+|-------|--------------|-----------------------------------|
+| `RobotAccountToken` | 100K–1M | 3–30 min |
+| `AccessToken` | 100K–1M | 3–30 min |
+| `AppSpecificAuthToken` | 10K–100K | <3 min |
+| All others | <10K each | <1 min each |
+
+For Quay.io-scale deployments (millions of tokens), consider running during a maintenance window or with increased `--sleep-ms` during off-peak hours.
 
 **Testing:**
-- Unit test: migration correctly re-encrypts `v0` → `v1`
-- Unit test: migration skips `v1$$` rows
-- Unit test: migration is resumable after partial completion
+- Unit test: re-encryption correctly converts `v0` → `v1`
+- Unit test: skips `v1$$` rows
+- Unit test: resumable after partial completion (kill mid-batch, re-run)
+- Unit test: advisory lock prevents concurrent execution
 - Scale test: run against representative row counts
 
 #### Release N+2 — Go deployment with startup gate
@@ -250,8 +301,8 @@ If any `v0` rows are found, Go logs a clear error and exits:
 
 ```
 FATAL: Found v0-encrypted rows in <table>.<column>.
-       Complete the Alembic migration from Release N+1 before starting the Go service.
-       Run: alembic upgrade head
+       Run the encryption upgrade before starting the Go service.
+       Run: quay-entrypoint.sh encrypt-upgrade
 ```
 
 **Python continues unchanged** — reads both `v0` and `v1`, writes `v1` for coexistence.
@@ -262,21 +313,27 @@ FATAL: Found v0-encrypted rows in <table>.<column>.
 |----------|-----------------|---------|
 | Revert deploy after phase N+1 | Quay.io (CD) | Safe — previous deploy reads both `v0` and `v1` |
 | Revert deploy after phase N+2 | Quay.io (CD) | Safe — previous deploy reads both `v0` and `v1` |
-| Migration interrupted midway | Both | Safe — mix of `v0`/`v1` in DB; Python reads both; re-run to complete |
+| `encrypt-upgrade` interrupted midway | Both | Safe — mix of `v0`/`v1` in DB; Python reads both; re-run to complete |
 | Go encounters `v0` row at startup | Both | Blocked — refuses to start with actionable error |
+| `encrypt-upgrade` never run | Both | Python operates normally with `v0`/`v1` mix; Go startup gate blocks until run |
 | Go encounters `v0` row at runtime (bug) | Both | `DecryptionFailureException` — `v0` not in Go's version map |
 
 ### Upgrade paths
 
-**Quay.io (continuous deployment):** Phases roll out as successive deploys. The primary risk mitigated is rollback between deploys — phase N ensures that reverting a phase N+1 deploy doesn't strand `v1` values in the database.
+**Quay.io (continuous deployment):**
+
+1. Deploy Release N — no operator action needed
+2. Deploy Release N+1 — new writes use `v1` automatically
+3. SRE runs `encrypt-upgrade` as a Kubernetes Job in the deployment namespace; monitors via existing alerting (replication lag, query latency)
+4. Deploy Release N+2 when migration is confirmed complete
 
 **Red Hat Quay (versioned releases):**
 
 1. **Upgrade to Release N** — No action required. No behavior change. Quay can now read `v1` values if encountered.
-2. **Upgrade to Release N+1** — Alembic migration runs automatically. For large instances, migration may take longer than usual. After migration, all encrypted fields are `v1`.
-3. **Upgrade to Release N+2** — Go service becomes available. If migration from N+1 didn't complete, Go startup gate blocks with a clear error.
+2. **Upgrade to Release N+1** — New writes use `v1` automatically. Operator runs `quay-entrypoint.sh encrypt-upgrade` as a one-shot Job or `podman run` to re-encrypt existing data. For large instances, this may take time — use `--dry-run` first to estimate. The Quay Operator could automate this as a Job in the upgrade sequence.
+3. **Upgrade to Release N+2** — Go service becomes available. If `encrypt-upgrade` from N+1 wasn't run, Go startup gate blocks with a clear error.
 
-**Customers who skip releases:** Jumping from pre-N to N+2 gets both `v1` read support and the migration in a single Alembic upgrade. Go startup gate verifies completion.
+**Customers who skip releases:** Jumping from pre-N to N+2 gets `v1` read support and write-version switch automatically. Operator must still run `encrypt-upgrade` before the Go service will start — the startup gate enforces this.
 
 ### Interoperability validation
 
