@@ -195,6 +195,27 @@ def _mark_tags_immutable_batch(tag_ids: list[int]) -> int:
     )
 
 
+def _clear_expiration_for_immutable_batch(tag_ids: list[int]) -> int:
+    """
+    Clear lifetime_end_ms for tags that should not expire because they are immutable.
+
+    Returns the number of tags updated.
+    """
+    if not tag_ids:
+        return 0
+
+    now_ms = get_epoch_timestamp_ms()
+    return (
+        Tag.update(lifetime_end_ms=None)
+        .where(
+            Tag.id << tag_ids,
+            ~(Tag.lifetime_end_ms >> None),  # only update those with expiration set
+            Tag.lifetime_end_ms > now_ms,  # only clear for still-alive tags
+        )
+        .execute()
+    )
+
+
 def apply_immutability_policy_to_existing_tags(
     namespace_id: int,
     repository_id: Optional[int],
@@ -238,6 +259,12 @@ def apply_immutability_policy_to_existing_tags(
         if tag_ids_to_mark:
             marked = _mark_tags_immutable_batch(tag_ids_to_mark)
             total_marked += marked
+
+            # Clear expiration for newly immutable tags when config disallows coexistence
+            from data.model import config
+
+            if not config.app_config.get("FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False):
+                _clear_expiration_for_immutable_batch(tag_ids_to_mark)
 
         last_id = tags[-1].id
 
