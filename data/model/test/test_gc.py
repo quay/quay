@@ -705,6 +705,71 @@ def test_delete_manifests_with_subject(initialized_db):
     assert model.gc.purge_repository(repository, force=True)
 
 
+def test_check_manifest_used_scoped_to_repository(initialized_db):
+    """
+    A referrer in a different repository sharing the same digest should not
+    prevent garbage collection of a manifest.
+    """
+
+    def generate_random_data_for_layer():
+        charset = string.ascii_uppercase + string.ascii_lowercase + string.digits
+        return "".join(random.choice(charset) for _ in range(random.randrange(1, 20)))
+
+    repo1 = create_repository("devtable", "repo_scoped_1")
+    repo2 = create_repository("devtable", "repo_scoped_2")
+
+    # Create a manifest in repo1
+    config1_json = json.dumps(
+        {
+            "os": "linux",
+            "architecture": "amd64",
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
+    )
+    _, config1_digest = _populate_blob(repo1, config1_json.encode("ascii"))
+    random_data1 = generate_random_data_for_layer()
+    _, random_digest1 = _populate_blob(repo1, random_data1.encode("ascii"))
+
+    oci_builder1 = OCIManifestBuilder()
+    oci_builder1.set_config_digest(config1_digest, len(config1_json.encode("utf-8")))
+    oci_builder1.add_layer(random_digest1, len(random_data1.encode("utf-8")))
+    oci_manifest1 = oci_builder1.build()
+
+    manifest1_created = model.oci.manifest.get_or_create_manifest(repo1, oci_manifest1, storage)
+    assert manifest1_created
+
+    # Remove tags so GC check relies only on referrer logic
+    Tag.delete().where(Tag.manifest == manifest1_created.manifest.id).execute()
+
+    # Create a referrer in repo2 that points to the same digest as manifest1
+    config2_json = json.dumps(
+        {
+            "os": "linux",
+            "architecture": "amd64",
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
+    )
+    _, config2_digest = _populate_blob(repo2, config2_json.encode("ascii"))
+    random_data2 = generate_random_data_for_layer()
+    _, random_digest2 = _populate_blob(repo2, random_data2.encode("ascii"))
+
+    oci_builder2 = OCIManifestBuilder()
+    oci_builder2.set_config_digest(config2_digest, len(config2_json.encode("utf-8")))
+    oci_builder2.add_layer(random_digest2, len(random_data2.encode("utf-8")))
+    oci_builder2.set_subject(
+        oci_manifest1.digest, len(oci_manifest1.bytes.as_encoded_str()), oci_manifest1.media_type
+    )
+    oci_manifest2 = oci_builder2.build()
+
+    manifest2_created = model.oci.manifest.get_or_create_manifest(repo2, oci_manifest2, storage)
+    assert manifest2_created
+
+    # Cross-repo referrer should not prevent GC of manifest1 in repo1
+    assert not model.gc._check_manifest_used(manifest1_created.manifest.id)
+
+
 def test_tag_cleanup_with_autoprune_policy(default_tag_policy, initialized_db):
     repo1 = model.repository.create_repository("devtable", "newrepo", None)
     slack = ExternalNotificationMethod.get(ExternalNotificationMethod.name == "slack")
