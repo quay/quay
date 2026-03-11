@@ -242,12 +242,12 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def delete_tags_for_manifest(self, manifest):
+    def delete_tags_for_manifest(self, model_cache, manifest):
         """
         Deletes all tags pointing to the given manifest, making the manifest inaccessible for
         pulling.
 
-        Returns the tags deleted, if any. Returns None on error.
+        Returns the tags deleted, if any. Raises ImmutableTagException if any tag is immutable.
         """
 
     @abstractmethod
