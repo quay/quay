@@ -9,6 +9,7 @@ Optional CPU profiling via [Grafana Pyroscope](https://grafana.com/docs/pyroscop
    ```bash
    docker run -d -p 4040:4040 grafana/pyroscope:latest
    ```
+   Or with this repo's compose (opt-in profile): `docker compose --profile profiling up -d pyroscope`.
 
 2. In config.yaml set `PROFILING_TYPE: Pyroscope` and `PYROSCOPE_SERVER_ADDRESS` **for your environment**:
    - **Quay on host** (e.g. `make run`, tests): `http://localhost:4040`
@@ -20,4 +21,4 @@ UI: http://localhost:4040 — pick app `quay` to view flame graphs.
 
 ## Disable
 
-Remove or comment out `PROFILING_TYPE` and `PYROSCOPE_SERVER_ADDRESS` in config.yaml, then restart Quay.
+Remove or comment out `PROFILING_TYPE` and `PYROSCOPE_SERVER_ADDRESS` in config.yaml, or clear them from `QUAY_OVERRIDE_CONFIG`, then restart Quay.

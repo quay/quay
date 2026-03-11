@@ -93,10 +93,11 @@ class TestInitPyroscope:
         response.status_code = 200
         mock_pyroscope = MagicMock()
         with (
-            patch("util.profiling.pyroscope.requests.get", return_value=response),
+            patch("util.profiling.pyroscope.requests.get", return_value=response) as mock_get,
             patch.dict("sys.modules", {"pyroscope": mock_pyroscope}),
         ):
             init_pyroscope(app)
+        mock_get.assert_called_once_with("http://pyroscope:4040", timeout=5)
         mock_pyroscope.configure.assert_called_once_with(
             application_name="quay",
             server_address="http://pyroscope:4040",
