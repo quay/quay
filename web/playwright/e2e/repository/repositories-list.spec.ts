@@ -132,7 +132,9 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
         `${testUser}/${publicRepoName}`,
       );
       await expect(
-        authenticatedPage.getByText(`${testUser}/${publicRepoName}`),
+        authenticatedPage
+          .locator('table')
+          .getByText(`${testUser}/${publicRepoName}`),
       ).toBeVisible();
 
       // Verify visibility is public

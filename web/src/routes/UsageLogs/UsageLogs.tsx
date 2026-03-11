@@ -17,6 +17,7 @@ interface UsageLogsProps {
   organization: string;
   repository: string;
   type: string;
+  isActive?: boolean;
 }
 
 function formatDate(date: string) {
@@ -151,6 +152,7 @@ export default function UsageLogs(props: UsageLogsProps) {
             org={props.organization}
             type={props.type}
             isHidden={chartHidden}
+            enabled={props.isActive !== false}
           />
         </FlexItem>
         <FlexItem>
@@ -160,6 +162,7 @@ export default function UsageLogs(props: UsageLogsProps) {
             repo={props.repository}
             org={props.organization}
             type={props.type}
+            enabled={props.isActive !== false}
           />
         </FlexItem>
       </Flex>

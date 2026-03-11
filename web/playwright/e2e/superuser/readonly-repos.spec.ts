@@ -53,7 +53,7 @@ test.describe(
         timeout: 15000,
       });
 
-      // Assert: no "Create Repository" button visible
+      // Assert: no "Create Repository" button visible (write actions blocked for readonly)
       await expect(
         readonlyPage.getByRole('button', {name: /create repository/i}),
       ).not.toBeVisible();
