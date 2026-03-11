@@ -4,6 +4,8 @@ import {
   InputGroupItem,
   DatePicker,
   TimePicker,
+  HelperText,
+  HelperTextItem,
 } from '@patternfly/react-core';
 import {
   parseDateTimeValue,
@@ -12,6 +14,7 @@ import {
   formatTimeForPicker,
   is24HourFormat,
   toFormString,
+  getTimezoneLabel,
 } from 'src/libs/dateTimeUtils';
 
 interface FormDateTimePickerProps {
@@ -62,26 +65,33 @@ export const FormDateTimePicker: React.FC<FormDateTimePickerProps> = ({
   };
 
   return (
-    <InputGroup>
-      <InputGroupItem>
-        <DatePicker
-          value={current ? dateFormat(current) : ''}
-          dateFormat={dateFormat}
-          dateParse={dateParse}
-          onChange={onDateChange}
-          aria-label={dateAriaLabel}
-        />
-      </InputGroupItem>
-      <InputGroupItem>
-        <TimePicker
-          time={formatTimeForPicker(current)}
-          onChange={onTimeChange}
-          is24Hour={is24HourFormat()}
-          stepMinutes={1}
-          aria-label={timeAriaLabel}
-          style={{width: '150px'}}
-        />
-      </InputGroupItem>
-    </InputGroup>
+    <>
+      <InputGroup>
+        <InputGroupItem>
+          <DatePicker
+            value={current ? dateFormat(current) : ''}
+            dateFormat={dateFormat}
+            dateParse={dateParse}
+            onChange={onDateChange}
+            aria-label={dateAriaLabel}
+          />
+        </InputGroupItem>
+        <InputGroupItem>
+          <TimePicker
+            time={formatTimeForPicker(current)}
+            onChange={onTimeChange}
+            is24Hour={is24HourFormat()}
+            stepMinutes={1}
+            aria-label={timeAriaLabel}
+            style={{width: '150px'}}
+          />
+        </InputGroupItem>
+      </InputGroup>
+      <HelperText>
+        <HelperTextItem variant="indeterminate">
+          All times are shown in {getTimezoneLabel(current ?? new Date())}
+        </HelperTextItem>
+      </HelperText>
+    </>
   );
 };
