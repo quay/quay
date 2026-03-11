@@ -502,7 +502,31 @@ def retarget_tag(
             immutable=immutable,
         )
 
-        return created
+        # Capture values for logging outside the transaction
+        namespace_name = repo.namespace_user.username if immutable else None
+        repo_name = repo.name if immutable else None
+
+    # Best-effort audit log outside the transaction so a logging failure
+    # does not roll back the tag creation.
+    if immutable:
+        try:
+            from data.logs_model import logs_model
+
+            logs_model.log_action(
+                "tag_made_immutable_by_policy",
+                namespace_name=namespace_name,
+                repository_name=repo_name,
+                metadata={
+                    "tag": tag_name,
+                    "repo": repo_name,
+                    "namespace": namespace_name,
+                    "immutable": True,
+                },
+            )
+        except Exception:
+            logger.exception("Failed to log tag_made_immutable_by_policy for tag %s", tag_name)
+
+    return created
 
 
 def delete_tag(repository_id, tag_name):

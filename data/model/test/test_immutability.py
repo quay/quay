@@ -735,3 +735,91 @@ class TestNamespaceHasImmutableTags:
         _create_tag(repo, manifest, "v1.0.0", immutable=True, hidden=True)
 
         assert namespace_has_immutable_tags(org.id) is False
+
+
+@pytest.mark.usefixtures("initialized_db")
+class TestImmutabilityAuditLogging:
+    def test_create_namespace_policy_logs_retroactive_changes(self):
+        """Verify audit log when namespace policy retroactively marks tags immutable."""
+        org = create_org("audituser1", "audit1@example.com", "auditorg1", "auditorg1@example.com")
+        repo = create_repository(org.username, "auditrepo1", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        _create_tag(repo, manifest, "v1.0.0")
+        _create_tag(repo, manifest, "v2.0.0")
+        _create_tag(repo, manifest, "latest")
+
+        with patch("data.logs_model.logs_model.log_action") as mock_log:
+            create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "tags_made_immutable_by_policy"
+            assert call_args[1]["namespace_name"] == org.username
+            assert call_args[1]["repository_name"] is None
+            assert call_args[1]["metadata"]["count"] == 2
+            assert call_args[1]["metadata"]["tag_pattern"] == "^v.*$"
+
+    def test_create_namespace_policy_no_log_when_no_tags_affected(self):
+        """Verify no audit log when policy doesn't match any existing tags."""
+        org = create_org("audituser2", "audit2@example.com", "auditorg2", "auditorg2@example.com")
+        repo = create_repository(org.username, "auditrepo2", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        _create_tag(repo, manifest, "latest")
+
+        with patch("data.logs_model.logs_model.log_action") as mock_log:
+            create_namespace_immutability_policy(org.username, {"tag_pattern": "^nomatch-.*$"})
+            mock_log.assert_not_called()
+
+    def test_create_repository_policy_logs_retroactive_changes(self):
+        """Verify audit log when repo policy retroactively marks tags immutable."""
+        org = create_org("audituser3", "audit3@example.com", "auditorg3", "auditorg3@example.com")
+        repo = create_repository(org.username, "auditrepo3", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        _create_tag(repo, manifest, "release-1.0")
+        _create_tag(repo, manifest, "dev-branch")
+
+        with patch("data.logs_model.logs_model.log_action") as mock_log:
+            create_repository_immutability_policy(
+                org.username, repo.name, {"tag_pattern": "^release-.*$"}
+            )
+
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "tags_made_immutable_by_policy"
+            assert call_args[1]["namespace_name"] == org.username
+            assert call_args[1]["repository_name"] == repo.name
+            assert call_args[1]["metadata"]["count"] == 1
+            assert call_args[1]["metadata"]["repo"] == repo.name
+
+    def test_update_namespace_policy_logs_retroactive_changes(self):
+        """Verify audit log when updated policy retroactively marks new tags."""
+        org = create_org("audituser4", "audit4@example.com", "auditorg4", "auditorg4@example.com")
+        repo = create_repository(org.username, "auditrepo4", None)
+
+        existing_repo = get_repository("devtable", "simple")
+        manifest = _get_manifest_from_repo(existing_repo)
+
+        _create_tag(repo, manifest, "v1.0.0")
+        _create_tag(repo, manifest, "release-1.0")
+
+        policy = create_namespace_immutability_policy(org.username, {"tag_pattern": "^v.*$"})
+
+        with patch("data.logs_model.logs_model.log_action") as mock_log:
+            update_namespace_immutability_policy(
+                org.username, policy.uuid, {"tag_pattern": "^release-.*$"}
+            )
+
+            mock_log.assert_called_once()
+            call_args = mock_log.call_args
+            assert call_args[0][0] == "tags_made_immutable_by_policy"
+            assert call_args[1]["metadata"]["tag_pattern"] == "^release-.*$"
+            assert call_args[1]["metadata"]["count"] == 1
