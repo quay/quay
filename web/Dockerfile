@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest as build
 
 ARG quay_app_api_url=http://localhost:8080
 ENV REACT_QUAY_APP_API_URL=${quay_app_api_url}
@@ -10,7 +10,7 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-FROM registry.access.redhat.com/ubi8/nodejs-16:latest
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest
 
 WORKDIR /opt/app-root
 RUN npm install node-static
