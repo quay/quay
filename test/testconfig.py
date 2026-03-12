@@ -134,6 +134,7 @@ class TestConfig(DefaultConfig):
     FEATURE_IMAGE_EXPIRY_TRIGGER = True
     FEATURE_IMAGE_PULL_STATS = True
     PULL_METRICS_REDIS = {"host": "localhost", "port": 6379, "db": 1}
+    USER_EVENTS_REDIS = {"host": "localhost", "port": 6379, "db": 2}
 
     CDN_SPECIFIC_NAMESPACES = ["redhat"]
 

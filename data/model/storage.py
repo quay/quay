@@ -24,6 +24,7 @@ from data.model import (
     config,
     db_transaction,
 )
+from util.locking import GlobalLock, LockNotAcquiredException
 from util.metrics.prometheus import gc_storage_blobs_deleted, gc_table_rows_deleted
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,18 @@ def _is_storage_orphaned(candidate_id):
             return False
         except UploadedBlob.DoesNotExist:
             pass
+
+        # We need to check if a blob is a placeholder blob. If it is, we must **NOT** delete this blob.
+        has_placement = (
+            ImageStoragePlacement.select()
+            .where(ImageStoragePlacement.storage == candidate_id)
+            .exists()
+        )
+
+        if not has_placement:
+            # Placeholder blobs will be GCed later in a future cycle or the download worker will download it
+            logger.debug("Skipping GC of placeholder blob %s (no placement yet)", candidate_id)
+            return False
 
     return True
 
@@ -212,17 +225,26 @@ def garbage_collect_storage(storage_id_whitelist):
                 continue
 
             # Perform one final check to ensure the blob is not needed.
-            if (
-                ImageStorage.select()
-                .where(ImageStorage.content_checksum == storage_checksum)
-                .exists()
-            ):
+            # GlobalLock ensures that deletion is atomic with the database operation, thus avoiding
+            # any race conditions.
+            try:
+                with GlobalLock(f"BLOB_DELETE_{storage_checksum}"):
+                    if (
+                        ImageStorage.select()
+                        .where(ImageStorage.content_checksum == storage_checksum)
+                        .exists()
+                    ):
+                        continue
+
+                    logger.debug("Removing %s from %s", image_path, location_name)
+                    config.store.remove({location_name}, image_path)
+                    gc_storage_blobs_deleted.inc()
+            # If a lock cannot be acquired, skip deletion of the blob from storage backend (safe option)
+            except LockNotAcquiredException:
+                logger.debug(
+                    "Could not acquire lock for blob %s, skipping deletion", storage_checksum
+                )
                 continue
-
-        logger.debug("Removing %s from %s", image_path, location_name)
-        config.store.remove({location_name}, image_path)
-        gc_storage_blobs_deleted.inc()
-
     return orphaned_storage_ids
 
 

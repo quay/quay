@@ -38,6 +38,7 @@ from path_converters import (
     V1CreateRepositoryPathConverter,
 )
 from test.testconfig import FakeTransaction
+from util.locking import GlobalLock
 
 INIT_DB_PATH = 0
 
@@ -197,6 +198,7 @@ def appconfig(database_uri):
         "ACTION_LOG_AUDIT_PULL_FAILURES": True,
         "ACTION_LOG_AUDIT_PUSH_FAILURES": True,
         "ACTION_LOG_AUDIT_DELETE_FAILURES": True,
+        "USER_EVENTS_REDIS": {"host": "localhost", "port": 6379, "db": 2},
     }
     return conf
 
@@ -227,6 +229,9 @@ def initialized_db(appconfig):
     model._basequery._lookup_team_roles()
     model._basequery.get_public_repo_visibility()
     model.log.get_log_entry_kinds()
+
+    # Configure GlobalLock for tests.
+    GlobalLock.configure(appconfig)
 
     if not under_test_real_database:
         # Make absolutely sure foreign key constraints are on.
