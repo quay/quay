@@ -36,6 +36,13 @@ repos:
         language: system
         files: ^web/
         exclude: ^web/cypress/test/|^web/cypress/fixtures|^web/Containerfile
+    -   id: go-schema-drift
+        name: Check Go schema drift
+        entry: make go-schema-check
+        language: system
+        files: (data/database\.py|data/fields\.py|data/model/sqlalchemybridge\.py|initdb\.py|internal/dal/schema/)
+        pass_filenames: false
+        stages: [pre-commit]
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
     hooks:
