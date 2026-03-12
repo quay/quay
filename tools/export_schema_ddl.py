@@ -316,7 +316,7 @@ def export_ddl(metadata, output_dir):
         lines.append("")
 
     for table in metadata.sorted_tables:
-        for index in table.indexes:
+        for index in sorted(table.indexes, key=lambda i: i.name):
             try:
                 idx_ddl = CreateIndex(index).compile(dialect=dialect)
                 lines.append(str(idx_ddl).strip() + ";")

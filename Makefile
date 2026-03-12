@@ -368,7 +368,20 @@ GO_BINARY_NAME = quay
 GO_BUILD_DIR = bin
 GO_CMD_DIR = cmd/quay
 
-.PHONY: go-build go-test go-fmt go-vet go-clean
+.PHONY: go-build go-test go-fmt go-vet go-clean go-schema go-schema-check
+
+go-schema:
+	PYTHONPATH="." python tools/export_schema_ddl.py --output-dir internal/dal/schema/
+	sqlc generate
+
+go-schema-check:
+	@echo "Checking for schema drift..."
+	@PYTHONPATH="." python tools/export_schema_ddl.py --output-dir /tmp/quay-schema-check/
+	@diff internal/dal/schema/quay_schema.sql /tmp/quay-schema-check/quay_schema.sql || \
+		(echo "ERROR: quay_schema.sql is out of date. Run 'make go-schema' and commit the results." && exit 1)
+	@diff internal/dal/schema/seed_data.sql /tmp/quay-schema-check/seed_data.sql || \
+		(echo "ERROR: seed_data.sql is out of date. Run 'make go-schema' and commit the results." && exit 1)
+	@echo "Schema files are up to date."
 
 go-build:
 	@mkdir -p $(GO_BUILD_DIR)
