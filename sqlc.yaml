@@ -1,0 +1,11 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "internal/dal/sql/queries/"
+    schema: "internal/dal/schema/quay_schema.sql"
+    gen:
+      go:
+        package: "daldb"
+        out: "internal/dal/daldb"
+        emit_json_tags: true
+        emit_empty_slices: true
