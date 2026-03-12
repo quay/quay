@@ -291,6 +291,7 @@ export const logKinds = {
   tag_made_immutable_by_policy: 'Tag Made Immutable by Policy',
   tags_made_immutable_by_policy: 'Tags Made Immutable by Policy',
   oauth_token_assigned: 'OAuth token assigned',
+  oauth_token_revoked: 'OAuth token revoked',
   enable_team_sync: 'Enable Team Sync',
   disable_team_sync: 'Disable Team Sync',
   add_repo_webhook: 'Add webhook',
