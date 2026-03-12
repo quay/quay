@@ -10,6 +10,12 @@ on:
       - '.golangci.yml'
       - '.github/workflows/go.yaml'
       - 'util/config/schema.py'
+      - 'data/database.py'
+      - 'data/fields.py'
+      - 'data/model/sqlalchemybridge.py'
+      - 'initdb.py'
+      - 'internal/dal/schema/**'
+      - 'tools/export_schema_ddl.py'
       - '!config-tool/**'
   pull_request:
     paths:
@@ -19,6 +25,12 @@ on:
       - '.golangci.yml'
       - '.github/workflows/go.yaml'
       - 'util/config/schema.py'
+      - 'data/database.py'
+      - 'data/fields.py'
+      - 'data/model/sqlalchemybridge.py'
+      - 'initdb.py'
+      - 'internal/dal/schema/**'
+      - 'tools/export_schema_ddl.py'
       - '!config-tool/**'
 
 jobs:
@@ -72,3 +84,21 @@ jobs:
 
       - name: Run tests
         run: make go-test
+
+  schema-sync:
+    name: Schema Drift Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install peewee sqlalchemy bcrypt resumablesha256 cachetools
+
+      - name: Check schema drift
+        run: make go-schema-check
