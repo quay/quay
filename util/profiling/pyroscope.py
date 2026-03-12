@@ -19,7 +19,14 @@ def _safe_url(url):
             if parsed.port is not None:
                 netloc = f"{netloc}:{parsed.port}"
             return urlunparse(
-                (parsed.scheme, netloc, parsed.path or "", parsed.params, parsed.query, parsed.fragment)
+                (
+                    parsed.scheme,
+                    netloc,
+                    parsed.path or "",
+                    parsed.params,
+                    parsed.query,
+                    parsed.fragment,
+                )
             )
         return url
     except Exception:

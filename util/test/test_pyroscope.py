@@ -20,7 +20,9 @@ class TestSafeUrl:
 
     def test_no_credentials_unchanged(self):
         assert _safe_url("http://pyroscope:4040") == "http://pyroscope:4040"
-        assert _safe_url("https://host.example.com:4040/path") == "https://host.example.com:4040/path"
+        assert (
+            _safe_url("https://host.example.com:4040/path") == "https://host.example.com:4040/path"
+        )
 
     def test_strips_credentials(self):
         assert _safe_url("http://user:secret@host:4040") == "http://host:4040"
