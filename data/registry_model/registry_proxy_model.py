@@ -26,7 +26,6 @@ from data.model import (
     TagDoesNotExist,
     namespacequota,
     oci,
-    repository,
 )
 from data.model.oci.manifest import is_child_manifest
 from data.model.proxy_cache import get_proxy_cache_config_for_org
@@ -37,6 +36,7 @@ from data.model.quota import (
     update_quota,
 )
 from data.model.repository import create_repository, get_repository
+from data.model.storage import get_or_create_blob_with_lock, with_blob_lock_or_fallback
 from data.registry_model.blobuploader import (
     BlobDigestMismatchException,
     BlobRangeMismatchException,
@@ -459,18 +459,40 @@ class ProxyModel(OCIModel):
         if upstream_manifest is None:
             upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
 
+        created_blobs = []
+
         if up_to_date and placeholder:
             self._check_image_upload_possible_or_prune(repo_ref, upstream_manifest)
-            with db_disallow_replica_use():
-                with db_transaction():
-                    q = ManifestTable.update(
-                        manifest_bytes=upstream_manifest.bytes.as_unicode(),
-                        layers_compressed_size=upstream_manifest.layers_compressed_size,
-                    ).where(ManifestTable.id == manifest.id)
-                    q.execute()
-                    self._create_placeholder_blobs(upstream_manifest, manifest.id, repo_ref.id)
-                    db_tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
-                    return Tag.for_tag(db_tag, self._legacy_image_id_handler), False
+            # We try to create placeholder blobs and update the manifest
+            try:
+                created_blobs = self._create_placeholder_blobs(
+                    upstream_manifest, manifest.id, repo_ref.id
+                )
+                with db_disallow_replica_use():
+                    with db_transaction():
+                        q = ManifestTable.update(
+                            manifest_bytes=upstream_manifest.bytes.as_unicode(),
+                            layers_compressed_size=upstream_manifest.layers_compressed_size,
+                        ).where(ManifestTable.id == manifest.id)
+                        q.execute()
+                        db_tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
+                        return Tag.for_tag(db_tag, self._legacy_image_id_handler), False
+
+            # If manifest update fails, orphan the already created blobs so they can be picked up
+            # by gc
+            except Exception as e:
+                logger.warning(
+                    "Failed to update manifest %s, cleaning up blob references", manifest.id
+                )
+                # only delete newly created manifest blobs
+                if created_blobs:
+                    blob_ids = [blob_id for blob_id, _ in created_blobs]
+                    ManifestBlob.delete().where(
+                        ManifestBlob.manifest == manifest.id, ManifestBlob.blob << blob_ids
+                    ).execute()
+                    blob_sizes = {blob_id: size for blob_id, size in created_blobs}
+                    update_quota(repo_ref.id, manifest.id, blob_sizes, QuotaOperation.SUBTRACT)
+                raise
 
         # if we got here, the manifest is stale, so we both create a new manifest
         # entry in the db, and retarget the tag.
@@ -499,73 +521,101 @@ class ProxyModel(OCIModel):
         """
         self._check_image_upload_possible_or_prune(repository_ref, manifest)
 
-        with db_disallow_replica_use():
-            with db_transaction():
-                db_manifest = oci.manifest.lookup_manifest(
-                    repository_ref.id, manifest.digest, allow_dead=True
-                )
-                if db_manifest is None:
+        db_manifest = oci.manifest.lookup_manifest(
+            repository_ref.id, manifest.digest, allow_dead=True
+        )
+
+        if db_manifest is None:
+            with db_disallow_replica_use():
+                with db_transaction():
                     db_manifest = oci.manifest.create_manifest(
                         repository_ref.id, manifest, raise_on_error=True
                     )
-                    if db_manifest is None:
-                        return None, None
+            if db_manifest is None:
+                return None, None
 
-                # 0 means a tag never expires - if we get 0 as expiration,
-                # we set the tag expiration to None.
-                expiration = self._config.expiration_s or None
-                try:
-                    tag = oci.tag.retarget_tag(
-                        tag_name,
-                        db_manifest,
-                        raise_on_error=True,
-                        expiration_seconds=expiration,
-                    )
-                except ImmutableTagException:
-                    # For proxy cache, if an immutable tag already exists,
-                    # return the existing tag - the cached image is still valid
-                    existing_tag = oci.tag.get_tag(repository_ref.id, tag_name)
-                    if existing_tag and existing_tag.immutable:
-                        wrapped_manifest = Manifest.for_manifest(
-                            existing_tag.manifest, self._legacy_image_id_handler
-                        )
-                        wrapped_tag = Tag.for_tag(
-                            existing_tag,
-                            self._legacy_image_id_handler,
-                            manifest_row=existing_tag.manifest,
-                        )
-                        return wrapped_manifest, wrapped_tag
-                    raise
-                if tag is None:
-                    return None, None
-
-                wrapped_manifest = Manifest.for_manifest(db_manifest, self._legacy_image_id_handler)
+        created_blobs = []  # Track ManifestBlob rows created in this attempt
+        try:
+            # Check if the tag is immutable and if it is, return it immediately
+            existing_tag = oci.tag.get_tag(repository_ref.id, tag_name)
+            if existing_tag and existing_tag.immutable:
+                wrapped_manifest = Manifest.for_manifest(
+                    existing_tag.manifest, self._legacy_image_id_handler
+                )
                 wrapped_tag = Tag.for_tag(
-                    tag, self._legacy_image_id_handler, manifest_row=db_manifest
+                    existing_tag,
+                    self._legacy_image_id_handler,
+                    manifest_row=existing_tag.manifest,
+                )
+                return wrapped_manifest, wrapped_tag
+
+            if not manifest.is_manifest_list:
+                created_blobs = self._create_placeholder_blobs(
+                    manifest, db_manifest.id, repository_ref.id
                 )
 
-                if not manifest.is_manifest_list:
-                    self._create_placeholder_blobs(manifest, db_manifest.id, repository_ref.id)
-                    return wrapped_manifest, wrapped_tag
-
-                manifests_to_connect = []
-                for child in manifest.child_manifests(content_retriever=None):
-                    m = oci.manifest.lookup_manifest(
-                        repository_ref.id, child.digest, allow_dead=True
-                    )
-                    if m is None:
-                        m = oci.manifest.create_manifest(repository_ref.id, child)
-                        oci.tag.create_temporary_tag_if_necessary(
-                            m, self._config.expiration_s or None
-                        )
+            with db_disallow_replica_use():
+                with db_transaction():
+                    # 0 means a tag never expires - if we get 0 as expiration,
+                    # we set the tag expiration to None.
+                    expiration = self._config.expiration_s or None
                     try:
-                        ManifestChild.get(manifest=db_manifest.id, child_manifest=m.id)
-                    except ManifestChild.DoesNotExist:
-                        manifests_to_connect.append(m)
+                        tag = oci.tag.retarget_tag(
+                            tag_name,
+                            db_manifest,
+                            raise_on_error=True,
+                            expiration_seconds=expiration,
+                        )
+                    except ImmutableTagException:
+                        raise
+                    if tag is None:
+                        return None, None
 
-                oci.manifest.connect_manifests(manifests_to_connect, db_manifest, repository_ref.id)
+                    wrapped_manifest = Manifest.for_manifest(
+                        db_manifest, self._legacy_image_id_handler
+                    )
+                    wrapped_tag = Tag.for_tag(
+                        tag, self._legacy_image_id_handler, manifest_row=db_manifest
+                    )
 
-                return wrapped_manifest, wrapped_tag
+                    if not manifest.is_manifest_list:
+                        return wrapped_manifest, wrapped_tag
+
+                    manifests_to_connect = []
+                    for child in manifest.child_manifests(content_retriever=None):
+                        m = oci.manifest.lookup_manifest(
+                            repository_ref.id, child.digest, allow_dead=True
+                        )
+                        if m is None:
+                            m = oci.manifest.create_manifest(repository_ref.id, child)
+                            oci.tag.create_temporary_tag_if_necessary(
+                                m, self._config.expiration_s or None
+                            )
+                        try:
+                            ManifestChild.get(manifest=db_manifest.id, child_manifest=m.id)
+                        except ManifestChild.DoesNotExist:
+                            manifests_to_connect.append(m)
+
+                    oci.manifest.connect_manifests(
+                        manifests_to_connect, db_manifest, repository_ref.id
+                    )
+
+                    return wrapped_manifest, wrapped_tag
+        except Exception as e:
+            logger.warning(
+                "Failed to create blob/tag for manifest %s, cleaning up: %s", db_manifest.id, e
+            )
+            # Clean up only the ManifestBlob rows we created in this attempt
+            if created_blobs:
+                blob_ids = [blob_id for blob_id, _ in created_blobs]
+                ManifestBlob.delete().where(
+                    ManifestBlob.manifest == db_manifest.id, ManifestBlob.blob << blob_ids
+                ).execute()
+
+                # Rollback quota for the blobs we added
+                blob_sizes = {blob_id: size for blob_id, size in created_blobs}
+                update_quota(repository_ref.id, db_manifest.id, blob_sizes, QuotaOperation.SUBTRACT)
+            raise
 
     def _create_manifest_with_temp_tag(
         self,
@@ -583,35 +633,61 @@ class ProxyModel(OCIModel):
         Raises QuotaExceededException if there are not enough tags to prune.
         """
         self._check_image_upload_possible_or_prune(repository_ref, manifest)
-
         with db_disallow_replica_use():
             with db_transaction():
                 db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
-                expiration = self._config.expiration_s or None
-                tag = Tag.for_tag(
-                    oci.tag.create_temporary_tag_if_necessary(db_manifest, expiration),
-                    self._legacy_image_id_handler,
+
+        created_blobs = []  # Track ManifestBlob rows created in this attempt
+        try:
+            if not manifest.is_manifest_list:
+                created_blobs = self._create_placeholder_blobs(
+                    manifest, db_manifest.id, repository_ref.id
                 )
-                wrapped_manifest = Manifest.for_manifest(db_manifest, self._legacy_image_id_handler)
-
-                if not manifest.is_manifest_list:
-                    self._create_placeholder_blobs(manifest, db_manifest.id, repository_ref.id)
-                    return wrapped_manifest, tag
-
-                manifests_to_connect = []
-                for child in manifest.child_manifests(content_retriever=None):
-                    m = oci.manifest.lookup_manifest(
-                        repository_ref.id, child.digest, allow_hidden=True, allow_dead=True
+            with db_disallow_replica_use():
+                with db_transaction():
+                    expiration = self._config.expiration_s or None
+                    tag = Tag.for_tag(
+                        oci.tag.create_temporary_tag_if_necessary(db_manifest, expiration),
+                        self._legacy_image_id_handler,
                     )
-                    if m is None:
-                        m = oci.manifest.create_manifest(repository_ref.id, child)
-                    manifests_to_connect.append(m)
+                    wrapped_manifest = Manifest.for_manifest(
+                        db_manifest, self._legacy_image_id_handler
+                    )
 
-                oci.manifest.connect_manifests(manifests_to_connect, db_manifest, repository_ref.id)
-                for db_manifest in manifests_to_connect:
-                    oci.tag.create_temporary_tag_if_necessary(db_manifest, expiration)
+                    if not manifest.is_manifest_list:
+                        return wrapped_manifest, tag
 
-                return wrapped_manifest, tag
+                    manifests_to_connect = []
+                    for child in manifest.child_manifests(content_retriever=None):
+                        m = oci.manifest.lookup_manifest(
+                            repository_ref.id, child.digest, allow_hidden=True, allow_dead=True
+                        )
+                        if m is None:
+                            m = oci.manifest.create_manifest(repository_ref.id, child)
+                        manifests_to_connect.append(m)
+
+                    oci.manifest.connect_manifests(
+                        manifests_to_connect, db_manifest, repository_ref.id
+                    )
+                    for child_manifest in manifests_to_connect:
+                        oci.tag.create_temporary_tag_if_necessary(child_manifest, expiration)
+
+                    return wrapped_manifest, tag
+        except Exception as e:
+            logger.warning(
+                "Failed to create blob/tag for manifest %s, cleaning up: %s", db_manifest.id, e
+            )
+            # Clean up only the ManifestBlob rows we created in this attempt
+            if created_blobs:
+                blob_ids = [blob_id for blob_id, _ in created_blobs]
+                ManifestBlob.delete().where(
+                    ManifestBlob.manifest == db_manifest.id, ManifestBlob.blob << blob_ids
+                ).execute()
+
+                # Rollback quota for the blobs we added
+                blob_sizes = {blob_id: size for blob_id, size in created_blobs}
+                update_quota(repository_ref.id, db_manifest.id, blob_sizes, QuotaOperation.SUBTRACT)
+            raise
 
     def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
         """
@@ -695,40 +771,62 @@ class ProxyModel(OCIModel):
             raise ManifestException("manifest is not acceptable by the client")
         return None
 
-    def _create_blob(self, digest: str, size: int, manifest_id: int, repo_id: int):
-        try:
-            blob = ImageStorage.get(content_checksum=digest)
-        except ImageStorage.DoesNotExist:
-            # TODO: which size should we really be setting here?
-            blob = ImageStorage.create(
-                content_checksum=digest, image_size=size, compressed_size=size
-            )
+    def _create_blob_in_storage(
+        self, digest: str, size: int, manifest_id: int, repo_id: int, skip_lock: bool
+    ):
+        blob = get_or_create_blob_with_lock(digest=digest, image_size=size, skip_lock=skip_lock)
+        newly_created = False
         try:
             ManifestBlob.get(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
         except ManifestBlob.DoesNotExist:
             ManifestBlob.create(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
+            newly_created = True
 
             # Add blob sizes if quota management is enabled
             update_quota(repo_id, manifest_id, {blob.id: blob.image_size}, QuotaOperation.ADD)
+        return blob, newly_created
 
-        return blob
+    def _create_blob(self, digest: str, size: int, manifest_id: int, repo_id: int):
+        return with_blob_lock_or_fallback(
+            digest,
+            self._create_blob_in_storage,
+            digest,
+            size,
+            manifest_id,
+            repo_id,
+        )
 
     def _create_placeholder_blobs(
         self, manifest: ManifestInterface, manifest_id: int, repo_id: int
     ):
+        """
+        Creates placeholder blobs for the manifest and returns a list of newly created blob IDs with sizes.
+
+        Returns:
+            List of tuples (blob_id, size) for ManifestBlob rows created in this call.
+        """
         if manifest.is_manifest_list:
-            return
+            return []
+
+        created_blobs = []  # Track (blob_id, size) for newly created ManifestBlob rows
 
         if manifest.schema_version == 2:
-            self._create_blob(
+            blob, newly_created = self._create_blob(
                 manifest.config.digest,
                 manifest.config.size,
                 manifest_id,
                 repo_id,
             )
+            if newly_created:
+                created_blobs.append((blob.id, blob.image_size))
 
         for layer in manifest.filesystem_layers:
-            self._create_blob(layer.digest, layer.compressed_size, manifest_id, repo_id)
+            blob, newly_created = self._create_blob(
+                layer.digest, layer.compressed_size, manifest_id, repo_id
+            )
+            if newly_created:
+                created_blobs.append((blob.id, blob.image_size))
+
             username = self._user.username if self._user else None
             queue_id = proxy_cache_blob_queue.put(
                 [self._namespace_name, str(repo_id), str(layer.digest)],
@@ -742,6 +840,8 @@ class ProxyModel(OCIModel):
                 ),
                 available_after=5,
             )
+
+        return created_blobs
 
     def _upstream_namespace(self, repo: str) -> str:
         upstream_namespace = self._config.upstream_registry_namespace

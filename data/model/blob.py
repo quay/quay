@@ -2,6 +2,8 @@ import logging
 from datetime import datetime, timedelta
 from uuid import uuid4
 
+from peewee import IntegrityError
+
 from data.database import (
     BlobUpload,
     ImageStorage,
@@ -21,6 +23,7 @@ from data.model import (
     db_transaction,
 )
 from data.model import storage as storage_model
+from data.model.storage import get_or_create_blob_with_lock, with_blob_lock_or_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -42,20 +45,19 @@ def store_blob_record_and_temp_link(
     )
 
 
-def store_blob_record_and_temp_link_in_repo(
+def _store_blob_record_and_temp_link_in_repo(
     repository_id,
     blob_digest,
     location_obj,
     byte_count,
     link_expiration_s,
     uncompressed_byte_count=None,
+    skip_lock=False,
 ):
     """
-    Store a record of the blob and temporarily link it to the specified repository.
+    Helper function that creates the necessary placements in specific tables. Returns the storage object
+    back to the caller function.
     """
-    assert blob_digest
-    assert byte_count is not None
-
     with db_transaction():
         try:
             storage = ImageStorage.get(content_checksum=blob_digest)
@@ -72,19 +74,47 @@ def store_blob_record_and_temp_link_in_repo(
             if save_changes:
                 storage.save()
 
-            ImageStoragePlacement.get(storage=storage, location=location_obj)
         except ImageStorage.DoesNotExist:
-            storage = ImageStorage.create(
-                content_checksum=blob_digest,
+            storage = get_or_create_blob_with_lock(
+                digest=blob_digest,
                 image_size=byte_count,
                 uncompressed_size=uncompressed_byte_count,
+                skip_lock=skip_lock,
             )
-            ImageStoragePlacement.create(storage=storage, location=location_obj)
+
+        try:
+            ImageStoragePlacement.get(storage=storage, location=location_obj)
         except ImageStoragePlacement.DoesNotExist:
             ImageStoragePlacement.create(storage=storage, location=location_obj)
 
         _temp_link_blob(repository_id, storage, link_expiration_s)
         return storage
+
+
+def store_blob_record_and_temp_link_in_repo(
+    repository_id,
+    blob_digest,
+    location_obj,
+    byte_count,
+    link_expiration_s,
+    uncompressed_byte_count=None,
+):
+    """
+    Store a record of the blob and temporarily link it to the specified repository.
+    """
+    assert blob_digest
+    assert byte_count is not None
+
+    return with_blob_lock_or_fallback(
+        blob_digest,
+        _store_blob_record_and_temp_link_in_repo,
+        repository_id=repository_id,
+        blob_digest=blob_digest,
+        location_obj=location_obj,
+        byte_count=byte_count,
+        link_expiration_s=link_expiration_s,
+        uncompressed_byte_count=uncompressed_byte_count,
+    )
 
 
 def temp_link_blob(repository_id, blob_digest, link_expiration_s):
@@ -213,14 +243,12 @@ def get_or_create_shared_blob(digest, byte_data, storage):
         preferred = storage.preferred_locations[0]
         location_obj = ImageStorageLocation.get(name=preferred)
 
-        record = ImageStorage.create(image_size=len(byte_data), content_checksum=digest)
+        record = get_or_create_blob_with_lock(digest=digest, image_size=len(byte_data))
 
         try:
             storage.put_content([preferred], storage_model.get_layer_path(record), byte_data)
             ImageStoragePlacement.create(storage=record, location=location_obj)
-        except:
-            logger.exception("Exception when trying to write special layer %s", digest)
-            record.delete_instance()
-            raise
+        except IntegrityError as e:
+            logger.warning("Exception when trying to write special layer %s: %s", digest, e)
 
         return record
