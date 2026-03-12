@@ -10,6 +10,7 @@ from authlib.jose import JsonWebKey, KeySet
 from cachetools import TTLCache
 from cachetools.func import lru_cache
 from requests import request
+from requests.exceptions import RequestException
 
 from oauth.base import (
     OAuthEndpoint,
@@ -28,6 +29,8 @@ OIDC_WELLKNOWN = ".well-known/openid-configuration"
 PUBLIC_KEY_CACHE_TTL = 3600  # 1 hour
 ALLOWED_ALGORITHMS = ["RS256", "RS384"]
 JWT_CLOCK_SKEW_SECONDS = 30
+DISCOVERY_MAX_ATTEMPTS = 4
+DISCOVERY_INITIAL_BACKOFF_SECONDS = 0.25
 
 
 class PasswordGrantException(Exception):
@@ -261,18 +264,56 @@ class OIDCLoginService(OAuthService):
             raise DiscoveryFailureException("OIDC server must be accessed over SSL")
 
         discovery_url = join(oidc_server, OIDC_WELLKNOWN)
-        discovery = self._http_client.get(discovery_url, timeout=5, verify=is_debugging is False)
-        if discovery.status_code // 100 != 2:
+        should_verify_ssl = is_debugging is False
+
+        for attempt in range(1, DISCOVERY_MAX_ATTEMPTS + 1):
+            try:
+                discovery = self._http_client.get(
+                    discovery_url, timeout=5, verify=should_verify_ssl
+                )
+            except RequestException as ex:
+                if attempt == DISCOVERY_MAX_ATTEMPTS:
+                    logger.exception("OIDC discovery request failed for url: %s", discovery_url)
+                    raise DiscoveryFailureException("Could not load OIDC discovery information")
+
+                backoff_seconds = DISCOVERY_INITIAL_BACKOFF_SECONDS * (2 ** (attempt - 1))
+                logger.warning(
+                    "OIDC discovery request failed for %s (attempt %s/%s): %s. Retrying in %.2fs",
+                    discovery_url,
+                    attempt,
+                    DISCOVERY_MAX_ATTEMPTS,
+                    ex,
+                    backoff_seconds,
+                )
+                time.sleep(backoff_seconds)
+                continue
+
+            if discovery.status_code // 100 == 2:
+                try:
+                    return json.loads(discovery.text)
+                except ValueError:
+                    logger.exception("Could not parse OIDC discovery for url: %s", discovery_url)
+                    raise DiscoveryFailureException("Could not parse OIDC discovery information")
+
+            if discovery.status_code in (429, 500, 502, 503, 504) and attempt < DISCOVERY_MAX_ATTEMPTS:
+                backoff_seconds = DISCOVERY_INITIAL_BACKOFF_SECONDS * (2 ** (attempt - 1))
+                logger.warning(
+                    "Got transient status code %s for OIDC discovery %s (attempt %s/%s). Retrying in %.2fs",
+                    discovery.status_code,
+                    discovery_url,
+                    attempt,
+                    DISCOVERY_MAX_ATTEMPTS,
+                    backoff_seconds,
+                )
+                time.sleep(backoff_seconds)
+                continue
+
             logger.debug(
                 "Got %s response for OIDC discovery: %s", discovery.status_code, discovery.text
             )
             raise DiscoveryFailureException("Could not load OIDC discovery information")
 
-        try:
-            return json.loads(discovery.text)
-        except ValueError:
-            logger.exception("Could not parse OIDC discovery for url: %s", discovery_url)
-            raise DiscoveryFailureException("Could not parse OIDC discovery information")
+        raise DiscoveryFailureException("Could not load OIDC discovery information")
 
     def decode_user_jwt(self, token, options={}):
         """
