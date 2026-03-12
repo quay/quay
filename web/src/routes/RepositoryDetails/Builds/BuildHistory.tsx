@@ -137,7 +137,7 @@ export default function BuildHistory(props: BuildHistoryProps) {
       <Toolbar>
         <ToolbarContent style={{paddingLeft: '1em', paddingTop: '1em'}}>
           <ToolbarItem>
-            <Title headingLevel="h2">Build History</Title>
+            <Title headingLevel="h2">Build history</Title>
           </ToolbarItem>
           <Conditional
             if={
@@ -148,7 +148,7 @@ export default function BuildHistory(props: BuildHistoryProps) {
           >
             <ToolbarItem align={{default: 'alignRight'}}>
               <Button onClick={() => setIsRunBuildModalOpen(true)}>
-                Start New Build
+                Start new build
               </Button>
             </ToolbarItem>
           </Conditional>
