@@ -234,6 +234,83 @@ test.describe(
       await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
     });
 
+    // PROJQUAY-10850: Bulk remove action disabled when only immutable tags selected
+    test('bulk remove is disabled when all selected tags are immutable', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+
+      await Promise.all([
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'immutable-1',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'immutable-2',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+      ]);
+
+      await Promise.all([
+        api.raw.setTagImmutability(
+          repo.namespace,
+          repo.name,
+          'immutable-1',
+          true,
+        ),
+        api.raw.setTagImmutability(
+          repo.namespace,
+          repo.name,
+          'immutable-2',
+          true,
+        ),
+      ]);
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'immutable-1',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'immutable-2',
+          exact: true,
+        }),
+      ).toBeVisible();
+
+      const row1 = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-1',
+          exact: true,
+        }),
+      });
+      const row2 = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-2',
+          exact: true,
+        }),
+      });
+
+      await row1.getByRole('checkbox').click();
+      await row2.getByRole('checkbox').click();
+
+      await authenticatedPage.getByTestId('bulk-actions-kebab').click();
+
+      const removeAction = authenticatedPage.getByTestId('bulk-remove-action');
+      // PatternFly uses pf-m-disabled class on li elements, not disabled attribute
+      await expect(removeAction).toHaveClass(/pf-m-disabled/);
+    });
+
     test('bulk make immutable is disabled when all selected tags are already immutable', async ({
       authenticatedPage,
       api,

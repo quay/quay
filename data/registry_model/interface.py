@@ -242,12 +242,12 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def delete_tags_for_manifest(self, manifest):
+    def delete_tags_for_manifest(self, model_cache, manifest):
         """
         Deletes all tags pointing to the given manifest, making the manifest inaccessible for
         pulling.
 
-        Returns the tags deleted, if any. Returns None on error.
+        Returns the tags deleted, if any. Raises ImmutableTagException if any tag is immutable.
         """
 
     @abstractmethod
@@ -407,13 +407,6 @@ class RegistryDataInterface(object):
         Creates a manifest under the repository and sets a temporary tag to point to it.
 
         Returns the manifest object created or None on error.
-        """
-
-    @abstractmethod
-    def get_cached_namespace_region_blacklist(self, model_cache, namespace_name):
-        """
-        Returns a cached set of ISO country codes blacklisted for pulls for the namespace or None if
-        the list could not be loaded.
         """
 
     @abstractmethod

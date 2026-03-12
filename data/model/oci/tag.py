@@ -22,7 +22,13 @@ from data.database import (
     db_transaction,
     get_epoch_timestamp_ms,
 )
-from data.model import DataModelException, ImmutableTagException, config, user
+from data.model import (
+    DataModelException,
+    ImmutableTagException,
+    config,
+    immutability,
+    user,
+)
 from data.model.notification import delete_tag_notifications_for_tag
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -481,8 +487,6 @@ def retarget_tag(
         # Check if tag should be immutable based on policies
         immutable = False
         if features.IMMUTABLE_TAGS:
-            from data.model import immutability
-
             immutable = immutability.evaluate_immutability_policies(
                 manifest.repository_id, repo.namespace_user_id, tag_name
             )
@@ -498,7 +502,31 @@ def retarget_tag(
             immutable=immutable,
         )
 
-        return created
+        # Capture values for logging outside the transaction
+        namespace_name = repo.namespace_user.username if immutable else None
+        repo_name = repo.name if immutable else None
+
+    # Best-effort audit log outside the transaction so a logging failure
+    # does not roll back the tag creation.
+    if immutable:
+        try:
+            from data.logs_model import logs_model
+
+            logs_model.log_action(
+                "tag_made_immutable_by_policy",
+                namespace_name=namespace_name,
+                repository_name=repo_name,
+                metadata={
+                    "tag": tag_name,
+                    "repo": repo_name,
+                    "namespace": namespace_name,
+                    "immutable": True,
+                },
+            )
+        except Exception:
+            logger.exception("Failed to log tag_made_immutable_by_policy for tag %s", tag_name)
+
+    return created
 
 
 def delete_tag(repository_id, tag_name):
@@ -549,7 +577,8 @@ def delete_tags_for_manifest(manifest):
     """
     Deletes all tags pointing to the given manifest.
 
-    Returns the list of tags deleted. Immutable tags are skipped.
+    Returns the list of tags deleted.
+    Raises ImmutableTagException if any tag is immutable.
     """
     query = Tag.select().where(Tag.manifest == manifest)
     query = filter_to_alive_tags(query)
@@ -557,19 +586,10 @@ def delete_tags_for_manifest(manifest):
     tags = list(query)
     now_ms = get_epoch_timestamp_ms()
 
-    # Filter out immutable tags
     if features.IMMUTABLE_TAGS:
-        mutable_tags = []
         for tag in tags:
             if tag.immutable:
-                logger.info(
-                    "Skipping deletion of immutable tag '%s' in repository %s",
-                    tag.name,
-                    manifest.repository_id,
-                )
-            else:
-                mutable_tags.append(tag)
-        tags = mutable_tags
+                raise ImmutableTagException(tag.name, "delete", tag.repository_id)
 
     with db_transaction():
         for tag in tags:

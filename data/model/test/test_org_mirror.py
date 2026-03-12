@@ -4,6 +4,7 @@ Unit tests for organization-level mirror configuration business logic.
 """
 
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 
@@ -28,9 +29,11 @@ from data.model.org_mirror import (
     get_enabled_org_mirror_config_count,
     get_max_id_for_org_mirror_repo,
     get_min_id_for_org_mirror_repo,
+    get_or_create_org_mirror_repo,
     get_org_mirror_config,
     get_org_mirror_config_count,
     release_org_mirror_repo,
+    sync_discovered_repos,
     update_org_mirror_config,
 )
 from data.model.user import create_robot, create_user_noverify, lookup_robot
@@ -1899,3 +1902,209 @@ class TestGetOrgMirrorConfigCount:
         _create_org_mirror_config(org3, robot3, is_enabled=False)
 
         assert get_enabled_org_mirror_config_count() == baseline + 2
+
+
+class TestSyncDiscoveredRepos:
+    """Tests for sync_discovered_repos batch query optimization."""
+
+    def test_sync_empty_list(self, initialized_db):
+        """
+        Syncing an empty list should return (0, 0) and create nothing.
+        """
+        org, robot = _create_org_and_robot("sync_disc_empty")
+        config = _create_org_mirror_config(org, robot)
+
+        total, created = sync_discovered_repos(config, [])
+
+        assert total == 0
+        assert created == 0
+
+    def test_sync_all_new_repos(self, initialized_db):
+        """
+        All discovered repos should be created when none exist.
+        """
+        org, robot = _create_org_and_robot("sync_disc_new")
+        config = _create_org_mirror_config(org, robot)
+
+        names = ["repo-a", "repo-b", "repo-c"]
+        total, created = sync_discovered_repos(config, names)
+
+        assert total == 3
+        assert created == 3
+
+        # Verify all repos exist in DB
+        db_names = {
+            r.repository_name
+            for r in OrgMirrorRepository.select().where(
+                OrgMirrorRepository.org_mirror_config == config
+            )
+        }
+        assert db_names == {"repo-a", "repo-b", "repo-c"}
+
+    def test_sync_mixed_existing_and_new(self, initialized_db):
+        """
+        Only repos that don't exist yet should be created.
+        """
+        org, robot = _create_org_and_robot("sync_disc_mixed")
+        config = _create_org_mirror_config(org, robot)
+
+        # Pre-create some repos
+        get_or_create_org_mirror_repo(config, "existing-1")
+        get_or_create_org_mirror_repo(config, "existing-2")
+
+        names = ["existing-1", "existing-2", "new-1", "new-2"]
+        total, created = sync_discovered_repos(config, names)
+
+        assert total == 4
+        assert created == 2
+
+        db_names = {
+            r.repository_name
+            for r in OrgMirrorRepository.select().where(
+                OrgMirrorRepository.org_mirror_config == config
+            )
+        }
+        assert db_names == {"existing-1", "existing-2", "new-1", "new-2"}
+
+    def test_sync_all_existing(self, initialized_db):
+        """
+        No repos should be created when all already exist.
+        """
+        org, robot = _create_org_and_robot("sync_disc_existing")
+        config = _create_org_mirror_config(org, robot)
+
+        names = ["repo-x", "repo-y"]
+        # Create them first
+        for name in names:
+            get_or_create_org_mirror_repo(config, name)
+
+        total, created = sync_discovered_repos(config, names)
+
+        assert total == 2
+        assert created == 0
+
+    def test_sync_idempotent(self, initialized_db):
+        """
+        Calling sync twice with the same names should not create duplicates.
+        """
+        org, robot = _create_org_and_robot("sync_disc_idempotent")
+        config = _create_org_mirror_config(org, robot)
+
+        names = ["alpha", "beta", "gamma"]
+
+        total1, created1 = sync_discovered_repos(config, names)
+        total2, created2 = sync_discovered_repos(config, names)
+
+        assert created1 == 3
+        assert created2 == 0
+
+        count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+        )
+        assert count == 3
+
+    def test_sync_large_batch(self, initialized_db):
+        """
+        Handles 1500+ repos, exercising the chunking logic for both
+        SELECT IN (chunks of 900) and INSERT (chunks of 100).
+        """
+        org, robot = _create_org_and_robot("sync_disc_large")
+        config = _create_org_mirror_config(org, robot)
+
+        names = [f"repo-{i:04d}" for i in range(1500)]
+        total, created = sync_discovered_repos(config, names)
+
+        assert total == 1500
+        assert created == 1500
+
+        count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+        )
+        assert count == 1500
+
+    def test_sync_duplicate_names_in_input(self, initialized_db):
+        """
+        Duplicate names in input should be deduplicated, not cause errors.
+        """
+        org, robot = _create_org_and_robot("sync_disc_dupes")
+        config = _create_org_mirror_config(org, robot)
+
+        names = ["dup-repo", "dup-repo", "unique-repo", "dup-repo"]
+        total, created = sync_discovered_repos(config, names)
+
+        assert total == 2  # deduplicated count
+        assert created == 2
+
+        count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+        )
+        assert count == 2
+
+    def test_sync_sets_transaction_id(self, initialized_db):
+        """
+        Batch-inserted repos must have non-null sync_transaction_id
+        for optimistic locking in claim_org_mirror_repo.
+        """
+        org, robot = _create_org_and_robot("sync_disc_txnid")
+        config = _create_org_mirror_config(org, robot)
+
+        sync_discovered_repos(config, ["txn-repo-1", "txn-repo-2"])
+
+        for repo in OrgMirrorRepository.select().where(
+            OrgMirrorRepository.org_mirror_config == config
+        ):
+            assert repo.sync_transaction_id is not None
+            assert len(repo.sync_transaction_id) == 36  # UUID format
+
+    def test_sync_concurrent_insert_does_not_raise(self, initialized_db):
+        """
+        Simulates a race condition: another worker inserts a conflicting row
+        between the SELECT and INSERT phases. The on_conflict_ignore clause
+        should allow the function to complete without raising IntegrityError.
+        """
+        org, robot = _create_org_and_robot("sync_disc_race")
+        config = _create_org_mirror_config(org, robot)
+
+        names = ["race-repo-1", "race-repo-2", "race-repo-3"]
+
+        original_insert_many = OrgMirrorRepository.insert_many
+
+        def insert_many_with_simulated_race(rows, *args, **kwargs):
+            """
+            On the first call to insert_many, insert a conflicting row before
+            the batch insert runs, simulating a concurrent worker.
+            """
+            insert_many_with_simulated_race.called = True
+            # Simulate a concurrent worker inserting "race-repo-2"
+            get_or_create_org_mirror_repo(config, "race-repo-2")
+            return original_insert_many(rows, *args, **kwargs)
+
+        insert_many_with_simulated_race.called = False
+
+        with patch.object(
+            OrgMirrorRepository, "insert_many", side_effect=insert_many_with_simulated_race
+        ):
+            total, created = sync_discovered_repos(config, names)
+
+        assert insert_many_with_simulated_race.called
+        assert total == 3
+        # created is 3: the mock inserts "race-repo-2" inside the same
+        # connection/transaction, so COUNT-after minus COUNT-before includes
+        # it. In a real multi-connection scenario (PostgreSQL), the delta
+        # would be 2 if the concurrent insert committed before count_before.
+        assert created == 3
+
+        # But only 3 rows exist in DB (not 4), because on_conflict_ignore
+        # silently skipped the duplicate
+        count = (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+        )
+        assert count == 3

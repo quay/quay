@@ -22,12 +22,7 @@ from data.registry_model.blobuploader import (
 )
 from data.registry_model.manifestbuilder import lookup_manifest_builder
 from digest import checksums
-from endpoints.decorators import (
-    anon_protect,
-    check_readonly,
-    check_region_blacklisted,
-    check_repository_state,
-)
+from endpoints.decorators import anon_protect, check_readonly, check_repository_state
 from endpoints.metrics import image_pulled_bytes
 from endpoints.v1 import check_v1_push_enabled, v1_bp
 from endpoints.v1.index import ensure_namespace_enabled
@@ -124,7 +119,6 @@ def head_image_layer(namespace, repository, image_id, headers):
 @ensure_namespace_enabled
 @require_completion
 @set_cache_headers
-@check_region_blacklisted()
 @anon_protect
 def get_image_layer(namespace, repository, image_id, headers):
     permission = ReadRepositoryPermission(namespace, repository)

@@ -15,8 +15,8 @@ import {
   Split,
   SplitItem,
 } from '@patternfly/react-core';
-import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {OrgMirrorConfig} from 'src/resources/OrgMirrorResource';
+import {FormDateTimePicker} from 'src/components/FormDateTimePicker';
 import {OrgMirroringFormData} from './types';
 
 interface OrgMirroringSyncScheduleProps {
@@ -52,16 +52,11 @@ export const OrgMirroringSyncSchedule: React.FC<
                 }}
                 render={({field: {value, onChange}}) => (
                   <>
-                    <TextInput
-                      type="datetime-local"
-                      id="sync_start_date"
+                    <FormDateTimePicker
                       value={value}
-                      onChange={(_event, newValue) => onChange(newValue)}
-                      validated={
-                        errors.syncStartDate
-                          ? ValidatedOptions.error
-                          : ValidatedOptions.default
-                      }
+                      onChange={onChange}
+                      dateAriaLabel="Sync start date"
+                      timeAriaLabel="Sync start time"
                     />
                     {errors.syncStartDate && (
                       <HelperText>
@@ -93,15 +88,31 @@ export const OrgMirroringSyncSchedule: React.FC<
             </SplitItem>
           </Split>
         ) : (
-          <FormTextInput
+          <Controller
             name="syncStartDate"
             control={control}
-            errors={errors}
-            label=""
-            fieldId="sync_start_date"
-            type="datetime-local"
-            required
-            isStack={false}
+            rules={{
+              required: 'This field is required',
+              validate: (value) =>
+                value?.trim() !== '' || 'This field is required',
+            }}
+            render={({field: {value, onChange}}) => (
+              <>
+                <FormDateTimePicker
+                  value={value}
+                  onChange={onChange}
+                  dateAriaLabel="Sync start date"
+                  timeAriaLabel="Sync start time"
+                />
+                {errors.syncStartDate && (
+                  <HelperText>
+                    <HelperTextItem variant="error">
+                      {errors.syncStartDate.message}
+                    </HelperTextItem>
+                  </HelperText>
+                )}
+              </>
+            )}
           />
         )}
       </FormGroup>

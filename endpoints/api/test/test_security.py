@@ -40,7 +40,7 @@ from endpoints.api.subscribe import *  # type: ignore[no-redef]
 from endpoints.api.suconfig import *  # type: ignore[no-redef]
 from endpoints.api.superuser import *  # type: ignore
 from endpoints.api.tag import *  # type: ignore[no-redef]
-from endpoints.api.team import *
+from endpoints.api.team import *  # type: ignore[assignment]
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.trigger import *
 from endpoints.api.user import *  # type: ignore[assignment,no-redef]

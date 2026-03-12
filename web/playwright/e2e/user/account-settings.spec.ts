@@ -183,11 +183,9 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
         .locator('#delete-confirmation-input')
         .fill(password);
       await authenticatedPage.locator('#submit').click();
+      await authenticatedPage.waitForLoadState('networkidle');
 
       // Credentials modal should appear
-      await expect(
-        authenticatedPage.getByTestId('credentials-modal'),
-      ).toBeVisible();
       await expect(
         authenticatedPage.getByText(`Credentials for ${username}`),
       ).toBeVisible();

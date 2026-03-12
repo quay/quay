@@ -571,11 +571,19 @@ class DefaultConfig(ImmutableConfig):
     # Defaults to false, to allow partial mirroring of upstream repositories.
     REPO_MIRROR_ROLLBACK = False
 
+    # Maximum size in bytes of manifest list JSON to parse during mirroring.
+    # Prevents DoS via oversized manifests from malicious registries.
+    REPO_MIRROR_MAX_MANIFEST_LIST_SIZE = 10 * 1024 * 1024  # 10MB
+
+    # Maximum number of manifest entries to process during architecture-filtered mirroring.
+    # Prevents DoS via manifest lists with excessive entries.
+    REPO_MIRROR_MAX_MANIFEST_ENTRIES = 1000
+
     # "Secret" key for generating encrypted paging tokens. Only needed to be secret to
     # hide the ID range for production (in which this value is overridden). Should *not*
     # be relied upon for secure encryption otherwise.
     # This value is a Fernet key and should be 32bytes URL-safe base64 encoded.
-    PAGE_TOKEN_KEY = "0OYrc16oBuksR8T3JGB-xxYSlZ2-7I_zzqrLzggBJ58="
+    PAGE_TOKEN_KEY = "0OYrc16oBuksR8T3JGB-xxYSlZ2-7I_zzqrLzggBJ58="  # gitleaks:allow
 
     # The timeout for service key approval.
     UNAPPROVED_SERVICE_KEY_TTL_SEC = 60 * 60 * 24  # One day
@@ -706,7 +714,6 @@ class DefaultConfig(ImmutableConfig):
         "endpoint": ("127.0.0.1", 18080),
         "repository_blob_cache_ttl": "60s",
         "catalog_page_cache_ttl": "60s",
-        "namespace_geo_restrictions_cache_ttl": "240s",
         "active_repo_tags_cache_ttl": "120s",
         "value_size_limit": "1MiB",
     }
@@ -973,10 +980,5 @@ class DefaultConfig(ImmutableConfig):
     TRACKED_NAMESPACES: Union[List[str], Dict[str, Union[List[str], str]]] = []
 
     # Feature Flag: Whether to allow sparse manifest indexes where not all architectures are required.
-    # When enabled, manifests for architectures not in SPARSE_INDEX_REQUIRED_ARCHS will be skipped
-    # if they cannot be loaded.
+    # When enabled, manifests for missing architectures will be skipped instead of raising errors.
     FEATURE_SPARSE_INDEX = False
-
-    # List of architectures that are required to be present in manifest indexes when
-    # FEATURE_SPARSE_INDEX is enabled.
-    SPARSE_INDEX_REQUIRED_ARCHS: List[str] = []

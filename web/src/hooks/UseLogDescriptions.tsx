@@ -649,6 +649,39 @@ export function useLogDescriptions() {
         </>
       );
     },
+    tag_made_immutable_by_policy: function (metadata: Metadata) {
+      return (
+        <>
+          Tag {wrapVariable(metadata.tag)} automatically set as immutable by
+          policy in repository{' '}
+          {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+        </>
+      );
+    },
+    tags_made_immutable_by_policy: function (metadata: Metadata) {
+      const behavior =
+        String(metadata.tag_pattern_matches) === 'false'
+          ? 'NOT matching'
+          : 'matching';
+      const tagWord =
+        String(metadata.count) === '1' ? 'existing tag' : 'existing tags';
+      if (metadata.repo) {
+        return (
+          <>
+            {wrapVariable(metadata.count)} {tagWord} {behavior}{' '}
+            {wrapVariable(metadata.tag_pattern)} set as immutable by policy in
+            repository {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+          </>
+        );
+      }
+      return (
+        <>
+          {wrapVariable(metadata.count)} {tagWord} {behavior}{' '}
+          {wrapVariable(metadata.tag_pattern)} set as immutable by policy in
+          namespace {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
     delete_tag: function (metadata: Metadata) {
       return (
         <>

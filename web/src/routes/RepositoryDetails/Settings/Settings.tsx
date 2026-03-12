@@ -1,5 +1,5 @@
 import {Flex, FlexItem, Tab, Tabs, TabTitleText} from '@patternfly/react-core';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {DrawerContentType} from 'src/routes/RepositoryDetails/Types';
 import DeleteRepository from './DeleteRepository';
 import Permissions from './Permissions';
@@ -13,7 +13,7 @@ import RepositoryImmutabilityPolicies from 'src/routes/RepositoryDetails/Setting
 import {useOrganization} from 'src/hooks/UseOrganization';
 
 export default function Settings(props: SettingsProps) {
-  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [activeTabKey, setActiveTabKey] = useState('userandrobotpermissions');
   const config = useQuayConfig();
   const {isUserOrganization} = useOrganization(props.org);
 
@@ -102,20 +102,28 @@ export default function Settings(props: SettingsProps) {
     },
   ];
 
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.some((tab) => tab.id === activeTabKey)) {
+      setActiveTabKey(tabs[0].id);
+    }
+  }, [tabs, activeTabKey]);
+
+  const activeTab = tabs.find((tab) => tab.id === activeTabKey) ?? tabs[0];
+
   return (
     <Flex flexWrap={{default: 'nowrap'}}>
       <FlexItem>
         <Tabs
-          activeKey={activeTabIndex}
-          onSelect={(e, index: number) => setActiveTabIndex(index)}
+          activeKey={activeTabKey}
+          onSelect={(e, key: string | number) => setActiveTabKey(String(key))}
           isVertical
           aria-label="Repository Settings Tabs"
           role="region"
         >
-          {tabs.map((tab, tabIndex) => (
+          {tabs.map((tab) => (
             <Tab
               key={tab.id}
-              eventKey={tabIndex}
+              eventKey={tab.id}
               title={<TabTitleText>{tab.name}</TabTitleText>}
               data-testid={`settings-tab-${tab.id}`}
             />
@@ -126,7 +134,7 @@ export default function Settings(props: SettingsProps) {
         alignSelf={{default: 'alignSelfFlexStart'}}
         style={{padding: '20px', width: '100%'}}
       >
-        {tabs.at(activeTabIndex).content}
+        {activeTab?.content}
       </FlexItem>
     </Flex>
   );

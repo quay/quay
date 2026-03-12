@@ -11,6 +11,7 @@ import {useSearchParams} from 'react-router-dom';
 import {useQuery} from '@tanstack/react-query';
 import {isAxiosError} from 'axios';
 import {getOrgMirrorConfig} from 'src/resources/OrgMirrorResource';
+import {useNamespaceImmutabilityPolicies} from 'src/hooks/UseNamespaceImmutabilityPolicies';
 
 interface OrgMirroringStateProps {
   organizationName: string;
@@ -42,6 +43,14 @@ export const OrgMirroringState = ({
       }
     },
   });
+
+  const {nsPolicies: immutabilityPolicies, isLoading: isPoliciesLoading} =
+    useNamespaceImmutabilityPolicies(organizationName);
+
+  const hasImmutabilityPolicies =
+    !isPoliciesLoading &&
+    immutabilityPolicies &&
+    immutabilityPolicies.length > 0;
 
   const error = queryError ? 'Failed to load organization mirror state' : null;
 
@@ -87,19 +96,39 @@ export const OrgMirroringState = ({
           description="Mirror all repositories from a source registry namespace. When an organization is set as mirrored, repositories are automatically discovered and synced from the source."
           className="pf-v5-u-mb-md"
         />
-        {selectedState === 'MIRROR' && (
-          <Alert
-            isInline
-            variant="info"
-            title="Selecting Mirror will take you to the Mirroring tab to configure the source registry."
-            className="pf-v5-u-mb-md"
-          />
+        {selectedState === 'MIRROR' && isPoliciesLoading && (
+          <Spinner size="sm" className="pf-v5-u-mb-md" />
         )}
+        {selectedState === 'MIRROR' &&
+          !isPoliciesLoading &&
+          hasImmutabilityPolicies && (
+            <Alert
+              isInline
+              variant="warning"
+              title="Organization mirroring cannot be enabled while immutability policies are configured. Remove all namespace immutability policies first."
+              className="pf-v5-u-mb-md"
+              data-testid="immutability-conflict-alert"
+            />
+          )}
+        {selectedState === 'MIRROR' &&
+          !isPoliciesLoading &&
+          !hasImmutabilityPolicies && (
+            <Alert
+              isInline
+              variant="info"
+              title="Selecting Mirror will take you to the Mirroring tab to configure the source registry."
+              className="pf-v5-u-mb-md"
+            />
+          )}
         <Button
           type="submit"
           variant="primary"
           size="sm"
-          isDisabled={selectedState === 'NORMAL'}
+          isDisabled={
+            selectedState === 'NORMAL' ||
+            isPoliciesLoading ||
+            (selectedState === 'MIRROR' && hasImmutabilityPolicies)
+          }
         >
           Submit
         </Button>
