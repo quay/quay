@@ -302,7 +302,7 @@ class RepositoryTag(RepositoryParamResource):
 
             try:
                 if not registry_model.retarget_tag(
-                    repo_ref, tag, manifest, storage, docker_v2_signing_key
+                    model_cache, repo_ref, tag, manifest, storage, docker_v2_signing_key
                 ):
                     raise InvalidRequest("Could not move tag")
             except ImmutableTagException as e:
@@ -418,6 +418,7 @@ class RestoreTag(RepositoryParamResource):
 
         try:
             if not registry_model.retarget_tag(
+                model_cache,
                 repo_ref,
                 tag,
                 manifest,
