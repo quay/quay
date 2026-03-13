@@ -7,6 +7,7 @@ from flask import request
 from jsonschema import ValidationError
 
 import features
+from app import app
 from data import model
 from data.database import RepoMirrorRuleType
 from data.encryption import DecryptionFailureException
@@ -344,6 +345,10 @@ class RepoMirrorResource(RepositoryParamResource):
         if mirror:
             # Set architecture filter if provided
             if arch_filter is not None:
+                if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
+                    return {
+                        "detail": "Architecture filtering requires FEATURE_SPARSE_INDEX to be enabled."
+                    }, 400
                 try:
                     model.repo_mirror.validate_architecture_filter(arch_filter)
                     model.repo_mirror.set_architecture_filter(repo, arch_filter)
@@ -458,6 +463,10 @@ class RepoMirrorResource(RepositoryParamResource):
 
         if "architecture_filter" in values:
             arch_filter = values["architecture_filter"]
+            if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
+                return {
+                    "detail": "Architecture filtering requires FEATURE_SPARSE_INDEX to be enabled."
+                }, 400
             try:
                 model.repo_mirror.validate_architecture_filter(arch_filter)
             except ValidationError as e:
