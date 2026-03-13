@@ -1,4 +1,4 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useEffect} from 'react';
 import {
   FormGroup,
   Select,
@@ -13,7 +13,10 @@ import {
   Spinner,
   Alert,
 } from '@patternfly/react-core';
-import {useMirrorArchitectures} from 'src/hooks/UseRegistryCapabilities';
+import {
+  useMirrorArchitectures,
+  useSparseManifestsSupported,
+} from 'src/hooks/UseRegistryCapabilities';
 
 // Human-readable labels for architectures
 const ARCHITECTURE_LABELS: Record<string, string> = {
@@ -36,6 +39,14 @@ export const ArchitectureFilter: React.FC<ArchitectureFilterProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const {architectures, isLoading, error} = useMirrorArchitectures();
+  const sparseSupported = useSparseManifestsSupported();
+  const effectivelyDisabled = isDisabled || !sparseSupported;
+
+  useEffect(() => {
+    if (!sparseSupported && selectedArchitectures.length > 0) {
+      onChange([]);
+    }
+  }, [sparseSupported]);
 
   // Build available architectures from backend data
   const availableArchitectures = useMemo(() => {
@@ -130,7 +141,7 @@ export const ArchitectureFilter: React.FC<ArchitectureFilterProps> = ({
             ref={toggleRef}
             onClick={onToggle}
             isExpanded={isOpen}
-            isDisabled={isDisabled}
+            isDisabled={effectivelyDisabled}
             data-testid="architecture-filter-toggle"
             style={{width: '100%'}}
           >
@@ -177,7 +188,9 @@ export const ArchitectureFilter: React.FC<ArchitectureFilterProps> = ({
       <FormHelperText>
         <HelperText>
           <HelperTextItem data-testid="architecture-filter-helper">
-            {selectedArchitectures.length === 0
+            {!sparseSupported
+              ? 'Architecture filtering requires sparse manifest support (FEATURE_SPARSE_INDEX) to be enabled.'
+              : selectedArchitectures.length === 0
               ? 'All architectures will be mirrored from multi-arch images.'
               : `Only ${selectedArchitectures.join(
                   ', ',
