@@ -10,17 +10,9 @@ jobs:
     name: Run all Test
     runs-on: ubuntu-22.04
     env:
-      ZVSI_FP_NAME: ${{ vars.IBMZ_ZVSI_FP_NAME }}
-      ZVSI_INSTANCE_NAME: ${{ vars.IBMZ_ZVSI_INSTANCE_NAME }}
       ZVSI_VPC: ${{ vars.IBMZ_ZVSI_VPC }}
       ZVSI_SG: ${{ vars.IBMZ_ZVSI_SG }}
       ZVSI_SGR_ID: ${{ vars.IBMZ_ZVSI_SGR_ID }}
-      ZVSI_ZONE_NAME: ${{ vars.IBMZ_ZVSI_ZONE_NAME }}
-      ZVSI_PROFILE_NAME: ${{ vars.IBMZ_ZVSI_PROFILE_NAME }}
-      ZVSI_SUBNET: ${{ vars.IBMZ_ZVSI_SUBNET }}
-      ZVSI_IMAGE: ${{ vars.IBMZ_ZVSI_IMAGE }}
-      ZVSI_KEY: ${{ vars.IBMZ_ZVSI_KEY }}
-      ZVSI_RG_ID: ${{ vars.IBMZ_ZVSI_RG_ID }}
     strategy:
       fail-fast: false
       matrix:
@@ -33,38 +25,13 @@ jobs:
         ibmcloud login -q --apikey ${{ secrets.IBMCLOUD_API_KEY }} -r eu-gb
         ibmcloud plugin install vpc-infrastructure
 
-    - name: Creation of ZVSI
+    - name: Update the Security-Group to allow Inbound Activity for s390x
       if: ${{ matrix.platform  == 's390x' }}
       id: ZVSI
       run: |
         #update the security-group to allow this machine for inbound activity
         gh_pubilc_ip=$(curl -s https://api.ipify.org)
         ibmcloud is security-group-rule-update $ZVSI_SG $ZVSI_SGR_ID --vpc $ZVSI_VPC --remote=$gh_pubilc_ip
-        #creation of zvsi
-        ibmcloud is instance-create $ZVSI_INSTANCE_NAME $ZVSI_VPC $ZVSI_ZONE_NAME $ZVSI_PROFILE_NAME $ZVSI_SUBNET --image $ZVSI_IMAGE --keys $ZVSI_KEY --resource-group-id $ZVSI_RG_ID
-        #Bouding the Floating ip to the ZVSI
-        vniid=$(ibmcloud is instance $ZVSI_INSTANCE_NAME --output json | jq -r .network_attachments[].virtual_network_interface.id)
-        ibmcloud is floating-ip-update $ZVSI_FP_NAME --nic $vniid --in $ZVSI_INSTANCE_NAME
-        sleep 60
-
-        #Saving the Floating IP to login ZVSI
-        ZVSI_HOST=$(ibmcloud is floating-ip $ZVSI_FP_NAME | awk '/Address/{print $2}')
-        echo $ZVSI_HOST
-        echo "IP=${ZVSI_HOST}" >> $GITHUB_OUTPUT
-
-    - name: Status of ZVSI
-      if: ${{ matrix.platform == 's390x' }}
-      run: |
-        check=$(ibmcloud is ins| awk '/'$ZVSI_INSTANCE_NAME'/{print $3}')
-        while [[ $check != "running" ]]
-        do
-          check=$(ibmcloud is ins | awk '/'$ZVSI_INSTANCE_NAME'/{print $3}')
-          if [[ $check == 'failed' ]]
-          then
-                  echo "Failed to run the ZVSI"
-                  break
-          fi
-        done
 
     - name: Install dependencies and run tests on amd64
       if: matrix.platform == 'amd64'
@@ -93,16 +60,16 @@ jobs:
         GH_REF: ${{ github.ref }}
 
     - name: Install dependencies and run all tests on ${{ matrix.platform }}
-      if: matrix.platform  != 'amd64'
+      if: matrix.platform  == 'ppc64le'
       uses: appleboy/ssh-action@v0.1.10
       env:
         GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
         GH_REF: ${{ github.ref }}
         GRPC_PYTHON_BUILD_SYSTEM_OPENSSL: 1
       with:
-        host: ${{ matrix.platform  == 's390x' && steps.ZVSI.outputs.IP || secrets.BUILDER_PPC64LE_SSH_HOST_UBUNTU}}
-        username: ${{ matrix.platform  == 's390x' && secrets.ZVSI_SSH_USER || secrets.BUILDER_PPC64LE_SSH_USER }}
-        key: ${{ matrix.platform  == 's390x' && secrets.ZVSI_PR_KEY || secrets.BUILDER_PPC64LE_SSH_KEY}}
+        host: ${{ secrets.BUILDER_PPC64LE_SSH_HOST_UBUNTU }}
+        username: ${{ secrets.BUILDER_PPC64LE_SSH_USER }}
+        key: ${{ secrets.BUILDER_PPC64LE_SSH_KEY }}
         envs: GH_REPOSITORY,GH_REF,GRPC_PYTHON_BUILD_SYSTEM_OPENSSL
         command_timeout: 100m
         script: |
@@ -115,11 +82,6 @@ jobs:
           cd build && git checkout ${GH_REF}
           cat requirements-dev.txt | grep tox | xargs python3 -m pip -qq install
 
-          if [[ 's390x' == $(uname -m) ]]; then
-            GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3)
-            export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 && python3 -m pip install -qq grpcio==${GRPC_LATEST}
-          fi
-
           #Unit
           tox -e py39-unit
 
@@ -129,9 +91,37 @@ jobs:
           #registry
           tox -e py39-registry
 
-    - name: Cleanup ZVSI
-      if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
-      run: |
-        #Delete the created ZVSI
-        ibmcloud is instance-delete $ZVSI_INSTANCE_NAME --force
-        sleep 20
+    - name: Install dependencies and run all tests on ${{ matrix.platform }}
+      if: matrix.platform  == 's390x'
+      uses: appleboy/ssh-action@v0.1.10
+      env:
+        GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
+        GH_REF: ${{ github.ref }}
+        GRPC_PYTHON_BUILD_SYSTEM_OPENSSL: 1
+      with:
+        host: ${{ secrets.BUILDER_S390X_SSH_HOST_UBUNTU }}
+        username: ${{ secrets.ZVSI_SSH_USER }}
+        key: ${{ secrets.ZVSI_PR_KEY}}
+        envs: GH_REPOSITORY,GH_REF,GRPC_PYTHON_BUILD_SYSTEM_OPENSSL
+        command_timeout: 100m
+        script: |
+          apt-get update -y
+          apt-get -y install build-essential libgpgme-dev libldap2-dev libsasl2-dev swig python3.9-dev python3-pip findutils git
+          apt-get -y install libffi-dev libssl-dev libjpeg-dev libpq-dev libxml2-dev libxslt-dev
+          apt-get -y install rustc cargo pkg-config
+          rm -rf build
+          git clone ${GH_REPOSITORY} build
+          cd build && git checkout ${GH_REF}
+          cat requirements-dev.txt | grep tox | xargs python3 -m pip -qq install
+
+          GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3)
+          export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 && python3 -m pip install -qq grpcio==${GRPC_LATEST}
+
+          #Unit
+          tox -e py39-unit
+
+          #e2e
+          tox -e py39-e2e
+
+          #registry
+          tox -e py39-registry
