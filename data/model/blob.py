@@ -1,6 +1,9 @@
 import logging
+import time
 from datetime import datetime, timedelta
 from uuid import uuid4
+
+from peewee import IntegrityError
 
 from data.database import (
     BlobUpload,
@@ -22,6 +25,7 @@ from data.model import (
 )
 from data.model import storage as storage_model
 from data.model.storage import get_or_create_blob_with_lock
+from util.locking import GlobalLock, LockNotAcquiredException
 
 logger = logging.getLogger(__name__)
 
@@ -43,20 +47,15 @@ def store_blob_record_and_temp_link(
     )
 
 
-def store_blob_record_and_temp_link_in_repo(
+def _store_blob_record_and_temp_link_in_repo(
     repository_id,
     blob_digest,
     location_obj,
     byte_count,
     link_expiration_s,
     uncompressed_byte_count=None,
+    skip_lock=False,
 ):
-    """
-    Store a record of the blob and temporarily link it to the specified repository.
-    """
-    assert blob_digest
-    assert byte_count is not None
-
     with db_transaction():
         try:
             storage = ImageStorage.get(content_checksum=blob_digest)
@@ -78,6 +77,7 @@ def store_blob_record_and_temp_link_in_repo(
                 digest=blob_digest,
                 image_size=byte_count,
                 uncompressed_size=uncompressed_byte_count,
+                skip_lock=skip_lock,
             )
 
         try:
@@ -86,6 +86,48 @@ def store_blob_record_and_temp_link_in_repo(
             ImageStoragePlacement.create(storage=storage, location=location_obj)
 
         _temp_link_blob(repository_id, storage, link_expiration_s)
+        return storage
+
+
+def store_blob_record_and_temp_link_in_repo(
+    repository_id,
+    blob_digest,
+    location_obj,
+    byte_count,
+    link_expiration_s,
+    uncompressed_byte_count=None,
+):
+    """
+    Store a record of the blob and temporarily link it to the specified repository.
+    """
+    assert blob_digest
+    assert byte_count is not None
+
+    try:
+        with GlobalLock(f"BLOB_DELETE_{blob_digest}", lock_ttl=30):
+            storage = _store_blob_record_and_temp_link_in_repo(
+                repository_id=repository_id,
+                blob_digest=blob_digest,
+                location_obj=location_obj,
+                byte_count=byte_count,
+                link_expiration_s=link_expiration_s,
+                uncompressed_byte_count=uncompressed_byte_count,
+                skip_lock=True,
+            )
+            return storage
+    except LockNotAcquiredException as e:
+        logger.warning("Could not acquire lock for blob %s: %s", blob_digest, e)
+        logger.warning("Proceeding without lock.")
+        time.sleep(0.1)
+        storage = _store_blob_record_and_temp_link_in_repo(
+            repository_id=repository_id,
+            blob_digest=blob_digest,
+            location_obj=location_obj,
+            byte_count=byte_count,
+            link_expiration_s=link_expiration_s,
+            uncompressed_byte_count=uncompressed_byte_count,
+            skip_lock=False,
+        )
         return storage
 
 
@@ -220,9 +262,8 @@ def get_or_create_shared_blob(digest, byte_data, storage):
         try:
             storage.put_content([preferred], storage_model.get_layer_path(record), byte_data)
             ImageStoragePlacement.create(storage=record, location=location_obj)
-        except:
-            logger.exception("Exception when trying to write special layer %s", digest)
-            record.delete_instance()
-            raise
+        except IntegrityError as e:
+            logger.warning("Exception when trying to write special layer %s: %s", digest, e)
+            pass
 
         return record

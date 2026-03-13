@@ -300,7 +300,7 @@ def _get_storage(query_modifier):
     return found
 
 
-def get_or_create_blob_with_lock(digest, **blob_attrs):
+def get_or_create_blob_with_lock(digest, skip_lock=False, **blob_attrs):
     """
     Atomically gets or creates an ImageStorage blob, coordinating with GC deletion.
 
@@ -310,11 +310,19 @@ def get_or_create_blob_with_lock(digest, **blob_attrs):
 
     Args:
         digest: The blob digest (e.g., "sha256:abc123...")
+        skip_lock: If False (default), acquire a lock inside this function. If True, assume that the lock
+        is already held by the caller function.
         **blob_attrs: Additional attributes to pass to ImageStorage.create() if creating
 
     Returns:
         ImageStorage object (either existing or newly created)
     """
+    if skip_lock or GlobalLock.lock_factory is None:
+        # Caller function holds the lock so we don't need to create a new one
+        try:
+            return ImageStorage.get(content_checksum=digest)
+        except ImageStorage.DoesNotExist:
+            return ImageStorage.create(content_checksum=digest, **blob_attrs)
     if GlobalLock.lock_factory is not None:
         try:
             with GlobalLock(f"BLOB_DELETE_{digest}", lock_ttl=30):
@@ -330,12 +338,6 @@ def get_or_create_blob_with_lock(digest, **blob_attrs):
             except ImageStorage.DoesNotExist:
                 logger.warning("Creating blob %s without lock as fallback", digest)
                 return ImageStorage.create(content_checksum=digest, **blob_attrs)
-    else:
-        # GlobalLock is not available, fall back to standard creation
-        try:
-            return ImageStorage.get(content_checksum=digest)
-        except ImageStorage.DoesNotExist:
-            return ImageStorage.create(content_checksum=digest, **blob_attrs)
 
 
 def get_storage_by_uuid(storage_uuid):
