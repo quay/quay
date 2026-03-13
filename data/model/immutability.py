@@ -1,8 +1,10 @@
 import logging
 import re
 from functools import lru_cache
-from re import Pattern
 from typing import Optional, TypedDict
+
+import regex
+from regex import Pattern
 
 from data.database import (
     NamespaceImmutabilityPolicy as NamespaceImmutabilityPolicyTable,
@@ -91,6 +93,18 @@ class RepositoryImmutabilityPolicy:
         }
 
 
+# Static pattern to detect nested quantifiers that cause catastrophic backtracking.
+# Matches constructs like (a+)+, (a*)+, ([a-z]+)*, etc.
+_NESTED_QUANTIFIER_RE = re.compile(
+    r"\([^)]*[+*][^)]*\)[+*{]" r"|" r"\([^)]*\{[0-9,]+\}[^)]*\)[+*{]"
+)
+
+
+def _has_dangerous_quantifiers(pattern: str) -> bool:
+    """Detect nested quantifiers that can cause catastrophic backtracking."""
+    return bool(_NESTED_QUANTIFIER_RE.search(pattern))
+
+
 def _validate_policy(policy_config: PolicyConfig) -> None:
     """Validate policy config. Raises InvalidImmutabilityPolicy on error."""
     tag_pattern = policy_config.get("tag_pattern")
@@ -101,9 +115,14 @@ def _validate_policy(policy_config: PolicyConfig) -> None:
     if len(tag_pattern) > 256:
         raise InvalidImmutabilityPolicy("tag_pattern must be 256 characters or less")
 
+    if _has_dangerous_quantifiers(tag_pattern):
+        raise InvalidImmutabilityPolicy(
+            "Pattern contains nested quantifiers that could cause catastrophic backtracking"
+        )
+
     try:
-        re.compile(tag_pattern)
-    except re.error as e:
+        regex.compile(tag_pattern)
+    except regex.error as e:
         raise InvalidImmutabilityPolicy(f"Invalid regex pattern: {e}")
 
     tag_pattern_matches = policy_config.get("tag_pattern_matches")
@@ -121,14 +140,17 @@ def _get_namespace(orgname: str) -> User:
 
 @lru_cache(maxsize=256)
 def _compile_pattern(pattern: str) -> Pattern[str]:
-    return re.compile(pattern)
+    return regex.compile(pattern)
 
 
 def _matches_policy(tag_name: str, tag_pattern: str, tag_pattern_matches: bool) -> bool:
     """Check if tag should be immutable based on pattern."""
     try:
-        matches = bool(_compile_pattern(tag_pattern).match(tag_name))
-    except re.error:
+        matches = bool(_compile_pattern(tag_pattern).match(tag_name, timeout=1.0))
+    except TimeoutError:
+        logger.warning("Regex match timed out for pattern %r against tag %r", tag_pattern, tag_name)
+        return False
+    except regex.error:
         return False
     return matches if tag_pattern_matches else not matches
 

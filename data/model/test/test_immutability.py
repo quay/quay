@@ -1,3 +1,4 @@
+import time
 from unittest.mock import patch
 
 import pytest
@@ -10,6 +11,7 @@ from data.model import (
 )
 from data.model import config as model_config
 from data.model.immutability import (
+    _has_dangerous_quantifiers,
     _matches_policy,
     _validate_policy,
     apply_immutability_policy_to_existing_tags,
@@ -897,3 +899,58 @@ class TestRetroactiveImmutabilityClearsExpiration:
         updated_tag = Tag.get(Tag.id == tag.id)
         assert updated_tag.immutable is True
         assert updated_tag.lifetime_end_ms == expected_end_ms
+
+
+class TestReDoSProtection:
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            "(a+)+b",
+            "(a*)*b",
+            "([a-z]+)*",
+            "(x+x+)+y",
+            "(a{1,10})+b",
+        ],
+    )
+    def test_dangerous_patterns_rejected(self, pattern):
+        """Nested quantifier patterns are rejected by _validate_policy."""
+        with pytest.raises(InvalidImmutabilityPolicy, match="catastrophic backtracking"):
+            _validate_policy({"tag_pattern": pattern})
+
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+            "^latest$",
+            "^release-.*$",
+            "^dev-[a-z0-9]+$",
+            "a+" * 50,  # long but not nested
+        ],
+    )
+    def test_safe_patterns_accepted(self, pattern):
+        """Legitimate patterns pass validation."""
+        _validate_policy({"tag_pattern": pattern})
+
+    def test_dangerous_quantifier_detection(self):
+        assert _has_dangerous_quantifiers("(a+)+b") is True
+        assert _has_dangerous_quantifiers("(a*)*") is True
+        assert _has_dangerous_quantifiers("([a-z]+)*") is True
+        assert _has_dangerous_quantifiers("^v[0-9]+$") is False
+        assert _has_dangerous_quantifiers("^latest$") is False
+
+    def test_matches_policy_does_not_hang(self):
+        """Verify _matches_policy completes quickly even with a backtracking pattern.
+
+        The regex module handles this efficiently, plus the timeout acts as a safety net.
+        """
+        # This pattern could cause catastrophic backtracking with stdlib re,
+        # but regex module handles it efficiently
+        evil_pattern = "(a+)+b"
+        evil_input = "a" * 30
+
+        start = time.monotonic()
+        result = _matches_policy(evil_input, evil_pattern, True)
+        elapsed = time.monotonic() - start
+
+        assert result is False
+        assert elapsed < 2.0, f"_matches_policy took {elapsed:.2f}s, expected < 2s"
