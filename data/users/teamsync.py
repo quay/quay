@@ -178,7 +178,9 @@ def sync_team(authentication, stale_team_sync):
 
     from app import model_cache
 
-    deleted = model.team.delete_members_not_present(stale_team_sync.team, group_membership, model_cache=model_cache)
+    deleted = model.team.delete_members_not_present(
+        stale_team_sync.team, group_membership, model_cache=model_cache
+    )
 
     # Done!
     logger.info(

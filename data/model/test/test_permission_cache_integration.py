@@ -11,12 +11,12 @@ import pytest
 from data.model import DataModelException
 from data.model.organization import create_organization
 from data.model.permission import (
-    delete_user_permission,
     delete_team_permission,
+    delete_user_permission,
     set_user_repo_permission,
 )
 from data.model.repository import create_repository
-from data.model.team import create_team, add_user_to_team, remove_user_from_team
+from data.model.team import add_user_to_team, create_team, remove_user_from_team
 from data.model.user import create_user_noverify, get_user
 from test.fixtures import *
 
@@ -24,9 +24,9 @@ from test.fixtures import *
 class TestPermissionDeletionCaching:
     """Tests for cache invalidation during permission deletion."""
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.cache.permission_cache.add_repo_revocation')
-    @patch('data.cache.permission_cache.invalidate_repository_permission')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.cache.permission_cache.add_repo_revocation")
+    @patch("data.cache.permission_cache.invalidate_repository_permission")
     def test_delete_user_permission_revokes_before_delete(
         self, mock_invalidate, mock_add_revoke, mock_is_enabled, initialized_db
     ):
@@ -53,8 +53,8 @@ class TestPermissionDeletionCaching:
         # Verify cache was invalidated
         mock_invalidate.assert_called_once()
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.cache.permission_cache.add_repo_revocation')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.cache.permission_cache.add_repo_revocation")
     def test_delete_user_permission_fails_if_revocation_fails(
         self, mock_add_revoke, mock_is_enabled, initialized_db
     ):
@@ -76,8 +76,8 @@ class TestPermissionDeletionCaching:
 
         assert "Permission revocation failed" in str(exc_info.value)
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.cache.permission_cache.revoke_and_invalidate_team_members')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.cache.permission_cache.revoke_and_invalidate_team_members")
     def test_delete_team_permission_revokes_all_members(
         self, mock_revoke_team, mock_is_enabled, initialized_db
     ):
@@ -98,6 +98,7 @@ class TestPermissionDeletionCaching:
 
         # Grant team permission
         from data.database import RepositoryPermission, Role
+
         read_role = Role.get(Role.name == "read")
         RepositoryPermission.create(team=team, repository=repo, role=read_role)
 
@@ -113,9 +114,9 @@ class TestPermissionDeletionCaching:
 class TestPermissionModificationCaching:
     """Tests for cache invalidation during permission modification."""
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.cache.permission_cache.add_repo_revocation')
-    @patch('data.cache.permission_cache.invalidate_repository_permission')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.cache.permission_cache.add_repo_revocation")
+    @patch("data.cache.permission_cache.invalidate_repository_permission")
     def test_downgrade_permission_revokes(
         self, mock_invalidate, mock_add_revoke, mock_is_enabled, initialized_db
     ):
@@ -145,9 +146,9 @@ class TestPermissionModificationCaching:
         # Should have revoked
         mock_add_revoke.assert_called_once()
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.cache.permission_cache.add_repo_revocation')
-    @patch('data.cache.permission_cache.invalidate_repository_permission')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.cache.permission_cache.add_repo_revocation")
+    @patch("data.cache.permission_cache.invalidate_repository_permission")
     def test_upgrade_permission_no_revocation(
         self, mock_invalidate, mock_add_revoke, mock_is_enabled, initialized_db
     ):
@@ -183,8 +184,8 @@ class TestPermissionModificationCaching:
 class TestTeamMembershipCaching:
     """Tests for cache invalidation during team membership changes."""
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.cache.permission_cache.invalidate_user_team_grant')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.cache.permission_cache.invalidate_user_team_grant")
     def test_add_user_to_team_invalidates_cache(
         self, mock_invalidate_grant, mock_is_enabled, initialized_db
     ):
@@ -207,8 +208,8 @@ class TestTeamMembershipCaching:
         # Should invalidate cache for the grant
         mock_invalidate_grant.assert_called_once_with(test_user, team, mock_cache)
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.cache.permission_cache.invalidate_user_team_removal')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.cache.permission_cache.invalidate_user_team_removal")
     def test_remove_user_from_team_revokes_access(
         self, mock_invalidate_removal, mock_is_enabled, initialized_db
     ):
@@ -227,8 +228,7 @@ class TestTeamMembershipCaching:
 
         # Remove user from team with model_cache
         remove_user_from_team(
-            org.username, team.name, test_user.username,
-            admin_user.username, model_cache=mock_cache
+            org.username, team.name, test_user.username, admin_user.username, model_cache=mock_cache
         )
 
         # Should invalidate with revocation for removal
@@ -238,7 +238,7 @@ class TestTeamMembershipCaching:
 class TestCacheInvalidationOrdering:
     """Tests to verify correct ordering of cache operations."""
 
-    @patch('data.cache.permission_cache._is_enabled')
+    @patch("data.cache.permission_cache._is_enabled")
     def test_revocation_happens_before_db_delete(self, mock_is_enabled, initialized_db):
         """Test that revocation is added before database deletion."""
         mock_is_enabled.return_value = True
@@ -254,11 +254,11 @@ class TestCacheInvalidationOrdering:
 
         # Track call order
         original_add_revoke = None
-        with patch('data.cache.permission_cache.add_repo_revocation') as mock_add_revoke:
-            mock_add_revoke.side_effect = lambda *args: call_order.append('revoke') or True
+        with patch("data.cache.permission_cache.add_repo_revocation") as mock_add_revoke:
+            mock_add_revoke.side_effect = lambda *args: call_order.append("revoke") or True
 
-            with patch('data.database.RepositoryPermission.delete_instance') as mock_delete:
-                mock_delete.side_effect = lambda: call_order.append('delete')
+            with patch("data.database.RepositoryPermission.delete_instance") as mock_delete:
+                mock_delete.side_effect = lambda: call_order.append("delete")
 
                 try:
                     delete_user_permission("orderuser", "devtable", "orderrepo", mock_cache)
@@ -266,14 +266,14 @@ class TestCacheInvalidationOrdering:
                     pass  # May fail due to mocking
 
         # Revoke should come before delete
-        if 'revoke' in call_order and 'delete' in call_order:
-            assert call_order.index('revoke') < call_order.index('delete')
+        if "revoke" in call_order and "delete" in call_order:
+            assert call_order.index("revoke") < call_order.index("delete")
 
 
 class TestFeatureFlagDisabled:
     """Tests when FEATURE_PERMISSION_CACHE is disabled."""
 
-    @patch('data.cache.permission_cache._is_enabled')
+    @patch("data.cache.permission_cache._is_enabled")
     def test_no_caching_when_disabled(self, mock_is_enabled, initialized_db):
         """Test that no caching occurs when feature is disabled."""
         mock_is_enabled.return_value = False

@@ -244,7 +244,10 @@ class OrganizationTeam(ApiResource):
                     role = Team.role.get_name(team.role_id)
                     if role != details["role"]:
                         team = model.team.set_team_org_permission(
-                            team, details["role"], get_authenticated_user().username, model_cache=model_cache
+                            team,
+                            details["role"],
+                            get_authenticated_user().username,
+                            model_cache=model_cache,
                         )
                         log_action(
                             "org_set_team_role",
@@ -264,7 +267,9 @@ class OrganizationTeam(ApiResource):
         """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser_with_full_access():
-            model.team.remove_team(orgname, teamname, get_authenticated_user().username, model_cache=model_cache)
+            model.team.remove_team(
+                orgname, teamname, get_authenticated_user().username, model_cache=model_cache
+            )
             log_action("org_delete_team", orgname, {"team": teamname})
             return "", 204
 
@@ -495,7 +500,9 @@ class TeamMember(ApiResource):
                 )
                 return "", 204
 
-            model.team.remove_user_from_team(orgname, teamname, membername, invoking_user, model_cache=model_cache)
+            model.team.remove_user_from_team(
+                orgname, teamname, membername, invoking_user, model_cache=model_cache
+            )
             if features.RH_MARKETPLACE:
                 org_id = model.organization.get_organization(orgname).id
                 model.organization_skus.remove_all_owner_subscriptions_from_org(member.id, org_id)

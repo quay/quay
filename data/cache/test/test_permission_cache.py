@@ -10,15 +10,15 @@ from redis import RedisError
 
 from data.cache.permission_cache import (
     add_repo_revocation,
+    invalidate_bulk_team_member_removal,
+    invalidate_org_member_removal,
     invalidate_org_permission,
     invalidate_repository_permission,
+    invalidate_user_team_grant,
+    invalidate_user_team_removal,
     is_repo_permission_revoked,
     revoke_and_invalidate_repo,
     revoke_and_invalidate_team_members,
-    invalidate_user_team_grant,
-    invalidate_user_team_removal,
-    invalidate_bulk_team_member_removal,
-    invalidate_org_member_removal,
 )
 from data.cache.revocation_list import PermissionRevocationList
 from data.model import DataModelException
@@ -55,9 +55,7 @@ class TestPermissionRevocationList:
         is_revoked = revocation_list.is_repo_revoked(123, "myorg", "myrepo")
 
         assert is_revoked is True
-        mock_redis.zscore.assert_called_once_with(
-            "permission_revocations", "repo:123:myorg:myrepo"
-        )
+        mock_redis.zscore.assert_called_once_with("permission_revocations", "repo:123:myorg:myrepo")
 
     def test_is_revoked_returns_false_for_expired_revocation(self):
         """Test that is_revoked returns False for expired revocations."""
@@ -144,7 +142,7 @@ class TestPermissionCacheInvalidation:
             repo_id=456,
             model_cache=mock_cache,
             namespace_name="myorg",
-            repo_name="myrepo"
+            repo_name="myrepo",
         )
 
         # Should invalidate both repo and org keys
@@ -152,11 +150,7 @@ class TestPermissionCacheInvalidation:
 
     def test_invalidate_repository_permission_no_cache(self):
         """Test that invalidation works when cache is None."""
-        result = invalidate_repository_permission(
-            user_id=123,
-            repo_id=456,
-            model_cache=None
-        )
+        result = invalidate_repository_permission(user_id=123, repo_id=456, model_cache=None)
 
         assert result is True
 
@@ -185,7 +179,7 @@ class TestPermissionCacheInvalidation:
 class TestRevocationHelpers:
     """Tests for revocation helper functions."""
 
-    @patch('data.cache.permission_cache._get_revocation_list')
+    @patch("data.cache.permission_cache._get_revocation_list")
     def test_is_repo_permission_revoked(self, mock_get_rl):
         """Test checking if a repo permission is revoked."""
         mock_rl = MagicMock()
@@ -197,7 +191,7 @@ class TestRevocationHelpers:
         assert result is True
         mock_rl.is_repo_revoked.assert_called_once_with(123, "myorg", "myrepo")
 
-    @patch('data.cache.permission_cache._get_revocation_list')
+    @patch("data.cache.permission_cache._get_revocation_list")
     def test_is_repo_permission_revoked_no_rl(self, mock_get_rl):
         """Test graceful handling when revocation list is unavailable."""
         mock_get_rl.return_value = None
@@ -206,7 +200,7 @@ class TestRevocationHelpers:
 
         assert result is False
 
-    @patch('data.cache.permission_cache._get_revocation_list')
+    @patch("data.cache.permission_cache._get_revocation_list")
     def test_add_repo_revocation(self, mock_get_rl):
         """Test adding a repo revocation."""
         mock_rl = MagicMock()
@@ -217,7 +211,7 @@ class TestRevocationHelpers:
         assert result is True
         mock_rl.add_repo_revocation.assert_called_once_with(123, "myorg", "myrepo")
 
-    @patch('data.cache.permission_cache._get_revocation_list')
+    @patch("data.cache.permission_cache._get_revocation_list")
     def test_add_repo_revocation_handles_errors(self, mock_get_rl):
         """Test that add_repo_revocation handles errors gracefully."""
         mock_rl = MagicMock()
@@ -232,9 +226,9 @@ class TestRevocationHelpers:
 class TestCompositeOperations:
     """Tests for composite revocation + invalidation operations."""
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.cache.permission_cache.add_repo_revocation')
-    @patch('data.cache.permission_cache.invalidate_repository_permission')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.cache.permission_cache.add_repo_revocation")
+    @patch("data.cache.permission_cache.invalidate_repository_permission")
     def test_revoke_and_invalidate_repo_success(
         self, mock_invalidate, mock_add_revoke, mock_is_enabled
     ):
@@ -248,14 +242,14 @@ class TestCompositeOperations:
             repo_id=456,
             namespace_name="myorg",
             repo_name="myrepo",
-            model_cache=mock_cache
+            model_cache=mock_cache,
         )
 
         mock_add_revoke.assert_called_once_with(123, "myorg", "myrepo")
         mock_invalidate.assert_called_once()
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.cache.permission_cache.add_repo_revocation')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.cache.permission_cache.add_repo_revocation")
     def test_revoke_and_invalidate_repo_fails_on_revocation_error(
         self, mock_add_revoke, mock_is_enabled
     ):
@@ -270,12 +264,12 @@ class TestCompositeOperations:
                 repo_id=456,
                 namespace_name="myorg",
                 repo_name="myrepo",
-                model_cache=mock_cache
+                model_cache=mock_cache,
             )
 
         assert "Permission revocation failed" in str(exc_info.value)
 
-    @patch('data.cache.permission_cache._is_enabled')
+    @patch("data.cache.permission_cache._is_enabled")
     def test_revoke_and_invalidate_repo_disabled(self, mock_is_enabled):
         """Test that operation is skipped when feature is disabled."""
         mock_is_enabled.return_value = False
@@ -287,15 +281,15 @@ class TestCompositeOperations:
             repo_id=456,
             namespace_name="myorg",
             repo_name="myrepo",
-            model_cache=mock_cache
+            model_cache=mock_cache,
         )
 
         # Cache should not be touched
         mock_cache.invalidate.assert_not_called()
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.model.organization.get_organization_team_members')
-    @patch('data.cache.permission_cache.revoke_and_invalidate_repo')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.model.organization.get_organization_team_members")
+    @patch("data.cache.permission_cache.revoke_and_invalidate_repo")
     def test_revoke_and_invalidate_team_members(
         self, mock_revoke_repo, mock_get_members, mock_is_enabled
     ):
@@ -316,7 +310,7 @@ class TestCompositeOperations:
             repo_id=456,
             namespace_name="myorg",
             repo_name="myrepo",
-            model_cache=mock_cache
+            model_cache=mock_cache,
         )
 
         # Should revoke for each member
@@ -326,14 +320,18 @@ class TestCompositeOperations:
 class TestBulkOperations:
     """Tests for bulk invalidation operations."""
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.model.organization.get_organization_team_members')
-    @patch('data.cache.permission_cache.invalidate_org_permission')
-    @patch('data.model.permission.list_team_permissions')
-    @patch('data.cache.permission_cache.invalidate_repository_permission')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.model.organization.get_organization_team_members")
+    @patch("data.cache.permission_cache.invalidate_org_permission")
+    @patch("data.model.permission.list_team_permissions")
+    @patch("data.cache.permission_cache.invalidate_repository_permission")
     def test_invalidate_user_team_grant(
-        self, mock_invalidate_repo, mock_list_perms, mock_invalidate_org,
-        mock_get_members, mock_is_enabled
+        self,
+        mock_invalidate_repo,
+        mock_list_perms,
+        mock_invalidate_org,
+        mock_get_members,
+        mock_is_enabled,
     ):
         """Test invalidating cache when user is granted team membership."""
         mock_is_enabled.return_value = True
@@ -360,14 +358,18 @@ class TestBulkOperations:
         # Should invalidate repo permission for each team repo
         mock_invalidate_repo.assert_called_once()
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.model.permission.list_team_permissions')
-    @patch('data.cache.permission_cache.add_repo_revocation')
-    @patch('data.cache.permission_cache.invalidate_repository_permission')
-    @patch('data.cache.permission_cache.invalidate_org_permission')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.model.permission.list_team_permissions")
+    @patch("data.cache.permission_cache.add_repo_revocation")
+    @patch("data.cache.permission_cache.invalidate_repository_permission")
+    @patch("data.cache.permission_cache.invalidate_org_permission")
     def test_invalidate_user_team_removal(
-        self, mock_invalidate_org, mock_invalidate_repo, mock_add_revoke,
-        mock_list_perms, mock_is_enabled
+        self,
+        mock_invalidate_org,
+        mock_invalidate_repo,
+        mock_add_revoke,
+        mock_list_perms,
+        mock_is_enabled,
     ):
         """Test invalidating cache when user is removed from team."""
         mock_is_enabled.return_value = True
@@ -386,7 +388,7 @@ class TestBulkOperations:
 
         mock_cache = MagicMock()
 
-        with patch('data.database.RepositoryPermission') as mock_rp:
+        with patch("data.database.RepositoryPermission") as mock_rp:
             mock_rp.select.return_value.where.return_value.exists.return_value = False
 
             invalidate_user_team_removal(mock_user, mock_team, "myorg", mock_cache)
@@ -394,14 +396,18 @@ class TestBulkOperations:
         # Should add revocation if no direct permission
         mock_add_revoke.assert_called_once_with(123, "myorg", "myrepo")
 
-    @patch('data.cache.permission_cache._is_enabled')
-    @patch('data.database.User')
-    @patch('data.model.permission.list_team_permissions')
-    @patch('data.cache.permission_cache.add_repo_revocation')
-    @patch('data.cache.permission_cache.invalidate_org_permission')
+    @patch("data.cache.permission_cache._is_enabled")
+    @patch("data.database.User")
+    @patch("data.model.permission.list_team_permissions")
+    @patch("data.cache.permission_cache.add_repo_revocation")
+    @patch("data.cache.permission_cache.invalidate_org_permission")
     def test_invalidate_bulk_team_member_removal(
-        self, mock_invalidate_org, mock_add_revoke, mock_list_perms,
-        mock_user_model, mock_is_enabled
+        self,
+        mock_invalidate_org,
+        mock_add_revoke,
+        mock_list_perms,
+        mock_user_model,
+        mock_is_enabled,
     ):
         """Test bulk invalidation when multiple team members are removed."""
         mock_is_enabled.return_value = True
@@ -422,12 +428,10 @@ class TestBulkOperations:
 
         mock_cache = MagicMock()
 
-        with patch('data.database.RepositoryPermission') as mock_rp:
+        with patch("data.database.RepositoryPermission") as mock_rp:
             mock_rp.select.return_value.where.return_value.exists.return_value = False
 
-            invalidate_bulk_team_member_removal(
-                mock_team, [100, 200], mock_cache
-            )
+            invalidate_bulk_team_member_removal(mock_team, [100, 200], mock_cache)
 
         # Should invalidate for each user
         assert mock_invalidate_org.call_count == 2
@@ -436,7 +440,7 @@ class TestBulkOperations:
 class TestFeatureFlagGating:
     """Tests for feature flag gating of caching operations."""
 
-    @patch('data.cache.permission_cache._is_enabled')
+    @patch("data.cache.permission_cache._is_enabled")
     def test_operations_gated_when_disabled(self, mock_is_enabled):
         """Test that all operations are gated by FEATURE_PERMISSION_CACHE."""
         mock_is_enabled.return_value = False

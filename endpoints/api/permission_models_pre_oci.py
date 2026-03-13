@@ -95,7 +95,9 @@ class PreOCIModel(PermissionDataInterface):
 
     def delete_repo_permission_for_user(self, username, namespace_name, repository_name):
         try:
-            model.permission.delete_user_permission(username, namespace_name, repository_name, model_cache=model_cache)
+            model.permission.delete_user_permission(
+                username, namespace_name, repository_name, model_cache=model_cache
+            )
         except model.DataModelException as ex:
             raise DeleteException(ex)
 
@@ -123,7 +125,9 @@ class PreOCIModel(PermissionDataInterface):
 
     def delete_repo_permission_for_team(self, team_name, namespace_name, repository_name):
         try:
-            model.permission.delete_team_permission(team_name, namespace_name, repository_name, model_cache=model_cache)
+            model.permission.delete_team_permission(
+                team_name, namespace_name, repository_name, model_cache=model_cache
+            )
         except model.DataModelException as ex:
             raise DeleteException(ex)
 

@@ -15,11 +15,9 @@ from test.fixtures import *
 class TestPermissionCachingIntegration:
     """Integration tests for permission caching in the auth flow."""
 
-    @patch('features.PERMISSION_CACHE', True)
-    @patch('app.model_cache')
-    def test_repo_permission_uses_cache_when_enabled(
-        self, mock_model_cache, initialized_db
-    ):
+    @patch("features.PERMISSION_CACHE", True)
+    @patch("app.model_cache")
+    def test_repo_permission_uses_cache_when_enabled(self, mock_model_cache, initialized_db):
         """Test that repository permissions use cache when FEATURE_PERMISSION_CACHE is enabled."""
 
         # Mock cache to return None (cache miss)
@@ -31,6 +29,7 @@ class TestPermissionCachingIntegration:
 
         # Create a permission that will trigger repo loading
         from auth.permissions import ReadRepositoryPermission
+
         permission = ReadRepositoryPermission("devtable", "simple")
 
         # Check permission (this should trigger cache lookup)
@@ -39,11 +38,9 @@ class TestPermissionCachingIntegration:
         # Verify cache was checked
         mock_model_cache.retrieve.assert_called()
 
-    @patch('features.PERMISSION_CACHE', True)
-    @patch('data.cache.permission_cache.is_repo_permission_revoked')
-    def test_revoked_permission_blocks_access(
-        self, mock_is_revoked, initialized_db
-    ):
+    @patch("features.PERMISSION_CACHE", True)
+    @patch("data.cache.permission_cache.is_repo_permission_revoked")
+    def test_revoked_permission_blocks_access(self, mock_is_revoked, initialized_db):
         """Test that revoked permissions block access even if cached."""
         mock_is_revoked.return_value = True  # Permission is revoked
 
@@ -51,6 +48,7 @@ class TestPermissionCachingIntegration:
         deferred_user = QuayDeferredPermissionUser.for_user(user)
 
         from auth.permissions import ReadRepositoryPermission
+
         permission = ReadRepositoryPermission("devtable", "simple")
 
         # Should return early due to revocation
@@ -59,7 +57,7 @@ class TestPermissionCachingIntegration:
         # Verify revocation was checked
         mock_is_revoked.assert_called()
 
-    @patch('features.PERMISSION_CACHE', False)
+    @patch("features.PERMISSION_CACHE", False)
     def test_cache_disabled_queries_db_directly(self, initialized_db):
         """Test that permissions query DB directly when caching is disabled."""
 
@@ -67,6 +65,7 @@ class TestPermissionCachingIntegration:
         deferred_user = QuayDeferredPermissionUser.for_user(user)
 
         from auth.permissions import ReadRepositoryPermission
+
         permission = ReadRepositoryPermission("devtable", "simple")
 
         # Should query DB directly
@@ -74,11 +73,9 @@ class TestPermissionCachingIntegration:
 
         # The test passes if no cache errors occur
 
-    @patch('features.PERMISSION_CACHE', True)
-    @patch('app.model_cache')
-    def test_org_permission_uses_cache_when_enabled(
-        self, mock_model_cache, initialized_db
-    ):
+    @patch("features.PERMISSION_CACHE", True)
+    @patch("app.model_cache")
+    def test_org_permission_uses_cache_when_enabled(self, mock_model_cache, initialized_db):
         """Test that org-wide permissions use cache when enabled."""
 
         mock_model_cache.cache_config = {"user_org_provides_cache_ttl": "120s"}
@@ -88,6 +85,7 @@ class TestPermissionCachingIntegration:
         deferred_user = QuayDeferredPermissionUser.for_user(user)
 
         from auth.permissions import OrganizationMemberPermission
+
         permission = OrganizationMemberPermission("buynlarge")
 
         # Check permission
@@ -96,11 +94,9 @@ class TestPermissionCachingIntegration:
         # Verify cache was checked
         assert mock_model_cache.retrieve.called
 
-    @patch('features.PERMISSION_CACHE', True)
-    @patch('app.model_cache')
-    def test_cache_miss_queries_database(
-        self, mock_model_cache, initialized_db
-    ):
+    @patch("features.PERMISSION_CACHE", True)
+    @patch("app.model_cache")
+    def test_cache_miss_queries_database(self, mock_model_cache, initialized_db):
         """Test that cache miss triggers database query and caches result."""
 
         mock_model_cache.cache_config = {"user_repo_provides_cache_ttl": "120s"}
@@ -118,6 +114,7 @@ class TestPermissionCachingIntegration:
         deferred_user = QuayDeferredPermissionUser.for_user(user)
 
         from auth.permissions import ReadRepositoryPermission
+
         permission = ReadRepositoryPermission("devtable", "simple")
 
         result = deferred_user.can(permission)
@@ -125,9 +122,9 @@ class TestPermissionCachingIntegration:
         # Loader should have been called (cache miss)
         assert len(loader_called) > 0
 
-    @patch('features.PERMISSION_CACHE', True)
-    @patch('app.model_cache')
-    @patch('auth.permissions.logger')
+    @patch("features.PERMISSION_CACHE", True)
+    @patch("app.model_cache")
+    @patch("auth.permissions.logger")
     def test_cache_unavailable_falls_back_to_db(
         self, mock_logger, mock_model_cache, initialized_db
     ):
@@ -140,6 +137,7 @@ class TestPermissionCachingIntegration:
         deferred_user = QuayDeferredPermissionUser.for_user(user)
 
         from auth.permissions import ReadRepositoryPermission
+
         permission = ReadRepositoryPermission("devtable", "simple")
 
         # Should not raise, should fall back to DB
@@ -199,9 +197,9 @@ class TestPermissionCacheKeys:
 class TestRevocationRaceCondition:
     """Tests verifying that revocation prevents race conditions."""
 
-    @patch('features.PERMISSION_CACHE', True)
-    @patch('data.cache.permission_cache.is_repo_permission_revoked')
-    @patch('app.model_cache')
+    @patch("features.PERMISSION_CACHE", True)
+    @patch("data.cache.permission_cache.is_repo_permission_revoked")
+    @patch("app.model_cache")
     def test_revocation_checked_before_cache(
         self, mock_model_cache, mock_is_revoked, initialized_db
     ):
@@ -211,17 +209,14 @@ class TestRevocationRaceCondition:
         # Set up cache to return a value (simulating stale cached permission)
         mock_model_cache.cache_config = {"user_repo_provides_cache_ttl": "120s"}
         mock_model_cache.retrieve.return_value = [
-            {
-                "namespace": "devtable",
-                "repo_name": "simple",
-                "role": "admin"
-            }
+            {"namespace": "devtable", "repo_name": "simple", "role": "admin"}
         ]
 
         user = get_user("devtable")
         deferred_user = QuayDeferredPermissionUser.for_user(user)
 
         from auth.permissions import ReadRepositoryPermission
+
         permission = ReadRepositoryPermission("devtable", "simple")
 
         # Check permission
@@ -233,9 +228,9 @@ class TestRevocationRaceCondition:
         # Cache retrieve should NOT be called because revocation returned early
         mock_model_cache.retrieve.assert_not_called()
 
-    @patch('features.PERMISSION_CACHE', True)
-    @patch('data.cache.permission_cache.is_repo_permission_revoked')
-    @patch('app.model_cache')
+    @patch("features.PERMISSION_CACHE", True)
+    @patch("data.cache.permission_cache.is_repo_permission_revoked")
+    @patch("app.model_cache")
     def test_non_revoked_permission_loads_from_cache(
         self, mock_model_cache, mock_is_revoked, initialized_db
     ):
@@ -249,6 +244,7 @@ class TestRevocationRaceCondition:
         deferred_user = QuayDeferredPermissionUser.for_user(user)
 
         from auth.permissions import ReadRepositoryPermission
+
         permission = ReadRepositoryPermission("devtable", "simple")
 
         result = deferred_user.can(permission)
@@ -263,7 +259,7 @@ class TestPermissionCacheTTL:
 
     def test_default_ttl_values(self):
         """Test default TTL values for permission caches."""
-        from data.cache.cache_key import for_user_repo_provides, for_user_org_provides
+        from data.cache.cache_key import for_user_org_provides, for_user_repo_provides
 
         # When no TTL is specified in config, should use defaults
         cache_config = {}
@@ -277,12 +273,9 @@ class TestPermissionCacheTTL:
 
     def test_custom_ttl_values(self):
         """Test custom TTL values are respected."""
-        from data.cache.cache_key import for_user_repo_provides, for_user_org_provides
+        from data.cache.cache_key import for_user_org_provides, for_user_repo_provides
 
-        cache_config = {
-            "user_repo_provides_cache_ttl": "60s",
-            "user_org_provides_cache_ttl": "90s"
-        }
+        cache_config = {"user_repo_provides_cache_ttl": "60s", "user_org_provides_cache_ttl": "90s"}
 
         repo_key = for_user_repo_provides(123, "org", "repo", cache_config)
         org_key = for_user_org_provides(123, "org", cache_config)

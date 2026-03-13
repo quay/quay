@@ -501,23 +501,26 @@ def set_user_repo_permission(
         )
 
     # Set the permission (create or update in database)
-    result = __set_entity_repo_permission(
-        user, "user", namespace_name, repository_name, role_name
-    )
+    result = __set_entity_repo_permission(user, "user", namespace_name, repository_name, role_name)
 
     # For grants/upgrades, invalidate cache after database update (best effort)
     if not is_downgrade and model_cache and user and repo:
         from data.cache import permission_cache
 
         permission_cache.invalidate_repository_permission(
-            user.id, repo.id, model_cache,
-            namespace_name=namespace_name, repo_name=repository_name,
+            user.id,
+            repo.id,
+            model_cache,
+            namespace_name=namespace_name,
+            repo_name=repository_name,
         )
 
     return result
 
 
-def set_team_repo_permission(team_name, namespace_name, repository_name, role_name, model_cache=None):
+def set_team_repo_permission(
+    team_name, namespace_name, repository_name, role_name, model_cache=None
+):
     """
     Set a team's permission level on a repository.
 

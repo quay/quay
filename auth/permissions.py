@@ -222,12 +222,12 @@ class QuayDeferredPermissionUser(Identity):
             from data.cache.permission_cache import is_repo_permission_revoked
 
             # Check revocation list before loading provides.
-            if is_repo_permission_revoked(
-                user_object.id, namespace_filter, repository_name
-            ):
+            if is_repo_permission_revoked(user_object.id, namespace_filter, repository_name):
                 logger.debug(
                     "Permission revoked for user=%s, repo=%s/%s",
-                    user_object.id, namespace_filter, repository_name,
+                    user_object.id,
+                    namespace_filter,
+                    repository_name,
                 )
                 return
 

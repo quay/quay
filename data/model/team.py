@@ -128,9 +128,7 @@ def set_team_org_permission(team, team_role_name, set_by_username, model_cache=N
     if model_cache:
         from data.cache import permission_cache
 
-        permission_cache.invalidate_team_org_role(
-            team.id, team.organization.username, model_cache
-        )
+        permission_cache.invalidate_team_org_role(team.id, team.organization.username, model_cache)
 
     new_role = TeamRole.get(TeamRole.name == team_role_name)
     team.role = new_role

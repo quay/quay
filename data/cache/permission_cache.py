@@ -114,28 +114,25 @@ def revoke_and_invalidate_repo(user_id, repo_id, namespace_name, repo_name, mode
         )
 
     invalidate_repository_permission(
-        user_id, repo_id, model_cache,
-        namespace_name=namespace_name, repo_name=repo_name,
+        user_id,
+        repo_id,
+        model_cache,
+        namespace_name=namespace_name,
+        repo_name=repo_name,
     )
 
 
-def revoke_and_invalidate_team_members(
-    team_id, repo_id, namespace_name, repo_name, model_cache
-):
+def revoke_and_invalidate_team_members(team_id, repo_id, namespace_name, repo_name, model_cache):
     if not _is_enabled():
         return
 
     from data.model import organization as org_model
 
     for member in org_model.get_organization_team_members(team_id):
-        revoke_and_invalidate_repo(
-            member.id, repo_id, namespace_name, repo_name, model_cache
-        )
+        revoke_and_invalidate_repo(member.id, repo_id, namespace_name, repo_name, model_cache)
 
 
-def invalidate_team_members(
-    team_id, repo_id, namespace_name, repo_name, model_cache
-):
+def invalidate_team_members(team_id, repo_id, namespace_name, repo_name, model_cache):
     if not _is_enabled():
         return
 
@@ -143,8 +140,11 @@ def invalidate_team_members(
 
     for member in org_model.get_organization_team_members(team_id):
         invalidate_repository_permission(
-            member.id, repo_id, model_cache,
-            namespace_name=namespace_name, repo_name=repo_name,
+            member.id,
+            repo_id,
+            model_cache,
+            namespace_name=namespace_name,
+            repo_name=repo_name,
         )
 
 
@@ -161,8 +161,11 @@ def invalidate_user_team_grant(user_obj, team_obj, model_cache):
     for team_perm in perm_model.list_team_permissions(team_obj):
         repo = team_perm.repository
         invalidate_repository_permission(
-            user_obj.id, repo.id, model_cache,
-            namespace_name=org_name, repo_name=repo.name,
+            user_obj.id,
+            repo.id,
+            model_cache,
+            namespace_name=org_name,
+            repo_name=repo.name,
         )
 
 
@@ -191,8 +194,11 @@ def invalidate_user_team_removal(user_obj, team_obj, org_name, model_cache):
             add_repo_revocation(user_obj.id, org_name, repo.name)
 
         invalidate_repository_permission(
-            user_obj.id, repo.id, model_cache,
-            namespace_name=org_name, repo_name=repo.name,
+            user_obj.id,
+            repo.id,
+            model_cache,
+            namespace_name=org_name,
+            repo_name=repo.name,
         )
 
 
@@ -234,8 +240,11 @@ def invalidate_org_member_removal(user_obj, org, model_cache):
     for perm in direct_perms:
         add_repo_revocation(user_obj.id, org_name, perm.repository.name)
         invalidate_repository_permission(
-            user_obj.id, perm.repository.id, model_cache,
-            namespace_name=org_name, repo_name=perm.repository.name,
+            user_obj.id,
+            perm.repository.id,
+            model_cache,
+            namespace_name=org_name,
+            repo_name=perm.repository.name,
         )
 
     # Invalidate org-wide provides (team roles)
@@ -246,9 +255,7 @@ def invalidate_org_member_removal(user_obj, org, model_cache):
     from data.model import permission as perm_model
 
     user_teams = (
-        Team.select()
-        .join(TeamMember)
-        .where(Team.organization == org, TeamMember.user == user_obj)
+        Team.select().join(TeamMember).where(Team.organization == org, TeamMember.user == user_obj)
     )
 
     for user_team in user_teams:
@@ -258,8 +265,11 @@ def invalidate_org_member_removal(user_obj, org, model_cache):
             if repo.id not in direct_repo_ids:
                 add_repo_revocation(user_obj.id, org_name, repo.name)
             invalidate_repository_permission(
-                user_obj.id, repo.id, model_cache,
-                namespace_name=org_name, repo_name=repo.name,
+                user_obj.id,
+                repo.id,
+                model_cache,
+                namespace_name=org_name,
+                repo_name=repo.name,
             )
 
 
@@ -293,6 +303,9 @@ def invalidate_bulk_team_member_removal(team, removed_user_ids, model_cache):
                 add_repo_revocation(user_id, org_name, repo.name)
 
             invalidate_repository_permission(
-                user_id, repo.id, model_cache,
-                namespace_name=org_name, repo_name=repo.name,
+                user_id,
+                repo.id,
+                model_cache,
+                namespace_name=org_name,
+                repo_name=repo.name,
             )

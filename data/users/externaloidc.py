@@ -185,7 +185,9 @@ class OIDCUsers(FederatedUsers):
                     org_name = user_team.teamsync.team.organization.username
                     from app import model_cache
 
-                    team.remove_user_from_team(org_name, user_team.name, user_obj.username, None, model_cache=model_cache)
+                    team.remove_user_from_team(
+                        org_name, user_team.name, user_obj.username, None, model_cache=model_cache
+                    )
                     logger.debug(
                         f"External OIDC Group Sync: Successfully removed user: {user_obj.username} from team: {user_team.name} in organization: {org_name}"
                     )
