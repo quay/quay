@@ -932,11 +932,18 @@ class TestHarborAdapter:
             status=200,
             headers={"Link": f'<{url}?page=3>; rel="next"'},
         )
-        # Page 3: full page but no Link header — pagination stops
+        # Page 3: full page but no Link header — fallback continues
         responses.add(
             responses.GET,
             url,
             json=[{"name": f"myproject/repo{i}"} for i in range(200, 300)],
+            status=200,
+        )
+        # Page 4: empty page — pagination stops
+        responses.add(
+            responses.GET,
+            url,
+            json=[],
             status=200,
         )
 
@@ -950,7 +957,7 @@ class TestHarborAdapter:
         assert len(repos) == 300
         assert repos[0] == "repo0"
         assert repos[-1] == "repo299"
-        assert len(responses.calls) == 3
+        assert len(responses.calls) == 4
 
     @responses.activate
     def test_list_repositories_server_truncated_page_with_link(self):
@@ -994,19 +1001,19 @@ class TestHarborAdapter:
         assert len(responses.calls) == 3
 
     @responses.activate
-    def test_list_repositories_no_link_header_falls_back_to_empty_page(self):
-        """Test backward compatibility: without Link headers, pagination continues
-        until an empty page is received."""
+    def test_list_repositories_no_link_header_falls_back_to_page_size(self):
+        """Test that without Link headers, pagination falls back to page-size
+        heuristic: continues on full pages, stops on empty page."""
         url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
 
-        # Page 1: no Link header
+        # Page 1: full page (100 items), no Link header — fallback continues
         responses.add(
             responses.GET,
             url,
             json=[{"name": f"myproject/repo{i}"} for i in range(100)],
             status=200,
         )
-        # Page 2: no Link header — pagination stops (no rel="next")
+        # Page 2: partial page (50 items), no Link header — fallback stops
         responses.add(
             responses.GET,
             url,
@@ -1021,10 +1028,84 @@ class TestHarborAdapter:
 
         repos = adapter.list_repositories()
 
-        # Without Link header, pagination stops after page 1
-        # because the absence of rel="next" triggers the break
-        assert len(repos) == 100
-        assert len(responses.calls) == 1
+        # Without Link header, page-size fallback kicks in:
+        # page 1 has 100 items (== page_size) so continues,
+        # page 2 has 50 items (< page_size) so stops
+        assert len(repos) == 150
+        assert len(responses.calls) == 2
+
+    @responses.activate
+    def test_list_repositories_link_header_without_next_rel_falls_back(self):
+        """Test that a Link header present but without rel="next" triggers
+        the page-size fallback, not an early stop."""
+        url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
+
+        # Page 1: full page with a Link header that has no rel="next"
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100)],
+            status=200,
+            headers={"Link": '<https://harbor.example.com/other>; rel="prev"'},
+        )
+        # Page 2: partial page — fallback stops
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100, 130)],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        # Link header exists but has no rel="next", so fallback kicks in:
+        # page 1 has 100 items (== page_size) so continues,
+        # page 2 has 30 items (< page_size) so stops
+        assert len(repos) == 130
+        assert len(responses.calls) == 2
+
+    @responses.activate
+    def test_list_repositories_no_link_header_stops_on_empty_page(self):
+        """Test that without Link headers, pagination stops on an empty page
+        when all prior pages were full."""
+        url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
+
+        # Page 1: full page, no Link header — fallback continues
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100)],
+            status=200,
+        )
+        # Page 2: full page, no Link header — fallback continues
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100, 200)],
+            status=200,
+        )
+        # Page 3: empty page — stops
+        responses.add(
+            responses.GET,
+            url,
+            json=[],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert len(repos) == 200
+        assert len(responses.calls) == 3
 
 
 class TestGetRegistryAdapter:
