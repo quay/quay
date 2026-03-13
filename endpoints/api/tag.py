@@ -12,7 +12,6 @@ from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
 from auth.permissions import AdministerRepositoryPermission
 from data.database import Manifest as ManifestTable
-from data.database import ManifestChild
 from data.model import ImmutableTagException
 from data.model.oci.manifest import is_manifest_present
 from data.model.oci.tag import RetargetTagException
