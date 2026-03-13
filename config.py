@@ -285,6 +285,11 @@ class DefaultConfig(ImmutableConfig):
     SENTRY_DSN = None
     SENTRY_PUBLIC_DSN = None
 
+    # Pyroscope continuous profiling (optional)
+    PROFILING_TYPE = ""
+    PYROSCOPE_SERVER_ADDRESS = None
+    PYROSCOPE_APPLICATION_NAME = "quay"
+
     # Github Config
     GITHUB_LOGIN_CONFIG: Optional[Dict[str, Any]] = None
     GITHUB_TRIGGER_CONFIG = None
