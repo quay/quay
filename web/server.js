@@ -30,42 +30,50 @@ function serveFile(filePath, res) {
     if (err) {
       return null;
     }
-    res.writeHead(200, { 'Content-Type': contentType });
+    res.writeHead(200, {'Content-Type': contentType});
     res.end(data);
     return true;
   });
 }
 
-http.createServer((req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`);
-  let filePath = path.join(DIST_DIR, url.pathname);
+http
+  .createServer((req, res) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    let filePath = path.join(DIST_DIR, url.pathname);
 
-  // Prevent directory traversal
-  if (!filePath.startsWith(DIST_DIR)) {
-    res.writeHead(403);
-    res.end();
-    return;
-  }
-
-  fs.stat(filePath, (err, stats) => {
-    if (!err && stats.isFile()) {
-      serveFile(filePath, res);
-      console.info(`[${new Date().toISOString()}] ${req.method} ${req.url} 200`);
-    } else {
-      // SPA fallback: serve index.html for any unmatched route
-      const indexPath = path.join(DIST_DIR, 'index.html');
-      fs.readFile(indexPath, (indexErr, data) => {
-        if (indexErr) {
-          res.writeHead(500);
-          res.end('Internal Server Error');
-          return;
-        }
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(data);
-        console.info(`[${new Date().toISOString()}] ${req.method} ${req.url} 200 (fallback)`);
-      });
+    // Prevent directory traversal
+    if (!filePath.startsWith(DIST_DIR)) {
+      res.writeHead(403);
+      res.end();
+      return;
     }
+
+    fs.stat(filePath, (err, stats) => {
+      if (!err && stats.isFile()) {
+        serveFile(filePath, res);
+        console.info(
+          `[${new Date().toISOString()}] ${req.method} ${req.url} 200`,
+        );
+      } else {
+        // SPA fallback: serve index.html for any unmatched route
+        const indexPath = path.join(DIST_DIR, 'index.html');
+        fs.readFile(indexPath, (indexErr, data) => {
+          if (indexErr) {
+            res.writeHead(500);
+            res.end('Internal Server Error');
+            return;
+          }
+          res.writeHead(200, {'Content-Type': 'text/html'});
+          res.end(data);
+          console.info(
+            `[${new Date().toISOString()}] ${
+              req.url
+            } 200 (fallback)`,
+          );
+        });
+      }
+    });
+  })
+  .listen(PORT, () => {
+    console.info(`Static server listening on port ${PORT}`);
   });
-}).listen(PORT, () => {
-  console.info(`Static server listening on port ${PORT}`);
-});
