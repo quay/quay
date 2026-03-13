@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 import pytest
@@ -419,7 +420,23 @@ def test_list_repo_tags_sparse_manifest_detection(app, initialized_db):
         repository=repository.id,
         digest="sha256:parentmanifestdigest123456789012345678901234567890123456789012",
         media_type=manifest_list_media_type_id,
-        manifest_bytes='{"schemaVersion": 2, "manifests": []}',
+        manifest_bytes=json.dumps(
+            {
+                "schemaVersion": 2,
+                "manifests": [
+                    {
+                        "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+                        "digest": "sha256:presentchildmanifest12345678901234567890123456789012345678901",
+                        "size": 100,
+                    },
+                    {
+                        "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+                        "digest": "sha256:sparsechild123456789012345678901234567890123456789012345678901",
+                        "size": 100,
+                    },
+                ],
+            }
+        ),
     )
 
     # Create two child manifests - one present, one sparse
@@ -492,6 +509,106 @@ def test_list_repo_tags_sparse_manifest_detection(app, initialized_db):
             presence_map["sha256:sparsechild123456789012345678901234567890123456789012345678901"]
             is False
         )
+
+
+def test_sparse_detection_without_manifest_child_entries(app, initialized_db):
+    """
+    Test sparse detection when ManifestChild entries are missing (mirror scenario).
+
+    When a mirror repository uses architecture filtering, only mirrored architectures
+    get ManifestChild entries. Non-mirrored architectures have neither ManifestChild
+    nor Manifest rows. The sparse detection must still correctly identify these as
+    missing by parsing the manifest list JSON.
+    """
+    from data.database import Manifest as ManifestTable
+    from data.database import ManifestChild, Tag
+    from data.model.repository import create_repository
+    from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+    from image.docker.schema2.manifest import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+
+    repository = create_repository("devtable", "mirrorsparse", None)
+
+    manifest_list_media_type_id = ManifestTable.media_type.get_id(
+        DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+    )
+    child_media_type_id = ManifestTable.media_type.get_id(DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE)
+
+    amd64_digest = "sha256:amd64manifest1234567890123456789012345678901234567890123456789012"
+    arm64_digest = "sha256:arm64manifest1234567890123456789012345678901234567890123456789012"
+    s390x_digest = "sha256:s390xmanifest1234567890123456789012345678901234567890123456789012"
+
+    # Parent manifest list references 3 architectures
+    parent_manifest = ManifestTable.create(
+        repository=repository.id,
+        digest="sha256:mirrorparent12345678901234567890123456789012345678901234567890123",
+        media_type=manifest_list_media_type_id,
+        manifest_bytes=json.dumps(
+            {
+                "schemaVersion": 2,
+                "manifests": [
+                    {
+                        "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+                        "digest": amd64_digest,
+                        "size": 100,
+                    },
+                    {
+                        "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+                        "digest": arm64_digest,
+                        "size": 100,
+                    },
+                    {
+                        "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+                        "digest": s390x_digest,
+                        "size": 100,
+                    },
+                ],
+            }
+        ),
+    )
+
+    # Only amd64 was mirrored — it has a Manifest row and a ManifestChild entry
+    amd64_child = ManifestTable.create(
+        repository=repository.id,
+        digest=amd64_digest,
+        media_type=child_media_type_id,
+        manifest_bytes='{"schemaVersion": 2, "config": {}}',
+    )
+    ManifestChild.create(
+        manifest=parent_manifest,
+        child_manifest=amd64_child,
+        repository=repository.id,
+    )
+
+    # arm64 and s390x were NOT mirrored — no Manifest rows, no ManifestChild entries
+
+    from data.database import get_epoch_timestamp_ms
+
+    Tag.create(
+        name="mirrortag",
+        repository=repository.id,
+        manifest=parent_manifest,
+        lifetime_start_ms=get_epoch_timestamp_ms(),
+        lifetime_end_ms=None,
+        hidden=False,
+        reversion=False,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/mirrorsparse"}
+        tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
+
+        mirror_tag = next((t for t in tags if t["name"] == "mirrortag"), None)
+        assert mirror_tag is not None
+        assert mirror_tag["is_manifest_list"] is True
+        assert mirror_tag["is_sparse"] is True
+        assert mirror_tag["child_manifest_count"] == 3
+        assert mirror_tag["present_child_count"] == 1
+
+        presence_map = mirror_tag["child_manifests_presence"]
+        assert presence_map[amd64_digest] is True
+        assert presence_map[arm64_digest] is False
+        assert presence_map[s390x_digest] is False
 
 
 # Expiration/Immutability Conflict Tests
