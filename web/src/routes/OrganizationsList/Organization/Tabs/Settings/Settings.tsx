@@ -82,7 +82,10 @@ export default function Settings(props: SettingsProps) {
           isUser={props.isUserOrganization}
         />
       ),
-      visible: quayConfig?.features?.AUTO_PRUNE,
+      visible:
+        quayConfig?.features?.AUTO_PRUNE &&
+        mutualExclusionLoaded &&
+        !isOrgMirrored,
     },
     {
       name: 'Immutability Policies',

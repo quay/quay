@@ -1,3 +1,4 @@
+import {type Page} from '@playwright/test';
 import {test, expect} from '../../fixtures';
 
 test.describe('Organization Settings', {tag: ['@organization']}, () => {
@@ -115,6 +116,38 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
     ).not.toBeVisible();
   });
 
+  async function gotoSettingsAndWaitForExclusionAPIs(
+    page: Page,
+    orgName: string,
+    action: 'goto' | 'reload' = 'goto',
+  ) {
+    const waitForAPIs = Promise.all([
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes(`/organization/${orgName}/mirror`) &&
+          resp.request().method() === 'GET',
+      ),
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes(`/organization/${orgName}/proxycache`) &&
+          resp.request().method() === 'GET',
+      ),
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes(`/organization/${orgName}/immutabilitypolicy/`) &&
+          resp.request().method() === 'GET',
+      ),
+    ]);
+
+    if (action === 'goto') {
+      await page.goto(`/organization/${orgName}?tab=Settings`);
+    } else {
+      await page.reload();
+    }
+
+    await waitForAPIs;
+  }
+
   test.describe(
     'Mutual Exclusion: Org Mirror, Proxy Cache, Immutability',
     {
@@ -146,19 +179,22 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
             .replace(/\.\d{3}Z$/, 'Z'),
         });
 
-        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+        await gotoSettingsAndWaitForExclusionAPIs(authenticatedPage, org.name);
 
         // Organization state tab should be visible
         await expect(
           authenticatedPage.getByTestId('Organization state'),
         ).toBeVisible();
 
-        // Proxy Cache and Immutability tabs should be hidden
+        // Proxy Cache, Immutability, and Auto-Prune tabs should be hidden
         await expect(
           authenticatedPage.getByTestId('Proxy Cache'),
         ).not.toBeAttached();
         await expect(
           authenticatedPage.getByTestId('Immutability Policies'),
+        ).not.toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Auto-Prune Policies'),
         ).not.toBeAttached();
       });
 
@@ -182,7 +218,11 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
         ).toBeVisible();
 
         // Reload to see mutual exclusion take effect
-        await authenticatedPage.reload();
+        await gotoSettingsAndWaitForExclusionAPIs(
+          authenticatedPage,
+          org.name,
+          'reload',
+        );
 
         // Proxy Cache tab should be visible
         await expect(
@@ -206,7 +246,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
 
         await api.orgImmutabilityPolicy(org.name, 'v.*', true);
 
-        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+        await gotoSettingsAndWaitForExclusionAPIs(authenticatedPage, org.name);
 
         // Immutability Policies tab should be visible
         await expect(
@@ -228,7 +268,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
       }) => {
         const org = await api.organization('mexnone');
 
-        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+        await gotoSettingsAndWaitForExclusionAPIs(authenticatedPage, org.name);
 
         await expect(
           authenticatedPage.getByTestId('Organization state'),
@@ -238,6 +278,9 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
         ).toBeVisible();
         await expect(
           authenticatedPage.getByTestId('Immutability Policies'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Auto-Prune Policies'),
         ).toBeVisible();
       });
 
@@ -261,7 +304,11 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
         ).toBeVisible();
 
         // Reload to see mutual exclusion take effect
-        await authenticatedPage.reload();
+        await gotoSettingsAndWaitForExclusionAPIs(
+          authenticatedPage,
+          org.name,
+          'reload',
+        );
 
         await expect(
           authenticatedPage.getByTestId('Organization state'),
@@ -271,13 +318,20 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
         await api.raw.deleteProxyCacheConfig(org.name);
 
         // Reload and verify tabs reappear
-        await authenticatedPage.reload();
+        await gotoSettingsAndWaitForExclusionAPIs(
+          authenticatedPage,
+          org.name,
+          'reload',
+        );
 
         await expect(
           authenticatedPage.getByTestId('Organization state'),
         ).toBeVisible();
         await expect(
           authenticatedPage.getByTestId('Immutability Policies'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Auto-Prune Policies'),
         ).toBeVisible();
       });
 
@@ -301,7 +355,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
           },
         );
 
-        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+        await gotoSettingsAndWaitForExclusionAPIs(authenticatedPage, org.name);
 
         // General settings should still be visible
         await expect(
