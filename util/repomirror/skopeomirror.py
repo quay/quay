@@ -34,6 +34,7 @@ class SkopeoMirror(object):
         proxy=None,
         verbose_logs=False,
         unsigned_images=False,
+        preserve_signatures=False,
     ):
 
         args = ["/usr/bin/skopeo"]
@@ -42,10 +43,10 @@ class SkopeoMirror(object):
         if unsigned_images:
             args = args + ["--insecure-policy"]
 
-        args = args + [
-            "copy",
-            "--all",
-            "--remove-signatures",
+        args = args + ["copy", "--all"]
+        if not preserve_signatures:
+            args.append("--remove-signatures")
+        args += [
             "--src-tls-verify=%s" % src_tls_verify,
             "--dest-tls-verify=%s" % dest_tls_verify,
         ]

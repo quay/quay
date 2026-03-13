@@ -1811,3 +1811,67 @@ class TestOrgMirrorMetrics:
 
         assert result == OrgMirrorRepoStatus.FAIL
         assert _get_counter_value(org_mirror_repo_sync_total, {"status": "fail"}) == fail_before + 1
+
+
+class TestPreserveSignatures:
+    """Tests for preserve_signatures option in org mirror sync."""
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    def test_sync_preserve_signatures(self, mock_token, _mock_logs, initialized_db, app):
+        """When preserve_signatures is True, skopeo.copy should receive preserve_signatures=True."""
+        org, robot = _create_org_and_robot("preserve_sig_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+        config.external_registry_config = {"preserve_signatures": True}
+        config.save()
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="sig-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, ["v1.0"], "", "")
+        mock_skopeo.copy.return_value = SkopeoResults(True, [], "copied", "")
+        mock_token.return_value = "robot_token"
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.SUCCESS
+        mock_skopeo.copy.assert_called_once()
+        call_kwargs = mock_skopeo.copy.call_args
+        assert call_kwargs[1].get("preserve_signatures") is True
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    def test_sync_default_no_preserve_signatures(self, mock_token, _mock_logs, initialized_db, app):
+        """When preserve_signatures is not set, skopeo.copy should receive preserve_signatures=False."""
+        org, robot = _create_org_and_robot("preserve_sig_test2")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="no-sig-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, ["v1.0"], "", "")
+        mock_skopeo.copy.return_value = SkopeoResults(True, [], "copied", "")
+        mock_token.return_value = "robot_token"
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.SUCCESS
+        mock_skopeo.copy.assert_called_once()
+        call_kwargs = mock_skopeo.copy.call_args
+        assert call_kwargs[1].get("preserve_signatures") is False

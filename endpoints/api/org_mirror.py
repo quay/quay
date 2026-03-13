@@ -167,6 +167,10 @@ class OrgMirrorConfig(ApiResource):
                                 "no_proxy": {"type": ["string", "null"]},
                             },
                         },
+                        "preserve_signatures": {
+                            "type": "boolean",
+                            "description": "Preserve image signatures during mirroring",
+                        },
                     },
                 },
                 "repository_filters": {

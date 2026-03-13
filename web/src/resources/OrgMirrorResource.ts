@@ -29,6 +29,7 @@ export interface OrgMirrorConfig {
       https_proxy: string | null;
       no_proxy: string | null;
     };
+    preserve_signatures?: boolean;
   };
   repository_filters: string[];
   robot_username: string | null;
@@ -61,6 +62,7 @@ export interface CreateOrgMirrorConfig {
       https_proxy?: string | null;
       no_proxy?: string | null;
     };
+    preserve_signatures?: boolean;
   };
   repository_filters?: string[];
   skopeo_timeout?: number;

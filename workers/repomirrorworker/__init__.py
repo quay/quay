@@ -1439,6 +1439,9 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
                 proxy=config.external_registry_config.get("proxy", {}),
                 verbose_logs=verbose_logs,
                 unsigned_images=config.external_registry_config.get("unsigned_images", False),
+                preserve_signatures=config.external_registry_config.get(
+                    "preserve_signatures", False
+                ),
             )
 
         # Check if cancel was requested before processing next tag

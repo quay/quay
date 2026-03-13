@@ -68,6 +68,8 @@ export const configToFormData = (
     httpsProxy: response.external_registry_config?.proxy?.https_proxy || '',
     noProxy: response.external_registry_config?.proxy?.no_proxy || '',
     skopeoTimeout: response.skopeo_timeout || 300,
+    preserveSignatures:
+      response.external_registry_config?.preserve_signatures ?? false,
   };
 };
 
@@ -175,6 +177,7 @@ export const useOrgMirroringConfig = (
             https_proxy: data.httpsProxy || null,
             no_proxy: data.noProxy || null,
           },
+          preserve_signatures: data.preserveSignatures,
         },
         repository_filters: filters,
         skopeo_timeout: data.skopeoTimeout,
