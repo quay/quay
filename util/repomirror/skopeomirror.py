@@ -113,6 +113,29 @@ class SkopeoMirror(object):
         args = args + [image]
         return self.run_skopeo(args, proxy or {}, timeout)
 
+    def inspect(
+        self,
+        image: str,
+        timeout: int,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        verify_tls: bool = True,
+        proxy: Optional[dict[str, str]] = None,
+        verbose_logs: bool = False,
+    ) -> SkopeoResults:
+        """
+        Inspect image metadata (resolves config blob).
+        Uses: skopeo inspect docker://image
+        Returns JSON with Architecture, Os, Digest, etc.
+        """
+        args = ["/usr/bin/skopeo"]
+        if verbose_logs:
+            args = args + ["--debug"]
+        args = args + ["inspect", "--tls-verify=%s" % verify_tls]
+        args = args + self.external_registry_credentials("--creds", username, password)
+        args = args + [image]
+        return self.run_skopeo(args, proxy or {}, timeout)
+
     def copy_by_digest(
         self,
         src_image_with_digest: str,
