@@ -260,6 +260,21 @@ describe('ArchitectureFilter', () => {
     );
   });
 
+  it('clears stale architecture selections on initial load when sparse not supported', () => {
+    jest
+      .spyOn(UseRegistryCapabilities, 'useSparseManifestsSupported')
+      .mockReturnValue(false);
+
+    render(
+      <ArchitectureFilter
+        selectedArchitectures={['amd64', 'arm64']}
+        onChange={mockOnChange}
+      />,
+    );
+
+    expect(mockOnChange).toHaveBeenCalledWith([]);
+  });
+
   it('is enabled when sparse_manifests.supported is true', () => {
     jest
       .spyOn(UseRegistryCapabilities, 'useSparseManifestsSupported')
