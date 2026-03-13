@@ -323,7 +323,7 @@ def get_or_create_blob_with_lock(digest, skip_lock=False, **blob_attrs):
             return ImageStorage.get(content_checksum=digest)
         except ImageStorage.DoesNotExist:
             return ImageStorage.create(content_checksum=digest, **blob_attrs)
-    if GlobalLock.lock_factory is not None:
+    else:
         try:
             with GlobalLock(f"BLOB_DELETE_{digest}", lock_ttl=30):
                 try:
@@ -331,8 +331,9 @@ def get_or_create_blob_with_lock(digest, skip_lock=False, **blob_attrs):
                 except ImageStorage.DoesNotExist:
                     return ImageStorage.create(content_checksum=digest, **blob_attrs)
         except LockNotAcquiredException:
-            # If we cannot acquire a lock, retry after a short delay.
-            time.sleep(0.1)
+            # If we cannot acquire a lock, check if we have the ImageStorage entries for the provided
+            # digest. If that reading fails, then create new entries in the table anyway but report
+            # the lock failure in the log.
             try:
                 return ImageStorage.get(content_checksum=digest)
             except ImageStorage.DoesNotExist:

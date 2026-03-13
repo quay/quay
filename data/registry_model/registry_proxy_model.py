@@ -741,9 +741,7 @@ class ProxyModel(OCIModel):
     def _create_blob_in_storage(
         self, digest: str, size: int, manifest_id: int, repo_id: int, skip_lock: bool
     ):
-        blob = get_or_create_blob_with_lock(
-            digest=digest, image_size=size, compressed_size=size, skip_lock=skip_lock
-        )
+        blob = get_or_create_blob_with_lock(digest=digest, image_size=size, skip_lock=skip_lock)
         try:
             ManifestBlob.get(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
         except ManifestBlob.DoesNotExist:
@@ -754,6 +752,7 @@ class ProxyModel(OCIModel):
         return blob
 
     def _create_blob(self, digest: str, size: int, manifest_id: int, repo_id: int):
+        # Try with the global lock first.
         try:
             with GlobalLock(f"BLOB_DELETE_{digest}", lock_ttl=30):
                 blob = self._create_blob_in_storage(
@@ -764,10 +763,11 @@ class ProxyModel(OCIModel):
                     skip_lock=True,
                 )
                 return blob
+        # If global lock is unavailable because of GC, try again but this time tell the called function
+        # to reestablish the lock.
         except LockNotAcquiredException as e:
             logger.warning("Could not acquire lock for blob %s: %s", digest, e)
             logger.warning("Proceeding without lock.")
-            time.sleep(0.1)
             blob = self._create_blob_in_storage(
                 digest=digest, size=size, manifest_id=manifest_id, repo_id=repo_id, skip_lock=False
             )

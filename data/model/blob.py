@@ -56,6 +56,10 @@ def _store_blob_record_and_temp_link_in_repo(
     uncompressed_byte_count=None,
     skip_lock=False,
 ):
+    """
+    Helper function that creates the necessary placements in specific tables. Returns the storage object
+    back to the caller function.
+    """
     with db_transaction():
         try:
             storage = ImageStorage.get(content_checksum=blob_digest)
@@ -103,6 +107,7 @@ def store_blob_record_and_temp_link_in_repo(
     assert blob_digest
     assert byte_count is not None
 
+    # Try with the global lock first.
     try:
         with GlobalLock(f"BLOB_DELETE_{blob_digest}", lock_ttl=30):
             storage = _store_blob_record_and_temp_link_in_repo(
@@ -115,10 +120,11 @@ def store_blob_record_and_temp_link_in_repo(
                 skip_lock=True,
             )
             return storage
+    # If global lock is unavailable because of GC, try again but this time tell the called function
+    # to reestablish the lock.
     except LockNotAcquiredException as e:
         logger.warning("Could not acquire lock for blob %s: %s", blob_digest, e)
         logger.warning("Proceeding without lock.")
-        time.sleep(0.1)
         storage = _store_blob_record_and_temp_link_in_repo(
             repository_id=repository_id,
             blob_digest=blob_digest,
