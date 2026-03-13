@@ -72,6 +72,9 @@ def _get_sparse_manifest_info(manifest_id, repository_id):
     except (json.JSONDecodeError, TypeError):
         return False, 0, 0, {}
 
+    if not isinstance(manifest_data, dict):
+        return False, 0, 0, {}
+
     child_entries = manifest_data.get("manifests", [])
     child_digests = [entry["digest"] for entry in child_entries if "digest" in entry]
     child_manifest_count = len(child_digests)
