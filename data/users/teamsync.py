@@ -144,7 +144,9 @@ def sync_team(authentication, stale_team_sync):
                 },
             )
 
-            model.team.add_user_to_team(quay_user, stale_team_sync.team)
+            from app import model_cache
+
+            model.team.add_user_to_team(quay_user, stale_team_sync.team, model_cache=model_cache)
         except model.UserAlreadyInTeam:
             # If the user is already present, nothing more to do for them.
             pass
@@ -174,7 +176,11 @@ def sync_team(authentication, stale_team_sync):
         extra={"team": stale_team_sync.team_id, "sync_config": sync_config},
     )
 
-    deleted = model.team.delete_members_not_present(stale_team_sync.team, group_membership)
+    from app import model_cache
+
+    deleted = model.team.delete_members_not_present(
+        stale_team_sync.team, group_membership, model_cache=model_cache
+    )
 
     # Done!
     logger.info(

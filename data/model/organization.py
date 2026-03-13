@@ -34,7 +34,9 @@ def create_organization(name, email, creating_user, email_required=True, is_poss
             owners_team = team.create_team("owners", new_org, "admin")
 
             # Add the user who created the org to the owners team
-            team.add_user_to_team(creating_user, owners_team)
+            from app import model_cache
+
+            team.add_user_to_team(creating_user, owners_team, model_cache=model_cache)
 
             return new_org
         except InvalidUsernameException as iue:
@@ -75,7 +77,9 @@ def convert_user_to_organization(user_obj, admin_user):
         owners_team = team.create_team("owners", user_obj, "admin")
 
         # Add the user who will admin the org to the owners team
-        team.add_user_to_team(admin_user, owners_team)
+        from app import model_cache
+
+        team.add_user_to_team(admin_user, owners_team, model_cache=model_cache)
 
         return user_obj
 
@@ -108,10 +112,15 @@ def get_admin_users(org):
     return __get_org_admin_users(org)
 
 
-def remove_organization_member(org, user_obj):
+def remove_organization_member(org, user_obj, model_cache=None):
     org_admins = [u.username for u in __get_org_admin_users(org)]
     if len(org_admins) == 1 and user_obj.username in org_admins:
         raise DataModelException("Cannot remove user as they are the only organization admin")
+
+    if model_cache:
+        from data.cache import permission_cache
+
+        permission_cache.invalidate_org_member_removal(user_obj, org, model_cache)
 
     with db_transaction():
         # Find and remove the user from any repositories under the org.
@@ -196,7 +205,9 @@ def add_user_as_admin(user_obj, org_obj):
         admin_team = (
             Team.select().where(Team.role == admin_role, Team.organization == org_obj).get()
         )
-        team.add_user_to_team(user_obj, admin_team)
+        from app import model_cache
+
+        team.add_user_to_team(user_obj, admin_team, model_cache=model_cache)
     except team.UserAlreadyInTeam:
         pass
 

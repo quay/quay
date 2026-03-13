@@ -329,7 +329,23 @@ def get_team_reponame_permission(team_name, namespace_name, repository_name):
     return fetched[0]
 
 
-def delete_user_permission(username, namespace_name, repository_name):
+def delete_user_permission(username, namespace_name, repository_name, model_cache=None):
+    """
+    Delete a user's permission on a repository.
+
+    CRITICAL: Updates cache BEFORE database to ensure fail-safe behavior.
+    If cache update fails, the database is not modified to prevent cache inconsistency.
+
+    Args:
+        username: Username whose permission to delete
+        namespace_name: Repository namespace
+        repository_name: Repository name
+        model_cache: Model cache instance (optional)
+
+    Raises:
+        DataModelException: If user is namespace owner, permission doesn't exist,
+                          or cache service is unavailable
+    """
     if username == namespace_name:
         raise DataModelException("Namespace owner must always be admin.")
 
@@ -341,17 +357,53 @@ def delete_user_permission(username, namespace_name, repository_name):
     if not fetched:
         raise DataModelException("User does not have permission for repo.")
 
-    fetched[0].delete_instance()
+    perm = fetched[0]
+    user_id = perm.user.id if perm.user else None
+    repo_id = perm.repository.id if perm.repository else None
+
+    # Revoke + invalidate cache BEFORE deleting from DB (fail-safe)
+    if model_cache and user_id and repo_id:
+        from data.cache import permission_cache
+
+        permission_cache.revoke_and_invalidate_repo(
+            user_id, repo_id, namespace_name, repository_name, model_cache
+        )
+
+    perm.delete_instance()
 
 
-def delete_team_permission(team_name, namespace_name, repository_name):
+def delete_team_permission(team_name, namespace_name, repository_name, model_cache=None):
+    """
+    Delete a team's permission on a repository.
+
+    Revokes and invalidates cached permissions for all team members before
+    deleting from the database.
+
+    Args:
+        team_name: Team name whose permission to delete
+        namespace_name: Repository namespace
+        repository_name: Repository name
+        model_cache: Model cache instance (optional)
+
+    Raises:
+        DataModelException: If team permission doesn't exist or cache unavailable
+    """
     fetched = list(
         __entity_permission_repo_query(team_name, Team, Team.name, namespace_name, repository_name)
     )
     if not fetched:
         raise DataModelException("Team does not have permission for repo.")
 
-    fetched[0].delete_instance()
+    perm = fetched[0]
+
+    if model_cache and perm.team:
+        from data.cache import permission_cache
+
+        permission_cache.revoke_and_invalidate_team_members(
+            perm.team.id, perm.repository.id, namespace_name, repository_name, model_cache
+        )
+
+    perm.delete_instance()
 
 
 def __set_entity_repo_permission(
@@ -375,7 +427,30 @@ def __set_entity_repo_permission(
         return new_perm
 
 
-def set_user_repo_permission(username, namespace_name, repository_name, role_name):
+def set_user_repo_permission(
+    username, namespace_name, repository_name, role_name, model_cache=None
+):
+    """
+    Set a user's permission level on a repository.
+
+    Handles both grants (new permissions), upgrades (higher permission),
+    and downgrades (lower permission). For downgrades, updates cache BEFORE
+    database to ensure fail-safe behavior.
+
+    Args:
+        username: Username to grant permission to
+        namespace_name: Repository namespace
+        repository_name: Repository name
+        role_name: Role to grant ("read", "write", or "admin")
+        model_cache: Model cache instance (optional)
+
+    Returns:
+        RepositoryPermission: The created or updated permission
+
+    Raises:
+        DataModelException: If user is namespace owner, invalid username,
+                          invalid robot, or cache service unavailable for downgrades
+    """
     if username == namespace_name:
         raise DataModelException("Namespace owner must always be admin.")
 
@@ -395,10 +470,76 @@ def set_user_repo_permission(username, namespace_name, repository_name, role_nam
                 "Cannot add robot %s under namespace %s" % (username, namespace_name)
             )
 
-    return __set_entity_repo_permission(user, "user", namespace_name, repository_name, role_name)
+    # Get the repository to get its ID
+    repo = _basequery.get_existing_repository(namespace_name, repository_name)
+
+    # Fetch existing permission to check if it's a downgrade
+    existing_perm = None
+    try:
+        existing_perm = RepositoryPermission.get(
+            RepositoryPermission.user == user, RepositoryPermission.repository == repo
+        )
+    except RepositoryPermission.DoesNotExist:
+        pass
+
+    # Determine if this is a downgrade
+    is_downgrade = False
+    if existing_perm:
+        old_role = existing_perm.role.name
+        # Role hierarchy: admin > write > read
+        role_hierarchy = {"admin": 3, "write": 2, "read": 1}
+        old_level = role_hierarchy.get(old_role, 0)
+        new_level = role_hierarchy.get(role_name, 0)
+        is_downgrade = new_level < old_level
+
+    # For downgrades: revoke first, then invalidate cache, then update DB
+    if is_downgrade and model_cache and user and repo:
+        from data.cache import permission_cache
+
+        permission_cache.revoke_and_invalidate_repo(
+            user.id, repo.id, namespace_name, repository_name, model_cache
+        )
+
+    # Set the permission (create or update in database)
+    result = __set_entity_repo_permission(user, "user", namespace_name, repository_name, role_name)
+
+    # For grants/upgrades, invalidate cache after database update (best effort)
+    if not is_downgrade and model_cache and user and repo:
+        from data.cache import permission_cache
+
+        permission_cache.invalidate_repository_permission(
+            user.id,
+            repo.id,
+            model_cache,
+            namespace_name=namespace_name,
+            repo_name=repository_name,
+        )
+
+    return result
 
 
-def set_team_repo_permission(team_name, namespace_name, repository_name, role_name):
+def set_team_repo_permission(
+    team_name, namespace_name, repository_name, role_name, model_cache=None
+):
+    """
+    Set a team's permission level on a repository.
+
+    For downgrades, revokes and invalidates cached permissions for all team
+    members before updating the database.
+
+    Args:
+        team_name: Team name to grant permission to
+        namespace_name: Repository namespace
+        repository_name: Repository name
+        role_name: Role to grant ("read", "write", or "admin")
+        model_cache: Model cache instance (optional)
+
+    Returns:
+        RepositoryPermission: The created or updated permission
+
+    Raises:
+        DataModelException: If team doesn't exist or cache unavailable for downgrades
+    """
     try:
         team = (
             Team.select()
@@ -409,4 +550,38 @@ def set_team_repo_permission(team_name, namespace_name, repository_name, role_na
     except Team.DoesNotExist:
         raise DataModelException("No team %s in organization %s" % (team_name, namespace_name))
 
-    return __set_entity_repo_permission(team, "team", namespace_name, repository_name, role_name)
+    is_downgrade = False
+    repo = None
+
+    if model_cache:
+        repo = _basequery.get_existing_repository(namespace_name, repository_name)
+
+        # Check if this is a downgrade
+        try:
+            existing_perm = RepositoryPermission.get(
+                RepositoryPermission.team == team, RepositoryPermission.repository == repo
+            )
+            old_role = existing_perm.role.name
+            role_hierarchy = {"admin": 3, "write": 2, "read": 1}
+            is_downgrade = role_hierarchy.get(role_name, 0) < role_hierarchy.get(old_role, 0)
+        except RepositoryPermission.DoesNotExist:
+            pass
+
+        if is_downgrade:
+            from data.cache import permission_cache
+
+            permission_cache.revoke_and_invalidate_team_members(
+                team.id, repo.id, namespace_name, repository_name, model_cache
+            )
+
+    result = __set_entity_repo_permission(team, "team", namespace_name, repository_name, role_name)
+
+    # For grants/upgrades, invalidate after DB change (best effort)
+    if model_cache and not is_downgrade:
+        from data.cache import permission_cache
+
+        permission_cache.invalidate_team_members(
+            team.id, repo.id, namespace_name, repository_name, model_cache
+        )
+
+    return result

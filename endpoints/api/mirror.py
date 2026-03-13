@@ -617,8 +617,10 @@ class RepoMirrorResource(RepositoryParamResource):
         permission = next(iter(permissions), None)
 
         if not permission or permission.role.name == "read":
+            from app import model_cache
+
             model.permission.set_user_repo_permission(
-                robot.username, namespace_name, repo_name, "write"
+                robot.username, namespace_name, repo_name, "write", model_cache=model_cache
             )
 
         return robot

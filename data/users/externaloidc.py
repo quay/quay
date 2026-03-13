@@ -145,7 +145,9 @@ class OIDCUsers(FederatedUsers):
 
                 # add user to team
                 try:
-                    team.add_user_to_team(user_obj, team_synced.team)
+                    from app import model_cache
+
+                    team.add_user_to_team(user_obj, team_synced.team, model_cache=model_cache)
                 except InvalidTeamException as err:
                     logger.exception(
                         f"External OIDC Group Sync: Exception occurred when adding user: {user_obj.username} to quay team: {team_synced.team} as {err}"
@@ -181,7 +183,11 @@ class OIDCUsers(FederatedUsers):
                     and sync_group_info["group_name"] not in user_groups
                 ):
                     org_name = user_team.teamsync.team.organization.username
-                    team.remove_user_from_team(org_name, user_team.name, user_obj.username, None)
+                    from app import model_cache
+
+                    team.remove_user_from_team(
+                        org_name, user_team.name, user_obj.username, None, model_cache=model_cache
+                    )
                     logger.debug(
                         f"External OIDC Group Sync: Successfully removed user: {user_obj.username} from team: {user_team.name} in organization: {org_name}"
                     )

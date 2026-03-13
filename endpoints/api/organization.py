@@ -658,7 +658,9 @@ class OrganizationMember(ApiResource):
                 raise NotFound()
 
             # Remove the user from the organization.
-            model.organization.remove_organization_member(org, user)
+            from app import model_cache
+
+            model.organization.remove_organization_member(org, user, model_cache=model_cache)
             return "", 204
 
         raise Unauthorized()

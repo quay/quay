@@ -93,3 +93,25 @@ def for_manifest_referrers(repository_id, manifest_digest, cache_config):
     """
     cache_ttl = cache_config.get("manifest_referrers_cache_ttl", "60s")
     return CacheKey(f"manifest_referrers__{repository_id}_{manifest_digest}", cache_ttl)
+
+
+def for_user_repo_provides(user_id, namespace_name, repo_name, cache_config):
+    """
+    Returns a cache key for a user's resolved repository permission provides.
+
+    Caches the result of the UNION query that resolves both direct user
+    permissions and team-based permissions for a specific repository.
+    """
+    cache_ttl = cache_config.get("user_repo_provides_cache_ttl", "120s")
+    return CacheKey(f"repo_provides__{user_id}_{namespace_name}_{repo_name}", cache_ttl)
+
+
+def for_user_org_provides(user_id, namespace_name, cache_config):
+    """
+    Returns a cache key for a user's resolved org-wide permission provides.
+
+    Caches the result of the query that resolves team-based org-wide
+    permissions (admin, creator, member roles).
+    """
+    cache_ttl = cache_config.get("user_org_provides_cache_ttl", "120s")
+    return CacheKey(f"org_provides__{user_id}_{namespace_name}", cache_ttl)
