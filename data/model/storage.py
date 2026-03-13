@@ -324,7 +324,7 @@ def get_or_create_blob_with_lock(digest, **blob_attrs):
                     return ImageStorage.create(content_checksum=digest, **blob_attrs)
         except LockNotAcquiredException:
             # If we cannot acquire a lock, retry after a short delay.
-            time.sleep(1)
+            time.sleep(0.1)
             try:
                 return ImageStorage.get(content_checksum=digest)
             except ImageStorage.DoesNotExist:

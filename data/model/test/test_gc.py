@@ -1484,3 +1484,84 @@ def test_get_or_create_blob_with_lock_creates_new(default_tag_policy, initialize
 
     # verify that it was created in the database
     assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+
+
+def test_get_or_create_blob_with_lock_fallback_gets_existing(default_tag_policy, initialized_db):
+    """
+    Verifies that when the lock cannot be acquired, the function falls back to
+    getting an existing blob after a short delay.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # Create the blob first
+    existing_blob = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+    )
+
+    # Patch GlobalLock to always raise LockNotAcquiredException
+    from util.locking import LockNotAcquiredException
+
+    class FailingLock:
+        lock_factory = object()
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            raise LockNotAcquiredException()
+
+        def __exit__(self, *args):
+            pass
+
+    original_lock = storage_model.GlobalLock
+    storage_model.GlobalLock = FailingLock
+    try:
+        result_blob = storage_model.get_or_create_blob_with_lock(
+            digest=blob_digest,
+            image_size=999,
+        )
+        assert result_blob.id == existing_blob.id
+        assert (
+            ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).count() == 1
+        )
+    finally:
+        storage_model.GlobalLock = original_lock
+
+
+def test_get_or_create_blob_with_lock_fallback_creates_new(default_tag_policy, initialized_db):
+    """
+    Verifies that when the lock cannot be acquired and the blob doesn't exist,
+    the function falls back to creating the blob without the lock.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    assert not ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+
+    from util.locking import LockNotAcquiredException
+
+    class FailingLock:
+        lock_factory = object()
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            raise LockNotAcquiredException()
+
+        def __exit__(self, *args):
+            pass
+
+    original_lock = storage_model.GlobalLock
+    storage_model.GlobalLock = FailingLock
+    try:
+        result_blob = storage_model.get_or_create_blob_with_lock(
+            digest=blob_digest,
+            image_size=len(blob_content),
+        )
+        assert result_blob.content_checksum == blob_digest
+        assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+    finally:
+        storage_model.GlobalLock = original_lock
