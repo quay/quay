@@ -521,6 +521,8 @@ class ProxyModel(OCIModel):
                     )
             if db_manifest is None:
                 return None, None
+
+        created_blobs = []  # Track ManifestBlob rows created in this attempt
         try:
             # Check if the tag is immutable and if it is, return it immediately
             existing_tag = oci.tag.get_tag(repository_ref.id, tag_name)
@@ -536,7 +538,9 @@ class ProxyModel(OCIModel):
                 return wrapped_manifest, wrapped_tag
 
             if not manifest.is_manifest_list:
-                self._create_placeholder_blobs(manifest, db_manifest.id, repository_ref.id)
+                created_blobs = self._create_placeholder_blobs(
+                    manifest, db_manifest.id, repository_ref.id
+                )
 
             with db_disallow_replica_use():
                 with db_transaction():
@@ -589,7 +593,16 @@ class ProxyModel(OCIModel):
             logger.warning(
                 "Failed to create blob/tag for manifest %s, cleaning up: %s", db_manifest.id, e
             )
-            ManifestBlob.delete().where(ManifestBlob.manifest == db_manifest.id).execute()
+            # Clean up only the ManifestBlob rows we created in this attempt
+            if created_blobs:
+                blob_ids = [blob_id for blob_id, _ in created_blobs]
+                ManifestBlob.delete().where(
+                    ManifestBlob.manifest == db_manifest.id, ManifestBlob.blob << blob_ids
+                ).execute()
+
+                # Rollback quota for the blobs we added
+                blob_sizes = {blob_id: size for blob_id, size in created_blobs}
+                update_quota(repository_ref.id, db_manifest.id, blob_sizes, QuotaOperation.SUBTRACT)
             raise
 
     def _create_manifest_with_temp_tag(
@@ -611,11 +624,13 @@ class ProxyModel(OCIModel):
         with db_disallow_replica_use():
             with db_transaction():
                 db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
-            if db_manifest is None:
-                return None, None
+
+        created_blobs = []  # Track ManifestBlob rows created in this attempt
         try:
             if not manifest.is_manifest_list:
-                self._create_placeholder_blobs(manifest, db_manifest.id, repository_ref.id)
+                created_blobs = self._create_placeholder_blobs(
+                    manifest, db_manifest.id, repository_ref.id
+                )
             with db_disallow_replica_use():
                 with db_transaction():
                     expiration = self._config.expiration_s or None
@@ -651,7 +666,16 @@ class ProxyModel(OCIModel):
             logger.warning(
                 "Failed to create blob/tag for manifest %s, cleaning up: %s", db_manifest.id, e
             )
-            ManifestBlob.delete().where(ManifestBlob.manifest == db_manifest.id).execute()
+            # Clean up only the ManifestBlob rows we created in this attempt
+            if created_blobs:
+                blob_ids = [blob_id for blob_id, _ in created_blobs]
+                ManifestBlob.delete().where(
+                    ManifestBlob.manifest == db_manifest.id, ManifestBlob.blob << blob_ids
+                ).execute()
+
+                # Rollback quota for the blobs we added
+                blob_sizes = {blob_id: size for blob_id, size in created_blobs}
+                update_quota(repository_ref.id, db_manifest.id, blob_sizes, QuotaOperation.SUBTRACT)
             raise
 
     def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
@@ -740,14 +764,16 @@ class ProxyModel(OCIModel):
         self, digest: str, size: int, manifest_id: int, repo_id: int, skip_lock: bool
     ):
         blob = get_or_create_blob_with_lock(digest=digest, image_size=size, skip_lock=skip_lock)
+        newly_created = False
         try:
             ManifestBlob.get(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
         except ManifestBlob.DoesNotExist:
             ManifestBlob.create(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
+            newly_created = True
 
             # Add blob sizes if quota management is enabled
             update_quota(repo_id, manifest_id, {blob.id: blob.image_size}, QuotaOperation.ADD)
-        return blob
+        return blob, newly_created
 
     def _create_blob(self, digest: str, size: int, manifest_id: int, repo_id: int):
         return with_blob_lock_or_fallback(
@@ -762,19 +788,34 @@ class ProxyModel(OCIModel):
     def _create_placeholder_blobs(
         self, manifest: ManifestInterface, manifest_id: int, repo_id: int
     ):
+        """
+        Creates placeholder blobs for the manifest and returns a list of newly created blob IDs with sizes.
+
+        Returns:
+            List of tuples (blob_id, size) for ManifestBlob rows created in this call.
+        """
         if manifest.is_manifest_list:
-            return
+            return []
+
+        created_blobs = []  # Track (blob_id, size) for newly created ManifestBlob rows
 
         if manifest.schema_version == 2:
-            self._create_blob(
+            blob, newly_created = self._create_blob(
                 manifest.config.digest,
                 manifest.config.size,
                 manifest_id,
                 repo_id,
             )
+            if newly_created:
+                created_blobs.append((blob.id, blob.image_size))
 
         for layer in manifest.filesystem_layers:
-            self._create_blob(layer.digest, layer.compressed_size, manifest_id, repo_id)
+            blob, newly_created = self._create_blob(
+                layer.digest, layer.compressed_size, manifest_id, repo_id
+            )
+            if newly_created:
+                created_blobs.append((blob.id, blob.image_size))
+
             username = self._user.username if self._user else None
             queue_id = proxy_cache_blob_queue.put(
                 [self._namespace_name, str(repo_id), str(layer.digest)],
@@ -788,6 +829,8 @@ class ProxyModel(OCIModel):
                 ),
                 available_after=5,
             )
+
+        return created_blobs
 
     def _upstream_namespace(self, repo: str) -> str:
         upstream_namespace = self._config.upstream_registry_namespace

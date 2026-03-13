@@ -348,6 +348,12 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
     @patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue.put")
     @patch.object(ProxyModel, "_create_blob")
     def test__create_placeholder_blobs_direct(self, mock_create_blob, mock_queue_put, create_repo):
+        # Configure mock to return (blob, newly_created) tuple
+        mock_blob = MagicMock()
+        mock_blob.id = 123
+        mock_blob.image_size = 1000
+        mock_create_blob.return_value = (mock_blob, True)
+
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         input_manifest = parse_manifest_from_bytes(
             Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
@@ -397,6 +403,12 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         self, mock_create_blob, mock_queue_put, create_repo
     ):
         """Test that _create_placeholder_blobs handles None user for public repositories (PROJQUAY-9346)"""
+        # Configure mock to return (blob, newly_created) tuple
+        mock_blob = MagicMock()
+        mock_blob.id = 123
+        mock_blob.image_size = 1000
+        mock_create_blob.return_value = (mock_blob, True)
+
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         input_manifest = parse_manifest_from_bytes(
             Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
@@ -729,6 +741,194 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
                     proxy_model._create_manifest_and_retarget_tag(
                         repo_ref, input_manifest, self.tag
                     )
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_exception_cleanup_only_deletes_newly_created_blobs(self, create_repo):
+        """
+        Verify that exception cleanup only deletes ManifestBlob rows created in the current
+        attempt, preserving pre-existing blob references.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # First, create a manifest successfully to establish pre-existing blobs
+        first_manifest, _ = proxy_model._create_manifest_with_temp_tag(repo_ref, input_manifest)
+        assert first_manifest is not None
+
+        # Count pre-existing ManifestBlob rows
+        pre_existing_blobs = list(
+            ManifestBlob.select().where(ManifestBlob.manifest == first_manifest.id)
+        )
+        pre_existing_count = len(pre_existing_blobs)
+        assert pre_existing_count > 0  # Should have blobs from first manifest
+
+        # Now create a second manifest that will share some blobs and add new ones
+        # We'll force an exception after placeholder blobs are created
+        with patch(
+            "data.registry_model.registry_proxy_model.oci.tag.retarget_tag",
+            side_effect=Exception("Simulated failure during tag operation"),
+        ):
+            with pytest.raises(Exception, match="Simulated failure"):
+                proxy_model._create_manifest_and_retarget_tag(repo_ref, input_manifest, self.tag)
+
+        # Verify pre-existing ManifestBlob rows are still intact
+        remaining_blobs = list(
+            ManifestBlob.select().where(ManifestBlob.manifest == first_manifest.id)
+        )
+        assert (
+            len(remaining_blobs) == pre_existing_count
+        ), "Pre-existing ManifestBlob rows should not be deleted during cleanup"
+
+        # Verify the blobs are the same ones
+        remaining_blob_ids = {b.blob_id for b in remaining_blobs}
+        original_blob_ids = {b.blob_id for b in pre_existing_blobs}
+        assert (
+            remaining_blob_ids == original_blob_ids
+        ), "Exact same blob references should remain after cleanup"
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_exception_triggers_quota_rollback(self, create_repo):
+        """
+        Verify that when an exception occurs during manifest creation, quota is rolled back
+        for the blobs that were added.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # Track quota updates by patching update_quota
+        quota_calls = []
+
+        def track_quota(repo_id, manifest_id, blob_sizes, operation):
+            quota_calls.append(
+                {"repo_id": repo_id, "manifest_id": manifest_id, "operation": operation}
+            )
+
+        with patch(
+            "data.registry_model.registry_proxy_model.update_quota", side_effect=track_quota
+        ):
+            # Force exception after blobs are created but before tag completes
+            with patch(
+                "data.registry_model.registry_proxy_model.oci.tag.create_temporary_tag_if_necessary",
+                side_effect=Exception("Simulated failure during tag creation"),
+            ):
+                with pytest.raises(Exception, match="Simulated failure"):
+                    proxy_model._create_manifest_with_temp_tag(repo_ref, input_manifest)
+
+        # Verify quota was called with both ADD and SUBTRACT operations
+        add_calls = [c for c in quota_calls if c["operation"].value == "add"]
+        subtract_calls = [c for c in quota_calls if c["operation"].value == "subtract"]
+
+        assert len(add_calls) > 0, "Should have ADD quota calls for created blobs"
+        assert (
+            len(subtract_calls) == 1
+        ), "Should have exactly one SUBTRACT quota call for rollback (batched)"
+        # SUBTRACT should be the last call (after all ADDs)
+        assert quota_calls[-1] in subtract_calls, "SUBTRACT should be the final operation"
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_exception_with_manifest_list_no_blob_cleanup(self, create_repo):
+        """
+        Verify that when an exception occurs with a manifest list (which doesn't create blobs),
+        no blob cleanup is attempted.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+
+        # First create the child manifests that the list will reference
+        child_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+        proxy_model._create_manifest_with_temp_tag(repo_ref, child_manifest)
+
+        # Now create a manifest list
+        input_list = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(testdata.UBI8_LATEST["manifest"]),
+            testdata.UBI8_LATEST["content-type"],
+            sparse_manifest_support=True,
+        )
+
+        # Mock ManifestBlob.delete() to track if cleanup is attempted
+        original_delete = ManifestBlob.delete
+
+        def track_delete():
+            # This should not be called for manifest lists since no blobs are created
+            raise AssertionError("ManifestBlob.delete() should not be called for manifest lists")
+
+        with patch.object(ManifestBlob, "delete", side_effect=track_delete):
+            # Force exception during tag operation (after manifest list is created)
+            with patch(
+                "data.registry_model.registry_proxy_model.oci.tag.create_temporary_tag_if_necessary",
+                side_effect=Exception("Simulated failure during tag creation"),
+            ):
+                with pytest.raises(Exception, match="Simulated failure"):
+                    proxy_model._create_manifest_with_temp_tag(repo_ref, input_list)
+
+        # If we get here without AssertionError, it means delete() was not called
+        # which is correct behavior for manifest lists (created_blobs is empty)
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_exception_before_blob_creation_no_cleanup(self, create_repo):
+        """
+        Verify that when an exception occurs before any blobs are created,
+        no cleanup is attempted.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # Mock _create_placeholder_blobs to fail before creating any blobs
+        with patch.object(
+            proxy_model,
+            "_create_placeholder_blobs",
+            side_effect=Exception("Simulated failure before blob creation"),
+        ):
+            # Mock ManifestBlob.delete() to ensure cleanup is not attempted
+            delete_called = {"called": False}
+
+            original_delete = ManifestBlob.delete
+
+            def track_delete():
+                delete_called["called"] = True
+                return original_delete()
+
+            with patch.object(ManifestBlob, "delete", side_effect=track_delete):
+                with pytest.raises(Exception, match="Simulated failure before blob creation"):
+                    proxy_model._create_manifest_and_retarget_tag(
+                        repo_ref, input_manifest, self.tag
+                    )
+
+        # Verify delete was not called since created_blobs is empty
+        assert not delete_called[
+            "called"
+        ], "ManifestBlob.delete() should not be called when no blobs were created"
 
 
 @pytest.mark.xdist_group("registry_proxy_serial")
