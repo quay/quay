@@ -1,5 +1,4 @@
 import logging
-import time
 from collections import namedtuple
 
 from cachetools.func import lru_cache
@@ -298,6 +297,45 @@ def _get_storage(query_modifier):
         get_image_location_for_id(placement.location_id).name for placement in placements
     }
     return found
+
+
+def with_blob_lock_or_fallback(digest, func, *args, **kwargs):
+    """
+    Execute a function with GlobalLock protection, falling back to per-operation locking if unavailable.
+
+    This helper consolidates the common pattern of:
+    1. Try to acquire GlobalLock for blob deletion coordination (outer lock)
+    2. Execute func with skip_lock=True (caller holds lock)
+    3. If outer lock acquisition fails, execute func with skip_lock=False (per-operation locking)
+
+    The primary purpose is to coordinate with garbage collection (GC) to prevent the race condition
+    where GC deletes a blob from object storage while another operation is creating database entries
+    for that same blob.
+
+    Args:
+        digest: Blob digest for lock key (e.g., "sha256:abc123...")
+        func: Callable to execute (must accept skip_lock kwarg)
+        *args, **kwargs: Arguments to pass to func
+
+    Returns:
+        Result of func()
+
+    Fallback behavior:
+        If the global lock is unavailable (e.g., GC holds it or Redis is down), the function
+        delegates locking to the called function by passing skip_lock=False. This allows the
+        operation to proceed with per-operation locking. If Redis is completely unavailable,
+        the final fallback is lockless creation, which means the race condition can *still*
+        happen, but the window is extremely narrow. In this scenario, database uniqueness
+        constraints provide the ultimate safety guarantee. This lockless creation is the same
+        as the logic that existed before the race condition fix.
+    """
+    try:
+        with GlobalLock(f"BLOB_DELETE_{digest}", lock_ttl=30):
+            return func(*args, skip_lock=True, **kwargs)
+    except LockNotAcquiredException as e:
+        logger.warning("Could not acquire lock for blob %s: %s", digest, e)
+        logger.warning("Falling back to per-operation locking.")
+        return func(*args, skip_lock=False, **kwargs)
 
 
 def get_or_create_blob_with_lock(digest, skip_lock=False, **blob_attrs):

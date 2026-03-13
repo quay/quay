@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 from typing import Callable
 
 from peewee import Select, fn
@@ -38,7 +37,7 @@ from data.model.quota import (
     update_quota,
 )
 from data.model.repository import create_repository, get_repository
-from data.model.storage import get_or_create_blob_with_lock
+from data.model.storage import get_or_create_blob_with_lock, with_blob_lock_or_fallback
 from data.registry_model.blobuploader import (
     BlobDigestMismatchException,
     BlobRangeMismatchException,
@@ -65,7 +64,6 @@ from image.shared.interfaces import ManifestInterface
 from image.shared.schemas import parse_manifest_from_bytes
 from proxy import Proxy, UpstreamRegistryError
 from util.bytes import Bytes
-from util.locking import GlobalLock, LockNotAcquiredException
 
 logger = logging.getLogger(__name__)
 
@@ -752,26 +750,14 @@ class ProxyModel(OCIModel):
         return blob
 
     def _create_blob(self, digest: str, size: int, manifest_id: int, repo_id: int):
-        # Try with the global lock first.
-        try:
-            with GlobalLock(f"BLOB_DELETE_{digest}", lock_ttl=30):
-                blob = self._create_blob_in_storage(
-                    digest=digest,
-                    size=size,
-                    manifest_id=manifest_id,
-                    repo_id=repo_id,
-                    skip_lock=True,
-                )
-                return blob
-        # If global lock is unavailable because of GC, try again but this time tell the called function
-        # to reestablish the lock.
-        except LockNotAcquiredException as e:
-            logger.warning("Could not acquire lock for blob %s: %s", digest, e)
-            logger.warning("Proceeding without lock.")
-            blob = self._create_blob_in_storage(
-                digest=digest, size=size, manifest_id=manifest_id, repo_id=repo_id, skip_lock=False
-            )
-            return blob
+        return with_blob_lock_or_fallback(
+            digest,
+            self._create_blob_in_storage,
+            digest,
+            size,
+            manifest_id,
+            repo_id,
+        )
 
     def _create_placeholder_blobs(
         self, manifest: ManifestInterface, manifest_id: int, repo_id: int

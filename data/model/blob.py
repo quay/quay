@@ -1,5 +1,4 @@
 import logging
-import time
 from datetime import datetime, timedelta
 from uuid import uuid4
 
@@ -24,8 +23,7 @@ from data.model import (
     db_transaction,
 )
 from data.model import storage as storage_model
-from data.model.storage import get_or_create_blob_with_lock
-from util.locking import GlobalLock, LockNotAcquiredException
+from data.model.storage import get_or_create_blob_with_lock, with_blob_lock_or_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -107,34 +105,16 @@ def store_blob_record_and_temp_link_in_repo(
     assert blob_digest
     assert byte_count is not None
 
-    # Try with the global lock first.
-    try:
-        with GlobalLock(f"BLOB_DELETE_{blob_digest}", lock_ttl=30):
-            storage = _store_blob_record_and_temp_link_in_repo(
-                repository_id=repository_id,
-                blob_digest=blob_digest,
-                location_obj=location_obj,
-                byte_count=byte_count,
-                link_expiration_s=link_expiration_s,
-                uncompressed_byte_count=uncompressed_byte_count,
-                skip_lock=True,
-            )
-            return storage
-    # If global lock is unavailable because of GC, try again but this time tell the called function
-    # to reestablish the lock.
-    except LockNotAcquiredException as e:
-        logger.warning("Could not acquire lock for blob %s: %s", blob_digest, e)
-        logger.warning("Proceeding without lock.")
-        storage = _store_blob_record_and_temp_link_in_repo(
-            repository_id=repository_id,
-            blob_digest=blob_digest,
-            location_obj=location_obj,
-            byte_count=byte_count,
-            link_expiration_s=link_expiration_s,
-            uncompressed_byte_count=uncompressed_byte_count,
-            skip_lock=False,
-        )
-        return storage
+    return with_blob_lock_or_fallback(
+        blob_digest,
+        _store_blob_record_and_temp_link_in_repo,
+        repository_id=repository_id,
+        blob_digest=blob_digest,
+        location_obj=location_obj,
+        byte_count=byte_count,
+        link_expiration_s=link_expiration_s,
+        uncompressed_byte_count=uncompressed_byte_count,
+    )
 
 
 def temp_link_blob(repository_id, blob_digest, link_expiration_s):
