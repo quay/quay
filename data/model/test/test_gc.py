@@ -1434,3 +1434,53 @@ def test_gc_placeholder_blob_eventually_collected(default_tag_policy, initialize
     for blob in blob_list:
         assert blob.id in orphaned_ids
         assert not ImageStorage.select().where(ImageStorage.id == blob.id).exists()
+
+
+def test_get_or_create_blob_with_lock_gets_existing(default_tag_policy, initialized_db):
+    """
+    Tests that get_or_create_blob_with_lock returns an existing blob without creating a duplicate.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # create initial blob
+    existing_blob = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+
+    # call the function
+    result_blob = storage_model.get_or_create_blob_with_lock(
+        digest=blob_digest,
+        image_size=999,
+    )
+
+    assert result_blob.id == existing_blob.id
+    assert result_blob.image_size == len(blob_content)
+
+    assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).count() == 1
+
+
+def test_get_or_create_blob_with_lock_creates_new(default_tag_policy, initialized_db):
+    """
+    Verifies that the function creates a new blob if the blob doesn't exist.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # Verify blob doesn't exist in storage
+    assert not ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+
+    # create blob
+    result_blob = storage_model.get_or_create_blob_with_lock(
+        digest=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+
+    assert result_blob.content_checksum == blob_digest
+    assert result_blob.image_size == len(blob_content)
+
+    # verify that it was created in the database
+    assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()

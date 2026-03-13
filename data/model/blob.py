@@ -21,6 +21,7 @@ from data.model import (
     db_transaction,
 )
 from data.model import storage as storage_model
+from data.model.storage import get_or_create_blob_with_lock
 
 logger = logging.getLogger(__name__)
 
@@ -72,14 +73,15 @@ def store_blob_record_and_temp_link_in_repo(
             if save_changes:
                 storage.save()
 
-            ImageStoragePlacement.get(storage=storage, location=location_obj)
         except ImageStorage.DoesNotExist:
-            storage = ImageStorage.create(
-                content_checksum=blob_digest,
+            storage = get_or_create_blob_with_lock(
+                digest=blob_digest,
                 image_size=byte_count,
                 uncompressed_size=uncompressed_byte_count,
             )
-            ImageStoragePlacement.create(storage=storage, location=location_obj)
+
+        try:
+            ImageStoragePlacement.get(storage=storage, location=location_obj)
         except ImageStoragePlacement.DoesNotExist:
             ImageStoragePlacement.create(storage=storage, location=location_obj)
 
@@ -213,7 +215,7 @@ def get_or_create_shared_blob(digest, byte_data, storage):
         preferred = storage.preferred_locations[0]
         location_obj = ImageStorageLocation.get(name=preferred)
 
-        record = ImageStorage.create(image_size=len(byte_data), content_checksum=digest)
+        record = get_or_create_blob_with_lock(digest=digest, image_size=len(byte_data))
 
         try:
             storage.put_content([preferred], storage_model.get_layer_path(record), byte_data)

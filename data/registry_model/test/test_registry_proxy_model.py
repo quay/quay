@@ -1,4 +1,5 @@
 import json
+import random
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
@@ -13,6 +14,7 @@ from data.database import (
     Manifest,
     ManifestBlob,
     ManifestChild,
+    MediaType,
     Tag,
     get_epoch_timestamp_ms,
 )
@@ -33,7 +35,10 @@ from data.model.storage import get_layer_path
 from data.model.user import get_user
 from data.registry_model import registry_model
 from data.registry_model.datatypes import Manifest as ManifestType
-from data.registry_model.registry_proxy_model import ProxyModel
+from data.registry_model.registry_proxy_model import (
+    ProxyModel,
+    get_proxy_cache_config_for_org,
+)
 from data.registry_model.test import testdata
 from digest.digest_tools import sha256_digest
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
@@ -101,6 +106,13 @@ UBI8_8_4_MANIFEST_SCHEMA2 = r"""{
       }
    ]
 }"""
+
+
+def _get_digest(content_bytes):
+    """
+    Helper function that creates blobs with proper digests
+    """
+    return sha256_digest(content_bytes)
 
 
 @pytest.fixture
@@ -1692,3 +1704,54 @@ class TestPruningLRUProxiedImagesToAllowBlobUpload:
         assert proxy_model._check_image_upload_possible_or_prune(repo_ref, input_manifest) is None
         first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
         assert first_tag is None
+
+
+@patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+@patch("data.registry_model.registry_proxy_model.get_proxy_cache_config_for_org")
+def test_proxy_cache_create_blob_uses_lock(mock_get_config, initialized_db):
+    """
+    Verifies that proxy cache uses the locking mechanism.
+    """
+    # mock proxy cache configuration
+    mock_config = MagicMock()
+    mock_config.upstream_registry = "quay.io"
+    mock_config.upstream_registry_namespace = None
+    mock_config.expiration_s = 3600
+    mock_get_config.return_value = mock_config
+
+    repo = create_repository("devtable", "proxy_lock_test", None)
+    assert repo is not None
+    media_type, _ = MediaType.get_or_create(name="application/vnd.oci.image.manifest.v1+json")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    manifest_bytes = '{"schemaVersion": 2}'
+    manifest = Manifest.create(
+        repository=repo,
+        digest=_get_digest(manifest_bytes.encode("utf-8")),
+        manifest_bytes=manifest_bytes,
+        media_type=media_type,
+    )
+
+    # enable proxy mode
+    proxy_model = ProxyModel("devtable", "proxy_lock_test", None)
+
+    # call _create_blob
+    proxy_model._create_blob(
+        digest=blob_digest,
+        size=len(blob_content),
+        manifest_id=manifest.id,
+        repo_id=repo.id,
+    )
+
+    # verify that the blob was created
+    assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+    assert (
+        ManifestBlob.select()
+        .where(
+            ManifestBlob.manifest == manifest,
+            ManifestBlob.repository == repo,
+        )
+        .exists()
+    )

@@ -37,6 +37,7 @@ from data.model.quota import (
     update_quota,
 )
 from data.model.repository import create_repository, get_repository
+from data.model.storage import get_or_create_blob_with_lock
 from data.registry_model.blobuploader import (
     BlobDigestMismatchException,
     BlobRangeMismatchException,
@@ -696,13 +697,7 @@ class ProxyModel(OCIModel):
         return None
 
     def _create_blob(self, digest: str, size: int, manifest_id: int, repo_id: int):
-        try:
-            blob = ImageStorage.get(content_checksum=digest)
-        except ImageStorage.DoesNotExist:
-            # TODO: which size should we really be setting here?
-            blob = ImageStorage.create(
-                content_checksum=digest, image_size=size, compressed_size=size
-            )
+        blob = get_or_create_blob_with_lock(digest=digest, image_size=size, compressed_size=size)
         try:
             ManifestBlob.get(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
         except ManifestBlob.DoesNotExist:

@@ -1,4 +1,5 @@
 import logging
+import time
 from collections import namedtuple
 
 from cachetools.func import lru_cache
@@ -225,10 +226,13 @@ def garbage_collect_storage(storage_id_whitelist):
                 continue
 
             # Perform one final check to ensure the blob is not needed.
-            # GlobalLock ensures that deletion is atomic with the database operation, thus avoiding
-            # any race conditions.
+            # Note: GlobalLock ensures that deletion is atomic with the database operation, but does not
+            # avoid *all* race conditions. However, it does make the window extremely small, potentially
+            # happening only between the check and actual deletion under lock. Mitigations added in
+            # _is_storage_orphaned and the UploadedBlob check should ensure further narrow the possible
+            # race condition window.
             try:
-                with GlobalLock(f"BLOB_DELETE_{storage_checksum}"):
+                with GlobalLock(f"BLOB_DELETE_{storage_checksum}", lock_ttl=120):
                     if (
                         ImageStorage.select()
                         .where(ImageStorage.content_checksum == storage_checksum)
@@ -294,6 +298,44 @@ def _get_storage(query_modifier):
         get_image_location_for_id(placement.location_id).name for placement in placements
     }
     return found
+
+
+def get_or_create_blob_with_lock(digest, **blob_attrs):
+    """
+    Atomically gets or creates an ImageStorage blob, coordinating with GC deletion.
+
+    This function uses the same GlobalLock as the GC blob deletion path to ensure
+    mutual exclusion between blob creation and deletion, preventing the race condition
+    where a blob could be deleted from storage while a database record is being created.
+
+    Args:
+        digest: The blob digest (e.g., "sha256:abc123...")
+        **blob_attrs: Additional attributes to pass to ImageStorage.create() if creating
+
+    Returns:
+        ImageStorage object (either existing or newly created)
+    """
+    if GlobalLock.lock_factory is not None:
+        try:
+            with GlobalLock(f"BLOB_DELETE_{digest}", lock_ttl=30):
+                try:
+                    return ImageStorage.get(content_checksum=digest)
+                except ImageStorage.DoesNotExist:
+                    return ImageStorage.create(content_checksum=digest, **blob_attrs)
+        except LockNotAcquiredException:
+            # If we cannot acquire a lock, retry after a short delay.
+            time.sleep(1)
+            try:
+                return ImageStorage.get(content_checksum=digest)
+            except ImageStorage.DoesNotExist:
+                logger.warning("Creating blob %s without lock as fallback", digest)
+                return ImageStorage.create(content_checksum=digest, **blob_attrs)
+    else:
+        # GlobalLock is not available, fall back to standard creation
+        try:
+            return ImageStorage.get(content_checksum=digest)
+        except ImageStorage.DoesNotExist:
+            return ImageStorage.create(content_checksum=digest, **blob_attrs)
 
 
 def get_storage_by_uuid(storage_uuid):

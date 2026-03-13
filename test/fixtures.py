@@ -38,7 +38,6 @@ from path_converters import (
     V1CreateRepositoryPathConverter,
 )
 from test.testconfig import FakeTransaction
-from util.locking import GlobalLock as _RealGlobalLock
 
 
 # Mock GlobalLock for tests that doesn't require Redis
@@ -53,7 +52,7 @@ class MockGlobalLock:
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_value, exc_traceback):
         pass
 
     def acquire(self):
