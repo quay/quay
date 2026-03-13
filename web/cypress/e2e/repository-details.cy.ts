@@ -943,6 +943,11 @@ describe('Repository Details Page', () => {
     latestRow.first().within(() => {
       cy.contains('Never').click();
     });
+    cy.get('#edit-expiration-tags')
+      .first()
+      .within(() => {
+        cy.contains('latest').should('exist');
+      });
     cy.get('[aria-label="Toggle date picker"]').click();
     cy.get('button[aria-label="Next month"]').should('be.visible').click();
     cy.get(`[aria-label="${sameDateNextMonthGB}"]`)
