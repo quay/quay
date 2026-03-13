@@ -11,7 +11,7 @@
  * Requires REPO_MIRROR feature to be enabled in Quay config.
  */
 
-import {test, expect} from '../../fixtures';
+import {test, expect, skipUnlessFeature} from '../../fixtures';
 
 test.describe(
   'Repository Mirroring',
@@ -310,7 +310,9 @@ test.describe(
     test('displays architecture filter component with all architectures option', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SPARSE_INDEX'));
       // Setup: create org, repo, set MIRROR state
       const org = await api.organization('archfilterorg');
       const repo = await api.repository(org.name, 'archfilterrepo');
@@ -342,7 +344,9 @@ test.describe(
     test('allows selecting multiple architectures from dropdown', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SPARSE_INDEX'));
       // Setup: create org, repo, set MIRROR state
       const org = await api.organization('archselectorg');
       const repo = await api.repository(org.name, 'archselectrepo');
@@ -398,7 +402,9 @@ test.describe(
     test('saves and loads architecture filter with mirror configuration', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SPARSE_INDEX'));
       // Setup: create org, repo, robot, set MIRROR state
       const org = await api.organization('archsaveorg');
       const repo = await api.repository(org.name, 'archsaverepo');
@@ -467,7 +473,9 @@ test.describe(
     test('clears architecture filter selection', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SPARSE_INDEX'));
       // Setup: create org, repo, set MIRROR state
       const org = await api.organization('archclearorg');
       const repo = await api.repository(org.name, 'archclearrepo');
@@ -512,7 +520,9 @@ test.describe(
     test('loads existing architecture filter from saved mirror configuration', async ({
       authenticatedPage,
       api,
+      quayConfig,
     }) => {
+      test.skip(...skipUnlessFeature(quayConfig, 'SPARSE_INDEX'));
       // Setup: create org, repo, robot, set MIRROR state, create mirror config with architecture filter
       const org = await api.organization('archloadorg');
       const repo = await api.repository(org.name, 'archloadrepo');
