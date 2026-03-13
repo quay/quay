@@ -1,4 +1,4 @@
-import React, {useState, useMemo, useEffect} from 'react';
+import React, {useState, useMemo, useEffect, useRef} from 'react';
 import {
   FormGroup,
   Select,
@@ -42,11 +42,17 @@ export const ArchitectureFilter: React.FC<ArchitectureFilterProps> = ({
   const sparseSupported = useSparseManifestsSupported();
   const effectivelyDisabled = isDisabled || !sparseSupported;
 
+  const prevSparseRef = useRef(sparseSupported);
   useEffect(() => {
-    if (!sparseSupported && selectedArchitectures.length > 0) {
+    if (
+      prevSparseRef.current &&
+      !sparseSupported &&
+      selectedArchitectures.length > 0
+    ) {
       onChange([]);
     }
-  }, [sparseSupported]);
+    prevSparseRef.current = sparseSupported;
+  }, [sparseSupported, selectedArchitectures.length, onChange]);
 
   // Build available architectures from backend data
   const availableArchitectures = useMemo(() => {
