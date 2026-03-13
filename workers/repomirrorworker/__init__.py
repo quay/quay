@@ -762,7 +762,39 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
         return SkopeoResults(False, [], "", str(exc))
 
     if not manifest_is_list:
-        logger.info("Image %s is not a manifest list, using standard copy", src_image_tag)
+        # Inspect image metadata to check architecture against filter
+        with database.CloseForLongOperation(app.config):
+            inspect_result = skopeo.inspect(
+                src_image_tag,
+                mirror.skopeo_timeout,
+                username=username,
+                password=password,
+                verify_tls=src_tls_verify,
+                proxy=proxy,
+                verbose_logs=verbose_logs,
+            )
+
+        if not inspect_result.success:
+            logger.error("Failed to inspect image metadata for %s", src_image_tag)
+            return SkopeoResults(False, [], inspect_result.stdout, inspect_result.stderr)
+
+        try:
+            image_info = json.loads(inspect_result.stdout)
+            image_arch = image_info.get("Architecture", "")
+        except (json.JSONDecodeError, AttributeError):
+            logger.error("Failed to parse inspect output for %s", src_image_tag)
+            return SkopeoResults(False, [], "", "Failed to parse image inspect output")
+
+        if image_arch not in architecture_filter:
+            logger.info(
+                "Skipping %s: architecture '%s' not in filter %s",
+                src_image_tag,
+                image_arch,
+                architecture_filter,
+            )
+            return SkopeoResults(True, [], "", "")
+
+        logger.info("Image %s matches architecture filter (%s), copying", src_image_tag, image_arch)
         with database.CloseForLongOperation(app.config):
             result = skopeo.copy(
                 src_image_tag,
