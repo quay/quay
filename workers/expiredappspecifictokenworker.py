@@ -1,5 +1,4 @@
 import logging
-import time
 
 import features
 from app import app  # This is required to initialize the database.
@@ -54,21 +53,6 @@ def create_gunicorn_worker():
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.APP_SPECIFIC_TOKENS:
-        logger.debug("App specific tokens disabled; skipping")
-        while True:
-            time.sleep(100000)
-
-    if app.config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC") is None:
-        logger.debug("GC of App specific tokens is disabled; skipping")
-        while True:
-            time.sleep(100000)
 
     logger.debug("Starting expired app specific token GC worker")
     worker = ExpiredAppSpecificTokenWorker()
