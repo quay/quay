@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+from requests.utils import should_bypass_proxies
 
 from util.security.ssrf import validate_external_registry_url
 
@@ -61,15 +62,16 @@ class RegistryAdapter(ABC):
         self.max_retries = max_retries
         self.session = self._create_session()
 
-    def _build_proxies(self) -> Dict:
-        """Build proxies dict for requests library."""
+    def _build_proxies(self, url: str) -> Dict:
+        """Build proxies dict for requests, respecting no_proxy."""
+        no_proxy = self.proxy.get("no_proxy", "")
+        if no_proxy and should_bypass_proxies(url, no_proxy=no_proxy):
+            return {}
         proxies = {}
         if self.proxy.get("http_proxy"):
             proxies["http"] = self.proxy["http_proxy"]
         if self.proxy.get("https_proxy"):
             proxies["https"] = self.proxy["https_proxy"]
-        if self.proxy.get("no_proxy"):
-            proxies["no_proxy"] = self.proxy["no_proxy"]
         return proxies
 
     def _create_session(self) -> requests.Session:

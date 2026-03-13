@@ -223,6 +223,10 @@ class SkopeoMirror(object):
                 stderr = stderrpipe.read().decode("utf-8")
 
                 if job.returncode != 0:
-                    logger.debug("Skopeo command failed with non-zero exit code")
+                    logger.debug(
+                        "Skopeo command failed (exit code %s): %s",
+                        job.returncode,
+                        stderr.strip(),
+                    )
 
                 return SkopeoResults(job.returncode == 0, [], stdout, stderr)
