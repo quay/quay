@@ -93,7 +93,7 @@ def purge_repository(repo, force=False):
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
     assert UploadedBlob.select().where(UploadedBlob.repository == repo).count() == 0
     assert (
-        ManifestSecurityStatus.select().where(ManifestSecurityStatus.repository == repo).count()
+        ManifestSecurityStatus.select(ManifestSecurityStatus.repository).where(ManifestSecurityStatus.repository == repo).count()
         == 0
     )
     assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 0
