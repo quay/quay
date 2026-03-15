@@ -216,6 +216,7 @@ class TestProxy(unittest.TestCase):
     def test_anonymous_auth_sets_session_token(self):
         with HTTMock(docker_registry_mock):
             proxy = Proxy(self.config, "library/postgres")
+            proxy.manifest_exists(image_ref=TAG)
 
         self.assertEqual(proxy._session.headers.get("Authorization"), f"Bearer {ANONYMOUS_TOKEN}")
 
@@ -225,12 +226,15 @@ class TestProxy(unittest.TestCase):
         with mock.patch("proxy.model_cache", cache):
             with HTTMock(docker_registry_mock):
                 proxy = Proxy(self.auth_config, "library/postgres")
+                proxy.manifest_exists(image_ref=TAG)
 
         self.assertEqual(proxy._session.headers.get("Authorization"), f"Bearer {USER_TOKEN}")
 
     def test_auth_with_user_creds_and_basic_auth(self):
         @urlmatch(netloc=r"(.*\.)?docker\.io")
         def docker_basic_auth_mock(url, request):
+            if url.path == f"/v2/library/postgres/manifests/{TAG}":
+                return docker_registry_manifest(url, request)
             return docker_registry_mock_401_basic_auth(url, request)
 
         cache_mock = mock.MagicMock()
@@ -238,6 +242,7 @@ class TestProxy(unittest.TestCase):
         with mock.patch("proxy.model_cache", cache_mock):
             with HTTMock(docker_basic_auth_mock):
                 proxy = Proxy(self.auth_config, "library/postgres")
+                proxy.manifest_exists(image_ref=TAG)
 
         self.assertIn("Basic", proxy._session.headers.get("Authorization"))
 
@@ -247,6 +252,7 @@ class TestProxy(unittest.TestCase):
         with mock.patch("proxy.model_cache", cache_mock):
             with HTTMock(docker_registry_mock):
                 proxy = Proxy(self.auth_config, "library/postgres")
+                proxy.manifest_exists(image_ref=TAG)
 
         expected_count = 2  # one to check, another to cache
         self.assertEqual(cache_mock.retrieve.call_count, expected_count)
@@ -263,6 +269,7 @@ class TestProxy(unittest.TestCase):
         with mock.patch("proxy.model_cache", cache_mock):
             with HTTMock(docker_registry_mock):
                 proxy = Proxy(self.auth_config, "library/postgres")
+                proxy.manifest_exists(image_ref=TAG)
 
         expected_count = 1  # value already cached
         self.assertEqual(cache_mock.retrieve.call_count, expected_count)
@@ -308,7 +315,6 @@ class TestProxy(unittest.TestCase):
         upstream_mock = UpstreamMock()
 
         get_mock = upstream_mock.get_mock
-        auth_mock = upstream_mock.get_mock
         proxy._authorize = upstream_mock.auth_mock
         proxy._request(
             get_mock,
@@ -316,7 +322,8 @@ class TestProxy(unittest.TestCase):
             headers=manifests_headers,
         )
         self.assertEqual(upstream_mock.get_calls, 2)
-        self.assertEqual(upstream_mock.auth_calls, 1)
+        # 2 auth calls: one from lazy _ensure_authorized, one from 401 retry
+        self.assertEqual(upstream_mock.auth_calls, 2)
 
     def test_manifest_exists(self):
         with HTTMock(docker_registry_mock):
@@ -368,3 +375,62 @@ class TestProxy(unittest.TestCase):
             with pytest.raises(UpstreamRegistryError) as excinfo:
                 proxy.blob_exists(digest=DIGEST_404)
         self.assertIn("404", str(excinfo.value))
+
+    def test_deferred_auth_no_network_on_construction(self):
+        """Proxy construction should not make network calls (auth is deferred)."""
+
+        @urlmatch(netloc=r"(.*\.)?docker\.io")
+        def fail_on_any_request(url, request):
+            raise AssertionError(f"Unexpected network call to {url.netloc}{url.path}")
+
+        with HTTMock(fail_on_any_request):
+            proxy = Proxy(self.config, "library/postgres")
+
+        self.assertFalse(proxy._authorized)
+        self.assertNotIn("Authorization", proxy._session.headers)
+
+    def test_validation_mode_auth_is_eager(self):
+        """Proxy with validation=True should authorize during construction."""
+        with HTTMock(docker_registry_mock):
+            proxy = Proxy(self.config, "library/postgres", validation=True)
+
+        self.assertTrue(proxy._authorized)
+
+    def test_upstream_manifest_check_runs_even_when_auth_fails(self):
+        """Upstream manifest check must always be attempted before serving cached content.
+
+        When auth fails (e.g. upstream auth service unreachable), _ensure_authorized()
+        should NOT raise. Instead it proceeds without a token so that the actual
+        manifest_exists() HEAD request determines reachability. For public/anonymous
+        registries the manifest check can succeed even without a valid auth token.
+        """
+        manifest_head_called = []
+
+        @urlmatch(netloc=r"(.*\.)?docker\.io")
+        def registry_with_failing_auth(url, request):
+            if url.netloc == "registry-1.docker.io":
+                if url.path in ("/v2", "/v2/"):
+                    raise ConnectionError("Auth service unreachable")
+                elif url.path == f"/v2/library/postgres/manifests/{TAG}":
+                    manifest_head_called.append(True)
+                    return docker_registry_manifest(url, request)
+            return response(404, {}, request=request)
+
+        with HTTMock(registry_with_failing_auth):
+            proxy = Proxy(self.config, "library/postgres")
+            digest = proxy.manifest_exists(image_ref=TAG)
+
+        self.assertTrue(manifest_head_called, "manifest_exists never contacted upstream")
+        self.assertEqual(digest, DIGEST)
+
+    def test_request_timeout_applied(self):
+        """Requests should have a default timeout to prevent indefinite blocking."""
+        with HTTMock(docker_registry_mock):
+            proxy = Proxy(self.config, "library/postgres")
+
+        with mock.patch.object(proxy._session, "head") as mock_head:
+            mock_head.return_value = mock.MagicMock(status_code=200, ok=True)
+            proxy._authorized = True
+            proxy.head("https://example.com/v2/test")
+            _, kwargs = mock_head.call_args
+            self.assertEqual(kwargs.get("timeout"), (5, 30))
