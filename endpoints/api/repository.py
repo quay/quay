@@ -12,6 +12,7 @@ import features
 from app import (
     app,
     dockerfile_build_queue,
+    model_cache,
     repository_gc_queue,
     tuf_metadata_api,
     usermanager,
@@ -24,6 +25,7 @@ from auth.permissions import (
     ModifyRepositoryPermission,
     ReadRepositoryPermission,
 )
+from data.cache import cache_key
 from data.database import RepositoryState
 from data.model import DataModelException
 from data.model.org_mirror import is_namespace_org_mirrored
@@ -396,6 +398,13 @@ class Repository(RepositoryParamResource):
         Delete a repository.
         """
         username = model.mark_repository_for_deletion(namespace, repository, repository_gc_queue)
+
+        # Invalidate the repository lookup cache to prevent stale repository ID being returned on immediate new push
+        # to the repo of the same name.
+        repository_lookup_key = cache_key.for_repository_lookup(
+            namespace, repository, None, None, model_cache.cache_config
+        )
+        model_cache.invalidate(repository_lookup_key)
 
         if features.BILLING:
             plan = get_namespace_plan(namespace)

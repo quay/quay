@@ -11,7 +11,7 @@ import pytest
 from mock import MagicMock, patch
 from playhouse.test_utils import assert_query_count
 
-from app import docker_v2_signing_key, model_cache, storage
+from app import docker_v2_signing_key, model_cache, repository_gc_queue, storage
 from data import model
 from data.cache import cache_key
 from data.cache.impl import InMemoryDataModelCache
@@ -1408,3 +1408,70 @@ def test_tag_names_for_manifest(initialized_db, registry_model):
                 found_tag = registry_model.get_repo_tag(repo_ref, found_name)
                 assert registry_model.get_manifest_for_tag(found_tag) == manifest
     assert verified_tag
+
+
+def test_lookup_repository_cache_invalidated_on_delete(initialized_db, registry_model):
+    """
+    Verifies that the repository cache key has been invalidated after deletion.
+
+    Regression: If a repo is deleted and then content is immediately pushed to the new repo of the same name,
+    push might fail because of the stale cached repo ID.
+    """
+    namespace = "devtable"
+    repo = "simple"
+
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    model_cache.empty_for_testing()
+
+    repo_ref = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+
+    # Check that repo reference exists and cache response
+    assert repo_ref is not None
+    old_repo_id = repo_ref._db_id
+    cache_key_for_lookup = cache_key.for_repository_lookup(namespace, repo, None, None, {})
+    cached_result = model_cache.cache.get(cache_key_for_lookup.key)
+
+    # Verify cache
+    assert cached_result is not None
+    assert json.loads(cached_result)["id"] == old_repo_id
+
+    # Delete repository
+    model.repository.mark_repository_for_deletion(namespace, repo, repository_gc_queue)
+
+    # Invalidate cache
+    model_cache.invalidate(cache_key_for_lookup)
+
+    # Create repo with the same name
+    new_repo = model.repository.create_repository(namespace, repo, None, repo_kind="image")
+    assert new_repo.id != old_repo_id
+
+    # New lookup should give us a new repo, not the deleted one
+    repo_ref_after = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+    assert repo_ref_after is not None
+    assert repo_ref_after._db_id == new_repo.id
+    assert repo_ref_after._db_id != old_repo_id
+
+
+def test_lookup_repository_cache_stale_after_delete_without_invalidation(
+    registry_model, initialized_db
+):
+    """
+    Demo for the regression bug: without invalidation, the cache returns
+    the deleted repo's ID after delete + recreate.
+    """
+    namespace = "devtable"
+    repo = "simple"
+
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    model_cache.empty_for_testing()
+
+    repo_ref = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+    old_repo_id = repo_ref._db_id
+
+    model.repository.mark_repository_for_deletion(namespace, repo, repository_gc_queue)
+    new_repo = model.repository.create_repository(namespace, repo, None, repo_kind="image")
+
+    repo_ref_stale = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+
+    assert repo_ref_stale._db_id == old_repo_id  # Points to a deleted repo
+    assert repo_ref_stale._db_id != new_repo.id
