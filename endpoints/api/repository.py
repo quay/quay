@@ -401,10 +401,11 @@ class Repository(RepositoryParamResource):
 
         # Invalidate the repository lookup cache to prevent stale repository ID being returned on immediate new push
         # to the repo of the same name.
-        repository_lookup_key = cache_key.for_repository_lookup(
-            namespace, repository, None, None, model_cache.cache_config
-        )
-        model_cache.invalidate(repository_lookup_key)
+        for kind_filter in (None, "image"):
+            repository_lookup_key = cache_key.for_repository_lookup(
+                namespace, repository, None, kind_filter, model_cache.cache_config
+            )
+            model_cache.invalidate(repository_lookup_key)
 
         if features.BILLING:
             plan = get_namespace_plan(namespace)
