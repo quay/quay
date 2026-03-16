@@ -565,15 +565,26 @@ test.describe(
         });
 
         await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
-        await authenticatedPage.getByTestId('Immutability Policies').click();
 
-        // Verify warning and disabled add button
+        // Verify the Settings page actually rendered
         await expect(
-          authenticatedPage.getByText(/organization-level mirroring/i),
-        ).toBeVisible();
+          authenticatedPage.getByTestId('General settings'),
+        ).toBeAttached();
+
+        // Immutability Policies tab should be hidden due to mutual exclusion
         await expect(
-          authenticatedPage.getByTestId('add-immutability-policy-btn'),
-        ).toBeDisabled();
+          authenticatedPage.getByTestId('Immutability Policies'),
+        ).not.toBeAttached();
+
+        // Deep-link guard: navigate directly to settings again and verify
+        // the immutability tab content is not reachable
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+        await expect(
+          authenticatedPage.getByTestId('General settings'),
+        ).toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Immutability Policies'),
+        ).not.toBeAttached();
       });
     });
 
