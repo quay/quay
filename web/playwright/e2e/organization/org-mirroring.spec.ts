@@ -899,16 +899,11 @@ test.describe(
       await api.orgImmutabilityPolicy(org.name, 'v.*', true);
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
-      await authenticatedPage.getByText('Organization state').click();
-      await authenticatedPage.getByRole('radio', {name: 'Mirror'}).click();
 
-      // Verify warning alert is shown and submit is disabled
+      // The "Organization state" tab should be hidden due to mutual exclusion
       await expect(
-        authenticatedPage.getByTestId('immutability-conflict-alert'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByRole('button', {name: 'Submit'}),
-      ).toBeDisabled();
+        authenticatedPage.getByTestId('Organization state'),
+      ).not.toBeVisible();
     });
 
     test('cancel delete modal keeps config intact', async ({

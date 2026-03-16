@@ -51,7 +51,13 @@ export default function ImmutabilityPolicyForm(
         setIsEditing(true);
       }
     }
-  }, [props.policy, props.successFetchingPolicies, props.isInline]);
+  }, [
+    props.policy?.uuid,
+    props.policy?.tagPattern,
+    props.policy?.tagPatternMatches,
+    props.successFetchingPolicies,
+    props.isInline,
+  ]);
 
   const validatePattern = (pattern: string): boolean => {
     if (!pattern.trim()) {
