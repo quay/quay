@@ -294,6 +294,7 @@ function TagsTableRow(props: RowProps) {
             expiration={tag.expiration}
             loadTags={props.loadTags}
             immutable={tag.immutable}
+            repoState={props.repoDetails?.state}
           />
         </Td>
         <Td dataLabel={ColumnNames.digest}>
