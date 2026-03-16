@@ -161,10 +161,16 @@ class TestQuayAdapter:
 
     @responses.activate
     def test_test_connection_not_found(self):
-        """Test connection when namespace doesn't exist."""
+        """Test connection when namespace doesn't exist as org or user."""
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/organization/nonexistent",
+            json={"error": "Not found"},
+            status=404,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/users/nonexistent",
             json={"error": "Not found"},
             status=404,
         )
@@ -175,6 +181,29 @@ class TestQuayAdapter:
 
         assert success is False
         assert "not found" in message.lower()
+
+    @responses.activate
+    def test_test_connection_user_namespace_success(self):
+        """Test connection succeeds when namespace is a user account, not an org."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/lzha",
+            json={"error": "Not found"},
+            status=404,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/users/lzha",
+            json={"username": "lzha"},
+            status=200,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="lzha")
+
+        success, message = adapter.test_connection()
+
+        assert success is True
+        assert message == "Connection successful"
 
     def test_proxy_configuration(self):
         """Test that proxy settings are correctly applied."""
