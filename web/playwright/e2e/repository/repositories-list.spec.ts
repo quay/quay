@@ -133,7 +133,7 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
       );
       await expect(
         authenticatedPage
-          .locator('table')
+          .getByTestId('repository-list-table')
           .getByText(`${testUser}/${publicRepoName}`),
       ).toBeVisible();
 
