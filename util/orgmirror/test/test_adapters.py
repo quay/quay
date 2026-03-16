@@ -177,7 +177,7 @@ class TestQuayAdapter:
         assert "not found" in message.lower()
 
     def test_proxy_configuration(self):
-        """Test that proxy settings are correctly applied."""
+        """Test that proxy settings are passed to requests."""
         adapter = QuayAdapter(
             url="https://quay.io",
             namespace="testorg",
@@ -189,13 +189,12 @@ class TestQuayAdapter:
             },
         )
 
-        proxies = adapter._build_proxies()
-
+        proxies = adapter._build_proxies("https://quay.io/api/v1/repository")
         assert proxies["http"] == "http://proxy:8080"
         assert proxies["https"] == "https://proxy:8443"
 
-    def test_no_proxy_configuration(self):
-        """Test that no_proxy setting is correctly applied."""
+    def test_no_proxy_bypasses_proxy(self):
+        """Test that no_proxy returns empty proxies for matching hosts."""
         adapter = QuayAdapter(
             url="https://quay.io",
             namespace="testorg",
@@ -203,19 +202,27 @@ class TestQuayAdapter:
                 "proxy": {
                     "http_proxy": "http://proxy:8080",
                     "https_proxy": "https://proxy:8443",
-                    "no_proxy": "localhost,.internal",
+                    "no_proxy": "quay.io,.internal",
                 }
             },
         )
 
-        proxies = adapter._build_proxies()
+        # Host in no_proxy list -> empty proxies (direct connection)
+        proxies = adapter._build_proxies("https://quay.io/api/v1/repository")
+        assert proxies == {}
 
+        # Suffix match
+        proxies = adapter._build_proxies("https://registry.internal/v2")
+        assert proxies == {}
+
+        # Host NOT in no_proxy list -> proxies returned
+        proxies = adapter._build_proxies("https://other-registry.com/v2")
         assert proxies["http"] == "http://proxy:8080"
         assert proxies["https"] == "https://proxy:8443"
-        assert proxies["no_proxy"] == "localhost,.internal"
 
-        # Verify no_proxy is omitted when not configured
-        adapter_no_noproxy = QuayAdapter(
+    def test_no_proxy_not_configured(self):
+        """Test that without no_proxy, all hosts use the proxy."""
+        adapter = QuayAdapter(
             url="https://quay.io",
             namespace="testorg",
             config={
@@ -225,8 +232,8 @@ class TestQuayAdapter:
             },
         )
 
-        proxies_no_noproxy = adapter_no_noproxy._build_proxies()
-        assert "no_proxy" not in proxies_no_noproxy
+        proxies = adapter._build_proxies("https://quay.io/api/v1/repository")
+        assert proxies["http"] == "http://proxy:8080"
 
     def test_tls_verification_disabled(self):
         """Test that TLS verification can be disabled."""

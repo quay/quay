@@ -118,7 +118,7 @@ class QuayAdapter(RegistryAdapter):
                     url,
                     params=params,
                     verify=self.verify_tls,
-                    proxies=self._build_proxies(),
+                    proxies=self._build_proxies(url),
                     timeout=self.timeout,
                     allow_redirects=False,
                 )
@@ -197,7 +197,7 @@ class QuayAdapter(RegistryAdapter):
             response = self.session.get(
                 url,
                 verify=self.verify_tls,
-                proxies=self._build_proxies(),
+                proxies=self._build_proxies(url),
                 timeout=10,
                 allow_redirects=False,
             )
