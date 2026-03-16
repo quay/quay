@@ -1037,7 +1037,12 @@ def test_create_manifest_and_retarget_tag_with_immutable_label_api_retarget(
 
     # Retarget via the API path
     api_tag = oci_model.retarget_tag(
-        model_cache, repository_ref, "api_immutable_dst", created_manifest, storage, docker_v2_signing_key
+        model_cache,
+        repository_ref,
+        "api_immutable_dst",
+        created_manifest,
+        storage,
+        docker_v2_signing_key,
     )
     assert api_tag is not None
     assert api_tag.immutable is True
