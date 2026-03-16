@@ -205,6 +205,52 @@ class TestQuayAdapter:
         assert success is True
         assert message == "Connection successful"
 
+    @responses.activate
+    def test_test_connection_user_endpoint_auth_failure(self):
+        """Test that a 401 from the user fallback endpoint reports auth failure, not not-found."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testuser",
+            json={"error": "Not found"},
+            status=404,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/users/testuser",
+            json={"error": "Unauthorized"},
+            status=401,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="testuser")
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert message == "Authentication failed"
+
+    @responses.activate
+    def test_test_connection_user_endpoint_server_error(self):
+        """Test that a 500 from the user fallback endpoint reports unexpected response, not not-found."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testuser",
+            json={"error": "Not found"},
+            status=404,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/users/testuser",
+            json={"error": "Internal Server Error"},
+            status=500,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="testuser")
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert "500" in message
+
     def test_proxy_configuration(self):
         """Test that proxy settings are correctly applied."""
         adapter = QuayAdapter(
