@@ -3,7 +3,7 @@ import {Tabs, Tab, TabTitleText, Flex, FlexItem} from '@patternfly/react-core';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
-import {useProxyCacheExists} from 'src/hooks/UseProxyCacheExists';
+import {useFetchProxyCacheConfig} from 'src/hooks/UseProxyCache';
 import {useNamespaceImmutabilityPolicies} from 'src/hooks/UseNamespaceImmutabilityPolicies';
 import AutoPruning from './AutoPruning';
 import {BillingInformation} from './BillingInformation';
@@ -25,11 +25,13 @@ export default function Settings(props: SettingsProps) {
     props.organizationName,
     !!quayConfig?.features?.ORG_MIRROR && !props.isUserOrganization,
   );
-  const {isProxyCacheConfigured, isLoading: isProxyCacheLoading} =
-    useProxyCacheExists(
-      props.organizationName,
-      !!quayConfig?.features?.PROXY_CACHE && !props.isUserOrganization,
-    );
+  const {
+    isProxyCacheConfigured,
+    isLoadingProxyCacheConfig: isProxyCacheLoading,
+  } = useFetchProxyCacheConfig(
+    props.organizationName,
+    !!quayConfig?.features?.PROXY_CACHE && !props.isUserOrganization,
+  );
   const {
     nsPolicies,
     isLoading: isImmutabilityLoading,

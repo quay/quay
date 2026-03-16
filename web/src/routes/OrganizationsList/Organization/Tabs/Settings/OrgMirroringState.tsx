@@ -9,7 +9,7 @@ import {
 } from '@patternfly/react-core';
 import {useSearchParams} from 'react-router-dom';
 import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
-import {useProxyCacheExists} from 'src/hooks/UseProxyCacheExists';
+import {useFetchProxyCacheConfig} from 'src/hooks/UseProxyCache';
 import {useNamespaceImmutabilityPolicies} from 'src/hooks/UseNamespaceImmutabilityPolicies';
 
 interface OrgMirroringStateProps {
@@ -33,9 +33,9 @@ export const OrgMirroringState = ({
 
   const {
     isProxyCacheConfigured,
-    isLoading: isProxyCacheLoading,
-    isError: isProxyCacheError,
-  } = useProxyCacheExists(organizationName);
+    isLoadingProxyCacheConfig: isProxyCacheLoading,
+    isErrorProxyCacheConfig: isProxyCacheError,
+  } = useFetchProxyCacheConfig(organizationName);
 
   const {nsPolicies: immutabilityPolicies, isLoading: isPoliciesLoading} =
     useNamespaceImmutabilityPolicies(organizationName);

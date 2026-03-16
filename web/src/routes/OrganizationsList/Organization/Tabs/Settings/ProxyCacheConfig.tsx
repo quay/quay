@@ -46,7 +46,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
   const {addAlert, clearAllAlerts} = useUI();
 
   const {fetchedProxyCacheConfig, isLoadingProxyCacheConfig} =
-    useFetchProxyCacheConfig(props.organizationName);
+    useFetchProxyCacheConfig(props.organizationName, !props.isUser);
 
   const {
     isOrgMirrored,
