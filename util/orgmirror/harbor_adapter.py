@@ -117,10 +117,19 @@ class HarborAdapter(RegistryAdapter):
                         name = full_name
                     repos.append(name)
 
-                # Check Link header for rel="next" (Harbor API v2.0 spec)
+                # PRIMARY: Check Link header for rel="next" (Harbor API v2.0 spec)
                 has_next = "next" in response.links
 
-                if not has_next:
+                if has_next:
+                    pass  # Link header explicitly says there's a next page
+                elif not has_next and len(data) == self.page_size:
+                    # FALLBACK: No usable next link (possibly stripped or malformed
+                    # by reverse proxy/LB/gateway). Continue if we received a full page.
+                    logger.debug(
+                        "No usable next link (Link: %s); continuing pagination based on full page",
+                        response.headers.get("Link"),
+                    )
+                else:
                     break
 
                 page += 1
