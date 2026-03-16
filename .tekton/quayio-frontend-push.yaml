@@ -586,7 +586,7 @@ spec:
         - name: name
           value: slack-webhook-notification
         - name: kind
-          value: Task
+          value: task
         resolver: bundles
       when:
        - input: $(tasks.status)
