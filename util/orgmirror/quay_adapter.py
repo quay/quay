@@ -220,7 +220,12 @@ class QuayAdapter(RegistryAdapter):
                 )
                 if user_response.status_code == 200:
                     return True, "Connection successful"
-                return False, f"Namespace '{self.namespace}' not found"
+                elif user_response.status_code == 404:
+                    return False, f"Namespace '{self.namespace}' not found"
+                elif user_response.status_code == 401:
+                    return False, "Authentication failed"
+                else:
+                    return False, f"Unexpected response: {user_response.status_code}"
             else:
                 return False, f"Unexpected response: {response.status_code}"
 
