@@ -527,6 +527,55 @@ test.describe(
       await expect(paginationInfo).toContainText('1 - 1 of 1');
     });
 
+    test('robot wizard: Default permissions dropdown shows None by default', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('defpermorg');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Robotaccounts`,
+      );
+
+      // Open the create robot account wizard
+      await authenticatedPage
+        .getByRole('button', {name: 'Create robot account'})
+        .click();
+      await expect(
+        authenticatedPage.locator('#create-robot-account-modal'),
+      ).toBeVisible();
+
+      // Fill in robot name to enable navigation
+      await authenticatedPage
+        .getByTestId('robot-wizard-form-name')
+        .fill('defpermbot');
+
+      // Navigate to Default permissions step via wizard nav
+      const wizardNav = authenticatedPage.locator(
+        'nav[aria-label="Wizard steps"]',
+      );
+      await wizardNav.getByText('Default permissions (optional)').click();
+
+      // Verify the permission dropdown toggle shows 'None'
+      await expect(
+        authenticatedPage.locator('#toggle-descriptions'),
+      ).toContainText('None');
+
+      // Verify changing the dropdown works
+      await authenticatedPage.locator('#toggle-descriptions').click();
+      await authenticatedPage.getByRole('menuitem', {name: 'Read'}).click();
+      await expect(
+        authenticatedPage.locator('#toggle-descriptions'),
+      ).toContainText('Read');
+
+      // Change back to None and verify
+      await authenticatedPage.locator('#toggle-descriptions').click();
+      await authenticatedPage.getByRole('menuitem', {name: 'None'}).click();
+      await expect(
+        authenticatedPage.locator('#toggle-descriptions'),
+      ).toContainText('None');
+    });
+
     test.describe(
       'with ROBOTS_DISALLOW enabled',
       {tag: '@config:ROBOTS_DISALLOW'},
