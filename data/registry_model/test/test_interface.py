@@ -985,11 +985,12 @@ def _create_schema2_manifest_with_labels(repository_ref, labels):
 
 def test_create_manifest_and_retarget_tag_with_immutable_label(oci_model, _enable_immutable_tags):
     """Test that pushing a manifest with quay.immutable=true makes the tag immutable."""
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
 
     created_manifest, tag = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "immutable_tag", storage
+        model_cache, repository_ref, manifest, "immutable_tag", storage
     )
     assert created_manifest is not None
     assert tag is not None
@@ -1001,19 +1002,20 @@ def test_create_manifest_and_retarget_tag_with_immutable_label_existing_manifest
 ):
     """Test that retargeting an existing manifest with quay.immutable=true to a new tag
     also makes the new tag immutable."""
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
 
     # First push creates the manifest
     first_manifest, first_tag = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "first_immutable", storage
+        model_cache, repository_ref, manifest, "first_immutable", storage
     )
     assert first_manifest is not None
     assert first_tag.immutable is True
 
     # Second push reuses the existing manifest with a different tag
     second_manifest, second_tag = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "second_immutable", storage
+        model_cache, repository_ref, manifest, "second_immutable", storage
     )
     assert second_manifest is not None
     assert second_manifest == first_manifest
@@ -1024,17 +1026,18 @@ def test_create_manifest_and_retarget_tag_with_immutable_label_api_retarget(
     oci_model, _enable_immutable_tags
 ):
     """Test that API-driven retarget also picks up immutability from manifest labels."""
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
 
     created_manifest, _ = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "api_immutable_src", storage
+        model_cache, repository_ref, manifest, "api_immutable_src", storage
     )
     assert created_manifest is not None
 
     # Retarget via the API path
     api_tag = oci_model.retarget_tag(
-        repository_ref, "api_immutable_dst", created_manifest, storage, docker_v2_signing_key
+        model_cache, repository_ref, "api_immutable_dst", created_manifest, storage, docker_v2_signing_key
     )
     assert api_tag is not None
     assert api_tag.immutable is True
@@ -1044,11 +1047,12 @@ def test_create_manifest_and_retarget_tag_with_immutable_label_false(
     oci_model, _enable_immutable_tags
 ):
     """Test that quay.immutable=false does NOT make the tag immutable."""
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "false"})
 
     created_manifest, tag = oci_model.create_manifest_and_retarget_tag(
-        repository_ref, manifest, "mutable_tag", storage
+        model_cache, repository_ref, manifest, "mutable_tag", storage
     )
     assert created_manifest is not None
     assert tag is not None
@@ -1062,11 +1066,12 @@ def test_create_manifest_and_retarget_tag_with_immutable_label_feature_disabled(
     original = getattr(features, "IMMUTABLE_TAGS", False)
     features.IMMUTABLE_TAGS = False
     try:
+        model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
         repository_ref = oci_model.lookup_repository("devtable", "simple")
         manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
 
         created_manifest, tag = oci_model.create_manifest_and_retarget_tag(
-            repository_ref, manifest, "disabled_immutable", storage
+            model_cache, repository_ref, manifest, "disabled_immutable", storage
         )
         assert created_manifest is not None
         assert tag is not None

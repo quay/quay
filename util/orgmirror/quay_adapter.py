@@ -214,7 +214,7 @@ class QuayAdapter(RegistryAdapter):
                 user_response = self.session.get(
                     user_url,
                     verify=self.verify_tls,
-                    proxies=self._build_proxies(),
+                    proxies=self._build_proxies(user_url),
                     timeout=10,
                     allow_redirects=False,
                 )
