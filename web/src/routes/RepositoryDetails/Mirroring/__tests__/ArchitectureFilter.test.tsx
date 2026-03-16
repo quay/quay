@@ -10,7 +10,7 @@ describe('ArchitectureFilter', () => {
 
   beforeEach(() => {
     mockOnChange.mockClear();
-    // Default mock implementation - successful load
+    // Default mock implementation - successful load with sparse supported
     jest
       .spyOn(UseRegistryCapabilities, 'useMirrorArchitectures')
       .mockReturnValue({
@@ -18,6 +18,9 @@ describe('ArchitectureFilter', () => {
         isLoading: false,
         error: null,
       });
+    jest
+      .spyOn(UseRegistryCapabilities, 'useSparseManifestsSupported')
+      .mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -228,5 +231,60 @@ describe('ArchitectureFilter', () => {
     expect(
       screen.queryByTestId('architecture-filter-toggle'),
     ).not.toBeInTheDocument();
+  });
+
+  it('is disabled when sparse_manifests.supported is false', () => {
+    jest
+      .spyOn(UseRegistryCapabilities, 'useSparseManifestsSupported')
+      .mockReturnValue(false);
+
+    render(
+      <ArchitectureFilter selectedArchitectures={[]} onChange={mockOnChange} />,
+    );
+
+    const toggle = screen.getByTestId('architecture-filter-toggle');
+    expect(toggle).toBeDisabled();
+  });
+
+  it('shows sparse index requirement message when sparse not supported', () => {
+    jest
+      .spyOn(UseRegistryCapabilities, 'useSparseManifestsSupported')
+      .mockReturnValue(false);
+
+    render(
+      <ArchitectureFilter selectedArchitectures={[]} onChange={mockOnChange} />,
+    );
+
+    expect(screen.getByTestId('architecture-filter-helper')).toHaveTextContent(
+      'Architecture filtering requires sparse manifest support (FEATURE_SPARSE_INDEX) to be enabled.',
+    );
+  });
+
+  it('clears stale architecture selections on initial load when sparse not supported', () => {
+    jest
+      .spyOn(UseRegistryCapabilities, 'useSparseManifestsSupported')
+      .mockReturnValue(false);
+
+    render(
+      <ArchitectureFilter
+        selectedArchitectures={['amd64', 'arm64']}
+        onChange={mockOnChange}
+      />,
+    );
+
+    expect(mockOnChange).toHaveBeenCalledWith([]);
+  });
+
+  it('is enabled when sparse_manifests.supported is true', () => {
+    jest
+      .spyOn(UseRegistryCapabilities, 'useSparseManifestsSupported')
+      .mockReturnValue(true);
+
+    render(
+      <ArchitectureFilter selectedArchitectures={[]} onChange={mockOnChange} />,
+    );
+
+    const toggle = screen.getByTestId('architecture-filter-toggle');
+    expect(toggle).not.toBeDisabled();
   });
 });
