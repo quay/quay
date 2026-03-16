@@ -1,3 +1,4 @@
+import time
 from unittest.mock import patch
 
 import pytest
@@ -897,3 +898,48 @@ class TestRetroactiveImmutabilityClearsExpiration:
         updated_tag = Tag.get(Tag.id == tag.id)
         assert updated_tag.immutable is True
         assert updated_tag.lifetime_end_ms == expected_end_ms
+
+
+class TestReDoSProtection:
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+            "^latest$",
+            "^release-.*$",
+            "^dev-[a-z0-9]+$",
+            "a+" * 50,  # long but not nested
+        ],
+    )
+    def test_safe_patterns_accepted(self, pattern):
+        """Legitimate patterns pass validation."""
+        _validate_policy({"tag_pattern": pattern})
+
+    def test_matches_policy_does_not_hang(self):
+        """Verify _matches_policy completes quickly even with a backtracking pattern.
+
+        The regex module handles this efficiently, plus the timeout acts as a safety net.
+        """
+        # This pattern could cause catastrophic backtracking with stdlib re,
+        # but regex module handles it efficiently
+        evil_pattern = "(a+)+b"
+        evil_input = "a" * 30
+
+        start = time.monotonic()
+        result = _matches_policy(evil_input, evil_pattern, True)
+        elapsed = time.monotonic() - start
+
+        assert result is False
+        assert elapsed < 2.0, f"_matches_policy took {elapsed:.2f}s, expected < 2s"
+
+    def test_timeout_fallback_respects_inversion(self):
+        """Verify TimeoutError fallback respects tag_pattern_matches inversion."""
+        mock_compiled = type(
+            "MockPattern", (), {"match": lambda *a, **kw: (_ for _ in ()).throw(TimeoutError)}
+        )()
+
+        with patch("data.model.immutability._compile_pattern", return_value=mock_compiled):
+            # tag_pattern_matches=True: timeout → matches=False → return False
+            assert _matches_policy("tag", "pattern", True) is False
+            # tag_pattern_matches=False: timeout → matches=False → return not False = True
+            assert _matches_policy("tag", "pattern", False) is True
