@@ -186,13 +186,14 @@ class QuayAdapter(RegistryAdapter):
         Test connection to the source Quay registry.
 
         Attempts to fetch the organization info to verify connectivity
-        and authentication.
+        and authentication. If the namespace is not an organization,
+        falls back to checking the user endpoint to support user namespaces.
 
         Returns:
             Tuple of (success: bool, message: str)
         """
         try:
-            # Try to fetch organization info
+            # Try to fetch organization info first
             url = f"{self.base_url}/api/v1/organization/{self.namespace}"
             response = self.session.get(
                 url,
@@ -207,7 +208,24 @@ class QuayAdapter(RegistryAdapter):
             elif response.status_code == 401:
                 return False, "Authentication failed"
             elif response.status_code == 404:
-                return False, f"Namespace '{self.namespace}' not found"
+                # Namespace may be a user namespace rather than an organization.
+                # Fall back to the user endpoint before reporting not found.
+                user_url = f"{self.base_url}/api/v1/users/{self.namespace}"
+                user_response = self.session.get(
+                    user_url,
+                    verify=self.verify_tls,
+                    proxies=self._build_proxies(user_url),
+                    timeout=10,
+                    allow_redirects=False,
+                )
+                if user_response.status_code == 200:
+                    return True, "Connection successful"
+                elif user_response.status_code == 404:
+                    return False, f"Namespace '{self.namespace}' not found"
+                elif user_response.status_code == 401:
+                    return False, "Authentication failed"
+                else:
+                    return False, f"Unexpected response: {user_response.status_code}"
             else:
                 return False, f"Unexpected response: {response.status_code}"
 
