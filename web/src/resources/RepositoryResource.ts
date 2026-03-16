@@ -37,10 +37,16 @@ export interface IQuotaReport {
   backfill_status?: 'waiting' | 'running' | null; // for org-level display
 }
 
+export function isNonNormalState(state: string | null | undefined): boolean {
+  return state != null && state !== 'NORMAL';
+}
+
 export enum RepositoryState {
   NORMAL = 'NORMAL',
   READ_ONLY = 'READ_ONLY',
   MIRROR = 'MIRROR',
+  ORG_MIRROR = 'ORG_MIRROR',
+  MARKED_FOR_DELETION = 'MARKED_FOR_DELETION',
 }
 
 export interface FetchAllReposOptions {
