@@ -26,7 +26,10 @@ import {SearchDropdown} from 'src/components/toolbar/SearchDropdown';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import ColumnNames from './ColumnNames';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
-import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {
+  RepositoryDetails,
+  isNonNormalState,
+} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import EditExpirationModal from './TagsActionsEditExpirationModal';
 import ImmutabilityModal from './TagsActionsImmutabilityModal';
@@ -87,6 +90,8 @@ export function TagsToolbar(props: ToolBarProps) {
     deleteTooltip = 'All selected tags are immutable and cannot be deleted';
   }
 
+  const isNonNormalRepo = isNonNormalState(props.repoDetails?.state);
+
   const kebabItems: ReactElement[] = [
     <DropdownItem
       key="set-expiration"
@@ -94,7 +99,12 @@ export function TagsToolbar(props: ToolBarProps) {
         setKebabOpen(!isKebabOpen);
         setIsEditExpirationModalOpen(true);
       }}
-      isDisabled={selectedTags.length <= 0}
+      isDisabled={selectedTags.length <= 0 || isNonNormalRepo}
+      tooltipProps={
+        isNonNormalRepo
+          ? {content: 'Tag expiration cannot be modified on this repository'}
+          : undefined
+      }
     >
       Set expiration
     </DropdownItem>,
@@ -271,18 +281,20 @@ export function TagsToolbar(props: ToolBarProps) {
         loadTags={props.loadTags}
         repoDetails={props.repoDetails}
       />
-      <EditExpirationModal
-        org={props.organization}
-        repo={props.repository}
-        isOpen={isEditExpirationModalOpen}
-        setIsOpen={setIsEditExpirationModalOpen}
-        tags={selectedTags}
-        immutableTags={canImmutableTagsExpire ? [] : selectedImmutableTags}
-        loadTags={props.loadTags}
-        onComplete={() => {
-          setSelectedTags([]);
-        }}
-      />
+      {!isNonNormalRepo && (
+        <EditExpirationModal
+          org={props.organization}
+          repo={props.repository}
+          isOpen={isEditExpirationModalOpen}
+          setIsOpen={setIsEditExpirationModalOpen}
+          tags={selectedTags}
+          immutableTags={canImmutableTagsExpire ? [] : selectedImmutableTags}
+          loadTags={props.loadTags}
+          onComplete={() => {
+            setSelectedTags([]);
+          }}
+        />
+      )}
       <ImmutabilityModal
         org={props.organization}
         repo={props.repository}

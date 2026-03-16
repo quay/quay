@@ -12,7 +12,10 @@ import EditLabelsModal from './TagsActionsLabelsModal';
 import EditExpirationModal from './TagsActionsEditExpirationModal';
 import ImmutabilityModal from './TagsActionsImmutabilityModal';
 import {DeleteModal, ModalOptions} from './DeleteModal';
-import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {
+  RepositoryDetails,
+  isNonNormalState,
+} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useSetRecoilState} from 'recoil';
 import {selectedTagsState} from 'src/atoms/TagListState';
@@ -30,6 +33,7 @@ export default function TagActions(props: TagActionsProps) {
   });
   const [isImmutabilityModalOpen, setIsImmutabilityModalOpen] = useState(false);
   const setSelectedTags = useSetRecoilState(selectedTagsState);
+  const isNonNormalRepo = isNonNormalState(props.repoDetails?.state);
 
   const dropdownItems = [
     <DropdownItem
@@ -56,9 +60,11 @@ export default function TagActions(props: TagActionsProps) {
         setIsOpen(false);
         setIsEditExpirationModalOpen(true);
       }}
-      isDisabled={props.isImmutable}
+      isDisabled={props.isImmutable || isNonNormalRepo}
       tooltipProps={
-        props.isImmutable
+        isNonNormalRepo
+          ? {content: 'Tag expiration cannot be modified on this repository'}
+          : props.isImmutable
           ? {content: 'Cannot change expiration of immutable tag'}
           : undefined
       }
@@ -197,16 +203,18 @@ export default function TagActions(props: TagActionsProps) {
           setIsEditLabelsModalOpen(false);
         }}
       />
-      <EditExpirationModal
-        org={props.org}
-        repo={props.repo}
-        isOpen={isEditExpirationModalOpen}
-        setIsOpen={setIsEditExpirationModalOpen}
-        tags={props.tags}
-        expiration={props.expiration}
-        loadTags={props.loadTags}
-        onComplete={() => setSelectedTags([])}
-      />
+      {!isNonNormalRepo && (
+        <EditExpirationModal
+          org={props.org}
+          repo={props.repo}
+          isOpen={isEditExpirationModalOpen}
+          setIsOpen={setIsEditExpirationModalOpen}
+          tags={props.tags}
+          expiration={props.expiration}
+          loadTags={props.loadTags}
+          onComplete={() => setSelectedTags([])}
+        />
+      )}
       <DeleteModal
         modalOptions={deleteModalOptions}
         setModalOptions={setDeleteModalOptions}
