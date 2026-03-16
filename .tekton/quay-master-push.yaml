@@ -569,6 +569,28 @@ spec:
         operator: in
         values:
         - "false"
+    finally:
+    - name: slack-webhook-notification
+      params:
+        - name: message
+          value: PipelineRun $(context.pipelineRun.name) failed
+        - name: secret-name
+          value: slack-quay-oncall
+        - name: key-name
+          value: quay-team
+      taskRef:
+        params:
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1@sha256:69945a30c11387a766e3d0ae33991b68e865a290c09da1fea44f193d358926ba
+        - name: name
+          value: slack-webhook-notification
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+       - input: $(tasks.status)
+         operator: in
+         values: ["Failed"]
     workspaces:
     - name: git-auth
       optional: true
