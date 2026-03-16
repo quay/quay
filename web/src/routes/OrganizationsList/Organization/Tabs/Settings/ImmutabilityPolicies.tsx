@@ -16,7 +16,7 @@ import {useEffect, useState} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import RequestError from 'src/components/errors/RequestError';
 import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
-import {useProxyCacheExists} from 'src/hooks/UseProxyCacheExists';
+import {useFetchProxyCacheConfig} from 'src/hooks/UseProxyCache';
 import {
   useCreateNamespaceImmutabilityPolicy,
   useDeleteNamespaceImmutabilityPolicy,
@@ -74,9 +74,9 @@ export default function ImmutabilityPolicies(props: ImmutabilityPoliciesProps) {
   } = useOrgMirrorExists(props.org);
   const {
     isProxyCacheConfigured,
-    isLoading: isProxyCacheLoading,
-    isError: isProxyCacheError,
-  } = useProxyCacheExists(props.org);
+    isLoadingProxyCacheConfig: isProxyCacheLoading,
+    isErrorProxyCacheConfig: isProxyCacheError,
+  } = useFetchProxyCacheConfig(props.org);
 
   const {
     error,
