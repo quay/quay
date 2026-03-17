@@ -8,7 +8,7 @@ export const ToolbarPagination = (props: ToolbarPaginationProps) => {
   return (
     <ToolbarItem variant="pagination">
       <Pagination
-        itemCount={props.total || props.itemsList?.length}
+        itemCount={props.total ?? props.itemsList?.length}
         perPage={props.perPage}
         id={props.id ? props.id : 'toolbar-pagination'}
         page={props.page}
