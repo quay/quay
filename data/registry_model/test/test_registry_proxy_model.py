@@ -43,6 +43,8 @@ from data.registry_model.test import testdata
 from digest.digest_tools import sha256_digest
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import (
+    DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE,
+    DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
@@ -745,10 +747,12 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         attempt, preserving pre-existing blob references.
         """
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
-        input_manifest = parse_manifest_from_bytes(
+        # Initial manifest
+        ubi8_4_image = parse_manifest_from_bytes(
             Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
             DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
         )
+
         proxy_model = ProxyModel(
             self.orgname,
             self.upstream_repository,
@@ -756,28 +760,80 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         )
 
         # First, create a manifest successfully to establish pre-existing blobs
-        first_manifest, _ = proxy_model._create_manifest_with_temp_tag(repo_ref, input_manifest)
-        assert first_manifest is not None
+        initial_manifest, _ = proxy_model._create_manifest_with_temp_tag(repo_ref, ubi8_4_image)
+        assert initial_manifest is not None
 
         # Count pre-existing ManifestBlob rows
         pre_existing_blobs = list(
-            ManifestBlob.select().where(ManifestBlob.manifest == first_manifest.id)
+            ManifestBlob.select().where(ManifestBlob.manifest == initial_manifest.id)
         )
         pre_existing_count = len(pre_existing_blobs)
         assert pre_existing_count > 0  # Should have blobs from first manifest
 
-        # Now create a second manifest that will share some blobs and add new ones
+        # Now create a second manifest that will share some blobs and add new ones.
+        layer_bytes = random.randbytes(2048)
+        layer_bytes_digest = _get_digest(layer_bytes)
+        config_layer = {
+            "architecture": "amd64",
+            "os": "linux",
+            "rootfs": {
+                "type": "layers",
+                "diff_ids": [
+                    str(ubi8_4_image.filesystem_layers[0].digest),
+                    str(ubi8_4_image.filesystem_layers[1].digest),
+                    layer_bytes_digest,
+                ],
+            },
+        }
+
+        config_json_str = json.dumps(config_layer)
+        config_bytes = Bytes.for_string_or_unicode(config_json_str)
+        config_digest = _get_digest(config_bytes.as_encoded_str())
+
+        test_manifest = {
+            "schemaVersion": 2,
+            "mediaType": DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+            "config": {
+                "mediaType": DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE,
+                "size": len(config_json_str),
+                "digest": config_digest,
+            },
+            "layers": [
+                {
+                    "mediaType": DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
+                    "size": ubi8_4_image.filesystem_layers[0].compressed_size,
+                    "digest": str(ubi8_4_image.filesystem_layers[0].digest),
+                },
+                {
+                    "mediaType": DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
+                    "size": ubi8_4_image.filesystem_layers[1].compressed_size,
+                    "digest": str(ubi8_4_image.filesystem_layers[1].digest),
+                },
+                # New layer added
+                {
+                    "mediaType": DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
+                    "size": len(layer_bytes),
+                    "digest": layer_bytes_digest,
+                },
+            ],
+        }
+
+        second_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(json.dumps(test_manifest)),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+
         # We'll force an exception after placeholder blobs are created
         with patch(
             "data.registry_model.registry_proxy_model.oci.tag.retarget_tag",
             side_effect=Exception("Simulated failure during tag operation"),
         ):
             with pytest.raises(Exception, match="Simulated failure"):
-                proxy_model._create_manifest_and_retarget_tag(repo_ref, input_manifest, self.tag)
+                proxy_model._create_manifest_and_retarget_tag(repo_ref, second_manifest, self.tag)
 
         # Verify pre-existing ManifestBlob rows are still intact
         remaining_blobs = list(
-            ManifestBlob.select().where(ManifestBlob.manifest == first_manifest.id)
+            ManifestBlob.select().where(ManifestBlob.manifest == initial_manifest.id)
         )
         assert (
             len(remaining_blobs) == pre_existing_count
