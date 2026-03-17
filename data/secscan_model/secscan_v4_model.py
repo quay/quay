@@ -294,6 +294,17 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
+        def stale_in_progress_query():
+            stale_threshold = datetime.utcnow() - timedelta(hours=6)
+            return (
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
+                .join(ManifestSecurityStatus)
+                .where(
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                    ManifestSecurityStatus.last_indexed < stale_threshold,
+                )
+            )
+
         def needs_reindexing_query(indexer_hash):
             return (
                 Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
@@ -321,6 +332,13 @@ class V4SecurityScanner(SecurityScannerInterface):
             ),
             yield_random_entries(
                 index_error_query,
+                Manifest.id,
+                batch_size,
+                max_id,
+                min_id,
+            ),
+            yield_random_entries(
+                stale_in_progress_query,
                 Manifest.id,
                 batch_size,
                 max_id,
@@ -536,6 +554,27 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
+            # Mark manifest as IN_PROGRESS before calling Clair to prevent concurrent workers
+            # from indexing the same manifest
+            try:
+                ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == candidate)
+                # Row exists, update it
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.IN_PROGRESS,
+                    indexer_hash="in_progress",
+                    last_indexed=datetime.utcnow(),
+                ).where(ManifestSecurityStatus.manifest == candidate).execute()
+            except ManifestSecurityStatus.DoesNotExist:
+                # Row doesn't exist, create it
+                ManifestSecurityStatus.create(
+                    manifest=candidate,
+                    repository=candidate.repository,
+                    index_status=IndexStatus.IN_PROGRESS,
+                    indexer_hash="in_progress",
+                    indexer_version=IndexerVersion.V4,
+                    metadata_json={},
+                )
+
             try:
                 (report, state) = self._secscan_api.index(manifest, layers)
             except InvalidContentSent as ex:
@@ -543,6 +582,11 @@ class V4SecurityScanner(SecurityScannerInterface):
                 logger.exception("Failed to perform indexing, invalid content sent")
                 continue
             except APIRequestFailure as ex:
+                # Clean up IN_PROGRESS marker so manifest can be retried
+                ManifestSecurityStatus.delete().where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                ).execute()
                 logger.exception("Failed to perform indexing, security scanner API error")
                 continue
             except LayerTooLargeException as ex:
@@ -640,7 +684,11 @@ class V4SecurityScanner(SecurityScannerInterface):
             elif report["state"] == IndexReportState.Index_Error:
                 index_status = IndexStatus.FAILED
             else:
-                # Unknown state don't save anything
+                # Unknown state - clean up IN_PROGRESS marker so manifest can be retried
+                ManifestSecurityStatus.delete().where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                ).execute()
                 continue
 
             with db_transaction():
