@@ -6,7 +6,7 @@ from unittest.mock import patch
 import mock
 import pytest
 
-from app import storage
+from app import model_cache, storage
 from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
 from data.encryption import DecryptionFailureException
 from data.model.test.test_repo_mirroring import create_mirror_repo_robot
@@ -75,7 +75,7 @@ def _create_tag(repo, name):
     manifest = builder.build()
 
     manifest, tag = registry_model.create_manifest_and_retarget_tag(
-        repo_ref, manifest, name, storage, raise_on_error=True
+        model_cache, repo_ref, manifest, name, storage, raise_on_error=True
     )
     assert tag
     assert tag.name == name
