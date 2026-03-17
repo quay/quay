@@ -32,23 +32,36 @@ if [ "$ATTACHMENT_COUNT" -gt 0 ]; then
 
   echo "Found $ATTACHMENT_COUNT attachment(s) for $ISSUE_KEY"
 
-  # Get bearer token from environment or jira config
-  if [ -n "$JIRA_API_TOKEN" ]; then
-    JIRA_TOKEN="$JIRA_API_TOKEN"
-  else
-    JIRA_TOKEN=$(grep -A2 'auth_type: bearer' ~/.config/.jira/.config.yml | grep -v 'auth_type' | grep -v '^--$' | awk '{print $2}')
+  # Get Atlassian Cloud credentials from environment or jira CLI config
+  JIRA_CONFIG="${HOME}/.config/.jira/.config.yml"
+
+  if [ -n "$JIRA_API_TOKEN" ] && [ -n "$JIRA_EMAIL" ]; then
+    EMAIL="$JIRA_EMAIL"
+    TOKEN="$JIRA_API_TOKEN"
+  elif [ -f "$JIRA_CONFIG" ]; then
+    EMAIL=$(grep 'login:' "$JIRA_CONFIG" | head -1 | awk '{print $2}')
+    TOKEN=$(grep 'api_token:' "$JIRA_CONFIG" | head -1 | awk '{print $2}')
   fi
 
-  if [ -z "$JIRA_TOKEN" ]; then
-    echo "Error: Could not find JIRA bearer token. Set JIRA_API_TOKEN env var or configure in ~/.config/.jira/.config.yml"
+  if [ -z "$EMAIL" ] || [ -z "$TOKEN" ]; then
+    echo "Error: Could not determine JIRA credentials."
+    echo "Set JIRA_EMAIL and JIRA_API_TOKEN env vars, or configure jira CLI (~/.config/.jira/.config.yml)."
     exit 1
   fi
+
+  # base64 -b 0 on macOS, -w 0 on Linux to avoid line wrapping
+  if [[ "$(uname)" == "Darwin" ]]; then
+    B64_ENCODED=$(printf '%s:%s' "$EMAIL" "$TOKEN" | base64 -b 0)
+  else
+    B64_ENCODED=$(printf '%s:%s' "$EMAIL" "$TOKEN" | base64 -w 0)
+  fi
+  AUTH_HEADER="Authorization: Basic ${B64_ENCODED}"
 
   # Extract and download each attachment
   jq -r '.fields.attachment[] | "\(.filename)|\(.content)"' "$TEMP_JSON" | while IFS='|' read -r filename url; do
     echo "  Downloading: $filename"
 
-    curl -s -H "Authorization: Bearer $JIRA_TOKEN" \
+    curl -s -L -H "$AUTH_HEADER" \
       -o "$ATTACH_DIR/$filename" \
       "$url"
   done
