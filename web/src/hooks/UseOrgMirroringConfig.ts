@@ -82,6 +82,8 @@ export const useOrgMirroringConfig = (
   // so we don't overwrite user edits on background refetches.
   const hasPopulatedForm = useRef(false);
 
+  const [isCancellingSync, setIsCancellingSync] = useState(false);
+
   const {
     data: config = null,
     isLoading,
@@ -98,12 +100,24 @@ export const useOrgMirroringConfig = (
         throw err;
       }
     },
+    refetchInterval: isCancellingSync ? 5000 : false,
   });
 
   const error = queryError
     ? (queryError as Error).message ||
       'Failed to load organization mirror configuration'
     : null;
+
+  // Stop polling once cancellation is reflected in the config
+  useEffect(() => {
+    if (isCancellingSync && config?.repo_sync_status_counts) {
+      const syncing = config.repo_sync_status_counts['SYNCING'] ?? 0;
+      const syncNow = config.repo_sync_status_counts['SYNC_NOW'] ?? 0;
+      if (syncing === 0 && syncNow === 0) {
+        setIsCancellingSync(false);
+      }
+    }
+  }, [isCancellingSync, config]);
 
   // Populate form once when config data first arrives
   useEffect(() => {
@@ -227,6 +241,7 @@ export const useOrgMirroringConfig = (
 
   // Cancel sync operation
   const handleCancelSync = useCallback(async () => {
+    setIsCancellingSync(true);
     await cancelOrgMirrorSync(orgName);
     invalidateConfig();
   }, [orgName, invalidateConfig]);
@@ -262,6 +277,7 @@ export const useOrgMirroringConfig = (
     isSyncingNow,
     handleSyncNow,
     handleCancelSync,
+    isCancellingSync,
     isVerifying,
     handleVerifyConnection,
     handleToggleEnabled,
