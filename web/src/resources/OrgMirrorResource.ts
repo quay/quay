@@ -22,6 +22,7 @@ export interface OrgMirrorConfig {
   external_registry_url: string;
   external_namespace: string;
   external_registry_username: string | null;
+  has_external_registry_password: boolean;
   external_registry_config: {
     verify_tls?: boolean;
     proxy?: {

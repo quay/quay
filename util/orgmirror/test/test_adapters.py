@@ -3,7 +3,7 @@
 Unit tests for organization mirroring registry adapters.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import responses
@@ -40,6 +40,12 @@ class TestQuayAdapter:
         """Test fetching repositories with a single page response."""
         responses.add(
             responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"username": "user"},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
             "https://quay.io/api/v1/repository",
             json={
                 "repositories": [
@@ -61,8 +67,8 @@ class TestQuayAdapter:
         repos = adapter.list_repositories()
 
         assert repos == ["repo1", "repo2", "repo3"]
-        assert len(responses.calls) == 1
-        assert "namespace=testorg" in responses.calls[0].request.url
+        assert len(responses.calls) == 2
+        assert "namespace=testorg" in responses.calls[1].request.url
 
     @responses.activate
     def test_list_repositories_paginated(self):
@@ -139,10 +145,10 @@ class TestQuayAdapter:
 
     @responses.activate
     def test_test_connection_auth_failed(self):
-        """Test connection with authentication failure."""
+        """Test connection with authentication failure from /api/v1/user/ endpoint."""
         responses.add(
             responses.GET,
-            "https://quay.io/api/v1/organization/testorg",
+            "https://quay.io/api/v1/user/",
             json={"error": "Unauthorized"},
             status=401,
         )
@@ -157,7 +163,40 @@ class TestQuayAdapter:
         success, message = adapter.test_connection()
 
         assert success is False
-        assert message == "Authentication failed"
+        assert "Authentication failed" in message
+
+    @responses.activate
+    def test_test_connection_invalid_creds_public_org(self):
+        """Test that invalid credentials are caught even when org endpoint is public.
+
+        Regression test: previously, test_connection only checked the org endpoint
+        which returns 200 for public orgs regardless of credentials. Now it validates
+        credentials via /api/v1/user/ first.
+        """
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"error": "Unauthorized"},
+            status=401,
+        )
+        # Org endpoint would return 200 (public org) but should never be reached
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testorg",
+            json={"name": "testorg"},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            password="invalid-token",
+        )
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert "Authentication failed" in message
 
     @responses.activate
     def test_test_connection_not_found(self):
@@ -371,10 +410,10 @@ class TestQuayAdapter:
 
     @responses.activate
     def test_list_repositories_401_raises_exception(self):
-        """Test that 401 response raises QuayDiscoveryException."""
+        """Test that 401 from pre-flight auth check raises QuayDiscoveryException."""
         responses.add(
             responses.GET,
-            "https://quay.io/api/v1/repository",
+            "https://quay.io/api/v1/user/",
             json={"error": "Unauthorized"},
             status=401,
         )
@@ -571,6 +610,12 @@ class TestQuayAdapter:
         """Test that authenticated adapter does NOT send public=true in URL."""
         responses.add(
             responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"username": "user"},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
             "https://quay.io/api/v1/repository",
             json={"repositories": [{"name": "repo1"}]},
             status=200,
@@ -584,9 +629,9 @@ class TestQuayAdapter:
 
         adapter.list_repositories()
 
-        assert len(responses.calls) == 1
-        assert "public=true" not in responses.calls[0].request.url
-        assert "namespace=testorg" in responses.calls[0].request.url
+        assert len(responses.calls) == 2
+        assert "public=true" not in responses.calls[1].request.url
+        assert "namespace=testorg" in responses.calls[1].request.url
 
     @responses.activate
     def test_list_repositories_unauthenticated_includes_public_param(self):
@@ -614,6 +659,12 @@ class TestQuayAdapter:
         """Test that Bearer token is actually sent in HTTP requests."""
         responses.add(
             responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"username": "user"},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
             "https://quay.io/api/v1/repository",
             json={"repositories": [{"name": "repo1"}]},
             status=200,
@@ -627,10 +678,184 @@ class TestQuayAdapter:
 
         adapter.list_repositories()
 
-        # Verify the Authorization header was sent
-        assert len(responses.calls) == 1
+        # Verify the Authorization header was sent (first call is auth check)
+        assert len(responses.calls) == 2
         auth_header = responses.calls[0].request.headers.get("Authorization")
         assert auth_header == "Bearer test-bearer-token"
+
+    @responses.activate
+    def test_list_repositories_invalid_token_raises(self):
+        """Test that invalid token is caught by pre-flight auth check."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"error": "Unauthorized"},
+            status=401,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="invalid-token",
+        )
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "Authentication failed" in str(exc_info.value)
+        assert "invalid API token or credentials" in str(exc_info.value)
+        # Should not have called the repository endpoint
+        assert len(responses.calls) == 1
+        assert "/api/v1/user/" in responses.calls[0].request.url
+
+    @responses.activate
+    def test_list_repositories_valid_token_proceeds(self):
+        """Test that valid token passes pre-flight check and proceeds to discovery."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"username": "validuser"},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={
+                "repositories": [
+                    {"name": "repo1"},
+                    {"name": "repo2"},
+                ]
+            },
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="valid-token",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1", "repo2"]
+        assert len(responses.calls) == 2
+        assert "/api/v1/user/" in responses.calls[0].request.url
+        assert "/api/v1/repository" in responses.calls[1].request.url
+
+    @responses.activate
+    def test_list_repositories_no_token_skips_auth_check(self):
+        """Test that no auth check is made when no token is provided."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1"]
+        assert len(responses.calls) == 1
+        # Should only call repository endpoint, not /api/v1/user/
+        assert "/api/v1/user/" not in responses.calls[0].request.url
+
+    @responses.activate
+    def test_list_repositories_forbidden_token_raises(self):
+        """Test that 403 from pre-flight auth check raises QuayDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"error": "Forbidden"},
+            status=403,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="forbidden-token",
+        )
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "insufficient permissions" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_redirect_token_raises(self):
+        """Test that a redirect (3xx) from pre-flight auth check raises QuayDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            status=302,
+            headers={"Location": "https://evil.example.com/"},
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="some-token",
+        )
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "redirect" in str(exc_info.value).lower()
+        assert "302" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_preflight_network_error_proceeds(self):
+        """Test that a network error in pre-flight auth check is swallowed and discovery proceeds."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            body=ConnectionError("Connection refused"),
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="some-token",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1"]
+        assert len(responses.calls) == 2
+        assert "/api/v1/user/" in responses.calls[0].request.url
+        assert "/api/v1/repository" in responses.calls[1].request.url
+
+    @responses.activate
+    def test_test_connection_redirect_credentials(self):
+        """Test that test_connection catches redirect when validating credentials."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            status=301,
+            headers={"Location": "https://other.example.com/"},
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            password="some-token",
+        )
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert "redirect" in message.lower()
+        assert "301" in message
 
 
 class TestHarborAdapter:
