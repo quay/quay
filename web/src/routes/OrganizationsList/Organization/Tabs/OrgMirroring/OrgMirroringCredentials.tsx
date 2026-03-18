@@ -20,6 +20,11 @@ export const OrgMirroringCredentials: React.FC<
   OrgMirroringCredentialsProps
 > = ({control, errors, config}) => {
   const username = useWatch({control, name: 'username'});
+  const externalRegistryType = useWatch({
+    control,
+    name: 'externalRegistryType',
+  });
+  const isQuay = externalRegistryType === 'quay';
 
   return (
     <>
@@ -37,6 +42,7 @@ export const OrgMirroringCredentials: React.FC<
         errors={errors}
         label="Username"
         fieldId="username"
+        placeholder={isQuay ? '$oauthtoken' : undefined}
         showNoneWhenEmpty={!!config}
         data-testid="username-input"
       />
@@ -55,7 +61,7 @@ export const OrgMirroringCredentials: React.FC<
         }
         showNoneWhenEmpty={!!config && !config.has_external_registry_password}
         customValidation={(value: string) =>
-          value && !username?.trim()
+          value && !isQuay && !username?.trim()
             ? 'Username is required when setting a password'
             : true
         }

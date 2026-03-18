@@ -66,6 +66,13 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
 
   // Form submission handler - composes both hooks without circular dependency
   const onSubmit = async (data: OrgMirroringFormData) => {
+    if (
+      data.externalRegistryType === 'quay' &&
+      data.password &&
+      !data.username?.trim()
+    ) {
+      data.username = '$oauthtoken';
+    }
     try {
       await configHook.submitConfig(data);
       formHook.reset({...data, password: ''});
