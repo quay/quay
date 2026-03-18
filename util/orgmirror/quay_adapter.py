@@ -105,6 +105,8 @@ class QuayAdapter(RegistryAdapter):
             timeout=self.timeout,
             allow_redirects=False,
         )
+        if response.status_code == 200:
+            return
         if response.status_code == 401:
             raise QuayDiscoveryException("Authentication failed: invalid API token or credentials")
         elif response.status_code == 403:
@@ -113,6 +115,9 @@ class QuayAdapter(RegistryAdapter):
             raise QuayDiscoveryException(
                 f"Registry returned redirect ({response.status_code}) during auth check"
             )
+        raise QuayDiscoveryException(
+            f"Unexpected response ({response.status_code}) during auth check: {response.text}"
+        )
 
     def list_repositories(self) -> List[str]:
         """
