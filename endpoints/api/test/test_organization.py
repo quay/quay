@@ -226,6 +226,68 @@ class TestProxyCacheConfigWithImmutableTags:
         # Clean up
         self._cleanup_test_repo("buynlarge", "immutable_proxy_test")
 
+    def test_create_proxy_cache_blocked_when_org_mirrored(self, app):
+        """
+        Test that creating proxy cache config is blocked when org has org mirror enabled.
+        """
+        from data.database import OrgMirrorConfig as OrgMirrorConfigTable
+        from data.database import OrgMirrorStatus, SourceRegistryType, Visibility
+
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        org = model.organization.get_organization("buynlarge")
+        robot = model.user.lookup_robot("buynlarge+coolrobot")
+
+        # Create org mirror config directly at DB level
+        mirror = OrgMirrorConfigTable.create(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date="2025-01-01T00:00:00",
+            is_enabled=True,
+            sync_status=OrgMirrorStatus.NEVER_RUN,
+            skopeo_timeout=300,
+        )
+
+        try:
+            with toggle_feature("ORG_MIRROR", True):
+                with toggle_feature("PROXY_CACHE", True):
+                    with client_with_identity("devtable", app) as cl:
+                        params = {"orgname": "buynlarge"}
+                        request_body = {
+                            "upstream_registry": "docker.io",
+                        }
+                        resp = conduct_api_call(
+                            cl, OrganizationProxyCacheConfig, "POST", params, request_body, 400
+                        )
+                        assert "organization-level mirroring" in resp.json.get("error_message", "")
+        finally:
+            mirror.delete_instance()
+
+    def test_create_proxy_cache_success(self, app):
+        """
+        Test that proxy cache creation succeeds on a clean org (regression test
+        for the missing org_name argument fix).
+        """
+        self._cleanup_proxy_cache_config("buynlarge")
+
+        with toggle_feature("PROXY_CACHE", True):
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": "buynlarge"}
+                request_body = {
+                    "upstream_registry": "docker.io",
+                }
+                conduct_api_call(
+                    cl, OrganizationProxyCacheConfig, "POST", params, request_body, 201
+                )
+
+        # Clean up
+        self._cleanup_proxy_cache_config("buynlarge")
+
     def test_namespace_has_immutable_tags_function(self, app):
         """
         Test the namespace_has_immutable_tags function directly.
