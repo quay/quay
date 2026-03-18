@@ -824,6 +824,83 @@ test.describe(
       await expect(logRow.getByText('set as immutable')).toBeVisible();
     });
 
+    // PROJQUAY-10500: Adding labels to immutable tag does not crash the UI
+    test('can add labels to an immutable tag without crashing', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await pushImage(
+        repo.namespace,
+        repo.name,
+        'v1.0.0',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+      await api.raw.setTagImmutability(
+        repo.namespace,
+        repo.name,
+        'v1.0.0',
+        true,
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
+      ).toBeVisible();
+
+      const tagRow = authenticatedPage
+        .getByRole('row')
+        .filter({has: authenticatedPage.getByRole('link', {name: 'v1.0.0'})});
+
+      // Open edit labels dialog
+      await tagRow.getByLabel('Tag actions kebab').click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Edit labels'})
+        .click();
+
+      await expect(
+        authenticatedPage.getByRole('dialog', {name: 'Edit labels'}),
+      ).toBeVisible();
+
+      // Add a new label
+      await authenticatedPage.getByText('Add new label').click();
+      await authenticatedPage
+        .getByRole('textbox', {name: 'key=value'})
+        .fill('test=value');
+      await authenticatedPage.getByText('Mutable labels').click();
+
+      // Save
+      await authenticatedPage
+        .getByRole('button', {name: 'Save Labels'})
+        .click();
+
+      // Verify success alert appears exactly once and no crash
+      const successAlert = authenticatedPage.getByText(
+        'Created labels successfully',
+      );
+      await expect(successAlert.first()).toBeVisible({timeout: 10000});
+
+      // Verify dialog closed (onComplete fired)
+      await expect(
+        authenticatedPage.getByRole('dialog', {name: 'Edit labels'}),
+      ).not.toBeVisible();
+
+      // Verify no crash - tags table is still visible
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
+      ).toBeVisible();
+
+      // Verify "Unable to complete request" error does NOT appear
+      await expect(
+        authenticatedPage.getByText('Unable to complete request'),
+      ).not.toBeVisible();
+
+      // Verify "Undefined" does NOT appear
+      await expect(authenticatedPage.getByText('Undefined')).not.toBeVisible();
+    });
+
     // PROJQUAY-10500: Verify error messages show server details, not "Undefined"
     test('deleting an immutable tag shows server error message', async ({
       authenticatedPage,
