@@ -58,8 +58,6 @@ export default function TagTabs(props: TagTabsProps) {
           org={props.org}
           repo={props.repo}
           digest={props.digest}
-          manifestData={props.manifestData}
-          err={props.err}
         />
       </Tab>
       <Tab
