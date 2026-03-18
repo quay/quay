@@ -133,11 +133,9 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
     # Track pull metrics if feature is enabled
     if features.IMAGE_PULL_STATS:
         try:
-            if pullmetrics is not None:
+            if pullmetrics:
                 metrics = pullmetrics.get_event()
                 metrics.track_tag_pull(repository_ref, manifest_ref, manifest_digest)
-            else:
-                logger.warning("Pull metrics module not initialized, skipping pull tracking")
         except Exception as e:
             logger.warning(
                 "Could not track tag pull metrics: %s. " "Pull statistics may not be recorded.",
@@ -195,11 +193,9 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
     # Track pull metrics if feature is enabled
     if features.IMAGE_PULL_STATS:
         try:
-            if pullmetrics is not None:
+            if pullmetrics:
                 metrics = pullmetrics.get_event()
                 metrics.track_manifest_pull(repository_ref, manifest_ref)
-            else:
-                logger.warning("Pull metrics module not initialized, skipping pull tracking")
         except Exception as e:
             logger.warning(
                 "Could not track manifest pull metrics: %s. "
