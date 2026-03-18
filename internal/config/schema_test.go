@@ -233,6 +233,7 @@ var knownUnmapped = map[string]bool{
 	"NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX":         true,
 	"NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES": true,
 	"ORG_MIRROR_INTERVAL":                            true,
+	"ORG_MIRROR_MAX_DISCOVERY_DURATION":              true,
 	"PERMANENTLY_DELETE_TAGS":                        true,
 	"RESET_CHILD_MANIFEST_EXPIRATION":                true,
 	"ROBOTS_DISALLOW":                                true,
