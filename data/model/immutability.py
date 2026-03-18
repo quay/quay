@@ -128,7 +128,7 @@ def _compile_pattern(pattern: str) -> Pattern[str]:
 def _matches_policy(tag_name: str, tag_pattern: str, tag_pattern_matches: bool) -> bool:
     """Check if tag should be immutable based on pattern."""
     try:
-        matches = bool(_compile_pattern(tag_pattern).match(tag_name, timeout=1.0))
+        matches = bool(_compile_pattern(tag_pattern).fullmatch(tag_name, timeout=1.0))
     except TimeoutError:
         logger.warning("Regex match timed out for pattern %r against tag %r", tag_pattern, tag_name)
         matches = False
