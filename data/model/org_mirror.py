@@ -7,9 +7,6 @@ import fnmatch
 from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
 
-# Sentinel value to distinguish "not provided" from "explicitly set to None"
-_UNSET = object()
-
 from peewee import JOIN, IntegrityError, fn
 
 import features
@@ -30,6 +27,9 @@ from data.model import DataModelException
 from data.model.immutability import namespace_has_immutability_policies
 from util.names import parse_robot_username
 from util.security.ssrf import validate_external_registry_url
+
+# Sentinel value to distinguish "not provided" from "explicitly set to None"
+_UNSET = object()
 
 # Constants for sync management
 MAX_SYNC_RETRIES = 3
