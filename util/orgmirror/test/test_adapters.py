@@ -32,18 +32,25 @@ def _mock_ssrf_validation():
         yield
 
 
+@pytest.fixture()
+def _mock_quay_test_connection():
+    """Mock test_connection to return success for list_repositories tests.
+
+    list_repositories calls test_connection first to validate credentials
+    and namespace existence. Tests that specifically test connection validation
+    should NOT use this fixture.
+    """
+    with patch.object(QuayAdapter, "test_connection", return_value=(True, "Connection successful")):
+        yield
+
+
 class TestQuayAdapter:
     """Tests for QuayAdapter."""
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_single_page(self):
         """Test fetching repositories with a single page response."""
-        responses.add(
-            responses.GET,
-            "https://quay.io/api/v1/user/",
-            json={"username": "user"},
-            status=200,
-        )
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/repository",
@@ -67,10 +74,11 @@ class TestQuayAdapter:
         repos = adapter.list_repositories()
 
         assert repos == ["repo1", "repo2", "repo3"]
-        assert len(responses.calls) == 2
-        assert "namespace=testorg" in responses.calls[1].request.url
+        assert len(responses.calls) == 1
+        assert "namespace=testorg" in responses.calls[0].request.url
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_paginated(self):
         """Test fetching repositories with multiple pages."""
         # First page
@@ -111,8 +119,9 @@ class TestQuayAdapter:
         assert "next_page=token123" in responses.calls[1].request.url
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_empty(self):
-        """Test fetching when no repositories exist."""
+        """Test fetching when no repositories exist in a valid namespace."""
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/repository",
@@ -360,6 +369,7 @@ class TestQuayAdapter:
         assert adapter.verify_tls is False
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_large_pagination(self):
         """Test fetching 150+ repositories across multiple pages."""
         # First page - 50 repos with next_page token
@@ -410,7 +420,7 @@ class TestQuayAdapter:
 
     @responses.activate
     def test_list_repositories_401_raises_exception(self):
-        """Test that 401 from pre-flight auth check raises QuayDiscoveryException."""
+        """Test that 401 from credential check raises QuayDiscoveryException."""
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/user/",
@@ -431,6 +441,7 @@ class TestQuayAdapter:
         assert "Authentication failed" in str(exc_info.value)
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_403_raises_exception(self):
         """Test that 403 response raises QuayDiscoveryException."""
         responses.add(
@@ -449,8 +460,39 @@ class TestQuayAdapter:
         assert "privateorg" in str(exc_info.value)
 
     @responses.activate
+    def test_list_repositories_nonexistent_namespace_raises_exception(self):
+        """Test that a non-existent namespace raises QuayDiscoveryException.
+
+        Regression test: previously, the /api/v1/repository endpoint returned
+        200 with empty results for non-existent namespaces, causing sync to
+        report success with 0 repos. Now test_connection validates the namespace
+        exists before listing repositories.
+        """
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/nonexistent",
+            json={"error": "Not found"},
+            status=404,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/users/nonexistent",
+            json={"error": "Not found"},
+            status=404,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="nonexistent")
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "not found" in str(exc_info.value).lower()
+        assert "nonexistent" in str(exc_info.value)
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_404_raises_exception(self):
-        """Test that 404 response raises QuayDiscoveryException."""
+        """Test that 404 from repository endpoint raises QuayDiscoveryException."""
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/repository",
@@ -467,6 +509,7 @@ class TestQuayAdapter:
         assert "nonexistent" in str(exc_info.value)
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_redirect_raises_exception(self):
         """Test that 3xx redirect raises QuayDiscoveryException."""
         responses.add(
@@ -485,6 +528,7 @@ class TestQuayAdapter:
         assert "301" in str(exc_info.value)
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_500_raises_exception(self):
         """Test that 500 response raises QuayDiscoveryException after retries."""
         # Add multiple 500 responses to exhaust retries
@@ -503,6 +547,7 @@ class TestQuayAdapter:
 
         assert "500" in str(exc_info.value)
 
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_connection_error_raises_exception(self):
         """Test that connection error raises QuayDiscoveryException."""
         adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
@@ -515,6 +560,7 @@ class TestQuayAdapter:
 
             assert "Failed to connect" in str(exc_info.value)
 
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_timeout_raises_exception(self):
         """Test that timeout raises QuayDiscoveryException."""
         adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
@@ -527,6 +573,7 @@ class TestQuayAdapter:
 
             assert "timed out" in str(exc_info.value)
 
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_ssl_error_raises_exception(self):
         """Test that SSL error raises QuayDiscoveryException."""
         adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
@@ -539,6 +586,7 @@ class TestQuayAdapter:
 
             assert "SSL" in str(exc_info.value)
 
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_exception_includes_cause(self):
         """Test that QuayDiscoveryException includes the original cause."""
         adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
@@ -606,14 +654,9 @@ class TestQuayAdapter:
         assert adapter.session.auth is None
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_authenticated_excludes_public_param(self):
         """Test that authenticated adapter does NOT send public=true in URL."""
-        responses.add(
-            responses.GET,
-            "https://quay.io/api/v1/user/",
-            json={"username": "user"},
-            status=200,
-        )
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/repository",
@@ -629,11 +672,12 @@ class TestQuayAdapter:
 
         adapter.list_repositories()
 
-        assert len(responses.calls) == 2
-        assert "public=true" not in responses.calls[1].request.url
-        assert "namespace=testorg" in responses.calls[1].request.url
+        assert len(responses.calls) == 1
+        assert "public=true" not in responses.calls[0].request.url
+        assert "namespace=testorg" in responses.calls[0].request.url
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_list_repositories_unauthenticated_includes_public_param(self):
         """Test that unauthenticated adapter sends public=true in URL."""
         responses.add(
@@ -655,14 +699,9 @@ class TestQuayAdapter:
         assert "namespace=testorg" in responses.calls[0].request.url
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_bearer_token_sent_in_request(self):
         """Test that Bearer token is actually sent in HTTP requests."""
-        responses.add(
-            responses.GET,
-            "https://quay.io/api/v1/user/",
-            json={"username": "user"},
-            status=200,
-        )
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/repository",
@@ -678,14 +717,13 @@ class TestQuayAdapter:
 
         adapter.list_repositories()
 
-        # Verify the Authorization header was sent (first call is auth check)
-        assert len(responses.calls) == 2
+        assert len(responses.calls) == 1
         auth_header = responses.calls[0].request.headers.get("Authorization")
         assert auth_header == "Bearer test-bearer-token"
 
     @responses.activate
     def test_list_repositories_invalid_token_raises(self):
-        """Test that invalid token is caught by pre-flight auth check."""
+        """Test that invalid token is caught by test_connection credential check."""
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/user/",
@@ -703,18 +741,20 @@ class TestQuayAdapter:
             adapter.list_repositories()
 
         assert "Authentication failed" in str(exc_info.value)
-        assert "invalid API token or credentials" in str(exc_info.value)
-        # Should not have called the repository endpoint
-        assert len(responses.calls) == 1
-        assert "/api/v1/user/" in responses.calls[0].request.url
 
     @responses.activate
     def test_list_repositories_valid_token_proceeds(self):
-        """Test that valid token passes pre-flight check and proceeds to discovery."""
+        """Test that valid token passes connection check and proceeds to discovery."""
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/user/",
             json={"username": "validuser"},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testorg",
+            json={"name": "testorg"},
             status=200,
         )
         responses.add(
@@ -738,13 +778,20 @@ class TestQuayAdapter:
         repos = adapter.list_repositories()
 
         assert repos == ["repo1", "repo2"]
-        assert len(responses.calls) == 2
+        assert len(responses.calls) == 3
         assert "/api/v1/user/" in responses.calls[0].request.url
-        assert "/api/v1/repository" in responses.calls[1].request.url
+        assert "/api/v1/organization/" in responses.calls[1].request.url
+        assert "/api/v1/repository" in responses.calls[2].request.url
 
     @responses.activate
     def test_list_repositories_no_token_skips_auth_check(self):
-        """Test that no auth check is made when no token is provided."""
+        """Test that no credential check is made when no token is provided."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testorg",
+            json={"name": "testorg"},
+            status=200,
+        )
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/repository",
@@ -760,13 +807,14 @@ class TestQuayAdapter:
         repos = adapter.list_repositories()
 
         assert repos == ["repo1"]
-        assert len(responses.calls) == 1
-        # Should only call repository endpoint, not /api/v1/user/
-        assert "/api/v1/user/" not in responses.calls[0].request.url
+        assert len(responses.calls) == 2
+        # First call is namespace check, not /api/v1/user/
+        assert "/api/v1/organization/" in responses.calls[0].request.url
+        assert "/api/v1/repository" in responses.calls[1].request.url
 
     @responses.activate
     def test_list_repositories_forbidden_token_raises(self):
-        """Test that 403 from pre-flight auth check raises QuayDiscoveryException."""
+        """Test that 403 from credential check raises QuayDiscoveryException."""
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/user/",
@@ -787,7 +835,7 @@ class TestQuayAdapter:
 
     @responses.activate
     def test_list_repositories_redirect_token_raises(self):
-        """Test that a redirect (3xx) from pre-flight auth check raises QuayDiscoveryException."""
+        """Test that a redirect (3xx) from credential check raises QuayDiscoveryException."""
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/user/",
@@ -808,18 +856,12 @@ class TestQuayAdapter:
         assert "302" in str(exc_info.value)
 
     @responses.activate
-    def test_list_repositories_preflight_network_error_proceeds(self):
-        """Test that a network error in pre-flight auth check is swallowed and discovery proceeds."""
+    def test_list_repositories_network_error_during_connection_check_fails(self):
+        """Test that a network error during connection check fails the sync."""
         responses.add(
             responses.GET,
             "https://quay.io/api/v1/user/",
             body=ConnectionError("Connection refused"),
-        )
-        responses.add(
-            responses.GET,
-            "https://quay.io/api/v1/repository",
-            json={"repositories": [{"name": "repo1"}]},
-            status=200,
         )
 
         adapter = QuayAdapter(
@@ -828,12 +870,10 @@ class TestQuayAdapter:
             token="some-token",
         )
 
-        repos = adapter.list_repositories()
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
 
-        assert repos == ["repo1"]
-        assert len(responses.calls) == 2
-        assert "/api/v1/user/" in responses.calls[0].request.url
-        assert "/api/v1/repository" in responses.calls[1].request.url
+        assert "Connection error" in str(exc_info.value)
 
     @responses.activate
     def test_test_connection_redirect_credentials(self):
@@ -1477,6 +1517,7 @@ class TestRetryBehavior:
     """Tests for retry behavior with transient failures."""
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_quay_retry_on_429_succeeds(self):
         """Test that QuayAdapter retries on 429 and eventually succeeds."""
         # First request: 429 rate limited
@@ -1516,6 +1557,7 @@ class TestRetryBehavior:
         assert len(responses.calls) == 3
 
     @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
     def test_quay_retry_on_503_succeeds(self):
         """Test that QuayAdapter retries on 503 Service Unavailable."""
         # First request: 503

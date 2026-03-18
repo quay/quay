@@ -124,11 +124,9 @@ class QuayAdapter(RegistryAdapter):
         Raises:
             QuayDiscoveryException: On network, authentication, or API errors
         """
-        if self._api_token:
-            try:
-                self._validate_credentials()
-            except RequestException:
-                logger.debug("Pre-flight auth check failed due to network error, proceeding")
+        success, message = self.test_connection()
+        if not success:
+            raise QuayDiscoveryException(message)
 
         repos: List[str] = []
         next_page: Optional[str] = None
