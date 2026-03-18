@@ -62,6 +62,9 @@ class PullMetricsBuilderModule(object):
 
         return pull_metrics
 
+    def __bool__(self):
+        return self.state is not None
+
     def __getattr__(self, name):
         return getattr(self.state, name, None)
 
