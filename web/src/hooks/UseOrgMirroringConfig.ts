@@ -242,8 +242,12 @@ export const useOrgMirroringConfig = (
   // Cancel sync operation
   const handleCancelSync = useCallback(async () => {
     setIsCancellingSync(true);
-    await cancelOrgMirrorSync(orgName);
-    invalidateConfig();
+    try {
+      await cancelOrgMirrorSync(orgName);
+      invalidateConfig();
+    } catch {
+      setIsCancellingSync(false);
+    }
   }, [orgName, invalidateConfig]);
 
   // Verify connection operation
