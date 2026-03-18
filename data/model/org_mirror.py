@@ -882,9 +882,15 @@ def claim_org_mirror_config(
     if max_discovery_duration is None:
         from app import app
 
-        max_discovery_duration = int(
-            app.config.get("ORG_MIRROR_MAX_DISCOVERY_DURATION", DEFAULT_MAX_DISCOVERY_DURATION)
-        )
+        try:
+            max_discovery_duration = int(
+                app.config.get("ORG_MIRROR_MAX_DISCOVERY_DURATION", DEFAULT_MAX_DISCOVERY_DURATION)
+            )
+        except (ValueError, TypeError):
+            max_discovery_duration = DEFAULT_MAX_DISCOVERY_DURATION
+
+        if max_discovery_duration < 1:
+            max_discovery_duration = DEFAULT_MAX_DISCOVERY_DURATION
 
     with db_transaction():
         now = datetime.utcnow()

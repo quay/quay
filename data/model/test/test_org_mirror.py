@@ -2123,9 +2123,7 @@ class TestClaimOrgMirrorConfig:
         org, robot = _create_org_and_robot("org_claim_default")
         config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
 
-        claimed = claim_org_mirror_config(
-            config, max_discovery_duration=DEFAULT_MAX_DISCOVERY_DURATION
-        )
+        claimed = claim_org_mirror_config(config)
 
         assert claimed is not None
         assert claimed.sync_status == OrgMirrorStatus.SYNCING
