@@ -1618,8 +1618,8 @@ class TestOrgMirrorSSRFProtection:
         _cleanup_org_mirror_config("buynlarge")
 
 
-class TestGetOrgMirrorConfig:
-    """Tests for GET /v1/organization/<orgname>/mirror endpoint."""
+class TestGetOrgMirrorConfigStatusCounts:
+    """Tests for GET /v1/organization/<orgname>/mirror endpoint - repo sync status counts."""
 
     def test_get_config_includes_repo_sync_status_counts(self, app):
         """Config GET response includes repo_sync_status_counts with correct values."""
