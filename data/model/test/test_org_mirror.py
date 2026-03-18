@@ -20,7 +20,9 @@ from data.database import (
 )
 from data.model import DataModelException
 from data.model.org_mirror import (
+    DEFAULT_MAX_DISCOVERY_DURATION,
     MAX_SYNC_RETRIES,
+    claim_org_mirror_config,
     claim_org_mirror_repo,
     create_org_mirror_config,
     delete_org_mirror_config,
@@ -2108,3 +2110,80 @@ class TestSyncDiscoveredRepos:
             .count()
         )
         assert count == 3
+
+
+class TestClaimOrgMirrorConfig:
+    """Tests for claim_org_mirror_config function."""
+
+    def test_claim_uses_default_duration(self, initialized_db):
+        """
+        When no max_discovery_duration is passed and no app config is set,
+        claim_org_mirror_config should use DEFAULT_MAX_DISCOVERY_DURATION (30 min).
+        """
+        org, robot = _create_org_and_robot("org_claim_default")
+        config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
+
+        claimed = claim_org_mirror_config(
+            config, max_discovery_duration=DEFAULT_MAX_DISCOVERY_DURATION
+        )
+
+        assert claimed is not None
+        assert claimed.sync_status == OrgMirrorStatus.SYNCING
+        assert claimed.sync_expiration_date is not None
+        expected_min = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION - 5)
+        expected_max = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION + 5)
+        assert expected_min <= claimed.sync_expiration_date <= expected_max
+
+    def test_claim_uses_custom_duration(self, initialized_db):
+        """
+        When a custom max_discovery_duration is passed,
+        claim_org_mirror_config should use that value for the expiration.
+        """
+        org, robot = _create_org_and_robot("org_claim_custom")
+        config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
+
+        custom_duration = 7200  # 2 hours
+        claimed = claim_org_mirror_config(config, max_discovery_duration=custom_duration)
+
+        assert claimed is not None
+        assert claimed.sync_status == OrgMirrorStatus.SYNCING
+        expected_min = datetime.utcnow() + timedelta(seconds=custom_duration - 5)
+        expected_max = datetime.utcnow() + timedelta(seconds=custom_duration + 5)
+        assert expected_min <= claimed.sync_expiration_date <= expected_max
+
+    def test_claim_reads_from_app_config(self, initialized_db):
+        """
+        When no explicit duration is passed, claim_org_mirror_config should
+        read ORG_MIRROR_MAX_DISCOVERY_DURATION from app config.
+        """
+        org, robot = _create_org_and_robot("org_claim_appconfig")
+        config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
+
+        with patch("app.app") as mock_app:
+            mock_app.config.get.return_value = 3600  # 1 hour
+            claimed = claim_org_mirror_config(config)
+
+        assert claimed is not None
+        expected_min = datetime.utcnow() + timedelta(seconds=3600 - 5)
+        expected_max = datetime.utcnow() + timedelta(seconds=3600 + 5)
+        assert expected_min <= claimed.sync_expiration_date <= expected_max
+        mock_app.config.get.assert_called_once_with(
+            "ORG_MIRROR_MAX_DISCOVERY_DURATION", DEFAULT_MAX_DISCOVERY_DURATION
+        )
+
+    def test_claim_fails_when_already_syncing(self, initialized_db):
+        """
+        When a config is already SYNCING with a valid expiration,
+        claim_org_mirror_config should return None.
+        """
+        org, robot = _create_org_and_robot("org_claim_busy")
+        config = _create_org_mirror_config(
+            org,
+            robot,
+            sync_status=OrgMirrorStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+
+        result = claim_org_mirror_config(config, max_discovery_duration=1800)
+
+        assert result is None

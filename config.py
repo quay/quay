@@ -558,6 +558,11 @@ class DefaultConfig(ImmutableConfig):
     # The number of seconds between organization mirror worker iterations
     ORG_MIRROR_INTERVAL = 30
 
+    # Maximum duration (in seconds) for the org mirror discovery phase claim.
+    # If discovery takes longer than this, the claim expires and the worker retries.
+    # Increase for large source registries with many repositories.
+    ORG_MIRROR_MAX_DISCOVERY_DURATION = 1800  # 30 minutes
+
     # The number of seconds between indexing intervals in the repository mirror
     REPO_MIRROR_INTERVAL = 30
 
