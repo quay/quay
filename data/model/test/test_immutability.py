@@ -81,6 +81,16 @@ class TestMatchesPolicy:
         assert _matches_policy("dev-branch", "^dev-.*$", False) is False
         assert _matches_policy("v1.0.0", "^dev-.*$", False) is True
 
+    def test_star_quantifier_without_anchors(self):
+        # [0-9]* should only fully match all-digit tags
+        assert _matches_policy("123", "[0-9]*", True) is True
+        assert _matches_policy("redis", "[0-9]*", True) is False
+
+    def test_inverted_star_quantifier(self):
+        # "NOT matching [0-9]*" should make non-digit tags immutable
+        assert _matches_policy("redis", "[0-9]*", False) is True
+        assert _matches_policy("123", "[0-9]*", False) is False
+
 
 class TestNamespacePolicyCRUD:
     def test_create_and_get(self, initialized_db):
@@ -935,7 +945,7 @@ class TestReDoSProtection:
     def test_timeout_fallback_respects_inversion(self):
         """Verify TimeoutError fallback respects tag_pattern_matches inversion."""
         mock_compiled = type(
-            "MockPattern", (), {"match": lambda *a, **kw: (_ for _ in ()).throw(TimeoutError)}
+            "MockPattern", (), {"fullmatch": lambda *a, **kw: (_ for _ in ()).throw(TimeoutError)}
         )()
 
         with patch("data.model.immutability._compile_pattern", return_value=mock_compiled):
