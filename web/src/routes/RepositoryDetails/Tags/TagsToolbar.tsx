@@ -46,6 +46,8 @@ export function TagsToolbar(props: ToolBarProps) {
   const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] =
     useState(false);
   const [isImmutabilityModalOpen, setIsImmutabilityModalOpen] = useState(false);
+  const [isRemoveImmutabilityModalOpen, setIsRemoveImmutabilityModalOpen] =
+    useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -131,6 +133,15 @@ export function TagsToolbar(props: ToolBarProps) {
         'All selected mutable tags have expiration dates. Clear expiration first.';
     }
 
+    // Determine tooltip for remove immutability
+    let removeImmutableTooltip: string | undefined;
+    if (selectedTags.length > 0 && selectedImmutableTags.length === 0) {
+      removeImmutableTooltip = 'No immutable tags selected';
+    } else if (!props.repoDetails?.can_admin) {
+      removeImmutableTooltip =
+        'Admin permission is required to remove immutability';
+    }
+
     kebabItems.splice(
       1, // Insert after "Set expiration"
       0,
@@ -147,6 +158,22 @@ export function TagsToolbar(props: ToolBarProps) {
         data-testid="bulk-make-immutable-action"
       >
         Make immutable
+      </DropdownItem>,
+      <DropdownItem
+        key="remove-immutability"
+        onClick={() => {
+          setKebabOpen(!isKebabOpen);
+          setIsRemoveImmutabilityModalOpen(true);
+        }}
+        isDisabled={
+          selectedImmutableTags.length <= 0 || !props.repoDetails?.can_admin
+        }
+        tooltipProps={
+          removeImmutableTooltip ? {content: removeImmutableTooltip} : undefined
+        }
+        data-testid="bulk-remove-immutability-action"
+      >
+        Remove immutability
       </DropdownItem>,
     );
   }
@@ -291,6 +318,18 @@ export function TagsToolbar(props: ToolBarProps) {
         tags={selectedMutableTagsForImmutability}
         tagsWithExpiration={selectedMutableTagsWithExpiration}
         currentlyImmutable={false}
+        loadTags={props.loadTags}
+        onComplete={() => {
+          setSelectedTags([]);
+        }}
+      />
+      <ImmutabilityModal
+        org={props.organization}
+        repo={props.repository}
+        isOpen={isRemoveImmutabilityModalOpen}
+        setIsOpen={setIsRemoveImmutabilityModalOpen}
+        tags={selectedImmutableTags}
+        currentlyImmutable={true}
         loadTags={props.loadTags}
         onComplete={() => {
           setSelectedTags([]);
