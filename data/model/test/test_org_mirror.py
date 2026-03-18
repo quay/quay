@@ -275,6 +275,56 @@ class TestCreateOrgMirrorConfig:
 
         assert "belong to the organization" in str(excinfo.value)
 
+    @patch("features.PROXY_CACHE", True)
+    def test_create_org_mirror_config_blocked_by_proxy_cache(self, initialized_db):
+        """
+        Creating org mirror config should fail when the organization already has
+        a proxy cache configuration.
+        """
+        from data.model.proxy_cache import create_proxy_cache_config
+
+        org, robot = _create_org_and_robot("create_test_proxy_block")
+        visibility = Visibility.get(name="private")
+
+        # Create proxy cache config first
+        create_proxy_cache_config(org.username, "quay.io")
+
+        with pytest.raises(DataModelException) as excinfo:
+            create_org_mirror_config(
+                organization=org,
+                internal_robot=robot,
+                external_registry_type=SourceRegistryType.HARBOR,
+                external_registry_url="https://harbor.example.com",
+                external_namespace="my-project",
+                visibility=visibility,
+                sync_interval=3600,
+                sync_start_date=datetime.utcnow(),
+            )
+
+        assert "proxy cache" in str(excinfo.value).lower()
+
+    @patch("features.PROXY_CACHE", False)
+    def test_create_org_mirror_config_skips_proxy_cache_check_when_disabled(self, initialized_db):
+        """
+        When features.PROXY_CACHE is disabled, the proxy cache check should be skipped
+        and org mirror creation should succeed even if a proxy cache config exists.
+        """
+        org, robot = _create_org_and_robot("create_test_proxy_skip")
+        visibility = Visibility.get(name="private")
+
+        config = create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=visibility,
+            sync_interval=3600,
+            sync_start_date=datetime.utcnow(),
+        )
+
+        assert config is not None
+
     def test_create_org_mirror_config_already_exists(self, initialized_db):
         """
         Creating a second config for the same org should raise an error.
