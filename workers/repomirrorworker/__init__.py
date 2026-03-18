@@ -157,7 +157,7 @@ def process_mirrors(skopeo, token=None):
                     "Another repository mirror worker pre-empted us for repository: %s", mirror.id
                 )
                 abt.set()
-            except Exception as e:  # TODO: define exceptions
+            except Exception:  # TODO: define exceptions
                 logger.exception("Repository Mirror service unavailable")
                 return None
 
@@ -206,7 +206,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         )
         release_mirror(mirror, RepoMirrorStatus.FAIL)
         return
-    except Exception as e:
+    except Exception:
         emit_log(
             mirror,
             "repo_mirror_sync_failed",
@@ -342,7 +342,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
 
         delete_obsolete_tags(mirror, tags)
 
-    except PreemptedException as e:
+    except PreemptedException:
         overall_status = RepoMirrorStatus.FAIL
         emit_log(
             mirror,
@@ -356,7 +356,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         release_mirror(mirror, overall_status)
         return
 
-    except Exception as e:
+    except Exception:
         overall_status = RepoMirrorStatus.FAIL
         emit_log(
             mirror,
@@ -685,7 +685,7 @@ def push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
             return True
         logger.error("Failed to push manifest list: %s", response.status_code)
         return False
-    except requests.RequestException as e:
+    except requests.RequestException:
         logger.exception("Request failed pushing manifest list")
         return False
 
@@ -884,6 +884,11 @@ def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbos
     return SkopeoResults(True, [], "\n".join(all_stdout), "\n".join(all_stderr))
 
 
+def _truncate(text: str, max_len: int = 512) -> str:
+    max_len = max(max_len, 4)
+    return text[: max_len - 3] + "..." if len(text) > max_len else text
+
+
 # TODO: better to call 'track_and_log()' https://jira.coreos.com/browse/QUAY-1821
 def emit_log(mirror, log_kind, verb, message, tag=None, tags=None, stdout=None, stderr=None):
     logs_model.log_action(
@@ -897,6 +902,8 @@ def emit_log(mirror, log_kind, verb, message, tag=None, tags=None, stdout=None, 
             "message": message,
             "tag": tag,
             "tags": tags,
+            "stdout": stdout,
+            "stderr": stderr,
         },
     )
 
@@ -948,7 +955,7 @@ def process_org_mirror_discovery(token=None):
                     org_mirror_config.id,
                 )
                 abt.set()
-            except Exception as e:
+            except Exception:
                 logger.exception("Organization Mirror discovery failed")
                 # Continue to next config instead of returning
                 continue
@@ -1041,14 +1048,15 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             password = claimed_config.external_registry_password.decrypt()
     except DecryptionFailureException as e:
         logger.error(
-            "Failed to decrypt credentials for org mirror config %s",
+            "Failed to decrypt credentials for org mirror config %s: %s",
             claimed_config.id,
+            e,
         )
         _emit_org_config_log(
             claimed_config,
             "org_mirror_sync_failed",
             "end",
-            "Failed to decrypt source registry credentials",
+            f"Failed to decrypt source registry credentials: {_truncate(str(e))}",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
         org_mirror_discovery_total.labels(status="fail").inc()
@@ -1067,14 +1075,15 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
         )
     except ValueError as e:
         logger.error(
-            "Failed to create registry adapter for org mirror config %s",
+            "Failed to create registry adapter for org mirror config %s: %s",
             claimed_config.id,
+            e,
         )
         _emit_org_config_log(
             claimed_config,
             "org_mirror_sync_failed",
             "end",
-            "Failed to create registry adapter",
+            f"Failed to create registry adapter: {_truncate(str(e))}",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
         org_mirror_discovery_total.labels(status="fail").inc()
@@ -1086,14 +1095,15 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
         all_repos = adapter.list_repositories()
     except Exception as e:
         logger.error(
-            "Failed to list repositories from source registry for org mirror config %s",
+            "Failed to list repositories from source registry for org mirror config %s: %s",
             claimed_config.id,
+            e,
         )
         _emit_org_config_log(
             claimed_config,
             "org_mirror_sync_failed",
             "end",
-            "Failed to fetch repositories from source",
+            f"Failed to fetch repositories from source: {_truncate(str(e))}",
         )
         release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
         org_mirror_discovery_total.labels(status="fail").inc()
@@ -1285,7 +1295,7 @@ def process_org_mirrors(skopeo, token=None):
                     org_mirror_repo.id,
                 )
                 abt.set()
-            except Exception as e:
+            except Exception:
                 logger.exception("Organization Mirror service unavailable")
                 return None
 
@@ -1393,6 +1403,7 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
     # Sync each tag
     overall_status = OrgMirrorRepoStatus.SUCCESS
     failed_tags = []
+    tag_errors = {}
 
     try:
         username = (
@@ -1454,11 +1465,15 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         if not result.success:
             overall_status = OrgMirrorRepoStatus.FAIL
             failed_tags.append(tag)
+            tag_errors[tag] = result.stderr or ""
             logger.info("Org mirror: Source '%s' failed to sync.", src_image)
         else:
             logger.info("Org mirror: Source '%s' successful sync.", src_image)
 
     if overall_status == OrgMirrorRepoStatus.FAIL:
+        combined_stderr = "; ".join(f"[{t}]: {err}" for t, err in tag_errors.items() if err)
+        if len(combined_stderr) > 4096:
+            combined_stderr = combined_stderr[:4093] + "..."
         emit_org_mirror_log(
             config,
             claimed_repo,
@@ -1466,6 +1481,7 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             "end",
             f"Sync failed for '{external_reference}': {len(failed_tags)}/{len(tags)} tags failed",
             tags=", ".join(failed_tags),
+            stderr=combined_stderr,
         )
     elif overall_status == OrgMirrorRepoStatus.CANCEL:
         emit_org_mirror_log(
@@ -1695,5 +1711,7 @@ def emit_org_mirror_log(
             "message": message,
             "tag": tag,
             "tags": tags,
+            "stdout": stdout,
+            "stderr": stderr,
         },
     )

@@ -7,6 +7,9 @@ import fnmatch
 from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
 
+# Sentinel value to distinguish "not provided" from "explicitly set to None"
+_UNSET = object()
+
 from peewee import JOIN, IntegrityError, fn
 
 import features
@@ -17,9 +20,7 @@ from data.database import (
     OrgMirrorStatus,
     Repository,
     RepositoryState,
-    SourceRegistryType,
     User,
-    Visibility,
     db_for_update,
     db_transaction,
     uuid_generator,
@@ -208,8 +209,8 @@ def update_org_mirror_config(
     is_enabled=None,
     external_registry_url=None,
     external_namespace=None,
-    external_registry_username=None,
-    external_registry_password=None,
+    external_registry_username=_UNSET,
+    external_registry_password=_UNSET,
     external_registry_config=None,
     internal_robot=None,
     repository_filters=None,
@@ -222,17 +223,16 @@ def update_org_mirror_config(
     """
     Update an organization-level mirror configuration.
 
-    Only provided non-None values will be updated. To explicitly set a field to None,
-    use a sentinel value (not supported for credential fields which use None to indicate
-    "no change").
+    Only provided non-None values will be updated. Credential fields use
+    the _UNSET sentinel as default so that passing None explicitly clears them.
 
     Args:
         org: User object representing the organization
         is_enabled: Whether mirroring is enabled
         external_registry_url: URL of the source registry
         external_namespace: Namespace/project name in source registry
-        external_registry_username: Username for source registry auth (None = no change)
-        external_registry_password: Password for source registry auth (None = no change)
+        external_registry_username: Username for source registry auth (_UNSET = no change, None = clear)
+        external_registry_password: Password for source registry auth (_UNSET = no change, None = clear)
         external_registry_config: Dict with TLS/proxy settings
         internal_robot: User object representing the robot account
         repository_filters: List of glob patterns for filtering
@@ -282,10 +282,14 @@ def update_org_mirror_config(
             config.external_registry_url = external_registry_url
         if external_namespace is not None:
             config.external_namespace = external_namespace
-        if external_registry_username is not None:
-            config.external_registry_username = DecryptedValue(external_registry_username)
-        if external_registry_password is not None:
-            config.external_registry_password = DecryptedValue(external_registry_password)
+        if external_registry_username is not _UNSET:
+            config.external_registry_username = (
+                DecryptedValue(external_registry_username) if external_registry_username else None
+            )
+        if external_registry_password is not _UNSET:
+            config.external_registry_password = (
+                DecryptedValue(external_registry_password) if external_registry_password else None
+            )
         if external_registry_config is not None:
             config.external_registry_config = external_registry_config
         if internal_robot is not None:
