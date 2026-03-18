@@ -28,11 +28,13 @@ export default function EditableLabels(props: EditableLabelsProps) {
     errorCreatingLabels,
     errorCreatingLabelsDetails,
     loadingCreateLabels,
+    resetCreateLabels,
     deleteLabels,
     successDeletingLabels,
     errorDeletingLabels,
     errorDeletingLabelsDetails,
     loadingDeleteLabels,
+    resetDeleteLabels,
   } = useLabels(props.org, props.repo, props.digest);
   const [newLabel, setNewLabel] = useState<string>('');
   const [invalidNewLabel, setInvalidNewLabel] = useState<string>(null);
@@ -47,6 +49,9 @@ export default function EditableLabels(props: EditableLabelsProps) {
   );
 
   useEffect(() => {
+    const hasCreateResult = successCreatingLabels || errorCreatingLabels;
+    const hasDeleteResult = successDeletingLabels || errorDeletingLabels;
+
     if (successCreatingLabels) {
       addAlert({
         variant: AlertVariant.Success,
@@ -97,14 +102,15 @@ export default function EditableLabels(props: EditableLabelsProps) {
         message: errorDeletingLabelsMessage,
       });
     }
-    if (
-      (successCreatingLabels ||
-        errorCreatingLabels ||
-        successDeletingLabels ||
-        errorDeletingLabels) &&
-      !loadingLabelChanges
-    ) {
+    if ((hasCreateResult || hasDeleteResult) && !loadingLabelChanges) {
       props.onComplete();
+    }
+    // Reset mutation state to prevent re-firing
+    if (hasCreateResult) {
+      resetCreateLabels();
+    }
+    if (hasDeleteResult) {
+      resetDeleteLabels();
     }
   }, [
     successCreatingLabels,
