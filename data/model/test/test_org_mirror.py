@@ -34,6 +34,7 @@ from data.model.org_mirror import (
     get_or_create_org_mirror_repo,
     get_org_mirror_config,
     get_org_mirror_config_count,
+    get_org_mirror_repo_status_counts,
     release_org_mirror_repo,
     sync_discovered_repos,
     update_org_mirror_config,
@@ -2248,3 +2249,45 @@ class TestClaimOrgMirrorConfig:
         result = claim_org_mirror_config(config, max_discovery_duration=1800)
 
         assert result is None
+
+
+class TestGetOrgMirrorRepoStatusCounts:
+    """Tests for get_org_mirror_repo_status_counts()."""
+
+    def test_mixed_states_returns_correct_counts(self, initialized_db):
+        """Repos in various states return correct per-status counts."""
+        org, robot = _create_org_and_robot("testorgstatuscounts")
+        config = _create_org_mirror_config(org, robot)
+
+        statuses = [
+            OrgMirrorRepoStatus.SUCCESS,
+            OrgMirrorRepoStatus.SUCCESS,
+            OrgMirrorRepoStatus.SYNCING,
+            OrgMirrorRepoStatus.FAIL,
+            OrgMirrorRepoStatus.NEVER_RUN,
+        ]
+        for i, status in enumerate(statuses):
+            get_or_create_org_mirror_repo(config, f"repo-{i}")
+            OrgMirrorRepository.update(sync_status=status).where(
+                (OrgMirrorRepository.repository_name == f"repo-{i}")
+                & (OrgMirrorRepository.org_mirror_config == config)
+            ).execute()
+
+        counts = get_org_mirror_repo_status_counts(config)
+
+        assert counts["SUCCESS"] == 2
+        assert counts["SYNCING"] == 1
+        assert counts["FAIL"] == 1
+        assert counts["NEVER_RUN"] == 1
+        assert counts["CANCEL"] == 0
+        assert counts["SYNC_NOW"] == 0
+
+    def test_no_repos_returns_all_zeros(self, initialized_db):
+        """Config with no repos returns all statuses as zero."""
+        org, robot = _create_org_and_robot("testorgzerocounts")
+        config = _create_org_mirror_config(org, robot)
+
+        counts = get_org_mirror_repo_status_counts(config)
+
+        for status in OrgMirrorRepoStatus:
+            assert counts[status.name] == 0

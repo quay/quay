@@ -426,6 +426,33 @@ def get_org_mirror_repos(
     return repos, total
 
 
+def get_org_mirror_repo_status_counts(config: OrgMirrorConfig) -> dict:
+    """
+    Get counts of discovered repositories grouped by sync status.
+
+    Uses the composite index on (org_mirror_config, sync_status).
+    Excludes repos marked for deletion (same filter as get_org_mirror_repos).
+    """
+    query = (
+        OrgMirrorRepository.select(
+            OrgMirrorRepository.sync_status,
+            fn.COUNT(OrgMirrorRepository.id).alias("count"),
+        )
+        .join(Repository, JOIN.LEFT_OUTER, on=(OrgMirrorRepository.repository == Repository.id))
+        .where(OrgMirrorRepository.org_mirror_config == config)
+        .where(
+            (OrgMirrorRepository.repository >> None)
+            | (Repository.state != RepositoryState.MARKED_FOR_DELETION)
+        )
+        .group_by(OrgMirrorRepository.sync_status)
+    )
+
+    counts = {status.name: 0 for status in OrgMirrorRepoStatus}
+    for row in query:
+        counts[row.sync_status.name] = row.count
+    return counts
+
+
 def get_org_mirroring_robot(repository):
     """
     Return the robot used for org-level mirroring of a repository.
