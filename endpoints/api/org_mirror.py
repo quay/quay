@@ -780,11 +780,11 @@ class OrgMirrorRepositories(ApiResource):
         if status_param is not None:
             try:
                 status_filter = OrgMirrorRepoStatus[status_param.upper()]
-            except KeyError:
+            except KeyError as err:
                 raise InvalidRequest(
                     f"Invalid status filter '{status_param}'. "
                     f"Valid values: {', '.join(s.name for s in OrgMirrorRepoStatus)}"
-                )
+                ) from err
 
         # Fetch from database with pagination
         repos, total = model.org_mirror.get_org_mirror_repos(
