@@ -327,14 +327,14 @@ test.describe(
       ).toBeVisible();
     });
 
-    test('verifies connection to source registry', async ({
+    test('verify connection succeeds with valid config (no credentials)', async ({
       authenticatedPage,
       api,
     }) => {
       const org = await api.organization('orgmirrverf');
       const robot = await api.robot(org.name, 'verfbot');
 
-      // Create config via API
+      // Create config with no credentials — public access to quay.io
       const syncStartDate = new Date();
       syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
       await api.raw.createOrgMirrorConfig(org.name, {
@@ -353,19 +353,45 @@ test.describe(
         authenticatedPage.getByTestId('org-mirror-form'),
       ).toBeVisible();
 
-      // Click verify connection button
-      await expect(
-        authenticatedPage.getByTestId('verify-connection-button'),
-      ).toBeVisible();
       await authenticatedPage.getByTestId('verify-connection-button').click();
 
-      // Verify a result message appears (success or failure depending on connectivity)
       await expect(
-        authenticatedPage
-          .getByText(
-            /Connection verified|Connection verification failed|Error verifying/,
-          )
-          .first(),
+        authenticatedPage.getByText('Connection verified successfully').first(),
+      ).toBeVisible({timeout: 15000});
+    });
+
+    test('verify connection fails with invalid credentials', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrvfal');
+      const robot = await api.robot(org.name, 'vfalbot');
+
+      // Create config with invalid credentials
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        external_registry_username: 'invaliduser',
+        external_registry_password: 'invalidpassword',
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      await authenticatedPage.getByTestId('verify-connection-button').click();
+
+      await expect(
+        authenticatedPage.getByText('Connection verification failed').first(),
       ).toBeVisible({timeout: 15000});
     });
 
@@ -804,6 +830,55 @@ test.describe(
       // Verify username saved via API (password is not returned)
       const config = await api.raw.getOrgMirrorConfig(org.name);
       expect(config?.external_registry_username).toBe('testuser');
+    });
+
+    test('clears credentials when username is removed', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrclrc');
+      const robot = await api.robot(org.name, 'clrcbot');
+
+      // Create config with credentials via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        external_registry_username: 'myuser',
+        external_registry_password: 'mypass',
+      });
+
+      // Verify credentials exist
+      const beforeConfig = await api.raw.getOrgMirrorConfig(org.name);
+      expect(beforeConfig?.external_registry_username).toBe('myuser');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Clear the username field
+      await authenticatedPage.getByTestId('username-input').clear();
+
+      // Submit update
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify credentials are cleared via API
+      const afterConfig = await api.raw.getOrgMirrorConfig(org.name);
+      expect(afterConfig?.external_registry_username).toBeNull();
     });
 
     test('validates skopeo timeout range', async ({authenticatedPage, api}) => {

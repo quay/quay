@@ -133,7 +133,7 @@ class TestGetOrgMirrorConfig:
         Test that getting config with QUAY registry type works correctly.
         """
         org, robot = _create_org_and_robot("org_mirror_test4")
-        config = _create_org_mirror_config(
+        _create_org_mirror_config(
             org,
             robot,
             external_registry_type=SourceRegistryType.QUAY,
@@ -154,7 +154,7 @@ class TestGetOrgMirrorConfig:
         """
         org, robot = _create_org_and_robot("org_mirror_test5")
         filters = ["ubuntu*", "debian*", "alpine"]
-        config = _create_org_mirror_config(org, robot, repository_filters=filters)
+        _create_org_mirror_config(org, robot, repository_filters=filters)
 
         result = get_org_mirror_config(org)
 
@@ -486,7 +486,6 @@ class TestUpdateOrgMirrorConfig:
         """
         org, robot = _create_org_and_robot("update_test1")
         config = _create_org_mirror_config(org, robot)
-        original_url = config.external_registry_url
 
         # Update the config
         updated = update_org_mirror_config(
@@ -517,7 +516,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating the is_enabled field.
         """
         org, robot = _create_org_and_robot("update_test3")
-        config = _create_org_mirror_config(org, robot, is_enabled=True)
+        _create_org_mirror_config(org, robot, is_enabled=True)
 
         # Disable mirroring
         updated = update_org_mirror_config(org, is_enabled=False)
@@ -537,7 +536,7 @@ class TestUpdateOrgMirrorConfig:
         org, robot = _create_org_and_robot("update_test4")
         private_visibility = Visibility.get(name="private")
         public_visibility = Visibility.get(name="public")
-        config = _create_org_mirror_config(org, robot, visibility=private_visibility)
+        _create_org_mirror_config(org, robot, visibility=private_visibility)
 
         # Update to public
         updated = update_org_mirror_config(org, visibility=public_visibility)
@@ -552,7 +551,7 @@ class TestUpdateOrgMirrorConfig:
         org, robot1 = _create_org_and_robot("update_test5")
         # Create a second robot for the same org
         robot2, _ = create_robot("mirrorbot2", org)
-        config = _create_org_mirror_config(org, robot1)
+        _create_org_mirror_config(org, robot1)
 
         # Update to use the second robot
         updated = update_org_mirror_config(org, internal_robot=robot2)
@@ -566,7 +565,7 @@ class TestUpdateOrgMirrorConfig:
         """
         org1, robot1 = _create_org_and_robot("update_test6a")
         org2, robot2 = _create_org_and_robot("update_test6b")
-        config = _create_org_mirror_config(org1, robot1)
+        _create_org_mirror_config(org1, robot1)
 
         with pytest.raises(DataModelException) as excinfo:
             update_org_mirror_config(org1, internal_robot=robot2)
@@ -578,7 +577,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating repository filters.
         """
         org, robot = _create_org_and_robot("update_test7")
-        config = _create_org_mirror_config(org, robot, repository_filters=["ubuntu*"])
+        _create_org_mirror_config(org, robot, repository_filters=["ubuntu*"])
 
         # Update filters
         new_filters = ["debian*", "alpine", "nginx*"]
@@ -592,7 +591,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating external_registry_config.
         """
         org, robot = _create_org_and_robot("update_test8")
-        config = _create_org_mirror_config(org, robot)
+        _create_org_mirror_config(org, robot)
 
         new_config = {
             "verify_tls": False,
@@ -608,7 +607,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating multiple fields at once.
         """
         org, robot = _create_org_and_robot("update_test9")
-        config = _create_org_mirror_config(org, robot)
+        _create_org_mirror_config(org, robot)
         new_start_date = datetime.utcnow() + timedelta(hours=1)
 
         updated = update_org_mirror_config(
@@ -633,7 +632,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating external registry credentials.
         """
         org, robot = _create_org_and_robot("update_test10")
-        config = _create_org_mirror_config(org, robot)
+        _create_org_mirror_config(org, robot)
 
         updated = update_org_mirror_config(
             org,
@@ -646,6 +645,37 @@ class TestUpdateOrgMirrorConfig:
         assert updated.external_registry_username is not None
         assert updated.external_registry_password is not None
 
+    def test_update_org_mirror_config_clear_credentials(self, initialized_db):
+        """
+        Test that passing None explicitly clears credentials,
+        while omitting credential args preserves them (_UNSET sentinel).
+        """
+        org, robot = _create_org_and_robot("update_test_clear_creds")
+        _create_org_mirror_config(org, robot)
+
+        # Set credentials first
+        updated = update_org_mirror_config(
+            org,
+            external_registry_username="myuser",
+            external_registry_password="mypassword",
+        )
+        assert updated.external_registry_username is not None
+        assert updated.external_registry_password is not None
+
+        # Omitting credential args should NOT clear them (sentinel behavior)
+        updated = update_org_mirror_config(org, sync_interval=7200)
+        assert updated.external_registry_username is not None
+        assert updated.external_registry_password is not None
+
+        # Passing None explicitly should clear them
+        updated = update_org_mirror_config(
+            org,
+            external_registry_username=None,
+            external_registry_password=None,
+        )
+        assert updated.external_registry_username is None
+        assert updated.external_registry_password is None
+
     def test_update_org_mirror_config_preserves_unchanged_fields(self, initialized_db):
         """
         Updating specific fields should not affect other fields.
@@ -653,7 +683,7 @@ class TestUpdateOrgMirrorConfig:
         org, robot = _create_org_and_robot("update_test11")
         public_visibility = Visibility.get(name="public")
         filters = ["redis*", "mysql*"]
-        config = _create_org_mirror_config(
+        _create_org_mirror_config(
             org,
             robot,
             external_registry_url="https://original.example.com",
@@ -696,7 +726,7 @@ class TestGetEligibleOrgMirrorRepos:
 
         # Create a ready repo (past due, retries remaining, not syncing)
         past_time = datetime.utcnow() - timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="ready-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -718,7 +748,7 @@ class TestGetEligibleOrgMirrorRepos:
         config = _create_org_mirror_config(org, robot, is_enabled=True)
 
         # Create a SYNC_NOW repo
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="sync-now-repo",
             sync_status=OrgMirrorRepoStatus.SYNC_NOW,
@@ -742,7 +772,7 @@ class TestGetEligibleOrgMirrorRepos:
         # Create an expired syncing repo
         past_time = datetime.utcnow() - timedelta(hours=2)
         expired_time = datetime.utcnow() - timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="expired-repo",
             sync_status=OrgMirrorRepoStatus.SYNCING,
@@ -766,7 +796,7 @@ class TestGetEligibleOrgMirrorRepos:
         # Create a currently syncing repo with future expiration
         past_time = datetime.utcnow() - timedelta(hours=1)
         future_time = datetime.utcnow() + timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="syncing-repo",
             sync_status=OrgMirrorRepoStatus.SYNCING,
@@ -788,7 +818,7 @@ class TestGetEligibleOrgMirrorRepos:
 
         # Create a repo with no retries left
         past_time = datetime.utcnow() - timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="no-retries-repo",
             sync_status=OrgMirrorRepoStatus.FAIL,
@@ -810,7 +840,7 @@ class TestGetEligibleOrgMirrorRepos:
 
         # Create a ready repo
         past_time = datetime.utcnow() - timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="disabled-config-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -832,7 +862,7 @@ class TestGetEligibleOrgMirrorRepos:
 
         # Create a repo scheduled for the future
         future_time = datetime.utcnow() + timedelta(hours=1)
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="future-repo",
             sync_status=OrgMirrorRepoStatus.SUCCESS,
@@ -854,21 +884,21 @@ class TestGetEligibleOrgMirrorRepos:
 
         # Create repos with different start dates
         now = datetime.utcnow()
-        repo3 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="repo-3",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
             sync_start_date=now - timedelta(hours=1),  # Most recent
             sync_retries_remaining=3,
         )
-        repo1 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="repo-1",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
             sync_start_date=now - timedelta(hours=3),  # Oldest
             sync_retries_remaining=3,
         )
-        repo2 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="repo-2",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -894,14 +924,14 @@ class TestGetEligibleOrgMirrorRepos:
 
         past_time = datetime.utcnow() - timedelta(hours=1)
 
-        repo1 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config1,
             repository_name="org1-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
             sync_start_date=past_time,
             sync_retries_remaining=3,
         )
-        repo2 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config2,
             repository_name="org2-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -938,7 +968,7 @@ class TestGetMinMaxIdForOrgMirrorRepo:
         org, robot = _create_org_and_robot("minmax_test1")
         config = _create_org_mirror_config(org, robot)
 
-        repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="single-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -963,7 +993,7 @@ class TestGetMinMaxIdForOrgMirrorRepo:
             repository_name="repo-a",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
         )
-        repo2 = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="repo-b",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
@@ -1342,7 +1372,6 @@ class TestExpireOrgMirrorRepo:
             sync_expiration_date=expired_time,
         )
 
-        repo_id = repo.id
         original_get_by_id = OrgMirrorRepository.get_by_id
 
         def mock_get_by_id(id_val):
@@ -1715,7 +1744,7 @@ class TestPropagateStatusToRepos:
         config = _create_org_mirror_config(org, robot, is_enabled=True)
 
         # Create repos - some already in SYNC_NOW
-        sync_now_repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="sync-now-repo",
             sync_status=OrgMirrorRepoStatus.SYNC_NOW,

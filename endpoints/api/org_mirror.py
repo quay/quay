@@ -242,6 +242,7 @@ class OrgMirrorConfig(ApiResource):
             "external_registry_url": mirror.external_registry_url,
             "external_namespace": mirror.external_namespace,
             "external_registry_username": username,
+            "has_external_registry_password": mirror.external_registry_password is not None,
             "external_registry_config": mirror.external_registry_config or {},
             "repository_filters": mirror.repository_filters or [],
             "robot_username": mirror.internal_robot.username if mirror.internal_robot else None,
@@ -335,7 +336,7 @@ class OrgMirrorConfig(ApiResource):
 
         # Create the mirror config
         try:
-            mirror = model.org_mirror.create_org_mirror_config(
+            model.org_mirror.create_org_mirror_config(
                 organization=org,
                 internal_robot=robot,
                 external_registry_type=external_registry_type,
@@ -448,13 +449,13 @@ class OrgMirrorConfig(ApiResource):
                 )
             update_kwargs["sync_start_date"] = sync_start_date
 
-        # Handle external_registry_username
+        # Handle external_registry_username (normalize empty string to None)
         if "external_registry_username" in data:
-            update_kwargs["external_registry_username"] = data["external_registry_username"]
+            update_kwargs["external_registry_username"] = data["external_registry_username"] or None
 
-        # Handle external_registry_password
+        # Handle external_registry_password (normalize empty string to None)
         if "external_registry_password" in data:
-            update_kwargs["external_registry_password"] = data["external_registry_password"]
+            update_kwargs["external_registry_password"] = data["external_registry_password"] or None
 
         # Handle external_registry_config
         if "external_registry_config" in data:

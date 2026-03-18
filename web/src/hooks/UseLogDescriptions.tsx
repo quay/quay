@@ -301,6 +301,7 @@ export function useLogDescriptions() {
         <>
           Organization mirror sync failed
           {metadata.message && <> - {wrapVariable(metadata.message)}</>}
+          {metadata.stderr && <> | stderr: {wrapVariable(metadata.stderr)}</>}
         </>
       );
     },

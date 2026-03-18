@@ -182,8 +182,8 @@ export const useOrgMirroringConfig = (
 
       // Credentials handling:
       // - On create: always include both fields
-      // - On update: always include username if present, only include
-      //   password when the user actually entered a new value
+      // - On update: always include username if present or previously set,
+      //   include password when entered or null when credentials are cleared
       const existingHasCredentials = config?.external_registry_username != null;
       if (!config) {
         mirrorConfig.external_registry_username = data.username || null;
@@ -194,6 +194,9 @@ export const useOrgMirroringConfig = (
         }
         if (data.password) {
           mirrorConfig.external_registry_password = data.password;
+        } else if (existingHasCredentials && !data.username) {
+          // Credentials are paired: clearing username also clears password
+          mirrorConfig.external_registry_password = null;
         }
       }
 
