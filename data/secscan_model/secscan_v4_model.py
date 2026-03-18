@@ -5,7 +5,7 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
 
-from peewee import JOIN, fn
+from peewee import JOIN, IntegrityError, fn
 
 import features
 from data.cache import cache_key
@@ -455,21 +455,42 @@ class V4SecurityScanner(SecurityScannerInterface):
             Bulk check which manifest IDs have been recently indexed by another worker.
             Returns a set of manifest IDs that should be skipped.
 
+            Uses different thresholds based on status:
+            - IN_PROGRESS: skip if indexed within last 6 hours (stale threshold)
+            - Other statuses: skip if indexed within reindex_threshold
+
             This replaces individual should_skip_indexing() calls with a single bulk query,
             reducing database round-trips by 50-100x per batch.
             """
             if not candidate_ids:
                 return set()
 
-            # Single query to check all candidates at once
-            recently_indexed = ManifestSecurityStatus.select(
+            # Stale IN_PROGRESS threshold (6 hours) - aligned with stale_in_progress_query()
+            stale_in_progress_threshold = datetime.utcnow() - timedelta(hours=6)
+
+            # Check for recently indexed manifests with status-specific thresholds
+            # For IN_PROGRESS: only skip if still fresh (>= 6h threshold)
+            # For others: skip if >= reindex threshold
+            recently_indexed_in_progress = ManifestSecurityStatus.select(
                 ManifestSecurityStatus.manifest_id
             ).where(
                 ManifestSecurityStatus.manifest_id.in_(candidate_ids),
+                ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                ManifestSecurityStatus.last_indexed >= stale_in_progress_threshold,
+            )
+
+            recently_indexed_other = ManifestSecurityStatus.select(
+                ManifestSecurityStatus.manifest_id
+            ).where(
+                ManifestSecurityStatus.manifest_id.in_(candidate_ids),
+                ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS,
                 ManifestSecurityStatus.last_indexed >= reindex_threshold,
             )
 
-            return {row.manifest_id for row in recently_indexed}
+            preempted = {row.manifest_id for row in recently_indexed_in_progress}
+            preempted.update({row.manifest_id for row in recently_indexed_other})
+
+            return preempted
 
         def batched_iterator_with_preemption_check(iterator, batch_size=20):
             """
@@ -554,26 +575,47 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
-            # Mark manifest as IN_PROGRESS before calling Clair to prevent concurrent workers
-            # from indexing the same manifest
-            try:
-                ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == candidate)
-                # Row exists, update it
-                ManifestSecurityStatus.update(
-                    index_status=IndexStatus.IN_PROGRESS,
-                    indexer_hash="in_progress",
-                    last_indexed=datetime.utcnow(),
-                ).where(ManifestSecurityStatus.manifest == candidate).execute()
-            except ManifestSecurityStatus.DoesNotExist:
-                # Row doesn't exist, create it
-                ManifestSecurityStatus.create(
-                    manifest=candidate,
-                    repository=candidate.repository,
-                    index_status=IndexStatus.IN_PROGRESS,
-                    indexer_hash="in_progress",
-                    indexer_version=IndexerVersion.V4,
-                    metadata_json={},
-                )
+            # Atomically claim manifest for indexing by marking as IN_PROGRESS.
+            # Only claim if not already IN_PROGRESS to avoid concurrent workers indexing the same manifest.
+            rows_updated = ManifestSecurityStatus.update(
+                index_status=IndexStatus.IN_PROGRESS,
+                indexer_hash="in_progress",
+                last_indexed=datetime.utcnow(),
+            ).where(
+                ManifestSecurityStatus.manifest == candidate,
+                ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS,
+            ).execute()
+
+            if rows_updated == 0:
+                # Either already IN_PROGRESS by another worker, or doesn't exist
+                try:
+                    existing = ManifestSecurityStatus.get(
+                        ManifestSecurityStatus.manifest == candidate
+                    )
+                    # Already IN_PROGRESS - another worker owns it
+                    logger.debug(
+                        "Manifest %d already IN_PROGRESS by another worker (status: %s)",
+                        candidate.id,
+                        existing.index_status,
+                    )
+                    continue
+                except ManifestSecurityStatus.DoesNotExist:
+                    # Row doesn't exist, create it
+                    try:
+                        ManifestSecurityStatus.create(
+                            manifest=candidate,
+                            repository=candidate.repository,
+                            index_status=IndexStatus.IN_PROGRESS,
+                            indexer_hash="in_progress",
+                            indexer_version=IndexerVersion.V4,
+                            metadata_json={},
+                        )
+                    except IntegrityError:
+                        # Race condition: another worker just created it
+                        logger.debug(
+                            "Manifest %d was created by another worker during race", candidate.id
+                        )
+                        continue
 
             try:
                 (report, state) = self._secscan_api.index(manifest, layers)
@@ -582,8 +624,12 @@ class V4SecurityScanner(SecurityScannerInterface):
                 logger.exception("Failed to perform indexing, invalid content sent")
                 continue
             except APIRequestFailure as ex:
-                # Clean up IN_PROGRESS marker so manifest can be retried
-                ManifestSecurityStatus.delete().where(
+                # Mark as FAILED instead of deleting to preserve scan history
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.FAILED,
+                    indexer_hash="api_failure",
+                    last_indexed=datetime.utcnow(),
+                ).where(
                     ManifestSecurityStatus.manifest == candidate,
                     ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
                 ).execute()
@@ -684,11 +730,20 @@ class V4SecurityScanner(SecurityScannerInterface):
             elif report["state"] == IndexReportState.Index_Error:
                 index_status = IndexStatus.FAILED
             else:
-                # Unknown state - clean up IN_PROGRESS marker so manifest can be retried
-                ManifestSecurityStatus.delete().where(
+                # Unknown state - mark as FAILED instead of deleting to preserve scan history
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.FAILED,
+                    indexer_hash="unknown_state",
+                    last_indexed=datetime.utcnow(),
+                ).where(
                     ManifestSecurityStatus.manifest == candidate,
                     ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
                 ).execute()
+                logger.warning(
+                    "Unknown index state '%s' for manifest %d, marked as FAILED",
+                    report.get("state"),
+                    candidate.id,
+                )
                 continue
 
             with db_transaction():

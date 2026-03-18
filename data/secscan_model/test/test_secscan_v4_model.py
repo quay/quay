@@ -58,6 +58,8 @@ from initdb import create_schema2_or_oci_manifest_for_testing
 from test.fixtures import *
 from util.secscan.v4.api import APIRequestFailure
 
+logger = logging.getLogger(__name__)
+
 
 @pytest.fixture()
 def set_secscan_config():
@@ -527,7 +529,13 @@ def test_perform_indexing_api_request_non_finished_state(initialized_db, set_sec
     secscan.perform_indexing_recent_manifests()
     next_token = secscan.perform_indexing()
     assert next_token and next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
-    assert ManifestSecurityStatus.select().count() == 0
+
+    # Manifests with unknown state should be marked as FAILED instead of deleted
+    # This preserves scan history and allows retry
+    assert ManifestSecurityStatus.select().count() > 0
+    for status in ManifestSecurityStatus.select():
+        assert status.index_status == IndexStatus.FAILED
+        assert status.indexer_hash == "unknown_state"
 
 
 def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_config):
@@ -541,7 +549,13 @@ def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_
     next_token = secscan.perform_indexing()
 
     assert next_token and next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
-    assert ManifestSecurityStatus.select().count() == 0
+
+    # Manifests with API failures should be marked as FAILED instead of deleted
+    # This preserves scan history and allows retry
+    assert ManifestSecurityStatus.select().count() > 0
+    for status in ManifestSecurityStatus.select():
+        assert status.index_status == IndexStatus.FAILED
+        assert status.indexer_hash == "api_failure"
 
     # Set security scanner to return good results and attempt indexing again
     secscan._secscan_api.index.side_effect = None
@@ -1334,11 +1348,21 @@ def test_deduplicate_recent_vs_full_catalog(initialized_db, set_secscan_config):
     manifests_by_full = index_count_after_full - index_count_before
     manifests_by_recent = index_count_after_recent - index_count_after_full
 
-    # Either:
-    # - Deduplication works: recent should index 0 (perfect) or very few manifests
-    # - No Redis: recent will index some manifests (overlap scenario)
-    # We just verify the operations completed without error
-    assert index_count_after_recent >= index_count_after_full
+    # Verify deduplication: recent pass should not re-index manifests already covered by full pass.
+    # With working deduplication (Redis available), manifests_by_recent should be 0 or very small.
+    # Without Redis, we expect some overlap but still fewer than the full run.
+    assert (
+        manifests_by_recent <= manifests_by_full
+    ), f"Recent pass indexed {manifests_by_recent} manifests, but full pass only indexed {manifests_by_full}"
+
+    # Ideally with Redis, recent should index nothing
+    # This is a softer check - if Redis is available, we expect perfect dedup
+    if manifests_by_recent > 0:
+        logger.warning(
+            "Deduplication not perfect: recent pass indexed %d manifests after full pass indexed %d",
+            manifests_by_recent,
+            manifests_by_full,
+        )
 
 
 def test_batch_preemption_reduces_queries(initialized_db, set_secscan_config):
