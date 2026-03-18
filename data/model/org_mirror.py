@@ -165,6 +165,15 @@ def create_org_mirror_config(
                 "policies configured. Remove all namespace immutability policies first."
             )
 
+        if features.PROXY_CACHE:
+            from data.model.proxy_cache import has_proxy_cache_config
+
+            if has_proxy_cache_config(organization.username):
+                raise DataModelException(
+                    "Cannot create organization mirror: the organization has a proxy cache "
+                    "configuration. Remove the proxy cache configuration first."
+                )
+
         # Check before INSERT to avoid poisoning the PostgreSQL transaction with
         # an IntegrityError (which puts the txn into an aborted state).
         if OrgMirrorConfig.select().where(OrgMirrorConfig.organization == organization).exists():

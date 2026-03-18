@@ -18,7 +18,7 @@ from data.database import (
 )
 from endpoints.api import org_mirror
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.test.shared import client_with_identity
+from endpoints.test.shared import client_with_identity, toggle_feature
 from test.fixtures import *
 
 logger = logging.getLogger(__name__)
@@ -482,6 +482,44 @@ class TestCreateOrgMirrorConfig:
                 assert "immutability policies" in resp.json.get("error_message", "")
         finally:
             policy.delete_instance()
+
+    def test_create_org_mirror_config_rejected_when_proxy_cache_exists(self, app):
+        """
+        Test that creating org mirror config is rejected when the namespace has
+        a proxy cache configuration.
+        """
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+
+        # Create a proxy cache config on the empty org
+        org = model.organization.get_organization(_EMPTY_ORG)
+        from data.database import DEFAULT_PROXY_CACHE_EXPIRATION, ProxyCacheConfig
+
+        proxy_config = ProxyCacheConfig.create(
+            organization=org,
+            upstream_registry="docker.io",
+            expiration_s=DEFAULT_PROXY_CACHE_EXPIRATION,
+        )
+
+        try:
+            with toggle_feature("PROXY_CACHE", True):
+                with client_with_identity("devtable", app) as cl:
+                    params = {"orgname": _EMPTY_ORG}
+                    request_body = {
+                        "external_registry_type": "harbor",
+                        "external_registry_url": "https://harbor.example.com",
+                        "external_namespace": "my-project",
+                        "robot_username": _EMPTY_ORG_ROBOT,
+                        "visibility": "private",
+                        "sync_interval": 3600,
+                        "sync_start_date": "2025-01-01T00:00:00Z",
+                    }
+                    resp = conduct_api_call(
+                        cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
+                    )
+                    assert "proxy cache" in resp.json.get("error_message", "").lower()
+        finally:
+            proxy_config.delete_instance()
 
 
 @pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
