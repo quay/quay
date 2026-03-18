@@ -1067,13 +1067,39 @@ test.describe(
         sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
       });
 
+      // Mock the config GET response to return all-zero repo_sync_status_counts
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 0,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 0,
+              CANCEL: 0,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
       await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
 
       await expect(
         authenticatedPage.getByTestId('org-mirror-form'),
       ).toBeVisible();
 
-      // With no repos, all counts are zero — should show "No repositories"
+      // With all counts stubbed to zero — should show "No repositories"
       const statusDisplay = authenticatedPage.getByTestId(
         'org-mirror-status-display',
       );
@@ -1172,9 +1198,11 @@ test.describe(
 
       // Only the failed repo should be visible
       await expect(rows).toHaveCount(1);
-      await expect(authenticatedPage.getByText('app-worker')).toBeVisible();
       await expect(
-        authenticatedPage.getByText('app-frontend'),
+        authenticatedPage.getByTestId('repo-link-app-worker'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-frontend'),
       ).not.toBeVisible();
 
       // Select "Success" filter
@@ -1183,8 +1211,12 @@ test.describe(
 
       // Two success repos should be visible
       await expect(rows).toHaveCount(2);
-      await expect(authenticatedPage.getByText('app-frontend')).toBeVisible();
-      await expect(authenticatedPage.getByText('app-backend')).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-frontend'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-backend'),
+      ).toBeVisible();
     });
 
     test('filter reset to "All statuses" shows all repos', async ({
