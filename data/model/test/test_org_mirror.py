@@ -2169,6 +2169,40 @@ class TestClaimOrgMirrorConfig:
             "ORG_MIRROR_MAX_DISCOVERY_DURATION", DEFAULT_MAX_DISCOVERY_DURATION
         )
 
+    def test_claim_falls_back_on_invalid_app_config(self, initialized_db):
+        """
+        When app config returns a non-numeric value for ORG_MIRROR_MAX_DISCOVERY_DURATION,
+        claim_org_mirror_config should fall back to DEFAULT_MAX_DISCOVERY_DURATION.
+        """
+        org, robot = _create_org_and_robot("org_claim_invalid")
+        config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
+
+        with patch("app.app") as mock_app:
+            mock_app.config.get.return_value = "not_a_number"
+            claimed = claim_org_mirror_config(config)
+
+        assert claimed is not None
+        expected_min = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION - 5)
+        expected_max = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION + 5)
+        assert expected_min <= claimed.sync_expiration_date <= expected_max
+
+    def test_claim_falls_back_on_zero_or_negative_app_config(self, initialized_db):
+        """
+        When app config returns 0 or a negative value for ORG_MIRROR_MAX_DISCOVERY_DURATION,
+        claim_org_mirror_config should fall back to DEFAULT_MAX_DISCOVERY_DURATION.
+        """
+        org, robot = _create_org_and_robot("org_claim_zero")
+        config = _create_org_mirror_config(org, robot, sync_status=OrgMirrorStatus.NEVER_RUN)
+
+        with patch("app.app") as mock_app:
+            mock_app.config.get.return_value = 0
+            claimed = claim_org_mirror_config(config)
+
+        assert claimed is not None
+        expected_min = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION - 5)
+        expected_max = datetime.utcnow() + timedelta(seconds=DEFAULT_MAX_DISCOVERY_DURATION + 5)
+        assert expected_min <= claimed.sync_expiration_date <= expected_max
+
     def test_claim_fails_when_already_syncing(self, initialized_db):
         """
         When a config is already SYNCING with a valid expiration,
