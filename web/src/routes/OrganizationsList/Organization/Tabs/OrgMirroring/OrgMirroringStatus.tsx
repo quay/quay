@@ -1,5 +1,5 @@
 import React from 'react';
-import {Divider, Button, Label} from '@patternfly/react-core';
+import {Divider, Button, Label, LabelGroup} from '@patternfly/react-core';
 import {StatusDisplay} from 'src/components/StatusDisplay';
 import {
   OrgMirrorConfig,
@@ -34,11 +34,24 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
         items={[
           {
             label: 'State',
-            value: (
-              <Label color={orgMirrorStatusColors[config.sync_status]}>
-                {orgMirrorStatusLabels[config.sync_status] ||
-                  config.sync_status}
-              </Label>
+            value: config.repo_sync_status_counts ? (
+              <LabelGroup numLabels={10}>
+                {Object.entries(config.repo_sync_status_counts)
+                  .filter(([, count]) => count > 0)
+                  .map(([status, count]) => (
+                    <Label
+                      key={status}
+                      color={orgMirrorStatusColors[status] || 'grey'}
+                    >
+                      {orgMirrorStatusLabels[status] || status}: {count}
+                    </Label>
+                  ))}
+                {Object.values(config.repo_sync_status_counts).every(
+                  (c) => c === 0,
+                ) && 'No repositories'}
+              </LabelGroup>
+            ) : (
+              'N/A'
             ),
             action: (
               <Button

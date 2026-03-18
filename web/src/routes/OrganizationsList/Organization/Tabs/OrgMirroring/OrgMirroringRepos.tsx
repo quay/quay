@@ -3,9 +3,16 @@ import {
   Divider,
   Title,
   Label,
+  MenuToggle,
   Pagination,
+  Select,
+  SelectList,
+  SelectOption,
   Spinner,
   Text,
+  Toolbar,
+  ToolbarContent,
+  ToolbarItem,
 } from '@patternfly/react-core';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {useQuery} from '@tanstack/react-query';
@@ -24,7 +31,7 @@ interface OrgMirroringReposProps {
   orgName: string;
 }
 
-// Repo-level statuses reuse the org-level maps, with one extra status
+// Repo-level statuses reuse the org-level maps, with one extra display-only status
 const repoStatusColors: Record<
   string,
   'blue' | 'green' | 'red' | 'cyan' | 'orange' | 'grey'
@@ -40,20 +47,33 @@ const repoStatusLabels: Record<string, string> = {
   DISCOVERED: 'Discovered',
 };
 
+// Filterable statuses — must match backend OrgMirrorRepoStatus enum values
+const filterableStatuses: {value: string; label: string}[] = [
+  {value: 'NEVER_RUN', label: 'Pending'},
+  {value: 'SYNC_NOW', label: 'Scheduled'},
+  {value: 'SYNCING', label: 'Syncing'},
+  {value: 'SUCCESS', label: 'Success'},
+  {value: 'FAIL', label: 'Failed'},
+  {value: 'CANCEL', label: 'Cancelled'},
+];
+
 export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
   config,
   orgName,
 }) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const {
     data,
     isLoading,
     error: queryError,
   } = useQuery<OrgMirrorReposResponse>({
-    queryKey: ['org-mirror-repos', orgName, page, perPage],
-    queryFn: () => getOrgMirrorRepos(orgName, page, perPage),
+    queryKey: ['org-mirror-repos', orgName, page, perPage, statusFilter],
+    queryFn: () =>
+      getOrgMirrorRepos(orgName, page, perPage, statusFilter || undefined),
     enabled: !!config,
     refetchInterval: config?.sync_status === 'SYNCING' ? 5000 : false,
   });
@@ -81,11 +101,63 @@ export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
         </Text>
       )}
 
-      {!isLoading && !error && repos.length === 0 && (
+      {!isLoading && !error && repos.length === 0 && !statusFilter && (
         <Text component="p">
           No repositories discovered yet. Repositories will appear here after
           the first sync.
         </Text>
+      )}
+
+      {!isLoading && !error && repos.length === 0 && statusFilter && (
+        <Text component="p">
+          No repositories match the selected status filter.
+        </Text>
+      )}
+
+      {!isLoading && !error && (total > 0 || statusFilter) && (
+        <Toolbar>
+          <ToolbarContent>
+            <ToolbarItem>
+              <Select
+                isOpen={isFilterOpen}
+                onOpenChange={setIsFilterOpen}
+                onSelect={(_event, value) => {
+                  setStatusFilter(value as string);
+                  setIsFilterOpen(false);
+                  setPage(1);
+                }}
+                toggle={(toggleRef) => (
+                  <MenuToggle
+                    ref={toggleRef}
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    isExpanded={isFilterOpen}
+                    data-testid="status-filter-toggle"
+                  >
+                    {statusFilter
+                      ? repoStatusLabels[statusFilter] || statusFilter
+                      : 'All statuses'}
+                  </MenuToggle>
+                )}
+                selected={statusFilter}
+              >
+                <SelectList>
+                  <SelectOption value="" data-testid="status-filter-all">
+                    All statuses
+                  </SelectOption>
+                  {filterableStatuses.map(({value, label}) => (
+                    <SelectOption
+                      key={value}
+                      value={value}
+                      data-testid={`status-filter-${value}`}
+                    >
+                      {label}
+                    </SelectOption>
+                  ))}
+                </SelectList>
+              </Select>
+            </ToolbarItem>
+          </ToolbarContent>
+        </Toolbar>
       )}
 
       {!isLoading && !error && repos.length > 0 && (
