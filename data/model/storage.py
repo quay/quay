@@ -340,7 +340,9 @@ def with_blob_lock_or_fallback(digest, func, *args, **kwargs):
 
 def _get_or_create_blob_with_lock(digest, lock_acquired=True, **blob_attrs):
     """
-    Helper function for code deduplication.
+    Gets or creates the ImageStorage reference for the provided blob digest. If the reference to the blob
+    does not exists in storage, we attempt to create it. If during creation an integrity error is raised (meaning
+    another worker has created the reference already), we return the found reference.
     """
     try:
         return ImageStorage.get(content_checksum=digest)

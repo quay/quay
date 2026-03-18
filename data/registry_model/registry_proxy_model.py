@@ -408,6 +408,20 @@ class ProxyModel(OCIModel):
         manifest, tag = create_manifest_fn(repo_ref, upstream_manifest, manifest_ref)
         return manifest, tag
 
+    def _rollback_created_blobs_and_quota(self, repo_ref, manifest, created_blobs):
+        """
+        Rolls back the created blobs and quota for a specified manifest and repository
+        in case an error occurs.
+        """
+        blob_ids = [blob_id for blob_id, _ in created_blobs]
+        ManifestBlob.delete().where(
+            ManifestBlob.manifest == manifest.id, ManifestBlob.blob << blob_ids
+        ).execute()
+
+        # Rollback quota for the blobs we added
+        blob_sizes = {blob_id: size for blob_id, size in created_blobs}
+        update_quota(repo_ref.id, manifest.id, blob_sizes, QuotaOperation.SUBTRACT)
+
     def _update_manifest_for_tag(
         self,
         repo_ref: RepositoryReference,
@@ -486,12 +500,7 @@ class ProxyModel(OCIModel):
                 )
                 # only delete newly created manifest blobs
                 if created_blobs:
-                    blob_ids = [blob_id for blob_id, _ in created_blobs]
-                    ManifestBlob.delete().where(
-                        ManifestBlob.manifest == manifest.id, ManifestBlob.blob << blob_ids
-                    ).execute()
-                    blob_sizes = {blob_id: size for blob_id, size in created_blobs}
-                    update_quota(repo_ref.id, manifest.id, blob_sizes, QuotaOperation.SUBTRACT)
+                    self._rollback_created_blobs_and_quota(repo_ref, manifest, created_blobs)
                 raise
 
         # if we got here, the manifest is stale, so we both create a new manifest
@@ -607,14 +616,7 @@ class ProxyModel(OCIModel):
             )
             # Clean up only the ManifestBlob rows we created in this attempt
             if created_blobs:
-                blob_ids = [blob_id for blob_id, _ in created_blobs]
-                ManifestBlob.delete().where(
-                    ManifestBlob.manifest == db_manifest.id, ManifestBlob.blob << blob_ids
-                ).execute()
-
-                # Rollback quota for the blobs we added
-                blob_sizes = {blob_id: size for blob_id, size in created_blobs}
-                update_quota(repository_ref.id, db_manifest.id, blob_sizes, QuotaOperation.SUBTRACT)
+                self._rollback_created_blobs_and_quota(repository_ref, db_manifest, created_blobs)
             raise
 
     def _create_manifest_with_temp_tag(
@@ -679,14 +681,7 @@ class ProxyModel(OCIModel):
             )
             # Clean up only the ManifestBlob rows we created in this attempt
             if created_blobs:
-                blob_ids = [blob_id for blob_id, _ in created_blobs]
-                ManifestBlob.delete().where(
-                    ManifestBlob.manifest == db_manifest.id, ManifestBlob.blob << blob_ids
-                ).execute()
-
-                # Rollback quota for the blobs we added
-                blob_sizes = {blob_id: size for blob_id, size in created_blobs}
-                update_quota(repository_ref.id, db_manifest.id, blob_sizes, QuotaOperation.SUBTRACT)
+                self._rollback_created_blobs_and_quota(repository_ref, db_manifest, created_blobs)
             raise
 
     def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
