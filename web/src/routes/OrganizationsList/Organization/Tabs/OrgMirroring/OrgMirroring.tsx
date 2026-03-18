@@ -250,6 +250,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
         <OrgMirroringStatus
           config={configHook.config}
           isVerifying={configHook.isVerifying}
+          isCancellingSync={configHook.isCancellingSync}
           onCancelSync={async () => {
             try {
               await configHook.handleCancelSync();
