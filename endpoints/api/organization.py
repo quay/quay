@@ -26,6 +26,7 @@ from data.billing import get_plan, get_plan_using_rh_sku
 from data.database import ProxyCacheConfig
 from data.model import organization_skus
 from data.model.immutability import namespace_has_immutable_tags
+from data.model.org_mirror import is_namespace_org_mirrored
 from endpoints.api import (
     ApiResource,
     allow_if_any_superuser,
@@ -1029,6 +1030,12 @@ class OrganizationProxyCacheConfig(ApiResource):
         except model.InvalidProxyCacheConfigException:
             pass
 
+        # Check for org mirror in the organization
+        if features.ORG_MIRROR and is_namespace_org_mirrored(orgname):
+            raise request_error(
+                "Cannot create proxy cache: organization is managed by organization-level mirroring"
+            )
+
         # Check for immutable tags in the organization
         if features.IMMUTABLE_TAGS:
             org = model.organization.get_organization(orgname)
@@ -1042,11 +1049,16 @@ class OrganizationProxyCacheConfig(ApiResource):
                 )
 
         data = request.get_json()
-        # filter None values
-        data = {k: v for k, v in data.items() if (v is not None or not "")}
 
         try:
-            config = model.proxy_cache.create_proxy_cache_config(**data)
+            config = model.proxy_cache.create_proxy_cache_config(
+                org_name=orgname,
+                upstream_registry=data.get("upstream_registry"),
+                upstream_registry_username=data.get("upstream_registry_username"),
+                upstream_registry_password=data.get("upstream_registry_password"),
+                expiration_s=data.get("expiration_s", 86400),
+                insecure=data.get("insecure", False),
+            )
             if config is not None:
                 log_action(
                     "create_proxy_cache_config",
