@@ -7,6 +7,7 @@ from data.database import ImageStorage, ImageStoragePlacement, ManifestBlob
 from data.model import repository, user
 from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.registry_proxy_model import ProxyModel
+from util.locking import GlobalLock
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 from workers.queueworker import (
@@ -116,6 +117,11 @@ if __name__ == "__main__":
     if not features.PROXY_CACHE or not features.PROXY_CACHE_BLOB_DOWNLOAD:
         while True:
             time.sleep(100000)
+
+    # Configure global locking.
+    # For testing in CI we mock GlobalLock anyway, so we'll skip global initialization if TESTING is set:
+    if not app.config.get("TESTING", False):
+        GlobalLock.configure(app.config)
 
     logger.debug("Starting proxy cache blob worker")
     worker = ProxyCacheBlobWorker(
