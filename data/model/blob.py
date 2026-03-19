@@ -85,7 +85,14 @@ def _store_blob_record_and_temp_link_in_repo(
         try:
             ImageStoragePlacement.get(storage=storage, location=location_obj)
         except ImageStoragePlacement.DoesNotExist:
-            ImageStoragePlacement.create(storage=storage, location=location_obj)
+            try:
+                ImageStoragePlacement.create(storage=storage, location=location_obj)
+            except IntegrityError as e:
+                logger.warning(
+                    "Another worker already created placeholder for blob %s, skipping creation: %s",
+                    blob_digest,
+                    e,
+                )
 
         _temp_link_blob(repository_id, storage, link_expiration_s)
         return storage
