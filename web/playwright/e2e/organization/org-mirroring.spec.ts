@@ -981,6 +981,409 @@ test.describe(
       ).not.toBeVisible();
     });
 
+    test('displays repo sync status counts in State field', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrcnts');
+      const robot = await api.robot(org.name, 'cntsbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Mock the config GET response to include repo_sync_status_counts
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 5,
+              SYNCING: 2,
+              FAIL: 1,
+              NEVER_RUN: 3,
+              SYNC_NOW: 0,
+              CANCEL: 0,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Verify status count labels are rendered (only non-zero counts)
+      const statusDisplay = authenticatedPage.getByTestId(
+        'org-mirror-status-display',
+      );
+      await expect(statusDisplay.getByText('Success: 5')).toBeVisible();
+      await expect(statusDisplay.getByText('Syncing: 2')).toBeVisible();
+      await expect(statusDisplay.getByText('Failed: 1')).toBeVisible();
+      // NEVER_RUN is displayed as "Scheduled" via orgMirrorStatusLabels
+      await expect(statusDisplay.getByText('Scheduled: 3')).toBeVisible();
+
+      // Zero-count statuses should NOT be displayed
+      await expect(statusDisplay.getByText('Cancelled')).not.toBeVisible();
+    });
+
+    test('displays "No repositories" when all status counts are zero', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrnocnt');
+      const robot = await api.robot(org.name, 'nocntbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Mock the config GET response to return all-zero repo_sync_status_counts
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 0,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 0,
+              CANCEL: 0,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // With all counts stubbed to zero — should show "No repositories"
+      const statusDisplay = authenticatedPage.getByTestId(
+        'org-mirror-status-display',
+      );
+      await expect(statusDisplay.getByText('No repositories')).toBeVisible();
+    });
+
+    test('filters repos by status using dropdown', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrfltst');
+      const robot = await api.robot(org.name, 'fltstbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Mock repos list endpoint to return different results based on status filter
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror/repositories*`,
+        async (route) => {
+          const url = new URL(route.request().url());
+          const status = url.searchParams.get('status');
+
+          const allRepos = [
+            {
+              name: 'app-frontend',
+              sync_status: 'SUCCESS',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: '2026-03-18T01:00:00Z',
+              status_message: null,
+              quay_repository: `${org.name}/app-frontend`,
+            },
+            {
+              name: 'app-backend',
+              sync_status: 'SUCCESS',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: '2026-03-18T01:00:00Z',
+              status_message: null,
+              quay_repository: `${org.name}/app-backend`,
+            },
+            {
+              name: 'app-worker',
+              sync_status: 'FAIL',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: '2026-03-18T00:30:00Z',
+              status_message: 'Connection timeout',
+              quay_repository: `${org.name}/app-worker`,
+            },
+          ];
+
+          const filtered = status
+            ? allRepos.filter((r) => r.sync_status === status)
+            : allRepos;
+
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              repositories: filtered,
+              page: 1,
+              limit: 20,
+              total: filtered.length,
+            }),
+          });
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Wait for repos table to load (unfiltered — all 3 repos)
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-repos-table'),
+      ).toBeVisible();
+      const rows = authenticatedPage
+        .getByTestId('org-mirror-repos-table')
+        .locator('tbody tr');
+      await expect(rows).toHaveCount(3);
+
+      // Open the status filter dropdown and select "Failed"
+      await authenticatedPage.getByTestId('status-filter-toggle').click();
+      await authenticatedPage.getByTestId('status-filter-FAIL').click();
+
+      // Only the failed repo should be visible
+      await expect(rows).toHaveCount(1);
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-worker'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-frontend'),
+      ).not.toBeVisible();
+
+      // Select "Success" filter
+      await authenticatedPage.getByTestId('status-filter-toggle').click();
+      await authenticatedPage.getByTestId('status-filter-SUCCESS').click();
+
+      // Two success repos should be visible
+      await expect(rows).toHaveCount(2);
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-frontend'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-backend'),
+      ).toBeVisible();
+    });
+
+    test('filter reset to "All statuses" shows all repos', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrfrst');
+      const robot = await api.robot(org.name, 'frstbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Mock repos list endpoint
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror/repositories*`,
+        async (route) => {
+          const url = new URL(route.request().url());
+          const status = url.searchParams.get('status');
+
+          const allRepos = [
+            {
+              name: 'repo-a',
+              sync_status: 'SUCCESS',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: '2026-03-18T01:00:00Z',
+              status_message: null,
+              quay_repository: `${org.name}/repo-a`,
+            },
+            {
+              name: 'repo-b',
+              sync_status: 'FAIL',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: null,
+              status_message: 'Error',
+              quay_repository: null,
+            },
+          ];
+
+          const filtered = status
+            ? allRepos.filter((r) => r.sync_status === status)
+            : allRepos;
+
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              repositories: filtered,
+              page: 1,
+              limit: 20,
+              total: filtered.length,
+            }),
+          });
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-repos-table'),
+      ).toBeVisible();
+      const rows = authenticatedPage
+        .getByTestId('org-mirror-repos-table')
+        .locator('tbody tr');
+
+      // Start with all repos
+      await expect(rows).toHaveCount(2);
+
+      // Filter by FAIL
+      await authenticatedPage.getByTestId('status-filter-toggle').click();
+      await authenticatedPage.getByTestId('status-filter-FAIL').click();
+      await expect(rows).toHaveCount(1);
+
+      // Reset to "All statuses"
+      await authenticatedPage.getByTestId('status-filter-toggle').click();
+      await authenticatedPage.getByTestId('status-filter-all').click();
+
+      // All repos should be visible again
+      await expect(rows).toHaveCount(2);
+    });
+
+    test('shows empty filter message when no repos match status', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrempt');
+      const robot = await api.robot(org.name, 'emptbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Mock repos endpoint — return repos only when unfiltered, empty for CANCEL
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror/repositories*`,
+        async (route) => {
+          const url = new URL(route.request().url());
+          const status = url.searchParams.get('status');
+
+          const allRepos = [
+            {
+              name: 'repo-x',
+              sync_status: 'SUCCESS',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: '2026-03-18T01:00:00Z',
+              status_message: null,
+              quay_repository: `${org.name}/repo-x`,
+            },
+          ];
+
+          const filtered = status
+            ? allRepos.filter((r) => r.sync_status === status)
+            : allRepos;
+
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              repositories: filtered,
+              page: 1,
+              limit: 20,
+              total: filtered.length,
+            }),
+          });
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      // Wait for repos to load
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-repos-table'),
+      ).toBeVisible();
+
+      // Filter by "Cancelled" — no repos have this status
+      await authenticatedPage.getByTestId('status-filter-toggle').click();
+      await authenticatedPage.getByTestId('status-filter-CANCEL').click();
+
+      // Table should disappear, empty message should appear
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-repos-table'),
+      ).not.toBeVisible();
+      await expect(
+        authenticatedPage.getByText(
+          'No repositories match the selected status filter.',
+        ),
+      ).toBeVisible();
+    });
+
     test('cancel delete modal keeps config intact', async ({
       authenticatedPage,
       api,

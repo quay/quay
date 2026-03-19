@@ -17,7 +17,7 @@ from app import app
 from auth import scopes
 from auth.permissions import AdministerOrganizationPermission
 from data import model
-from data.database import SourceRegistryType, Visibility
+from data.database import OrgMirrorRepoStatus, SourceRegistryType, Visibility
 from data.encryption import DecryptionFailureException
 from data.model import DataModelException, InvalidOrganizationException
 from endpoints.api import (
@@ -226,6 +226,8 @@ class OrgMirrorConfig(ApiResource):
         if not mirror:
             raise NotFound()
 
+        repo_status_counts = model.org_mirror.get_org_mirror_repo_status_counts(mirror)
+
         try:
             username = self._decrypt_username(mirror.external_registry_username)
         except DecryptionFailureException as dfe:
@@ -252,6 +254,7 @@ class OrgMirrorConfig(ApiResource):
             "sync_expiration_date": _dt_to_string(mirror.sync_expiration_date),
             "sync_status": mirror.sync_status.name,
             "sync_retries_remaining": mirror.sync_retries_remaining,
+            "repo_sync_status_counts": repo_status_counts,
             "skopeo_timeout": mirror.skopeo_timeout,
             "creation_date": _dt_to_string(mirror.creation_date),
         }
@@ -771,8 +774,22 @@ class OrgMirrorRepositories(ApiResource):
         if limit < 1:
             limit = DEFAULT_PAGE_LIMIT
 
+        # Parse optional status filter
+        status_filter = None
+        status_param = request.args.get("status", None, type=str)
+        if status_param is not None:
+            try:
+                status_filter = OrgMirrorRepoStatus[status_param.upper()]
+            except KeyError as err:
+                raise InvalidRequest(
+                    f"Invalid status filter '{status_param}'. "
+                    f"Valid values: {', '.join(s.name for s in OrgMirrorRepoStatus)}"
+                ) from err
+
         # Fetch from database with pagination
-        repos, total = model.org_mirror.get_org_mirror_repos(mirror, page, limit)
+        repos, total = model.org_mirror.get_org_mirror_repos(
+            mirror, page, limit, status_filter=status_filter
+        )
 
         return {
             "repositories": [
