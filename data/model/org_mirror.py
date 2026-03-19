@@ -862,11 +862,14 @@ def get_min_id_for_org_mirror_config():
     return OrgMirrorConfig.select(fn.Min(OrgMirrorConfig.id)).scalar()
 
 
-# Duration for discovery phase (shorter than repo sync since it's just API calls)
-MAX_DISCOVERY_DURATION = 60 * 30  # 30 minutes
+# Default duration for discovery phase (shorter than repo sync since it's just API calls)
+DEFAULT_MAX_DISCOVERY_DURATION = 60 * 30  # 30 minutes
 
 
-def claim_org_mirror_config(org_mirror_config: OrgMirrorConfig) -> Optional[OrgMirrorConfig]:
+def claim_org_mirror_config(
+    org_mirror_config: OrgMirrorConfig,
+    max_discovery_duration: Optional[int] = None,
+) -> Optional[OrgMirrorConfig]:
     """
     Claim an org mirror config for discovery by updating its status and setting expiration.
 
@@ -874,13 +877,28 @@ def claim_org_mirror_config(org_mirror_config: OrgMirrorConfig) -> Optional[OrgM
 
     Args:
         org_mirror_config: The OrgMirrorConfig to claim
+        max_discovery_duration: Maximum seconds for discovery claim. Defaults to
+            ORG_MIRROR_MAX_DISCOVERY_DURATION from app config, or 1800s (30 minutes).
 
     Returns:
         Updated OrgMirrorConfig if claim successful, None otherwise
     """
+    if max_discovery_duration is None:
+        from app import app
+
+        try:
+            max_discovery_duration = int(
+                app.config.get("ORG_MIRROR_MAX_DISCOVERY_DURATION", DEFAULT_MAX_DISCOVERY_DURATION)
+            )
+        except (ValueError, TypeError):
+            max_discovery_duration = DEFAULT_MAX_DISCOVERY_DURATION
+
+        if max_discovery_duration < 1:
+            max_discovery_duration = DEFAULT_MAX_DISCOVERY_DURATION
+
     with db_transaction():
         now = datetime.utcnow()
-        expiration_date = now + timedelta(seconds=MAX_DISCOVERY_DURATION)
+        expiration_date = now + timedelta(seconds=max_discovery_duration)
 
         # If already syncing with valid expiration, cannot claim
         if org_mirror_config.sync_status == OrgMirrorStatus.SYNCING:
