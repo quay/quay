@@ -89,19 +89,11 @@ export function FormTextInput<T extends FieldValues>({
         control={control}
         rules={rules}
         render={({field: {value, onChange}}) => {
-          const displayValue =
-            showNoneWhenEmpty && (!value || value === '')
-              ? 'None'
-              : value || '';
           const handleChange = (
             _event: React.FormEvent<HTMLInputElement>,
             newValue: string,
           ) => {
-            if (showNoneWhenEmpty && newValue === 'None') {
-              onChange('');
-            } else {
-              onChange(newValue);
-            }
+            onChange(newValue);
           };
 
           return (
@@ -109,8 +101,10 @@ export function FormTextInput<T extends FieldValues>({
               <TextInput
                 type={type}
                 id={fieldId || name}
-                placeholder={placeholder}
-                value={displayValue}
+                placeholder={
+                  showNoneWhenEmpty && !placeholder ? 'None' : placeholder
+                }
+                value={value || ''}
                 onChange={handleChange}
                 validated={validationState}
                 data-testid={dataTestId}

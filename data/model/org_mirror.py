@@ -17,9 +17,7 @@ from data.database import (
     OrgMirrorStatus,
     Repository,
     RepositoryState,
-    SourceRegistryType,
     User,
-    Visibility,
     db_for_update,
     db_transaction,
     uuid_generator,
@@ -29,6 +27,9 @@ from data.model import DataModelException
 from data.model.immutability import namespace_has_immutability_policies
 from util.names import parse_robot_username
 from util.security.ssrf import validate_external_registry_url
+
+# Sentinel value to distinguish "not provided" from "explicitly set to None"
+_UNSET = object()
 
 # Constants for sync management
 MAX_SYNC_RETRIES = 3
@@ -164,6 +165,15 @@ def create_org_mirror_config(
                 "policies configured. Remove all namespace immutability policies first."
             )
 
+        if features.PROXY_CACHE:
+            from data.model.proxy_cache import has_proxy_cache_config
+
+            if has_proxy_cache_config(organization.username):
+                raise DataModelException(
+                    "Cannot create organization mirror: the organization has a proxy cache "
+                    "configuration. Remove the proxy cache configuration first."
+                )
+
         # Check before INSERT to avoid poisoning the PostgreSQL transaction with
         # an IntegrityError (which puts the txn into an aborted state).
         if OrgMirrorConfig.select().where(OrgMirrorConfig.organization == organization).exists():
@@ -208,8 +218,8 @@ def update_org_mirror_config(
     is_enabled=None,
     external_registry_url=None,
     external_namespace=None,
-    external_registry_username=None,
-    external_registry_password=None,
+    external_registry_username=_UNSET,
+    external_registry_password=_UNSET,
     external_registry_config=None,
     internal_robot=None,
     repository_filters=None,
@@ -222,17 +232,16 @@ def update_org_mirror_config(
     """
     Update an organization-level mirror configuration.
 
-    Only provided non-None values will be updated. To explicitly set a field to None,
-    use a sentinel value (not supported for credential fields which use None to indicate
-    "no change").
+    Only provided non-None values will be updated. Credential fields use
+    the _UNSET sentinel as default so that passing None explicitly clears them.
 
     Args:
         org: User object representing the organization
         is_enabled: Whether mirroring is enabled
         external_registry_url: URL of the source registry
         external_namespace: Namespace/project name in source registry
-        external_registry_username: Username for source registry auth (None = no change)
-        external_registry_password: Password for source registry auth (None = no change)
+        external_registry_username: Username for source registry auth (_UNSET = no change, None = clear)
+        external_registry_password: Password for source registry auth (_UNSET = no change, None = clear)
         external_registry_config: Dict with TLS/proxy settings
         internal_robot: User object representing the robot account
         repository_filters: List of glob patterns for filtering
@@ -282,10 +291,14 @@ def update_org_mirror_config(
             config.external_registry_url = external_registry_url
         if external_namespace is not None:
             config.external_namespace = external_namespace
-        if external_registry_username is not None:
-            config.external_registry_username = DecryptedValue(external_registry_username)
-        if external_registry_password is not None:
-            config.external_registry_password = DecryptedValue(external_registry_password)
+        if external_registry_username is not _UNSET:
+            config.external_registry_username = (
+                DecryptedValue(external_registry_username) if external_registry_username else None
+            )
+        if external_registry_password is not _UNSET:
+            config.external_registry_password = (
+                DecryptedValue(external_registry_password) if external_registry_password else None
+            )
         if external_registry_config is not None:
             config.external_registry_config = external_registry_config
         if internal_robot is not None:
@@ -420,6 +433,33 @@ def get_org_mirror_repos(
     repos = list(ordered_query.paginate(page, limit))
 
     return repos, total
+
+
+def get_org_mirror_repo_status_counts(config: OrgMirrorConfig) -> dict:
+    """
+    Get counts of discovered repositories grouped by sync status.
+
+    Uses the composite index on (org_mirror_config, sync_status).
+    Excludes repos marked for deletion (same filter as get_org_mirror_repos).
+    """
+    query = (
+        OrgMirrorRepository.select(
+            OrgMirrorRepository.sync_status,
+            fn.COUNT(OrgMirrorRepository.id).alias("count"),
+        )
+        .join(Repository, JOIN.LEFT_OUTER, on=(OrgMirrorRepository.repository == Repository.id))
+        .where(OrgMirrorRepository.org_mirror_config == config)
+        .where(
+            (OrgMirrorRepository.repository >> None)
+            | (Repository.state != RepositoryState.MARKED_FOR_DELETION)
+        )
+        .group_by(OrgMirrorRepository.sync_status)
+    )
+
+    counts = {status.name: 0 for status in OrgMirrorRepoStatus}
+    for row in query:
+        counts[row.sync_status.name] = row.count
+    return counts
 
 
 def get_org_mirroring_robot(repository):
@@ -858,11 +898,14 @@ def get_min_id_for_org_mirror_config():
     return OrgMirrorConfig.select(fn.Min(OrgMirrorConfig.id)).scalar()
 
 
-# Duration for discovery phase (shorter than repo sync since it's just API calls)
-MAX_DISCOVERY_DURATION = 60 * 30  # 30 minutes
+# Default duration for discovery phase (shorter than repo sync since it's just API calls)
+DEFAULT_MAX_DISCOVERY_DURATION = 60 * 30  # 30 minutes
 
 
-def claim_org_mirror_config(org_mirror_config: OrgMirrorConfig) -> Optional[OrgMirrorConfig]:
+def claim_org_mirror_config(
+    org_mirror_config: OrgMirrorConfig,
+    max_discovery_duration: Optional[int] = None,
+) -> Optional[OrgMirrorConfig]:
     """
     Claim an org mirror config for discovery by updating its status and setting expiration.
 
@@ -870,13 +913,28 @@ def claim_org_mirror_config(org_mirror_config: OrgMirrorConfig) -> Optional[OrgM
 
     Args:
         org_mirror_config: The OrgMirrorConfig to claim
+        max_discovery_duration: Maximum seconds for discovery claim. Defaults to
+            ORG_MIRROR_MAX_DISCOVERY_DURATION from app config, or 1800s (30 minutes).
 
     Returns:
         Updated OrgMirrorConfig if claim successful, None otherwise
     """
+    if max_discovery_duration is None:
+        from app import app
+
+        try:
+            max_discovery_duration = int(
+                app.config.get("ORG_MIRROR_MAX_DISCOVERY_DURATION", DEFAULT_MAX_DISCOVERY_DURATION)
+            )
+        except (ValueError, TypeError):
+            max_discovery_duration = DEFAULT_MAX_DISCOVERY_DURATION
+
+        if max_discovery_duration < 1:
+            max_discovery_duration = DEFAULT_MAX_DISCOVERY_DURATION
+
     with db_transaction():
         now = datetime.utcnow()
-        expiration_date = now + timedelta(seconds=MAX_DISCOVERY_DURATION)
+        expiration_date = now + timedelta(seconds=max_discovery_duration)
 
         # If already syncing with valid expiration, cannot claim
         if org_mirror_config.sync_status == OrgMirrorStatus.SYNCING:

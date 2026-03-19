@@ -12,13 +12,15 @@ import pytest
 from data import model
 from data.database import (
     OrgMirrorConfig,
+    OrgMirrorRepository,
+    OrgMirrorRepoStatus,
     OrgMirrorStatus,
     SourceRegistryType,
     Visibility,
 )
 from endpoints.api import org_mirror
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.test.shared import client_with_identity
+from endpoints.test.shared import client_with_identity, toggle_feature
 from test.fixtures import *
 
 logger = logging.getLogger(__name__)
@@ -483,6 +485,44 @@ class TestCreateOrgMirrorConfig:
         finally:
             policy.delete_instance()
 
+    def test_create_org_mirror_config_rejected_when_proxy_cache_exists(self, app):
+        """
+        Test that creating org mirror config is rejected when the namespace has
+        a proxy cache configuration.
+        """
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+
+        # Create a proxy cache config on the empty org
+        org = model.organization.get_organization(_EMPTY_ORG)
+        from data.database import DEFAULT_PROXY_CACHE_EXPIRATION, ProxyCacheConfig
+
+        proxy_config = ProxyCacheConfig.create(
+            organization=org,
+            upstream_registry="docker.io",
+            expiration_s=DEFAULT_PROXY_CACHE_EXPIRATION,
+        )
+
+        try:
+            with toggle_feature("PROXY_CACHE", True):
+                with client_with_identity("devtable", app) as cl:
+                    params = {"orgname": _EMPTY_ORG}
+                    request_body = {
+                        "external_registry_type": "harbor",
+                        "external_registry_url": "https://harbor.example.com",
+                        "external_namespace": "my-project",
+                        "robot_username": _EMPTY_ORG_ROBOT,
+                        "visibility": "private",
+                        "sync_interval": 3600,
+                        "sync_start_date": "2025-01-01T00:00:00Z",
+                    }
+                    resp = conduct_api_call(
+                        cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
+                    )
+                    assert "proxy cache" in resp.json.get("error_message", "").lower()
+        finally:
+            proxy_config.delete_instance()
+
 
 @pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestDeleteOrgMirrorConfig:
@@ -919,6 +959,89 @@ class TestUpdateOrgMirrorConfig:
         config = model.org_mirror.get_org_mirror_config(org)
         assert config.external_registry_username is not None
         assert config.external_registry_password is not None
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_empty_string_username_normalized_to_none(self, app):
+        """PUT with empty string username/password normalizes them to None."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_username="existinguser",
+            external_registry_password="existingpass",
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_username": "",
+                "external_registry_password": "",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, request_body, 200)
+
+        org = model.organization.get_organization("buynlarge")
+        config = model.org_mirror.get_org_mirror_config(org)
+        assert config.external_registry_username is None
+        assert config.external_registry_password is None
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_null_username_normalized_to_none(self, app):
+        """PUT with explicit null username/password sets them to None."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_username="existinguser",
+            external_registry_password="existingpass",
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_username": None,
+                "external_registry_password": None,
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, request_body, 200)
+
+        org = model.organization.get_organization("buynlarge")
+        config = model.org_mirror.get_org_mirror_config(org)
+        assert config.external_registry_username is None
+        assert config.external_registry_password is None
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
+class TestGetOrgMirrorConfig:
+    """Tests for GET /v1/organization/<orgname>/mirror endpoint."""
+
+    def test_get_has_external_registry_password_true_when_set(self, app):
+        """GET response includes has_external_registry_password=True when password is set."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_password="secret123",
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+
+        assert resp.json["has_external_registry_password"] is True
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_get_has_external_registry_password_false_when_not_set(self, app):
+        """GET response includes has_external_registry_password=False when no password."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly()
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+
+        assert resp.json["has_external_registry_password"] is False
 
         # Clean up
         _cleanup_org_mirror_config("buynlarge")
@@ -1529,5 +1652,122 @@ class TestOrgMirrorSSRFProtection:
             update_body = {"external_registry_url": "http://169.254.169.254/latest/meta-data"}
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, update_body, 400)
             assert "not allowed" in resp.json.get("error_message", "")
+
+        _cleanup_org_mirror_config("buynlarge")
+
+
+class TestGetOrgMirrorConfigStatusCounts:
+    """Tests for GET /v1/organization/<orgname>/mirror endpoint - repo sync status counts."""
+
+    def test_get_config_includes_repo_sync_status_counts(self, app):
+        """Config GET response includes repo_sync_status_counts with correct values."""
+        _cleanup_org_mirror_config("buynlarge")
+        config = _create_config_directly()
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="success-repo",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="syncing-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+
+        assert "repo_sync_status_counts" in resp.json
+        counts = resp.json["repo_sync_status_counts"]
+        assert counts["SUCCESS"] == 1
+        assert counts["SYNCING"] == 1
+        assert counts["FAIL"] == 0
+        assert counts["NEVER_RUN"] == 0
+
+        OrgMirrorRepository.delete().where(
+            OrgMirrorRepository.org_mirror_config == config
+        ).execute()
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_get_config_status_counts_no_repos(self, app):
+        """Config GET response returns all-zero counts when no repos exist."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly()
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+
+        counts = resp.json["repo_sync_status_counts"]
+        for status in OrgMirrorRepoStatus:
+            assert counts[status.name] == 0
+
+        _cleanup_org_mirror_config("buynlarge")
+
+
+class TestListOrgMirrorRepositories:
+    """Tests for GET /v1/organization/<orgname>/mirror/repositories endpoint."""
+
+    def test_filter_by_status(self, app):
+        """Repos list filtered by status returns only matching repos."""
+        _cleanup_org_mirror_config("buynlarge")
+        config = _create_config_directly()
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="good-repo",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="bad-repo",
+            sync_status=OrgMirrorRepoStatus.FAIL,
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorRepositories, "GET", params, None, 200)
+            # Unfiltered: both repos
+            assert resp.json["total"] == 2
+
+        # Now filter by SUCCESS using direct client call
+        from endpoints.api import api
+        from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
+
+        with client_with_identity("devtable", app) as cl:
+            with cl.session_transaction() as sess:
+                csrf_token = "test"
+                sess[OAUTH_CSRF_TOKEN_NAME] = csrf_token
+
+            url = api.url_for(org_mirror.OrgMirrorRepositories, orgname="buynlarge")
+            rv = cl.get(f"{url}?status=SUCCESS&{OAUTH_CSRF_TOKEN_NAME}={csrf_token}")
+            assert rv.status_code == 200
+            data = rv.json
+            assert data["total"] == 1
+            assert data["repositories"][0]["name"] == "good-repo"
+
+        OrgMirrorRepository.delete().where(
+            OrgMirrorRepository.org_mirror_config == config
+        ).execute()
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_invalid_status_returns_400(self, app):
+        """Invalid status query param returns 400."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly()
+
+        from endpoints.api import api
+        from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
+
+        with client_with_identity("devtable", app) as cl:
+            with cl.session_transaction() as sess:
+                csrf_token = "test"
+                sess[OAUTH_CSRF_TOKEN_NAME] = csrf_token
+
+            url = api.url_for(org_mirror.OrgMirrorRepositories, orgname="buynlarge")
+            rv = cl.get(f"{url}?status=BOGUS&{OAUTH_CSRF_TOKEN_NAME}={csrf_token}")
+            assert rv.status_code == 400
 
         _cleanup_org_mirror_config("buynlarge")
