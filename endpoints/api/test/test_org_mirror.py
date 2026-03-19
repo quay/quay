@@ -923,6 +923,89 @@ class TestUpdateOrgMirrorConfig:
         # Clean up
         _cleanup_org_mirror_config("buynlarge")
 
+    def test_update_empty_string_username_normalized_to_none(self, app):
+        """PUT with empty string username/password normalizes them to None."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_username="existinguser",
+            external_registry_password="existingpass",
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_username": "",
+                "external_registry_password": "",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, request_body, 200)
+
+        org = model.organization.get_organization("buynlarge")
+        config = model.org_mirror.get_org_mirror_config(org)
+        assert config.external_registry_username is None
+        assert config.external_registry_password is None
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_null_username_normalized_to_none(self, app):
+        """PUT with explicit null username/password sets them to None."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_username="existinguser",
+            external_registry_password="existingpass",
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_username": None,
+                "external_registry_password": None,
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, request_body, 200)
+
+        org = model.organization.get_organization("buynlarge")
+        config = model.org_mirror.get_org_mirror_config(org)
+        assert config.external_registry_username is None
+        assert config.external_registry_password is None
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
+class TestGetOrgMirrorConfig:
+    """Tests for GET /v1/organization/<orgname>/mirror endpoint."""
+
+    def test_get_has_external_registry_password_true_when_set(self, app):
+        """GET response includes has_external_registry_password=True when password is set."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_password="secret123",
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+
+        assert resp.json["has_external_registry_password"] is True
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_get_has_external_registry_password_false_when_not_set(self, app):
+        """GET response includes has_external_registry_password=False when no password."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly()
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+
+        assert resp.json["has_external_registry_password"] is False
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
 
 @pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestVerifyOrgMirrorConnection:

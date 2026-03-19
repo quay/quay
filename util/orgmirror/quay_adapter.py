@@ -90,6 +90,35 @@ class QuayAdapter(RegistryAdapter):
 
         return session
 
+    def _validate_credentials(self):
+        """
+        Verify the API token is valid by calling /api/v1/user/.
+
+        Raises:
+            QuayDiscoveryException: On 401, 403, or redirect responses.
+        """
+        url = f"{self.base_url}/api/v1/user/"
+        response = self.session.get(
+            url,
+            verify=self.verify_tls,
+            proxies=self._build_proxies(url),
+            timeout=self.timeout,
+            allow_redirects=False,
+        )
+        if response.status_code == 200:
+            return
+        if response.status_code == 401:
+            raise QuayDiscoveryException("Authentication failed: invalid API token or credentials")
+        elif response.status_code == 403:
+            raise QuayDiscoveryException("Authentication failed: insufficient permissions")
+        elif 300 <= response.status_code < 400:
+            raise QuayDiscoveryException(
+                f"Registry returned redirect ({response.status_code}) during auth check"
+            )
+        raise QuayDiscoveryException(
+            f"Unexpected response ({response.status_code}) during auth check: {response.text}"
+        )
+
     def list_repositories(self) -> List[str]:
         """
         Fetch all repository names from the source Quay namespace.
@@ -100,6 +129,10 @@ class QuayAdapter(RegistryAdapter):
         Raises:
             QuayDiscoveryException: On network, authentication, or API errors
         """
+        success, message = self.test_connection()
+        if not success:
+            raise QuayDiscoveryException(message)
+
         repos: List[str] = []
         next_page: Optional[str] = None
 
@@ -185,15 +218,23 @@ class QuayAdapter(RegistryAdapter):
         """
         Test connection to the source Quay registry.
 
-        Attempts to fetch the organization info to verify connectivity
-        and authentication. If the namespace is not an organization,
-        falls back to checking the user endpoint to support user namespaces.
+        When credentials are configured, validates them against /api/v1/user/
+        first. Then verifies the namespace exists by checking the organization
+        endpoint, falling back to the user endpoint for user namespaces.
 
         Returns:
             Tuple of (success: bool, message: str)
         """
         try:
-            # Try to fetch organization info first
+            # Validate credentials first when configured, since public
+            # endpoints (org/user info) return 200 regardless of auth.
+            if self._api_token:
+                try:
+                    self._validate_credentials()
+                except QuayDiscoveryException as e:
+                    return False, str(e)
+
+            # Verify namespace exists
             url = f"{self.base_url}/api/v1/organization/{self.namespace}"
             response = self.session.get(
                 url,
@@ -210,22 +251,22 @@ class QuayAdapter(RegistryAdapter):
             elif response.status_code == 404:
                 # Namespace may be a user namespace rather than an organization.
                 # Fall back to the user endpoint before reporting not found.
-                user_url = f"{self.base_url}/api/v1/users/{self.namespace}"
-                user_response = self.session.get(
-                    user_url,
+                ns_url = f"{self.base_url}/api/v1/users/{self.namespace}"
+                ns_response = self.session.get(
+                    ns_url,
                     verify=self.verify_tls,
-                    proxies=self._build_proxies(user_url),
+                    proxies=self._build_proxies(ns_url),
                     timeout=10,
                     allow_redirects=False,
                 )
-                if user_response.status_code == 200:
+                if ns_response.status_code == 200:
                     return True, "Connection successful"
-                elif user_response.status_code == 404:
+                elif ns_response.status_code == 404:
                     return False, f"Namespace '{self.namespace}' not found"
-                elif user_response.status_code == 401:
+                elif ns_response.status_code == 401:
                     return False, "Authentication failed"
                 else:
-                    return False, f"Unexpected response: {user_response.status_code}"
+                    return False, f"Unexpected response: {ns_response.status_code}"
             else:
                 return False, f"Unexpected response: {response.status_code}"
 
