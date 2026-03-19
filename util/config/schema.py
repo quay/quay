@@ -1087,6 +1087,11 @@ CONFIG_SCHEMA = {
             "description": "The number of seconds between organization mirror worker iterations. Defaults to 30.",
             "x-example": 30,
         },
+        "ORG_MIRROR_MAX_DISCOVERY_DURATION": {
+            "type": "number",
+            "description": "Maximum time in seconds allowed for the tag discovery phase of organization mirror sync. Configs that exceed this duration during discovery are released so other workers can process them. Defaults to 1800 (30 minutes).",
+            "x-example": 1800,
+        },
         "SSRF_ALLOWED_HOSTS": {
             "type": "array",
             "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for organization mirror source registries. Use for enterprise deployments where source registries are on private networks.",

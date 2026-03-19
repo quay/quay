@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(jira:*), Read, Glob, Grep, TodoWrite, Task, Write, AskUserQuestion
+allowed-tools: Bash(acli:*), Read, Glob, Grep, TodoWrite, Task, Write, AskUserQuestion
 argument-hint: <feature-key>
 description: Generate an epic structure from a JIRA feature and create it in JIRA
 ---
@@ -21,7 +21,7 @@ The JIRA feature to convert to an epic: `$ARGUMENTS`
 Fetch the complete feature information from JIRA:
 
 ```bash
-jira issue view $ARGUMENTS
+acli jira workitem view $ARGUMENTS
 ```
 
 **Extract and analyze:**
@@ -382,13 +382,22 @@ Use the AskUserQuestion tool to get user confirmation.
 
 If the user confirms, create the epic in JIRA:
 
+Generate a JSON file at `/tmp/create-epic.json`:
+```json
+{
+  "projectKey": "PROJQUAY",
+  "type": "Epic",
+  "summary": "[Epic Title]",
+  "description": "[Read content from .claude/plans/$ARGUMENTS-epic.md]",
+  "additionalAttributes": {
+    "customfield_12311141": "[Epic Name from title]"
+  }
+}
+```
+
+Then create the epic:
 ```bash
-jira issue create \
-  --type Epic \
-  --summary "[Epic Title]" \
-  --body "$(cat .claude/plans/$ARGUMENTS-epic.md)" \
-  --custom epic-name="[Epic Name from title]" \
-  --no-input
+acli jira workitem create --from-json /tmp/create-epic.json
 ```
 
 **Note:** The epic name should be derived from the epic title (use the title or a shortened version).
@@ -397,7 +406,7 @@ After creation:
 1. Capture the new epic key from the output
 2. Link the original feature to the new epic:
    ```bash
-   jira issue link $ARGUMENTS [NEW_EPIC_KEY] "is Epic of"
+   acli jira workitem link create --out $ARGUMENTS --in [NEW_EPIC_KEY] --type "is Epic of" --yes
    ```
 3. Display the new epic URL to the user
 

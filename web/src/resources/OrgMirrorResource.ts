@@ -22,6 +22,7 @@ export interface OrgMirrorConfig {
   external_registry_url: string;
   external_namespace: string;
   external_registry_username: string | null;
+  has_external_registry_password: boolean;
   external_registry_config: {
     verify_tls?: boolean;
     proxy?: {
@@ -38,6 +39,7 @@ export interface OrgMirrorConfig {
   sync_expiration_date: string | null;
   sync_status: OrgMirrorSyncStatus;
   sync_retries_remaining: number;
+  repo_sync_status_counts: Record<string, number>;
   skopeo_timeout: number;
   creation_date: string | null;
 }
@@ -161,10 +163,15 @@ export const getOrgMirrorRepos = async (
   orgName: string,
   page = 1,
   limit = 100,
+  status?: string,
 ): Promise<OrgMirrorReposResponse> => {
+  const params: Record<string, string | number> = {page, limit};
+  if (status) {
+    params.status = status;
+  }
   const response: AxiosResponse<OrgMirrorReposResponse> = await axios.get(
     `/api/v1/organization/${orgName}/mirror/repositories`,
-    {params: {page, limit}},
+    {params},
   );
   assertHttpCode(response.status, 200);
   return response.data;
@@ -174,7 +181,7 @@ export const getOrgMirrorRepos = async (
 // Keys must match OrgMirrorStatus enum names from the backend
 export const orgMirrorStatusLabels: Record<OrgMirrorSyncStatus, string> = {
   NEVER_RUN: 'Scheduled',
-  SYNC_NOW: 'Scheduled Now',
+  SYNC_NOW: 'Scheduled',
   FAIL: 'Failed',
   SYNCING: 'Syncing',
   SUCCESS: 'Success',
