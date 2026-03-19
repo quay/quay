@@ -17,17 +17,20 @@ from data.database import (
     ExternalNotificationMethod,
     ImageStorage,
     ImageStorageLocation,
+    ImageStoragePlacement,
     Label,
     Manifest,
     ManifestBlob,
     ManifestLabel,
     ManifestPullStatistics,
+    MediaType,
     Tag,
     TagNotificationSuccess,
     TagPullStatistics,
     UploadedBlob,
 )
-from data.model import pull_statistics
+from data.model import oci, pull_statistics
+from data.model import storage as storage_model
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
@@ -1233,3 +1236,332 @@ def test_gc_purge_oci_tag_guard_skips_immutable(default_tag_policy, initialized_
             # Repository deletion path (allow_non_expired=True) should proceed
             result = _purge_oci_tag(tag, context, allow_non_expired=True)
             assert result is not False
+
+
+def _get_digest(content_bytes):
+    """
+    Helper function that creates blobs with proper digests
+    """
+    return sha256_digest(content_bytes)
+
+
+def test_gc_skips_placeholder_blobs(default_tag_policy, initialized_db):
+    """
+    Tests that GC skips placeholder blobs from being garbage collected. Deleting these could cause the database
+    to reference blobs that have been removed from backing storage, causing pull failures.
+    """
+    repo = model.repository.create_repository("devtable", "placeholder_test", None)
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    placeholder_blob = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+
+    assert (
+        not ImageStoragePlacement.select()
+        .where(ImageStoragePlacement.storage == placeholder_blob)
+        .exists()
+    )
+
+    orphaned_ids = storage_model.garbage_collect_storage([placeholder_blob.id])
+    assert placeholder_blob.id not in orphaned_ids
+    assert ImageStorage.select().where(ImageStorage.id == placeholder_blob.id).exists()
+
+
+def test_gc_collects_orphaned_blobs_with_placement(default_tag_policy, initialized_db):
+    """
+    Tests that GC DOES delete orphaned blobs that have placement set.
+    """
+    location = ImageStorageLocation.get(name="local_us")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # We cannot use _populate_blob here because it would create an entry in UploadedBlob table which would
+    # protect it from GCing because of the _is_storage_orphaned check, so we have to create it manually.
+    normal_blob = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=normal_blob, location=location)
+
+    storage.put_content(
+        ["local_us"],
+        storage.blob_path(normal_blob.content_checksum),
+        blob_content,
+    )
+
+    assert (
+        ImageStoragePlacement.select().where(ImageStoragePlacement.storage == normal_blob).exists()
+    )
+
+    # This blob is orphaned because no ManifestBlob or UploadedBlob entries exist so it should be picked
+    # by GC.
+    orphaned_ids = storage_model.garbage_collect_storage([normal_blob.id])
+    assert normal_blob.id in orphaned_ids
+
+    assert not ImageStorage.select().where(ImageStorage.id == normal_blob.id).exists()
+
+
+def test_gc_proxy_cache_expired_temp_tag(default_tag_policy, initialized_db):
+    """
+    Test the proxy cache race condition scenario:
+    1. Proxy cache creates manifest with placeholder blobs
+    2. Temp tag gets created
+    3. Tag expires and manifest is GCed
+    4. Placeholder blobs should NOT be deleted
+    """
+    repo = model.repository.create_repository("devtable", "proxy_test", None)
+    media_type, _ = MediaType.get_or_create(name="application/vnd.oci.image.manifest.v1+json")
+    manifest_bytes = (
+        '{"schemaVersion": 2, "mediaType": "application/vnd.oci.image.manifest.v1+json"}'
+    )
+    manifest = Manifest.create(
+        repository=repo,
+        digest=_get_digest(manifest_bytes.encode("utf-8")),
+        manifest_bytes=manifest_bytes,
+        media_type=media_type,
+    )
+
+    # Placeholder blobs
+    blob_list = []
+    for i in range(0, 3):
+        blob_content = random.randbytes(1024)
+        placeholder_blob = ImageStorage.create(
+            content_checksum=_get_digest(blob_content),
+            image_size=len(blob_content),
+            uncompressed_size=len(blob_content),
+        )
+        ManifestBlob.create(manifest=manifest, blob=placeholder_blob, repository=repo)
+        blob_list.append(placeholder_blob)
+
+    # Create a temporary tag that's already expired
+    past_time = datetime.utcnow() - timedelta(hours=1)
+    with freeze_time(past_time):
+        now_ms = oci.tag.get_epoch_timestamp_ms()
+        temp_tag = Tag.create(
+            name=f"$temp-{manifest.digest}",
+            repository=repo,
+            manifest=manifest,
+            lifetime_start_ms=now_ms,
+            lifetime_end_ms=now_ms + 300000,  # 5 minutes from frozen time
+            hidden=True,
+            reversion=False,
+            tag_kind=Tag.tag_kind.get_id("tag"),
+        )
+
+    # Run GC and check if entries in tables exist
+    model.gc.garbage_collect_repo(repo)
+    assert not Manifest.select().where(Manifest.id == manifest.id).exists()
+    assert not ManifestBlob.select().where(ManifestBlob.manifest == manifest.id).exists()
+    # Placeholder blobs should still exist
+    for blob in blob_list:
+        assert ImageStorage.select().where(ImageStorage.id == blob.id).exists()
+
+
+def test_is_storage_orphaned_returns_false_for_placeholders(default_tag_policy, initialized_db):
+    """
+    Tests whether _is_storage_orphaned returns a negative result (not orphaned) for each placeholder blob
+    even if these do not have a ManifestBlob in place.
+    """
+    blob_content = random.randbytes(1024)
+    placeholder_blob = ImageStorage.create(
+        content_checksum=_get_digest(blob_content),
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+
+    # Blob has no ManifestBlob, UploadedBlob or placement entry but should not be considered orphaned
+    assert not storage_model._is_storage_orphaned(placeholder_blob.id)
+
+    # Add placement, should be considered orphaned
+    location = ImageStorageLocation.get(name="local_us")
+    ImageStoragePlacement.create(storage=placeholder_blob, location=location)
+    assert storage_model._is_storage_orphaned(placeholder_blob.id)
+
+
+def test_gc_placeholder_blob_eventually_collected(default_tag_policy, initialized_db):
+    """
+    Tests if placeholder blobs are eventually collected once they get get a placement and their manifest
+    is deleted.
+    This ensures that placeholder blobs are not leaked indefinitely.
+    """
+    repo = model.repository.create_repository("devtable", "placeholder_cleanup", None)
+    media_type, _ = MediaType.get_or_create(name="application/vnd.oci.image.manifest.v1+json")
+
+    # Create placeholder blobs
+    media_type, _ = MediaType.get_or_create(name="application/vnd.oci.image.manifest.v1+json")
+    manifest_bytes = (
+        '{"schemaVersion": 2, "mediaType": "application/vnd.oci.image.manifest.v1+json"}'
+    )
+    manifest = Manifest.create(
+        repository=repo,
+        digest=_get_digest(manifest_bytes.encode("utf-8")),
+        manifest_bytes=manifest_bytes,
+        media_type=media_type,
+    )
+
+    blob_list = []
+    for i in range(0, 3):
+        blob_content = random.randbytes(1024)
+        placeholder_blob = ImageStorage.create(
+            content_checksum=_get_digest(blob_content),
+            image_size=len(blob_content),
+            uncompressed_size=len(blob_content),
+        )
+        ManifestBlob.create(manifest=manifest, blob=placeholder_blob, repository=repo)
+
+        # Download worker adds placement
+        location = ImageStorageLocation.get(name="local_us")
+        ImageStoragePlacement.create(storage=placeholder_blob, location=location)
+        storage.put_content(
+            ["local_us"],
+            storage.blob_path(placeholder_blob.content_checksum),
+            blob_content,
+        )
+        blob_list.append(placeholder_blob)
+
+    # Delete manifest simulating manifest GC
+    ManifestBlob.delete().where(ManifestBlob.manifest == manifest.id).execute()
+    manifest.delete_instance()
+
+    # Blob has placement but not references, should be GCed
+    orphaned_ids = storage_model.garbage_collect_storage([blob.id for blob in blob_list])
+    for blob in blob_list:
+        assert blob.id in orphaned_ids
+        assert not ImageStorage.select().where(ImageStorage.id == blob.id).exists()
+
+
+def test_get_or_create_blob_with_lock_gets_existing(default_tag_policy, initialized_db):
+    """
+    Tests that get_or_create_blob_with_lock returns an existing blob without creating a duplicate.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # create initial blob
+    existing_blob = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+
+    # call the function
+    result_blob = storage_model.get_or_create_blob_with_lock(
+        digest=blob_digest,
+        image_size=999,
+    )
+
+    assert result_blob.id == existing_blob.id
+    assert result_blob.image_size == len(blob_content)
+
+    assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).count() == 1
+
+
+def test_get_or_create_blob_with_lock_creates_new(default_tag_policy, initialized_db):
+    """
+    Verifies that the function creates a new blob if the blob doesn't exist.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # Verify blob doesn't exist in storage
+    assert not ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+
+    # create blob
+    result_blob = storage_model.get_or_create_blob_with_lock(
+        digest=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+
+    assert result_blob.content_checksum == blob_digest
+    assert result_blob.image_size == len(blob_content)
+
+    # verify that it was created in the database
+    assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+
+
+def test_get_or_create_blob_with_lock_fallback_gets_existing(default_tag_policy, initialized_db):
+    """
+    Verifies that when the lock cannot be acquired, the function falls back to
+    getting an existing blob after a short delay.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # Create the blob first
+    existing_blob = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+    )
+
+    # Patch GlobalLock to always raise LockNotAcquiredException
+    from util.locking import LockNotAcquiredException
+
+    class FailingLock:
+        lock_factory = object()
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            raise LockNotAcquiredException()
+
+        def __exit__(self, *args):
+            pass
+
+    original_lock = storage_model.GlobalLock
+    storage_model.GlobalLock = FailingLock
+    try:
+        result_blob = storage_model.get_or_create_blob_with_lock(
+            digest=blob_digest,
+            image_size=999,
+        )
+        assert result_blob.id == existing_blob.id
+        assert (
+            ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).count() == 1
+        )
+    finally:
+        storage_model.GlobalLock = original_lock
+
+
+def test_get_or_create_blob_with_lock_fallback_creates_new(default_tag_policy, initialized_db):
+    """
+    Verifies that when the lock cannot be acquired and the blob doesn't exist,
+    the function falls back to creating the blob without the lock.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    assert not ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+
+    from util.locking import LockNotAcquiredException
+
+    class FailingLock:
+        lock_factory = object()
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            raise LockNotAcquiredException()
+
+        def __exit__(self, *args):
+            pass
+
+    original_lock = storage_model.GlobalLock
+    storage_model.GlobalLock = FailingLock
+    try:
+        result_blob = storage_model.get_or_create_blob_with_lock(
+            digest=blob_digest,
+            image_size=len(blob_content),
+        )
+        assert result_blob.content_checksum == blob_digest
+        assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+    finally:
+        storage_model.GlobalLock = original_lock
