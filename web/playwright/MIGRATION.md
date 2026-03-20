@@ -741,7 +741,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `org-list.cy.ts` | `organization/org-list.spec.ts` | @organization, @feature:SUPERUSERS_FULL_ACCESS, @feature:QUOTA_MANAGEMENT, consolidated 22→10 tests |
 | ⬚ | `org-oauth.cy.ts` | | |
 | ✅ | `overview.cy.ts` | `ui/overview.spec.ts` | |
-| ⬚ | `packages-report.cy.ts` | | |
+| ✅ | `packages-report.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated with security tests, Cypress file deleted |
 | ✅ | `proxy-cache.cy.ts` | `organization/proxy-cache.spec.ts` | @feature:PROXY_CACHE, consolidated 4→3 tests |
 | ✅ | `quota.cy.ts` | `organization/quota.spec.ts` | @feature:QUOTA_MANAGEMENT, @feature:EDIT_QUOTA, consolidated 27→7 tests |
 | ✅ | `repositories-list.cy.ts` | `repository/repositories-list.spec.ts` | Consolidated 11→6 tests |
@@ -753,8 +753,8 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `repository-state.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated into mirroring tests |
 | ⬚ | `repository-visibility.cy.ts` | | |
 | ✅ | `robot-accounts.cy.ts` | `organization/robot-accounts.spec.ts` | Consolidated 12→4 tests |
-| ⬚ | `security-report.cy.ts` | | @feature:SECURITY_SCANNER |
-| ⬚ | `security-scanner-feature-toggle.cy.ts` | | @feature:SECURITY_SCANNER |
+| ✅ | `security-report.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 11→3 tests, Cypress file deleted |
+| ✅ | `security-scanner-feature-toggle.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 12→3 tests, Cypress file deleted |
 | ⬚ | `service-status.cy.ts` | | |
 | ✅ | `signin.cy.ts` | `auth/signin.spec.ts` | @feature:MAILING, @auth:Database, @feature:SUPERUSERS_FULL_ACCESS, consolidated 30→18 tests |
 | ⬚ | `superuser-build-logs.cy.ts` | | Superuser required |

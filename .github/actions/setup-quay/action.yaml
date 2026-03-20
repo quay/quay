@@ -205,8 +205,21 @@ runs:
         docker compose up -d clair-db
         docker exec clair-db bash -c 'while ! pg_isready; do echo "waiting for clair postgres"; sleep 2; done'
         DOCKER_USER="1001:0" docker compose up -d clair
-        echo "Waiting for Clair to initialize..."
-        sleep 30
+        echo "Waiting for Clair to be ready..."
+        timeout=120
+        while [ $timeout -gt 0 ]; do
+          if docker exec quay-quay curl -sf http://localhost:6000/indexer/api/v1/index_state > /dev/null 2>&1; then
+            echo "Clair is ready!"
+            break
+          fi
+          sleep 3
+          timeout=$((timeout - 3))
+        done
+        if [ $timeout -le 0 ]; then
+          echo "Clair failed to become ready within 120 seconds"
+          docker logs quay-clair 2>&1 | tail -100
+          exit 1
+        fi
 
     - name: Start Repomirror
       if: inputs.with-repomirror == 'true'
