@@ -70,8 +70,33 @@ def get_user_repository_permissions(user, namespace, repo_name):
     return _get_user_repo_permissions(user, limit_namespace=namespace, limit_repo_name=repo_name)
 
 
+def get_user_repository_permissions_for_read(user, namespace, repo_name):
+    """
+    Get user repository permissions for read-only operations.
+
+    Uses read replicas for high-volume read operations. Safe for checking
+    pull permissions where replication lag is acceptable.
+    """
+    return _get_user_repo_permissions(
+        user, limit_namespace=namespace, limit_repo_name=repo_name, can_use_read_replica=True
+    )
+
+
+def get_user_repository_permissions_for_write(user, namespace, repo_name):
+    """
+    Get user repository permissions for write operations.
+
+    Always uses primary database to ensure immediate consistency for critical
+    operations like push, where permission revocations must be enforced instantly.
+    """
+    return _get_user_repo_permissions(
+        user, limit_namespace=namespace, limit_repo_name=repo_name, can_use_read_replica=False
+    )
+
+
 def _get_user_repo_permissions(
-    user, limit_to_repository_obj=None, limit_namespace=None, limit_repo_name=None
+    user, limit_to_repository_obj=None, limit_namespace=None, limit_repo_name=None,
+    can_use_read_replica=True
 ):
     user_in_team = TeamMember.select(SQL("1")).where(
         (TeamMember.team == RepositoryPermission.team) & (TeamMember.user == user)
@@ -79,7 +104,7 @@ def _get_user_repo_permissions(
 
     query = (
         RepositoryPermission.select(
-            RepositoryPermission, Role, Repository, Namespace, can_use_read_replica=True
+            RepositoryPermission, Role, Repository, Namespace, can_use_read_replica=can_use_read_replica
         )
         .join(Role)
         .switch(RepositoryPermission)

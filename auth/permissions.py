@@ -174,15 +174,28 @@ class QuayDeferredPermissionUser(Identity):
             logger.debug("Team added permission: {0}".format(team_grant))
             self.provides.add(team_grant)
 
-    def _populate_repository_provides(self, user_object, namespace_filter, repository_name):
+    def _populate_repository_provides(self, user_object, namespace_filter, repository_name, for_write=False):
         """
         Populates the repository-specific provides for a particular user and repository.
+
+        Args:
+            user_object: The user to load permissions for
+            namespace_filter: The namespace to filter by
+            repository_name: The repository name to filter by
+            for_write: If True, uses primary DB for write operations. If False, uses replica for reads.
         """
 
         if namespace_filter and repository_name:
-            permissions = model.permission.get_user_repository_permissions(
-                user_object, namespace_filter, repository_name
-            )
+            if for_write:
+                # Write operations (push) require primary DB for immediate consistency
+                permissions = model.permission.get_user_repository_permissions_for_write(
+                    user_object, namespace_filter, repository_name
+                )
+            else:
+                # Read operations (pull) can use replica for better performance
+                permissions = model.permission.get_user_repository_permissions_for_read(
+                    user_object, namespace_filter, repository_name
+                )
         else:
             permissions = model.permission.get_all_user_repository_permissions(user_object)
 
@@ -238,7 +251,9 @@ class QuayDeferredPermissionUser(Identity):
 
         # Lazy-load the repository-specific permissions.
         if perm_repository and perm_repository not in self._repositories_loaded:
-            self._populate_repository_provides(user_object, perm_namespace, perm_repo_name)
+            # Determine if this is a write operation based on permission type
+            is_write_check = isinstance(permission, (ModifyRepositoryPermission, AdministerRepositoryPermission))
+            self._populate_repository_provides(user_object, perm_namespace, perm_repo_name, for_write=is_write_check)
             self._repositories_loaded.add(perm_repository)
 
             # If we now have permission, no need to load any more permissions.
