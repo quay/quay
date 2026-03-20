@@ -11,7 +11,7 @@ on:
 jobs:
   playwright:
     name: Playwright E2E Tests
-    runs-on: ubuntu-22.04
+    runs-on: quay-002-small-ubuntu-24-x64
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -19,8 +19,11 @@ jobs:
       - name: Setup Quay
         uses: ./.github/actions/setup-quay
         with:
+          with-clair: true
           extra-config: |
             FEATURE_MAILING: true
+            FEATURE_SECURITY_SCANNER: true
+            FEATURE_SECURITY_NOTIFICATIONS: true
 
       - name: Set up Node.js with npm caching
         uses: actions/setup-node@v6
