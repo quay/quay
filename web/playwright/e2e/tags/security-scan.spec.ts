@@ -81,16 +81,109 @@ test.describe(
         .getByRole('tab', {name: 'Security Report'})
         .click();
       await expect(authenticatedPage).toHaveURL(/tab=securityreport/);
-      // Should show either vulnerabilities detected or no vulnerabilities
       await expect(
         authenticatedPage.getByText(
           /detected \d+ vulnerabilit|detected no vulnerabilit/,
         ),
       ).toBeVisible({timeout: 10000});
 
-      // Click Packages tab - verify packages are listed
+      // Verify vulnerability chart rendered
+      await expect(
+        authenticatedPage.locator('[data-testid="vulnerability-chart"]'),
+      ).toBeVisible();
+
+      // Click Packages tab - verify packages content rendered
       await authenticatedPage.getByRole('tab', {name: 'Packages'}).click();
       await expect(authenticatedPage).toHaveURL(/tab=packages/);
+      await expect(
+        authenticatedPage.locator('[data-testid="packages-chart"]'),
+      ).toBeVisible();
+      // Should show either packages recognized or no packages recognized
+      await expect(
+        authenticatedPage.getByText(
+          /recognized \d+ package|does not recognize any package/,
+        ),
+      ).toBeVisible();
+    });
+
+    test('vulnerability report supports filtering and sorting', async ({
+      authenticatedPage,
+    }) => {
+      await authenticatedPage.goto(
+        `/repository/${testRepo.fullName}/tag/latest?tab=securityreport`,
+      );
+      await expect(
+        authenticatedPage.getByText(
+          /detected \d+ vulnerabilit|detected no vulnerabilit/,
+        ),
+      ).toBeVisible({timeout: 10000});
+
+      const vulnRows = authenticatedPage.locator('td[data-label="Advisory"]');
+      const initialCount = await vulnRows.count();
+      if (initialCount === 0) {
+        // No vulnerabilities to filter - skip interaction tests
+        return;
+      }
+
+      // Test fixable-only checkbox
+      await authenticatedPage.locator('#fixable-checkbox').check();
+      const fixableCount = await vulnRows.count();
+      expect(fixableCount).toBeLessThanOrEqual(initialCount);
+      await authenticatedPage.locator('#fixable-checkbox').uncheck();
+      await expect(vulnRows).toHaveCount(initialCount);
+
+      // Test name filter
+      const firstPackage = await authenticatedPage
+        .locator('td[data-label="Package"] >> nth=0')
+        .innerText();
+      const filterTerm = firstPackage.slice(0, 3);
+      await authenticatedPage
+        .locator('input[placeholder="Filter Vulnerabilities..."]')
+        .fill(filterTerm);
+      const filteredCount = await vulnRows.count();
+      expect(filteredCount).toBeGreaterThan(0);
+      expect(filteredCount).toBeLessThanOrEqual(initialCount);
+      await authenticatedPage
+        .locator('input[placeholder="Filter Vulnerabilities..."]')
+        .clear();
+      await expect(vulnRows).toHaveCount(initialCount);
+
+      // Test sorting - click severity sort and verify table still renders
+      await authenticatedPage.locator('#severity-sort button').click();
+      await expect(vulnRows.first()).toBeVisible();
+    });
+
+    test('packages tab supports filtering', async ({authenticatedPage}) => {
+      await authenticatedPage.goto(
+        `/repository/${testRepo.fullName}/tag/latest?tab=packages`,
+      );
+      await expect(
+        authenticatedPage.getByText(
+          /recognized \d+ package|does not recognize any package/,
+        ),
+      ).toBeVisible({timeout: 10000});
+
+      const packageRows = authenticatedPage.locator(
+        'td[data-label="Package Name"]',
+      );
+      const initialCount = await packageRows.count();
+      if (initialCount === 0) {
+        return;
+      }
+
+      // Test name filter
+      const firstPackage = await packageRows.first().innerText();
+      const filterTerm = firstPackage.slice(0, 3);
+      await authenticatedPage
+        .locator('input[placeholder="Filter Packages..."]')
+        .fill(filterTerm);
+      const filteredCount = await packageRows.count();
+      expect(filteredCount).toBeGreaterThan(0);
+      expect(filteredCount).toBeLessThanOrEqual(initialCount);
+      await authenticatedPage
+        .locator('input[placeholder="Filter Packages..."]')
+        .clear();
+      await expect(packageRows).toHaveCount(initialCount);
     });
   },
 );
