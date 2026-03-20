@@ -577,14 +577,18 @@ class V4SecurityScanner(SecurityScannerInterface):
 
             # Atomically claim manifest for indexing by marking as IN_PROGRESS.
             # Only claim if not already IN_PROGRESS to avoid concurrent workers indexing the same manifest.
-            rows_updated = ManifestSecurityStatus.update(
-                index_status=IndexStatus.IN_PROGRESS,
-                indexer_hash="in_progress",
-                last_indexed=datetime.utcnow(),
-            ).where(
-                ManifestSecurityStatus.manifest == candidate,
-                ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS,
-            ).execute()
+            rows_updated = (
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.IN_PROGRESS,
+                    indexer_hash="in_progress",
+                    last_indexed=datetime.utcnow(),
+                )
+                .where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS,
+                )
+                .execute()
+            )
 
             if rows_updated == 0:
                 # Either already IN_PROGRESS by another worker, or doesn't exist
