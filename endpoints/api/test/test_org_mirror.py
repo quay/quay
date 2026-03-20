@@ -10,8 +10,14 @@ from unittest.mock import patch
 import pytest
 
 from data import model
-from data.database import OrgMirrorConfig as OrgMirrorConfigModel
-from data.database import Tag, get_epoch_timestamp_ms
+from data.database import (
+    OrgMirrorConfig,
+    OrgMirrorRepository,
+    OrgMirrorRepoStatus,
+    OrgMirrorStatus,
+    SourceRegistryType,
+    Visibility,
+)
 from endpoints.api import org_mirror
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity, toggle_feature
@@ -49,6 +55,42 @@ def _cleanup_org_mirror_config(orgname):
         raise
 
 
+# Name of empty org (no repos) used for POST tests that require the empty-org precondition.
+_EMPTY_ORG = "sellnsmall"
+_EMPTY_ORG_ROBOT = "sellnsmall+mirrorbot"
+
+
+def _ensure_empty_org_robot():
+    """Create the robot for the empty org if it doesn't already exist."""
+    try:
+        model.user.lookup_robot(_EMPTY_ORG_ROBOT)
+    except model.InvalidRobotException:
+        org = model.organization.get_organization(_EMPTY_ORG)
+        model.user.create_robot("mirrorbot", org)
+
+
+def _create_config_directly(orgname="buynlarge", robot_username="buynlarge+coolrobot", **overrides):
+    """Create an org mirror config directly at the DB level (bypasses model-layer
+    invariant checks so tests can set up configs for orgs that already have repos)."""
+    org = model.organization.get_organization(orgname)
+    robot = model.user.lookup_robot(robot_username)
+    defaults = dict(
+        organization=org,
+        internal_robot=robot,
+        external_registry_type=SourceRegistryType.HARBOR,
+        external_registry_url="https://harbor.example.com",
+        external_namespace="my-project",
+        visibility=Visibility.get(name="private"),
+        sync_interval=3600,
+        sync_start_date=datetime(2025, 1, 1, 0, 0, 0),
+        is_enabled=True,
+        sync_status=OrgMirrorStatus.NEVER_RUN,
+        skopeo_timeout=300,
+    )
+    defaults.update(overrides)
+    return OrgMirrorConfig.create(**defaults)
+
+
 @pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestCreateOrgMirrorConfig:
     """Tests for POST /v1/organization/<orgname>/mirror endpoint."""
@@ -56,16 +98,18 @@ class TestCreateOrgMirrorConfig:
     def test_create_org_mirror_config_success(self, app):
         """
         Test successful creation of organization mirror configuration.
+        Requires an empty org (no existing repositories).
         """
-        _cleanup_org_mirror_config("buynlarge")
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             request_body = {
                 "external_registry_type": "harbor",
                 "external_registry_url": "https://harbor.example.com",
                 "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
+                "robot_username": _EMPTY_ORG_ROBOT,
                 "visibility": "private",
                 "sync_interval": 3600,
                 "sync_start_date": "2025-01-01T00:00:00Z",
@@ -73,7 +117,7 @@ class TestCreateOrgMirrorConfig:
             conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
 
         # Verify the config was created
-        org = model.organization.get_organization("buynlarge")
+        org = model.organization.get_organization(_EMPTY_ORG)
         config = model.org_mirror.get_org_mirror_config(org)
         assert config is not None
         assert config.external_registry_url == "https://harbor.example.com"
@@ -88,15 +132,16 @@ class TestCreateOrgMirrorConfig:
         """
         Test creating org mirror config with all optional fields.
         """
-        _cleanup_org_mirror_config("buynlarge")
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             request_body = {
                 "external_registry_type": "quay",
                 "external_registry_url": "https://quay.io",
                 "external_namespace": "some-org",
-                "robot_username": "buynlarge+coolrobot",
+                "robot_username": _EMPTY_ORG_ROBOT,
                 "visibility": "public",
                 "sync_interval": 7200,
                 "sync_start_date": "2025-06-15T12:00:00Z",
@@ -114,7 +159,7 @@ class TestCreateOrgMirrorConfig:
             }
             conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
 
-        org = model.organization.get_organization("buynlarge")
+        org = model.organization.get_organization(_EMPTY_ORG)
         config = model.org_mirror.get_org_mirror_config(org)
         assert config is not None
         assert config.is_enabled is False
@@ -129,16 +174,17 @@ class TestCreateOrgMirrorConfig:
         """
         Test that creating a config when one already exists returns 400.
         """
-        _cleanup_org_mirror_config("buynlarge")
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         # Create initial config
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             request_body = {
                 "external_registry_type": "harbor",
                 "external_registry_url": "https://harbor.example.com",
                 "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
+                "robot_username": _EMPTY_ORG_ROBOT,
                 "visibility": "private",
                 "sync_interval": 3600,
                 "sync_start_date": "2025-01-01T00:00:00Z",
@@ -147,12 +193,12 @@ class TestCreateOrgMirrorConfig:
 
         # Try to create another config
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             request_body = {
                 "external_registry_type": "quay",
                 "external_registry_url": "https://quay.io",
                 "external_namespace": "other-project",
-                "robot_username": "buynlarge+coolrobot",
+                "robot_username": _EMPTY_ORG_ROBOT,
                 "visibility": "public",
                 "sync_interval": 7200,
                 "sync_start_date": "2025-02-01T00:00:00Z",
@@ -163,24 +209,22 @@ class TestCreateOrgMirrorConfig:
             assert "already exists" in resp.json.get("error_message", "")
 
         # Clean up
-        org = model.organization.get_organization("buynlarge")
-        config = model.org_mirror.get_org_mirror_config(org)
-        if config:
-            config.delete_instance()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
     def test_create_org_mirror_config_invalid_robot(self, app):
         """
         Test that creating config with invalid robot returns 400.
         """
-        _cleanup_org_mirror_config("buynlarge")
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             request_body = {
                 "external_registry_type": "harbor",
                 "external_registry_url": "https://harbor.example.com",
                 "external_namespace": "my-project",
-                "robot_username": "buynlarge+nonexistent",
+                "robot_username": _EMPTY_ORG + "+nonexistent",
                 "visibility": "private",
                 "sync_interval": 3600,
                 "sync_start_date": "2025-01-01T00:00:00Z",
@@ -194,10 +238,11 @@ class TestCreateOrgMirrorConfig:
         """
         Test that creating config with robot from different org returns 400.
         """
-        _cleanup_org_mirror_config("buynlarge")
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             request_body = {
                 "external_registry_type": "harbor",
                 "external_registry_url": "https://harbor.example.com",
@@ -276,15 +321,16 @@ class TestCreateOrgMirrorConfig:
         """
         Test that creating config with invalid date format returns 400.
         """
-        _cleanup_org_mirror_config("buynlarge")
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             request_body = {
                 "external_registry_type": "harbor",
                 "external_registry_url": "https://harbor.example.com",
                 "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
+                "robot_username": _EMPTY_ORG_ROBOT,
                 "visibility": "private",
                 "sync_interval": 3600,
                 "sync_start_date": "January 1, 2025",  # Invalid format
@@ -366,18 +412,23 @@ class TestCreateOrgMirrorConfig:
             }
             conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400)
 
-
-@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
-class TestDeleteOrgMirrorConfig:
-    """Tests for DELETE /v1/organization/<orgname>/mirror endpoint."""
-
-    def test_delete_org_mirror_config_success(self, app):
+    def test_create_org_mirror_config_rejected_when_org_has_repos(self, app):
         """
-        Test successful deletion of organization mirror configuration.
+        Test that creating an org mirror config is rejected when the organization
+        already contains repositories.
         """
         _cleanup_org_mirror_config("buynlarge")
 
-        # First create a config
+        from data.database import Repository
+
+        org = model.organization.get_organization("buynlarge")
+
+        # Ensure the org has at least one repository (buynlarge has repos in test fixtures)
+        assert (
+            Repository.select().where(Repository.namespace_user == org).exists()
+        ), "Test expects buynlarge to have existing repositories"
+
+        # Attempt to create org mirror config — should be rejected
         with client_with_identity("devtable", app) as cl:
             params = {"orgname": "buynlarge"}
             request_body = {
@@ -389,7 +440,100 @@ class TestDeleteOrgMirrorConfig:
                 "sync_interval": 3600,
                 "sync_start_date": "2025-01-01T00:00:00Z",
             }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+            resp = conduct_api_call(
+                cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
+            )
+            assert "already contains repositories" in resp.json.get("error_message", "")
+
+    def test_create_org_mirror_config_rejected_when_immutability_policies_exist(self, app):
+        """
+        Test that creating org mirror config is rejected when the namespace has
+        immutability policies, even if the org is empty (no repos).
+        """
+        from data.database import (
+            NamespaceImmutabilityPolicy as NamespaceImmutabilityPolicyTable,
+        )
+
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+
+        org = model.organization.get_organization(_EMPTY_ORG)
+
+        # Create an immutability policy on the empty org
+        policy = NamespaceImmutabilityPolicyTable.create(
+            namespace=org,
+            tag_pattern="v.*",
+            tag_pattern_matches=True,
+        )
+
+        try:
+            with client_with_identity("devtable", app) as cl:
+                params = {"orgname": _EMPTY_ORG}
+                request_body = {
+                    "external_registry_type": "harbor",
+                    "external_registry_url": "https://harbor.example.com",
+                    "external_namespace": "my-project",
+                    "robot_username": _EMPTY_ORG_ROBOT,
+                    "visibility": "private",
+                    "sync_interval": 3600,
+                    "sync_start_date": "2025-01-01T00:00:00Z",
+                }
+                resp = conduct_api_call(
+                    cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
+                )
+                assert "immutability policies" in resp.json.get("error_message", "")
+        finally:
+            policy.delete_instance()
+
+    def test_create_org_mirror_config_rejected_when_proxy_cache_exists(self, app):
+        """
+        Test that creating org mirror config is rejected when the namespace has
+        a proxy cache configuration.
+        """
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
+
+        # Create a proxy cache config on the empty org
+        org = model.organization.get_organization(_EMPTY_ORG)
+        from data.database import DEFAULT_PROXY_CACHE_EXPIRATION, ProxyCacheConfig
+
+        proxy_config = ProxyCacheConfig.create(
+            organization=org,
+            upstream_registry="docker.io",
+            expiration_s=DEFAULT_PROXY_CACHE_EXPIRATION,
+        )
+
+        try:
+            with toggle_feature("PROXY_CACHE", True):
+                with client_with_identity("devtable", app) as cl:
+                    params = {"orgname": _EMPTY_ORG}
+                    request_body = {
+                        "external_registry_type": "harbor",
+                        "external_registry_url": "https://harbor.example.com",
+                        "external_namespace": "my-project",
+                        "robot_username": _EMPTY_ORG_ROBOT,
+                        "visibility": "private",
+                        "sync_interval": 3600,
+                        "sync_start_date": "2025-01-01T00:00:00Z",
+                    }
+                    resp = conduct_api_call(
+                        cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
+                    )
+                    assert "proxy cache" in resp.json.get("error_message", "").lower()
+        finally:
+            proxy_config.delete_instance()
+
+
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
+class TestDeleteOrgMirrorConfig:
+    """Tests for DELETE /v1/organization/<orgname>/mirror endpoint."""
+
+    def test_delete_org_mirror_config_success(self, app):
+        """
+        Test successful deletion of organization mirror configuration.
+        """
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly()
 
         # Verify it exists
         org = model.organization.get_organization("buynlarge")
@@ -430,9 +574,7 @@ class TestDeleteOrgMirrorConfig:
         # Create a config directly via data model to avoid identity persistence issues
         org = model.organization.get_organization("buynlarge")
         robot = model.user.lookup_robot("buynlarge+coolrobot")
-        from data.database import SourceRegistryType, Visibility
-
-        model.org_mirror.create_org_mirror_config(
+        OrgMirrorConfig.create(
             organization=org,
             internal_robot=robot,
             external_registry_type=SourceRegistryType.HARBOR,
@@ -442,6 +584,8 @@ class TestDeleteOrgMirrorConfig:
             sync_interval=3600,
             sync_start_date=datetime.now(),
             is_enabled=True,
+            sync_status=OrgMirrorStatus.NEVER_RUN,
+            skopeo_timeout=300,
         )
 
         # Verify config was created
@@ -462,16 +606,17 @@ class TestDeleteOrgMirrorConfig:
         """
         Test that after deleting a config, a new one can be created.
         """
-        _cleanup_org_mirror_config("buynlarge")
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         # Create first config
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             request_body = {
                 "external_registry_type": "harbor",
                 "external_registry_url": "https://harbor.example.com",
                 "external_namespace": "project1",
-                "robot_username": "buynlarge+coolrobot",
+                "robot_username": _EMPTY_ORG_ROBOT,
                 "visibility": "private",
                 "sync_interval": 3600,
                 "sync_start_date": "2025-01-01T00:00:00Z",
@@ -480,17 +625,17 @@ class TestDeleteOrgMirrorConfig:
 
         # Delete it
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             conduct_api_call(cl, org_mirror.OrgMirrorConfig, "DELETE", params, None, 204)
 
         # Create a new config with different settings
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             request_body = {
                 "external_registry_type": "quay",
                 "external_registry_url": "https://quay.io",
                 "external_namespace": "project2",
-                "robot_username": "buynlarge+coolrobot",
+                "robot_username": _EMPTY_ORG_ROBOT,
                 "visibility": "public",
                 "sync_interval": 7200,
                 "sync_start_date": "2025-06-01T00:00:00Z",
@@ -498,7 +643,7 @@ class TestDeleteOrgMirrorConfig:
             conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
 
         # Verify the new config has the updated settings
-        org = model.organization.get_organization("buynlarge")
+        org = model.organization.get_organization(_EMPTY_ORG)
         config = model.org_mirror.get_org_mirror_config(org)
         assert config is not None
         assert config.external_registry_url == "https://quay.io"
@@ -506,7 +651,7 @@ class TestDeleteOrgMirrorConfig:
         assert config.sync_interval == 7200
 
         # Clean up
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
 
 @pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
@@ -518,20 +663,7 @@ class TestUpdateOrgMirrorConfig:
         Test successful update of organization mirror configuration.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # First create a config
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Update the config
         with client_with_identity("devtable", app) as cl:
@@ -559,20 +691,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating is_enabled field.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Disable mirroring
         with client_with_identity("devtable", app) as cl:
@@ -601,20 +720,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating visibility field.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config with private visibility
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Update to public visibility
         with client_with_identity("devtable", app) as cl:
@@ -658,9 +764,7 @@ class TestUpdateOrgMirrorConfig:
         # Create a config directly via data model to avoid identity persistence issues
         org = model.organization.get_organization("buynlarge")
         robot = model.user.lookup_robot("buynlarge+coolrobot")
-        from data.database import SourceRegistryType, Visibility
-
-        model.org_mirror.create_org_mirror_config(
+        OrgMirrorConfig.create(
             organization=org,
             internal_robot=robot,
             external_registry_type=SourceRegistryType.HARBOR,
@@ -670,6 +774,8 @@ class TestUpdateOrgMirrorConfig:
             sync_interval=3600,
             sync_start_date=datetime.now(),
             is_enabled=True,
+            sync_status=OrgMirrorStatus.NEVER_RUN,
+            skopeo_timeout=300,
         )
 
         # Try to update as non-admin (reader has member role, not admin)
@@ -690,20 +796,7 @@ class TestUpdateOrgMirrorConfig:
         Test that updating with invalid robot returns 400.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Try to update with non-existent robot
         with client_with_identity("devtable", app) as cl:
@@ -722,20 +815,7 @@ class TestUpdateOrgMirrorConfig:
         Test that updating with robot from different org returns 400.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Try to update with robot from different org
         with client_with_identity("devtable", app) as cl:
@@ -754,20 +834,7 @@ class TestUpdateOrgMirrorConfig:
         Test that updating with sync_interval < 60 returns 400.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Try to update with invalid sync_interval
         with client_with_identity("devtable", app) as cl:
@@ -783,20 +850,7 @@ class TestUpdateOrgMirrorConfig:
         Test that updating with invalid visibility returns 400.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Try to update with invalid visibility
         with client_with_identity("devtable", app) as cl:
@@ -812,20 +866,7 @@ class TestUpdateOrgMirrorConfig:
         Test that updating with invalid date format returns 400.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Try to update with invalid date format
         with client_with_identity("devtable", app) as cl:
@@ -844,20 +885,7 @@ class TestUpdateOrgMirrorConfig:
         Test that updating with skopeo_timeout out of range returns 400.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Test too small
         with client_with_identity("devtable", app) as cl:
@@ -879,20 +907,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating multiple fields at once.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Update multiple fields
         with client_with_identity("devtable", app) as cl:
@@ -928,20 +943,7 @@ class TestUpdateOrgMirrorConfig:
         Test updating credentials.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config without credentials
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Update with credentials
         with client_with_identity("devtable", app) as cl:
@@ -961,6 +963,89 @@ class TestUpdateOrgMirrorConfig:
         # Clean up
         _cleanup_org_mirror_config("buynlarge")
 
+    def test_update_empty_string_username_normalized_to_none(self, app):
+        """PUT with empty string username/password normalizes them to None."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_username="existinguser",
+            external_registry_password="existingpass",
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_username": "",
+                "external_registry_password": "",
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, request_body, 200)
+
+        org = model.organization.get_organization("buynlarge")
+        config = model.org_mirror.get_org_mirror_config(org)
+        assert config.external_registry_username is None
+        assert config.external_registry_password is None
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_update_null_username_normalized_to_none(self, app):
+        """PUT with explicit null username/password sets them to None."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_username="existinguser",
+            external_registry_password="existingpass",
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            request_body = {
+                "external_registry_username": None,
+                "external_registry_password": None,
+            }
+            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, request_body, 200)
+
+        org = model.organization.get_organization("buynlarge")
+        config = model.org_mirror.get_org_mirror_config(org)
+        assert config.external_registry_username is None
+        assert config.external_registry_password is None
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+
+@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
+class TestGetOrgMirrorConfig:
+    """Tests for GET /v1/organization/<orgname>/mirror endpoint."""
+
+    def test_get_has_external_registry_password_true_when_set(self, app):
+        """GET response includes has_external_registry_password=True when password is set."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly(
+            external_registry_password="secret123",
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+
+        assert resp.json["has_external_registry_password"] is True
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_get_has_external_registry_password_false_when_not_set(self, app):
+        """GET response includes has_external_registry_password=False when no password."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly()
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+
+        assert resp.json["has_external_registry_password"] is False
+
+        # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
 
 @pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
 class TestVerifyOrgMirrorConnection:
@@ -971,20 +1056,11 @@ class TestVerifyOrgMirrorConnection:
         Test successful connection verification.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "quay",
-                "external_registry_url": "https://quay.io",
-                "external_namespace": "projectquay",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly(
+            external_registry_type=SourceRegistryType.QUAY,
+            external_registry_url="https://quay.io",
+            external_namespace="projectquay",
+        )
 
         # Verify connection (quay.io/projectquay is a public org that exists)
         with client_with_identity("devtable", app) as cl:
@@ -1003,20 +1079,11 @@ class TestVerifyOrgMirrorConnection:
         Test verify connection with non-existent namespace.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config with a non-existent namespace
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "quay",
-                "external_registry_url": "https://quay.io",
-                "external_namespace": "this-namespace-definitely-does-not-exist-12345",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly(
+            external_registry_type=SourceRegistryType.QUAY,
+            external_registry_url="https://quay.io",
+            external_namespace="this-namespace-definitely-does-not-exist-12345",
+        )
 
         # Verify connection should fail
         with client_with_identity("devtable", app) as cl:
@@ -1057,9 +1124,7 @@ class TestVerifyOrgMirrorConnection:
         # Create a config directly via data model to avoid identity persistence issues
         org = model.organization.get_organization("buynlarge")
         robot = model.user.lookup_robot("buynlarge+coolrobot")
-        from data.database import SourceRegistryType, Visibility
-
-        model.org_mirror.create_org_mirror_config(
+        OrgMirrorConfig.create(
             organization=org,
             internal_robot=robot,
             external_registry_type=SourceRegistryType.QUAY,
@@ -1069,6 +1134,8 @@ class TestVerifyOrgMirrorConnection:
             sync_interval=3600,
             sync_start_date=datetime.now(),
             is_enabled=True,
+            sync_status=OrgMirrorStatus.NEVER_RUN,
+            skopeo_timeout=300,
         )
 
         # Verify config was created
@@ -1087,20 +1154,11 @@ class TestVerifyOrgMirrorConnection:
         Test verify connection with invalid/unreachable URL.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config with invalid URL
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "quay",
-                "external_registry_url": "https://invalid-registry-that-does-not-exist.example.com",
-                "external_namespace": "someorg",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly(
+            external_registry_type=SourceRegistryType.QUAY,
+            external_registry_url="https://invalid-registry-that-does-not-exist.example.com",
+            external_namespace="someorg",
+        )
 
         # Verify connection should fail due to connection error
         with client_with_identity("devtable", app) as cl:
@@ -1125,20 +1183,7 @@ class TestSyncNow:
         Test triggering immediate sync successfully.
         """
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create a config first
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Trigger sync-now
         with client_with_identity("devtable", app) as cl:
@@ -1169,14 +1214,14 @@ class TestSyncNow:
         """
         Test sync-now returns error when already syncing.
         """
-        from data.database import OrgMirrorStatus, SourceRegistryType, Visibility
+        from data.database import OrgMirrorStatus
 
         _cleanup_org_mirror_config("buynlarge")
 
         # Create a config in SYNCING state
         org = model.organization.get_organization("buynlarge")
         robot = model.user.lookup_robot("buynlarge+coolrobot")
-        config = model.org_mirror.create_org_mirror_config(
+        config = OrgMirrorConfig.create(
             organization=org,
             internal_robot=robot,
             external_registry_type=SourceRegistryType.HARBOR,
@@ -1186,6 +1231,8 @@ class TestSyncNow:
             sync_interval=3600,
             sync_start_date=datetime.now(),
             is_enabled=True,
+            sync_status=OrgMirrorStatus.NEVER_RUN,
+            skopeo_timeout=300,
         )
         config.sync_status = OrgMirrorStatus.SYNCING
         config.save()
@@ -1207,14 +1254,14 @@ class TestSyncCancel:
         """
         Test cancelling ongoing sync successfully.
         """
-        from data.database import OrgMirrorStatus, SourceRegistryType, Visibility
+        from data.database import OrgMirrorStatus
 
         _cleanup_org_mirror_config("buynlarge")
 
         # Create a config in SYNCING state
         org = model.organization.get_organization("buynlarge")
         robot = model.user.lookup_robot("buynlarge+coolrobot")
-        config = model.org_mirror.create_org_mirror_config(
+        config = OrgMirrorConfig.create(
             organization=org,
             internal_robot=robot,
             external_registry_type=SourceRegistryType.HARBOR,
@@ -1224,6 +1271,8 @@ class TestSyncCancel:
             sync_interval=3600,
             sync_start_date=datetime.now(),
             is_enabled=True,
+            sync_status=OrgMirrorStatus.NEVER_RUN,
+            skopeo_timeout=300,
         )
         config.sync_status = OrgMirrorStatus.SYNCING
         config.save()
@@ -1257,20 +1306,7 @@ class TestSyncCancel:
         from data.database import OrgMirrorStatus
 
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create a config in NEVER_RUN state
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         # Cancel from NEVER_RUN - should succeed
         with client_with_identity("devtable", app) as cl:
@@ -1289,14 +1325,14 @@ class TestSyncCancel:
         """
         Test sync-cancel returns error when already cancelled.
         """
-        from data.database import OrgMirrorStatus, SourceRegistryType, Visibility
+        from data.database import OrgMirrorStatus
 
         _cleanup_org_mirror_config("buynlarge")
 
         # Create a config and set to CANCEL
         org = model.organization.get_organization("buynlarge")
         robot = model.user.lookup_robot("buynlarge+coolrobot")
-        config = model.org_mirror.create_org_mirror_config(
+        config = OrgMirrorConfig.create(
             organization=org,
             internal_robot=robot,
             external_registry_type=SourceRegistryType.HARBOR,
@@ -1306,6 +1342,8 @@ class TestSyncCancel:
             sync_interval=3600,
             sync_start_date=datetime.now(),
             is_enabled=True,
+            sync_status=OrgMirrorStatus.NEVER_RUN,
+            skopeo_timeout=300,
         )
         config.sync_status = OrgMirrorStatus.CANCEL
         config.save()
@@ -1314,112 +1352,6 @@ class TestSyncCancel:
         with client_with_identity("devtable", app) as cl:
             params = {"orgname": "buynlarge"}
             conduct_api_call(cl, org_mirror.OrgMirrorSyncCancel, "POST", params, None, 400)
-
-        # Clean up
-        _cleanup_org_mirror_config("buynlarge")
-
-
-@pytest.mark.usefixtures("_mock_dns_for_ssrf_validation")
-class TestCreateOrgMirrorWithImmutableTags:
-    """Tests for blocking mirror creation when immutable tags exist."""
-
-    def _create_immutable_tag_in_org(self, orgname, reponame):
-        """Helper to create a repository with an immutable tag in an org."""
-        repo = model.repository.create_repository(
-            orgname, reponame, None, repo_kind="image", visibility="private"
-        )
-
-        # Get a manifest from an existing repo to reference
-        existing_repo = model.repository.get_repository("devtable", "simple")
-        from data.model.oci.tag import filter_to_alive_tags
-
-        tags = filter_to_alive_tags(Tag.select().where(Tag.repository == existing_repo.id))
-        manifest = None
-        for tag in tags:
-            if tag.manifest:
-                manifest = tag.manifest
-                break
-
-        if manifest is None:
-            pytest.skip("No manifest available for test")
-
-        # Create an immutable tag
-        now_ms = get_epoch_timestamp_ms()
-        Tag.create(
-            name="immutable-tag",
-            repository=repo.id,
-            manifest=manifest,
-            lifetime_start_ms=now_ms,
-            lifetime_end_ms=None,
-            hidden=False,
-            reversion=False,
-            immutable=True,
-            tag_kind=Tag.tag_kind.get_id("tag"),
-        )
-
-        return repo
-
-    def _cleanup_test_repo(self, orgname, reponame):
-        """Clean up test repository."""
-        try:
-            repo = model.repository.get_repository(orgname, reponame)
-            if repo:
-                Tag.delete().where(Tag.repository == repo.id).execute()
-                repo.delete_instance()
-        except Exception:
-            pass
-
-    def test_create_org_mirror_blocked_with_immutable_tags(self, app):
-        """
-        Test that creating mirror config is blocked when org has immutable tags.
-        """
-        _cleanup_org_mirror_config("buynlarge")
-        self._cleanup_test_repo("buynlarge", "immutable_test_repo")
-
-        with toggle_feature("IMMUTABLE_TAGS", True):
-            # Create a repo with immutable tag
-            self._create_immutable_tag_in_org("buynlarge", "immutable_test_repo")
-
-            # Try to create mirror config - should be blocked
-            with client_with_identity("devtable", app) as cl:
-                params = {"orgname": "buynlarge"}
-                request_body = {
-                    "external_registry_type": "harbor",
-                    "external_registry_url": "https://harbor.example.com",
-                    "external_namespace": "my-project",
-                    "robot_username": "buynlarge+coolrobot",
-                    "visibility": "private",
-                    "sync_interval": 3600,
-                    "sync_start_date": "2025-01-01T00:00:00Z",
-                }
-                resp = conduct_api_call(
-                    cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 400
-                )
-                assert "immutable tags" in resp.json.get("error_message", "").lower()
-
-        # Clean up
-        self._cleanup_test_repo("buynlarge", "immutable_test_repo")
-
-    def test_create_org_mirror_allowed_without_immutable_tags(self, app):
-        """
-        Test that creating mirror config is allowed when org has no immutable tags.
-        """
-        _cleanup_org_mirror_config("buynlarge")
-
-        with toggle_feature("IMMUTABLE_TAGS", True):
-            # No immutable tags in buynlarge org
-            with client_with_identity("devtable", app) as cl:
-                params = {"orgname": "buynlarge"}
-                request_body = {
-                    "external_registry_type": "harbor",
-                    "external_registry_url": "https://harbor.example.com",
-                    "external_namespace": "my-project",
-                    "robot_username": "buynlarge+coolrobot",
-                    "visibility": "private",
-                    "sync_interval": 3600,
-                    "sync_start_date": "2025-01-01T00:00:00Z",
-                }
-                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
 
         # Clean up
         _cleanup_org_mirror_config("buynlarge")
@@ -1435,16 +1367,17 @@ class TestOrgMirrorAuditLogging:
         """
         from unittest.mock import patch
 
-        _cleanup_org_mirror_config("buynlarge")
+        _ensure_empty_org_robot()
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with patch("endpoints.api.org_mirror.log_action") as mock_log:
             with client_with_identity("devtable", app) as cl:
-                params = {"orgname": "buynlarge"}
+                params = {"orgname": _EMPTY_ORG}
                 request_body = {
                     "external_registry_type": "harbor",
                     "external_registry_url": "https://harbor.example.com",
                     "external_namespace": "my-project",
-                    "robot_username": "buynlarge+coolrobot",
+                    "robot_username": _EMPTY_ORG_ROBOT,
                     "visibility": "private",
                     "sync_interval": 3600,
                     "sync_start_date": "2025-01-01T00:00:00Z",
@@ -1455,16 +1388,16 @@ class TestOrgMirrorAuditLogging:
             mock_log.assert_called_once()
             call_args = mock_log.call_args
             assert call_args[0][0] == "org_mirror_enabled"
-            assert call_args[0][1] == "buynlarge"
+            assert call_args[0][1] == _EMPTY_ORG
             metadata = call_args[0][2]
             assert metadata["external_registry_type"] == "harbor"
             assert metadata["external_registry_url"] == "https://harbor.example.com"
             assert metadata["external_namespace"] == "my-project"
             assert metadata["sync_interval"] == 3600
-            assert metadata["robot_username"] == "buynlarge+coolrobot"
+            assert metadata["robot_username"] == _EMPTY_ORG_ROBOT
 
         # Clean up
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
     def test_update_logs_org_mirror_config_changed(self, app):
         """
@@ -1473,20 +1406,7 @@ class TestOrgMirrorAuditLogging:
         from unittest.mock import patch
 
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config first
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         with patch("endpoints.api.org_mirror.log_action") as mock_log:
             with client_with_identity("devtable", app) as cl:
@@ -1522,20 +1442,7 @@ class TestOrgMirrorAuditLogging:
         from unittest.mock import patch
 
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config first
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         with patch("endpoints.api.org_mirror.log_action") as mock_log:
             with client_with_identity("devtable", app) as cl:
@@ -1549,9 +1456,7 @@ class TestOrgMirrorAuditLogging:
             assert call_args[0][1] == "buynlarge"
             metadata = call_args[0][2]
             assert "external_reference" in metadata
-            expected_external_reference = (
-                f"{request_body['external_registry_url']}/{request_body['external_namespace']}"
-            )
+            expected_external_reference = "https://harbor.example.com/my-project"
             assert metadata["external_reference"] == expected_external_reference
 
     def test_sync_now_logs_org_mirror_sync_now_requested(self, app):
@@ -1561,20 +1466,7 @@ class TestOrgMirrorAuditLogging:
         from unittest.mock import patch
 
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create config first
-        with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
-            request_body = {
-                "external_registry_type": "harbor",
-                "external_registry_url": "https://harbor.example.com",
-                "external_namespace": "my-project",
-                "robot_username": "buynlarge+coolrobot",
-                "visibility": "private",
-                "sync_interval": 3600,
-                "sync_start_date": "2025-01-01T00:00:00Z",
-            }
-            conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, request_body, 201)
+        _create_config_directly()
 
         with patch("endpoints.api.org_mirror.log_action") as mock_log:
             with client_with_identity("devtable", app) as cl:
@@ -1598,14 +1490,14 @@ class TestOrgMirrorAuditLogging:
         """
         from unittest.mock import patch
 
-        from data.database import OrgMirrorStatus, SourceRegistryType, Visibility
+        from data.database import OrgMirrorStatus
 
         _cleanup_org_mirror_config("buynlarge")
 
         # Create a config in SYNCING state
         org = model.organization.get_organization("buynlarge")
         robot = model.user.lookup_robot("buynlarge+coolrobot")
-        config = model.org_mirror.create_org_mirror_config(
+        config = OrgMirrorConfig.create(
             organization=org,
             internal_robot=robot,
             external_registry_type=SourceRegistryType.HARBOR,
@@ -1615,6 +1507,8 @@ class TestOrgMirrorAuditLogging:
             sync_interval=3600,
             sync_start_date=datetime.now(),
             is_enabled=True,
+            sync_status=OrgMirrorStatus.NEVER_RUN,
+            skopeo_timeout=300,
         )
         config.sync_status = OrgMirrorStatus.SYNCING
         config.save()
@@ -1641,11 +1535,12 @@ class TestOrgMirrorSSRFProtection:
     """Tests for SSRF protection in organization mirror API endpoints (CWE-918)."""
 
     def _base_create_body(self, url):
+        _ensure_empty_org_robot()
         return {
             "external_registry_type": "harbor",
             "external_registry_url": url,
             "external_namespace": "my-project",
-            "robot_username": "buynlarge+coolrobot",
+            "robot_username": _EMPTY_ORG_ROBOT,
             "visibility": "private",
             "sync_interval": 3600,
             "sync_start_date": "2025-01-01T00:00:00Z",
@@ -1653,99 +1548,89 @@ class TestOrgMirrorSSRFProtection:
 
     def test_create_with_localhost_rejected(self, app):
         """POST with localhost URL returns 400 with generic error."""
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             body = self._base_create_body("https://localhost")
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
             assert "not allowed" in resp.json.get("error_message", "")
 
     def test_create_with_loopback_ip_rejected(self, app):
         """POST with 127.0.0.1 URL returns 400 with generic error."""
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             body = self._base_create_body("https://127.0.0.1")
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
             assert "not allowed" in resp.json.get("error_message", "")
 
     def test_create_with_private_ip_rejected(self, app):
         """POST with RFC 1918 private IP returns 400 with generic error."""
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             body = self._base_create_body("https://10.0.0.1")
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
             assert "not allowed" in resp.json.get("error_message", "")
 
     def test_create_with_aws_metadata_ip_rejected(self, app):
         """POST with AWS metadata service IP (169.254.169.254) returns 400 with generic error."""
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             body = self._base_create_body("http://169.254.169.254/latest/meta-data")
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
             assert "not allowed" in resp.json.get("error_message", "")
 
     def test_create_with_kubernetes_hostname_rejected(self, app):
         """POST with Kubernetes internal hostname returns 400 with generic error."""
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             body = self._base_create_body("https://kubernetes.default.svc")
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
             assert "not allowed" in resp.json.get("error_message", "")
 
     def test_create_with_gcp_metadata_rejected(self, app):
         """POST with GCP metadata hostname returns 400 with generic error."""
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             body = self._base_create_body("https://metadata.google.internal")
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
             assert "not allowed" in resp.json.get("error_message", "")
 
     def test_create_with_ftp_scheme_rejected(self, app):
         """POST with non-HTTP scheme returns 400."""
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             body = self._base_create_body("ftp://registry.example.com")
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 400)
             assert "scheme" in resp.json.get("error_message", "")
 
     def test_create_with_valid_url_succeeds(self, app):
         """POST with valid public URL succeeds (regression check)."""
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
         with client_with_identity("devtable", app) as cl:
-            params = {"orgname": "buynlarge"}
+            params = {"orgname": _EMPTY_ORG}
             body = self._base_create_body("https://harbor.example.com")
             conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 201)
 
-        _cleanup_org_mirror_config("buynlarge")
+        _cleanup_org_mirror_config(_EMPTY_ORG)
 
     def test_update_with_private_ip_rejected(self, app):
         """PUT with private IP URL returns 400."""
-        from unittest.mock import patch
-
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create a valid config first
-        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
-            mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
-
-            with client_with_identity("devtable", app) as cl:
-                params = {"orgname": "buynlarge"}
-                body = self._base_create_body("https://harbor.example.com")
-                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 201)
+        _create_config_directly()
 
         # Try to update with private IP
         with client_with_identity("devtable", app) as cl:
@@ -1758,18 +1643,8 @@ class TestOrgMirrorSSRFProtection:
 
     def test_update_with_aws_metadata_rejected(self, app):
         """PUT with AWS metadata URL returns 400 with generic error."""
-        from unittest.mock import patch
-
         _cleanup_org_mirror_config("buynlarge")
-
-        # Create a valid config first
-        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
-            mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
-
-            with client_with_identity("devtable", app) as cl:
-                params = {"orgname": "buynlarge"}
-                body = self._base_create_body("https://harbor.example.com")
-                conduct_api_call(cl, org_mirror.OrgMirrorConfig, "POST", params, body, 201)
+        _create_config_directly()
 
         # Try to update with AWS metadata IP
         with client_with_identity("devtable", app) as cl:
@@ -1777,5 +1652,122 @@ class TestOrgMirrorSSRFProtection:
             update_body = {"external_registry_url": "http://169.254.169.254/latest/meta-data"}
             resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "PUT", params, update_body, 400)
             assert "not allowed" in resp.json.get("error_message", "")
+
+        _cleanup_org_mirror_config("buynlarge")
+
+
+class TestGetOrgMirrorConfigStatusCounts:
+    """Tests for GET /v1/organization/<orgname>/mirror endpoint - repo sync status counts."""
+
+    def test_get_config_includes_repo_sync_status_counts(self, app):
+        """Config GET response includes repo_sync_status_counts with correct values."""
+        _cleanup_org_mirror_config("buynlarge")
+        config = _create_config_directly()
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="success-repo",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="syncing-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+
+        assert "repo_sync_status_counts" in resp.json
+        counts = resp.json["repo_sync_status_counts"]
+        assert counts["SUCCESS"] == 1
+        assert counts["SYNCING"] == 1
+        assert counts["FAIL"] == 0
+        assert counts["NEVER_RUN"] == 0
+
+        OrgMirrorRepository.delete().where(
+            OrgMirrorRepository.org_mirror_config == config
+        ).execute()
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_get_config_status_counts_no_repos(self, app):
+        """Config GET response returns all-zero counts when no repos exist."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly()
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorConfig, "GET", params, None, 200)
+
+        counts = resp.json["repo_sync_status_counts"]
+        for status in OrgMirrorRepoStatus:
+            assert counts[status.name] == 0
+
+        _cleanup_org_mirror_config("buynlarge")
+
+
+class TestListOrgMirrorRepositories:
+    """Tests for GET /v1/organization/<orgname>/mirror/repositories endpoint."""
+
+    def test_filter_by_status(self, app):
+        """Repos list filtered by status returns only matching repos."""
+        _cleanup_org_mirror_config("buynlarge")
+        config = _create_config_directly()
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="good-repo",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="bad-repo",
+            sync_status=OrgMirrorRepoStatus.FAIL,
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            resp = conduct_api_call(cl, org_mirror.OrgMirrorRepositories, "GET", params, None, 200)
+            # Unfiltered: both repos
+            assert resp.json["total"] == 2
+
+        # Now filter by SUCCESS using direct client call
+        from endpoints.api import api
+        from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
+
+        with client_with_identity("devtable", app) as cl:
+            with cl.session_transaction() as sess:
+                csrf_token = "test"
+                sess[OAUTH_CSRF_TOKEN_NAME] = csrf_token
+
+            url = api.url_for(org_mirror.OrgMirrorRepositories, orgname="buynlarge")
+            rv = cl.get(f"{url}?status=SUCCESS&{OAUTH_CSRF_TOKEN_NAME}={csrf_token}")
+            assert rv.status_code == 200
+            data = rv.json
+            assert data["total"] == 1
+            assert data["repositories"][0]["name"] == "good-repo"
+
+        OrgMirrorRepository.delete().where(
+            OrgMirrorRepository.org_mirror_config == config
+        ).execute()
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_invalid_status_returns_400(self, app):
+        """Invalid status query param returns 400."""
+        _cleanup_org_mirror_config("buynlarge")
+        _create_config_directly()
+
+        from endpoints.api import api
+        from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
+
+        with client_with_identity("devtable", app) as cl:
+            with cl.session_transaction() as sess:
+                csrf_token = "test"
+                sess[OAUTH_CSRF_TOKEN_NAME] = csrf_token
+
+            url = api.url_for(org_mirror.OrgMirrorRepositories, orgname="buynlarge")
+            rv = cl.get(f"{url}?status=BOGUS&{OAUTH_CSRF_TOKEN_NAME}={csrf_token}")
+            assert rv.status_code == 400
 
         _cleanup_org_mirror_config("buynlarge")

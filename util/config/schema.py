@@ -1087,6 +1087,11 @@ CONFIG_SCHEMA = {
             "description": "The number of seconds between organization mirror worker iterations. Defaults to 30.",
             "x-example": 30,
         },
+        "ORG_MIRROR_MAX_DISCOVERY_DURATION": {
+            "type": "number",
+            "description": "Maximum time in seconds allowed for the tag discovery phase of organization mirror sync. Configs that exceed this duration during discovery are released so other workers can process them. Defaults to 1800 (30 minutes).",
+            "x-example": 1800,
+        },
         "SSRF_ALLOWED_HOSTS": {
             "type": "array",
             "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for organization mirror source registries. Use for enterprise deployments where source registries are on private networks.",
@@ -1108,6 +1113,18 @@ CONFIG_SCHEMA = {
             "type": ["boolean", "null"],
             "description": "Enables rolling repository back to previous state in the event the mirror fails. Defaults to false",
             "x-example": "true",
+        },
+        "REPO_MIRROR_MAX_MANIFEST_LIST_SIZE": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum size in bytes of manifest list JSON to parse during mirroring. Prevents DoS via oversized manifests. Defaults to 10485760 (10MB).",
+            "x-example": 10485760,
+        },
+        "REPO_MIRROR_MAX_MANIFEST_ENTRIES": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum number of manifest entries to process during architecture-filtered mirroring. Prevents DoS via manifest lists with excessive entries. Defaults to 1000.",
+            "x-example": 1000,
         },
         # Feature Flag: V1 push restriction.
         "V1_PUSH_WHITELIST": {
@@ -1424,11 +1441,11 @@ CONFIG_SCHEMA = {
                         },
                         "search_token": {
                             "type": "string",
-                            "description": "Bearer token for Splunk search API. Required because HEC tokens are ingest-only and cannot search. See: https://docs.splunk.com/Documentation/SplunkCloud/latest/Config/ManageHECtokens",
+                            "description": "Bearer token for Splunk search API. Optional. HEC tokens are ingest-only and cannot search, so a separate token is needed for reading logs. When not configured, audit log viewing in the UI is unavailable but log forwarding still works. See: https://docs.splunk.com/Documentation/SplunkCloud/latest/Config/ManageHECtokens",
                             "x-example": "your-search-bearer-token",
                         },
                     },
-                    "required": ["host", "hec_token", "search_token"],
+                    "required": ["host", "hec_token"],
                 },
             },
         },
@@ -1774,15 +1791,8 @@ CONFIG_SCHEMA = {
         },
         "FEATURE_SPARSE_INDEX": {
             "type": "boolean",
-            "description": "Whether to allow sparse manifest indexes where not all architectures are required to be present. When enabled, manifests for architectures not in SPARSE_INDEX_REQUIRED_ARCHS will be skipped if they cannot be loaded. Defaults to False",
+            "description": "Whether to allow sparse manifest indexes where not all architectures are required to be present. When enabled, manifests for missing architectures will be skipped instead of raising errors. Defaults to False",
             "x-example": False,
-        },
-        "SPARSE_INDEX_REQUIRED_ARCHS": {
-            "type": "array",
-            "description": "List of architectures that are required to be present in manifest indexes when FEATURE_SPARSE_INDEX is enabled. Manifests for architectures not in this list will be skipped if they cannot be loaded.",
-            "uniqueItems": True,
-            "items": {"type": "string"},
-            "x-example": ["amd64", "arm64"],
         },
         "OTEL_CONFIG": {
             "type": "object",

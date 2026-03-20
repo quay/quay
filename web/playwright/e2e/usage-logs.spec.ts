@@ -109,22 +109,79 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeVisible();
   });
 
-  test('shows Splunk error message when logs are not implemented', async ({
+  test('displays org mirror sync failure with stderr details', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const org = await api.organization('mirrstderr');
+
+    // Mock logs API to return an org_mirror_sync_failed log with stderr
+    await authenticatedPage.route(
+      `**/api/v1/organization/${org.name}/logs*`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            logs: [
+              {
+                kind: 'org_mirror_sync_failed',
+                datetime: new Date().toISOString(),
+                metadata: {
+                  message:
+                    "Sync failed for 'quay.io/projectquay/quay': 2/2 tags failed",
+                  stderr:
+                    '[v1.0]: skopeo: authentication required; [v2.0]: skopeo: manifest unknown',
+                },
+                performer: {name: 'mirror-robot'},
+                ip: '127.0.0.1',
+              },
+            ],
+          }),
+        });
+      },
+    );
+    await authenticatedPage.route(
+      `**/api/v1/organization/${org.name}/aggregatelogs*`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({aggregated: []}),
+        });
+      },
+    );
+
+    await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+    // Verify the table renders the failure log with stderr content
+    const table = authenticatedPage.getByTestId('usage-logs-table');
+    await expect(table).toBeVisible();
+
+    await expect(table.getByText(/Sync failed for/)).toBeVisible();
+    await expect(
+      table.getByText(/skopeo: authentication required/),
+    ).toBeVisible();
+  });
+
+  test('shows info alert when Splunk search is not configured', async ({
     authenticatedPage,
     api,
   }) => {
     const org = await api.organization('splunk');
 
-    // Mock 501 error for logs API
+    // Mock 200 response with search_unavailable flag
     await authenticatedPage.route(
       '**/api/v1/organization/*/logs*',
       async (route) => {
         await route.fulfill({
-          status: 501,
+          status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
+            logs: [],
+            search_unavailable: true,
             message:
-              'Method not implemented, Splunk does not support log lookups',
+              'Audit log viewing requires a search_token to be configured for Splunk HEC.',
           }),
         });
       },
@@ -133,11 +190,13 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
       '**/api/v1/organization/*/aggregatelogs*',
       async (route) => {
         await route.fulfill({
-          status: 501,
+          status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
+            aggregated: [],
+            search_unavailable: true,
             message:
-              'Method not implemented, Splunk does not support log lookups',
+              'Audit log viewing requires a search_token to be configured for Splunk HEC.',
           }),
         });
       },
@@ -148,7 +207,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     await expect(
       authenticatedPage
         .getByText(
-          'Method not implemented, Splunk does not support log lookups',
+          'Audit log viewing requires a search_token to be configured for Splunk HEC.',
         )
         .first(),
     ).toBeVisible();

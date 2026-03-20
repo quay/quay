@@ -1,5 +1,5 @@
 import React from 'react';
-import {Control, FieldErrors} from 'react-hook-form';
+import {Control, FieldErrors, useWatch} from 'react-hook-form';
 import {
   Divider,
   Title,
@@ -19,6 +19,13 @@ interface OrgMirroringCredentialsProps {
 export const OrgMirroringCredentials: React.FC<
   OrgMirroringCredentialsProps
 > = ({control, errors, config}) => {
+  const username = useWatch({control, name: 'username'});
+  const externalRegistryType = useWatch({
+    control,
+    name: 'externalRegistryType',
+  });
+  const isQuay = externalRegistryType === 'quay';
+
   return (
     <>
       <Divider />
@@ -35,6 +42,7 @@ export const OrgMirroringCredentials: React.FC<
         errors={errors}
         label="Username"
         fieldId="username"
+        placeholder={isQuay ? '$oauthtoken' : undefined}
         showNoneWhenEmpty={!!config}
         data-testid="username-input"
       />
@@ -46,7 +54,17 @@ export const OrgMirroringCredentials: React.FC<
         label="Password"
         fieldId="external_registry_password"
         type="password"
-        showNoneWhenEmpty={!!config}
+        placeholder={
+          config?.has_external_registry_password
+            ? '••••••••  (leave blank to keep current)'
+            : undefined
+        }
+        showNoneWhenEmpty={!!config && !config.has_external_registry_password}
+        customValidation={(value: string) =>
+          value && !isQuay && !username?.trim()
+            ? 'Username is required when setting a password'
+            : true
+        }
         data-testid="password-input"
       />
     </>

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import subprocess
 from collections import namedtuple
 from pipes import quote
@@ -8,6 +9,21 @@ from tempfile import SpooledTemporaryFile
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+_SANITIZE_PATTERNS = [
+    (re.compile(r"(Authorization:\s*)\S+.*", re.IGNORECASE), r"\1[REDACTED]"),
+    (re.compile(r"(--(src-creds|dest-creds|creds)[=\s]+)\S+", re.IGNORECASE), r"\1[REDACTED]"),
+    (re.compile(r'("auth"\s*:\s*")[^"]+(")', re.IGNORECASE), r"\1[REDACTED]\2"),
+]
+
+
+def sanitize_skopeo_output(output: Optional[str]) -> Optional[str]:
+    if not output:
+        return output
+    for pattern, replacement in _SANITIZE_PATTERNS:
+        output = pattern.sub(replacement, output)
+    return output
+
 
 # success: True or False whether call was successful
 # tags: list of tags or empty list
@@ -113,6 +129,29 @@ class SkopeoMirror(object):
         args = args + [image]
         return self.run_skopeo(args, proxy or {}, timeout)
 
+    def inspect(
+        self,
+        image: str,
+        timeout: int,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        verify_tls: bool = True,
+        proxy: Optional[dict[str, str]] = None,
+        verbose_logs: bool = False,
+    ) -> SkopeoResults:
+        """
+        Inspect image metadata (resolves config blob).
+        Uses: skopeo inspect docker://image
+        Returns JSON with Architecture, Os, Digest, etc.
+        """
+        args = ["/usr/bin/skopeo"]
+        if verbose_logs:
+            args = args + ["--debug"]
+        args = args + ["inspect", "--tls-verify=%s" % verify_tls]
+        args = args + self.external_registry_credentials("--creds", username, password)
+        args = args + [image]
+        return self.run_skopeo(args, proxy or {}, timeout)
+
     def copy_by_digest(
         self,
         src_image_with_digest: str,
@@ -196,11 +235,14 @@ class SkopeoMirror(object):
             finally:
                 stdoutpipe.seek(0)
                 stderrpipe.seek(0)
-                stdout = stdoutpipe.read().decode("utf-8")
-                stderr = stderrpipe.read().decode("utf-8")
+                stdout = sanitize_skopeo_output(stdoutpipe.read().decode("utf-8"))
+                stderr = sanitize_skopeo_output(stderrpipe.read().decode("utf-8"))
 
                 if job.returncode != 0:
-                    logger.debug("Skopeo [STDERR]: %s" % stderr)
-                    logger.debug("Skopeo [STDOUT]: %s" % stdout)
+                    logger.debug(
+                        "Skopeo command failed (exit code %s): %s",
+                        job.returncode,
+                        stderr.strip(),
+                    )
 
                 return SkopeoResults(job.returncode == 0, [], stdout, stderr)

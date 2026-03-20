@@ -324,6 +324,22 @@ def _purge_oci_manifest(manifest, context):
 def _purge_oci_tag(tag, context, allow_non_expired=False):
     assert tag.repository_id == context.repository.id
 
+    # Safety: never purge immutable tags during GC when they should not expire
+    # allow_non_expired=True is used during repository deletion, which must always succeed
+    if (
+        not allow_non_expired
+        and features.IMMUTABLE_TAGS
+        and tag.immutable
+        and not config.app_config.get("FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False)
+    ):
+        logger.warning(
+            "Skipping GC of immutable tag %s (id=%s) in repository %s",
+            tag.name,
+            tag.id,
+            context.repository.id,
+        )
+        return False
+
     if not allow_non_expired:
         assert tag.lifetime_end_ms is not None
         assert tag.lifetime_end_ms <= oci_tag.get_epoch_timestamp_ms()
@@ -394,13 +410,20 @@ def _check_manifest_used(manifest_id):
         # Check if the manifest is the subject of another manifest.
         # Note: Manifest referrers with a valid subject field are created a non expiring
         # hidden tag, in order to prevent GC from inadvertently removing a referrer.
-        try:
-            Manifest.select().join(Referrer, on=(Manifest.digest == Referrer.subject)).where(
-                Manifest.id == manifest_id
-            ).get()
+        if (
+            Manifest.select()
+            .where(
+                Manifest.id == manifest_id,
+                fn.EXISTS(
+                    Referrer.select().where(
+                        Referrer.subject == Manifest.digest,
+                        Referrer.repository == Manifest.repository,
+                    )
+                ),
+            )
+            .exists()
+        ):
             return True
-        except Manifest.DoesNotExist:
-            pass
 
     return False
 

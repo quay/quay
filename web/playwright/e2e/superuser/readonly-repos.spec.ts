@@ -53,15 +53,18 @@ test.describe(
         timeout: 15000,
       });
 
-      // Assert: no "Create Repository" button visible
+      // Assert: no "Create Repository" button visible (write actions blocked for readonly)
       await expect(
         readonlyPage.getByRole('button', {name: /create repository/i}),
       ).not.toBeVisible();
 
       // Assert: no selection checkboxes (row selection is hidden for readonly)
-      await expect(readonlyPage.locator('input[type="checkbox"]')).toHaveCount(
-        0,
-      );
+      // Scope to the active tab panel to avoid matching checkboxes from hidden tabs
+      await expect(
+        readonlyPage.locator(
+          '[role="tabpanel"]:not([hidden]) input[type="checkbox"]',
+        ),
+      ).toHaveCount(0);
     });
   },
 );

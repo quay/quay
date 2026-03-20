@@ -1150,6 +1150,25 @@ class TestSetTagsImmutabilityForManifest:
         assert count == 1
         assert Tag.get_by_id(tag.id).immutable is False
 
+    def test_clears_expiration_when_immutable_cannot_expire(self, initialized_db):
+        """Test that setting immutable clears lifetime_end_ms when FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is False."""
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repo, "1")
+
+        tag = retarget_tag("v1.0", manifest.id)
+        now_ms = get_epoch_timestamp_ms()
+        Tag.update(lifetime_end_ms=now_ms + 86400000).where(Tag.id == tag.id).execute()
+        assert Tag.get_by_id(tag.id).lifetime_end_ms is not None
+
+        with patch.dict(
+            "data.model.oci.tag.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": False}
+        ):
+            set_tags_immutability_for_manifest(manifest.id, True)
+
+        updated = Tag.get_by_id(tag.id)
+        assert updated.immutable is True
+        assert updated.lifetime_end_ms is None
+
 
 class TestRetargetTagRaceCondition:
     """Tests for retarget_tag race condition protection via repository locking."""

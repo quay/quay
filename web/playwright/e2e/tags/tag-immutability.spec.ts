@@ -234,6 +234,83 @@ test.describe(
       await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
     });
 
+    // PROJQUAY-10850: Bulk remove action disabled when only immutable tags selected
+    test('bulk remove is disabled when all selected tags are immutable', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+
+      await Promise.all([
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'immutable-1',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'immutable-2',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+      ]);
+
+      await Promise.all([
+        api.raw.setTagImmutability(
+          repo.namespace,
+          repo.name,
+          'immutable-1',
+          true,
+        ),
+        api.raw.setTagImmutability(
+          repo.namespace,
+          repo.name,
+          'immutable-2',
+          true,
+        ),
+      ]);
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'immutable-1',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'immutable-2',
+          exact: true,
+        }),
+      ).toBeVisible();
+
+      const row1 = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-1',
+          exact: true,
+        }),
+      });
+      const row2 = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-2',
+          exact: true,
+        }),
+      });
+
+      await row1.getByRole('checkbox').click();
+      await row2.getByRole('checkbox').click();
+
+      await authenticatedPage.getByTestId('bulk-actions-kebab').click();
+
+      const removeAction = authenticatedPage.getByTestId('bulk-remove-action');
+      // PatternFly uses pf-m-disabled class on li elements, not disabled attribute
+      await expect(removeAction).toHaveClass(/pf-m-disabled/);
+    });
+
     test('bulk make immutable is disabled when all selected tags are already immutable', async ({
       authenticatedPage,
       api,
@@ -702,6 +779,166 @@ test.describe(
       ).not.toBeVisible();
     });
 
+    // PROJQUAY-10503: Bulk remove immutability for multiple tags
+    test('can bulk remove immutability from multiple tags', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+
+      await Promise.all([
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'immutable-1',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+        pushImage(
+          repo.namespace,
+          repo.name,
+          'immutable-2',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        ),
+      ]);
+
+      await Promise.all([
+        api.raw.setTagImmutability(
+          repo.namespace,
+          repo.name,
+          'immutable-1',
+          true,
+        ),
+        api.raw.setTagImmutability(
+          repo.namespace,
+          repo.name,
+          'immutable-2',
+          true,
+        ),
+      ]);
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'immutable-1',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'immutable-2',
+          exact: true,
+        }),
+      ).toBeVisible();
+
+      const row1 = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-1',
+          exact: true,
+        }),
+      });
+      const row2 = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-2',
+          exact: true,
+        }),
+      });
+
+      // Verify both have lock icons
+      await expect(row1.getByTestId('immutable-tag-icon')).toBeVisible();
+      await expect(row2.getByTestId('immutable-tag-icon')).toBeVisible();
+
+      // Select both tags
+      await row1.getByRole('checkbox').click();
+      await row2.getByRole('checkbox').click();
+
+      // Open bulk actions and click remove immutability
+      await authenticatedPage.getByTestId('bulk-actions-kebab').click();
+      await authenticatedPage
+        .getByTestId('bulk-remove-immutability-action')
+        .click();
+
+      // Verify modal shows correct text
+      await expect(
+        authenticatedPage.getByTestId('immutability-modal'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Remove immutability from 2 tags?'),
+      ).toBeVisible();
+
+      // Confirm
+      await authenticatedPage.getByTestId('confirm-immutability-btn').click();
+
+      // Verify modal closes and lock icons disappear
+      await expect(
+        authenticatedPage.getByTestId('immutability-modal'),
+      ).not.toBeVisible();
+
+      // Wait for tags to reload and verify lock icons are gone
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      const updatedRow1 = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-1',
+          exact: true,
+        }),
+      });
+      const updatedRow2 = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'immutable-2',
+          exact: true,
+        }),
+      });
+
+      await expect(
+        updatedRow1.getByTestId('immutable-tag-icon'),
+      ).not.toBeVisible({timeout: 10000});
+      await expect(
+        updatedRow2.getByTestId('immutable-tag-icon'),
+      ).not.toBeVisible({timeout: 10000});
+    });
+
+    // PROJQUAY-10503: Bulk remove immutability disabled when no immutable tags selected
+    test('bulk remove immutability is disabled when no immutable tags are selected', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await pushImage(
+        repo.namespace,
+        repo.name,
+        'mutable-tag',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {
+          name: 'mutable-tag',
+          exact: true,
+        }),
+      ).toBeVisible();
+
+      const tagRow = authenticatedPage.getByRole('row').filter({
+        has: authenticatedPage.getByRole('link', {
+          name: 'mutable-tag',
+          exact: true,
+        }),
+      });
+      await tagRow.getByRole('checkbox').click();
+
+      await authenticatedPage.getByTestId('bulk-actions-kebab').click();
+
+      const removeImmutabilityAction = authenticatedPage.getByTestId(
+        'bulk-remove-immutability-action',
+      );
+      await expect(removeImmutabilityAction).toHaveClass(/pf-m-disabled/);
+    });
+
     // PROJQUAY-10779: Verify usage logs show description for tag immutability changes
     test('logs tag immutability change in usage logs', async ({
       authenticatedPage,
@@ -745,6 +982,83 @@ test.describe(
 
       // Verify the description shows the action, not "No description available"
       await expect(logRow.getByText('set as immutable')).toBeVisible();
+    });
+
+    // PROJQUAY-10500: Adding labels to immutable tag does not crash the UI
+    test('can add labels to an immutable tag without crashing', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await pushImage(
+        repo.namespace,
+        repo.name,
+        'v1.0.0',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+      await api.raw.setTagImmutability(
+        repo.namespace,
+        repo.name,
+        'v1.0.0',
+        true,
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
+      ).toBeVisible();
+
+      const tagRow = authenticatedPage
+        .getByRole('row')
+        .filter({has: authenticatedPage.getByRole('link', {name: 'v1.0.0'})});
+
+      // Open edit labels dialog
+      await tagRow.getByLabel('Tag actions kebab').click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Edit labels'})
+        .click();
+
+      await expect(
+        authenticatedPage.getByRole('dialog', {name: 'Edit labels'}),
+      ).toBeVisible();
+
+      // Add a new label
+      await authenticatedPage.getByText('Add new label').click();
+      await authenticatedPage
+        .getByRole('textbox', {name: 'key=value'})
+        .fill('test=value');
+      await authenticatedPage.getByText('Mutable labels').click();
+
+      // Save
+      await authenticatedPage
+        .getByRole('button', {name: 'Save Labels'})
+        .click();
+
+      // Verify success alert appears exactly once and no crash
+      const successAlert = authenticatedPage.getByText(
+        'Created labels successfully',
+      );
+      await expect(successAlert.first()).toBeVisible({timeout: 10000});
+
+      // Verify dialog closed (onComplete fired)
+      await expect(
+        authenticatedPage.getByRole('dialog', {name: 'Edit labels'}),
+      ).not.toBeVisible();
+
+      // Verify no crash - tags table is still visible
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
+      ).toBeVisible();
+
+      // Verify "Unable to complete request" error does NOT appear
+      await expect(
+        authenticatedPage.getByText('Unable to complete request'),
+      ).not.toBeVisible();
+
+      // Verify "Undefined" does NOT appear
+      await expect(authenticatedPage.getByText('Undefined')).not.toBeVisible();
     });
 
     // PROJQUAY-10500: Verify error messages show server details, not "Undefined"

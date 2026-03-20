@@ -25,6 +25,16 @@
     margin-bottom: 0;
 }
 
+/* Copy-to-clipboard styles */
+.copy-icon {
+    display: inline;
+}
+
+.copy-icon .pf-v5-c-button {
+    padding: 0;
+    margin-left: var(--pf-v5-global--spacer--sm);
+}
+
 /* Manifest link styles */
 .manifest-link .id-label {
     font-size: var(--pf-v5-global--FontSize--xs);

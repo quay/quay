@@ -40,7 +40,7 @@ from endpoints.api.subscribe import *  # type: ignore[no-redef]
 from endpoints.api.suconfig import *  # type: ignore[no-redef]
 from endpoints.api.superuser import *  # type: ignore
 from endpoints.api.tag import *  # type: ignore[no-redef]
-from endpoints.api.team import *
+from endpoints.api.team import *  # type: ignore[assignment]
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.trigger import *
 from endpoints.api.user import *  # type: ignore[assignment,no-redef]
@@ -6025,7 +6025,7 @@ SECURITY_TESTS: List[
         OrganizationProxyCacheConfig,
         "POST",
         {"orgname": "buynlarge"},
-        {"org_name": "buynlarge", "upstream_registry": "some-upstream-registry"},
+        {"upstream_registry": "some-upstream-registry"},
         None,
         401,
     ),
@@ -6033,7 +6033,7 @@ SECURITY_TESTS: List[
         OrganizationProxyCacheConfig,
         "POST",
         {"orgname": "buynlarge"},
-        {"org_name": "buynlarge", "upstream_registry": "some-upstream-registry"},
+        {"upstream_registry": "some-upstream-registry"},
         "randomuser",
         403,
     ),
@@ -6041,7 +6041,7 @@ SECURITY_TESTS: List[
         OrganizationProxyCacheConfig,
         "POST",
         {"orgname": "sellnsmall"},
-        {"org_name": "sellnsmall", "upstream_registry": None},
+        {"upstream_registry": None},
         "devtable",
         400,
     ),
@@ -6049,7 +6049,7 @@ SECURITY_TESTS: List[
         OrganizationProxyCacheConfig,
         "POST",
         {"orgname": "library"},
-        {"org_name": "library", "upstream_registry": "some-upstream-registry"},
+        {"upstream_registry": "some-upstream-registry"},
         "devtable",
         201,
     ),

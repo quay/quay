@@ -39,6 +39,29 @@ from path_converters import (
 )
 from test.testconfig import FakeTransaction
 
+
+# Mock GlobalLock for tests that doesn't require Redis
+class MockGlobalLock:
+    """Test-only GlobalLock that doesn't require Redis connection."""
+
+    lock_factory = object()  # Non-None to pass checks
+
+    def __init__(self, name, lock_ttl=600, auto_renewal=False):
+        self._lock_name = name
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        pass
+
+    def acquire(self):
+        return True
+
+    def release(self):
+        pass
+
+
 INIT_DB_PATH = 0
 
 
@@ -227,6 +250,11 @@ def initialized_db(appconfig):
     model._basequery._lookup_team_roles()
     model._basequery.get_public_repo_visibility()
     model.log.get_log_entry_kinds()
+
+    # Patch GlobalLock to use mock version for tests (no Redis required)
+    import data.model.storage
+
+    data.model.storage.GlobalLock = MockGlobalLock
 
     if not under_test_real_database:
         # Make absolutely sure foreign key constraints are on.

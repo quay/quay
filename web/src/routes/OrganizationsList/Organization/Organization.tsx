@@ -205,6 +205,7 @@ export default function Organization() {
           organization={organizationName}
           repository={null}
           type="org"
+          isActive={activeTabKey === 'Logs'}
         />
       ),
       visible: isUserOrganization

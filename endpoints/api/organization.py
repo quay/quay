@@ -20,19 +20,20 @@ from auth.permissions import (
     GlobalReadOnlySuperUserPermission,
     OrganizationMemberPermission,
     SuperUserPermission,
-    ViewTeamPermission,
 )
 from data import model
 from data.billing import get_plan, get_plan_using_rh_sku
 from data.database import ProxyCacheConfig
 from data.model import organization_skus
 from data.model.immutability import namespace_has_immutable_tags
+from data.model.org_mirror import is_namespace_org_mirrored
 from endpoints.api import (
     ApiResource,
     allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
+    get_viewable_teams_for_org,
     internal_only,
     log_action,
     nickname,
@@ -74,14 +75,26 @@ def limit_view(limit):
     }
 
 
-def team_view(orgname, team):
+def team_view(team, viewable_teams):
+    """
+    Returns a view of a team for the API response.
+
+    Args:
+        team: The team object
+        viewable_teams: Set of team names the user can view, or None if the
+                       user is an org admin and can view all teams.
+    """
+    if viewable_teams is None:
+        can_view = True
+    else:
+        can_view = team.name in viewable_teams
+
     return {
         "name": team.name,
         "description": team.description,
         "role": team.role_name,
         "avatar": avatar.get_data_for_team(team),
-        "can_view": ViewTeamPermission(orgname, team.name).can()
-        or allow_if_global_readonly_superuser(),
+        "can_view": can_view,
         "repo_count": team.repo_count,
         "member_count": team.member_count,
         "is_synced": team.is_synced,
@@ -111,7 +124,17 @@ def org_view(o, teams):
 
     if teams is not None:
         teams = sorted(teams, key=lambda team: team.id)
-        view["teams"] = {t.name: team_view(o.username, t) for t in teams}
+
+        # Pre-compute viewable teams in a single query to avoid N+1 permission checks.
+        # Returns None if user is org admin (can view all teams), or a set of team names.
+        # Superusers and global readonly superusers can also view all teams.
+        if can_view_as_superuser or is_admin:
+            viewable_teams = None  # Can view all teams
+        else:
+            user = get_authenticated_user()
+            viewable_teams = get_viewable_teams_for_org(o.username, user)
+
+        view["teams"] = {t.name: team_view(t, viewable_teams) for t in teams}
         view["ordered_teams"] = [team.name for team in teams]
 
     if is_admin:
@@ -1012,6 +1035,12 @@ class OrganizationProxyCacheConfig(ApiResource):
         except model.InvalidProxyCacheConfigException:
             pass
 
+        # Check for org mirror in the organization
+        if features.ORG_MIRROR and is_namespace_org_mirrored(orgname):
+            raise request_error(
+                "Cannot create proxy cache: organization is managed by organization-level mirroring"
+            )
+
         # Check for immutable tags in the organization
         if features.IMMUTABLE_TAGS:
             org = model.organization.get_organization(orgname)
@@ -1025,11 +1054,16 @@ class OrganizationProxyCacheConfig(ApiResource):
                 )
 
         data = request.get_json()
-        # filter None values
-        data = {k: v for k, v in data.items() if (v is not None or not "")}
 
         try:
-            config = model.proxy_cache.create_proxy_cache_config(**data)
+            config = model.proxy_cache.create_proxy_cache_config(
+                org_name=orgname,
+                upstream_registry=data.get("upstream_registry"),
+                upstream_registry_username=data.get("upstream_registry_username"),
+                upstream_registry_password=data.get("upstream_registry_password"),
+                expiration_s=data.get("expiration_s", 86400),
+                insecure=data.get("insecure", False),
+            )
             if config is not None:
                 log_action(
                     "create_proxy_cache_config",

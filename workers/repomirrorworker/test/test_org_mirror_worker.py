@@ -35,6 +35,7 @@ from workers.repomirrorworker import (
     _build_external_reference,
     _ensure_local_repository,
     _get_all_tags_for_org_mirror,
+    _truncate,
     emit_org_mirror_log,
     org_mirror_discovery_total,
     org_mirror_repo_sync_total,
@@ -182,7 +183,10 @@ class TestEnsureLocalRepository:
         from data.model import repository as repository_model
 
         existing_repo = repository_model.create_repository(
-            org.username, "linked-repo", robot, visibility="private"
+            org.username,
+            "linked-repo",
+            robot,
+            visibility="private",
         )
         repo_db = Repository.get(Repository.id == existing_repo.id)
 
@@ -206,8 +210,11 @@ class TestEnsureLocalRepository:
         # Create a repository but don't link it
         from data.model import repository as repository_model
 
-        existing_repo = repository_model.create_repository(
-            org.username, "unlinked-repo", robot, visibility="private"
+        repository_model.create_repository(
+            org.username,
+            "unlinked-repo",
+            robot,
+            visibility="private",
         )
 
         org_mirror_repo = OrgMirrorRepository.create(
@@ -244,6 +251,70 @@ class TestEnsureLocalRepository:
         org_mirror_repo = OrgMirrorRepository.get_by_id(org_mirror_repo.id)
         assert org_mirror_repo.repository is not None
 
+    def test_creates_new_repo_with_feature_flag_enabled(self, initialized_db):
+        """Ensure repo creation succeeds even when ORG_MIRROR feature flag is on.
+
+        The org mirror worker must bypass the org-mirror guard in
+        create_repository() so it can materialise repos in org-mirrored
+        namespaces.
+        """
+        org, robot = _create_org_and_robot("ensure_repo_flag_test")
+        config = _create_org_mirror_config(org, robot)
+
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="flag-test-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        with patch("data.model.repository.features") as mock_features:
+            mock_features.ORG_MIRROR = True
+            result = _ensure_local_repository(config, org_mirror_repo)
+
+        assert result is not None
+        assert result.name == "flag-test-repo"
+        assert result.state == RepositoryState.ORG_MIRROR
+
+
+class TestTruncate:
+    """Tests for the _truncate helper."""
+
+    def test_short_string_unchanged(self):
+        assert _truncate("hello", max_len=512) == "hello"
+
+    def test_empty_string_unchanged(self):
+        assert _truncate("", max_len=512) == ""
+
+    def test_exact_boundary_unchanged(self):
+        text = "x" * 512
+        assert _truncate(text, max_len=512) == text
+
+    def test_over_boundary_truncated(self):
+        text = "x" * 513
+        result = _truncate(text, max_len=512)
+        assert len(result) == 512
+        assert result.endswith("...")
+
+    def test_default_max_len_is_512(self):
+        text = "y" * 600
+        result = _truncate(text)
+        assert len(result) == 512
+        assert result.endswith("...")
+
+    def test_custom_max_len(self):
+        text = "z" * 100
+        result = _truncate(text, max_len=50)
+        assert len(result) == 50
+        assert result.endswith("...")
+        assert result == "z" * 47 + "..."
+
+    def test_min_max_len_clamped(self):
+        """max_len below 4 is clamped to 4 to leave room for '...'."""
+        text = "abcdef"
+        result = _truncate(text, max_len=2)
+        assert len(result) == 4
+        assert result.endswith("...")
+
 
 class TestEmitOrgMirrorLog:
     """Tests for emit_org_mirror_log function."""
@@ -268,8 +339,6 @@ class TestEmitOrgMirrorLog:
             "Test message",
             tag="v1.0",
             tags="v1.0, v2.0",
-            stdout="output",
-            stderr="errors",
         )
 
         mock_logs_model.log_action.assert_called_once()
@@ -282,8 +351,73 @@ class TestEmitOrgMirrorLog:
         assert metadata["message"] == "Test message"
         assert metadata["tag"] == "v1.0"
         assert metadata["tags"] == "v1.0, v2.0"
-        assert metadata["stdout"] == "output"
-        assert metadata["stderr"] == "errors"
+        assert metadata["stdout"] is None
+        assert metadata["stderr"] is None
+
+    @patch("workers.repomirrorworker.logs_model")
+    def test_emits_log_with_stdout_stderr(self, mock_logs_model, initialized_db):
+        """Should include stdout and stderr in metadata when provided."""
+        org, robot = _create_org_and_robot("emit_log_test2")
+        config = _create_org_mirror_config(org, robot)
+
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="test-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        emit_org_mirror_log(
+            config,
+            org_mirror_repo,
+            "org_mirror_sync_failed",
+            "finish",
+            "Sync failed",
+            tag="v1.0",
+            stdout="skopeo stdout",
+            stderr="skopeo stderr",
+        )
+
+        call_args = mock_logs_model.log_action.call_args
+        metadata = call_args[1]["metadata"]
+        assert metadata["stdout"] == "skopeo stdout"
+        assert metadata["stderr"] == "skopeo stderr"
+        assert metadata["tag"] == "v1.0"
+
+    @patch("workers.repomirrorworker.logs_model")
+    def test_stderr_truncation_in_combined_log(self, mock_logs_model, initialized_db):
+        """Combined stderr should be truncated to 4096 chars."""
+        from workers.repomirrorworker import emit_org_mirror_log
+
+        org, robot = _create_org_and_robot("emit_log_test3")
+        config = _create_org_mirror_config(org, robot)
+
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="test-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+        )
+
+        # Simulate the truncation logic from perform_org_mirror_repo
+        tag_errors = {f"tag{i}": "x" * 500 for i in range(20)}
+        combined_stderr = "; ".join(f"[{t}]: {err}" for t, err in tag_errors.items() if err)
+        if len(combined_stderr) > 4096:
+            combined_stderr = combined_stderr[:4093] + "..."
+
+        assert len(combined_stderr) == 4096
+
+        emit_org_mirror_log(
+            config,
+            org_mirror_repo,
+            "org_mirror_sync_failed",
+            "end",
+            "Sync failed",
+            stderr=combined_stderr,
+        )
+
+        call_args = mock_logs_model.log_action.call_args
+        metadata = call_args[1]["metadata"]
+        assert len(metadata["stderr"]) == 4096
+        assert metadata["stderr"].endswith("...")
 
 
 class TestProcessOrgMirrorDiscovery:
@@ -650,6 +784,57 @@ class TestPerformOrgMirrorRepo:
         assert refreshed_repo.sync_retries_remaining == 0
 
 
+class TestPerTagLogging:
+    """Tests for per-tag log emission in perform_org_mirror_repo."""
+
+    @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    def test_failed_tag_stderr_in_summary_log(self, mock_token, mock_logs):
+        """Failed tag sync stderr should appear in the summary org_mirror_sync_failed log."""
+        org, robot = _create_org_and_robot("pertag_test1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="pertag-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, ["v1.0"], "", "")
+        mock_skopeo.copy.return_value = SkopeoResults(
+            False, [], "stdout_data", "skopeo: auth error"
+        )
+        mock_token.return_value = "robot_token"
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.FAIL
+
+        # No per-tag log should be emitted
+        tag_failed_calls = [
+            call
+            for call in mock_logs.log_action.call_args_list
+            if call[0][0] == "org_mirror_sync_tag_failed"
+        ]
+        assert len(tag_failed_calls) == 0
+
+        # The summary failure log should contain the stderr
+        summary_calls = [
+            call
+            for call in mock_logs.log_action.call_args_list
+            if call[0][0] == "org_mirror_sync_failed"
+        ]
+        assert len(summary_calls) == 1
+        summary_metadata = summary_calls[0][1]["metadata"]
+        assert "skopeo: auth error" in summary_metadata["stderr"]
+
+
 class TestRepoCreatedAuditLogging:
     """Tests for org_mirror_repo_created and org_mirror_repo_creation_failed audit events."""
 
@@ -696,7 +881,10 @@ class TestRepoCreatedAuditLogging:
         from data.model import repository as repository_model
 
         repository_model.create_repository(
-            org.username, "existing-repo", robot, visibility="private"
+            org.username,
+            "existing-repo",
+            robot,
+            visibility="private",
         )
 
         org_mirror_repo = OrgMirrorRepository.create(
@@ -725,7 +913,10 @@ class TestRepoCreatedAuditLogging:
         from data.model import repository as repository_model
 
         existing_repo = repository_model.create_repository(
-            org.username, "linked-repo", robot, visibility="private"
+            org.username,
+            "linked-repo",
+            robot,
+            visibility="private",
         )
         repo_db = Repository.get(Repository.id == existing_repo.id)
 
@@ -865,6 +1056,7 @@ class TestDiscoveryAuditLogging:
         call_args = failed_calls[0]
         assert call_args[1]["namespace_name"] == org.username
         metadata = call_args[1]["metadata"]
+        assert "Failed to fetch repositories from source" in metadata["message"]
         assert "Connection refused" in metadata["message"]
 
 
@@ -1413,8 +1605,9 @@ class TestManifestUtils:
         assert is_manifest_list("not valid json") is False
 
     def test_is_manifest_list_none_input(self):
-        """None input returns False (TypeError path)."""
-        assert is_manifest_list(None) is False
+        """None input raises ValueError."""
+        with pytest.raises(ValueError):
+            is_manifest_list(None)
 
     def test_is_manifest_list_no_media_type_no_manifests(self):
         """Non-list manifest without mediaType or manifests key returns False."""

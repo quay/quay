@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(jira:*), Read, Glob, Grep
+allowed-tools: Bash(acli:*), Read, Glob, Grep
 argument-hint: <issue-key>
 description: Estimate complexity and effort for a JIRA issue
 ---
@@ -21,7 +21,7 @@ The JIRA issue to estimate: `$ARGUMENTS`
 Retrieve the full issue information from JIRA:
 
 ```bash
-jira issue view $ARGUMENTS
+acli jira workitem view $ARGUMENTS
 ```
 
 **Extract and note:**

@@ -1,9 +1,15 @@
 """Tests for permission module optimizations."""
 
 import pytest
+from playhouse.test_utils import assert_query_count
 
 from data.model.organization import create_organization
-from data.model.permission import _get_user_repo_permissions, get_org_wide_permissions
+from data.model.permission import (
+    _get_user_repo_permissions,
+    get_org_wide_permissions,
+    get_user_teams_in_org,
+    is_org_admin,
+)
 from data.model.repository import create_repository
 from data.model.team import add_user_to_team, create_team
 from data.model.user import create_user_noverify, get_user
@@ -93,3 +99,56 @@ def test_get_user_repo_permissions_returns_direct_and_team(initialized_db):
 
     assert "directrepo" in repo_names
     assert "teamrepo" in repo_names
+
+
+def test_batch_team_permission_functions(initialized_db):
+    """Test get_user_teams_in_org and is_org_admin for batch permission checks."""
+    admin_user = get_user("devtable")
+    test_user = create_user_noverify("batchuser", "batchuser@example.com")
+
+    # Create org with admin and member teams
+    org = create_organization("batchorg", "batchorg@example.com", admin_user)
+    member_team = create_team("members", org, "member")
+    add_user_to_team(test_user, member_team)
+
+    # Test get_user_teams_in_org returns correct teams
+    user_teams = get_user_teams_in_org(test_user, "batchorg")
+    assert "members" in user_teams
+    assert "owners" not in user_teams  # Only admin_user is in owners
+
+    # Test is_org_admin
+    assert is_org_admin(admin_user, "batchorg") is True
+    assert is_org_admin(test_user, "batchorg") is False
+
+
+def test_batch_team_lookup_uses_single_query(initialized_db):
+    """
+    Verify batch team lookup uses O(1) queries instead of O(N).
+
+    Before optimization: Calling ViewTeamPermission().can() for each team
+    triggers multiple queries per team (permission loading, team lookup, etc.)
+
+    After optimization: get_user_teams_in_org() returns all teams in 1 query,
+    regardless of how many teams exist in the organization.
+    """
+    admin_user = get_user("devtable")
+    test_user = create_user_noverify("querycountuser", "querycountuser@example.com")
+
+    # Create org with 10 teams
+    org = create_organization("querycountorg", "querycountorg@example.com", admin_user)
+    for i in range(10):
+        team = create_team(f"team{i}", org, "member")
+        if i < 5:  # Add user to first 5 teams
+            add_user_to_team(test_user, team)
+
+    # Single query to get all user's teams (O(1) instead of O(N))
+    with assert_query_count(1):
+        user_teams = get_user_teams_in_org(test_user, "querycountorg")
+
+    assert len(user_teams) == 5
+
+    # is_org_admin also uses single query
+    with assert_query_count(1):
+        is_admin = is_org_admin(test_user, "querycountorg")
+
+    assert is_admin is False

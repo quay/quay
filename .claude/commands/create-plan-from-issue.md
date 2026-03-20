@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(jira:*), Bash(.claude/scripts/download-jira-attachments.sh:*), mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_wait_for, mcp__playwright__browser_press_key, mcp__playwright__browser_console_messages, Read, Glob, Grep, TodoWrite
+allowed-tools: Bash(acli:*), Bash(.claude/scripts/download-jira-attachments.sh:*), Bash(.claude/scripts/setup-worktree.sh:*), mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_wait_for, mcp__playwright__browser_press_key, mcp__playwright__browser_console_messages, Read, Glob, Grep, TodoWrite, AskUserQuestion
 argument-hint: <issue-key>
 description: Systematically plan a bug or feature based on a JIRA issue
 ---
@@ -21,7 +21,7 @@ The JIRA issue to plan: `$ARGUMENTS`
 Retrieve the full issue information from JIRA:
 
 ```bash
-jira issue view $ARGUMENTS
+acli jira workitem view $ARGUMENTS
 ```
 
 **Extract key information:**

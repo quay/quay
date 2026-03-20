@@ -1,28 +1,77 @@
-var http = require('http');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
-var nStatic = require('node-static');
+const DIST_DIR = path.join(__dirname, 'dist');
+const PORT = 9000;
 
-var fileServer = new nStatic.Server('./dist');
+const MIME_TYPES = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.eot': 'application/vnd.ms-fontobject',
+  '.map': 'application/json',
+};
 
-http.createServer(function (request, response) {
-    request.addListener('end', function () {
-        fileServer.serve(request, response, function (err, result) {
-            if (err) { // There was an error serving the file
-                console.error("Error serving " + request.url + " - " + err.message);
+function serveFile(filePath, res) {
+  const ext = path.extname(filePath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-                if (err.status === 404) { // If the file wasn't found, serve index.html
-                    console.error("serving index.html instead");
-                    fileServer.serveFile('index.html', 200, {}, request, response);
-                    return;
-                }
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      return null;
+    }
+    res.writeHead(200, {'Content-Type': contentType});
+    res.end(data);
+    return true;
+  });
+}
 
+http
+  .createServer((req, res) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    let filePath = path.join(DIST_DIR, url.pathname);
 
-                // Respond to the client
-                response.writeHead(err.status, err.headers);
-                response.end();
-            } else {
-                console.info(`[${new Date().toISOString()}] ${request.method} ${request.url} ${response.statusCode} `);
-            }
+    // Prevent directory traversal
+    if (!filePath.startsWith(DIST_DIR)) {
+      res.writeHead(403);
+      res.end();
+      return;
+    }
+
+    fs.stat(filePath, (err, stats) => {
+      if (!err && stats.isFile()) {
+        serveFile(filePath, res);
+        console.info(
+          `[${new Date().toISOString()}] ${req.method} ${req.url} 200`,
+        );
+      } else {
+        // SPA fallback: serve index.html for any unmatched route
+        const indexPath = path.join(DIST_DIR, 'index.html');
+        fs.readFile(indexPath, (indexErr, data) => {
+          if (indexErr) {
+            res.writeHead(500);
+            res.end('Internal Server Error');
+            return;
+          }
+          res.writeHead(200, {'Content-Type': 'text/html'});
+          res.end(data);
+          console.info(
+            `[${new Date().toISOString()}] ${req.url} 200 (fallback)`,
+          );
         });
-    }).resume();
-}).listen(9000);
+      }
+    });
+  })
+  .listen(PORT, () => {
+    console.info(`Static server listening on port ${PORT}`);
+  });

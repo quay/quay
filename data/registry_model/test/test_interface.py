@@ -11,7 +11,7 @@ import pytest
 from mock import MagicMock, patch
 from playhouse.test_utils import assert_query_count
 
-from app import docker_v2_signing_key, model_cache, storage
+from app import docker_v2_signing_key, model_cache, repository_gc_queue, storage
 from data import model
 from data.cache import cache_key
 from data.cache.impl import InMemoryDataModelCache
@@ -929,6 +929,134 @@ def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci
     assert yet_another_tag.lifetime_end_ms is not None
 
 
+@pytest.fixture
+def _enable_immutable_tags():
+    import features
+
+    original = getattr(features, "IMMUTABLE_TAGS", False)
+    features.IMMUTABLE_TAGS = True
+    yield
+    features.IMMUTABLE_TAGS = original
+
+
+def _create_schema2_manifest_with_labels(repository_ref, labels):
+    """Helper to create a Schema2 manifest with the given config labels."""
+    config_json = json.dumps(
+        {
+            "config": {"Labels": labels},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+            ],
+        }
+    )
+
+    app_config = {"TESTING": True}
+    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
+        blob = upload.commit_to_blob(app_config)
+
+    builder = DockerSchema2ManifestBuilder()
+    builder.set_config_digest(blob.digest, blob.compressed_size)
+    builder.add_layer("sha256:abcd", 1234, urls=["http://hello/world"])
+    return builder.build()
+
+
+def test_create_manifest_and_retarget_tag_with_immutable_label(oci_model, _enable_immutable_tags):
+    """Test that pushing a manifest with quay.immutable=true makes the tag immutable."""
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
+
+    created_manifest, tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "immutable_tag", storage
+    )
+    assert created_manifest is not None
+    assert tag is not None
+    assert tag.immutable is True
+
+
+def test_create_manifest_and_retarget_tag_with_immutable_label_existing_manifest(
+    oci_model, _enable_immutable_tags
+):
+    """Test that retargeting an existing manifest with quay.immutable=true to a new tag
+    also makes the new tag immutable."""
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
+
+    # First push creates the manifest
+    first_manifest, first_tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "first_immutable", storage
+    )
+    assert first_manifest is not None
+    assert first_tag.immutable is True
+
+    # Second push reuses the existing manifest with a different tag
+    second_manifest, second_tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "second_immutable", storage
+    )
+    assert second_manifest is not None
+    assert second_manifest == first_manifest
+    assert second_tag.immutable is True
+
+
+def test_create_manifest_and_retarget_tag_with_immutable_label_api_retarget(
+    oci_model, _enable_immutable_tags
+):
+    """Test that API-driven retarget also picks up immutability from manifest labels."""
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
+
+    created_manifest, _ = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "api_immutable_src", storage
+    )
+    assert created_manifest is not None
+
+    # Retarget via the API path
+    api_tag = oci_model.retarget_tag(
+        repository_ref, "api_immutable_dst", created_manifest, storage, docker_v2_signing_key
+    )
+    assert api_tag is not None
+    assert api_tag.immutable is True
+
+
+def test_create_manifest_and_retarget_tag_with_immutable_label_false(
+    oci_model, _enable_immutable_tags
+):
+    """Test that quay.immutable=false does NOT make the tag immutable."""
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "false"})
+
+    created_manifest, tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "mutable_tag", storage
+    )
+    assert created_manifest is not None
+    assert tag is not None
+    assert tag.immutable is False
+
+
+def test_create_manifest_and_retarget_tag_with_immutable_label_feature_disabled(oci_model):
+    """Test that quay.immutable=true has no effect when IMMUTABLE_TAGS feature is disabled."""
+    import features
+
+    original = getattr(features, "IMMUTABLE_TAGS", False)
+    features.IMMUTABLE_TAGS = False
+    try:
+        repository_ref = oci_model.lookup_repository("devtable", "simple")
+        manifest = _create_schema2_manifest_with_labels(repository_ref, {"quay.immutable": "true"})
+
+        created_manifest, tag = oci_model.create_manifest_and_retarget_tag(
+            repository_ref, manifest, "disabled_immutable", storage
+        )
+        assert created_manifest is not None
+        assert tag is not None
+        assert tag.immutable is False
+    finally:
+        features.IMMUTABLE_TAGS = original
+
+
 def test_manifest_list_expiration_multiple_tags(oci_model):
     """
     Test that when a manifest list is pushed with multiple tags,
@@ -1280,3 +1408,70 @@ def test_tag_names_for_manifest(initialized_db, registry_model):
                 found_tag = registry_model.get_repo_tag(repo_ref, found_name)
                 assert registry_model.get_manifest_for_tag(found_tag) == manifest
     assert verified_tag
+
+
+def test_lookup_repository_cache_invalidated_on_delete(initialized_db, registry_model):
+    """
+    Verifies that the repository cache key has been invalidated after deletion.
+
+    Regression: If a repo is deleted and then content is immediately pushed to the new repo of the same name,
+    push might fail because of the stale cached repo ID.
+    """
+    namespace = "devtable"
+    repo = "simple"
+
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    model_cache.empty_for_testing()
+
+    repo_ref = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+
+    # Check that repo reference exists and cache response
+    assert repo_ref is not None
+    old_repo_id = repo_ref._db_id
+    cache_key_for_lookup = cache_key.for_repository_lookup(namespace, repo, None, None, {})
+    cached_result = model_cache.cache.get(cache_key_for_lookup.key)
+
+    # Verify cache
+    assert cached_result is not None
+    assert json.loads(cached_result)["id"] == old_repo_id
+
+    # Delete repository
+    model.repository.mark_repository_for_deletion(namespace, repo, repository_gc_queue)
+
+    # Invalidate cache
+    model_cache.invalidate(cache_key_for_lookup)
+
+    # Create repo with the same name
+    new_repo = model.repository.create_repository(namespace, repo, None, repo_kind="image")
+    assert new_repo.id != old_repo_id
+
+    # New lookup should give us a new repo, not the deleted one
+    repo_ref_after = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+    assert repo_ref_after is not None
+    assert repo_ref_after._db_id == new_repo.id
+    assert repo_ref_after._db_id != old_repo_id
+
+
+def test_lookup_repository_cache_stale_after_delete_without_invalidation(
+    registry_model, initialized_db
+):
+    """
+    Demo for the regression bug: without invalidation, the cache returns
+    the deleted repo's ID after delete + recreate.
+    """
+    namespace = "devtable"
+    repo = "simple"
+
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    model_cache.empty_for_testing()
+
+    repo_ref = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+    old_repo_id = repo_ref._db_id
+
+    model.repository.mark_repository_for_deletion(namespace, repo, repository_gc_queue)
+    new_repo = model.repository.create_repository(namespace, repo, None, repo_kind="image")
+
+    repo_ref_stale = registry_model.lookup_repository(namespace, repo, model_cache=model_cache)
+
+    assert repo_ref_stale._db_id == old_repo_id  # Points to a deleted repo
+    assert repo_ref_stale._db_id != new_repo.id

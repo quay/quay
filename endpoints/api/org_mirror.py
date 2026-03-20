@@ -17,12 +17,13 @@ from app import app
 from auth import scopes
 from auth.permissions import AdministerOrganizationPermission
 from data import model
-from data.database import SourceRegistryType, Visibility
+from data.database import OrgMirrorRepoStatus, SourceRegistryType, Visibility
 from data.encryption import DecryptionFailureException
 from data.model import DataModelException, InvalidOrganizationException
-from data.model.immutability import namespace_has_immutable_tags
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
     allow_if_superuser_with_full_access,
     log_action,
     nickname,
@@ -208,7 +209,13 @@ class OrgMirrorConfig(ApiResource):
         """
         Get the organization-level mirror configuration.
         """
-        require_org_admin(orgname)
+        permission = AdministerOrganizationPermission(orgname)
+        if (
+            not permission.can()
+            and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
+            raise Unauthorized()
 
         try:
             org = model.organization.get_organization(orgname)
@@ -218,6 +225,8 @@ class OrgMirrorConfig(ApiResource):
         mirror = model.org_mirror.get_org_mirror_config(org)
         if not mirror:
             raise NotFound()
+
+        repo_status_counts = model.org_mirror.get_org_mirror_repo_status_counts(mirror)
 
         try:
             username = self._decrypt_username(mirror.external_registry_username)
@@ -235,6 +244,7 @@ class OrgMirrorConfig(ApiResource):
             "external_registry_url": mirror.external_registry_url,
             "external_namespace": mirror.external_namespace,
             "external_registry_username": username,
+            "has_external_registry_password": mirror.external_registry_password is not None,
             "external_registry_config": mirror.external_registry_config or {},
             "repository_filters": mirror.repository_filters or [],
             "robot_username": mirror.internal_robot.username if mirror.internal_robot else None,
@@ -244,6 +254,7 @@ class OrgMirrorConfig(ApiResource):
             "sync_expiration_date": _dt_to_string(mirror.sync_expiration_date),
             "sync_status": mirror.sync_status.name,
             "sync_retries_remaining": mirror.sync_retries_remaining,
+            "repo_sync_status_counts": repo_status_counts,
             "skopeo_timeout": mirror.skopeo_timeout,
             "creation_date": _dt_to_string(mirror.creation_date),
         }
@@ -274,20 +285,6 @@ class OrgMirrorConfig(ApiResource):
             org = model.organization.get_organization(orgname)
         except InvalidOrganizationException:
             raise NotFound()
-
-        # Check if mirror config already exists
-        existing = model.org_mirror.get_org_mirror_config(org)
-        if existing:
-            raise InvalidRequest("Mirror configuration already exists for this organization")
-
-        # Check for immutable tags in the organization
-        if features.IMMUTABLE_TAGS:
-            if namespace_has_immutable_tags(org.id):
-                logger.warning(
-                    "Blocking mirror creation for org '%s': immutable tags exist",
-                    orgname,
-                )
-                raise InvalidRequest("Cannot convert organization to mirror: immutable tags exist")
 
         data = request.get_json()
 
@@ -342,7 +339,7 @@ class OrgMirrorConfig(ApiResource):
 
         # Create the mirror config
         try:
-            mirror = model.org_mirror.create_org_mirror_config(
+            model.org_mirror.create_org_mirror_config(
                 organization=org,
                 internal_robot=robot,
                 external_registry_type=external_registry_type,
@@ -455,13 +452,13 @@ class OrgMirrorConfig(ApiResource):
                 )
             update_kwargs["sync_start_date"] = sync_start_date
 
-        # Handle external_registry_username
+        # Handle external_registry_username (normalize empty string to None)
         if "external_registry_username" in data:
-            update_kwargs["external_registry_username"] = data["external_registry_username"]
+            update_kwargs["external_registry_username"] = data["external_registry_username"] or None
 
-        # Handle external_registry_password
+        # Handle external_registry_password (normalize empty string to None)
         if "external_registry_password" in data:
-            update_kwargs["external_registry_password"] = data["external_registry_password"]
+            update_kwargs["external_registry_password"] = data["external_registry_password"] or None
 
         # Handle external_registry_config
         if "external_registry_config" in data:
@@ -750,7 +747,13 @@ class OrgMirrorRepositories(ApiResource):
                 - total: Total number of matching repositories
                 - has_next: Whether there are more pages
         """
-        require_org_admin(orgname)
+        permission = AdministerOrganizationPermission(orgname)
+        if (
+            not permission.can()
+            and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
+            raise Unauthorized()
 
         try:
             org = model.organization.get_organization(orgname)
@@ -771,8 +774,22 @@ class OrgMirrorRepositories(ApiResource):
         if limit < 1:
             limit = DEFAULT_PAGE_LIMIT
 
+        # Parse optional status filter
+        status_filter = None
+        status_param = request.args.get("status", None, type=str)
+        if status_param is not None:
+            try:
+                status_filter = OrgMirrorRepoStatus[status_param.upper()]
+            except KeyError as err:
+                raise InvalidRequest(
+                    f"Invalid status filter '{status_param}'. "
+                    f"Valid values: {', '.join(s.name for s in OrgMirrorRepoStatus)}"
+                ) from err
+
         # Fetch from database with pagination
-        repos, total = model.org_mirror.get_org_mirror_repos(mirror, page, limit)
+        repos, total = model.org_mirror.get_org_mirror_repos(
+            mirror, page, limit, status_filter=status_filter
+        )
 
         return {
             "repositories": [

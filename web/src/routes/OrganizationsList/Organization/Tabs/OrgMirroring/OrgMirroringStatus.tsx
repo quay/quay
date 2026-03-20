@@ -1,5 +1,12 @@
-import React from 'react';
-import {Divider, Button, Label} from '@patternfly/react-core';
+import React, {useState} from 'react';
+import {
+  Divider,
+  Button,
+  Label,
+  LabelGroup,
+  Modal,
+  ModalVariant,
+} from '@patternfly/react-core';
 import {StatusDisplay} from 'src/components/StatusDisplay';
 import {
   OrgMirrorConfig,
@@ -11,6 +18,7 @@ import {formatDate} from 'src/libs/utils';
 interface OrgMirroringStatusProps {
   config: OrgMirrorConfig | null;
   isVerifying: boolean;
+  isCancellingSync: boolean;
   onCancelSync: () => Promise<void>;
   onVerifyConnection: () => Promise<void>;
 }
@@ -18,15 +26,47 @@ interface OrgMirroringStatusProps {
 export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
   config,
   isVerifying,
+  isCancellingSync,
   onCancelSync,
   onVerifyConnection,
 }) => {
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+
   if (!config) {
     return null;
   }
 
   return (
     <>
+      <Modal
+        variant={ModalVariant.small}
+        title="Cancel sync"
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        actions={[
+          <Button
+            key="confirm"
+            variant="danger"
+            onClick={async () => {
+              setIsCancelModalOpen(false);
+              await onCancelSync();
+            }}
+            data-testid="confirm-cancel-sync-button"
+          >
+            Yes, cancel sync
+          </Button>,
+          <Button
+            key="cancel"
+            variant="link"
+            onClick={() => setIsCancelModalOpen(false)}
+          >
+            Cancel
+          </Button>,
+        ]}
+      >
+        Are you sure you want to cancel the current sync operation? All
+        in-progress and scheduled syncs will be stopped.
+      </Modal>
       <Divider />
       <StatusDisplay
         title="Status"
@@ -34,11 +74,24 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
         items={[
           {
             label: 'State',
-            value: (
-              <Label color={orgMirrorStatusColors[config.sync_status]}>
-                {orgMirrorStatusLabels[config.sync_status] ||
-                  config.sync_status}
-              </Label>
+            value: config.repo_sync_status_counts ? (
+              <LabelGroup numLabels={10}>
+                {Object.entries(config.repo_sync_status_counts)
+                  .filter(([, count]) => count > 0)
+                  .map(([status, count]) => (
+                    <Label
+                      key={status}
+                      color={orgMirrorStatusColors[status] || 'grey'}
+                    >
+                      {orgMirrorStatusLabels[status] || status}: {count}
+                    </Label>
+                  ))}
+                {Object.values(config.repo_sync_status_counts).every(
+                  (c) => c === 0,
+                ) && 'No repositories'}
+              </LabelGroup>
+            ) : (
+              'N/A'
             ),
             action: (
               <Button
@@ -46,13 +99,16 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
                 size="sm"
                 type="button"
                 isDisabled={
-                  config.sync_status !== 'SYNCING' &&
-                  config.sync_status !== 'SYNC_NOW'
+                  isCancellingSync ||
+                  !config.repo_sync_status_counts ||
+                  ((config.repo_sync_status_counts['SYNCING'] ?? 0) === 0 &&
+                    (config.repo_sync_status_counts['SYNC_NOW'] ?? 0) === 0)
                 }
+                isLoading={isCancellingSync}
                 data-testid="cancel-sync-button"
-                onClick={onCancelSync}
+                onClick={() => setIsCancelModalOpen(true)}
               >
-                Cancel Sync
+                {isCancellingSync ? 'Cancelling...' : 'Cancel Sync'}
               </Button>
             ),
           },

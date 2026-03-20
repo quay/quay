@@ -6,13 +6,12 @@ import {
   ChartGroup,
   ChartVoronoiContainer,
 } from '@patternfly/react-charts';
-import {getAggregateLogs} from 'src/hooks/UseUsageLogs';
+import {getAggregateLogs, LogsUnavailable} from 'src/hooks/UseUsageLogs';
 
 import {useQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {Flex, FlexItem, Spinner} from '@patternfly/react-core';
 import {logKinds} from './UsageLogs';
-import {AxiosError} from 'axios';
 
 import './css/UsageLogs.scss';
 
@@ -24,6 +23,7 @@ interface UsageLogsGraphProps {
   type: string;
   isSuperuser?: boolean;
   isHidden?: boolean;
+  enabled?: boolean;
 }
 
 export default function UsageLogsGraph(props: UsageLogsGraphProps) {
@@ -56,8 +56,8 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     isError: errorFetchingLogs,
     error: fetchError,
     isLoading: loadingAggregateLogs,
-  } = useQuery(
-    [
+  } = useQuery({
+    queryKey: [
       'usageLogs',
       props.starttime,
       props.endtime,
@@ -68,7 +68,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
         isSuperuser: props.isSuperuser,
       },
     ],
-    async () => {
+    queryFn: async () => {
       return await getAggregateLogs(
         props.org,
         props.repo,
@@ -77,23 +77,20 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
         props.isSuperuser,
       );
     },
-  );
+    enabled: props.enabled !== false,
+  });
 
   // tslint:disable-next-line:curly
   if (loadingAggregateLogs) return <Spinner />;
 
   // tslint:disable-next-line:curly
   if (errorFetchingLogs) {
-    // Check if this is a 501 NOT IMPLEMENTED error from Splunk
-    if (
-      fetchError instanceof AxiosError &&
-      fetchError.response?.status === 501
-    ) {
-      const errorMessage =
-        fetchError.response?.data?.message || 'Unable to get logs';
-      return <RequestError message={errorMessage} title="" />;
-    }
     return <RequestError message="Unable to get logs" />;
+  }
+
+  // Hide chart when log viewing is unavailable (e.g. Splunk HEC without search_token)
+  if (aggregateLogs && (aggregateLogs as LogsUnavailable).unavailable) {
+    return null;
   }
 
   let maxRange = 0;

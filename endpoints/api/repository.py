@@ -12,6 +12,7 @@ import features
 from app import (
     app,
     dockerfile_build_queue,
+    model_cache,
     repository_gc_queue,
     tuf_metadata_api,
     usermanager,
@@ -24,7 +25,10 @@ from auth.permissions import (
     ModifyRepositoryPermission,
     ReadRepositoryPermission,
 )
+from data.cache import cache_key
 from data.database import RepositoryState
+from data.model import DataModelException
+from data.model.org_mirror import is_namespace_org_mirrored
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
@@ -174,15 +178,25 @@ class RepositoryList(ApiResource):
             if not valid_repository_name:
                 raise InvalidRequest("Invalid repository name")
 
+            if features.ORG_MIRROR and is_namespace_org_mirrored(namespace_name):
+                raise InvalidRequest(
+                    "Cannot create repository: organization is managed by "
+                    "organization-level mirroring"
+                )
+
             kind = req.get("repo_kind", "image") or "image"
-            created = model.create_repo(
-                namespace_name,
-                repository_name,
-                owner,
-                req["description"],
-                visibility=visibility,
-                repo_kind=kind,
-            )
+            try:
+                created = model.create_repo(
+                    namespace_name,
+                    repository_name,
+                    owner,
+                    req["description"],
+                    visibility=visibility,
+                    repo_kind=kind,
+                )
+            except DataModelException as e:
+                raise InvalidRequest(str(e)) from e
+
             if created is None:
                 raise InvalidRequest("Could not create repository")
 
@@ -385,6 +399,14 @@ class Repository(RepositoryParamResource):
         """
         username = model.mark_repository_for_deletion(namespace, repository, repository_gc_queue)
 
+        # Invalidate the repository lookup cache to prevent stale repository ID being returned on immediate new push
+        # to the repo of the same name.
+        for kind_filter in (None, "image"):
+            repository_lookup_key = cache_key.for_repository_lookup(
+                namespace, repository, None, kind_filter, model_cache.cache_config
+            )
+            model_cache.invalidate(repository_lookup_key)
+
         if features.BILLING:
             plan = get_namespace_plan(namespace)
             model.check_repository_usage(username, plan)
@@ -543,6 +565,12 @@ class RepositoryStateResource(RepositoryParamResource):
 
         if state == RepositoryState.ORG_MIRROR:
             return {"detail": "ORG_MIRROR state is managed by organization-level mirroring"}, 400
+
+        if features.ORG_MIRROR and is_namespace_org_mirrored(namespace):
+            return {
+                "detail": "Repository state changes are not allowed in an "
+                "organization managed by organization-level mirroring"
+            }, 400
 
         if state is None:
             return {"detail": "%s is not a valid Repository state." % state_name}, 400

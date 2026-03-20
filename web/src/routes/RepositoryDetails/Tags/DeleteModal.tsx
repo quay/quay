@@ -6,7 +6,10 @@ import {
   Alert,
 } from '@patternfly/react-core';
 import {useEffect} from 'react';
-import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {
+  RepositoryDetails,
+  isNonNormalState,
+} from 'src/resources/RepositoryResource';
 import './Tags.css';
 import {isNullOrUndefined} from 'src/libs/utils';
 import Conditional from 'src/components/empty/Conditional';
@@ -27,7 +30,7 @@ export function DeleteModal(props: ModalProps) {
     errorDeleteTagDetails,
   } = useDeleteTag(props.org, props.repo);
   const {addAlert} = useUI();
-  const isReadonly: boolean = props.repoDetails?.state !== 'NORMAL';
+  const isReadonly = isNonNormalState(props.repoDetails?.state);
 
   useEffect(() => {
     if (successDeleteTags) {
@@ -144,7 +147,7 @@ export function DeleteModal(props: ModalProps) {
             onClick={() =>
               deleteTags({tags: props.tags, force: props.modalOptions.force})
             }
-            isDisabled={isReadonly}
+            isDisabled={isReadonly || props.tags.length === 0}
           >
             Delete
           </Button>,
