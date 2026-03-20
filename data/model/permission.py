@@ -95,8 +95,11 @@ def get_user_repository_permissions_for_write(user, namespace, repo_name):
 
 
 def _get_user_repo_permissions(
-    user, limit_to_repository_obj=None, limit_namespace=None, limit_repo_name=None,
-    can_use_read_replica=True
+    user,
+    limit_to_repository_obj=None,
+    limit_namespace=None,
+    limit_repo_name=None,
+    can_use_read_replica=True,
 ):
     user_in_team = TeamMember.select(SQL("1")).where(
         (TeamMember.team == RepositoryPermission.team) & (TeamMember.user == user)
@@ -104,7 +107,11 @@ def _get_user_repo_permissions(
 
     query = (
         RepositoryPermission.select(
-            RepositoryPermission, Role, Repository, Namespace, can_use_read_replica=can_use_read_replica
+            RepositoryPermission,
+            Role,
+            Repository,
+            Namespace,
+            can_use_read_replica=can_use_read_replica,
         )
         .join(Role)
         .switch(RepositoryPermission)
@@ -359,7 +366,19 @@ def delete_user_permission(username, namespace_name, repository_name):
     if not fetched:
         raise DataModelException("User does not have permission for repo.")
 
-    fetched[0].delete_instance()
+    permission = fetched[0]
+
+    # Mark permission as revoked before deleting (best-effort)
+    try:
+        from app import model_cache
+
+        tracker = getattr(model_cache, "repo_modification_tracker", None)
+        if tracker and permission.user:
+            tracker.mark_permission_revoked(permission.user.id, namespace_name, repository_name)
+    except Exception:
+        pass
+
+    permission.delete_instance()
 
 
 def delete_team_permission(team_name, namespace_name, repository_name):
@@ -369,7 +388,23 @@ def delete_team_permission(team_name, namespace_name, repository_name):
     if not fetched:
         raise DataModelException("Team does not have permission for repo.")
 
-    fetched[0].delete_instance()
+    permission = fetched[0]
+
+    # Mark permissions as revoked for all team members (best-effort)
+    try:
+        from app import model_cache
+
+        tracker = getattr(model_cache, "repo_modification_tracker", None)
+        if tracker and permission.team:
+            # Mark revocation for each team member
+            from data.model import organization as org_model
+
+            for member in org_model.get_organization_team_members(permission.team.id):
+                tracker.mark_permission_revoked(member.id, namespace_name, repository_name)
+    except Exception:
+        pass
+
+    permission.delete_instance()
 
 
 def __set_entity_repo_permission(
