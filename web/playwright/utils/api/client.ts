@@ -2013,6 +2013,29 @@ export class ApiClient {
     }
   }
 
+  // Security scanner methods
+
+  async getManifestSecurity(
+    namespace: string,
+    repo: string,
+    manifestDigest: string,
+    includeVulnerabilities = true,
+  ): Promise<{status: string; data: unknown}> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/manifest/${manifestDigest}/security?vulnerabilities=${includeVulnerabilities}`,
+      {timeout: 30000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get security info for ${namespace}/${repo}@${manifestDigest}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
   // Organization mirror methods
 
   async createOrgMirrorConfig(
