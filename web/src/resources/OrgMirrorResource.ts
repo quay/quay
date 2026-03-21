@@ -180,8 +180,8 @@ export const getOrgMirrorRepos = async (
 // Status display labels
 // Keys must match OrgMirrorStatus enum names from the backend
 export const orgMirrorStatusLabels: Record<OrgMirrorSyncStatus, string> = {
-  NEVER_RUN: 'Scheduled',
-  SYNC_NOW: 'Scheduled',
+  NEVER_RUN: 'Pending',
+  SYNC_NOW: 'Sync Requested',
   FAIL: 'Failed',
   SYNCING: 'Syncing',
   SUCCESS: 'Success',
@@ -193,7 +193,7 @@ export const orgMirrorStatusColors: Record<
   OrgMirrorSyncStatus,
   'blue' | 'green' | 'red' | 'cyan' | 'orange' | 'grey'
 > = {
-  NEVER_RUN: 'blue',
+  NEVER_RUN: 'grey',
   SYNC_NOW: 'cyan',
   FAIL: 'red',
   SYNCING: 'blue',
