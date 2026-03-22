@@ -86,6 +86,11 @@ export default function TagsList(props: TagsProps) {
         true, // include_modelcard
       );
       const manifestList = JSON.parse(manifestResp.manifest_data);
+      // if we have enriched data, use that data
+      if (manifestResp.manifests && manifestResp.manifests.length > 0) {
+        manifestList.manifests = manifestResp.manifests;
+      }
+
       // Map is_present onto each child manifest using child_manifests_presence
       if (manifestList.manifests && tag.child_manifests_presence) {
         manifestList.manifests = manifestList.manifests.map(

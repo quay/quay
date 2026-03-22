@@ -24,6 +24,8 @@ export interface Tag {
   manifest_list: ManifestList;
   expiration?: string;
   end_ts?: number;
+  // Image built date
+  image_built?: string;
   modelcard?: string;
   cosign_signature_tag?: string;
   cosign_signature_manifest_digest?: string;
@@ -53,6 +55,8 @@ export interface Manifest {
   layers: Layer[];
   // Whether manifest content is available locally (not sparse)
   is_present?: boolean;
+  // Read child manifest built timestamp if applicable
+  image_built?: string;
 }
 
 export interface Layer {
@@ -94,6 +98,7 @@ export interface ManifestByDigestResponse {
   layers?: Layer[];
   layers_compressed_size?: number;
   modelcard?: string;
+  manifests?: Manifest[]; // Enriched child manifests (for manifest lists)
 }
 
 export interface SecurityDetailsResponse {

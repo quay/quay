@@ -28,6 +28,7 @@ import {
   TagIcon,
   CubeIcon,
   CopyIcon,
+  InfoCircleIcon,
 } from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
 import Labels from 'src/components/labels/Labels';
@@ -65,7 +66,10 @@ function SubRow(props: SubRowProps) {
                     style={{marginRight: '4px'}}
                     aria-label="Missing architecture"
                   />
-                  {`${props.manifest.platform.os} on ${props.manifest.platform.architecture}`}
+                  {props.manifest.platform.os === 'unknown' &&
+                  props.manifest.platform.architecture === 'unknown'
+                    ? 'Build Artifact'
+                    : `${props.manifest.platform.os} on ${props.manifest.platform.architecture}`}
                   <Label
                     color="grey"
                     isCompact
@@ -86,7 +90,10 @@ function SubRow(props: SubRowProps) {
                   new Map([['digest', props.manifest.digest]]),
                 )}
               >
-                {`${props.manifest.platform.os} on ${props.manifest.platform.architecture}`}
+                {props.manifest.platform.os === 'unknown' &&
+                props.manifest.platform.architecture === 'unknown'
+                  ? 'Build Artifact'
+                  : `${props.manifest.platform.os} on ${props.manifest.platform.architecture}`}
               </Link>
             )}
           </ExpandableRowContent>
@@ -99,7 +106,7 @@ function SubRow(props: SubRowProps) {
           <ExpandableRowContent>
             {isMissing ? (
               <span style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
-                N/A
+                n/a
               </span>
             ) : (
               <SecurityDetails
@@ -117,7 +124,7 @@ function SubRow(props: SubRowProps) {
         <ExpandableRowContent>
           {isMissing ? (
             <span style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
-              N/A
+              n/a
             </span>
           ) : (
             <ChildManifestSize
@@ -145,6 +152,18 @@ function SubRow(props: SubRowProps) {
       ) : (
         <Td />
       )}
+      {/* Add image built column for child manifests */}
+      <Td dataLabel={ColumnNames.imageBuilt} noPadding={false} colSpan={1}>
+        <ExpandableRowContent>
+          {isMissing ? (
+            <span style={{color: 'var(--pf-v5-global--Color--200)'}}>n/a</span>
+          ) : props.manifest.image_built ? (
+            formatDate(props.manifest.image_built)
+          ) : (
+            'n/a'
+          )}
+        </ExpandableRowContent>
+      </Td>
       {props.trackCount > 0 && (
         <Td className="manifest-track-cell">
           <ManifestTrackCell
@@ -158,7 +177,7 @@ function SubRow(props: SubRowProps) {
       )}
       <Td
         colSpan={
-          (props.config?.features?.IMAGE_PULL_STATS ? 4 : 2) +
+          (props.config?.features?.IMAGE_PULL_STATS ? 3 : 1) +
           (props.config?.features?.SECURITY_SCANNER ? 0 : 1)
         }
       />
@@ -232,76 +251,98 @@ function TagsTableRow(props: RowProps) {
           onMouseEnter={() => setIsTagHovered(true)}
           onMouseLeave={() => setIsTagHovered(false)}
         >
-          <Link
-            to={getTagDetailPath(
-              location.pathname,
-              props.org,
-              props.repo,
-              tag.name,
-            )}
-          >
-            {tag.name}
-          </Link>
-          {tag.cosign_signature_tag && (
-            <Tooltip content="This tag has been signed via cosign.">
-              <ShieldAltIcon
-                style={{marginLeft: '8px'}}
-                aria-label="Cosign signed"
-              />
-            </Tooltip>
-          )}
-          {config?.features?.IMMUTABLE_TAGS && tag.immutable && (
-            <Tooltip content="This tag is immutable and cannot be modified or deleted">
-              <LockIcon
-                style={{
-                  marginLeft: '8px',
-                  color:
-                    'var(--pf-t--global--icon--color--status--info--default)',
-                }}
-                aria-label="Immutable tag"
-                data-testid="immutable-tag-icon"
-              />
-            </Tooltip>
-          )}
-          {tag.is_sparse && (
-            <Tooltip content="This is a sparse manifest list - not all architectures are present locally">
-              <Label
-                color="orange"
-                isCompact
-                style={{marginLeft: '8px'}}
-                data-testid="sparse-manifest-label"
+          <div>
+            <div>
+              <Link
+                to={getTagDetailPath(
+                  location.pathname,
+                  props.org,
+                  props.repo,
+                  tag.name,
+                )}
               >
-                Sparse ({tag.present_child_count}/{tag.child_manifest_count})
-              </Label>
-            </Tooltip>
-          )}
-          <span
-            className="copy-icon"
-            style={{visibility: isTagHovered ? 'visible' : 'hidden'}}
-          >
-            <Tooltip
-              content={
-                <div>
-                  {isTagCopied ? 'Copied to clipboard!' : `Copy pull spec`}
-                </div>
-              }
-              position="top"
-            >
-              <Button
-                icon={<CopyIcon />}
-                variant="plain"
-                aria-label="Copy pull spec to clipboard"
-                onClick={() => {
-                  const hostname =
-                    config?.config?.SERVER_HOSTNAME || window.location.host;
-                  props.copyToClipboard(
-                    `${hostname}/${props.org}/${props.repo}:${tag.name}`,
-                    `tag-${tag.name}`,
-                  );
+                {tag.name}
+              </Link>
+              {tag.cosign_signature_tag && (
+                <Tooltip content="This tag has been signed via cosign.">
+                  <ShieldAltIcon
+                    style={{marginLeft: '8px'}}
+                    aria-label="Cosign signed"
+                  />
+                </Tooltip>
+              )}
+              {config?.features?.IMMUTABLE_TAGS && tag.immutable && (
+                <Tooltip content="This tag is immutable and cannot be modified or deleted">
+                  <LockIcon
+                    style={{
+                      marginLeft: '8px',
+                      color: 'var(--pf-t--global--icon-color--status--info--default)',
+                    }}
+                    aria-label="Immutable tag"
+                    data-testid="immutable-tag-icon"
+                  />
+                </Tooltip>
+              )}
+              {tag.is_sparse && (
+                <Tooltip content="This is a sparse manifest list - not all architectures are present locally">
+                  <Label
+                    color="orange"
+                    isCompact
+                    style={{marginLeft: '8px'}}
+                    data-testid="sparse-manifest-label"
+                  >
+                    Sparse ({tag.present_child_count}/{tag.child_manifest_count}
+                    )
+                  </Label>
+                </Tooltip>
+              )}
+              <span
+                className="copy-icon"
+                style={{visibility: isTagHovered ? 'visible' : 'hidden'}}
+              >
+                <Tooltip
+                  content={
+                    <div>
+                      {isTagCopied ? 'Copied to clipboard!' : `Copy pull spec`}
+                    </div>
+                  }
+                  position="top"
+                >
+                  <Button
+                    icon={<CopyIcon />}
+                    variant="plain"
+                    aria-label="Copy pull spec to clipboard"
+                    onClick={() => {
+                      const hostname =
+                        config?.config?.SERVER_HOSTNAME || window.location.host;
+                      props.copyToClipboard(
+                        `${hostname}/${props.org}/${props.repo}:${tag.name}`,
+                        `tag-${tag.name}`,
+                      );
+                    }}
+                  >
+                    <CopyIcon />
+                  </Button>
+                </Tooltip>
+              </span>
+            </div>
+            {tag.is_manifest_list && (
+              <div
+                style={{
+                  fontSize: '0.875rem',
+                  color: 'var(--pf-t--global--text--color--subtle)',
+                  marginTop: '4px',
                 }}
-              />
-            </Tooltip>
-          </span>
+              >
+                <InfoCircleIcon
+                  style={{marginRight: '6px'}}
+                  aria-label="Note"
+                />
+                Note: Child manifest build dates represent when the container
+                image was created.
+              </div>
+            )}
+          </div>
         </Td>
         <Conditional if={config?.features?.SECURITY_SCANNER}>
           <Td dataLabel={ColumnNames.security}>
@@ -327,6 +368,11 @@ function TagsTableRow(props: RowProps) {
         </Td>
         <Td dataLabel={ColumnNames.lastModified}>
           {formatDate(tag.last_modified)}
+        </Td>
+        <Td dataLabel={ColumnNames.imageBuilt}>
+          {tag.is_manifest_list
+            ? formatDate(tag.last_modified)
+            : formatDate(tag.image_built)}
         </Td>
         <Td dataLabel={ColumnNames.expires}>
           <TagExpiration
@@ -609,9 +655,12 @@ export default function TagsTable(props: TableProps) {
               Last Modified
             </Th>
             <Th modifier="wrap" sort={props.getSortableSort?.(6)}>
-              Expires
+              Image Built
             </Th>
             <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
+              Expires
+            </Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(8)}>
               Manifest
             </Th>
             {trackCount > 0 && (
@@ -621,10 +670,10 @@ export default function TagsTable(props: TableProps) {
               />
             )}
             <Conditional if={config?.features?.IMAGE_PULL_STATS}>
-              <Th modifier="wrap" sort={props.getSortableSort?.(8)}>
+              <Th modifier="wrap" sort={props.getSortableSort?.(9)}>
                 Last Pulled
               </Th>
-              <Th modifier="wrap" sort={props.getSortableSort?.(9)}>
+              <Th modifier="wrap" sort={props.getSortableSort?.(10)}>
                 Pull Count
               </Th>
             </Conditional>

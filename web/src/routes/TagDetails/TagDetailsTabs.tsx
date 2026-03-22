@@ -53,6 +53,10 @@ export default function TagTabs(props: TagTabsProps) {
       <Tab
         eventKey={TabIndex.Layers}
         title={<TabTitleText>Layers</TabTitleText>}
+        isHidden={
+          props.tag.is_manifest_list &&
+          props.digest === props.tag.manifest_digest
+        }
       >
         <Layers org={props.org} repo={props.repo} digest={props.digest} />
       </Tab>

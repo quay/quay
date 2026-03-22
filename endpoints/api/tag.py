@@ -3,6 +3,8 @@ Manage the tags of a repository.
 """
 
 import json
+import logging
+import traceback
 from datetime import datetime
 
 from flask import abort, request
@@ -14,6 +16,7 @@ from auth.permissions import AdministerRepositoryPermission
 from data.database import Manifest as ManifestTable
 from data.model import ImmutableTagException
 from data.model.oci.manifest import is_manifest_present
+from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.oci.tag import RetargetTagException
 from data.model.pull_statistics import (
     get_manifest_pull_statistics,
@@ -38,8 +41,70 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.exception import InvalidRequest, NotFound, TagImmutable, Unauthorized
+from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from util.names import TAG_ERROR, TAG_REGEX
 from util.parsing import truthy_bool
+
+logger = logging.getLogger(__name__)
+
+
+def _load_image_built_timestamp(tags: list, repository_id: int) -> dict[int, str]:
+    """
+    Loads the image_built property for all tags in a repository which are not manifest lists. Returns
+    a dictionary mapping between the manifest id and its creation date.
+    """
+    config_digests_by_manifest = {}
+    timestamp_cache = {}
+    manifest_bytes_str = None
+
+    for tag in tags:
+        if tag.manifest.is_manifest_list:
+            continue
+        try:
+            if tag.manifest.internal_manifest_bytes is None:
+                logger.warning("Manifest %s has no internal_manifest_bytes.", tag.manifest._db_id)
+                continue
+            manifest_bytes_str = tag.manifest.internal_manifest_bytes.as_unicode()
+            media_type = tag.manifest.media_type
+            manifest_json = json.loads(manifest_bytes_str)
+
+            # handle schema 1 images separately
+            if media_type in list(DOCKER_SCHEMA1_CONTENT_TYPES):
+                history = manifest_json.get("history", [])
+                if history and len(history) > 0:
+                    v1_compat_str = history[0].get("v1Compatibility")
+                    if v1_compat_str:
+                        v1_compat_json = json.loads(v1_compat_str)
+                        created = v1_compat_json.get("created")
+                        if created:
+                            timestamp_cache[tag.manifest._db_id] = created
+
+            # If image is Docker v2 schema 2 or OCI:
+            else:
+                config_obj = manifest_json.get("config")
+                if config_obj and config_obj.get("digest"):
+                    config_digests_by_manifest[tag.manifest._db_id] = config_obj["digest"]
+        except Exception as e:
+            logger.debug(
+                "Failed to parse manifest %s for batch loading: %s", tag.manifest.digest, e
+            )
+            continue
+
+    if not config_digests_by_manifest:
+        return timestamp_cache
+
+    retriever = RepositoryContentRetriever(repository_id, storage)
+    for manifest_id, config_digest in config_digests_by_manifest.items():
+        try:
+            config_bytes = retriever.get_blob_bytes_with_digest(config_digest)
+            if config_bytes:
+                config_json = json.loads(config_bytes.decode("utf-8"))
+                created = config_json.get("created")
+                if created:
+                    timestamp_cache[manifest_id] = created
+        except Exception as e:
+            logger.debug("Failed to fetch config layer %s: %s", config_digest, e)
+    return timestamp_cache
 
 
 def _get_sparse_manifest_info(manifest_id, repository_id):
@@ -108,7 +173,7 @@ def _get_sparse_manifest_info(manifest_id, repository_id):
     return is_sparse, child_manifest_count, present_child_count, child_presence_map
 
 
-def _tag_dict(tag):
+def _tag_dict(tag, image_built_cache):
     tag_info = {
         "name": tag.name,
         "reversion": tag.reversion,
@@ -144,6 +209,9 @@ def _tag_dict(tag):
         tag_info["child_manifest_count"] = child_count
         tag_info["present_child_count"] = present_count
         tag_info["child_manifests_presence"] = presence_map
+    else:
+        if image_built_cache is not None and tag.manifest._db_id in image_built_cache:
+            tag_info["image_built"] = image_built_cache[tag.manifest._db_id]
 
     return tag_info
 
@@ -194,8 +262,10 @@ class ListRepositoryTags(RepositoryParamResource):
             print("error", error)
             custom_abort(400, message=str(error))
 
+        image_built_cache = _load_image_built_timestamp(history, repo_ref.id)
+
         return {
-            "tags": [_tag_dict(tag) for tag in history],
+            "tags": [_tag_dict(tag, image_built_cache) for tag in history],
             "page": page,
             "has_additional": has_more,
         }

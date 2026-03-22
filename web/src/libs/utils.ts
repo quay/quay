@@ -25,7 +25,7 @@ export function formatDate(
   timeStyle: 'short' | 'medium' | 'long' = 'short',
 ) {
   if (!date || date == -1) {
-    return 'N/A';
+    return 'n/a';
   }
 
   const adjustedDate = typeof date === 'number' ? date * 1000 : date;
@@ -39,7 +39,7 @@ export function formatDate(
 export function formatSize(sizeInBytes: number) {
   // Handle null/undefined but allow 0 as a valid value
   if (sizeInBytes === null || sizeInBytes === undefined) {
-    return 'N/A';
+    return 'n/a';
   }
 
   // Handle 0 explicitly to avoid Math.log(0) = -Infinity

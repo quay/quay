@@ -1,17 +1,29 @@
+import json
+import random
 from datetime import datetime
 
 from mock import patch
 
 from app import app as realapp
-from data.database import ManifestPullStatistics, TagPullStatistics
+from app import storage as app_storage
+from data.database import ImageStorage, ImageStorageLocation
+from data.database import Manifest as ManifestTable
+from data.database import ManifestPullStatistics, MediaType, TagPullStatistics
+from data.model import oci
+from data.model import storage as storage_model
+from data.model.blob import store_blob_record_and_temp_link
 from data.model.repository import create_repository
 from data.model.user import get_user
 from data.registry_model import registry_model
+from digest.digest_tools import sha256_digest
 from endpoints.api.manifest import RepositoryManifest, _get_modelcard_layer_digest
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from features import FeatureNameValue
-from image.oci.manifest import OCIManifest
+from image.docker.schema2.list import DockerSchema2ManifestListBuilder
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+from image.oci.index import OCIIndexBuilder
+from image.oci.manifest import OCIManifest, OCIManifestBuilder
 from test.fixtures import *
 from util.bytes import Bytes
 
@@ -245,3 +257,359 @@ def test_repository_manifest_pull_statistics_multiple_pulls(app, initialized_db)
     assert stats is not None
     assert stats["pull_count"] == 150
     assert stats["last_pull_date"] is not None
+
+
+def _generate_config_layer(arch, layer_digest):
+    """
+    Helper function for generating config layer. Returns a config layer bytes and config layer digest
+    tuple to the main test function.
+    """
+    config = {
+        "architecture": arch,
+        "os": "linux",
+        "created": "2024-02-20T14:25:30.987654321Z",
+        "config": {"Env": ["PATH=/usr/local/bin:/usr/bin"]},
+        "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+                layer_digest,
+            ],
+        },
+        "history": [
+            {
+                "created": "2024-02-20T14:25:30.987654321Z",
+                "created_by": '/bin/sh -c # (NOP) CMD ["sh"]',
+            },
+        ],
+    }
+    config_bytes = json.dumps(config).encode("utf-8")
+    return config_bytes, sha256_digest(config_bytes)
+
+
+def test_enrich_child_manifests_with_timestamps(app, initialized_db):
+    """
+    Verifies that the API is returning the enriched manifest list data with built timestamps for each
+    individual child manifest.
+    """
+    layer_bytes = random.randbytes(1024)
+    layer_digest = sha256_digest(layer_bytes)
+
+    user = get_user("devtable")
+    repo = create_repository("devtable", "test-manifest-list-parsing", user)
+    assert repo is not None
+
+    location = ImageStorageLocation.get(name="local_us")
+
+    # Generate config layers
+    config_amd64_bytes, config_amd64_digest = _generate_config_layer("amd64", layer_digest)
+    config_arm64_bytes, config_arm64_digest = _generate_config_layer("arm64", layer_digest)
+
+    # Store shared layer between two manifests
+    shared_layer = ImageStorage.create(
+        content_checksum=layer_digest,
+        image_size=len(layer_bytes),
+        compressed_size=len(layer_bytes),
+    )
+    layer_blob = store_blob_record_and_temp_link(
+        "devtable",
+        "test-manifest-list-parsing",
+        layer_digest,
+        location,
+        len(layer_bytes),
+        3600,
+    )
+    app_storage.put_content(
+        ["local_us"],
+        storage_model.get_layer_path(layer_blob),
+        layer_bytes,
+    )
+
+    # Store config blobs
+    blob_amd64 = store_blob_record_and_temp_link(
+        "devtable",
+        "test-manifest-list-parsing",
+        config_amd64_digest,
+        location,
+        len(config_amd64_bytes),
+        3600,
+    )
+    blob_arm64 = store_blob_record_and_temp_link(
+        "devtable",
+        "test-manifest-list-parsing",
+        config_arm64_digest,
+        location,
+        len(config_arm64_bytes),
+        3600,
+    )
+
+    # Write both config blobs to storage
+    app_storage.put_content(
+        ["local_us"],
+        storage_model.get_layer_path(blob_amd64),
+        config_amd64_bytes,
+    )
+    app_storage.put_content(
+        ["local_us"],
+        storage_model.get_layer_path(blob_arm64),
+        config_arm64_bytes,
+    )
+
+    # Define builders
+    builder_amd64_docker = DockerSchema2ManifestBuilder()
+    builder_arm64_docker = DockerSchema2ManifestBuilder()
+    builder_amd64_oci = OCIManifestBuilder()
+    builder_arm64_oci = OCIManifestBuilder()
+
+    # First we'll build a Docker v2 schema 2 image
+    # for AMD64
+    builder_amd64_docker.set_config_digest(config_amd64_digest, len(config_amd64_bytes))
+    builder_amd64_docker.add_layer(layer_digest, len(layer_digest))
+    child_amd64_docker_manifest_obj = builder_amd64_docker.build()
+    created_amd64 = oci.manifest.get_or_create_manifest(
+        repo.id,
+        child_amd64_docker_manifest_obj,
+        app_storage,
+        raise_on_error=True,
+    )
+    assert created_amd64 is not None
+
+    # for Arm64
+    builder_arm64_docker.set_config_digest(config_arm64_digest, len(config_arm64_bytes))
+    builder_arm64_docker.add_layer(layer_digest, len(layer_digest))
+    child_arm64_docker_manifest_obj = builder_arm64_docker.build()
+    created_arm64 = oci.manifest.get_or_create_manifest(
+        repo.id,
+        child_arm64_docker_manifest_obj,
+        app_storage,
+        raise_on_error=True,
+    )
+    assert created_arm64 is not None
+
+    # Build Docker v2 manifest list from the two manifests
+    list_builder_docker = DockerSchema2ManifestListBuilder()
+    list_builder_docker.add_manifest(child_amd64_docker_manifest_obj, "amd64", "linux")
+    list_builder_docker.add_manifest(child_arm64_docker_manifest_obj, "arm64", "linux")
+    manifest_list = list_builder_docker.build()
+    assert manifest_list is not None
+
+    # Create manifest list in db
+    created_list = oci.manifest.get_or_create_manifest(repo.id, manifest_list, app_storage)
+    assert created_list is not None
+
+    # Add tag for the manifest list
+    tag = oci.tag.retarget_tag("latest", created_list.manifest.id, raise_on_error=True)
+    assert tag is not None
+
+    # call api
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/test-manifest-list-parsing",
+            "manifestref": created_list.manifest.digest,
+        }
+        result = conduct_api_call(cl, RepositoryManifest, "GET", params, None, 200).json
+        # Verify basic properties
+        assert result["digest"] == created_list.manifest.digest
+        assert result["is_manifest_list"] is True
+        assert "manifests" in result
+
+        # verify child manifests
+        manifests = result["manifests"]
+        assert len(manifests) == 2
+        amd64_entry = next((m for m in manifests if m["platform"]["architecture"] == "amd64"), None)
+        arm64_entry = next((m for m in manifests if m["platform"]["architecture"] == "arm64"), None)
+
+        assert amd64_entry is not None
+        assert arm64_entry is not None
+
+        # verify we have timestamps and other attributes
+        # for amd64 image
+        assert "image_built" in amd64_entry
+        assert amd64_entry["image_built"] == "2024-02-20T14:25:30.987654321Z"
+        assert amd64_entry["platform"]["os"] == "linux"
+        assert amd64_entry["digest"] == created_amd64.manifest.digest
+
+        # for arm64 image
+        assert "image_built" in arm64_entry
+        assert arm64_entry["image_built"] == "2024-02-20T14:25:30.987654321Z"
+        assert arm64_entry["platform"]["os"] == "linux"
+        assert arm64_entry["digest"] == created_arm64.manifest.digest
+
+    # reset all variables to None
+    created_amd64 = None
+    created_arm64 = None
+    created_list = None
+
+    # create OCI image and then repoint "latest" to the new OCI image
+    # for AMD64
+    builder_amd64_oci.set_config_digest(config_amd64_digest, len(config_amd64_bytes))
+    builder_amd64_oci.add_layer(layer_digest, len(layer_digest))
+    child_amd64_oci_manifest_obj = builder_amd64_oci.build()
+    created_amd64 = oci.manifest.get_or_create_manifest(
+        repo.id,
+        child_amd64_oci_manifest_obj,
+        app_storage,
+        raise_on_error=True,
+    )
+    assert created_amd64 is not None
+
+    # for Arm64
+    builder_arm64_oci.set_config_digest(config_arm64_digest, len(config_arm64_bytes))
+    builder_arm64_oci.add_layer(layer_digest, len(layer_digest))
+    child_arm64_oci_manifest_obj = builder_arm64_oci.build()
+    created_arm64 = oci.manifest.get_or_create_manifest(
+        repo.id,
+        child_arm64_oci_manifest_obj,
+        app_storage,
+        raise_on_error=True,
+    )
+    assert created_arm64 is not None
+
+    # build OCI image index
+    index_builder = OCIIndexBuilder()
+    index_builder.add_manifest(child_amd64_oci_manifest_obj, "amd64", "linux")
+    index_builder.add_manifest(child_arm64_oci_manifest_obj, "arm64", "linux")
+    index_manifest = index_builder.build()
+    assert index_manifest is not None
+
+    # Create manifest list in db
+    created_list = oci.manifest.get_or_create_manifest(repo.id, index_manifest, app_storage)
+    assert created_list is not None
+
+    # Add tag for the manifest list
+    tag = oci.tag.retarget_tag("latest", created_list.manifest.id, raise_on_error=True)
+    assert tag is not None
+
+    # call api
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/test-manifest-list-parsing",
+            "manifestref": created_list.manifest.digest,
+        }
+        result = conduct_api_call(cl, RepositoryManifest, "GET", params, None, 200).json
+        # Verify basic properties
+        assert result["digest"] == created_list.manifest.digest
+        assert result["is_manifest_list"] is True
+        assert "manifests" in result
+
+        # verify child manifests
+        manifests = result["manifests"]
+        assert len(manifests) == 2
+        amd64_entry = next((m for m in manifests if m["platform"]["architecture"] == "amd64"), None)
+        arm64_entry = next((m for m in manifests if m["platform"]["architecture"] == "arm64"), None)
+
+        assert amd64_entry is not None
+        assert arm64_entry is not None
+
+        # verify we have timestamps and other attributes
+        # for amd64 image
+        assert "image_built" in amd64_entry
+        assert amd64_entry["image_built"] == "2024-02-20T14:25:30.987654321Z"
+        assert amd64_entry["platform"]["os"] == "linux"
+        assert amd64_entry["digest"] == created_amd64.manifest.digest
+
+        # for arm64 image
+        assert "image_built" in arm64_entry
+        assert arm64_entry["image_built"] == "2024-02-20T14:25:30.987654321Z"
+        assert arm64_entry["platform"]["os"] == "linux"
+        assert arm64_entry["digest"] == created_arm64.manifest.digest
+
+
+def test_manifest_list_sparse_no_timestamps(app, initialized_db):
+    """
+    Test that sparse manifest list (missing child manifests) still returns platform info without timestamps.
+    This simulates proxy cache scenarios where the manifest list exists but children haven't been pulled.
+    """
+    user = get_user("devtable")
+    repo = create_repository("devtable", "test-sparse-manifest-list", user)
+
+    # Build manifest list with non-existent child manifests
+    list_builder = DockerSchema2ManifestListBuilder()
+
+    # These digests don't exist in the database - simulating sparse manifest list
+    fake_digest_amd64 = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    fake_digest_arm64 = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    fake_digest_ppc64le = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+
+    list_builder.add_manifest_digest(
+        fake_digest_amd64,
+        1234,
+        "application/vnd.docker.distribution.manifest.v2+json",
+        "amd64",
+        "linux",
+    )
+    list_builder.add_manifest_digest(
+        fake_digest_arm64,
+        5678,
+        "application/vnd.docker.distribution.manifest.v2+json",
+        "arm64",
+        "linux",
+    )
+    list_builder.add_manifest_digest(
+        fake_digest_ppc64le,
+        9012,
+        "application/vnd.docker.distribution.manifest.v2+json",
+        "ppc64le",
+        "linux",
+    )
+
+    manifest_list = list_builder.build()
+    manifest_list_bytes = manifest_list.bytes.as_encoded_str()
+    manifest_list_digest = sha256_digest(manifest_list_bytes)
+
+    # We need to inject the manifest directly to the database
+    media_type = MediaType.get(name="application/vnd.docker.distribution.manifest.list.v2+json")
+    created_manifest = ManifestTable.create(
+        digest=manifest_list_digest,
+        manifest_bytes=manifest_list_bytes,
+        media_type=media_type,
+        repository=repo.id,
+    )
+
+    tag = oci.tag.retarget_tag("latest", created_manifest.id, raise_on_error=True)
+    assert tag is not None
+
+    # Call the API endpoint
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/test-sparse-manifest-list",
+            "manifestref": manifest_list_digest,
+        }
+        result = conduct_api_call(cl, RepositoryManifest, "GET", params, None, 200).json
+
+        # Verify manifest list properties
+        assert result["digest"] == manifest_list_digest
+        assert result["is_manifest_list"] is True
+        assert "manifests" in result
+
+        # Verify child manifests are returned with platform info
+        manifests = result["manifests"]
+        assert len(manifests) == 3
+
+        # Find each architecture entry
+        amd64_entry = next((m for m in manifests if m["platform"]["architecture"] == "amd64"), None)
+        arm64_entry = next((m for m in manifests if m["platform"]["architecture"] == "arm64"), None)
+        ppc64le_entry = next(
+            (m for m in manifests if m["platform"]["architecture"] == "ppc64le"), None
+        )
+
+        assert amd64_entry is not None
+        assert arm64_entry is not None
+        assert ppc64le_entry is not None
+
+        # Verify platform info is present
+        assert amd64_entry["platform"]["os"] == "linux"
+        assert amd64_entry["digest"] == fake_digest_amd64
+        assert amd64_entry["size"] == 1234
+
+        assert arm64_entry["platform"]["os"] == "linux"
+        assert arm64_entry["digest"] == fake_digest_arm64
+        assert arm64_entry["size"] == 5678
+
+        assert ppc64le_entry["platform"]["os"] == "linux"
+        assert ppc64le_entry["digest"] == fake_digest_ppc64le
+        assert ppc64le_entry["size"] == 9012
+
+        # Verify NO timestamps are present (child manifests don't exist in DB)
+        assert "image_built" not in amd64_entry
+        assert "image_built" not in arm64_entry
+        assert "image_built" not in ppc64le_entry
