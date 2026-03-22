@@ -45,14 +45,23 @@ test.describe(
       // Navigate to the page
       await authenticatedPage.goto(`/repository/${testRepo.fullName}?tab=tags`);
 
-      // Find row
+      // Wait for the tag to appear in the table
+      await expect(
+        authenticatedPage.getByText('v1.0', {exact: true}),
+      ).toBeVisible();
+
+      // Find and expand the manifest list row
       const tagRow = authenticatedPage
-        .getByRole('row')
+        .getByTestId('table-entry')
         .filter({has: authenticatedPage.getByText('v1.0', {exact: true})});
 
-      // Expand row
-      await expect(tagRow).toBeVisible();
-      await tagRow.getByRole('button', {name: /toggle row/i}).click();
+      // Click the expand button (first button in the row)
+      await tagRow.getByRole('button').first().click();
+
+      // Wait for child manifests to appear after expansion
+      await expect(
+        authenticatedPage.getByText(/linux on (amd64|arm64)/).first(),
+      ).toBeVisible();
     });
 
     test('displays image built timestamp for child manifests', async ({
@@ -64,12 +73,14 @@ test.describe(
         .filter({hasText: /linux on (amd64|arm64)/})
         .first();
 
-      // find the cell with the timestamp
-      const imageBuiltCell = childRow
-        .getByRole('cell')
-        .filter({hasText: /[A-Z][a-z]{2}\s\d{1,2},\s\d{4}/});
+      // Find the Image Built cell using data-label attribute
+      const imageBuiltCell = childRow.locator('[data-label="Image Built"]');
 
+      // Verify the timestamp is visible and contains a date (not n/a)
       await expect(imageBuiltCell).toBeVisible();
+      await expect(imageBuiltCell).toContainText(
+        /[A-Z][a-z]{2}\s\d{1,2},\s\d{4}/,
+      );
       await expect(imageBuiltCell).not.toHaveText(/n\/a/i);
     });
 

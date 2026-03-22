@@ -58,8 +58,8 @@ test.describe(
         .getByRole('row')
         .filter({has: latestTagLink});
 
-      // Target the image built cell. 'Image Built' column should be column 4 in the output.
-      const imageBuiltCell = targetRow.getByRole('cell').nth(4);
+      // Target the image built cell using data-label attribute
+      const imageBuiltCell = targetRow.locator('[data-label="Image Built"]');
 
       // Verify that the timestamp is visible
       await expect(imageBuiltCell).toBeVisible();
