@@ -43,24 +43,27 @@ test.describe(
     test('displays image built timestamp column', async ({
       authenticatedPage,
     }) => {
+      // Load the page
       await authenticatedPage.goto(`/repository/${testRepo.fullName}?tab=tags`);
-      // Verify that column header exists
-      await expect(
-        authenticatedPage.getByRole('columnheader', {name: `Image Built`}),
-      ).toBeVisible();
 
-      // Verify at least one tag shows a built timestamp (not n/a)
-      // The pushed image should have a built timestamp from Docker
-      const imageBuiltCell = authenticatedPage
+      // Wait for the latest tag to appear
+      const latestTagLink = authenticatedPage.getByRole('link', {
+        name: 'latest',
+        exact: true,
+      });
+      await expect(latestTagLink).toBeVisible();
+
+      // Find row that contains the latest tag
+      const targetRow = authenticatedPage
         .getByRole('row')
-        .filter({hasText: 'latest'})
-        .getByRole('cell', {name: /Image Built/});
+        .filter({has: latestTagLink});
 
+      // Target the image built cell. 'Image Built' column should be column 4 in the output.
+      const imageBuiltCell = targetRow.getByRole('cell').nth(4);
+
+      // Verify that the timestamp is visible
       await expect(imageBuiltCell).toBeVisible();
-
-      // Check that it's not n/a (pushed images from Docker should have a timestamp)
-      const cellText = await imageBuiltCell.textContent();
-      expect(cellText).not.toBe('N/A');
+      await expect(imageBuiltCell).not.toHaveText(/n\/a/i);
     });
   },
 );

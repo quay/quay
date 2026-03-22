@@ -41,54 +41,41 @@ test.describe(
       }
     });
 
+    test.beforeEach(async ({authenticatedPage}) => {
+      // Navigate to the page
+      await authenticatedPage.goto(`/repository/${testRepo.fullName}?tab=tags`);
+
+      // Find row
+      const tagRow = authenticatedPage
+        .getByRole('row')
+        .filter({has: authenticatedPage.getByText('v1.0', {exact: true})});
+
+      // Expand row
+      await expect(tagRow).toBeVisible();
+      await tagRow.getByRole('button', {name: /toggle row/i}).click();
+    });
+
     test('displays image built timestamp for child manifests', async ({
       authenticatedPage,
     }) => {
-      await authenticatedPage.goto(`/repository/${testRepo.fullName}?tab=tags`);
-
-      // Find manifest list row
-      const tagRow = authenticatedPage
+      // We are already expanded so we just find the child row
+      const childRow = authenticatedPage
         .getByRole('row')
-        .filter({hasText: 'v1.0'});
-      await expect(tagRow).toBeVisible();
+        .filter({hasText: /linux on (amd64|arm64)/})
+        .first();
 
-      // expand the row
-      const expandButton = tagRow.getByRole('button', {name: /toggle row/i});
-      await expandButton.click();
+      // find the cell with the timestamp
+      const imageBuiltCell = childRow
+        .getByRole('cell')
+        .filter({hasText: /[A-Z][a-z]{2}\s\d{1,2},\s\d{4}/});
 
-      // wait for child manifests to be visible
-      const childManifest = authenticatedPage.getByText(
-        /linux on (amd64|arm64)/,
-      );
-      await expect(childManifest.first()).toBeVisible();
-
-      // verify that timestamps are showing
-      const expandedRows = authenticatedPage.locator(
-        'tr[class*="pf-m-expanded"]',
-      );
-      const firstExpandedRow = expandedRows.first();
-
-      // look for a timestamp pattern
-      const imageBuiltText = await firstExpandedRow
-        .locator('td')
-        .filter({hasText: /\d{4}-\d{2}-\d{2}|\d{1,2}:\d{2}/})
-        .textContent();
-
-      expect(imageBuiltText).toBeTruthy();
-      expect(imageBuiltText).not.toBe('n/a');
+      await expect(imageBuiltCell).toBeVisible();
+      await expect(imageBuiltCell).not.toHaveText(/n\/a/i);
     });
 
     test('displays platform correctly (not "unknown on unknown")', async ({
       authenticatedPage,
     }) => {
-      await authenticatedPage.goto(`/repository/${testRepo.fullName}?tab=tags`);
-
-      const tagRow = authenticatedPage
-        .getByRole('row')
-        .filter({hasText: 'v1.0'});
-      const expandButton = tagRow.getByRole('button', {name: /toggle row/i});
-      await expandButton.click();
-
       // verify platform shows correctly
       const platformText = authenticatedPage.getByText(
         /linux on (amd64|arm64)/,

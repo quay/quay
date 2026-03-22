@@ -363,7 +363,7 @@ def test_enrich_child_manifests_with_timestamps(app, initialized_db):
     # First we'll build a Docker v2 schema 2 image
     # for AMD64
     builder_amd64_docker.set_config_digest(config_amd64_digest, len(config_amd64_bytes))
-    builder_amd64_docker.add_layer(layer_digest, len(layer_digest))
+    builder_amd64_docker.add_layer(layer_digest, len(layer_bytes))
     child_amd64_docker_manifest_obj = builder_amd64_docker.build()
     created_amd64 = oci.manifest.get_or_create_manifest(
         repo.id,
@@ -375,7 +375,7 @@ def test_enrich_child_manifests_with_timestamps(app, initialized_db):
 
     # for Arm64
     builder_arm64_docker.set_config_digest(config_arm64_digest, len(config_arm64_bytes))
-    builder_arm64_docker.add_layer(layer_digest, len(layer_digest))
+    builder_arm64_docker.add_layer(layer_digest, len(layer_bytes))
     child_arm64_docker_manifest_obj = builder_arm64_docker.build()
     created_arm64 = oci.manifest.get_or_create_manifest(
         repo.id,
@@ -442,7 +442,7 @@ def test_enrich_child_manifests_with_timestamps(app, initialized_db):
     # create OCI image and then repoint "latest" to the new OCI image
     # for AMD64
     builder_amd64_oci.set_config_digest(config_amd64_digest, len(config_amd64_bytes))
-    builder_amd64_oci.add_layer(layer_digest, len(layer_digest))
+    builder_amd64_oci.add_layer(layer_digest, len(layer_bytes))
     child_amd64_oci_manifest_obj = builder_amd64_oci.build()
     created_amd64 = oci.manifest.get_or_create_manifest(
         repo.id,
@@ -454,7 +454,7 @@ def test_enrich_child_manifests_with_timestamps(app, initialized_db):
 
     # for Arm64
     builder_arm64_oci.set_config_digest(config_arm64_digest, len(config_arm64_bytes))
-    builder_arm64_oci.add_layer(layer_digest, len(layer_digest))
+    builder_arm64_oci.add_layer(layer_digest, len(layer_bytes))
     child_arm64_oci_manifest_obj = builder_arm64_oci.build()
     created_arm64 = oci.manifest.get_or_create_manifest(
         repo.id,
