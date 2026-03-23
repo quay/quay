@@ -36,6 +36,28 @@ export const TEST_USERS = {
   },
 } as const;
 
+// Separate OIDC test users to avoid naming collisions with Database-auth users.
+// OIDCUsers.get_user() returns None, so LOGIN_BINDING_FIELD doesn't work —
+// first OIDC login always creates a new Quay account. Using distinct usernames
+// ensures clean creation regardless of whether DB users already exist.
+export const TEST_USERS_OIDC = {
+  admin: {
+    username: 'admin_oidc',
+    password: 'password',
+    email: 'admin_oidc@example.com',
+  },
+  user: {
+    username: 'testuser_oidc',
+    password: 'password',
+    email: 'testuser_oidc@example.com',
+  },
+  readonly: {
+    username: 'readonly_oidc',
+    password: 'password',
+    email: 'readonly_oidc@example.com',
+  },
+} as const;
+
 async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0].use.baseURL || 'http://localhost:9000';
 
@@ -50,18 +72,41 @@ async function globalSetup(config: FullConfig) {
     // Track failures to report at the end
     const failures: string[] = [];
 
-    // Check if FEATURE_MAILING is enabled
+    // Fetch Quay config with retry to check auth type and features
     let mailingEnabled = false;
-    try {
-      const configResponse = await fetch(`${API_URL}/config`);
-      if (configResponse.ok) {
-        const quayConfig = await configResponse.json();
-        mailingEnabled = quayConfig?.features?.MAILING === true;
+    let authType: string | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const configResponse = await fetch(`${API_URL}/config`);
+        if (configResponse.ok) {
+          const quayConfig = await configResponse.json();
+          mailingEnabled = quayConfig?.features?.MAILING === true;
+          authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
+          break;
+        }
+      } catch {
+        console.log(
+          `[Global Setup] Config fetch attempt ${
+            attempt + 1
+          }/3 failed, retrying...`,
+        );
+        await new Promise((r) => setTimeout(r, 2000));
       }
-    } catch {
-      console.log(
-        '[Global Setup] Could not fetch config, assuming mailing disabled',
+    }
+    if (!authType) {
+      throw new Error(
+        '[Global Setup] Failed to fetch Quay config after 3 attempts',
       );
+    }
+
+    // For OIDC auth, skip user creation — users are created on first login
+    // via the Keycloak browser flow in the worker fixtures (loginViaOIDC).
+    if (authType !== 'Database') {
+      console.log(
+        `[Global Setup] Auth type is '${authType}', skipping user creation (OIDC users created on first login via worker fixtures)`,
+      );
+      console.log('[Global Setup] Complete');
+      return;
     }
 
     // Check if Mailpit is available when mailing is enabled

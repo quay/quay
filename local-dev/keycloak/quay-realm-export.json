@@ -1,0 +1,83 @@
+{
+  "realm": "quay",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "loginTheme": "keycloak",
+  "accessTokenLifespan": 300,
+  "clients": [
+    {
+      "clientId": "quay-ui",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:8080/*",
+        "http://localhost:8080/oauth2/someoidc/callback*",
+        "http://localhost:9000/*",
+        "http://localhost:9000/oauth2/someoidc/callback*"
+      ],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "admin_oidc",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin_oidc@example.com",
+      "firstName": "Admin",
+      "lastName": "OIDC",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "testuser_oidc",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "testuser_oidc@example.com",
+      "firstName": "Test",
+      "lastName": "OIDC",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "readonly_oidc",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "readonly_oidc@example.com",
+      "firstName": "Readonly",
+      "lastName": "OIDC",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
