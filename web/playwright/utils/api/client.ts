@@ -1523,6 +1523,7 @@ export class ApiClient {
     namespace: string,
     repo: string,
     dockerfileContent = 'FROM scratch\n',
+    dockerTags: string[] = [],
   ): Promise<{id: string}> {
     const token = await this.fetchToken();
 
@@ -1577,6 +1578,7 @@ export class ApiClient {
         },
         data: {
           file_id: fileId,
+          ...(dockerTags.length > 0 && {docker_tags: dockerTags}),
         },
       },
     );
@@ -1589,6 +1591,106 @@ export class ApiClient {
     }
 
     return buildResponse.json();
+  }
+
+  /**
+   * Get build status for a specific build.
+   */
+  async getBuildStatus(
+    namespace: string,
+    repo: string,
+    buildId: string,
+  ): Promise<{id: string; phase: string; error?: string}> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/build/${buildId}/status`,
+      {timeout: 10000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get build status: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get build logs for a specific build.
+   */
+  async getBuildLogs(
+    namespace: string,
+    repo: string,
+    buildId: string,
+  ): Promise<{start: number; total: number; logs: Array<{message: string}>}> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/build/${buildId}/logs`,
+      {timeout: 10000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get build logs: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * List builds for a repository.
+   */
+  async getBuilds(
+    namespace: string,
+    repo: string,
+  ): Promise<{builds: Array<{id: string; phase: string; started: string}>}> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/build/`,
+      {timeout: 10000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(`Failed to get builds: ${response.status()} - ${body}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Poll build status until it reaches a terminal phase or timeout.
+   * Returns the final phase.
+   */
+  async waitForBuildPhase(
+    namespace: string,
+    repo: string,
+    buildId: string,
+    terminalPhases = [
+      'complete',
+      'error',
+      'internal_error',
+      'cancelled',
+      'expired',
+    ],
+    timeoutMs = 180000,
+    pollIntervalMs = 3000,
+  ): Promise<{phase: string; error?: string}> {
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+      const status = await this.getBuildStatus(namespace, repo, buildId);
+      if (terminalPhases.includes(status.phase)) {
+        return {phase: status.phase, error: status.error};
+      }
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
+
+    const finalStatus = await this.getBuildStatus(namespace, repo, buildId);
+    throw new Error(
+      `Build ${buildId} did not reach terminal phase within ${timeoutMs}ms. Current phase: ${finalStatus.phase}`,
+    );
   }
 
   // Proxy cache methods

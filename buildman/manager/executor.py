@@ -22,7 +22,7 @@ import release
 from _init import OVERRIDE_CONFIG_DIRECTORY, ROOT_DIR
 from app import app
 from buildman.container_cloud_config import CloudConfigContext
-from buildman.server import SECURE_GRPC_SERVER_PORT
+from buildman.server import DEFAULT_GRPC_SERVER_PORT, SECURE_GRPC_SERVER_PORT
 
 logger = logging.getLogger(__name__)
 
@@ -368,43 +368,90 @@ class EC2Executor(BuilderExecutor):
 class PopenExecutor(BuilderExecutor):
     """
     Implementation of BuilderExecutor which uses Popen to fork a quay-builder process.
+
+    The quay-builder binary communicates with the build manager via gRPC. Environment
+    variables passed to the subprocess:
+      TOKEN              - JWT registration token
+      BUILD_UUID         - Build UUID
+      SERVER             - gRPC server address (host:port)
+      REGISTRY_HOSTNAME  - Registry to push built images to
+      CONTAINER_RUNTIME  - 'docker' or 'podman'
+      BUILDAH_ISOLATION  - 'chroot', 'rootless', or 'oci'
+      INSECURE           - 'true' to skip TLS verification
+      DOCKER_HOST        - Container runtime socket path
+
+    Executor config options:
+      BUILDER_BINARY_LOCATION - Path to quay-builder binary (default: /usr/local/bin/quay-builder)
+      CONTAINER_RUNTIME       - 'docker' or 'podman' (default: docker)
+      BUILDAH_ISOLATION       - Buildah isolation mode (default: chroot)
+      INSECURE                - Skip TLS for gRPC (default: false)
+      DEBUG                   - Enable debug logging in builder (default: false)
     """
 
-    def __init__(self, executor_config, manager_hostname):
+    def __init__(self, executor_config, registry_hostname, manager_hostname):
         self._jobs = {}
-        super(PopenExecutor, self).__init__(executor_config, manager_hostname)
+        super(PopenExecutor, self).__init__(executor_config, registry_hostname, manager_hostname)
+
+    def _get_grpc_server_addr(self):
+        """Return the gRPC server address for the builder to connect to."""
+        if self.executor_config.get("INSECURE", False):
+            return "localhost:%s" % DEFAULT_GRPC_SERVER_PORT
+        return "%s:%s" % (self.manager_hostname, SECURE_GRPC_SERVER_PORT)
 
     @property
     def running_builders_count(self):
-        return len([i for i in [v[0].poll() for k, v in self._jobs] if i is not None])
+        return sum(1 for _, (proc, _) in self._jobs.items() if proc.poll() is None)
 
-    @observe(build_start_duration, "fork")
+    @observe(build_start_duration, "popen")
     def start_builder(self, token, build_uuid):
-        # Now start a machine for this job, adding the machine id to the etcd information
-        logger.debug("Forking process for build")
+        logger.debug("Forking quay-builder process for build %s", build_uuid)
 
-        ws_host = os.environ.get("BUILDMAN_WS_HOST", "localhost")
-        ws_port = os.environ.get("BUILDMAN_WS_PORT", "8787")
+        grpc_server_addr = self._get_grpc_server_addr()
         builder_env = {
             "TOKEN": token,
-            "ENDPOINT": "ws://%s:%s" % (ws_host, ws_port),
-            "DOCKER_TLS_VERIFY": os.environ.get("DOCKER_TLS_VERIFY", ""),
-            "DOCKER_CERT_PATH": os.environ.get("DOCKER_CERT_PATH", ""),
-            "DOCKER_HOST": os.environ.get("DOCKER_HOST", ""),
+            "BUILD_UUID": build_uuid,
+            "SERVER": grpc_server_addr,
+            "REGISTRY_HOSTNAME": self.registry_hostname,
+            "CONTAINER_RUNTIME": self.executor_config.get("CONTAINER_RUNTIME", "docker"),
+            "BUILDAH_ISOLATION": self.executor_config.get("BUILDAH_ISOLATION", "chroot"),
+            "INSECURE": str(self.executor_config.get("INSECURE", False)).lower(),
+            "DOCKER_HOST": os.environ.get("DOCKER_HOST", "unix:///var/run/docker.sock"),
             "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         }
 
-        logpipe = LogPipe(logging.INFO)
-        spawned = subprocess.Popen(
-            os.environ.get("BUILDER_BINARY_LOCATION", "/usr/local/bin/quay-builder"),
-            stdout=logpipe,
-            stderr=logpipe,
-            env=builder_env,
+        if self.executor_config.get("DEBUG", False):
+            builder_env["DEBUG"] = "true"
+
+        # Pass through proxy settings if present
+        for proxy_var in ("HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"):
+            val = os.environ.get(proxy_var)
+            if val:
+                builder_env[proxy_var] = val
+
+        binary_location = self.executor_config.get(
+            "BUILDER_BINARY_LOCATION", "/usr/local/bin/quay-builder"
         )
+
+        logpipe = LogPipe(logging.INFO)
+        try:
+            spawned = subprocess.Popen(
+                binary_location,
+                stdout=logpipe,
+                stderr=logpipe,
+                env=builder_env,
+            )
+        except Exception as e:
+            logpipe.close()
+            raise ExecutorException("Failed to spawn quay-builder: %s" % e)
 
         builder_id = str(uuid.uuid4())
         self._jobs[builder_id] = (spawned, logpipe)
-        logger.debug("Builder spawned with id: %s", builder_id)
+        logger.debug(
+            "Builder spawned with id: %s, build_uuid: %s, server: %s",
+            builder_id,
+            build_uuid,
+            grpc_server_addr,
+        )
         return builder_id
 
     def stop_builder(self, builder_id):
@@ -417,6 +464,7 @@ class PopenExecutor(BuilderExecutor):
         if spawned.poll() is None:
             spawned.kill()
         logpipe.close()
+        del self._jobs[builder_id]
 
 
 class KubernetesExecutor(BuilderExecutor):

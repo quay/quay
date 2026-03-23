@@ -21,6 +21,7 @@ jobs:
           with-keycloak: true
           with-jaeger: true
           with-repomirror: true
+          with-builds: true
           use-gha-cache: false
           extra-config: |
             FEATURE_MAILING: true

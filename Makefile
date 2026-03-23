@@ -211,6 +211,28 @@ local-dev-up: local-dev-clean node_modules | build-image-quay
 	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
 	@echo "You can now access the frontend at http://localhost:8080"
 
+QUAY_BUILDER_IMAGE ?= quay.io/projectquay/quay-builder:3.17-unstable
+
+.PHONY: local-dev-extract-builder
+local-dev-extract-builder:
+	@if [ ! -f ./local-dev/quay-builder ]; then \
+	  echo "Extracting quay-builder binary from $(QUAY_BUILDER_IMAGE)..."; \
+	  $(DOCKER) create --name quay-builder-extract $(QUAY_BUILDER_IMAGE) 2>/dev/null || true; \
+	  $(DOCKER) cp quay-builder-extract:/usr/local/bin/quay-builder ./local-dev/quay-builder; \
+	  $(DOCKER) rm -f quay-builder-extract; \
+	  chmod +x ./local-dev/quay-builder; \
+	else \
+	  echo "quay-builder binary already exists, skipping extraction"; \
+	fi
+
+.PHONY: enable-builds
+enable-builds: local-dev-extract-builder
+	~/.local/bin/yq eval-all 'select(fileIndex==0) * select(fileIndex==1)' \
+	    local-dev/stack/config.yaml local-dev/builds/builds-config.yaml > /tmp/merged-builds.yaml
+	yes | cp /tmp/merged-builds.yaml local-dev/stack/config.yaml
+	@echo "Build support enabled in local-dev/stack/config.yaml"
+
+
 .PHONY: update-testdata
 update-testdata: local-dev-clean node_modules | build-image-quay
 	$(DOCKER_COMPOSE) rm -fsv quay-db quay
