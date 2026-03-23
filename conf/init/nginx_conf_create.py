@@ -83,7 +83,7 @@ def generate_nginx_config(config):
     # Set preferred URL scheme explicitly in the headers to avoid collisions and
     # infinite redirects. Use https as default value.
     if config.get("EXTERNAL_TLS_TERMINATION", False):
-        preferred_scheme = config.get("PREFERRED_URL_SCHEME")
+        preferred_scheme = config.get("PREFERRED_URL_SCHEME", "http").lower()
     else:
         preferred_scheme = "https" if use_https else "http"
 
