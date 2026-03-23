@@ -27,7 +27,7 @@ import {
   APIRequestContext,
   BrowserContext,
 } from '@playwright/test';
-import {TEST_USERS} from './global-setup';
+import {TEST_USERS, TEST_USERS_OIDC} from './global-setup';
 import {API_URL} from './utils/config';
 import {
   ApiClient,
@@ -128,6 +128,16 @@ export interface CreatedBuild {
 }
 
 /**
+ * Created OAuth application info
+ */
+export interface CreatedOAuthApp {
+  orgName: string;
+  name: string;
+  clientId: string;
+  clientSecret?: string;
+}
+
+/**
  * Created immutability policy info
  */
 export interface CreatedImmutabilityPolicy {
@@ -154,9 +164,11 @@ export interface CreatedImmutabilityPolicy {
 export class TestApi {
   private client: ApiClient;
   private cleanupStack: CleanupAction[] = [];
+  private defaultNamespace: string;
 
-  constructor(client: ApiClient) {
+  constructor(client: ApiClient, defaultNamespace?: string) {
     this.client = client;
+    this.defaultNamespace = defaultNamespace ?? TEST_USERS.user.username;
   }
 
   /**
@@ -199,7 +211,7 @@ export class TestApi {
     namePrefix = 'repo',
     visibility: RepositoryVisibility = 'private',
   ): Promise<CreatedRepo> {
-    const ns = namespace ?? TEST_USERS.user.username;
+    const ns = namespace ?? this.defaultNamespace;
     const name = uniqueName(namePrefix);
 
     await this.client.createRepository(ns, name, visibility);
@@ -707,6 +719,34 @@ export class TestApi {
   }
 
   /**
+   * Create an OAuth application in an organization.
+   * Automatically deleted after test.
+   */
+  async oauthApplication(
+    orgName: string,
+    namePrefix = 'oauth-app',
+  ): Promise<CreatedOAuthApp> {
+    const name = uniqueName(namePrefix);
+
+    const result = await this.client.createOAuthApplication(orgName, name);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOAuthApplication(orgName, result.client_id);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {
+      orgName,
+      name,
+      clientId: result.client_id,
+      clientSecret: result.client_secret,
+    };
+  }
+
+  /**
    * Run all cleanup actions in reverse order.
    * Called automatically by fixture teardown.
    */
@@ -742,7 +782,10 @@ export type QuayFeature =
   | 'IMAGE_EXPIRY_TRIGGER'
   | 'SUPERUSERS_FULL_ACCESS'
   | 'IMMUTABLE_TAGS'
-  | 'SPARSE_INDEX';
+  | 'SPARSE_INDEX'
+  | 'TEAM_SYNCING'
+  | 'DIRECT_LOGIN'
+  | 'NONSUPERUSER_TEAM_SYNCING_SETUP';
 
 /**
  * Quay configuration from /config endpoint
@@ -821,16 +864,40 @@ export function skipUnlessAuthType(
 }
 
 /**
- * Login a user and return the API client (with cached CSRF token)
+ * Login a user via API (Database auth) or OIDC browser flow (Keycloak).
+ * Detects the auth type from config and uses the appropriate method.
+ * The browser context retains session cookies either way.
  */
 async function loginUser(
-  request: APIRequestContext,
+  context: BrowserContext,
   username: string,
   password: string,
-): Promise<ApiClient> {
-  const api = new ApiClient(request);
-  await api.signIn(username, password);
-  return api;
+  config?: QuayConfig | null,
+): Promise<void> {
+  const isOIDC = config?.config?.AUTHENTICATION_TYPE === 'OIDC';
+
+  if (isOIDC) {
+    const page = await context.newPage();
+    try {
+      await page.goto('/signin');
+      await page.locator('[data-testid^="external-login-"]').first().click();
+      await page.waitForURL(/.*realms\/.*/, {timeout: 15000});
+      await page.fill('#username', username);
+      await page.fill('#password', password);
+      await page.click('#kc-login');
+      // Wait for redirect back to Quay (exclude Keycloak realm paths)
+      await page.waitForURL(
+        (url) =>
+          url.hostname === 'localhost' && !url.pathname.includes('/realms/'),
+        {timeout: 15000},
+      );
+    } finally {
+      await page.close();
+    }
+  } else {
+    const api = new ApiClient(context.request);
+    await api.signIn(username, password);
+  }
 }
 
 /**
@@ -909,17 +976,18 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // =========================================================================
 
   userContext: [
-    async ({browser}, use) => {
+    async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      const request = context.request;
-
-      // Login as regular user
+      const users =
+        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
+          ? TEST_USERS_OIDC
+          : TEST_USERS;
       await loginUser(
-        request,
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
+        context,
+        users.user.username,
+        users.user.password,
+        cachedQuayConfig,
       );
-
       await use(context);
       await context.close();
     },
@@ -927,17 +995,18 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   superuserContext: [
-    async ({browser}, use) => {
+    async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      const request = context.request;
-
-      // Login as admin (superuser)
+      const users =
+        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
+          ? TEST_USERS_OIDC
+          : TEST_USERS;
       await loginUser(
-        request,
-        TEST_USERS.admin.username,
-        TEST_USERS.admin.password,
+        context,
+        users.admin.username,
+        users.admin.password,
+        cachedQuayConfig,
       );
-
       await use(context);
       await context.close();
     },
@@ -945,17 +1014,18 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   readonlyContext: [
-    async ({browser}, use) => {
+    async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      const request = context.request;
-
-      // Login as readonly user
+      const users =
+        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
+          ? TEST_USERS_OIDC
+          : TEST_USERS;
       await loginUser(
-        request,
-        TEST_USERS.readonly.username,
-        TEST_USERS.readonly.password,
+        context,
+        users.readonly.username,
+        users.readonly.password,
+        cachedQuayConfig,
       );
-
       await use(context);
       await context.close();
     },
@@ -991,12 +1061,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // Test-scoped fixtures (created fresh for each test)
   // =========================================================================
 
-  csrfToken: async ({request}, use) => {
-    const api = await loginUser(
-      request,
-      TEST_USERS.user.username,
-      TEST_USERS.user.password,
-    );
+  csrfToken: async ({userContext}, use) => {
+    const api = new ApiClient(userContext.request);
     const token = await api.getToken();
     await use(token);
   },
@@ -1040,9 +1106,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(cachedQuayConfig);
   },
 
-  api: async ({authenticatedRequest}, use) => {
+  api: async ({authenticatedRequest, quayConfig}, use) => {
     const client = new ApiClient(authenticatedRequest);
-    const testApi = new TestApi(client);
+    const users =
+      quayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
+        ? TEST_USERS_OIDC
+        : TEST_USERS;
+    const testApi = new TestApi(client, users.user.username);
     await use(testApi);
     await testApi.cleanup();
   },
