@@ -728,18 +728,18 @@ Track migration progress from Cypress to Playwright.
 | ⬚ | `builds.cy.ts` | | |
 | ✅ | `create-account.cy.ts` | `auth/create-account.spec.ts` | @feature:MAILING, @feature:QUOTA_MANAGEMENT, consolidated 10→6 tests |
 | ✅ | `default-permissions.cy.ts` | `organization/default-permissions.spec.ts` | |
-| ⬚ | `external-login.cy.ts` | | @config:OIDC |
+| ✅ | `external-login.cy.ts` | `auth/external-login.spec.ts` | @auth:OIDC, consolidated 6→3 tests, Cypress file deleted |
 | ✅ | `external-scripts.cy.ts` | `ui/external-scripts.spec.ts` | @feature:BILLING |
 | ⬚ | `footer.cy.ts` | | |
-| ⬚ | `fresh-login-oidc.cy.ts` | | @config:OIDC |
+| ✅ | `fresh-login-oidc.cy.ts` | `auth/fresh-login-oidc.spec.ts` | @auth:OIDC, consolidated 4→2 tests, Cypress file deleted |
 | ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
 | ✅ | `manage-team-members.cy.ts` | `organization/team-members.spec.ts` | @organization, 7 tests preserved |
 | ⬚ | `marketplace.cy.ts` | | @config:BILLING |
 | ✅ | `mirroring.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated 18→5 tests |
 | ✅ | `notification-drawer.cy.ts` | `ui/notification-drawer.spec.ts` | @container |
-| ⬚ | `oauth-callback.cy.ts` | | |
+| ✅ | `oauth-callback.cy.ts` | `auth/oauth-error.spec.ts`, `auth/oauth-callback.spec.ts` | consolidated 14→8 tests, Cypress file deleted |
 | ✅ | `org-list.cy.ts` | `organization/org-list.spec.ts` | @organization, @feature:SUPERUSERS_FULL_ACCESS, @feature:QUOTA_MANAGEMENT, consolidated 22→10 tests |
-| ⬚ | `org-oauth.cy.ts` | | |
+| ✅ | `org-oauth.cy.ts` | `organization/oauth-applications.spec.ts` | consolidated 40+→3 tests, Cypress file deleted |
 | ✅ | `overview.cy.ts` | `ui/overview.spec.ts` | |
 | ✅ | `packages-report.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated with security tests, Cypress file deleted |
 | ✅ | `proxy-cache.cy.ts` | `organization/proxy-cache.spec.ts` | @feature:PROXY_CACHE, consolidated 4→3 tests |
@@ -771,7 +771,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `tags-expanded-view.cy.ts` | `tags/expanded-view.spec.ts` | @container, consolidated 10→4 tests |
 | ✅ | `tags-signatures.cy.ts` | `tags/signatures.spec.ts` | @container, consolidated 4→1 tests |
 | ✅ | `teams-and-membership.cy.ts` | `organization/teams-and-membership.spec.ts` | Cypress file deleted |
-| ⬚ | `team-sync.cy.ts` | | @config:OIDC |
+| ✅ | `team-sync.cy.ts` | `organization/team-sync.spec.ts` | @auth:OIDC, @feature:TEAM_SYNCING, consolidated 9→1 tests, Cypress file deleted |
 | ✅ | `theme-switcher.cy.ts` | `ui/theme-switcher.spec.ts` | |
 | ✅ | `update-user.cy.ts` | `user/update-user.spec.ts` | @feature:USER_METADATA, consolidated 7→3 tests (OAuth tests TODO) |
 | ✅ | `usage-logs.cy.ts` | `usage-logs.spec.ts`, `superuser/usage-logs.spec.ts` | @logs, @feature:SUPERUSERS_FULL_ACCESS, consolidated 13→10 tests |
