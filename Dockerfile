@@ -95,7 +95,7 @@ RUN set -ex\
 	;
 
 # Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal@sha256:449f3e1b0a9c1ef766777ca84ea89bcc040a96d5f6d456c3a9acdd558dfc2b4f AS build-static
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal@sha256:70b52265ba3836ee702ab4ad0f478ae8d1f8bf2a1b5bbd2e9d0803a19f26252a AS build-static
 ARG BUILD_ANGULAR=true
 WORKDIR /opt/app-root/src
 # This below line is a workaround because in UBI 9, the OpenSSL version does not support MD4 anymore which is required by the combination of webpack and terser-webpack-plugin.
