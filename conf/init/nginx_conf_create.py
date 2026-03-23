@@ -80,6 +80,13 @@ def generate_nginx_config(config):
     use_ipv4 = True if ip_version.lower() != "ipv6" else False
     use_ipv6 = True if ip_version.lower() in ["ipv6", "dual-stack"] else False
 
+    # Set preferred URL scheme explicitly in the headers to avoid collisions and
+    # infinite redirects. Use https as default value.
+    if config.get("EXTERNAL_TLS_TERMINATION", False):
+        preferred_scheme = config.get("PREFERRED_URL_SCHEME")
+    else:
+        preferred_scheme = "https" if use_https else "http"
+
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/nginx.conf"),
         use_https=use_https,
@@ -89,6 +96,7 @@ def generate_nginx_config(config):
         ssl_ciphers=":".join(ssl_ciphers),
         use_ipv4=use_ipv4,
         use_ipv6=use_ipv6,
+        preferred_scheme=preferred_scheme,
     )
 
 
