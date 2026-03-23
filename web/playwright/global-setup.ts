@@ -10,7 +10,7 @@
  * - readonly: User with read-only access (if applicable)
  */
 
-import {chromium, FullConfig, request} from '@playwright/test';
+import {chromium, FullConfig} from '@playwright/test';
 import {API_URL} from './utils/config';
 import {ApiClient} from './utils/api';
 import {mailpit} from './utils/mailpit';
@@ -58,24 +58,6 @@ export const TEST_USERS_OIDC = {
   },
 } as const;
 
-export const TEST_USERS_LDAP = {
-  admin: {
-    username: 'admin_ldap',
-    password: 'password',
-    email: 'admin_ldap@example.com',
-  },
-  user: {
-    username: 'testuser_ldap',
-    password: 'password',
-    email: 'testuser_ldap@example.com',
-  },
-  readonly: {
-    username: 'readonly_ldap',
-    password: 'password',
-    email: 'readonly_ldap@example.com',
-  },
-} as const;
-
 async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0].use.baseURL || 'http://localhost:9000';
 
@@ -83,10 +65,10 @@ async function globalSetup(config: FullConfig) {
     `[Global Setup] Starting with baseURL: ${baseURL}, apiURL: ${API_URL}`,
   );
 
-  // Only launch browser if needed for email confirmation (rare path)
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
+  let browser = null;
 
   try {
+    browser = await chromium.launch();
     // Track failures to report at the end
     const failures: string[] = [];
 
@@ -141,15 +123,15 @@ async function globalSetup(config: FullConfig) {
     }
 
     // Create test users (skip if they already exist)
-    // Each user creation requires a fresh request context and CSRF token
+    // Each user creation requires a fresh context and CSRF token
     for (const [role, user] of Object.entries(TEST_USERS)) {
-      const requestContext = await request.newContext({
-        ignoreHTTPSErrors: true,
-      });
+      // Create a fresh context for each user to avoid CSRF token issues
+      const userContext = await browser.newContext({ignoreHTTPSErrors: true});
+      const userRequest = userContext.request;
 
       try {
         console.log(`[Global Setup] Creating ${role} user: ${user.username}`);
-        const api = new ApiClient(requestContext);
+        const api = new ApiClient(userRequest);
         await api.createUser(user.username, user.password, user.email);
         console.log(`[Global Setup] Created ${role} user: ${user.username}`);
 
@@ -160,17 +142,9 @@ async function globalSetup(config: FullConfig) {
           );
           const confirmLink = await mailpit.waitForConfirmationLink(user.email);
           if (confirmLink) {
-            // Email confirmation requires visiting a link — need a browser
-            if (!browser) {
-              browser = await chromium.launch();
-            }
-            const context = await browser.newContext({
-              ignoreHTTPSErrors: true,
-            });
-            const page = await context.newPage();
+            const page = await userContext.newPage();
             await page.goto(confirmLink);
             await page.close();
-            await context.close();
             console.log(
               `[Global Setup] Email verified for ${role} user: ${user.username}`,
             );
@@ -195,7 +169,7 @@ async function globalSetup(config: FullConfig) {
           failures.push(`${role} (${user.username}): ${error}`);
         }
       } finally {
-        await requestContext.dispose();
+        await userContext.close();
       }
     }
 

@@ -52,6 +52,11 @@ inputs:
     required: false
     default: 'false'
 
+  with-keycloak:
+    description: 'Start Keycloak OIDC provider (config merge handled separately by CI workflow)'
+    required: false
+    default: 'false'
+
   with-mailpit:
     description: 'Start Mailpit email testing server'
     required: false
@@ -172,6 +177,21 @@ runs:
       run: |
         docker compose up -d redis quay-db
         docker exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+
+    - name: Start Keycloak
+      if: inputs.with-keycloak == 'true'
+      shell: bash
+      run: |
+        docker compose up -d keycloak
+        echo "Waiting for Keycloak to be ready..."
+        if curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+            http://localhost:8081/realms/quay > /dev/null 2>&1; then
+          echo "Keycloak is ready!"
+        else
+          echo "::error::Keycloak failed to start"
+          docker logs quay-keycloak 2>&1 | tail -50
+          exit 1
+        fi
 
     - name: Build Angular static files
       shell: bash
