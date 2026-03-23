@@ -8,8 +8,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "master" && ( "web/***".pathChanged() || ".tekton/quayio-frontend-push.yaml".pathChanged()
-      )
+      == "master"
     pipelinesascode.tekton.dev/target-namespace: "quayio-tenant"
   creationTimestamp: null
   labels:
