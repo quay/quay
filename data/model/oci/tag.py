@@ -503,6 +503,15 @@ def retarget_tag(
         ):
             lifetime_end_ms = None
 
+        # Compute lifetime_end_ms, clearing it for immutable tags when config disallows
+        lifetime_end_ms = (now_ms + expiration_seconds * 1000) if expiration_seconds else None
+        if (
+            immutable
+            and lifetime_end_ms is not None
+            and not config.app_config.get("FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False)
+        ):
+            lifetime_end_ms = None
+
         created = Tag.create(
             name=tag_name,
             repository=manifest.repository_id,
