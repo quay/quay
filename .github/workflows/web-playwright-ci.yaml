@@ -5,6 +5,8 @@ on:
       - "*"
     paths:
       - "web/**"
+      - "buildman/**"
+      - "local-dev/builds/**"
       - ".github/workflows/web-playwright-ci.yaml"
       - ".github/actions/setup-quay/**"
 
@@ -21,6 +23,7 @@ jobs:
         with:
           with-clair: true
           with-keycloak: true
+          with-builds: true
           extra-config: |
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true

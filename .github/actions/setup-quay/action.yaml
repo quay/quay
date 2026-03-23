@@ -57,6 +57,11 @@ inputs:
     required: false
     default: 'false'
 
+  with-builds:
+    description: 'Enable container build support with PopenExecutor'
+    required: false
+    default: 'false'
+
   with-mailpit:
     description: 'Start Mailpit email testing server'
     required: false
@@ -172,6 +177,30 @@ runs:
         rm -f "${INLINE_CONFIG}"
         echo "Inline config merged successfully"
 
+    - name: Extract quay-builder binary
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: |
+        echo "Extracting quay-builder binary..."
+        docker create --name quay-builder-extract quay.io/projectquay/quay-builder:3.17-unstable
+        docker cp quay-builder-extract:/usr/local/bin/quay-builder ./local-dev/quay-builder
+        docker rm quay-builder-extract
+        chmod +x ./local-dev/quay-builder
+        echo "quay-builder binary extracted successfully"
+
+    - name: Configure build support
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        BUILDS_CONFIG="local-dev/builds/builds-config.yaml"
+
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${BUILDS_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "Build support configuration merged"
+
     - name: Start database services
       shell: bash
       run: |
@@ -207,7 +236,19 @@ runs:
     - name: Start Quay container
       shell: bash
       run: |
-        DOCKER_USER="1001:0" docker compose up -d --no-build quay
+        if [ "${{ inputs.with-builds }}" == "true" ]; then
+          cat > /tmp/docker-compose.builds.yaml << 'EOF'
+        services:
+          quay:
+            volumes:
+              - "/var/run/docker.sock:/var/run/docker.sock"
+            environment:
+              DOCKER_HOST: "unix:///var/run/docker.sock"
+        EOF
+          DOCKER_USER="1001:0" docker compose -f docker-compose.yaml -f /tmp/docker-compose.builds.yaml up -d --no-build quay
+        else
+          DOCKER_USER="1001:0" docker compose up -d --no-build quay
+        fi
 
     - name: Wait for Quay to be ready
       id: healthcheck

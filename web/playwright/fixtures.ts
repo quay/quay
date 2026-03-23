@@ -625,11 +625,13 @@ export class TestApi {
     namespace: string,
     repoName: string,
     dockerfileContent = 'FROM scratch\n',
+    dockerTags: string[] = [],
   ): Promise<CreatedBuild> {
     const result = await this.client.startDockerfileBuild(
       namespace,
       repoName,
       dockerfileContent,
+      dockerTags,
     );
 
     // No cleanup needed - builds are deleted when the repository is deleted
