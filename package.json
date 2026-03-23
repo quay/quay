@@ -67,7 +67,7 @@
     "source-map-loader": "0.1.5",
     "style-loader": "0.13.1",
     "terser-webpack-plugin": "^2.1.2",
-    "ts-loader": "6.2.0",
+    "ts-loader": "6.2.2",
     "ts-mocks": "^0.2.2",
     "ts-node": "^3.0.6",
     "tslint": "^5.4.3",
