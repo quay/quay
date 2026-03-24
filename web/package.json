@@ -38,7 +38,7 @@
     "remark-gemoji": "^8.0.0",
     "remark-gfm": "^4.0.1",
     "ts-jest": "^29.1.1",
-    "typescript": "^5.8.3",
+    "typescript": "^6.0.0",
     "use-react-router-breadcrumbs": "^4.0.1",
     "web-vitals": "^3.4.0"
   },
