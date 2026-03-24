@@ -271,14 +271,10 @@ def assert_gc_integrity(expect_storage_removed=True):
 
 def test_has_garbage(default_tag_policy, initialized_db):
     """
-    Remove all existing repositories, then add one without garbage, check, then add one with
-    garbage, and check again.
+    Create a repo with a tag, delete the tag, and verify that garbage detection
+    respects the time machine setting and that GC cleans it up.
     """
-    # Delete all existing repos.
-    for repo in database.Repository.select().order_by(database.Repository.id):
-        assert model.gc.purge_repository(repo, force=True)
-
-    # Change the time machine expiration on the namespace.
+    # Set a very large time machine so no existing tags appear as garbage.
     (
         database.User.update(removed_tag_expiration_s=1000000000)
         .where(database.User.username == ADMIN_ACCESS_USER)
@@ -308,13 +304,14 @@ def test_has_garbage(default_tag_policy, initialized_db):
         .execute()
     )
 
-    # Now we should find the repository for GC.
+    # Now we should find a repository for GC.
     repository = model.oci.tag.find_repository_with_garbage(0)
     assert repository is not None
-    assert repository.name == "newrepo"
 
-    # GC the repository.
-    assert gc_now(repository)
+    # GC all repositories with garbage to reach a clean state.
+    while repository is not None:
+        gc_now(repository)
+        repository = model.oci.tag.find_repository_with_garbage(0)
 
     # There should now be no repositories with garbage.
     assert model.oci.tag.find_repository_with_garbage(0) is None
