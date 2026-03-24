@@ -84,7 +84,7 @@
     "css-loader": "^6.11.0",
     "css-minimizer-webpack-plugin": "^5.0.1",
     "cypress-ctrf-json-reporter": "^0.0.13",
-    "dotenv-webpack": "^8.0.1",
+    "dotenv-webpack": "^9.0.0",
     "eslint": "^8.56.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^9.0.0",
