@@ -57,7 +57,7 @@
     "jasmine-ts": "0.0.3",
     "karma": "^6.4.4",
     "karma-chrome-launcher": "^2.1.1",
-    "karma-coverage": "^0.5.5",
+    "karma-coverage": "^2.0.0",
     "karma-es6-shim": "^1.0.0",
     "karma-jasmine": "^0.3.8",
     "karma-webpack": "^4.0.0",
