@@ -139,6 +139,8 @@ spec:
         value: $(params.git-url)
       - name: revision
         value: $(params.revision)
+      - name: submodules
+        value: "true"
       - name: ociStorage
         value: $(params.output-image).git
       - name: ociArtifactExpiresAfter
