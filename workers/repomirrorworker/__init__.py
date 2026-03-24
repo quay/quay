@@ -1072,6 +1072,7 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             username=username,
             password=password,
             config=claimed_config.external_registry_config,
+            allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
         )
     except ValueError as e:
         logger.error(
