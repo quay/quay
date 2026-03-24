@@ -45,8 +45,12 @@ export default function Settings(props: SettingsProps) {
   const immutabilityResolved =
     !quayConfig?.features?.IMMUTABLE_TAGS ||
     (!isImmutabilityLoading && !isImmutabilityError);
+  const proxyCacheResolved =
+    !quayConfig?.features?.PROXY_CACHE || !isProxyCacheLoading;
+  const orgMirrorResolved =
+    !quayConfig?.features?.ORG_MIRROR || !isOrgMirrorLoading;
   const mutualExclusionLoaded =
-    !isOrgMirrorLoading && !isProxyCacheLoading && immutabilityResolved;
+    orgMirrorResolved && proxyCacheResolved && immutabilityResolved;
 
   const handleTabClick = (event: React.MouseEvent, tabId: string | number) => {
     setActiveTabId(String(tabId));
