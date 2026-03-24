@@ -81,13 +81,10 @@ services:
     container_name: quay-clair
     image: quay.io/projectquay/clair:4.7.2
     volumes:
-      - "./local-dev/clair:/src/clair/"
+      - "./local-dev/clair/config.yaml:/etc/clair/config.yaml"
     environment:
-      CLAIR_CONF: "/src/clair/config.yaml"
+      CLAIR_CONF: "/etc/clair/config.yaml"
       CLAIR_MODE: "combo"
     network_mode: "service:quay"
-    cpus: 2
-    command:
-      ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
     depends_on:
       - quay

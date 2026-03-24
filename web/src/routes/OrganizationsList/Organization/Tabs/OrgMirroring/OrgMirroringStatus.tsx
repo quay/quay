@@ -119,13 +119,6 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
               : 'None',
           },
           {
-            label: 'Retries Remaining',
-            value:
-              config.sync_retries_remaining != null
-                ? `${config.sync_retries_remaining} / 3`
-                : '3 / 3',
-          },
-          {
             label: 'Connection',
             value: (
               <Button

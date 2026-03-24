@@ -377,6 +377,40 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
   );
 
   test.describe(
+    'Organization state tab with IMMUTABLE_TAGS disabled',
+    {tag: ['@feature:ORG_MIRROR']},
+    () => {
+      test('shows Organization state tab when FEATURE_IMMUTABLE_TAGS is disabled (PROJQUAY-11028)', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexnoimmtag');
+
+        // Override config to disable IMMUTABLE_TAGS
+        await authenticatedPage.route('**/config', async (route) => {
+          const response = await route.fetch();
+          const body = await response.json();
+          body.features.IMMUTABLE_TAGS = false;
+          body.features.ORG_MIRROR = true;
+          await route.fulfill({response, body: JSON.stringify(body)});
+        });
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+        // Wait for settings to load
+        await expect(
+          authenticatedPage.locator('#org-settings-email'),
+        ).toBeVisible();
+
+        // Organization state tab should be visible even without IMMUTABLE_TAGS
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).toBeVisible();
+      });
+    },
+  );
+
+  test.describe(
     'Repository Settings: Org Mirror Mutual Exclusion',
     {
       tag: ['@repository', '@feature:ORG_MIRROR', '@feature:IMMUTABLE_TAGS'],
