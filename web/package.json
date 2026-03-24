@@ -119,7 +119,7 @@
     "webpack-merge": "^5.10.0"
   },
   "optionalDependencies": {
-    "cypress": "^13.13.2"
+    "cypress": "^15.0.0"
   },
   "overrides": {
     "cross-spawn": "^7.0.6",
