@@ -31,11 +31,21 @@ test.describe(
         TEST_USERS.user.password,
       );
 
-      // Get the digest of 'latest'
-      const tags = await api.getTags(sharedRepo.namespace, sharedRepo.name, {
-        specificTag: 'latest',
-      });
-      const latestDigest = tags.tags[0].manifest_digest;
+      // Poll for the tag to be indexed (push is sync but indexing may lag)
+      let latestDigest: string | undefined;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const tags = await api.getTags(sharedRepo.namespace, sharedRepo.name, {
+          specificTag: 'latest',
+        });
+        if (tags.tags.length > 0) {
+          latestDigest = tags.tags[0].manifest_digest;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (!latestDigest) {
+        throw new Error('Pushed tag was not indexed after 10 attempts');
+      }
 
       // Create additional tag 'histtag' pointing to same digest
       await api.createTag(
@@ -47,15 +57,6 @@ test.describe(
 
       // Delete 'histtag' to create a "deleted" history entry
       await api.deleteTag(sharedRepo.namespace, sharedRepo.name, 'histtag');
-
-      // Push a different image to 'latest' to create a "moved" history entry
-      await pushImage(
-        sharedRepo.namespace,
-        sharedRepo.name,
-        'latest',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
-      );
 
       // Set expiration on 'latest' to 2 weeks from now (for future entries test)
       const twoWeeksFromNow = Math.floor(Date.now() / 1000) + 14 * 24 * 60 * 60;

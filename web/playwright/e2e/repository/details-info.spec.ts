@@ -64,8 +64,8 @@ test.describe(
 
       await expect(textarea2).not.toBeAttached();
       await expect(
-        authenticatedPage.getByText('This should be discarded'),
-      ).not.toBeAttached();
+        authenticatedPage.getByText('New test description'),
+      ).toBeVisible();
     });
 
     test('switches to Tags tab when clicked', async ({

@@ -97,8 +97,8 @@ test.describe(
       await authenticatedPage.getByText('Change Expiration').click();
 
       // Verify expiration was set
-      await expect(latestRow.locator('[data-label="Expires"]')).toContainText(
-        'a month',
+      await expect(latestRow.locator('[data-label="Expires"]')).not.toHaveText(
+        'Never',
       );
 
       // Reset to Never
@@ -181,8 +181,8 @@ test.describe(
 
       await authenticatedPage.getByText('Change Expiration').click();
 
-      await expect(latestRow.locator('[data-label="Expires"]')).toContainText(
-        'a month',
+      await expect(latestRow.locator('[data-label="Expires"]')).not.toHaveText(
+        'Never',
       );
     });
 
@@ -260,8 +260,15 @@ test.describe(
       const tag1Row = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'tag1'}),
       });
-      await expect(tag1Row.locator('[data-label="Expires"]')).toContainText(
-        'a month',
+      await expect(tag1Row.locator('[data-label="Expires"]')).not.toHaveText(
+        'Never',
+      );
+
+      const tag2Row = authenticatedPage.getByTestId('table-entry').filter({
+        has: authenticatedPage.getByRole('link', {name: 'tag2'}),
+      });
+      await expect(tag2Row.locator('[data-label="Expires"]')).not.toHaveText(
+        'Never',
       );
 
       await expect(

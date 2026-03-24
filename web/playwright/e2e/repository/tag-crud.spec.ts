@@ -193,6 +193,7 @@ test.describe(
           `/repository/${sharedRepo.fullName}/tag/manifestlist\\?.*digest=sha256:`,
         ),
       );
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       await expect(authenticatedPage.getByText(platformText!)).toBeVisible();
     });
 
@@ -236,6 +237,9 @@ test.describe(
       await expect(
         authenticatedPage.getByText('Deleted tag v1 successfully'),
       ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'v1'}),
+      ).not.toBeAttached();
     });
 
     test('delete tag via row kebab', async ({authenticatedPage, api}) => {
@@ -269,6 +273,9 @@ test.describe(
       await expect(
         authenticatedPage.getByText('Deleted tag v1 successfully'),
       ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('link', {name: 'v1'}),
+      ).not.toBeAttached();
     });
 
     test('force delete tag via toolbar', async ({
@@ -639,6 +646,7 @@ test.describe(
       const digestText = await latestRow
         .locator('[data-label="Digest"]')
         .textContent();
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const shortDigest = digestText!.replace('sha256:', '').slice(0, 12);
 
       await searchInput.fill(shortDigest);
