@@ -1455,10 +1455,11 @@ class TestUpdateSyncStatusToSyncNow:
         assert config.sync_status == OrgMirrorStatus.NEVER_RUN
 
         before = datetime.utcnow()
-        result = update_sync_status_to_sync_now(config)
+        result, reason = update_sync_status_to_sync_now(config)
         after = datetime.utcnow()
 
         assert result is not None
+        assert reason is None
         assert result.sync_status == OrgMirrorStatus.SYNC_NOW
         assert result.sync_start_date >= before
         assert result.sync_start_date <= after
@@ -1478,9 +1479,10 @@ class TestUpdateSyncStatusToSyncNow:
         config.sync_status = OrgMirrorStatus.SYNCING
         config.save()
 
-        result = update_sync_status_to_sync_now(config)
+        result, reason = update_sync_status_to_sync_now(config)
 
         assert result is None
+        assert "discovery" in reason
 
     def test_sync_now_restores_retries(self, initialized_db):
         """
@@ -1496,33 +1498,108 @@ class TestUpdateSyncStatusToSyncNow:
         config.sync_status = OrgMirrorStatus.FAIL
         config.save()
 
-        result = update_sync_status_to_sync_now(config)
+        result, reason = update_sync_status_to_sync_now(config)
 
         assert result is not None
+        assert reason is None
         assert result.sync_retries_remaining >= 1
 
-    def test_sync_now_does_not_update_repos(self, initialized_db):
+    def test_sync_now_blocked_when_repos_syncing(self, initialized_db):
         """
-        Should only update the config, not the repos.
-        Repos are updated by the worker after discovery via propagate_status_to_repos.
+        Should return None when repos are in SYNCING or SYNC_NOW state.
         """
         from data.model.org_mirror import update_sync_status_to_sync_now
 
         org, robot = _create_org_and_robot("sync_now_test4")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
 
-        # Create repos in various states
-        syncing_repo = OrgMirrorRepository.create(
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="syncing-repo",
             sync_status=OrgMirrorRepoStatus.SYNCING,
             sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
         )
-        never_run_repo = OrgMirrorRepository.create(
+
+        result, reason = update_sync_status_to_sync_now(config)
+        assert result is None
+        assert "repositories are still syncing" in reason
+
+    def test_sync_now_blocked_when_repos_sync_now(self, initialized_db):
+        """
+        Should return None when repos are in SYNC_NOW state.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test5")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="sync-now-repo",
+            sync_status=OrgMirrorRepoStatus.SYNC_NOW,
+        )
+
+        result, reason = update_sync_status_to_sync_now(config)
+        assert result is None
+        assert "repositories are still syncing" in reason
+
+    def test_sync_now_blocked_when_repos_never_run(self, initialized_db):
+        """
+        Should return None when repos are in NEVER_RUN state.
+        NEVER_RUN repos are scheduled and pending worker pickup — triggering
+        a new sync would restart discovery and conflict with queued work.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test6")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="never-run-repo",
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
         )
+
+        result, reason = update_sync_status_to_sync_now(config)
+        assert result is None
+        assert "repositories are still syncing" in reason
+
+    def test_sync_now_blocked_when_mixed_active_and_terminal(self, initialized_db):
+        """
+        Should return None when ANY repo is in an active state, even if
+        other repos are in terminal states.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test_mixed")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="success-repo",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="syncing-repo",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+
+        result, reason = update_sync_status_to_sync_now(config)
+        assert result is None
+        assert "repositories are still syncing" in reason
+
+    def test_sync_now_allowed_with_terminal_state_repos(self, initialized_db):
+        """
+        Should succeed when all repos are in terminal states (SUCCESS, FAIL, CANCEL).
+        Config update should not modify repo statuses — the worker propagates after discovery.
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_test7")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
         fail_repo = OrgMirrorRepository.create(
             org_mirror_config=config,
             repository_name="fail-repo",
@@ -1534,20 +1611,16 @@ class TestUpdateSyncStatusToSyncNow:
             sync_status=OrgMirrorRepoStatus.SUCCESS,
         )
 
-        result = update_sync_status_to_sync_now(config)
+        result, reason = update_sync_status_to_sync_now(config)
 
         assert result is not None
+        assert reason is None
         assert result.sync_status == OrgMirrorStatus.SYNC_NOW
 
-        # Verify repos are NOT updated - they retain their original status
-        # The worker will propagate the status after discovery
-        syncing_repo = OrgMirrorRepository.get_by_id(syncing_repo.id)
-        never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
+        # Verify repos retain their original status
         fail_repo = OrgMirrorRepository.get_by_id(fail_repo.id)
         success_repo = OrgMirrorRepository.get_by_id(success_repo.id)
 
-        assert syncing_repo.sync_status == OrgMirrorRepoStatus.SYNCING
-        assert never_run_repo.sync_status == OrgMirrorRepoStatus.NEVER_RUN
         assert fail_repo.sync_status == OrgMirrorRepoStatus.FAIL
         assert success_repo.sync_status == OrgMirrorRepoStatus.SUCCESS
 

@@ -26,6 +26,20 @@ import {Entity, EntityKind} from 'src/resources/UserResource';
 
 const ORG_MIRROR_QUERY_KEY = 'org-mirror-config';
 
+// Count repos that are actively syncing or pending worker pickup.
+// NEVER_RUN = scheduled and pending, SYNC_NOW/SYNCING = actively syncing.
+// Keep in sync with data/model/org_mirror.py:update_sync_status_to_sync_now().
+function getActiveRepoCount(
+  counts: Record<string, number> | undefined,
+): number {
+  if (!counts) return 0;
+  return (
+    (counts['NEVER_RUN'] ?? 0) +
+    (counts['SYNC_NOW'] ?? 0) +
+    (counts['SYNCING'] ?? 0)
+  );
+}
+
 // Valid values for runtime validation of API responses
 const VALID_REGISTRY_TYPES: SourceRegistryType[] = ['harbor', 'quay'];
 const VALID_VISIBILITIES: Visibility[] = ['public', 'private'];
@@ -100,7 +114,14 @@ export const useOrgMirroringConfig = (
         throw err;
       }
     },
-    refetchInterval: isCancellingSync ? 5000 : false,
+    refetchInterval: (data) => {
+      if (isCancellingSync) return 5000;
+      const status = data?.sync_status;
+      if (status === 'SYNCING' || status === 'SYNC_NOW') return 5000;
+      return getActiveRepoCount(data?.repo_sync_status_counts) > 0
+        ? 5000
+        : false;
+    },
   });
 
   const error = queryError
@@ -108,16 +129,20 @@ export const useOrgMirroringConfig = (
       'Failed to load organization mirror configuration'
     : null;
 
+  const activeRepoCount = getActiveRepoCount(config?.repo_sync_status_counts);
+
+  // True when any sync activity is happening (discovery or repo sync)
+  const isOrgSyncing =
+    config?.sync_status === 'SYNCING' ||
+    config?.sync_status === 'SYNC_NOW' ||
+    activeRepoCount > 0;
+
   // Stop polling once cancellation is reflected in the config
   useEffect(() => {
-    if (isCancellingSync && config?.repo_sync_status_counts) {
-      const syncing = config.repo_sync_status_counts['SYNCING'] ?? 0;
-      const syncNow = config.repo_sync_status_counts['SYNC_NOW'] ?? 0;
-      if (syncing === 0 && syncNow === 0) {
-        setIsCancellingSync(false);
-      }
+    if (isCancellingSync && !isOrgSyncing) {
+      setIsCancellingSync(false);
     }
-  }, [isCancellingSync, config]);
+  }, [isCancellingSync, isOrgSyncing]);
 
   // Populate form once when config data first arrives
   useEffect(() => {
@@ -282,6 +307,7 @@ export const useOrgMirroringConfig = (
     handleSyncNow,
     handleCancelSync,
     isCancellingSync,
+    isOrgSyncing,
     isVerifying,
     handleVerifyConnection,
     handleToggleEnabled,

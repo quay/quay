@@ -1129,7 +1129,9 @@ def propagate_status_to_repos(config: OrgMirrorConfig, status: OrgMirrorRepoStat
     return query.execute()
 
 
-def update_sync_status_to_sync_now(org_mirror_config: OrgMirrorConfig) -> Optional[OrgMirrorConfig]:
+def update_sync_status_to_sync_now(
+    org_mirror_config: OrgMirrorConfig,
+) -> tuple[Optional[OrgMirrorConfig], Optional[str]]:
     """
     Change the org mirror config sync status to SYNC_NOW for immediate sync.
 
@@ -1143,11 +1145,30 @@ def update_sync_status_to_sync_now(org_mirror_config: OrgMirrorConfig) -> Option
         org_mirror_config: The OrgMirrorConfig to trigger sync for
 
     Returns:
-        Updated OrgMirrorConfig if successful, None if currently syncing
+        (updated_config, None) on success, or (None, reason) on rejection.
+        Rejection reasons:
+        - Config is in SYNCING state (discovery in progress)
+        - Repositories are still actively syncing or pending worker pickup
     """
-    # Cannot trigger sync-now if already syncing
+    # Cannot trigger sync-now if config is actively being discovered
     if org_mirror_config.sync_status == OrgMirrorStatus.SYNCING:
-        return None
+        return None, "Cannot trigger sync: discovery is currently in progress."
+
+    # Cannot trigger sync-now if repositories are still actively syncing
+    # or pending worker pickup. NEVER_RUN repos are scheduled and pending —
+    # restarting discovery while they're queued would cause conflicts.
+    active_counts = get_org_mirror_repo_status_counts(org_mirror_config)
+    active = (
+        active_counts.get("SYNCING", 0)
+        + active_counts.get("SYNC_NOW", 0)
+        + active_counts.get("NEVER_RUN", 0)
+    )
+    if active > 0:
+        return None, (
+            "Cannot trigger sync: repositories are still syncing. "
+            "Cancel the current sync and wait for all repositories to "
+            "reach a terminal state before triggering a new sync."
+        )
 
     retries = max(org_mirror_config.sync_retries_remaining, 1)
     now = datetime.utcnow()
@@ -1164,9 +1185,9 @@ def update_sync_status_to_sync_now(org_mirror_config: OrgMirrorConfig) -> Option
     )
 
     if not config_query.execute():
-        return None
+        return None, "Cannot trigger sync: concurrent update conflict."
 
-    return OrgMirrorConfig.get_by_id(org_mirror_config.id)
+    return OrgMirrorConfig.get_by_id(org_mirror_config.id), None
 
 
 def update_sync_status_to_cancel(org_mirror_config: OrgMirrorConfig) -> Optional[OrgMirrorConfig]:

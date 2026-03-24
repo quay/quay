@@ -198,6 +198,8 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
           setSelectedRobot={formHook.setSelectedRobot}
           robotOptions={robotOptions}
           isSyncingNow={configHook.isSyncingNow}
+          isCancellingSync={configHook.isCancellingSync}
+          isOrgSyncing={configHook.isOrgSyncing}
           onSyncNow={async () => {
             try {
               await configHook.handleSyncNow();
@@ -291,7 +293,11 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
             }
           }}
         />
-        <OrgMirroringRepos config={configHook.config} orgName={orgName} />
+        <OrgMirroringRepos
+          config={configHook.config}
+          orgName={orgName}
+          isOrgSyncing={configHook.isOrgSyncing}
+        />
         <ActionGroup>
           <Button
             variant={ButtonVariant.primary}
