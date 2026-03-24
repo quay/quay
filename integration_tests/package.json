@@ -87,7 +87,7 @@
     "chalk": "2.3.x",
     "chromedriver": "^2.43.3",
     "circular-dependency-plugin": "5.0.2",
-    "css-loader": "0.28.x",
+    "css-loader": "7.1.x",
     "enzyme": "^3.9.0",
     "enzyme-adapter-react-16": "1.12.1",
     "eslint": "5.16.0",
