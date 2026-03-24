@@ -467,7 +467,9 @@ class V4SecurityScanner(SecurityScannerInterface):
                 return set()
 
             # Stale IN_PROGRESS threshold - aligned with stale_in_progress_query()
-            stale_in_progress_threshold = datetime.utcnow() - timedelta(hours=STALE_IN_PROGRESS_HOURS)
+            stale_in_progress_threshold = datetime.utcnow() - timedelta(
+                hours=STALE_IN_PROGRESS_HOURS
+            )
 
             # Check for recently indexed manifests with status-specific thresholds
             # For IN_PROGRESS: only skip if still fresh (>= 6h threshold)
@@ -579,7 +581,9 @@ class V4SecurityScanner(SecurityScannerInterface):
             # Atomically claim manifest for indexing by marking as IN_PROGRESS.
             # Only claim if not already IN_PROGRESS to avoid concurrent workers indexing the same manifest.
             # Also allow reclaiming manifests stuck IN_PROGRESS for longer than the stale threshold.
-            stale_in_progress_threshold = datetime.utcnow() - timedelta(hours=STALE_IN_PROGRESS_HOURS)
+            stale_in_progress_threshold = datetime.utcnow() - timedelta(
+                hours=STALE_IN_PROGRESS_HOURS
+            )
             rows_updated = (
                 ManifestSecurityStatus.update(
                     index_status=IndexStatus.IN_PROGRESS,
