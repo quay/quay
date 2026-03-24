@@ -285,6 +285,9 @@ class RetryOperationalError(object):
                 # https://github.com/PyMySQL/PyMySQL/blob/main/pymysql/connections.py#L1354
                 raise
 
+            if self.in_transaction():
+                raise
+
             if not self.is_closed():
                 self.close()
 
