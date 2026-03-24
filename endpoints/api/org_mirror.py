@@ -567,9 +567,9 @@ class OrgMirrorSyncNow(ApiResource):
         if not mirror:
             raise NotFound()
 
-        updated = model.org_mirror.update_sync_status_to_sync_now(mirror)
+        updated, reason = model.org_mirror.update_sync_status_to_sync_now(mirror)
         if not updated:
-            raise InvalidRequest("Cannot trigger sync: mirror is currently syncing")
+            raise InvalidRequest(reason)
 
         log_action(
             "org_mirror_sync_now_requested",
