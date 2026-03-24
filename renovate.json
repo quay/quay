@@ -7,12 +7,6 @@
   "extends": [
     "github>konflux-ci/mintmaker-presets:cve-automerge-all"
   ],
-  "postUpgradeTasks": {
-    "commands": [
-      "pip install pybuild-deps",
-      "pybuild-deps compile --generate-hashes --output-file=requirements-build.txt requirements.txt"
-    ],
-    "fileFilters": ["requirements-build.txt"],
-    "executionMode": "branch"
-  }
+  "semanticCommits": "disabled",
+  "commitMessagePrefix": "NO-ISSUE: chore(deps):"
 }
