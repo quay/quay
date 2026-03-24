@@ -1731,6 +1731,40 @@ export class ApiClient {
   }
 
   /**
+   * Permanently expire a tag (force delete).
+   * Uses POST /api/v1/repository/{namespace}/{repo}/tag/{tag}/expire
+   */
+  async expireTag(
+    namespace: string,
+    repo: string,
+    tag: string,
+    opts?: {
+      manifest_digest?: string;
+      is_alive?: boolean;
+      include_submanifests?: boolean;
+    },
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/tag/${tag}/expire`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: opts ?? {},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to expire tag ${tag} from ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
    * Set tag immutability.
    * Uses PUT /api/v1/repository/{namespace}/{repo}/tag/{tag}
    */
