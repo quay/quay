@@ -63,7 +63,7 @@ jobs:
 
       - name: Run Database auth tests
         env:
-          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: web/blob-results/db
         run: cd web && npx playwright test --grep-invert @auth:OIDC --reporter=blob
 
       - name: Swap to OIDC authentication
@@ -99,7 +99,7 @@ jobs:
       - name: Run OIDC auth tests
         if: always()
         env:
-          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: web/blob-results/oidc
         run: cd web && npx playwright test --grep @auth:OIDC --reporter=blob
 
       - name: Merge test reports
