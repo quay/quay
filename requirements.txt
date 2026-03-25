@@ -170,7 +170,7 @@ pycparser==2.21
 python-bidi==0.6.6
 reportlab==4.2.0
 svglib==1.5.1
-tinycss2==1.2.1
+tinycss2==1.5.1
 typing_extensions==4.9.0
 tzdata==2023.3
 wrapt==1.17.2
