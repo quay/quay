@@ -43,20 +43,21 @@ const repoStatusColors: Record<
 
 const repoStatusLabels: Record<string, string> = {
   ...orgMirrorStatusLabels,
-  NEVER_RUN: 'Pending',
-  SYNC_NOW: 'Scheduled',
   DISCOVERED: 'Discovered',
 };
 
-// Filterable statuses — must match backend OrgMirrorRepoStatus enum values
+// Filterable statuses — derived from shared label map for consistency
 const filterableStatuses: {value: string; label: string}[] = [
-  {value: 'NEVER_RUN', label: 'Pending'},
-  {value: 'SYNC_NOW', label: 'Scheduled'},
-  {value: 'SYNCING', label: 'Syncing'},
-  {value: 'SUCCESS', label: 'Success'},
-  {value: 'FAIL', label: 'Failed'},
-  {value: 'CANCEL', label: 'Cancelled'},
-];
+  'NEVER_RUN',
+  'SYNC_NOW',
+  'SYNCING',
+  'SUCCESS',
+  'FAIL',
+  'CANCEL',
+].map((value) => ({
+  value,
+  label: orgMirrorStatusLabels[value] ?? value,
+}));
 
 export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
   config,
