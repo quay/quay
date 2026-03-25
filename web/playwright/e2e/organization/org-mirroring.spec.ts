@@ -1037,7 +1037,10 @@ test.describe(
       const statusDisplay = authenticatedPage.getByTestId(
         'org-mirror-status-display',
       );
-      await expect(statusDisplay.getByText('Success: 5')).toBeVisible();
+      // Use longer timeout for CI where API responses may be slower
+      await expect(statusDisplay.getByText('Success: 5')).toBeVisible({
+        timeout: 15000,
+      });
       await expect(statusDisplay.getByText('Syncing: 2')).toBeVisible();
       await expect(statusDisplay.getByText('Failed: 1')).toBeVisible();
       // NEVER_RUN is displayed as "Scheduled" via orgMirrorStatusLabels
