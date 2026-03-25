@@ -7,9 +7,13 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
   TextInput,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import Conditional from 'src/components/empty/Conditional';
@@ -117,10 +121,26 @@ export default function CreateEmailNotification(
     <>
       <Modal
         variant={ModalVariant.small}
-        title="Email Authorization"
         isOpen={isEmailAuthModalOpen}
         onClose={() => setIsEmailAuthModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Email Authorization" />
+        <ModalBody>
+          <Conditional if={errorSendingAuthorizedEmail}>
+            <Alert
+              isInline
+              actionClose={
+                <AlertActionCloseButton onClose={resetSendAuthorizationEmail} />
+              }
+              variant="danger"
+              title="Failure sending authorized email"
+            />
+          </Conditional>
+          The email address {email} has not been authorized to recieve
+          notifications from this repository. Please click &lsquo;Send
+          Authorized Email&lsquo; to start the authorization process.
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="sendemail"
             variant="primary"
@@ -128,59 +148,46 @@ export default function CreateEmailNotification(
             onClick={() => sendAuthorizedEmail(email)}
           >
             Send Authorized Email
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setIsEmailAuthModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <Conditional if={errorSendingAuthorizedEmail}>
-          <Alert
-            isInline
-            actionClose={
-              <AlertActionCloseButton onClose={resetSendAuthorizationEmail} />
-            }
-            variant="danger"
-            title="Failure sending authorized email"
-          />
-        </Conditional>
-        The email address {email} has not been authorized to recieve
-        notifications from this repository. Please click &lsquo;Send Authorized
-        Email&lsquo; to start the authorization process.
+          </Button>
+        </ModalFooter>
       </Modal>
       <Modal
         variant={ModalVariant.small}
-        title="Email Authorization"
         isOpen={polling}
         onClose={stopPolling}
-        actions={[
+      >
+        <ModalHeader title="Email Authorization" />
+        <ModalBody>
+          An email has been sent to {email}. Please click the link contained in
+          the email.
+        </ModalBody>
+        <ModalFooter>
           <Button key="cancel" variant="primary" onClick={stopPolling}>
             Cancel
-          </Button>,
-        ]}
-      >
-        An email has been sent to {email}. Please click the link contained in
-        the email.
+          </Button>
+        </ModalFooter>
       </Modal>
-      <Modal
-        variant={ModalVariant.small}
-        title="Email Authorization"
-        isOpen={errorPolling}
-        actions={[
+      <Modal variant={ModalVariant.small} isOpen={errorPolling}>
+        <ModalHeader title="Email Authorization" />
+        <ModalBody>
+          Unable to verify email confirmation. Please wait a moment and retry.
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="cancel"
             variant="primary"
             onClick={() => startPolling(email)}
           >
             Retry
-          </Button>,
-        ]}
-      >
-        Unable to verify email confirmation. Please wait a moment and retry.
+          </Button>
+        </ModalFooter>
       </Modal>
       <FormGroup fieldId="email" label="E-mail address" isRequired>
         <TextInput

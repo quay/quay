@@ -1,5 +1,11 @@
-import {Button} from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
+import {
+  Button,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 
 export default function DeleteModalForRowTemplate<T, K extends keyof T>(
   props: DeleteModalForRowTemplateProps<T, K>,
@@ -7,11 +13,18 @@ export default function DeleteModalForRowTemplate<T, K extends keyof T>(
   return (
     <Modal
       variant={ModalVariant.medium}
-      title={`${props.deleteMsgTitle}`}
-      titleIconVariant="warning"
       isOpen={props.isModalOpen}
       onClose={props.toggleModal}
-      actions={[
+    >
+      <ModalHeader
+        title={`${props.deleteMsgTitle}`}
+        titleIconVariant="warning"
+      />
+      <ModalBody>
+        Are you sure you want to delete{' '}
+        <b> {props.itemToBeDeleted[props.keyToDisplay]} </b> ?
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="delete"
           variant="danger"
@@ -21,14 +34,11 @@ export default function DeleteModalForRowTemplate<T, K extends keyof T>(
           data-testid={`${props.itemToBeDeleted[props.keyToDisplay]}-del-btn`}
         >
           Delete
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={props.toggleModal}>
           Cancel
-        </Button>,
-      ]}
-    >
-      Are you sure you want to delete{' '}
-      <b> {props.itemToBeDeleted[props.keyToDisplay]} </b> ?
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

@@ -5,8 +5,9 @@ import {
   Wizard,
   WizardHeader,
   WizardStep,
+  Modal,
+  ModalVariant,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import NameAndDescription from './robotAccountWizard/NameAndDescription';
 import {useCreateRobotAccount} from 'src/hooks/useRobotAccounts';
 
@@ -251,8 +252,6 @@ export default function CreateRobotAccountModal(
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}
       onClose={handleModalToggle}
-      showClose={false}
-      hasNoBodyWrapper
     >
       <Wizard
         onClose={handleModalToggle}

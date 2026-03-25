@@ -12,8 +12,12 @@ import {
   FlexItem,
   Spinner,
   Content,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useConvertAccount} from 'src/hooks/UseConvertAccount';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -339,24 +343,26 @@ export default function ChangeAccountTypeModal({
   return (
     <Modal
       variant={ModalVariant.medium}
-      title="Change Account Type"
       isOpen={isOpen}
       onClose={handleClose}
       data-testid="change-account-type-modal"
-      actions={convertStep < 3 ? getStepActions() : []}
     >
-      {error && (
-        <Alert
-          variant="danger"
-          isInline
-          title="Error"
-          className="pf-v6-u-mb-md"
-        >
-          {error}
-        </Alert>
-      )}
+      <ModalHeader title="Change Account Type" />
+      <ModalBody>
+        {error && (
+          <Alert
+            variant="danger"
+            isInline
+            title="Error"
+            className="pf-v6-u-mb-md"
+          >
+            {error}
+          </Alert>
+        )}
 
-      {renderCurrentStep()}
+        {renderCurrentStep()}
+      </ModalBody>
+      {convertStep < 3 && <ModalFooter>{getStepActions()}</ModalFooter>}
     </Modal>
   );
 }

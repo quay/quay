@@ -21,8 +21,12 @@ import {
   SelectOption,
   SelectGroup,
   Content,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {DesktopIcon} from '@patternfly/react-icons';
 import {useUI, AlertVariant} from 'src/contexts/UIContext';
 import FormError from 'src/components/errors/FormError';
@@ -347,10 +351,16 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
         {/* Delete Confirmation Modal */}
         <Modal
           variant={ModalVariant.small}
-          title="Delete Mirror Configuration"
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
-          actions={[
+        >
+          <ModalHeader title="Delete Mirror Configuration" />
+          <ModalBody>
+            Are you sure you want to delete the organization mirror
+            configuration? This will stop all future syncs. Existing mirrored
+            repositories will remain.
+          </ModalBody>
+          <ModalFooter>
             <Button
               key="confirm"
               variant="danger"
@@ -358,19 +368,15 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
               data-testid="confirm-delete-button"
             >
               Delete
-            </Button>,
+            </Button>
             <Button
               key="cancel"
               variant="link"
               onClick={() => setIsDeleteModalOpen(false)}
             >
               Cancel
-            </Button>,
-          ]}
-        >
-          Are you sure you want to delete the organization mirror configuration?
-          This will stop all future syncs. Existing mirrored repositories will
-          remain.
+            </Button>
+          </ModalFooter>
         </Modal>
       </Form>
     </div>

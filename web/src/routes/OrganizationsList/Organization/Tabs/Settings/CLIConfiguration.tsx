@@ -15,8 +15,11 @@ import {
   DropdownList,
   MenuToggle,
   Tooltip,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal} from '@patternfly/react-core/deprecated';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {EllipsisVIcon, KeyIcon} from '@patternfly/react-icons';
 import {GenerateEncryptedPassword} from 'src/components/modals/GenerateEncryptedPasswordModal';
@@ -391,39 +394,43 @@ export const CliConfiguration = () => {
           {isFetchingToken && (
             <Modal
               variant="small"
-              title="Loading Token"
               isOpen={viewTokenModalOpen}
               onClose={handleCloseViewModal}
             >
-              <div className="pf-v6-u-text-align-center pf-v6-u-p-lg">
-                <Spinner size="md" />
-                <Content component="p" className="pf-v6-u-mt-sm">
-                  Loading token credentials...
-                </Content>
-              </div>
+              <ModalHeader title="Loading Token" />
+              <ModalBody>
+                <div className="pf-v6-u-text-align-center pf-v6-u-p-lg">
+                  <Spinner size="md" />
+                  <Content component="p" className="pf-v6-u-mt-sm">
+                    Loading token credentials...
+                  </Content>
+                </div>
+              </ModalBody>
             </Modal>
           )}
 
           {fetchTokenError && (
             <Modal
               variant="small"
-              title="Error"
               isOpen={viewTokenModalOpen}
               onClose={handleCloseViewModal}
-              actions={[
+            >
+              <ModalHeader title="Error" />
+              <ModalBody>
+                <Alert variant="danger" isInline title="Error loading token">
+                  {(fetchTokenError as Error)?.message ||
+                    'Failed to load token credentials'}
+                </Alert>
+              </ModalBody>
+              <ModalFooter>
                 <Button
                   key="close"
                   variant="primary"
                   onClick={handleCloseViewModal}
                 >
                   Close
-                </Button>,
-              ]}
-            >
-              <Alert variant="danger" isInline title="Error loading token">
-                {(fetchTokenError as Error)?.message ||
-                  'Failed to load token credentials'}
-              </Alert>
+                </Button>
+              </ModalFooter>
             </Modal>
           )}
 

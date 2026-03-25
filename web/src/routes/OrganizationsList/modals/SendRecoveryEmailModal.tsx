@@ -3,8 +3,12 @@ import {
   Button,
   Alert,
   AlertVariant as PFAlertVariant,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useSendRecoveryEmail} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
@@ -56,54 +60,58 @@ export default function SendRecoveryEmailModal(
 
   return (
     <Modal
-      title={successEmail ? 'Recovery Email Sent' : `Send Recovery Email`}
       isOpen={props.isOpen}
       onClose={handleClose}
       variant={ModalVariant.medium}
-      actions={
-        successEmail
-          ? [
-              <Button key="close" variant="primary" onClick={handleClose}>
-                Close
-              </Button>,
-            ]
-          : [
-              <Button
-                key="confirm"
-                variant="primary"
-                onClick={handleSend}
-                isLoading={isLoading}
-                isDisabled={isLoading}
-              >
-                Send Recovery Email
-              </Button>,
-              <Button key="cancel" variant="link" onClick={handleClose}>
-                Cancel
-              </Button>,
-            ]
-      }
     >
-      {successEmail ? (
-        <Alert variant={PFAlertVariant.success} title="Success" isInline>
-          A recovery email has been sent to {successEmail}
-        </Alert>
-      ) : (
-        <>
-          <p>
-            Are you sure you want to send a recovery email to{' '}
-            <strong>{props.username}</strong>?
-          </p>
-          <p>
-            This will send a password reset link to the user&apos;s registered
-            email address.
-          </p>
-          {error && (
-            <Alert variant={PFAlertVariant.danger} title="Error" isInline>
-              {error}
-            </Alert>
-          )}
-        </>
-      )}
+      <ModalHeader
+        title={successEmail ? 'Recovery Email Sent' : `Send Recovery Email`}
+      />
+      <ModalBody>
+        {successEmail ? (
+          <Alert variant={PFAlertVariant.success} title="Success" isInline>
+            A recovery email has been sent to {successEmail}
+          </Alert>
+        ) : (
+          <>
+            <p>
+              Are you sure you want to send a recovery email to{' '}
+              <strong>{props.username}</strong>?
+            </p>
+            <p>
+              This will send a password reset link to the user&apos;s registered
+              email address.
+            </p>
+            {error && (
+              <Alert variant={PFAlertVariant.danger} title="Error" isInline>
+                {error}
+              </Alert>
+            )}
+          </>
+        )}
+      </ModalBody>
+      <ModalFooter>
+        {successEmail ? (
+          <Button key="close" variant="primary" onClick={handleClose}>
+            Close
+          </Button>
+        ) : (
+          <>
+            <Button
+              key="confirm"
+              variant="primary"
+              onClick={handleSend}
+              isLoading={isLoading}
+              isDisabled={isLoading}
+            >
+              Send Recovery Email
+            </Button>
+            <Button key="cancel" variant="link" onClick={handleClose}>
+              Cancel
+            </Button>
+          </>
+        )}
+      </ModalFooter>
     </Modal>
   );
 }

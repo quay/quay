@@ -1,5 +1,10 @@
-import {Alert, Button, Title} from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
+import {
+  Alert,
+  Button,
+  Modal,
+  ModalVariant,
+  Title,
+} from '@patternfly/react-core';
 import {LoadingPage} from 'src/components/LoadingPage';
 import RequestError from 'src/components/errors/RequestError';
 import {useFetchBuildTrigger} from 'src/hooks/UseBuildTriggers';
@@ -79,8 +84,6 @@ export default function SetupBuildTriggerModal(props: SetupBuildTriggerWizard) {
       variant={ModalVariant.large}
       isOpen={props.isOpen}
       onClose={props.onClose}
-      showClose={true}
-      hasNoBodyWrapper
     >
       {modalContent}
     </Modal>

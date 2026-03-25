@@ -6,8 +6,12 @@ import {
   ContentVariants,
   Stack,
   StackItem,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {
   ExclamationTriangleIcon,
   ChevronDownIcon,
@@ -56,95 +60,103 @@ export default function GenerateTokenAuthorizationModal(
   return (
     <Modal
       variant={ModalVariant.medium}
-      title={isAssignment ? 'Assign Authorization?' : props.application.name}
       isOpen={props.isOpen}
       onClose={props.onClose}
-      actions={[
-        <Button key="authorize" variant="primary" onClick={props.onConfirm}>
-          {isAssignment ? 'Assign token' : 'Authorize Application'}
-        </Button>,
-        <Button key="cancel" variant="link" onClick={props.onClose}>
-          Cancel
-        </Button>,
-      ]}
     >
-      <Stack hasGutter>
-        {props.hasDangerousScopes && (
+      <ModalHeader
+        title={isAssignment ? 'Assign Authorization?' : props.application.name}
+      />
+      <ModalBody>
+        <Stack hasGutter>
+          {props.hasDangerousScopes && (
+            <StackItem>
+              <Alert
+                variant="warning"
+                title={
+                  isAssignment
+                    ? `Dangerous scopes will be granted to ${props.targetUsername}. Please ensure the scopes and the user are correct.`
+                    : 'This scope grants permissions which are potentially dangerous. Be careful when authorizing it!'
+                }
+                isInline
+              />
+            </StackItem>
+          )}
           <StackItem>
-            <Alert
-              variant="warning"
-              title={
-                isAssignment
-                  ? `Dangerous scopes will be granted to ${props.targetUsername}. Please ensure the scopes and the user are correct.`
-                  : 'This scope grants permissions which are potentially dangerous. Be careful when authorizing it!'
-              }
-              isInline
-            />
+            <Content component={ContentVariants.p}>
+              {isAssignment
+                ? `This will prompt user ${props.targetUsername} to generate a token with the following permissions:`
+                : 'This application would like permission to:'}
+            </Content>
           </StackItem>
-        )}
-        <StackItem>
-          <Content component={ContentVariants.p}>
-            {isAssignment
-              ? `This will prompt user ${props.targetUsername} to generate a token with the following permissions:`
-              : 'This application would like permission to:'}
-          </Content>
-        </StackItem>
-        <StackItem>
-          <Stack hasGutter>
-            {props.selectedScopes.map((scopeName) => {
-              const scopeInfo = props.scopesData[scopeName];
-              const isDangerous = scopeInfo?.dangerous;
-              const isExpanded = expandedScopes.has(scopeName);
+          <StackItem>
+            <Stack hasGutter>
+              {props.selectedScopes.map((scopeName) => {
+                const scopeInfo = props.scopesData[scopeName];
+                const isDangerous = scopeInfo?.dangerous;
+                const isExpanded = expandedScopes.has(scopeName);
 
-              return (
-                <StackItem key={scopeName}>
-                  <div>
-                    <Button
-                      variant="link"
-                      isInline
-                      onClick={() => toggleScope(scopeName)}
-                      icon={
-                        isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />
-                      }
-                      iconPosition="left"
-                      style={{
-                        padding: 0,
-                        fontSize: 'inherit',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <strong>{scopeInfo?.title}</strong>
-                      {isDangerous && (
-                        <ExclamationTriangleIcon
-                          style={{
-                            color: '#f0ab00',
-                            marginLeft: '8px',
-                            display: 'inline-block',
-                          }}
-                        />
-                      )}
-                    </Button>
-
-                    {isExpanded && (
-                      <div
+                return (
+                  <StackItem key={scopeName}>
+                    <div>
+                      <Button
+                        variant="link"
+                        isInline
+                        onClick={() => toggleScope(scopeName)}
+                        icon={
+                          isExpanded ? (
+                            <ChevronDownIcon />
+                          ) : (
+                            <ChevronRightIcon />
+                          )
+                        }
+                        iconPosition="left"
                         style={{
-                          marginLeft: 'var(--pf-global--spacer--lg)',
-                          marginTop: 'var(--pf-global--spacer--xs)',
-                          paddingLeft: 'var(--pf-global--spacer--sm)',
+                          padding: 0,
+                          fontSize: 'inherit',
+                          textAlign: 'left',
                         }}
                       >
-                        <Content component={ContentVariants.small}>
-                          {scopeInfo?.description}
-                        </Content>
-                      </div>
-                    )}
-                  </div>
-                </StackItem>
-              );
-            })}
-          </Stack>
-        </StackItem>
-      </Stack>
+                        <strong>{scopeInfo?.title}</strong>
+                        {isDangerous && (
+                          <ExclamationTriangleIcon
+                            style={{
+                              color: '#f0ab00',
+                              marginLeft: '8px',
+                              display: 'inline-block',
+                            }}
+                          />
+                        )}
+                      </Button>
+
+                      {isExpanded && (
+                        <div
+                          style={{
+                            marginLeft: 'var(--pf-global--spacer--lg)',
+                            marginTop: 'var(--pf-global--spacer--xs)',
+                            paddingLeft: 'var(--pf-global--spacer--sm)',
+                          }}
+                        >
+                          <Content component={ContentVariants.small}>
+                            {scopeInfo?.description}
+                          </Content>
+                        </div>
+                      )}
+                    </div>
+                  </StackItem>
+                );
+              })}
+            </Stack>
+          </StackItem>
+        </Stack>
+      </ModalBody>
+      <ModalFooter>
+        <Button key="authorize" variant="primary" onClick={props.onConfirm}>
+          {isAssignment ? 'Assign token' : 'Authorize Application'}
+        </Button>
+        <Button key="cancel" variant="link" onClick={props.onClose}>
+          Cancel
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

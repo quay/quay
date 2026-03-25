@@ -5,8 +5,12 @@ import {
   FormGroup,
   TextInput,
   Alert,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useChangeUserPassword} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {isFreshLoginError} from 'src/utils/freshLoginErrors';
@@ -71,11 +75,36 @@ export default function ChangePasswordModal(props: ChangePasswordModalProps) {
 
   return (
     <Modal
-      title={`Change Password for ${props.username}`}
       isOpen={props.isOpen}
       onClose={handleClose}
       variant={ModalVariant.medium}
-      actions={[
+    >
+      <ModalHeader title={`Change Password for ${props.username}`} />
+      <ModalBody>
+        <Form>
+          <FormGroup label="Enter new password:" isRequired>
+            <TextInput
+              id="new-password"
+              value={newPassword}
+              onChange={(_event, value) => setNewPassword(value)}
+              placeholder="New password (min 8 characters)"
+              type="password"
+              isDisabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSubmit();
+                }
+              }}
+            />
+          </FormGroup>
+          {error && (
+            <Alert variant="danger" title="Error" isInline>
+              {error}
+            </Alert>
+          )}
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant="primary"
@@ -84,34 +113,11 @@ export default function ChangePasswordModal(props: ChangePasswordModalProps) {
           isDisabled={isLoading || !newPassword}
         >
           Change Password
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <FormGroup label="Enter new password:" isRequired>
-          <TextInput
-            id="new-password"
-            value={newPassword}
-            onChange={(_event, value) => setNewPassword(value)}
-            placeholder="New password (min 8 characters)"
-            type="password"
-            isDisabled={isLoading}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSubmit();
-              }
-            }}
-          />
-        </FormGroup>
-        {error && (
-          <Alert variant="danger" title="Error" isInline>
-            {error}
-          </Alert>
-        )}
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

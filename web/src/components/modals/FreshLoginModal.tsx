@@ -5,8 +5,12 @@ import {
   FormGroup,
   TextInput,
   Content,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import './FreshLoginModal.css';
 
 interface FreshLoginModalProps {
@@ -45,11 +49,36 @@ export function FreshLoginModal({
   return (
     <Modal
       variant={ModalVariant.small}
-      title="Please Verify"
       isOpen={isOpen}
       onClose={handleCancel}
       className="fresh-login-modal"
-      actions={[
+    >
+      <ModalHeader title="Please Verify" />
+      <ModalBody>
+        <Content component="p" style={{marginBottom: '1rem'}}>
+          It has been more than a few minutes since you last logged in, so
+          please verify your password to perform this sensitive operation:
+        </Content>
+
+        <Form onSubmit={handleSubmit}>
+          <FormGroup
+            label="Current Password"
+            fieldId="fresh-password"
+            isRequired
+          >
+            <TextInput
+              id="fresh-password"
+              type="password"
+              value={password}
+              onChange={(_event, value) => setPassword(value)}
+              placeholder="Current Password"
+              autoFocus
+              isDisabled={isLoading}
+            />
+          </FormGroup>
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="verify"
           variant="primary"
@@ -58,30 +87,11 @@ export function FreshLoginModal({
           isDisabled={!password.trim() || isLoading}
         >
           Verify
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleCancel}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Content component="p" style={{marginBottom: '1rem'}}>
-        It has been more than a few minutes since you last logged in, so please
-        verify your password to perform this sensitive operation:
-      </Content>
-
-      <Form onSubmit={handleSubmit}>
-        <FormGroup label="Current Password" fieldId="fresh-password" isRequired>
-          <TextInput
-            id="fresh-password"
-            type="password"
-            value={password}
-            onChange={(_event, value) => setPassword(value)}
-            placeholder="Current Password"
-            autoFocus
-            isDisabled={isLoading}
-          />
-        </FormGroup>
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

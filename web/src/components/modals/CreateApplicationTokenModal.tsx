@@ -6,8 +6,12 @@ import {
   TextInput,
   Alert,
   Content,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useCreateApplicationToken} from 'src/hooks/UseApplicationTokens';
 import {IApplicationToken} from 'src/resources/UserResource';
 import CredentialsModal from './CredentialsModal';
@@ -93,11 +97,42 @@ export default function CreateApplicationTokenModal({
   return (
     <Modal
       variant={ModalVariant.small}
-      title="Create Application Token"
       isOpen={isOpen}
       onClose={handleClose}
       data-testid="create-token-modal"
-      actions={[
+    >
+      <ModalHeader title="Create Application Token" />
+      <ModalBody>
+        <Form>
+          <Content component="p" className="pf-v6-u-mb-md">
+            Create an application token that can be used in place of your
+            password for Docker and other CLI authentication.
+          </Content>
+
+          {error && (
+            <Alert
+              variant="danger"
+              isInline
+              title="Error"
+              className="pf-v6-u-mb-md"
+            >
+              {error}
+            </Alert>
+          )}
+
+          <FormGroup label="Token Name" fieldId="token-title" isRequired>
+            <TextInput
+              id="token-title"
+              type="text"
+              value={title}
+              onChange={(_event, value) => setTitle(value)}
+              placeholder="Enter a name for this token"
+              isRequired
+            />
+          </FormGroup>
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="create"
           variant="primary"
@@ -107,40 +142,11 @@ export default function CreateApplicationTokenModal({
           data-testid="create-token-submit"
         >
           Create Token
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <Content component="p" className="pf-v6-u-mb-md">
-          Create an application token that can be used in place of your password
-          for Docker and other CLI authentication.
-        </Content>
-
-        {error && (
-          <Alert
-            variant="danger"
-            isInline
-            title="Error"
-            className="pf-v6-u-mb-md"
-          >
-            {error}
-          </Alert>
-        )}
-
-        <FormGroup label="Token Name" fieldId="token-title" isRequired>
-          <TextInput
-            id="token-title"
-            type="text"
-            value={title}
-            onChange={(_event, value) => setTitle(value)}
-            placeholder="Enter a name for this token"
-            isRequired
-          />
-        </FormGroup>
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

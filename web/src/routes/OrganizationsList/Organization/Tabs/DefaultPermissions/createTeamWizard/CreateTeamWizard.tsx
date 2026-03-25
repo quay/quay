@@ -8,8 +8,9 @@ import {
   WizardHeader,
   Wizard,
   WizardStep,
+  Modal,
+  ModalVariant,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {
   ITeamMember,
   useAddMembersToTeam,
@@ -150,8 +151,6 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
           props.handleWizardToggle();
           setSelectedRepoPerms([]);
         }}
-        showClose={false}
-        hasNoBodyWrapper
       >
         <Wizard
           onClose={() => {

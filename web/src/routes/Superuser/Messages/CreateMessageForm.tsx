@@ -4,6 +4,11 @@ import {
   FormGroup,
   FormSelect,
   FormSelectOption,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
   Tab,
   TabTitleText,
   Tabs,
@@ -15,7 +20,6 @@ import {
   Card,
   CardBody,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {
   BoldIcon,
   ItalicIcon,
@@ -108,12 +112,156 @@ export function CreateMessageForm({isOpen, onClose}: CreateMessageFormProps) {
   };
 
   return (
-    <Modal
-      variant={ModalVariant.large}
-      title="Create new message"
-      isOpen={isOpen}
-      onClose={handleClose}
-      actions={[
+    <Modal variant={ModalVariant.large} isOpen={isOpen} onClose={handleClose}>
+      <ModalHeader title="Create new message" />
+      <ModalBody>
+        <Form>
+          <FormGroup label="Severity" fieldId="severity" isRequired>
+            <Controller
+              name="severity"
+              control={control}
+              rules={{required: 'Severity is required'}}
+              render={({field}) => (
+                <FormSelect
+                  {...field}
+                  id="severity"
+                  validated={formState.errors.severity ? 'error' : 'default'}
+                >
+                  <FormSelectOption value="info" label="Normal (Info)" />
+                  <FormSelectOption value="warning" label="Warning" />
+                  <FormSelectOption value="error" label="Error" />
+                </FormSelect>
+              )}
+            />
+          </FormGroup>
+
+          <FormGroup label="Message" fieldId="message-content" isRequired>
+            <Tabs
+              activeKey={activeTabKey}
+              onSelect={(_, tabIndex) => setActiveTabKey(tabIndex)}
+            >
+              <Tab eventKey="write" title={<TabTitleText>Write</TabTitleText>}>
+                <div>
+                  {/* Markdown Toolbar */}
+                  <Toolbar
+                    style={{padding: '0.5rem', backgroundColor: '#f5f5f5'}}
+                  >
+                    <ToolbarContent>
+                      <ToolbarGroup>
+                        <ToolbarItem>
+                          <Button
+                            icon={<BoldIcon />}
+                            variant="plain"
+                            aria-label="Bold"
+                            onClick={() => insertMarkdown('**', '**')}
+                          />
+                        </ToolbarItem>
+                        <ToolbarItem>
+                          <Button
+                            icon={<ItalicIcon />}
+                            variant="plain"
+                            aria-label="Italic"
+                            onClick={() => insertMarkdown('_', '_')}
+                          />
+                        </ToolbarItem>
+                        <ToolbarItem>
+                          <Button
+                            icon={<QuoteLeftIcon />}
+                            variant="plain"
+                            aria-label="Quote"
+                            onClick={() => insertMarkdown('\n> ', '')}
+                          />
+                        </ToolbarItem>
+                        <ToolbarItem>
+                          <Button
+                            icon={<CodeIcon />}
+                            variant="plain"
+                            aria-label="Code"
+                            onClick={() => insertMarkdown('`', '`')}
+                          />
+                        </ToolbarItem>
+                        <ToolbarItem>
+                          <Button
+                            icon={<LinkIcon />}
+                            variant="plain"
+                            aria-label="Link"
+                            onClick={() => insertMarkdown('[', '](url)')}
+                          />
+                        </ToolbarItem>
+                        <ToolbarItem>
+                          <Button
+                            icon={<ListIcon />}
+                            variant="plain"
+                            aria-label="List"
+                            onClick={() => insertMarkdown('\n- ', '')}
+                          />
+                        </ToolbarItem>
+                      </ToolbarGroup>
+                    </ToolbarContent>
+                  </Toolbar>
+
+                  {/* Content TextArea */}
+                  <Controller
+                    name="content"
+                    control={control}
+                    rules={{required: 'Message content is required'}}
+                    render={({field}) => (
+                      <TextArea
+                        {...field}
+                        id="message-content"
+                        placeholder="Enter your message here..."
+                        rows={10}
+                        validated={
+                          formState.errors.content ? 'error' : 'default'
+                        }
+                        style={{fontFamily: 'monospace'}}
+                      />
+                    )}
+                  />
+                </div>
+              </Tab>
+
+              <Tab
+                eventKey="preview"
+                title={<TabTitleText>Preview</TabTitleText>}
+              >
+                <Card>
+                  <CardBody>
+                    {currentContent ? (
+                      <Markdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeRaw]}
+                        components={{
+                          a: ({href, children, ...props}) => {
+                            const isExternal = href?.startsWith('http');
+                            return (
+                              <a
+                                {...props}
+                                href={href}
+                                target={isExternal ? '_blank' : undefined}
+                                rel={
+                                  isExternal ? 'noopener noreferrer' : undefined
+                                }
+                              >
+                                {children}
+                              </a>
+                            );
+                          },
+                        }}
+                      >
+                        {currentContent}
+                      </Markdown>
+                    ) : (
+                      <em>No content to preview</em>
+                    )}
+                  </CardBody>
+                </Card>
+              </Tab>
+            </Tabs>
+          </FormGroup>
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="create"
           variant="primary"
@@ -122,155 +270,11 @@ export function CreateMessageForm({isOpen, onClose}: CreateMessageFormProps) {
           isDisabled={createMessage.isLoading || !formState.isValid}
         >
           Create Message
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <FormGroup label="Severity" fieldId="severity" isRequired>
-          <Controller
-            name="severity"
-            control={control}
-            rules={{required: 'Severity is required'}}
-            render={({field}) => (
-              <FormSelect
-                {...field}
-                id="severity"
-                validated={formState.errors.severity ? 'error' : 'default'}
-              >
-                <FormSelectOption value="info" label="Normal (Info)" />
-                <FormSelectOption value="warning" label="Warning" />
-                <FormSelectOption value="error" label="Error" />
-              </FormSelect>
-            )}
-          />
-        </FormGroup>
-
-        <FormGroup label="Message" fieldId="message-content" isRequired>
-          <Tabs
-            activeKey={activeTabKey}
-            onSelect={(_, tabIndex) => setActiveTabKey(tabIndex)}
-          >
-            <Tab eventKey="write" title={<TabTitleText>Write</TabTitleText>}>
-              <div>
-                {/* Markdown Toolbar */}
-                <Toolbar
-                  style={{padding: '0.5rem', backgroundColor: '#f5f5f5'}}
-                >
-                  <ToolbarContent>
-                    <ToolbarGroup>
-                      <ToolbarItem>
-                        <Button
-                          icon={<BoldIcon />}
-                          variant="plain"
-                          aria-label="Bold"
-                          onClick={() => insertMarkdown('**', '**')}
-                        />
-                      </ToolbarItem>
-                      <ToolbarItem>
-                        <Button
-                          icon={<ItalicIcon />}
-                          variant="plain"
-                          aria-label="Italic"
-                          onClick={() => insertMarkdown('_', '_')}
-                        />
-                      </ToolbarItem>
-                      <ToolbarItem>
-                        <Button
-                          icon={<QuoteLeftIcon />}
-                          variant="plain"
-                          aria-label="Quote"
-                          onClick={() => insertMarkdown('\n> ', '')}
-                        />
-                      </ToolbarItem>
-                      <ToolbarItem>
-                        <Button
-                          icon={<CodeIcon />}
-                          variant="plain"
-                          aria-label="Code"
-                          onClick={() => insertMarkdown('`', '`')}
-                        />
-                      </ToolbarItem>
-                      <ToolbarItem>
-                        <Button
-                          icon={<LinkIcon />}
-                          variant="plain"
-                          aria-label="Link"
-                          onClick={() => insertMarkdown('[', '](url)')}
-                        />
-                      </ToolbarItem>
-                      <ToolbarItem>
-                        <Button
-                          icon={<ListIcon />}
-                          variant="plain"
-                          aria-label="List"
-                          onClick={() => insertMarkdown('\n- ', '')}
-                        />
-                      </ToolbarItem>
-                    </ToolbarGroup>
-                  </ToolbarContent>
-                </Toolbar>
-
-                {/* Content TextArea */}
-                <Controller
-                  name="content"
-                  control={control}
-                  rules={{required: 'Message content is required'}}
-                  render={({field}) => (
-                    <TextArea
-                      {...field}
-                      id="message-content"
-                      placeholder="Enter your message here..."
-                      rows={10}
-                      validated={formState.errors.content ? 'error' : 'default'}
-                      style={{fontFamily: 'monospace'}}
-                    />
-                  )}
-                />
-              </div>
-            </Tab>
-
-            <Tab
-              eventKey="preview"
-              title={<TabTitleText>Preview</TabTitleText>}
-            >
-              <Card>
-                <CardBody>
-                  {currentContent ? (
-                    <Markdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeRaw]}
-                      components={{
-                        a: ({href, children, ...props}) => {
-                          const isExternal = href?.startsWith('http');
-                          return (
-                            <a
-                              {...props}
-                              href={href}
-                              target={isExternal ? '_blank' : undefined}
-                              rel={
-                                isExternal ? 'noopener noreferrer' : undefined
-                              }
-                            >
-                              {children}
-                            </a>
-                          );
-                        },
-                      }}
-                    >
-                      {currentContent}
-                    </Markdown>
-                  ) : (
-                    <em>No content to preview</em>
-                  )}
-                </CardBody>
-              </Card>
-            </Tab>
-          </Tabs>
-        </FormGroup>
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

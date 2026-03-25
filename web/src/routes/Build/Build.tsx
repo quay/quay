@@ -14,8 +14,12 @@ import {
   Flex,
   FlexItem,
   Spinner,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {LoadingPage} from 'src/components/LoadingPage';
 import RequestError from 'src/components/errors/RequestError';
@@ -280,24 +284,24 @@ export default function Build() {
         </CardBody>
       </Card>
       <Modal
-        title="Cancel Build"
         variant={ModalVariant.small}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Cancel Build" />
+        <ModalBody>Are you sure you want to cancel this build?</ModalBody>
+        <ModalFooter>
           <Button key="confirm" variant="primary" onClick={() => cancelBuild()}>
             Cancel build
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to cancel this build?
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

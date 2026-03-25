@@ -8,8 +8,12 @@ import {
   DropdownList,
   DropdownItem,
   MenuToggle,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {
   EnvelopeIcon,
   PlusIcon,
@@ -311,10 +315,15 @@ export default function Messages() {
       {/* Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete Message?"
         isOpen={isDeleteModalOpen}
         onClose={cancelDeleteMessage}
-        actions={[
+      >
+        <ModalHeader title="Delete Message?" />
+        <ModalBody>
+          Are you sure you want to delete this message? This action cannot be
+          undone.
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="delete"
             variant="danger"
@@ -323,14 +332,11 @@ export default function Messages() {
             isDisabled={deleteMessage.isLoading}
           >
             Delete Message
-          </Button>,
+          </Button>
           <Button key="cancel" variant="link" onClick={cancelDeleteMessage}>
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to delete this message? This action cannot be
-        undone.
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

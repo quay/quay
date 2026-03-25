@@ -5,8 +5,12 @@ import {
   PageSection,
   PanelFooter,
   Title,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {CubesIcon} from '@patternfly/react-icons';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
@@ -594,10 +598,17 @@ export default function OrganizationsList() {
       {/* Calculate Registry Size Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Confirm Registry Size Calculation"
         isOpen={isCalculateModalOpen}
         onClose={() => setCalculateModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Confirm Registry Size Calculation" />
+        <ModalBody>
+          <p>Are you sure you want to queue registry size calculation?</p>
+          <p style={{color: 'red', marginTop: '1em'}}>
+            This is a database intensive operation. Use with caution.
+          </p>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="confirm"
             variant="primary"
@@ -605,20 +616,15 @@ export default function OrganizationsList() {
             isDisabled={isQueuing}
           >
             {isQueuing ? 'Queuing...' : 'Calculate'}
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setCalculateModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <p>Are you sure you want to queue registry size calculation?</p>
-        <p style={{color: 'red', marginTop: '1em'}}>
-          This is a database intensive operation. Use with caution.
-        </p>
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

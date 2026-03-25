@@ -16,8 +16,12 @@ import {
   CardBody,
   Content,
   FlexItem,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {PlusIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import {useForm, Controller} from 'react-hook-form';
@@ -948,10 +952,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
       {/* Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete Quota"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Delete Quota" />
+        <ModalBody>
+          Are you sure you want to delete quota for this organization? When you
+          remove the quota storage, users can consume arbitrary amount of
+          storage resources.
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="confirm"
             variant="danger"
@@ -959,19 +969,15 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
             data-testid="confirm-delete-quota"
           >
             OK
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setIsDeleteModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to delete quota for this organization? When you
-        remove the quota storage, users can consume arbitrary amount of storage
-        resources.
+          </Button>
+        </ModalFooter>
       </Modal>
     </Form>
   );

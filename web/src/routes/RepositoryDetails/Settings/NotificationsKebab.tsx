@@ -9,8 +9,12 @@ import {
   DropdownList,
   MenuToggle,
   MenuToggleElement,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
 import {useUpdateNotifications} from 'src/hooks/UseUpdateNotifications';
 import Conditional from 'src/components/empty/Conditional';
@@ -83,21 +87,23 @@ export default function NotificationsKebab({
       </Conditional>
       <Modal
         variant={ModalVariant.small}
-        title="Test Notification Queued"
         isOpen={isTestModalOpen}
         onClose={() => setIsTestModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Test Notification Queued" />
+        <ModalBody>
+          A test version of this notification has been queued and should appear
+          shortly
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="cancel"
             variant="primary"
             onClick={() => setIsTestModalOpen(false)}
           >
             Close
-          </Button>,
-        ]}
-      >
-        A test version of this notification has been queued and should appear
-        shortly
+          </Button>
+        </ModalFooter>
       </Modal>
       <Dropdown
         onSelect={() => setIsOpen(false)}

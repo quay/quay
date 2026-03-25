@@ -1,4 +1,9 @@
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
+import {
+  Modal,
+  ModalBody,
+  ModalHeader,
+  ModalVariant,
+} from '@patternfly/react-core';
 import Labels, {LabelsVariant} from 'src/components/labels/Labels';
 
 export default function EditLabelsModal(props: EditLabelsModalProps) {
@@ -6,18 +11,20 @@ export default function EditLabelsModal(props: EditLabelsModalProps) {
     <>
       <Modal
         id="edit-labels-modal"
-        title="Edit labels"
         isOpen={props.isOpen}
         onClose={() => props.setIsOpen(false)}
         variant={ModalVariant.medium}
       >
-        <Labels
-          org={props.org}
-          repo={props.repo}
-          digest={props.manifest}
-          variant={LabelsVariant.Editable}
-          onComplete={props.onComplete}
-        />
+        <ModalHeader title="Edit labels" />
+        <ModalBody>
+          <Labels
+            org={props.org}
+            repo={props.repo}
+            digest={props.manifest}
+            variant={LabelsVariant.Editable}
+            onComplete={props.onComplete}
+          />
+        </ModalBody>
       </Modal>
     </>
   );

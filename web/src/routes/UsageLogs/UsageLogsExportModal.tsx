@@ -2,11 +2,15 @@ import React from 'react';
 import {
   Button,
   Content,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
   TextInput,
   HelperText,
   HelperTextItem,
 } from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 
 import {exportLogs} from 'src/hooks/UseUsageLogs';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
@@ -53,10 +57,40 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
       </Button>
       <Modal
         variant={ModalVariant.medium}
-        title="Export Usage Logs"
         isOpen={isModalOpen}
         onClose={handleModalToggle}
-        actions={[
+      >
+        <ModalHeader title="Export Usage Logs" />
+        <ModalBody>
+          <Content component="p">
+            Enter an e-mail address or callback URL (must start with http:// or
+            https://) at which to receive the exported logs once they have been
+            fully processed:
+          </Content>
+          <TextInput
+            id="export-logs-callback"
+            data-testid="usage-logs-export-email-input"
+            value={callbackEmailOrUrl}
+            type="text"
+            onChange={(_event, callbackEmailOrUrl) => {
+              if (validateUserInput(callbackEmailOrUrl))
+                setUserInputValidated('success');
+              else setUserInputValidated('error');
+              setCallbackEmailOrUrl(callbackEmailOrUrl);
+            }}
+            validated={userInputValidated}
+          />
+          <HelperText>
+            <HelperTextItem variant="indeterminate">
+              {' '}
+              Note: The export process can take up to an hour to process if
+              there are many logs. As well, only a single export process can run
+              at a time for each namespace. Additional export requests will be
+              queued.{' '}
+            </HelperTextItem>
+          </HelperText>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="confirm"
             variant="primary"
@@ -82,38 +116,11 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
           >
             {' '}
             Confirm
-          </Button>,
+          </Button>
           <Button key="cancel" variant="link" onClick={handleModalToggle}>
             Cancel
-          </Button>,
-        ]}
-      >
-        <Content component="p">
-          Enter an e-mail address or callback URL (must start with http:// or
-          https://) at which to receive the exported logs once they have been
-          fully processed:
-        </Content>
-        <TextInput
-          id="export-logs-callback"
-          data-testid="usage-logs-export-email-input"
-          value={callbackEmailOrUrl}
-          type="text"
-          onChange={(_event, callbackEmailOrUrl) => {
-            if (validateUserInput(callbackEmailOrUrl))
-              setUserInputValidated('success');
-            else setUserInputValidated('error');
-            setCallbackEmailOrUrl(callbackEmailOrUrl);
-          }}
-          validated={userInputValidated}
-        />
-        <HelperText>
-          <HelperTextItem variant="indeterminate">
-            {' '}
-            Note: The export process can take up to an hour to process if there
-            are many logs. As well, only a single export process can run at a
-            time for each namespace. Additional export requests will be queued.{' '}
-          </HelperTextItem>
-        </HelperText>
+          </Button>
+        </ModalFooter>
       </Modal>
     </React.Fragment>
   );

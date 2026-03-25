@@ -1,5 +1,11 @@
-import {Button} from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
+import {
+  Button,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
+} from '@patternfly/react-core';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useDeleteBuildTrigger} from 'src/hooks/UseBuildTriggers';
 
@@ -30,14 +36,23 @@ export default function BuildTriggerDeleteModal(
   return (
     <Modal
       id="build-trigger-delete-modal"
-      title="Delete Build Trigger"
       isOpen={props.isOpen}
       onClose={() => props.onClose()}
       variant={ModalVariant.medium}
-      actions={[
+      style={{
+        overflowX: 'visible',
+        overflowY: 'visible',
+      }}
+    >
+      <ModalHeader title="Delete Build Trigger" />
+      <ModalBody>
+        Are you sure you want to delete this build trigger? No further builds
+        will be automatically started.
+      </ModalBody>
+      <ModalFooter>
         <Button key="cancel" variant="primary" onClick={() => props.onClose()}>
           Done
-        </Button>,
+        </Button>
         <Button
           key="modal-action-button"
           variant="primary"
@@ -47,15 +62,8 @@ export default function BuildTriggerDeleteModal(
           }}
         >
           Delete Trigger
-        </Button>,
-      ]}
-      style={{
-        overflowX: 'visible',
-        overflowY: 'visible',
-      }}
-    >
-      Are you sure you want to delete this build trigger? No further builds will
-      be automatically started.
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

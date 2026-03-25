@@ -1,6 +1,12 @@
 import React from 'react';
-import {Button} from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
+import {
+  Button,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 
 interface DesktopNotificationsModalProps {
   isOpen: boolean;
@@ -23,15 +29,24 @@ export default function DesktopNotificationsModal({
   return (
     <Modal
       variant={ModalVariant.small}
-      title={
-        isEnabling
-          ? 'Enable Desktop Notifications'
-          : 'Disable Desktop Notifications'
-      }
       isOpen={isOpen}
       onClose={onClose}
       data-testid="desktop-notifications-modal"
-      actions={[
+    >
+      <ModalHeader
+        title={
+          isEnabling
+            ? 'Enable Desktop Notifications'
+            : 'Disable Desktop Notifications'
+        }
+      />
+      <ModalBody>
+        <p>
+          Are you sure you want to turn {isEnabling ? 'on' : 'off'} desktop
+          notifications?
+        </p>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant="primary"
@@ -39,7 +54,7 @@ export default function DesktopNotificationsModal({
           data-testid="notification-confirm"
         >
           OK
-        </Button>,
+        </Button>
         <Button
           key="cancel"
           variant="link"
@@ -47,13 +62,8 @@ export default function DesktopNotificationsModal({
           data-testid="notification-cancel"
         >
           Cancel
-        </Button>,
-      ]}
-    >
-      <p>
-        Are you sure you want to turn {isEnabling ? 'on' : 'off'} desktop
-        notifications?
-      </p>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

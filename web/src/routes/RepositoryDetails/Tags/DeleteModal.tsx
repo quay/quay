@@ -1,5 +1,13 @@
-import {Button, Label, Alert} from '@patternfly/react-core';
-import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
+import {
+  Button,
+  Label,
+  Alert,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
+} from '@patternfly/react-core';
 import {useEffect} from 'react';
 import {
   RepositoryDetails,
@@ -103,17 +111,7 @@ export function DeleteModal(props: ModalProps) {
     <>
       <Modal
         id="tag-deletion-modal"
-        title={title}
-        description={
-          <Conditional if={props.modalOptions.force}>
-            <span style={{color: 'red'}}>
-              Tags deleted cannot be restored within the time machine window and
-              will be immediately eligible for garbage collection.
-            </span>
-          </Conditional>
-        }
         isOpen={props.modalOptions.isOpen}
-        disableFocusTrap={true}
         key="modal"
         onClose={() => {
           props.setModalOptions((prevOptions) => ({
@@ -123,7 +121,54 @@ export function DeleteModal(props: ModalProps) {
         }}
         data-testid="delete-tags-modal"
         variant={ModalVariant.small}
-        actions={[
+      >
+        <ModalHeader
+          title={title}
+          description={
+            <Conditional if={props.modalOptions.force}>
+              <span style={{color: 'red'}}>
+                Tags deleted cannot be restored within the time machine window
+                and will be immediately eligible for garbage collection.
+              </span>
+            </Conditional>
+          }
+        />
+        <ModalBody>
+          <Conditional if={isReadonly}>
+            <Alert
+              id="form-error-alert"
+              isInline
+              variant="danger"
+              title={`Repository is currently in ${props.repoDetails?.state} state. Deletion is disabled.`}
+            />
+            <div className="delete-modal-readonly-alert" />
+          </Conditional>
+          <Conditional
+            if={props.immutableTags && props.immutableTags.length > 0}
+          >
+            <Alert
+              isInline
+              variant="warning"
+              title="Immutable tags will be skipped"
+              data-testid="immutable-tags-warning"
+            >
+              The following tags are immutable and will not be deleted:{' '}
+              {props.immutableTags?.join(', ')}
+            </Alert>
+            <div style={{marginBottom: '1rem'}} />
+          </Conditional>
+          {props.tags?.map((tag) => (
+            <span key={tag}>
+              <Label>{tag}</Label>{' '}
+            </span>
+          ))}
+          <Conditional if={props.tags?.length > 20}>
+            <div>
+              <b>Note:</b> This operation can take several minutes.
+            </div>
+          </Conditional>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="cancel"
             variant="primary"
@@ -135,7 +180,7 @@ export function DeleteModal(props: ModalProps) {
             }}
           >
             Cancel
-          </Button>,
+          </Button>
           <Button
             key="modal-action-button"
             variant="primary"
@@ -145,40 +190,8 @@ export function DeleteModal(props: ModalProps) {
             isDisabled={isReadonly || props.tags.length === 0}
           >
             Delete
-          </Button>,
-        ]}
-      >
-        <Conditional if={isReadonly}>
-          <Alert
-            id="form-error-alert"
-            isInline
-            variant="danger"
-            title={`Repository is currently in ${props.repoDetails?.state} state. Deletion is disabled.`}
-          />
-          <div className="delete-modal-readonly-alert" />
-        </Conditional>
-        <Conditional if={props.immutableTags && props.immutableTags.length > 0}>
-          <Alert
-            isInline
-            variant="warning"
-            title="Immutable tags will be skipped"
-            data-testid="immutable-tags-warning"
-          >
-            The following tags are immutable and will not be deleted:{' '}
-            {props.immutableTags?.join(', ')}
-          </Alert>
-          <div style={{marginBottom: '1rem'}} />
-        </Conditional>
-        {props.tags?.map((tag) => (
-          <span key={tag}>
-            <Label>{tag}</Label>{' '}
-          </span>
-        ))}
-        <Conditional if={props.tags?.length > 20}>
-          <div>
-            <b>Note:</b> This operation can take several minutes.
-          </div>
-        </Conditional>
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );
