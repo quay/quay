@@ -1,4 +1,4 @@
-from peewee import JOIN
+from peewee import JOIN, SQL, fn
 
 from data.database import (
     Namespace,
@@ -73,9 +73,11 @@ def get_user_repository_permissions(user, namespace, repo_name):
 def _get_user_repo_permissions(
     user, limit_to_repository_obj=None, limit_namespace=None, limit_repo_name=None
 ):
-    UserThroughTeam = User.alias()
+    user_in_team = TeamMember.select(SQL("1")).where(
+        (TeamMember.team == RepositoryPermission.team) & (TeamMember.user == user)
+    )
 
-    base_query = (
+    query = (
         RepositoryPermission.select(
             RepositoryPermission, Role, Repository, Namespace, can_use_read_replica=True
         )
@@ -87,24 +89,15 @@ def _get_user_repo_permissions(
     )
 
     if limit_to_repository_obj is not None:
-        base_query = base_query.where(RepositoryPermission.repository == limit_to_repository_obj)
+        query = query.where(RepositoryPermission.repository == limit_to_repository_obj)
     elif limit_namespace and limit_repo_name:
-        base_query = base_query.where(
+        query = query.where(
             Repository.name == limit_repo_name, Namespace.username == limit_namespace
         )
 
-    direct = base_query.clone().join(User).where(User.id == user)
+    query = query.where((RepositoryPermission.user == user) | fn.EXISTS(user_in_team))
 
-    team = (
-        base_query.clone()
-        .join(Team)
-        .join(TeamMember)
-        .join(UserThroughTeam, on=(UserThroughTeam.id == TeamMember.user))
-        .where(UserThroughTeam.id == user)
-    )
-
-    # Use UNION to combine both queries into a single DB round-trip
-    return direct.union_all(team)
+    return query
 
 
 def delete_prototype_permission(org, uid):
