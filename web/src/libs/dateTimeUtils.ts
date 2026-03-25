@@ -55,6 +55,14 @@ export function formatTimeForPicker(date: Date | null): string {
   return `${h12}:${minutes} ${period}`;
 }
 
+export function getTimezoneLabel(date: Date): string {
+  return (
+    new Intl.DateTimeFormat(undefined, {timeZoneName: 'longOffset'})
+      .formatToParts(date)
+      .find((part) => part.type === 'timeZoneName')?.value ?? 'local time'
+  );
+}
+
 export function toFormString(date: Date): string {
   const y = date.getFullYear();
   const mo = String(date.getMonth() + 1).padStart(2, '0');

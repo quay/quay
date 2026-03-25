@@ -49,7 +49,7 @@ function SubRow(props: SubRowProps) {
 
   return (
     <Tr
-      key={`${props.manifest.platform.os}-${props.manifest.platform.architecture}-${props.rowIndex}`}
+      key={`${props.manifest.platform?.os}-${props.manifest.platform?.architecture}-${props.rowIndex}`}
       isExpanded={props.isTagExpanded(props.tag)}
     >
       <Td />
@@ -332,6 +332,7 @@ function TagsTableRow(props: RowProps) {
             expiration={tag.expiration}
             loadTags={props.loadTags}
             immutable={tag.immutable}
+            repoState={props.repoDetails?.state}
           />
         </Td>
         <Td

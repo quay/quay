@@ -36,6 +36,8 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
       } else if (props?.isItemSelected) {
         // Row is selected but no permission set yet - default to 'Read'
         dropdownOnSelect(defaultSelectedVal, true);
+      } else if (props.selectedVal === 'None') {
+        setDropdownToggle('None');
       }
       return;
     }

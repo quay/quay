@@ -9,15 +9,19 @@ if ($host = "www.quay.io") {
 # Disable the ability to be embedded into iframes
 add_header X-Frame-Options DENY;
 
-
 # Proxy Headers
 proxy_set_header X-Forwarded-For $proper_forwarded_for;
-proxy_set_header X-Forwarded-Proto $proper_scheme;
-proxy_set_header Host $host;
-proxy_redirect off;
 
+# Pass trusted protocol to Werkzeug
+proxy_set_header X-Forwarded-Proto $final_proto;
+
+proxy_redirect off;
 proxy_set_header Transfer-Encoding $http_transfer_encoding;
 absolute_redirect off;
+
+# Pass safe host for non standard external ports
+proxy_set_header Host $safe_host;
+proxy_set_header X-Forwarded-Host $safe_host;
 
 location /angular {
     # Set cookie to switch to angular UI
@@ -187,7 +191,7 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_http_version 1.1;
 
@@ -214,7 +218,7 @@ location ~ /v2/([^/]+)\/[^/]+/tags/ {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_http_version 1.1;
 
@@ -241,7 +245,7 @@ location ~ /v2/([^/]+)\/[^/]+/manifests/ {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_http_version 1.1;
 
@@ -269,7 +273,7 @@ location = /v2/auth {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_http_version 1.1;
 
@@ -300,7 +304,7 @@ location ~ ^/v2 {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_http_version 1.1;
 
@@ -318,7 +322,7 @@ location /v1/ {
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
     proxy_set_header X-Forwarded-Proto $proper_scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
 
     proxy_buffering off;
 

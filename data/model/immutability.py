@@ -1,8 +1,9 @@
 import logging
-import re
 from functools import lru_cache
-from re import Pattern
 from typing import Optional, TypedDict
+
+import regex
+from regex import Pattern
 
 from data.database import (
     NamespaceImmutabilityPolicy as NamespaceImmutabilityPolicyTable,
@@ -23,6 +24,35 @@ from data.model import (
 from data.model._basequery import get_existing_repository
 
 logger = logging.getLogger(__name__)
+
+
+def _log_tags_made_immutable_by_policy(
+    namespace: str,
+    repo_name: Optional[str],
+    policy_config: "PolicyConfig",
+    count: int,
+) -> None:
+    """Best-effort audit log when existing tags are retroactively made immutable by policy."""
+    try:
+        from data.logs_model import logs_model
+
+        metadata: dict = {
+            "namespace": namespace,
+            "tag_pattern": policy_config["tag_pattern"],
+            "tag_pattern_matches": policy_config.get("tag_pattern_matches", True),
+            "count": count,
+        }
+        if repo_name is not None:
+            metadata["repo"] = repo_name
+
+        logs_model.log_action(
+            "tags_made_immutable_by_policy",
+            namespace_name=namespace,
+            repository_name=repo_name,
+            metadata=metadata,
+        )
+    except Exception:
+        logger.exception("Failed to log tags_made_immutable_by_policy for namespace %s", namespace)
 
 
 class PolicyConfig(TypedDict, total=False):
@@ -73,8 +103,8 @@ def _validate_policy(policy_config: PolicyConfig) -> None:
         raise InvalidImmutabilityPolicy("tag_pattern must be 256 characters or less")
 
     try:
-        re.compile(tag_pattern)
-    except re.error as e:
+        regex.compile(tag_pattern)
+    except regex.error as e:
         raise InvalidImmutabilityPolicy(f"Invalid regex pattern: {e}")
 
     tag_pattern_matches = policy_config.get("tag_pattern_matches")
@@ -92,15 +122,18 @@ def _get_namespace(orgname: str) -> User:
 
 @lru_cache(maxsize=256)
 def _compile_pattern(pattern: str) -> Pattern[str]:
-    return re.compile(pattern)
+    return regex.compile(pattern)
 
 
 def _matches_policy(tag_name: str, tag_pattern: str, tag_pattern_matches: bool) -> bool:
     """Check if tag should be immutable based on pattern."""
     try:
-        matches = bool(_compile_pattern(tag_pattern).match(tag_name))
-    except re.error:
-        return False
+        matches = bool(_compile_pattern(tag_pattern).fullmatch(tag_name, timeout=1.0))
+    except TimeoutError:
+        logger.warning("Regex match timed out for pattern %r against tag %r", tag_pattern, tag_name)
+        matches = False
+    except regex.error:
+        matches = False
     return matches if tag_pattern_matches else not matches
 
 
@@ -166,6 +199,27 @@ def _mark_tags_immutable_batch(tag_ids: list[int]) -> int:
     )
 
 
+def _clear_expiration_for_immutable_batch(tag_ids: list[int]) -> int:
+    """
+    Clear lifetime_end_ms for tags that should not expire because they are immutable.
+
+    Returns the number of tags updated.
+    """
+    if not tag_ids:
+        return 0
+
+    now_ms = get_epoch_timestamp_ms()
+    return (
+        Tag.update(lifetime_end_ms=None)
+        .where(
+            Tag.id << tag_ids,
+            ~(Tag.lifetime_end_ms >> None),  # only update those with expiration set
+            Tag.lifetime_end_ms > now_ms,  # only clear for still-alive tags
+        )
+        .execute()
+    )
+
+
 def apply_immutability_policy_to_existing_tags(
     namespace_id: int,
     repository_id: Optional[int],
@@ -209,6 +263,12 @@ def apply_immutability_policy_to_existing_tags(
         if tag_ids_to_mark:
             marked = _mark_tags_immutable_batch(tag_ids_to_mark)
             total_marked += marked
+
+            # Clear expiration for newly immutable tags when config disallows coexistence
+            from data.model import config
+
+            if not config.app_config.get("FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False):
+                _clear_expiration_for_immutable_batch(tag_ids_to_mark)
 
         last_id = tags[-1].id
 
@@ -294,7 +354,7 @@ def create_namespace_immutability_policy(
     # Retroactively apply policy to existing tags (outside transaction to avoid long locks)
     # If this fails, delete the policy and re-raise the exception
     try:
-        apply_immutability_policy_to_existing_tags(
+        total_marked = apply_immutability_policy_to_existing_tags(
             namespace_id=namespace_id,
             repository_id=None,
             tag_pattern=policy_config["tag_pattern"],
@@ -315,6 +375,9 @@ def create_namespace_immutability_policy(
                 policy_uuid,
             )
         raise
+
+    if total_marked > 0:
+        _log_tags_made_immutable_by_policy(orgname, None, policy_config, total_marked)
 
     return policy
 
@@ -349,7 +412,7 @@ def update_namespace_immutability_policy(
     # Retroactively apply policy to existing tags (outside transaction to avoid long locks)
     # If this fails, restore the old config and re-raise the exception
     try:
-        apply_immutability_policy_to_existing_tags(
+        total_marked = apply_immutability_policy_to_existing_tags(
             namespace_id=namespace_id,
             repository_id=None,
             tag_pattern=policy_config["tag_pattern"],
@@ -374,6 +437,9 @@ def update_namespace_immutability_policy(
                 old_config,
             )
         raise
+
+    if total_marked > 0:
+        _log_tags_made_immutable_by_policy(orgname, None, policy_config, total_marked)
 
     return True
 
@@ -455,7 +521,7 @@ def create_repository_immutability_policy(
     # Retroactively apply policy to existing tags (outside transaction to avoid long locks)
     # If this fails, delete the policy and re-raise the exception
     try:
-        apply_immutability_policy_to_existing_tags(
+        total_marked = apply_immutability_policy_to_existing_tags(
             namespace_id=namespace_id,
             repository_id=repo_id,
             tag_pattern=policy_config["tag_pattern"],
@@ -476,6 +542,9 @@ def create_repository_immutability_policy(
                 policy_uuid,
             )
         raise
+
+    if total_marked > 0:
+        _log_tags_made_immutable_by_policy(orgname, repo_name, policy_config, total_marked)
 
     return policy
 
@@ -515,7 +584,7 @@ def update_repository_immutability_policy(
     # Retroactively apply policy to existing tags (outside transaction to avoid long locks)
     # If this fails, restore the old config and re-raise the exception
     try:
-        apply_immutability_policy_to_existing_tags(
+        total_marked = apply_immutability_policy_to_existing_tags(
             namespace_id=namespace_id,
             repository_id=repo_id,
             tag_pattern=policy_config["tag_pattern"],
@@ -540,6 +609,9 @@ def update_repository_immutability_policy(
                 old_config,
             )
         raise
+
+    if total_marked > 0:
+        _log_tags_made_immutable_by_policy(orgname, repo_name, policy_config, total_marked)
 
     return True
 

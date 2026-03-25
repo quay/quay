@@ -103,6 +103,25 @@ services:
       retries: 12
       start_period: 90s
 
+  keycloak:
+    container_name: quay-keycloak
+    image: quay.io/keycloak/keycloak:26.2
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: "http://localhost:8081"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    volumes:
+      - "./local-dev/keycloak/quay-realm-export.json:/opt/keycloak/data/import/quay-realm.json:ro"
+    ports:
+      - "8081:8080"
+    command:
+      - start-dev
+      - --import-realm
+
   local-dev-frontend:
     user: ${DOCKER_USER:-root}
     container_name: quay-local-dev-frontend
@@ -145,6 +164,8 @@ services:
   quay:
     user: ${DOCKER_USER:-nobody:0}
     container_name: quay-quay
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
     build:
       context: .
       args:
@@ -201,14 +222,11 @@ services:
     container_name: quay-clair
     image: quay.io/projectquay/clair:4.7.2
     volumes:
-      - "./local-dev/clair:/src/clair/"
+      - "./local-dev/clair/config.yaml:/etc/clair/config.yaml:z"
     environment:
-      CLAIR_CONF: "/src/clair/config.yaml"
+      CLAIR_CONF: "/etc/clair/config.yaml"
       CLAIR_MODE: "combo"
     network_mode: "service:quay"
-    cpus: 2
-    command:
-      ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
 
   # Mailpit - local email testing server
   # Web UI: http://localhost:8025

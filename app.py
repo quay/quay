@@ -54,6 +54,7 @@ from util.config.configutil import generate_secret_key
 from util.greenlet_tracing import enable_tracing
 from util.ipresolver import IPResolver
 from util.label_validator import LabelValidator
+from util.locking import GlobalLock
 from util.log import filter_logs
 from util.marketplace import MarketplaceSubscriptionApi, MarketplaceUserApi
 from util.metrics.otel import init_exporter
@@ -349,6 +350,11 @@ if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPL
     raise Exception("Missing DATABASE_SECRET_KEY in config; did you perhaps forget to add it?")
 
 database.configure(app.config)
+
+# Configure global locking
+# For testing in CI we mock GlobalLock anyway, so we'll skip global initialization if TESTING is set:
+if not app.config.get("TESTING", False):
+    GlobalLock.configure(app.config)
 
 model.config.app_config = app.config
 model.config.store = storage

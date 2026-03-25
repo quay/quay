@@ -416,6 +416,7 @@ def retarget_tag(
     now_ms=None,
     raise_on_error=False,
     expiration_seconds=None,
+    immutable_from_label=False,
 ):
     """
     Creates or updates a tag with the specified name to point to the given manifest under its
@@ -484,25 +485,60 @@ def retarget_tag(
             delete_tag_notifications_for_tag(existing_tag)
             Tag.update(lifetime_end_ms=now_ms).where(Tag.id == existing_tag.id).execute()
 
-        # Check if tag should be immutable based on policies
+        # Check if tag should be immutable based on manifest label or policies
         immutable = False
+        immutable_from_policy = False
         if features.IMMUTABLE_TAGS:
-            immutable = immutability.evaluate_immutability_policies(
+            immutable_from_policy = immutability.evaluate_immutability_policies(
                 manifest.repository_id, repo.namespace_user_id, tag_name
             )
+            immutable = immutable_from_label or immutable_from_policy
+
+        # Compute lifetime_end_ms, clearing it for immutable tags when config disallows
+        lifetime_end_ms = (now_ms + expiration_seconds * 1000) if expiration_seconds else None
+        if (
+            immutable
+            and lifetime_end_ms is not None
+            and not config.app_config.get("FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False)
+        ):
+            lifetime_end_ms = None
 
         created = Tag.create(
             name=tag_name,
             repository=manifest.repository_id,
             lifetime_start_ms=now_ms,
-            lifetime_end_ms=(now_ms + expiration_seconds * 1000) if expiration_seconds else None,
+            lifetime_end_ms=lifetime_end_ms,
             reversion=is_reversion,
             manifest=manifest,
             tag_kind=Tag.tag_kind.get_id("tag"),
             immutable=immutable,
         )
 
-        return created
+        # Capture values for logging outside the transaction
+        namespace_name = repo.namespace_user.username if immutable_from_policy else None
+        repo_name = repo.name if immutable_from_policy else None
+
+    # Best-effort audit log outside the transaction so a logging failure
+    # does not roll back the tag creation.
+    if immutable_from_policy:
+        try:
+            from data.logs_model import logs_model
+
+            logs_model.log_action(
+                "tag_made_immutable_by_policy",
+                namespace_name=namespace_name,
+                repository_name=repo_name,
+                metadata={
+                    "tag": tag_name,
+                    "repo": repo_name,
+                    "namespace": namespace_name,
+                    "immutable": True,
+                },
+            )
+        except Exception:
+            logger.exception("Failed to log tag_made_immutable_by_policy for tag %s", tag_name)
+
+    return created
 
 
 def delete_tag(repository_id, tag_name):
@@ -633,11 +669,17 @@ def set_tags_immutability_for_manifest(manifest_id, immutable):
     Returns the count of updated tags.
     """
     now_ms = get_epoch_timestamp_ms()
+    update_fields = {Tag.immutable: immutable}
+
+    # Clear expiration when making immutable and config disallows coexistence
+    if immutable and not config.app_config.get("FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False):
+        update_fields[Tag.lifetime_end_ms] = None
+
     return (
-        Tag.update(immutable=immutable)
+        Tag.update(update_fields)
         .where(
             Tag.manifest == manifest_id,
-            Tag.hidden == False,
+            Tag.hidden == False,  # noqa: E712
             (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
         )
         .execute()
@@ -692,13 +734,21 @@ def lookup_unrecoverable_tags(repo):
     Returns the tags in a repository that are expired and past their time machine recovery period.
     """
     expired_clause = get_epoch_timestamp_ms() - (Namespace.removed_tag_expiration_s * 1000)
-    return (
+    query = (
         Tag.select()
         .join(Repository)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))
         .where(Tag.repository == repo)
         .where(~(Tag.lifetime_end_ms >> None), Tag.lifetime_end_ms <= expired_clause)
     )
+
+    # Defense-in-depth: never GC immutable tags when they should not expire
+    if features.IMMUTABLE_TAGS and not config.app_config.get(
+        "FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False
+    ):
+        query = query.where(Tag.immutable == False)  # noqa: E712
+
+    return query
 
 
 def set_tag_end_ms(tag, end_ms):
@@ -744,8 +794,15 @@ def find_repository_with_garbage(limit_to_gc_policy_s):
             )
             .limit(GC_CANDIDATE_COUNT)
             .distinct()
-            .alias("candidates")
         )
+
+        # Skip repos where the only expired tags are immutable and should not expire
+        if features.IMMUTABLE_TAGS and not config.app_config.get(
+            "FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False
+        ):
+            candidates = candidates.where(Tag.immutable == False)  # noqa: E712
+
+        candidates = candidates.alias("candidates")
 
         found = (
             Tag.select(candidates.c.repository_id, can_use_read_replica=True)

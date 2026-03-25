@@ -8,14 +8,14 @@
 
 ## EXECUTE THESE STEPS NOW FOR: $ARGUMENTS
 
-**START NOW**: Run `jira issue view $ARGUMENTS` immediately. Do not describe what you will do.
+**START NOW**: Run `acli jira workitem view $ARGUMENTS` immediately. Do not describe what you will do.
 
 ### Step 1: Fetch Story from JIRA
 
 Run this command NOW:
 
 ```bash
-jira issue view $ARGUMENTS
+acli jira workitem view $ARGUMENTS
 ```
 
 **Extract from JIRA output:**
@@ -37,7 +37,7 @@ Create `.claude/implementation/<story-key>-context.md` with:
 If the story has a parent epic, fetch it:
 
 ```bash
-jira issue view <epic-key>
+acli jira workitem view <epic-key>
 ```
 
 **Save epic content:**
@@ -335,7 +335,7 @@ Ask user if they want to update the JIRA story status:
 
 If yes:
 ```bash
-jira issue move <story-key> "Done"
+acli jira workitem transition --key <story-key> --status "Done" --yes
 ```
 
 ---

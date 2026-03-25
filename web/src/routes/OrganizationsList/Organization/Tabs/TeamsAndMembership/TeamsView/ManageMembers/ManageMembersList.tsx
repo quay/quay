@@ -146,6 +146,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     paginatedData: paginatedCurrentMembers,
     getSortableSort,
     paginationProps,
+    totalCount,
   } = usePaginatedSortableTable(currentDataSource, {
     columns: {
       1: (item: ITeamMember) => item.name, // Team member
@@ -663,6 +664,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           setPage={paginationProps.setPage}
           perPage={paginationProps.perPage}
           setPerPage={paginationProps.setPerPage}
+          totalItems={totalCount}
           search={search}
           setSearch={setSearch}
           searchOptions={[manageMemberColumnNames.teamMember]}

@@ -3,7 +3,7 @@ alembic==1.13.1
 aniso8601 @ git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90
 APScheduler==3.10.4
 attrs==19.3.0
-Authlib==1.6.7
+Authlib==1.6.9
 aws-sam-translator==1.20.1
 azure-core==1.24.0
 azure-storage-blob==12.4.0
@@ -81,8 +81,8 @@ prometheus_client==0.7.1
 protobuf==5.29.5
 psutil==5.9.0
 psycopg2==2.9.9
-pyasn1==0.4.8
-pyasn1-modules==0.3.0
+pyasn1==0.6.3
+pyasn1_modules==0.4.2
 py-bitbucket @ git+https://github.com/quay/py-bitbucket.git@3ba167408d92eb4ba2cae78c0047b8f1e8821c67
 PyGithub==2.1.1
 PyJWT==2.8.0
@@ -105,6 +105,7 @@ sentry-sdk[flask]==1.40.0
 pyroscope-io==1.0.4
 recaptcha2==0.1
 redis==7.1.0
+regex==2026.2.28
 rehash==1.0.1
 requests==2.32.3
 requests-aws4auth==1.2.3

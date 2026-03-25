@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(jira:*), Read, Glob, Grep, TodoWrite, Task, Write, AskUserQuestion
+allowed-tools: Bash(acli:*), Read, Glob, Grep, TodoWrite, Task, Write, AskUserQuestion
 argument-hint: <epic-key>
 description: Generate child stories from a JIRA epic, review them, and create in JIRA with approval
 ---
@@ -19,7 +19,7 @@ Analyze the epic and generate a set of child stories that together fulfill all r
 Retrieve the complete epic information from JIRA:
 
 ```bash
-jira issue view $ARGUMENTS
+acli jira workitem view $ARGUMENTS
 ```
 
 **Extract from JIRA output:**
@@ -244,12 +244,12 @@ Use the AskUserQuestion tool to ask the user what to do with this story:
 If user selects "Create Story in JIRA", create the story:
 
 ```bash
-jira issue create \
+acli jira workitem create \
+  --project "PROJQUAY" \
   --type Story \
   --summary "[Story Title from file]" \
-  --body "$(cat .claude/plans/stories/$ARGUMENTS/[NN]-[component]-[short-name].md)" \
-  --parent $ARGUMENTS \
-  --no-input
+  --description-file ".claude/plans/stories/$ARGUMENTS/[NN]-[component]-[short-name].md" \
+  --parent $ARGUMENTS
 ```
 
 **Important:**
@@ -363,11 +363,11 @@ If user selects "Edit First":
 
 ### Using `--parent` Flag
 
-The `--parent $ARGUMENTS` flag in `jira issue create`:
+The `--parent $ARGUMENTS` flag in `acli jira workitem create`:
 - Automatically links the created story to the parent epic
 - Sets the Epic Link field (customfield_12311140)
 - Story appears under the epic in JIRA boards and backlogs
-- No need for separate `jira issue link` command
+- No need for separate `acli jira workitem link` command
 
 ### Epic Description Format
 
@@ -479,7 +479,7 @@ After completing the review and creation process, Step 8 provides a comprehensiv
 **Issue: Epic not found in JIRA**
 - Verify the epic key is correct
 - Check you have access to view the epic
-- Ensure you're logged into JIRA CLI (`jira init` if needed)
+- Ensure you're logged into JIRA CLI (`acli jira auth` if needed)
 
 **Issue: Epic description is empty or minimal**
 - Note this in the `00-epic-overview.md` file
@@ -503,11 +503,11 @@ After completing the review and creation process, Step 8 provides a comprehensiv
 **Issue: JIRA story creation fails**
 - Verify you have permission to create issues in the project
 - Check that the parent epic ($ARGUMENTS) exists and you have access
-- Ensure you're logged into JIRA CLI
-- Verify the `--parent` flag is supported in your jira CLI version
+- Ensure you're logged into JIRA CLI (`acli jira auth`)
+- Verify the `--parent` flag is supported in your acli version
 - If `--parent` fails, create story without it and link manually:
   ```bash
-  jira issue link [STORY_KEY] $ARGUMENTS "is child of"
+  acli jira workitem link create --out [STORY_KEY] --in $ARGUMENTS --type "is child of" --yes
   ```
 
 **Issue: Story description too long for JIRA**

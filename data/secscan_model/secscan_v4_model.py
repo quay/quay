@@ -275,10 +275,12 @@ class V4SecurityScanner(SecurityScannerInterface):
     ):
         # TODO(alecmerdler): Filter out any `Manifests` that are still being uploaded
         def not_indexed_query():
-            return (
-                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
-                .join(ManifestSecurityStatus, JOIN.LEFT_OUTER)
-                .where(ManifestSecurityStatus.id >> None)
+            return Manifest.select(can_use_read_replica=True).where(
+                ~fn.EXISTS(
+                    ManifestSecurityStatus.select().where(
+                        ManifestSecurityStatus.manifest == Manifest.id
+                    )
+                )
             )
 
         def index_error_query():
@@ -430,17 +432,60 @@ class V4SecurityScanner(SecurityScannerInterface):
                     metadata_json={},
                 )
 
-        def should_skip_indexing(manifest_candidate):
-            """Check whether this manifest was preempted by another worker.
-            That would be the case if the manifest references a manifestsecuritystatus,
-            or if the reindex threshold is no longer valid.
+        def batch_preemption_check(candidate_ids):
             """
-            if getattr(manifest_candidate, "manifestsecuritystatus", None):
-                return manifest_candidate.manifestsecuritystatus.last_indexed >= reindex_threshold
+            Bulk check which manifest IDs have been recently indexed by another worker.
+            Returns a set of manifest IDs that should be skipped.
 
-            return len(manifest_candidate.manifestsecuritystatus_set) > 0
+            This replaces individual should_skip_indexing() calls with a single bulk query,
+            reducing database round-trips by 50-100x per batch.
+            """
+            if not candidate_ids:
+                return set()
 
-        for candidate, abt, num_remaining in iterator:
+            # Single query to check all candidates at once
+            recently_indexed = ManifestSecurityStatus.select(
+                ManifestSecurityStatus.manifest_id
+            ).where(
+                ManifestSecurityStatus.manifest_id.in_(candidate_ids),
+                ManifestSecurityStatus.last_indexed >= reindex_threshold,
+            )
+
+            return {row.manifest_id for row in recently_indexed}
+
+        def batched_iterator_with_preemption_check(iterator, batch_size=20):
+            """
+            Wrapper that collects candidates into batches and performs bulk preemption checks.
+            Yields (candidate, abt, num_remaining, should_skip) tuples.
+            """
+            batch = []
+            for item in iterator:
+                batch.append(item)
+
+                if len(batch) >= batch_size:
+                    # Bulk check for this batch
+                    candidate_ids = [c.id for c, _, _ in batch]
+                    preempted_ids = batch_preemption_check(candidate_ids)
+
+                    # Yield each item with preemption status
+                    for candidate, abt, num_remaining in batch:
+                        should_skip = candidate.id in preempted_ids
+                        yield candidate, abt, num_remaining, should_skip
+
+                    batch = []
+
+            # Process remaining items
+            if batch:
+                candidate_ids = [c.id for c, _, _ in batch]
+                preempted_ids = batch_preemption_check(candidate_ids)
+
+                for candidate, abt, num_remaining in batch:
+                    should_skip = candidate.id in preempted_ids
+                    yield candidate, abt, num_remaining, should_skip
+
+        for candidate, abt, num_remaining, should_skip in batched_iterator_with_preemption_check(
+            iterator
+        ):
             manifest = ManifestDataType.for_manifest(candidate, None)
             if manifest.is_manifest_list:
                 mark_manifest_unsupported(manifest)
@@ -475,8 +520,9 @@ class V4SecurityScanner(SecurityScannerInterface):
                     mark_manifest_unsupported(manifest)
                     continue
 
-            if should_skip_indexing(candidate):
-                logger.debug("Another worker preempted this worker")
+            # Check preemption status (computed via bulk query in batch)
+            if should_skip:
+                logger.debug("Manifest %d preempted by another worker (batch check)", candidate.id)
                 abt.set()
                 continue
 

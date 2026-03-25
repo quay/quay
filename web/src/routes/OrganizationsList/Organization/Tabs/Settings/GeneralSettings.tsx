@@ -473,8 +473,11 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
               ? 'The e-mail address associated with your account.'
               : 'The e-mail address associated with the organization.'
           }
-          customValidation={(value: string) =>
-            isValidEmail(value) || 'Please enter a valid email address'
+          customValidation={
+            quayConfig?.features?.MAILING
+              ? (value: string) =>
+                  isValidEmail(value) || 'Please enter a valid email address'
+              : undefined
           }
         />
       )}

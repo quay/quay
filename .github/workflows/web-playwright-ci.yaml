@@ -11,7 +11,7 @@ on:
 jobs:
   playwright:
     name: Playwright E2E Tests
-    runs-on: ubuntu-22.04
+    runs-on: quay-002-small-ubuntu-24-x64
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -19,8 +19,12 @@ jobs:
       - name: Setup Quay
         uses: ./.github/actions/setup-quay
         with:
+          with-clair: true
+          with-keycloak: true
           extra-config: |
             FEATURE_MAILING: true
+            FEATURE_SECURITY_SCANNER: true
+            FEATURE_SECURITY_NOTIFICATIONS: true
 
       - name: Set up Node.js with npm caching
         uses: actions/setup-node@v6
@@ -57,8 +61,52 @@ jobs:
       - name: Install skopeo for multi-arch image tests
         run: sudo apt-get update && sudo apt-get install -y skopeo
 
-      - name: Run Playwright tests
-        run: cd web && npm run test:e2e
+      - name: Run Database auth tests
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: web/blob-results/db
+        run: cd web && npx playwright test --grep-invert @auth:OIDC --reporter=blob
+
+      - name: Swap to OIDC authentication
+        if: always()
+        run: |
+          pip install pyyaml -q
+          # Merge Keycloak OIDC login config
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            local-dev/keycloak/keycloak-config.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Merge OIDC auth type + feature flags (inline, no duplicate file)
+          cat > /tmp/oidc-auth-overlay.yaml <<'EOF'
+          AUTHENTICATION_TYPE: OIDC
+          FEATURE_TEAM_SYNCING: true
+          FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP: true
+          SUPER_USERS:
+            - admin
+            - admin_oidc
+          EOF
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            /tmp/oidc-auth-overlay.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Restart Quay and wait for healthy
+          docker restart quay-quay
+          curl -sf --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:8080/health/instance > /dev/null
+          echo "Quay is ready with OIDC auth"
+
+      - name: Run OIDC auth tests
+        if: always()
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: web/blob-results/oidc
+        run: cd web && npx playwright test --grep @auth:OIDC --reporter=blob
+
+      - name: Merge test reports
+        if: always()
+        run: |
+          cd web
+          npx playwright merge-reports --reporter=html,json blob-results || true
 
       - name: Save PR number
         if: always()
