@@ -169,7 +169,7 @@ pbr==5.11.1
 pycparser==2.21
 python-bidi==0.6.6
 reportlab==4.2.0
-svglib==1.5.1
+svglib==1.6.0
 tinycss2==1.2.1
 typing_extensions==4.9.0
 tzdata==2023.3
