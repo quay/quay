@@ -462,6 +462,46 @@ def get_org_mirror_repo_status_counts(config: OrgMirrorConfig) -> dict:
     return counts
 
 
+def count_active_org_mirror_repos(config: OrgMirrorConfig) -> int:
+    """
+    Count repositories that haven't reached a terminal state.
+
+    Active (non-terminal) repos:
+    - SYNCING, SYNC_NOW, NEVER_RUN: always active
+    - FAIL with sync_retries_remaining > 0: will be retried by the worker
+
+    Terminal repos (not counted):
+    - SUCCESS, CANCEL
+    - FAIL with sync_retries_remaining == 0 (retries exhausted)
+
+    This aligns with get_eligible_org_mirror_repos which considers FAIL repos
+    with remaining retries as eligible for pickup.
+    """
+    always_active = [
+        OrgMirrorRepoStatus.SYNCING,
+        OrgMirrorRepoStatus.SYNC_NOW,
+        OrgMirrorRepoStatus.NEVER_RUN,
+    ]
+
+    return (
+        OrgMirrorRepository.select(fn.COUNT(OrgMirrorRepository.id))
+        .join(Repository, JOIN.LEFT_OUTER, on=(OrgMirrorRepository.repository == Repository.id))
+        .where(OrgMirrorRepository.org_mirror_config == config)
+        .where(
+            (OrgMirrorRepository.repository >> None)
+            | (Repository.state != RepositoryState.MARKED_FOR_DELETION)
+        )
+        .where(
+            (OrgMirrorRepository.sync_status << always_active)
+            | (
+                (OrgMirrorRepository.sync_status == OrgMirrorRepoStatus.FAIL)
+                & (OrgMirrorRepository.sync_retries_remaining > 0)
+            )
+        )
+        .scalar()
+    )
+
+
 def get_org_mirroring_robot(repository):
     """
     Return the robot used for org-level mirroring of a repository.
@@ -1129,7 +1169,9 @@ def propagate_status_to_repos(config: OrgMirrorConfig, status: OrgMirrorRepoStat
     return query.execute()
 
 
-def update_sync_status_to_sync_now(org_mirror_config: OrgMirrorConfig) -> Optional[OrgMirrorConfig]:
+def update_sync_status_to_sync_now(
+    org_mirror_config: OrgMirrorConfig,
+) -> tuple[Optional[OrgMirrorConfig], Optional[str]]:
     """
     Change the org mirror config sync status to SYNC_NOW for immediate sync.
 
@@ -1143,11 +1185,26 @@ def update_sync_status_to_sync_now(org_mirror_config: OrgMirrorConfig) -> Option
         org_mirror_config: The OrgMirrorConfig to trigger sync for
 
     Returns:
-        Updated OrgMirrorConfig if successful, None if currently syncing
+        (updated_config, None) on success, or (None, reason) on rejection.
+        Rejection reasons:
+        - Config is in SYNCING state (discovery in progress)
+        - Repositories are still actively syncing or pending worker pickup
     """
-    # Cannot trigger sync-now if already syncing
+    # Cannot trigger sync-now if config is actively being discovered
     if org_mirror_config.sync_status == OrgMirrorStatus.SYNCING:
-        return None
+        return None, "Cannot trigger sync: discovery is currently in progress."
+
+    # Cannot trigger sync-now if repositories are still actively syncing,
+    # pending worker pickup, or awaiting retry. This includes FAIL repos with
+    # retries remaining, matching the eligibility predicate in
+    # get_eligible_org_mirror_repos.
+    active = count_active_org_mirror_repos(org_mirror_config)
+    if active > 0:
+        return None, (
+            "Cannot trigger sync: repositories are still syncing. "
+            "Cancel the current sync and wait for all repositories to "
+            "reach a terminal state before triggering a new sync."
+        )
 
     retries = max(org_mirror_config.sync_retries_remaining, 1)
     now = datetime.utcnow()
@@ -1164,9 +1221,9 @@ def update_sync_status_to_sync_now(org_mirror_config: OrgMirrorConfig) -> Option
     )
 
     if not config_query.execute():
-        return None
+        return None, "Cannot trigger sync: concurrent update conflict."
 
-    return OrgMirrorConfig.get_by_id(org_mirror_config.id)
+    return OrgMirrorConfig.get_by_id(org_mirror_config.id), None
 
 
 def update_sync_status_to_cancel(org_mirror_config: OrgMirrorConfig) -> Optional[OrgMirrorConfig]:

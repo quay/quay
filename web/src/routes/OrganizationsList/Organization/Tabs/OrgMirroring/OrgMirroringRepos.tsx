@@ -29,6 +29,7 @@ import {Link} from 'react-router-dom';
 interface OrgMirroringReposProps {
   config: OrgMirrorConfig | null;
   orgName: string;
+  isOrgSyncing: boolean;
 }
 
 // Repo-level statuses reuse the org-level maps, with one extra display-only status
@@ -60,6 +61,7 @@ const filterableStatuses: {value: string; label: string}[] = [
 export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
   config,
   orgName,
+  isOrgSyncing,
 }) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
@@ -75,7 +77,7 @@ export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
     queryFn: () =>
       getOrgMirrorRepos(orgName, page, perPage, statusFilter || undefined),
     enabled: !!config,
-    refetchInterval: config?.sync_status === 'SYNCING' ? 5000 : false,
+    refetchInterval: isOrgSyncing ? 5000 : false,
   });
 
   const repos = data?.repositories ?? [];
