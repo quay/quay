@@ -137,8 +137,8 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     const table = authenticatedPage.getByTestId('default-permissions-table');
     await table.getByTestId(`${robot.fullName}-toggle-kebab`).click();
 
-    // Click delete option
-    await table.getByTestId(`${robot.fullName}-del-option`).click();
+    // Click delete option (dropdown items render in a portal outside the table)
+    await authenticatedPage.getByTestId(`${robot.fullName}-del-option`).click();
 
     // Verify success alert (use .last() to get most recent)
     await expect(
