@@ -55,6 +55,8 @@ export default function OverviewList() {
             <Button
               icon={<ExternalLinkAltIcon />}
               variant="link"
+              component="a"
+              href="https://www.redhat.com/en/technologies/cloud-computing/quay"
               style={{paddingLeft: '0'}}
             >
               Learn More

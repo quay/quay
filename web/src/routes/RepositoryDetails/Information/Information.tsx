@@ -269,15 +269,13 @@ export default function Information(props: InformationProps) {
                     </Content>
                   )}
                   {repoDetails?.can_write && !inReadOnlyMode && (
-                    <Content>
-                      <Content
-                        component={ContentVariants.a}
-                        onClick={() => setIsEditing(true)}
-                        style={{cursor: 'pointer', marginTop: '1rem'}}
-                      >
-                        Edit description
-                      </Content>
-                    </Content>
+                    <Button
+                      variant="link"
+                      onClick={() => setIsEditing(true)}
+                      style={{paddingLeft: 0, marginTop: '1rem'}}
+                    >
+                      Edit description
+                    </Button>
                   )}
                 </>
               )}

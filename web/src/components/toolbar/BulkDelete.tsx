@@ -6,7 +6,7 @@ export function BulkDelete(props: BulkDeleteProps) {
     <Button
       icon={<TrashIcon color="#6a6e73" />}
       variant="plain"
-      aria-label="Action"
+      aria-label="Delete selected items"
       onClick={() => props.setClicked(true)}
     />
   );

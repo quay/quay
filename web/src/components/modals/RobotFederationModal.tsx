@@ -138,6 +138,7 @@ function RobotFederationForm(props: RobotFederationFormProps) {
             <FlexItem align={{default: 'alignRight'}}>
               <Button
                 icon={<PlusIcon />}
+                aria-label="Add federation entry"
                 onClick={() => {
                   addFederationConfigEntry();
                 }}
@@ -171,6 +172,7 @@ function RobotFederationFormEntry(props: RobotFederationFormEntryProps) {
           actions={
             <Button
               icon={<TrashIcon />}
+              aria-label="Remove federation entry"
               onClick={() => {
                 props.onRemove(props.index);
               }}

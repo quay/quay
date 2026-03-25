@@ -237,7 +237,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   const viewToggle = (
     <Toolbar>
       <ToolbarContent>
-        <ToolbarItem gap={{default: 'gapMd'}}>
+        <ToolbarItem columnGap={{default: 'columnGapMd'}}>
           <ToggleGroup aria-label="Manage members toggle view">
             <ToggleGroupItem
               text="All members"
@@ -518,7 +518,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
             >
               Team Synchronization Config
             </AccordionToggle>
-            <AccordionContent id="team-sync-config-toggle">
+            <AccordionContent id="team-sync-config-panel">
               <Content>
                 <Content component={ContentVariants.dl}>
                   <Content component={ContentVariants.dt}>
