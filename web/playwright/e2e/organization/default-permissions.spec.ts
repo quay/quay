@@ -266,7 +266,10 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add to repository
-    await authenticatedPage.getByTestId(`checkbox-row-${repo.name}`).click();
+    await authenticatedPage
+      .getByTestId(`checkbox-row-${repo.name}`)
+      .locator('input')
+      .click();
     await expect(
       authenticatedPage.getByTestId(`${repo.name}-permission-dropdown-toggle`),
     ).toContainText('Read');
@@ -371,7 +374,10 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add to repository
-    await authenticatedPage.getByTestId(`checkbox-row-${repo.name}`).click();
+    await authenticatedPage
+      .getByTestId(`checkbox-row-${repo.name}`)
+      .locator('input')
+      .click();
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add team member - create new robot
@@ -469,12 +475,14 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     // Step: Add to team (optional)
     await authenticatedPage
       .getByTestId(`checkbox-row-${addToTeam.name}`)
+      .locator('input')
       .click();
     await authenticatedPage.getByTestId('next-btn').click();
 
     // Step: Add to repository
     await authenticatedPage
       .getByTestId(`checkbox-row-${addToRepo.name}`)
+      .locator('input')
       .click();
     await authenticatedPage.getByTestId('next-btn').click();
 
