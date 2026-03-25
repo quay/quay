@@ -4,8 +4,10 @@
     "enabled": true
   },
   "osvVulnerabilityAlerts": true,
+  "dependencyDashboard": false,
   "extends": [
-    "github>konflux-ci/mintmaker-presets:cve-automerge-all"
+    "github>konflux-ci/mintmaker-presets:cve-automerge-all",
+    "github>quay/quay-konflux-configs"
   ],
   "semanticCommits": "disabled",
   "commitMessagePrefix": "NO-ISSUE: chore(deps):"
