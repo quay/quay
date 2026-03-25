@@ -511,7 +511,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
       />
       <Conditional if={teamSyncInfo?.config}>
         <Accordion>
-          <AccordionItem isExpanded={!teamSyncConfigExpanded}>
+          <AccordionItem isExpanded={teamSyncConfigExpanded}>
             <AccordionToggle
               onClick={() => onAccordionToggle()}
               id="team-sync-config-toggle"

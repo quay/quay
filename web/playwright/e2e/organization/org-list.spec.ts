@@ -411,7 +411,7 @@ test.describe(
           ).toBeVisible();
           await expect(
             readonlyRow
-              .locator('.pf-v6-c-label.pf-m-cyan')
+              .locator('.pf-v6-c-label.pf-m-teal')
               .getByText('Global Readonly Superuser'),
           ).toBeVisible();
 
