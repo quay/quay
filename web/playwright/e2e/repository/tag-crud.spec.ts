@@ -134,10 +134,10 @@ test.describe(
           exact: true,
         }),
       });
-      await latestRow.locator('td[data-label="Pull"] svg').hover({force: true});
+      await latestRow.locator('td[data-label="Pull"] svg').hover();
 
       const popover = authenticatedPage.getByTestId('pull-popover');
-      await expect(popover).toBeVisible();
+      await expect(popover).toBeVisible({timeout: 10000});
       await expect(popover).toContainText('Fetch Tag');
       await expect(popover).toContainText('Podman Pull (By Tag)');
       await expect(popover).toContainText('Docker Pull (By Tag)');

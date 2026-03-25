@@ -57,6 +57,9 @@ test.describe(
       // Reset and verify results restored
       await authenticatedPage.locator('[aria-label="Reset search"]').click();
       await expect(
+        authenticatedPage.locator('td[data-label="Name"]').first(),
+      ).toBeVisible();
+      await expect(
         authenticatedPage.getByRole('link', {name: TEST_USERS.user.username}),
       ).toBeVisible();
     });
