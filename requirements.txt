@@ -155,7 +155,7 @@ qrcode==8.2
 uritools==6.0.1
 arabic-reshaper==3.0.0
 cffi==2.0.0
-cssselect2==0.7.0
+cssselect2==0.9.0
 furl==2.1.4
 html5lib==1.1
 idna==3.7
