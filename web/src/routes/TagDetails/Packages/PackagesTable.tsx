@@ -1,9 +1,10 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {
   Vulnerability,
   Feature,
   VulnerabilitySeverity,
   VulnerabilityOrder,
+  Layer,
 } from 'src/resources/TagResource';
 import {
   Table,
@@ -38,7 +39,19 @@ const columnNames = {
   PackageVersion: 'Package Version',
   Vulnerabilities: 'Vulnerabilities',
   RemainingAfterUpgrade: 'Remaining After Upgrade',
+  IntroducedInLayer: 'Introduced In Layer',
 };
+
+function getLayerCommand(
+  feature: Feature,
+  layerMap: Map<string, string | null>,
+): string | null {
+  if (!feature.AddedBy) {
+    return null;
+  }
+  const addedByDigest = feature.AddedBy.split('.')[0];
+  return layerMap.get(addedByDigest) ?? null;
+}
 
 function sortPackages(packagesList: PackagesListItem[]) {
   return packagesList.sort((p1, p2) => {
@@ -115,6 +128,7 @@ function TableHead({
         <Th sort={getSortableSort(1)}>{columnNames.PackageVersion}</Th>
         <Th sort={getSortableSort(2)}>{columnNames.Vulnerabilities}</Th>
         <Th sort={getSortableSort(3)}>{columnNames.RemainingAfterUpgrade}</Th>
+        <Th sort={getSortableSort(4)}>{columnNames.IntroducedInLayer}</Th>
       </Tr>
     </Thead>
   );
@@ -146,7 +160,18 @@ function VulnerabilitiesEntry(props: VulnerabilitiesEntryProps) {
   );
 }
 
-export default function PackagesTable({features}: PackagesProps) {
+export default function PackagesTable({features, layers}: PackagesProps) {
+  const layerCommandByDigest = useMemo(
+    () =>
+      new Map(
+        (layers ?? []).map((layer) => [
+          layer.blob_digest,
+          layer.command?.join(' ') || null,
+        ]),
+      ),
+    [layers],
+  );
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [packagesList, setPackagesList] = useState<PackagesListItem[]>([]);
   const [filteredPackagesList, setFilteredPackagesList] = useState<
@@ -166,6 +191,7 @@ export default function PackagesTable({features}: PackagesProps) {
         VulnerabilityOrder[item.HighestVulnerabilitySeverity], // Vulnerabilities (by severity order)
       3: (item: PackagesListItem) =>
         VulnerabilityOrder[item.HighestVulnerabilitySeverityAfterFix], // Remaining After Upgrade (by severity order)
+      4: (item: PackagesListItem) => item.IntroducedInLayer || '', // Introduced In Layer
     },
     initialPerPage: 20,
     initialSort: {columnIndex: 2, direction: 'asc'}, // Default sort: Vulnerabilities by severity (most severe first)
@@ -179,6 +205,7 @@ export default function PackagesTable({features}: PackagesProps) {
           PackageName: feature.Name,
           CurrentVersion: feature.Version,
           Vulnerabilities: feature.Vulnerabilities,
+          IntroducedInLayer: getLayerCommand(feature, layerCommandByDigest),
 
           VulnerabilityCounts: getVulnerabilitiesCount(feature.Vulnerabilities),
           HighestVulnerabilitySeverity: getHighestVulnerabilitySeverity(
@@ -203,7 +230,7 @@ export default function PackagesTable({features}: PackagesProps) {
       setPackagesList([]);
       setFilteredPackagesList([]);
     }
-  }, [features]);
+  }, [features, layerCommandByDigest]);
 
   return (
     <PageSection variant={PageSectionVariants.light}>
@@ -254,6 +281,9 @@ export default function PackagesTable({features}: PackagesProps) {
                       highestSeverity={pkg.HighestVulnerabilitySeverityAfterFix}
                     />
                   </Td>
+                  <Td dataLabel={columnNames.IntroducedInLayer}>
+                    <span>{pkg.IntroducedInLayer || '(No Command)'}</span>
+                  </Td>
                 </Tr>
               </Tbody>
             );
@@ -287,6 +317,7 @@ export default function PackagesTable({features}: PackagesProps) {
 
 export interface PackagesProps {
   features: Feature[];
+  layers?: Layer[];
 }
 
 export interface VulnerabilitiesEntryProps {
