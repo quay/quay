@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {
   Vulnerability,
   Feature,
@@ -42,16 +42,15 @@ const columnNames = {
   IntroducedInLayer: 'Introduced In Layer',
 };
 
-function getLayerCommand(feature: Feature, layers?: Layer[]): string | null {
-  if (!feature.AddedBy || !layers?.length) {
+function getLayerCommand(
+  feature: Feature,
+  layerMap: Map<string, string | null>,
+): string | null {
+  if (!feature.AddedBy) {
     return null;
   }
-
   const addedByDigest = feature.AddedBy.split('.')[0];
-  const matchingLayer = layers.find(
-    (layer) => layer.blob_digest === addedByDigest,
-  );
-  return matchingLayer?.command?.join(' ') || null;
+  return layerMap.get(addedByDigest) ?? null;
 }
 
 function sortPackages(packagesList: PackagesListItem[]) {
@@ -162,6 +161,17 @@ function VulnerabilitiesEntry(props: VulnerabilitiesEntryProps) {
 }
 
 export default function PackagesTable({features, layers}: PackagesProps) {
+  const layerCommandByDigest = useMemo(
+    () =>
+      new Map(
+        (layers ?? []).map((layer) => [
+          layer.blob_digest,
+          layer.command?.join(' ') || null,
+        ]),
+      ),
+    [layers],
+  );
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [packagesList, setPackagesList] = useState<PackagesListItem[]>([]);
   const [filteredPackagesList, setFilteredPackagesList] = useState<
@@ -195,7 +205,7 @@ export default function PackagesTable({features, layers}: PackagesProps) {
           PackageName: feature.Name,
           CurrentVersion: feature.Version,
           Vulnerabilities: feature.Vulnerabilities,
-          IntroducedInLayer: getLayerCommand(feature, layers),
+          IntroducedInLayer: getLayerCommand(feature, layerCommandByDigest),
 
           VulnerabilityCounts: getVulnerabilitiesCount(feature.Vulnerabilities),
           HighestVulnerabilitySeverity: getHighestVulnerabilitySeverity(
@@ -220,7 +230,7 @@ export default function PackagesTable({features, layers}: PackagesProps) {
       setPackagesList([]);
       setFilteredPackagesList([]);
     }
-  }, [features, layers]);
+  }, [features, layerCommandByDigest]);
 
   return (
     <PageSection variant={PageSectionVariants.light}>
