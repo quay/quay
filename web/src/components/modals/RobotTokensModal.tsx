@@ -222,9 +222,6 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               <ClipboardCopy hoverTip="Copy" clickTip="Copied" isReadOnly>
                 {tokenData.token}
               </ClipboardCopy>
-              <Content component={ContentVariants.h2}>
-                Username & Robot account
-              </Content>
             </Content>
             <br />
             <Alert

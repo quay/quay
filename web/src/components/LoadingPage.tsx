@@ -21,7 +21,7 @@ export function LoadingPage(props: {
       <Bullseye>
         <EmptyState icon={Spinner}>
           <EmptyStateFooter>
-            <div tabIndex="1">
+            <div tabIndex={1}>
               <Title size="lg" headingLevel="h4">
                 {props.title ?? 'Loading'}
               </Title>

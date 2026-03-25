@@ -50,7 +50,7 @@ export default function KeyFeatures() {
               displaySize="lg"
             >
               <Content component="p" data-testid="store-containers-info">
-                Easily publish your container images or or store them privately
+                Easily publish your container images or store them privately
                 with granular access control. Quay.io is optimized for open
                 source project and enterprise users, with powerful flexible
                 permission and tenancy model.

@@ -8,10 +8,6 @@ export default function Search() {
           <Title headingLevel="h1">Search</Title>
         </div>
       </PageSection>
-
-      <PageSection hasBodyWrapper={false}>
-        <PageSection hasBodyWrapper={false}></PageSection>
-      </PageSection>
     </>
   );
 }

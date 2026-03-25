@@ -1,14 +1,14 @@
 $screen-sm: 768px;
 $pf-v6-global-gutter: 1rem;
-$pf-v6-global-gutter--md: 1.5rem;
+$pf-v6-global-gutter-md: 1.5rem;
 
 // Page layout
 .co-m-nav-title {
-  margin-top: $pf-v6-global-gutter--md;
+  margin-top: $pf-v6-global-gutter-md;
   padding: 0 $pf-v6-global-gutter 0;
   @media (min-width: 500px) {
-    padding-left: $pf-v6-global-gutter--md;
-    padding-right: $pf-v6-global-gutter--md;
+    padding-left: $pf-v6-global-gutter-md;
+    padding-right: $pf-v6-global-gutter-md;
   }
   &--row {
     @media (min-width: $screen-sm) {
