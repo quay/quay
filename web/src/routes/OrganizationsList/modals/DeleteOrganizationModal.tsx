@@ -70,8 +70,6 @@ export default function DeleteOrganizationModal(
   const handleDelete = () => {
     setError(null);
     deleteOrganization(props.organizationName);
-    // Close modal; request is queued if fresh login required
-    handleClose();
   };
 
   return (

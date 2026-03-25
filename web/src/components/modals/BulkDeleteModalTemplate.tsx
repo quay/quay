@@ -110,7 +110,6 @@ export const BulkDeleteModalTemplate = <T,>(
                 itemsList={itemsMarkedForDelete}
                 setPage={setBulkModalPage}
                 setPerPage={setBulkModalPerPage}
-                className="pf-v6-u-mr-md"
               />
             </ToolbarContent>
           </Toolbar>

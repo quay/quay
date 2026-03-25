@@ -33,6 +33,7 @@ import {useForm, Controller} from 'react-hook-form';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import {useCreateGlobalMessage} from 'src/hooks/UseGlobalMessages';
 
 interface CreateMessageFormData {
@@ -144,7 +145,11 @@ export function CreateMessageForm({isOpen, onClose}: CreateMessageFormProps) {
                 <div>
                   {/* Markdown Toolbar */}
                   <Toolbar
-                    style={{padding: '0.5rem', backgroundColor: '#f5f5f5'}}
+                    style={{
+                      padding: '0.5rem',
+                      backgroundColor:
+                        'var(--pf-t--global--background--color--secondary--default)',
+                    }}
                   >
                     <ToolbarContent>
                       <ToolbarGroup>
@@ -230,7 +235,7 @@ export function CreateMessageForm({isOpen, onClose}: CreateMessageFormProps) {
                     {currentContent ? (
                       <Markdown
                         remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeRaw]}
+                        rehypePlugins={[rehypeRaw, rehypeSanitize]}
                         components={{
                           a: ({href, children, ...props}) => {
                             const isExternal = href?.startsWith('http');

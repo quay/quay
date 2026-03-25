@@ -126,7 +126,7 @@ type: kubernetes.io/dockerconfigjson`;
       data-testid="credentials-modal"
     >
       <ModalHeader title={`Credentials for ${credentials.title}`} />
-      <ModalBody>
+      <ModalBody tabIndex={0} aria-label="Credentials modal content">
         {isNewlyCreated && isToken && (
           <Alert
             variant="success"

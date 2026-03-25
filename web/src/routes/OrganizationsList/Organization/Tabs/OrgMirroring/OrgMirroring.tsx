@@ -142,19 +142,17 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   if (!configHook.config && !isInSetupMode) {
     return (
       <div className="pf-v6-u-max-width-lg pf-v6-u-p-md">
-        <Content>
-          <Content component="p">
-            This organization&apos;s state is <strong>NORMAL</strong>. Use the{' '}
-            <Button
-              variant="link"
-              isInline
-              onClick={() => setSearchParams({tab: 'Settings'})}
-            >
-              Settings tab
-            </Button>{' '}
-            and change it to <strong>Mirror</strong> to manage its mirroring
-            configuration.
-          </Content>
+        <Content component="p">
+          This organization&apos;s state is <strong>NORMAL</strong>. Use the{' '}
+          <Button
+            variant="link"
+            isInline
+            onClick={() => setSearchParams({tab: 'Settings'})}
+          >
+            Settings tab
+          </Button>{' '}
+          and change it to <strong>Mirror</strong> to manage its mirroring
+          configuration.
         </Content>
       </div>
     );

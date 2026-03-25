@@ -15,6 +15,7 @@ import {Navigate} from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 
 function ChangeLogHeader() {
   return (
@@ -62,7 +63,7 @@ export default function ChangeLog() {
               <Content>
                 <Markdown
                   remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
+                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
                   components={{
                     // Customize headings to be larger like Angular version
                     // H2 is used for both main title AND version headers

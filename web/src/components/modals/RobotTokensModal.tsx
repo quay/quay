@@ -352,7 +352,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               hoverTip="Copy"
               clickTip="Copied"
               variant={ClipboardCopyVariant.expansion}
-              id="step-3"
+              id="step-4"
             >
               {getKubernetesConfiguration()}
             </ClipboardCopy>

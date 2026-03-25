@@ -29,7 +29,7 @@ export default function BuildTriggerToggleModal(
       onError: (error) => {
         addAlert({
           variant: AlertVariant.Failure,
-          title: `Failed to ${props.enabled ? 'disabled' : 'enabled'} trigger`,
+          title: `Failed to ${props.enabled ? 'disable' : 'enable'} trigger`,
         });
       },
     },
@@ -55,11 +55,7 @@ export default function BuildTriggerToggleModal(
         build trigger?
       </ModalBody>
       <ModalFooter>
-        <Button key="cancel" variant="primary" onClick={() => props.onClose()}>
-          Cancel
-        </Button>
         <Button
-          key="modal-action-button"
           variant="primary"
           onClick={() => {
             toggleTrigger(!props.enabled);
@@ -67,6 +63,9 @@ export default function BuildTriggerToggleModal(
           }}
         >
           {title}
+        </Button>
+        <Button variant="link" onClick={() => props.onClose()}>
+          Cancel
         </Button>
       </ModalFooter>
     </Modal>

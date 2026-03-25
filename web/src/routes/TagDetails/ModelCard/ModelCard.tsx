@@ -11,6 +11,7 @@ import {Table, Th, Td} from '@patternfly/react-table';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import rehypeVideo from 'rehype-video';
 
 export const MarkdownCodeBlock: React.FunctionComponent = (props) => {
@@ -67,6 +68,7 @@ export function ModelCard(props: ModelCardProps) {
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[
               [rehypeRaw],
+              [rehypeSanitize],
               [
                 rehypeVideo,
                 {

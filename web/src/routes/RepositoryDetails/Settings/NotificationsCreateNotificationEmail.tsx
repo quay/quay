@@ -136,9 +136,9 @@ export default function CreateEmailNotification(
               title="Failure sending authorized email"
             />
           </Conditional>
-          The email address {email} has not been authorized to recieve
+          The email address {email} has not been authorized to receive
           notifications from this repository. Please click &lsquo;Send
-          Authorized Email&lsquo; to start the authorization process.
+          Authorized Email&rsquo; to start the authorization process.
         </ModalBody>
         <ModalFooter>
           <Button
@@ -174,18 +174,21 @@ export default function CreateEmailNotification(
           </Button>
         </ModalFooter>
       </Modal>
-      <Modal variant={ModalVariant.small} isOpen={errorPolling}>
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={errorPolling}
+        onClose={stopPolling}
+      >
         <ModalHeader title="Email Authorization" />
         <ModalBody>
           Unable to verify email confirmation. Please wait a moment and retry.
         </ModalBody>
         <ModalFooter>
-          <Button
-            key="cancel"
-            variant="primary"
-            onClick={() => startPolling(email)}
-          >
+          <Button variant="primary" onClick={() => startPolling(email)}>
             Retry
+          </Button>
+          <Button variant="link" onClick={stopPolling}>
+            Cancel
           </Button>
         </ModalFooter>
       </Modal>

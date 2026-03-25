@@ -79,7 +79,7 @@ export const UserConvertConflictsModal = (
               <ToolbarPagination
                 page={bulkModalPage}
                 perPage={bulkModalPerPage}
-                itemsList={props.items}
+                itemsList={itemsMarkedForDelete}
                 setPage={setBulkModalPage}
                 setPerPage={setBulkModalPerPage}
               />
@@ -105,7 +105,7 @@ export const UserConvertConflictsModal = (
             <ToolbarPagination
               page={bulkModalPage}
               perPage={bulkModalPerPage}
-              itemsList={props.items}
+              itemsList={itemsMarkedForDelete}
               setPage={setBulkModalPage}
               setPerPage={setBulkModalPerPage}
               bottom={true}

@@ -121,9 +121,7 @@ export default function ImmutabilityModal(props: ImmutabilityModalProps) {
             <div style={{marginBottom: '1rem'}} />
           </>
         )}
-        <Content>
-          <Content component="p">{description}</Content>
-        </Content>
+        <Content component="p">{description}</Content>
       </ModalBody>
       <ModalFooter>
         <Button key="cancel" variant="link" onClick={onClose}>

@@ -59,8 +59,6 @@ export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
   const handleTakeOwnership = () => {
     setError(null);
     takeOwnership(props.organizationName);
-    // Close modal; request is queued if fresh login required
-    handleClose();
   };
 
   return (

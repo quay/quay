@@ -27,6 +27,7 @@ import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import {useState} from 'react';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import Empty from 'src/components/empty/Empty';
@@ -79,7 +80,7 @@ function MessageContent({message}: {message: IGlobalMessage}) {
     return (
       <Markdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        rehypePlugins={[rehypeRaw, rehypeSanitize]}
         components={{
           a: ({href, children, ...props}) => {
             const isExternal = href?.startsWith('http');
