@@ -70,7 +70,7 @@
     "ts-loader": "6.2.0",
     "ts-mocks": "^0.2.2",
     "ts-node": "^3.0.6",
-    "tslint": "^5.4.3",
+    "tslint": "^6.0.0",
     "typescript": "3.6.3",
     "webpack": "4.41.0",
     "webpack-bundle-analyzer": "3.5.2",
