@@ -1604,6 +1604,7 @@ class TestUpdateSyncStatusToSyncNow:
             org_mirror_config=config,
             repository_name="fail-repo",
             sync_status=OrgMirrorRepoStatus.FAIL,
+            sync_retries_remaining=0,
         )
         success_repo = OrgMirrorRepository.create(
             org_mirror_config=config,
@@ -1623,6 +1624,29 @@ class TestUpdateSyncStatusToSyncNow:
 
         assert fail_repo.sync_status == OrgMirrorRepoStatus.FAIL
         assert success_repo.sync_status == OrgMirrorRepoStatus.SUCCESS
+
+    def test_sync_now_blocked_when_fail_with_retries_remaining(self, initialized_db):
+        """
+        Should reject sync-now when FAIL repos still have retries remaining,
+        since the worker will retry them (matching get_eligible_org_mirror_repos).
+        """
+        from data.model.org_mirror import update_sync_status_to_sync_now
+
+        org, robot = _create_org_and_robot("sync_now_fail_retry")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="retryable-fail-repo",
+            sync_status=OrgMirrorRepoStatus.FAIL,
+            sync_retries_remaining=2,
+        )
+
+        result, reason = update_sync_status_to_sync_now(config)
+
+        assert result is None
+        assert reason is not None
+        assert "syncing" in reason.lower()
 
 
 class TestUpdateSyncStatusToCancel:

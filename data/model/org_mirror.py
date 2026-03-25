@@ -462,6 +462,46 @@ def get_org_mirror_repo_status_counts(config: OrgMirrorConfig) -> dict:
     return counts
 
 
+def count_active_org_mirror_repos(config: OrgMirrorConfig) -> int:
+    """
+    Count repositories that haven't reached a terminal state.
+
+    Active (non-terminal) repos:
+    - SYNCING, SYNC_NOW, NEVER_RUN: always active
+    - FAIL with sync_retries_remaining > 0: will be retried by the worker
+
+    Terminal repos (not counted):
+    - SUCCESS, CANCEL
+    - FAIL with sync_retries_remaining == 0 (retries exhausted)
+
+    This aligns with get_eligible_org_mirror_repos which considers FAIL repos
+    with remaining retries as eligible for pickup.
+    """
+    always_active = [
+        OrgMirrorRepoStatus.SYNCING,
+        OrgMirrorRepoStatus.SYNC_NOW,
+        OrgMirrorRepoStatus.NEVER_RUN,
+    ]
+
+    return (
+        OrgMirrorRepository.select(fn.COUNT(OrgMirrorRepository.id))
+        .join(Repository, JOIN.LEFT_OUTER, on=(OrgMirrorRepository.repository == Repository.id))
+        .where(OrgMirrorRepository.org_mirror_config == config)
+        .where(
+            (OrgMirrorRepository.repository >> None)
+            | (Repository.state != RepositoryState.MARKED_FOR_DELETION)
+        )
+        .where(
+            (OrgMirrorRepository.sync_status << always_active)
+            | (
+                (OrgMirrorRepository.sync_status == OrgMirrorRepoStatus.FAIL)
+                & (OrgMirrorRepository.sync_retries_remaining > 0)
+            )
+        )
+        .scalar()
+    )
+
+
 def get_org_mirroring_robot(repository):
     """
     Return the robot used for org-level mirroring of a repository.
@@ -1154,15 +1194,11 @@ def update_sync_status_to_sync_now(
     if org_mirror_config.sync_status == OrgMirrorStatus.SYNCING:
         return None, "Cannot trigger sync: discovery is currently in progress."
 
-    # Cannot trigger sync-now if repositories are still actively syncing
-    # or pending worker pickup. NEVER_RUN repos are scheduled and pending —
-    # restarting discovery while they're queued would cause conflicts.
-    active_counts = get_org_mirror_repo_status_counts(org_mirror_config)
-    active = (
-        active_counts.get("SYNCING", 0)
-        + active_counts.get("SYNC_NOW", 0)
-        + active_counts.get("NEVER_RUN", 0)
-    )
+    # Cannot trigger sync-now if repositories are still actively syncing,
+    # pending worker pickup, or awaiting retry. This includes FAIL repos with
+    # retries remaining, matching the eligibility predicate in
+    # get_eligible_org_mirror_repos.
+    active = count_active_org_mirror_repos(org_mirror_config)
     if active > 0:
         return None, (
             "Cannot trigger sync: repositories are still syncing. "
