@@ -15,11 +15,8 @@ export function MinimalHeader() {
   return (
     <Masthead data-testid="minimal-header">
       <MastheadMain>
-        <MastheadBrand data-codemods>
-          <MastheadLogo
-            data-codemods
-            component={(props) => <Link {...props} to="/signin" />}
-          >
+        <MastheadBrand>
+          <MastheadLogo component={(props) => <Link {...props} to="/signin" />}>
             <Brand src={logoUrl} alt="Red Hat Quay" className={'header-logo'} />
           </MastheadLogo>
         </MastheadBrand>

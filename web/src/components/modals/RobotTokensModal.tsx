@@ -17,7 +17,6 @@ import {
   ContentVariants,
 } from '@patternfly/react-core';
 import {AngleRightIcon, DockerIcon, KeyIcon} from '@patternfly/react-icons';
-import {Buffer} from 'buffer';
 import {useState} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useRobotToken} from 'src/hooks/useRobotAccounts';
@@ -74,9 +73,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
     const auths = {};
     const scope = secretScopeSelected;
     auths[scope] = {
-      auth: Buffer.from(tokenData.name + ':' + tokenData.token).toString(
-        'base64',
-      ),
+      auth: btoa(tokenData.name + ':' + tokenData.token),
       email: '',
     };
 
@@ -135,7 +132,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
       '\n',
       'data:\n',
       '  .dockerconfigjson: ',
-      Buffer.from(dockerConfigJson).toString('base64'),
+      btoa(dockerConfigJson),
       '\n',
       'type: kubernetes.io/dockerconfigjson',
     ];

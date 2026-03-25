@@ -33,11 +33,8 @@ export function QuayHeader({toggleDrawer}: {toggleDrawer: () => void}) {
             onClick={toggleSidebar}
           />
         </MastheadToggle>
-        <MastheadBrand data-codemods>
-          <MastheadLogo
-            data-codemods
-            component={(props) => <Link {...props} to="/" />}
-          >
+        <MastheadBrand>
+          <MastheadLogo component={(props) => <Link {...props} to="/" />}>
             <Brand src={logoUrl} alt="Red Hat Quay" className={'header-logo'} />
           </MastheadLogo>
         </MastheadBrand>

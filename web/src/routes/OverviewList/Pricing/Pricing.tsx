@@ -372,7 +372,7 @@ export default function Pricing() {
               toggleContent={
                 <Content component="p" className="faq-expand">
                   Do you offer special plans for business or academic
-                  instututions?
+                  institutions?
                 </Content>
               }
             >
