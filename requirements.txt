@@ -79,7 +79,7 @@ pillow==12.1.1
 ply==3.11
 prometheus_client==0.7.1
 protobuf==5.29.5
-psutil==5.9.0
+psutil==5.9.8
 psycopg2==2.9.9
 pyasn1==0.6.3
 pyasn1_modules==0.4.2
