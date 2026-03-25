@@ -400,298 +400,41 @@ def setup_database_for_testing(testcase):
     testcases[testcase]["savepoint"].__enter__()
 
 
+_TABLE_MODEL_MAP = {
+    "role": Role,
+    "teamrole": TeamRole,
+    "visibility": Visibility,
+    "loginservice": LoginService,
+    "buildtriggerservice": BuildTriggerService,
+    "accesstokenkind": AccessTokenKind,
+    "logentrykind": LogEntryKind,
+    "imagestoragelocation": ImageStorageLocation,
+    "imagestoragetransformation": ImageStorageTransformation,
+    "imagestoragesignaturekind": ImageStorageSignatureKind,
+    "externalnotificationevent": ExternalNotificationEvent,
+    "externalnotificationmethod": ExternalNotificationMethod,
+    "notificationkind": NotificationKind,
+    "quayregion": QuayRegion,
+    "quayservice": QuayService,
+    "mediatype": MediaType,
+    "labelsourcetype": LabelSourceType,
+    "userpromptkind": UserPromptKind,
+    "repositorykind": RepositoryKind,
+    "disablereason": DisableReason,
+    "tagkind": TagKind,
+}
+
+
 def initialize_database():
     db_encrypter.initialize(FieldEncrypter("anothercrazykey!"))
     db.create_tables(all_models)
 
-    Role.create(name="admin")
-    Role.create(name="write")
-    Role.create(name="read")
-    TeamRole.create(name="admin")
-    TeamRole.create(name="creator")
-    TeamRole.create(name="member")
-    Visibility.create(name="public")
-    Visibility.create(name="private")
+    from data.seed_data import SEED_DATA
 
-    LoginService.create(name="google")
-    LoginService.create(name="github")
-    LoginService.create(name="quayrobot")
-    LoginService.create(name="ldap")
-    LoginService.create(name="jwtauthn")
-    LoginService.create(name="keystone")
-    LoginService.create(name="dex")
-    LoginService.create(name="oidc")
-
-    BuildTriggerService.create(name="github")
-    BuildTriggerService.create(name="custom-git")
-    BuildTriggerService.create(name="bitbucket")
-    BuildTriggerService.create(name="gitlab")
-
-    AccessTokenKind.create(name="build-worker")
-    AccessTokenKind.create(name="pushpull-token")
-
-    LogEntryKind.create(name="user_create")
-    LogEntryKind.create(name="user_delete")
-    LogEntryKind.create(name="user_disable")
-    LogEntryKind.create(name="user_enable")
-    LogEntryKind.create(name="user_change_email")
-    LogEntryKind.create(name="user_change_password")
-    LogEntryKind.create(name="user_change_name")
-    LogEntryKind.create(name="user_change_invoicing")
-    LogEntryKind.create(name="user_change_tag_expiration")
-    LogEntryKind.create(name="user_change_metadata")
-    LogEntryKind.create(name="user_generate_client_key")
-
-    LogEntryKind.create(name="account_change_plan")
-    LogEntryKind.create(name="account_change_cc")
-    LogEntryKind.create(name="account_change_password")
-    LogEntryKind.create(name="account_convert")
-
-    LogEntryKind.create(name="create_robot")
-    LogEntryKind.create(name="delete_robot")
-
-    LogEntryKind.create(name="create_robot_federation")
-    LogEntryKind.create(name="delete_robot_federation")
-
-    LogEntryKind.create(name="federated_robot_token_exchange")
-
-    LogEntryKind.create(name="create_repo")
-    LogEntryKind.create(name="push_repo")
-    LogEntryKind.create(name="push_repo_failed")
-    LogEntryKind.create(name="pull_repo")
-    LogEntryKind.create(name="pull_repo_failed")
-    LogEntryKind.create(name="delete_repo")
-    LogEntryKind.create(name="create_tag")
-    LogEntryKind.create(name="move_tag")
-    LogEntryKind.create(name="delete_tag")
-    LogEntryKind.create(name="delete_tag_failed")
-    LogEntryKind.create(name="revert_tag")
-    LogEntryKind.create(name="add_repo_permission")
-    LogEntryKind.create(name="change_repo_permission")
-    LogEntryKind.create(name="delete_repo_permission")
-    LogEntryKind.create(name="change_repo_visibility")
-    LogEntryKind.create(name="change_repo_trust")
-    LogEntryKind.create(name="add_repo_accesstoken")
-    LogEntryKind.create(name="delete_repo_accesstoken")
-    LogEntryKind.create(name="set_repo_description")
-    LogEntryKind.create(name="change_repo_state")
-
-    LogEntryKind.create(name="build_dockerfile")
-
-    LogEntryKind.create(name="org_create")
-    LogEntryKind.create(name="org_delete")
-    LogEntryKind.create(name="org_create_team")
-    LogEntryKind.create(name="org_delete_team")
-    LogEntryKind.create(name="org_invite_team_member")
-    LogEntryKind.create(name="org_delete_team_member_invite")
-    LogEntryKind.create(name="org_add_team_member")
-    LogEntryKind.create(name="org_team_member_invite_accepted")
-    LogEntryKind.create(name="org_team_member_invite_declined")
-    LogEntryKind.create(name="org_remove_team_member")
-    LogEntryKind.create(name="org_set_team_description")
-    LogEntryKind.create(name="org_set_team_role")
-    LogEntryKind.create(name="org_change_email")
-    LogEntryKind.create(name="org_change_invoicing")
-    LogEntryKind.create(name="org_change_tag_expiration")
-    LogEntryKind.create(name="org_change_name")
-
-    LogEntryKind.create(name="create_prototype_permission")
-    LogEntryKind.create(name="modify_prototype_permission")
-    LogEntryKind.create(name="delete_prototype_permission")
-
-    LogEntryKind.create(name="setup_repo_trigger")
-    LogEntryKind.create(name="delete_repo_trigger")
-
-    LogEntryKind.create(name="create_application")
-    LogEntryKind.create(name="update_application")
-    LogEntryKind.create(name="delete_application")
-    LogEntryKind.create(name="reset_application_client_secret")
-
-    # Note: These next two are deprecated.
-    LogEntryKind.create(name="add_repo_webhook")
-    LogEntryKind.create(name="delete_repo_webhook")
-
-    LogEntryKind.create(name="add_repo_notification")
-    LogEntryKind.create(name="delete_repo_notification")
-    LogEntryKind.create(name="reset_repo_notification")
-
-    LogEntryKind.create(name="regenerate_robot_token")
-
-    LogEntryKind.create(name="repo_verb")
-
-    LogEntryKind.create(name="repo_mirror_enabled")
-    LogEntryKind.create(name="repo_mirror_disabled")
-    LogEntryKind.create(name="repo_mirror_config_changed")
-    LogEntryKind.create(name="repo_mirror_sync_started")
-    LogEntryKind.create(name="repo_mirror_sync_failed")
-    LogEntryKind.create(name="repo_mirror_sync_success")
-    LogEntryKind.create(name="repo_mirror_sync_now_requested")
-    LogEntryKind.create(name="repo_mirror_sync_tag_success")
-    LogEntryKind.create(name="repo_mirror_sync_tag_failed")
-    LogEntryKind.create(name="repo_mirror_sync_test_success")
-    LogEntryKind.create(name="repo_mirror_sync_test_failed")
-    LogEntryKind.create(name="repo_mirror_sync_test_started")
-
-    LogEntryKind.create(name="org_mirror_enabled")
-    LogEntryKind.create(name="org_mirror_disabled")
-    LogEntryKind.create(name="org_mirror_config_changed")
-    LogEntryKind.create(name="org_mirror_sync_started")
-    LogEntryKind.create(name="org_mirror_sync_failed")
-    LogEntryKind.create(name="org_mirror_sync_success")
-    LogEntryKind.create(name="org_mirror_sync_now_requested")
-    LogEntryKind.create(name="org_mirror_sync_cancelled")
-    LogEntryKind.create(name="org_mirror_repo_created")
-
-    LogEntryKind.create(name="service_key_create")
-    LogEntryKind.create(name="service_key_approve")
-    LogEntryKind.create(name="service_key_delete")
-    LogEntryKind.create(name="service_key_modify")
-    LogEntryKind.create(name="service_key_extend")
-    LogEntryKind.create(name="service_key_rotate")
-
-    LogEntryKind.create(name="take_ownership")
-
-    LogEntryKind.create(name="manifest_label_add")
-    LogEntryKind.create(name="manifest_label_delete")
-
-    LogEntryKind.create(name="change_tag_expiration")
-    LogEntryKind.create(name="change_tag_immutability")
-    LogEntryKind.create(name="toggle_repo_trigger")
-
-    LogEntryKind.create(name="create_immutability_policy")
-    LogEntryKind.create(name="update_immutability_policy")
-    LogEntryKind.create(name="delete_immutability_policy")
-    LogEntryKind.create(name="tag_made_immutable_by_policy")
-    LogEntryKind.create(name="tags_made_immutable_by_policy")
-
-    LogEntryKind.create(name="create_app_specific_token")
-    LogEntryKind.create(name="revoke_app_specific_token")
-
-    LogEntryKind.create(name="create_proxy_cache_config")
-    LogEntryKind.create(name="delete_proxy_cache_config")
-
-    LogEntryKind.create(name="start_build_trigger")
-    LogEntryKind.create(name="cancel_build")
-
-    LogEntryKind.create(name="login_success")
-    LogEntryKind.create(name="login_failure")
-    LogEntryKind.create(name="logout_success")
-
-    LogEntryKind.create(name="permanently_delete_tag")
-    LogEntryKind.create(name="autoprune_tag_delete")
-
-    LogEntryKind.create(name="create_namespace_autoprune_policy")
-    LogEntryKind.create(name="update_namespace_autoprune_policy")
-    LogEntryKind.create(name="delete_namespace_autoprune_policy")
-
-    LogEntryKind.create(name="create_repository_autoprune_policy")
-    LogEntryKind.create(name="update_repository_autoprune_policy")
-    LogEntryKind.create(name="delete_repository_autoprune_policy")
-
-    LogEntryKind.create(name="enable_team_sync")
-    LogEntryKind.create(name="disable_team_sync")
-
-    LogEntryKind.create(name="oauth_token_assigned")
-    LogEntryKind.create(name="oauth_token_revoked")
-
-    LogEntryKind.create(name="export_logs_success")
-    LogEntryKind.create(name="export_logs_failure")
-
-    LogEntryKind.create(name="org_create_quota")
-    LogEntryKind.create(name="org_change_quota")
-    LogEntryKind.create(name="org_delete_quota")
-    LogEntryKind.create(name="org_create_quota_limit")
-    LogEntryKind.create(name="org_change_quota_limit")
-    LogEntryKind.create(name="org_delete_quota_limit")
-
-    ImageStorageLocation.create(name="local_eu")
-    ImageStorageLocation.create(name="local_us")
-
-    ImageStorageTransformation.create(name="squash")
-    ImageStorageTransformation.create(name="aci")
-
-    ImageStorageSignatureKind.create(name="gpg2")
-
-    # NOTE: These MUST be copied over to NotificationKind, since every external
-    # notification can also generate a Quay.io notification.
-    ExternalNotificationEvent.create(name="repo_push")
-    ExternalNotificationEvent.create(name="build_queued")
-    ExternalNotificationEvent.create(name="build_start")
-    ExternalNotificationEvent.create(name="build_success")
-    ExternalNotificationEvent.create(name="build_cancelled")
-    ExternalNotificationEvent.create(name="build_failure")
-    ExternalNotificationEvent.create(name="vulnerability_found")
-
-    ExternalNotificationEvent.create(name="repo_mirror_sync_started")
-    ExternalNotificationEvent.create(name="repo_mirror_sync_success")
-    ExternalNotificationEvent.create(name="repo_mirror_sync_failed")
-    ExternalNotificationEvent.create(name="repo_image_expiry")
-
-    ExternalNotificationMethod.create(name="quay_notification")
-    ExternalNotificationMethod.create(name="email")
-    ExternalNotificationMethod.create(name="webhook")
-
-    ExternalNotificationMethod.create(name="flowdock")
-    ExternalNotificationMethod.create(name="hipchat")
-    ExternalNotificationMethod.create(name="slack")
-
-    NotificationKind.create(name="repo_push")
-    NotificationKind.create(name="build_queued")
-    NotificationKind.create(name="build_start")
-    NotificationKind.create(name="build_success")
-    NotificationKind.create(name="build_cancelled")
-    NotificationKind.create(name="build_failure")
-    NotificationKind.create(name="vulnerability_found")
-    NotificationKind.create(name="service_key_submitted")
-
-    NotificationKind.create(name="password_required")
-    NotificationKind.create(name="over_private_usage")
-    NotificationKind.create(name="expiring_license")
-    NotificationKind.create(name="maintenance")
-    NotificationKind.create(name="org_team_invite")
-
-    NotificationKind.create(name="repo_mirror_sync_started")
-    NotificationKind.create(name="repo_mirror_sync_success")
-    NotificationKind.create(name="repo_mirror_sync_failed")
-
-    NotificationKind.create(name="test_notification")
-
-    NotificationKind.create(name="quota_warning")
-    NotificationKind.create(name="quota_error")
-
-    NotificationKind.create(name="assigned_authorization")
-
-    QuayRegion.create(name="us")
-    QuayService.create(name="quay")
-
-    MediaType.create(name="text/plain")
-    MediaType.create(name="application/json")
-    MediaType.create(name="text/markdown")
-
-    for media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
-        MediaType.create(name=media_type)
-
-    for media_type in DOCKER_SCHEMA2_CONTENT_TYPES:
-        MediaType.create(name=media_type)
-
-    for media_type in OCI_CONTENT_TYPES:
-        MediaType.create(name=media_type)
-
-    LabelSourceType.create(name="manifest")
-    LabelSourceType.create(name="api", mutable=True)
-    LabelSourceType.create(name="internal")
-
-    UserPromptKind.create(name="confirm_username")
-    UserPromptKind.create(name="enter_name")
-    UserPromptKind.create(name="enter_company")
-
-    RepositoryKind.create(name="image")
-
-    DisableReason.create(name="user_toggled")
-    DisableReason.create(name="successive_build_failures")
-    DisableReason.create(name="successive_build_internal_errors")
-
-    TagKind.create(name="tag")
+    for table_name, rows in SEED_DATA.items():
+        model_class = _TABLE_MODEL_MAP[table_name]
+        for row in rows:
+            model_class.create(**row)
 
 
 def wipe_database():
