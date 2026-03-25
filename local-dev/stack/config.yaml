@@ -119,3 +119,10 @@ FEATURE_USER_METADATA: True
 #  PREFERRED_USERNAME_CLAIM_NAME: preferred_username
 #  LOGIN_SCOPES: ['openid']
 DEFAULT_UI: "angular"
+
+# Pyroscope continuous profiling. To enable, uncomment and set PYROSCOPE_SERVER_ADDRESS for your setup:
+# - Quay on host (e.g. make run): http://localhost:4040
+# - Quay in Docker on Mac/Windows: http://host.docker.internal:4040
+# - Quay and Pyroscope on same Docker network: http://pyroscope:4040
+# PROFILING_TYPE: Pyroscope
+# PYROSCOPE_SERVER_ADDRESS: http://localhost:4040
