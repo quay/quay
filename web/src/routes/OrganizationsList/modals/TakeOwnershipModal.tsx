@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
+import {Button, Content, Alert} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useTakeOwnership} from 'src/hooks/UseOrganizationActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {isFreshLoginError} from 'src/utils/freshLoginErrors';
@@ -75,10 +76,10 @@ export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
         </Button>,
       ]}
     >
-      <Text>
+      <Content component="p">
         Are you sure you want to take ownership of {entityType}{' '}
         <strong>{props.organizationName}</strong>?
-      </Text>
+      </Content>
       {props.isUser && (
         <Alert variant="warning" title="Note" isInline style={{marginTop: 16}}>
           This will convert the user namespace into an organization.{' '}

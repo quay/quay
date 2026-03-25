@@ -1,12 +1,6 @@
 import React, {useState} from 'react';
-import {
-  Divider,
-  Button,
-  Label,
-  LabelGroup,
-  Modal,
-  ModalVariant,
-} from '@patternfly/react-core';
+import {Divider, Button, Label, LabelGroup} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {StatusDisplay} from 'src/components/StatusDisplay';
 import {
   OrgMirrorConfig,

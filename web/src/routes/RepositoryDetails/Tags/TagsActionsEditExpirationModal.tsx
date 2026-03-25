@@ -8,12 +8,11 @@ import {
   DescriptionListGroup,
   DescriptionListTerm,
   Label,
-  Modal,
-  ModalVariant,
   Split,
   SplitItem,
   TimePicker,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useSetExpiration} from 'src/hooks/UseTags';

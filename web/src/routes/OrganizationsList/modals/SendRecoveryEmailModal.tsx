@@ -1,11 +1,10 @@
 import {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Alert,
   AlertVariant as PFAlertVariant,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useSendRecoveryEmail} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 

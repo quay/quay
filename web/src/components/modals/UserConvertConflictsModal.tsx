@@ -1,14 +1,12 @@
 import {
   Button,
-  Modal,
-  ModalVariant,
   PageSection,
-  PageSectionVariants,
   TextInput,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useState} from 'react';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
@@ -70,7 +68,7 @@ export const UserConvertConflictsModal = (
         of another organization. Please leave the following organization(s)
         first:
       </span>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Toolbar>
           <ToolbarContent>
             <ToolbarItem>

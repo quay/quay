@@ -1,13 +1,12 @@
 import {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
   TextInput,
   Alert,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useRenameOrganization} from 'src/hooks/UseOrganizationActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {isFreshLoginError} from 'src/utils/freshLoginErrors';

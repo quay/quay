@@ -1,8 +1,6 @@
 import React from 'react';
 import {Controller} from 'react-hook-form';
 import {
-  Modal,
-  ModalVariant,
   Form,
   FormGroup,
   TextInput,
@@ -11,6 +9,7 @@ import {
   HelperText,
   HelperTextItem,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useCreateServiceKey} from 'src/hooks/UseCreateServiceKey';
 import {useUI} from 'src/contexts/UIContext';
 import FormError from 'src/components/errors/FormError';

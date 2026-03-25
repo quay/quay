@@ -263,7 +263,7 @@ export function StandaloneMain() {
   return (
     <ErrorBoundary hasError={!!error} fallback={<SiteUnavailableError />}>
       <Page
-        header={<QuayHeader toggleDrawer={toggleDrawer} />}
+        masthead={<QuayHeader toggleDrawer={toggleDrawer} />}
         sidebar={<QuaySidebar />}
         isManagedSidebar
         defaultManagedSidebarIsOpen={true}
@@ -271,7 +271,7 @@ export function StandaloneMain() {
         isNotificationDrawerExpanded={isDrawerOpen}
       >
         <Conditional if={quayConfig?.config?.UI_V2_FEEDBACK_FORM}>
-          <Banner variant="blue">
+          <Banner color="blue">
             <Flex
               spaceItems={{default: 'spaceItemsSm'}}
               justifyContent={{default: 'justifyContentCenter'}}

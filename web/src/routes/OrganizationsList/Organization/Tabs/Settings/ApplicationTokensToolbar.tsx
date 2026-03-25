@@ -1,4 +1,4 @@
-import {Toolbar, ToolbarContent, ToolbarItem} from '@patternfly/react-core';
+import {Toolbar, ToolbarContent} from '@patternfly/react-core';
 import {SearchInput} from 'src/components/toolbar/SearchInput';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {SearchState} from 'src/components/toolbar/SearchTypes';

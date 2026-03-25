@@ -20,11 +20,9 @@ import {
   Spinner,
   SelectOption,
   SelectGroup,
-  Modal,
-  ModalVariant,
-  Text,
-  TextContent,
+  Content,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {DesktopIcon} from '@patternfly/react-icons';
 import {useUI, AlertVariant} from 'src/contexts/UIContext';
 import FormError from 'src/components/errors/FormError';
@@ -139,9 +137,9 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   // When no config exists and user hasn't opted to set up, show the "state is NORMAL" message
   if (!configHook.config && !isInSetupMode) {
     return (
-      <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
-        <TextContent>
-          <Text>
+      <div className="pf-v6-u-max-width-lg pf-v6-u-p-md">
+        <Content>
+          <Content component="p">
             This organization&apos;s state is <strong>NORMAL</strong>. Use the{' '}
             <Button
               variant="link"
@@ -152,8 +150,8 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
             </Button>{' '}
             and change it to <strong>Mirror</strong> to manage its mirroring
             configuration.
-          </Text>
-        </TextContent>
+          </Content>
+        </Content>
       </div>
     );
   }
@@ -182,7 +180,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
   };
 
   return (
-    <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
+    <div className="pf-v6-u-max-width-lg pf-v6-u-p-md">
       <Form
         isWidthLimited
         data-testid="org-mirror-form"
@@ -301,7 +299,7 @@ export const OrgMirroring: React.FC<OrgMirroringProps> = ({orgName}) => {
         <ActionGroup>
           <Button
             variant={ButtonVariant.primary}
-            className="pf-v5-u-display-block pf-v5-u-mx-auto"
+            className="pf-v6-u-display-block pf-v6-u-mx-auto"
             type="submit"
             isDisabled={
               !formHook.isValid || (configHook.config && !formHook.isDirty)

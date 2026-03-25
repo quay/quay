@@ -4,7 +4,6 @@ import {
   Flex,
   FlexItem,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Spinner,
   SearchInput,
@@ -216,7 +215,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
   };
   if (firstPage?.unavailable) {
     return (
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Alert variant="info" isInline title="Log viewing is not available">
           {firstPage.message}
         </Alert>

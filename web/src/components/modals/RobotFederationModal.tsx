@@ -137,12 +137,11 @@ function RobotFederationForm(props: RobotFederationFormProps) {
             )}
             <FlexItem align={{default: 'alignRight'}}>
               <Button
+                icon={<PlusIcon />}
                 onClick={() => {
                   addFederationConfigEntry();
                 }}
-              >
-                <PlusIcon />
-              </Button>
+              ></Button>
             </FlexItem>
           </Flex>
         </FormGroup>
@@ -171,13 +170,12 @@ function RobotFederationFormEntry(props: RobotFederationFormEntryProps) {
           }}
           actions={
             <Button
+              icon={<TrashIcon />}
               onClick={() => {
                 props.onRemove(props.index);
               }}
               variant="danger"
-            >
-              <TrashIcon />
-            </Button>
+            ></Button>
           }
         />
       }

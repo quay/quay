@@ -2,11 +2,11 @@
   // Full width - PatternFly PageSection handles padding
 
   a {
-    color: var(--pf-v5-global--link--Color);
+    color: var(--pf-t--global--text--color--link--default);
     text-decoration: none;
 
     &:hover {
-      color: var(--pf-v5-global--link--Color--hover);
+      color: var(--pf-t--global--text--color--link--hover);
       text-decoration: underline;
     }
   }

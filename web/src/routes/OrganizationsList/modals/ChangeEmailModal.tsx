@@ -1,13 +1,12 @@
 import {useState, useEffect} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
   TextInput,
   Alert,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useChangeUserEmail} from 'src/hooks/UseUserActions';
 import {useChangeEmail} from 'src/hooks/UseCurrentUser';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';

@@ -1,6 +1,4 @@
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
@@ -17,6 +15,7 @@ import {
   Card,
   CardBody,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {
   BoldIcon,
   ItalicIcon,
@@ -164,57 +163,51 @@ export function CreateMessageForm({isOpen, onClose}: CreateMessageFormProps) {
                     <ToolbarGroup>
                       <ToolbarItem>
                         <Button
+                          icon={<BoldIcon />}
                           variant="plain"
                           aria-label="Bold"
                           onClick={() => insertMarkdown('**', '**')}
-                        >
-                          <BoldIcon />
-                        </Button>
+                        />
                       </ToolbarItem>
                       <ToolbarItem>
                         <Button
+                          icon={<ItalicIcon />}
                           variant="plain"
                           aria-label="Italic"
                           onClick={() => insertMarkdown('_', '_')}
-                        >
-                          <ItalicIcon />
-                        </Button>
+                        />
                       </ToolbarItem>
                       <ToolbarItem>
                         <Button
+                          icon={<QuoteLeftIcon />}
                           variant="plain"
                           aria-label="Quote"
                           onClick={() => insertMarkdown('\n> ', '')}
-                        >
-                          <QuoteLeftIcon />
-                        </Button>
+                        />
                       </ToolbarItem>
                       <ToolbarItem>
                         <Button
+                          icon={<CodeIcon />}
                           variant="plain"
                           aria-label="Code"
                           onClick={() => insertMarkdown('`', '`')}
-                        >
-                          <CodeIcon />
-                        </Button>
+                        />
                       </ToolbarItem>
                       <ToolbarItem>
                         <Button
+                          icon={<LinkIcon />}
                           variant="plain"
                           aria-label="Link"
                           onClick={() => insertMarkdown('[', '](url)')}
-                        >
-                          <LinkIcon />
-                        </Button>
+                        />
                       </ToolbarItem>
                       <ToolbarItem>
                         <Button
+                          icon={<ListIcon />}
                           variant="plain"
                           aria-label="List"
                           onClick={() => insertMarkdown('\n- ', '')}
-                        >
-                          <ListIcon />
-                        </Button>
+                        />
                       </ToolbarItem>
                     </ToolbarGroup>
                   </ToolbarContent>

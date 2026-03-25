@@ -40,7 +40,6 @@ import Avatar from 'src/components/Avatar';
 
 import MoonIcon from '@patternfly/react-icons/dist/esm/icons/moon-icon';
 import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
-import BellIcon from '@patternfly/react-icons/dist/esm/icons/bell-icon';
 
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -221,7 +220,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                 <Flex
                   spaceItems={{default: 'spaceItemsMd'}}
                   flexWrap={{default: 'nowrap'}}
-                  className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
+                  className="pf-v6-u-text-nowrap pf-v6-u-pr-md"
                 >
                   <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
                     Legacy UI
@@ -229,7 +228,6 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                   <Switch
                     id="menu-ui-switch"
                     label="Current UI"
-                    labelOff="Current UI"
                     isChecked={isChecked}
                     onChange={toggleSwitch}
                   />
@@ -336,16 +334,16 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
       <Toolbar id="toolbar" isFullHeight isStatic>
         <ToolbarContent>
           <ToolbarGroup
-            variant="icon-button-group"
-            align={{default: 'alignRight'}}
-            spacer={{default: 'spacerNone', md: 'spacerMd'}}
+            variant="action-group-plain"
+            align={{default: 'alignEnd'}}
+            gap={{default: 'gapNone', md: 'gapMd'}}
           >
             <ToolbarItem
-              spacer={{
-                default: 'spacerNone',
-                md: 'spacerSm',
-                lg: 'spacerMd',
-                xl: 'spacerLg',
+              gap={{
+                default: 'gapNone',
+                md: 'gapSm',
+                lg: 'gapMd',
+                xl: 'gapLg',
               }}
             >
               <NotificationBadge
@@ -358,9 +356,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                 onClick={toggleDrawer}
                 aria-label="Notifications"
                 data-testid="notification-bell"
-              >
-                <BellIcon />
-              </NotificationBadge>
+              />
             </ToolbarItem>
             <ToolbarItem>
               {user.username ? menuContainer : signInButton}

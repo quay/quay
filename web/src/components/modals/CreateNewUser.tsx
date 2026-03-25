@@ -1,6 +1,4 @@
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
@@ -9,6 +7,7 @@ import {
   HelperText,
   HelperTextItem,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import ExclamationCircleIcon from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
 import {useState} from 'react';
 import {IUserResource, updateUser} from 'src/resources/UserResource';

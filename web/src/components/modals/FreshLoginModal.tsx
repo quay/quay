@@ -1,13 +1,12 @@
 import React, {useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
   TextInput,
-  Text,
+  Content,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import './FreshLoginModal.css';
 
 interface FreshLoginModalProps {
@@ -65,10 +64,10 @@ export function FreshLoginModal({
         </Button>,
       ]}
     >
-      <Text style={{marginBottom: '1rem'}}>
+      <Content component="p" style={{marginBottom: '1rem'}}>
         It has been more than a few minutes since you last logged in, so please
         verify your password to perform this sensitive operation:
-      </Text>
+      </Content>
 
       <Form onSubmit={handleSubmit}>
         <FormGroup label="Current Password" fieldId="fresh-password" isRequired>
