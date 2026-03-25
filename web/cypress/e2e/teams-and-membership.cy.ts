@@ -75,7 +75,7 @@ describe('Teams and membership page', () => {
     cy.get('[data-testid="next-btn"]').click();
 
     // step - Add to repository
-    cy.get(`[data-testid="checkbox-row-${repository}"]`).click();
+    cy.get(`[data-testid="checkbox-row-${repository}"]`).find('input').click();
     cy.get(`[data-testid="${repository}-permission-dropdown-toggle"]`).contains(
       'Read',
     );

@@ -515,8 +515,8 @@ describe('Repository Builds', () => {
       'push to GitHub repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Disable Trigger').click();
     });
+    cy.contains('Disable Trigger').click();
     cy.contains('Disable Build Trigger');
     cy.contains('Are you sure you want to disable this build trigger?');
     cy.contains('button', 'Disable Build Trigger').click();
@@ -547,8 +547,8 @@ describe('Repository Builds', () => {
       'push to GitLab repository testgitorg/disabledrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Enable Trigger').click();
     });
+    cy.contains('Enable Trigger').click();
     cy.contains('Enable Build Trigger');
     cy.contains('Are you sure you want to enable this build trigger?');
     cy.contains('button', 'Enable Build Trigger').click();
@@ -573,8 +573,8 @@ describe('Repository Builds', () => {
       'push to GitHub repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('View Credentials').click();
     });
+    cy.contains('View Credentials').click();
     cy.contains('Trigger Credentials');
     cy.contains(
       'The following key has been automatically added to your source control repository.',
@@ -590,8 +590,8 @@ describe('Repository Builds', () => {
       'push to repository https://github.com/testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('View Credentials').click();
     });
+    cy.contains('View Credentials').click();
     cy.contains('Trigger Credentials');
     cy.contains(
       'In order to use this trigger, the following first requires action:',
@@ -627,8 +627,8 @@ describe('Repository Builds', () => {
       'push to GitLab repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('View Credentials').click();
     });
+    cy.contains('View Credentials').click();
     cy.contains('Trigger Credentials');
     cy.contains(
       'The following key has been automatically added to your source control repository.',
@@ -659,8 +659,8 @@ describe('Repository Builds', () => {
       'push to GitHub repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Delete Trigger').click();
     });
+    cy.contains('Delete Trigger').click();
     cy.contains('Delete Build Trigger');
     cy.contains(
       'Are you sure you want to delete this build trigger? No further builds will be automatically started.',
@@ -814,10 +814,13 @@ describe('Repository Builds', () => {
         cy.contains('push to GitHub repository testgitorg/testgitrepo');
         cy.contains('Branch/Tag:');
         cy.get('button[aria-label="Menu toggle"]').click();
-        cy.contains('master');
-        cy.contains('development');
-        cy.contains('1.0.0');
-        cy.contains('1.0.1').click();
+      });
+      // Select options render in a portal outside the modal
+      cy.contains('master');
+      cy.contains('development');
+      cy.contains('1.0.0');
+      cy.contains('1.0.1').click();
+      cy.get('#manually-start-build-modal').within(() => {
         cy.contains('button', 'Start Build').click();
         cy.get('@startBuild')
           .its('request.body')
@@ -845,8 +848,8 @@ describe('Repository Builds', () => {
       'push to GitHub repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Run Trigger').click();
     });
+    cy.contains('Run Trigger').click();
     submitBuild(cy);
   });
 
@@ -876,10 +879,13 @@ describe('Repository Builds', () => {
         cy.contains('push to GitLab repository testgitorg/testgitrepo');
         cy.contains('Branch/Tag:');
         cy.get('button[aria-label="Menu toggle"]').click();
-        cy.contains('master');
-        cy.contains('development');
-        cy.contains('1.0.0');
-        cy.contains('1.0.1').click();
+      });
+      // Select options render in a portal outside the modal
+      cy.contains('master');
+      cy.contains('development');
+      cy.contains('1.0.0');
+      cy.contains('1.0.1').click();
+      cy.get('#manually-start-build-modal').within(() => {
         cy.contains('button', 'Start Build').click();
         cy.get('@startBuild')
           .its('request.body')
@@ -907,8 +913,8 @@ describe('Repository Builds', () => {
       'push to GitLab repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Run Trigger').click();
     });
+    cy.contains('Run Trigger').click();
     submitBuild(cy);
   });
 
@@ -967,8 +973,8 @@ describe('Repository Builds', () => {
       'push to repository https://github.com/testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Run Trigger').click();
     });
+    cy.contains('Run Trigger').click();
     submitBuild(cy);
   });
 
@@ -1023,8 +1029,11 @@ describe('Repository Builds', () => {
         'A robot account with read access to that repository is required for the build:',
       );
       cy.get('#repository-creator-dropdown').click();
-      cy.contains('testorg+testrobot2');
-      cy.contains('testorg+testrobot').click();
+    });
+    // Dropdown options render in a portal outside the modal
+    cy.contains('testorg+testrobot2');
+    cy.contains('testorg+testrobot').click();
+    cy.get('#start-build-modal').within(() => {
       cy.contains('button', 'Start Build').click();
     });
     cy.contains('Build started with ID build001');
