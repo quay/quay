@@ -48,7 +48,9 @@ function getLayerCommand(feature: Feature, layers?: Layer[]): string | null {
   }
 
   const addedByDigest = feature.AddedBy.split('.')[0];
-  const matchingLayer = layers.find((layer) => layer.blob_digest === addedByDigest);
+  const matchingLayer = layers.find(
+    (layer) => layer.blob_digest === addedByDigest
+  );
   return matchingLayer?.command?.join(' ') || null;
 }
 
