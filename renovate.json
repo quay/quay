@@ -8,6 +8,12 @@
     "github>konflux-ci/mintmaker-presets:cve-automerge-all"
   ],
   "postUpdateOptions": ["gomodTidy"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ],
   "semanticCommits": "disabled",
   "commitMessagePrefix": "NO-ISSUE: chore(deps):"
 }
