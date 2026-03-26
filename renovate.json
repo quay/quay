@@ -7,6 +7,7 @@
   "extends": [
     "github>konflux-ci/mintmaker-presets:cve-automerge-all"
   ],
+  "postUpdateOptions": ["gomodTidy"],
   "semanticCommits": "disabled",
   "commitMessagePrefix": "NO-ISSUE: chore(deps):"
 }
