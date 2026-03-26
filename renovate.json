@@ -13,7 +13,7 @@
     {
       "matchUpdateTypes": ["major"],
       "enabled": false,
-      "matchCategories": ["node", "python", "golang"]
+      "matchManagers": ["npm", "pip_requirements", "gomod"]
     }
   ],
   "semanticCommits": "disabled",
