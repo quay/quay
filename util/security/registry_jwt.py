@@ -192,4 +192,7 @@ def build_context_and_subject(auth_context=None, tuf_roots=None):
     if not auth_context or auth_context.is_anonymous:
         return (context, ANONYMOUS_SUB)
 
-    return (context, auth_context.authed_user.username if auth_context.authed_user else None)
+    return (
+        context,
+        auth_context.authed_user.username if auth_context.authed_user else ANONYMOUS_SUB,
+    )
