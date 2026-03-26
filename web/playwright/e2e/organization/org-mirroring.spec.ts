@@ -1040,8 +1040,8 @@ test.describe(
       await expect(statusDisplay.getByText('Success: 5')).toBeVisible();
       await expect(statusDisplay.getByText('Syncing: 2')).toBeVisible();
       await expect(statusDisplay.getByText('Failed: 1')).toBeVisible();
-      // NEVER_RUN is displayed as "Scheduled" via orgMirrorStatusLabels
-      await expect(statusDisplay.getByText('Scheduled: 3')).toBeVisible();
+      // NEVER_RUN is displayed as "Pending" via orgMirrorStatusLabels
+      await expect(statusDisplay.getByText('Pending: 3')).toBeVisible();
 
       // Zero-count statuses should NOT be displayed
       await expect(statusDisplay.getByText('Cancelled')).not.toBeVisible();
