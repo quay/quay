@@ -37,25 +37,13 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
                 )
                 model_version = 1
 
-            # MySQL requires version 8+ for SKIP LOCKED support
-            # Block unless explicitly confirmed via config flag
+            # MySQL requires version 8+ - warn users about MySQL 5.7 incompatibility
             elif db_driver.startswith("mysql"):
-                mysql_confirmed = app.config.get(
-                    "SECURITY_SCANNER_V4_MYSQL8_CONFIRMED", False
+                logger.warning(
+                    "SECURITY_SCANNER_V4_MODEL_VERSION=2 requires MySQL 8.0+. "
+                    "MySQL 5.7 does not support SKIP LOCKED and will cause SQL errors. "
+                    "Ensure you are running MySQL 8.0+ before enabling V2."
                 )
-                if not mysql_confirmed:
-                    logger.error(
-                        "SECURITY_SCANNER_V4_MODEL_VERSION=2 requires MySQL 8.0+ for SKIP LOCKED support. "
-                        "MySQL 5.7 does not support SKIP LOCKED and will cause SQL errors. "
-                        "Set SECURITY_SCANNER_V4_MYSQL8_CONFIRMED: true in config to confirm you are "
-                        "running MySQL 8.0+. Falling back to model version 1."
-                    )
-                    model_version = 1
-                else:
-                    logger.info(
-                        "MySQL 8.0+ confirmed via SECURITY_SCANNER_V4_MYSQL8_CONFIRMED. "
-                        "Using V4SecurityScanner V2."
-                    )
 
         try:
             if model_version == 2:
