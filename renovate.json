@@ -11,7 +11,8 @@
   "packageRules": [
     {
       "matchUpdateTypes": ["major"],
-      "enabled": false
+      "enabled": false,
+      "matchCategories": ["node", "python", "golang"]
     }
   ],
   "semanticCommits": "disabled",
