@@ -1,0 +1,38 @@
+# this is a workaround for Renovate's limited allowed commands
+# https://github.com/konflux-ci/mintmaker/blob/main/config/renovate/renovate.json#L621-L624
+name: Renovate pybuild-deps
+on:
+  pull_request:
+    branches: [master, redhat-*, release-*]
+    paths:
+      - requirements.txt
+
+permissions:
+  contents: write
+
+jobs:
+  update-build-requirements:
+    if: startsWith(github.head_ref, 'konflux/mintmaker/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Regenerate requirements-build.txt
+        run: |
+          pip install pybuild-deps
+          pybuild-deps compile --generate-hashes --output-file=requirements-build.txt requirements.txt
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add requirements-build.txt
+          git diff --cached --quiet || git commit -m "NO-ISSUE: chore(deps): regenerate requirements-build.txt"
+          git push
