@@ -30,7 +30,7 @@ spec:
   - name: image-expires-after
     value: 5d
   - name: dockerfile
-    value: Dockerfile
+    value: build-tools/Dockerfile
   - name: path-context
     value: web
   pipelineSpec:
@@ -139,6 +139,8 @@ spec:
         value: $(params.git-url)
       - name: revision
         value: $(params.revision)
+      - name: submodules
+        value: "true"
       - name: ociStorage
         value: $(params.output-image).git
       - name: ociArtifactExpiresAfter
