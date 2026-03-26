@@ -181,6 +181,7 @@ class V4SecurityScanner2(SecurityScannerInterface):
                         "indexer_version": IndexerVersion.V4,
                         "metadata_json": {},
                         "error_json": {},
+                        "last_indexed": now,
                     }
                     for c in new_candidates
                 ]
@@ -431,6 +432,13 @@ class V4SecurityScanner2(SecurityScannerInterface):
                     candidate.id, candidate.repository_id, IndexStatus.FAILED, "", {}
                 )
                 logger.warning("Failed to perform indexing, security scanner API error")
+                failed += 1
+            elif report is None:
+                # Unexpected: no error but no report either
+                self._upsert_status(
+                    candidate.id, candidate.repository_id, IndexStatus.FAILED, "", {}
+                )
+                logger.warning("Failed to perform indexing, no report returned")
                 failed += 1
             elif report["state"] == IndexReportState.Index_Finished:
                 self._upsert_status(
@@ -691,12 +699,18 @@ class V4SecurityScanner2(SecurityScannerInterface):
                 return False
             return True
 
+        # Check manifest existence inside transaction
+        should_delete = False
         with db_transaction():
             if not manifest_digest_exists():
-                try:
-                    self._secscan_api.delete(manifest_digest)
-                    return True
-                except APIRequestFailure:
-                    logger.exception("Failed to delete manifest, security scanner API error")
+                should_delete = True
+
+        # Call Clair API outside transaction to avoid holding DB connection during HTTP
+        if should_delete:
+            try:
+                self._secscan_api.delete(manifest_digest)
+                return True
+            except APIRequestFailure:
+                logger.exception("Failed to delete manifest, security scanner API error")
 
         return None
