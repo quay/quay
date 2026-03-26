@@ -31,6 +31,7 @@ services:
     command: -c 'max_connections=300'
     environment:
       POSTGRES_USER: "clair"
+      POSTGRES_PASSWORD: "clair"
       POSTGRES_DB: "clair"
     volumes:
       - "clair-db-data:/var/lib/postgresql"
