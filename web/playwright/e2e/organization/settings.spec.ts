@@ -411,6 +411,83 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
   );
 
   test.describe(
+    'Organization state tab with PROXY_CACHE disabled',
+    {tag: ['@feature:ORG_MIRROR']},
+    () => {
+      test('shows Organization state tab when FEATURE_PROXY_CACHE is disabled (PROJQUAY-11080)', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexnoproxy');
+
+        // Override config to disable PROXY_CACHE
+        await authenticatedPage.route('**/config', async (route) => {
+          const response = await route.fetch();
+          const body = await response.json();
+          body.features.PROXY_CACHE = false;
+          body.features.ORG_MIRROR = true;
+          await route.fulfill({response, body: JSON.stringify(body)});
+        });
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+        // Wait for settings to load
+        await expect(
+          authenticatedPage.locator('#org-settings-email'),
+        ).toBeVisible();
+
+        // Organization state tab should be visible even without PROXY_CACHE
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).toBeVisible();
+      });
+    },
+  );
+
+  test.describe(
+    'Mutual exclusion tabs with ORG_MIRROR disabled',
+    {tag: ['@feature:PROXY_CACHE', '@feature:IMMUTABLE_TAGS']},
+    () => {
+      test('shows Proxy Cache and Immutability tabs when FEATURE_ORG_MIRROR is disabled', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('mexnomirror');
+
+        // Override config to disable ORG_MIRROR
+        await authenticatedPage.route('**/config', async (route) => {
+          const response = await route.fetch();
+          const body = await response.json();
+          body.features.ORG_MIRROR = false;
+          body.features.PROXY_CACHE = true;
+          body.features.IMMUTABLE_TAGS = true;
+          await route.fulfill({response, body: JSON.stringify(body)});
+        });
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+        // Wait for settings to load
+        await expect(
+          authenticatedPage.locator('#org-settings-email'),
+        ).toBeVisible();
+
+        // Proxy Cache and Immutability tabs should be visible
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Immutability Policies'),
+        ).toBeVisible();
+
+        // Organization state tab should not be visible (feature disabled)
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+      });
+    },
+  );
+
+  test.describe(
     'Repository Settings: Org Mirror Mutual Exclusion',
     {
       tag: ['@repository', '@feature:ORG_MIRROR', '@feature:IMMUTABLE_TAGS'],
