@@ -166,7 +166,7 @@ oslo.serialization==5.4.0
 oslo.utils==6.2.1
 packaging==26.0
 pbr==5.11.1
-pycparser==2.21
+pycparser==3.0
 python-bidi==0.6.6
 reportlab==4.2.0
 svglib==1.5.1
