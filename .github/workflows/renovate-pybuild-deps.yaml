@@ -12,7 +12,9 @@ permissions:
 
 jobs:
   update-build-requirements:
-    if: startsWith(github.head_ref, 'konflux/mintmaker/')
+    if: >
+      startsWith(github.head_ref, 'konflux/mintmaker/') &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
