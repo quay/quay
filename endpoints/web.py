@@ -77,6 +77,7 @@ from health.healthcheck import get_healthchecker
 from util.cache import no_cache
 from util.headers import parse_basic_auth
 from util.invoice import renderInvoiceToPdf
+from util.metrics.prometheus import ui_page_views
 from util.registry.gzipinputstream import GzipInputStream
 from util.request import crossorigin, get_request_ip
 from util.useremails import send_email_changed
@@ -1133,6 +1134,8 @@ def user_initialize():
 @web.route("/config", methods=["GET", "OPTIONS"])
 @crossorigin(anonymous=False)
 def config():
+    if request.method == "GET":
+        ui_page_views.labels(ui="react").inc()
     version_number = ""
     if not features.BILLING:
         version_number = "Quay %s" % __version__

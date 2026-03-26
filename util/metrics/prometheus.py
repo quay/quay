@@ -80,6 +80,12 @@ db_close_calls = Counter(
     "number of close() calls made to db",
 )
 
+ui_page_views = Counter(
+    "quay_ui_page_views_total",
+    "Total page views by UI type",
+    labelnames=["ui"],
+)
+
 request_duration = Histogram(
     "quay_request_duration_seconds",
     "seconds taken to process a request",
