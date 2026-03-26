@@ -28,7 +28,7 @@ jobs:
 
       - name: Regenerate requirements-build.txt
         run: |
-          pip install pybuild-deps
+          pip install pybuild-deps==0.5.0
           pybuild-deps compile --generate-hashes --output-file=requirements-build.txt requirements.txt
 
       - name: Commit and push if changed
