@@ -14,11 +14,6 @@ html, body, #root,  .App {
     padding-top: 0;
 }
 
-.pf-v6-c-page__main {
-    display: flex;
-    flex-direction: column;
-    min-height: 100%;
-}
 
 .disabled-link {
     pointer-events: none;
