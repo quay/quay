@@ -20,18 +20,30 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
     def configure(self, app, instance_keys, storage):
         model_version = app.config.get("SECURITY_SCANNER_V4_MODEL_VERSION", 1)
 
-        # V2 requires PostgreSQL or MySQL 8+ for SELECT FOR UPDATE SKIP LOCKED
+        # V2 requires PostgreSQL 9.5+ or MySQL 8+ for SELECT FOR UPDATE SKIP LOCKED
         if model_version == 2:
             from sqlalchemy.engine.url import make_url
 
-            db_driver = make_url(app.config.get("DB_URI", "")).drivername
+            db_uri = app.config.get("DB_URI", "")
+            parsed_uri = make_url(db_uri)
+            db_driver = parsed_uri.drivername
+
+            # SQLite is not supported - hard block and fall back to V1
             if db_driver == "sqlite":
                 logger.error(
-                    "SECURITY_SCANNER_V4_MODEL_VERSION=2 requires PostgreSQL or MySQL 8+. "
+                    "SECURITY_SCANNER_V4_MODEL_VERSION=2 requires PostgreSQL 9.5+ or MySQL 8+. "
                     "Detected database driver '%s'. Falling back to model version 1.",
                     db_driver,
                 )
                 model_version = 1
+
+            # MySQL requires version 8+ - warn users about MySQL 5.7 incompatibility
+            elif db_driver.startswith("mysql"):
+                logger.warning(
+                    "SECURITY_SCANNER_V4_MODEL_VERSION=2 requires MySQL 8.0+. "
+                    "MySQL 5.7 does not support SKIP LOCKED and will cause SQL errors. "
+                    "Ensure you are running MySQL 8.0+ before enabling V2."
+                )
 
         try:
             if model_version == 2:
