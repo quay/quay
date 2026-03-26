@@ -74,7 +74,7 @@ opentelemetry-instrumentation==0.53b1
 opentelemetry-util-http==0.53b1
 opentelemetry-semantic-conventions==0.53b1
 os-service-types==1.7.0
-peewee==3.13.1
+peewee==4.0.2
 pillow==12.1.1
 ply==3.11
 prometheus_client==0.7.1
