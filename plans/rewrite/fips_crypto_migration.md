@@ -129,11 +129,14 @@ These values must be identical in Python and Go. They are not configurable.
 
 ### Phased rollout
 
-The migration spans three phases. Each is independently deployable and rollback-safe.
+The migration uses different phase counts depending on deployment model:
 
-**Why three phases:** This plan must support two deployment models with very different rollback characteristics:
-- **Quay.io (continuous deployment):** Deploys frequently; rollbacks between deploys are routine operations. The three-phase approach is primarily designed for this model, where reverting a deploy that switched to `v1` writes must not leave the database in an unreadable state.
-- **Red Hat Quay (versioned releases):** y-stream rollbacks (e.g. 3.16 → 3.15) are not supported; z-stream rollbacks are extreme-circumstances-only with support involvement. The phased approach still benefits these customers by protecting against interrupted migrations and providing operational confidence, even though cross-release rollback isn't a supported path.
+- **Quay.io (continuous deployment):** 3 phases. Deploys frequently; rollbacks between deploys are routine operations. The three-phase approach ensures that reverting a deploy that switched to `v1` writes does not leave the database in an unreadable state. Phase N establishes a rollback safety net before N+1 changes write behavior.
+- **Red Hat Quay (versioned releases):** 2 phases. y-stream rollbacks (e.g. 3.16 → 3.15) are not supported; z-stream rollbacks are extreme-circumstances-only with support involvement. Since rollback to a pre-`v1`-read release is not a supported path, the separate "add read support" phase provides no practical benefit. Combining N+1 and N+2 into a single release reduces the upgrade burden for customers.
+
+Each phase is independently deployable and rollback-safe within its deployment model.
+
+#### Quay.io rollout (3 phases)
 
 ```
                      Python behavior           Go behavior
@@ -149,6 +152,21 @@ Release N+1:         reads v0 + v1              (not deployed)
 Release N+2:         reads v0 + v1              reads v1 only
                      writes v1                  writes v1
                                                 startup gate: rejects v0
+```
+
+#### Red Hat Quay rollout (2 phases)
+
+```
+                     Python behavior           Go behavior
+                     ──────────────────         ─────────────────
+Release N:           reads v0 + v1              (not deployed)
+                     writes v0
+
+Release N+1:         reads v0 + v1              reads v1 only
+                     writes v1                  writes v1
+                     encrypt-upgrade: v0 → v1   startup gate: rejects v0
+                     (operator runs as Job
+                      before starting Go)
 ```
 
 #### Release N — Add `v1` read support
@@ -313,6 +331,7 @@ FATAL: Found v0-encrypted rows in <table>.<column>.
 |----------|-----------------|---------|
 | Revert deploy after phase N+1 | Quay.io (CD) | Safe — previous deploy reads both `v0` and `v1` |
 | Revert deploy after phase N+2 | Quay.io (CD) | Safe — previous deploy reads both `v0` and `v1` |
+| Revert deploy after phase N+1 | Red Hat Quay | z-stream rollback only (with support). Python in N+1 reads both `v0` and `v1`; Go service can be disabled independently |
 | `encrypt-upgrade` interrupted midway | Both | Safe — mix of `v0`/`v1` in DB; Python reads both; re-run to complete |
 | Go encounters `v0` row at startup | Both | Blocked — refuses to start with actionable error |
 | `encrypt-upgrade` never run | Both | Python operates normally with `v0`/`v1` mix; Go startup gate blocks until run |
@@ -320,20 +339,22 @@ FATAL: Found v0-encrypted rows in <table>.<column>.
 
 ### Upgrade paths
 
-**Quay.io (continuous deployment):**
+**Quay.io (continuous deployment) — 3 phases:**
 
 1. Deploy Release N — no operator action needed
 2. Deploy Release N+1 — new writes use `v1` automatically
 3. SRE runs `encrypt-upgrade` as a Kubernetes Job in the deployment namespace; monitors via existing alerting (replication lag, query latency)
 4. Deploy Release N+2 when migration is confirmed complete
 
-**Red Hat Quay (versioned releases):**
+**Red Hat Quay (versioned releases) — 2 phases:**
 
 1. **Upgrade to Release N** — No action required. No behavior change. Quay can now read `v1` values if encountered.
-2. **Upgrade to Release N+1** — New writes use `v1` automatically. Operator runs `quay-entrypoint.sh encrypt-upgrade` as a one-shot Job or `podman run` to re-encrypt existing data. For large instances, this may take time — use `--dry-run` first to estimate. The Quay Operator could automate this as a Job in the upgrade sequence.
-3. **Upgrade to Release N+2** — Go service becomes available. If `encrypt-upgrade` from N+1 wasn't run, Go startup gate blocks with a clear error.
+2. **Upgrade to Release N+1** — This release bundles three changes: new writes use `v1`, the `encrypt-upgrade` CLI is available, and the Go service is included. Upgrade sequence:
+   1. Deploy N+1 — Python pods start normally, writing `v1`. Go service is not yet enabled.
+   2. Run `quay-entrypoint.sh encrypt-upgrade` as a one-shot Job or `podman run`. Use `--dry-run` first to estimate scope. The Quay Operator could automate this as a Job in the upgrade sequence.
+   3. Enable the Go service. The startup gate verifies no `v0` rows remain; if `encrypt-upgrade` wasn't completed, Go exits with an actionable error.
 
-**Customers who skip releases:** Jumping from pre-N to N+2 gets `v1` read support and write-version switch automatically. Operator must still run `encrypt-upgrade` before the Go service will start — the startup gate enforces this.
+**Customers who skip releases:** Jumping from pre-N to N+1 gets `v1` read support, write-version switch, and Go service in one upgrade. Operator must still run `encrypt-upgrade` before enabling the Go service — the startup gate enforces this.
 
 ### Interoperability validation
 
