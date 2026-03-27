@@ -5,8 +5,6 @@ import {
   CardBody,
   CardTitle,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   Page,
   PageSection,
 } from '@patternfly/react-core';
@@ -50,18 +48,11 @@ export function OAuthError() {
     <div className="oauth-error-container">
       <Card className="oauth-error-card">
         <CardTitle>
-          <EmptyState>
-            <EmptyStateHeader
-              titleText={`${provider} Authentication Error`}
-              icon={
-                <EmptyStateIcon
-                  icon={ExclamationCircleIcon}
-                  color="var(--pf-v5-global--danger-color--100)"
-                />
-              }
-              headingLevel="h2"
-            />
-          </EmptyState>
+          <EmptyState
+            headingLevel="h2"
+            icon={ExclamationCircleIcon}
+            titleText={`${provider} Authentication Error`}
+          ></EmptyState>
         </CardTitle>
         <CardBody>
           <Alert
@@ -99,12 +90,18 @@ export function OAuthError() {
   // Scenario 1: User not logged in - render with MinimalHeader
   if (!isAuthenticated) {
     return (
-      <Page header={<MinimalHeader />}>
-        <PageSection isFilled>{errorContent}</PageSection>
+      <Page masthead={<MinimalHeader />}>
+        <PageSection hasBodyWrapper={false} isFilled>
+          {errorContent}
+        </PageSection>
       </Page>
     );
   }
 
   // Scenario 2: User logged in - render content only
-  return <PageSection isFilled>{errorContent}</PageSection>;
+  return (
+    <PageSection hasBodyWrapper={false} isFilled>
+      {errorContent}
+    </PageSection>
+  );
 }

@@ -84,8 +84,6 @@ export default function SetupBuildTriggerModal(props: SetupBuildTriggerWizard) {
       variant={ModalVariant.large}
       isOpen={props.isOpen}
       onClose={props.onClose}
-      showClose={true}
-      hasNoBodyWrapper
     >
       {modalContent}
     </Modal>

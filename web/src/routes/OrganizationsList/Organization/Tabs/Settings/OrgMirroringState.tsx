@@ -70,7 +70,7 @@ export const OrgMirroringState = ({
           isInline
           variant="danger"
           title="Unable to determine current organization mirror status."
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
           data-testid="org-mirror-error-alert"
         />
       )}
@@ -83,7 +83,7 @@ export const OrgMirroringState = ({
           id="normal"
           value="normal"
           description="The organization will be in its standard operational state."
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
         />
         <Radio
           isChecked={selectedState === 'MIRROR'}
@@ -93,10 +93,10 @@ export const OrgMirroringState = ({
           id="mirror"
           value="mirror"
           description="Mirror all repositories from a source registry namespace. When an organization is set as mirrored, repositories are automatically discovered and synced from the source."
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
         />
         {selectedState === 'MIRROR' && isPoliciesLoading && (
-          <Spinner size="sm" className="pf-v5-u-mb-md" />
+          <Spinner size="sm" className="pf-v6-u-mb-md" />
         )}
         {selectedState === 'MIRROR' &&
           !isPoliciesLoading &&
@@ -105,7 +105,7 @@ export const OrgMirroringState = ({
               isInline
               variant="warning"
               title="Organization mirroring cannot be enabled while immutability policies are configured. Remove all namespace immutability policies first."
-              className="pf-v5-u-mb-md"
+              className="pf-v6-u-mb-md"
               data-testid="immutability-conflict-alert"
             />
           )}
@@ -114,7 +114,7 @@ export const OrgMirroringState = ({
             isInline
             variant="danger"
             title="Unable to determine proxy cache status. Organization mirroring is disabled until the proxy cache status can be verified."
-            className="pf-v5-u-mb-md"
+            className="pf-v6-u-mb-md"
             data-testid="proxy-cache-error-alert"
           />
         )}
@@ -125,7 +125,7 @@ export const OrgMirroringState = ({
               isInline
               variant="warning"
               title="Organization mirroring cannot be enabled while a proxy cache is configured. Remove the proxy cache configuration first."
-              className="pf-v5-u-mb-md"
+              className="pf-v6-u-mb-md"
               data-testid="proxy-cache-conflict-alert"
             />
           )}
@@ -139,7 +139,7 @@ export const OrgMirroringState = ({
               isInline
               variant="info"
               title="Selecting Mirror will take you to the Mirroring tab to configure the source registry."
-              className="pf-v5-u-mb-md"
+              className="pf-v6-u-mb-md"
             />
           )}
         <Button

@@ -65,7 +65,7 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     await expect(page.getByText('Client Secret:')).toBeVisible();
 
     // Close drawer by clicking the X button
-    await page.locator('.pf-v5-c-drawer__close button').click();
+    await page.locator('.pf-v6-c-drawer__close button').click();
     await page.getByTestId('oauth-application-actions').first().click();
     await page.getByRole('menuitem', {name: 'Delete'}).click();
 

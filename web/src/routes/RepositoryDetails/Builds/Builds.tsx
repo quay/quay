@@ -21,7 +21,7 @@ export default function Builds(props: BuildsProps) {
   }
 
   return (
-    <PageSection>
+    <PageSection hasBodyWrapper={false}>
       <Card>
         <BuildHistory
           org={props.org}

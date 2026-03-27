@@ -7,10 +7,9 @@ import {
   DescriptionListGroup,
   DescriptionListDescription,
   PageSection,
-  PageSectionVariants,
   Stack,
   StackItem,
-  Text,
+  Content,
 } from '@patternfly/react-core';
 import {
   IOAuthApplication,
@@ -52,7 +51,7 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
     );
 
   if (!props.application) {
-    return <Text>No application selected</Text>;
+    return <Content component="p">No application selected</Content>;
   }
 
   const handleResetSecret = () => {
@@ -67,7 +66,7 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
   };
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <Stack hasGutter>
         <StackItem>
           <DescriptionList isHorizontal>
@@ -88,7 +87,9 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
             <DescriptionListGroup>
               <DescriptionListTerm>Client Secret:</DescriptionListTerm>
               <DescriptionListDescription>
-                <Text>{props.application.client_secret}</Text>
+                <Content component="p">
+                  {props.application.client_secret}
+                </Content>
               </DescriptionListDescription>
             </DescriptionListGroup>
           </DescriptionList>
