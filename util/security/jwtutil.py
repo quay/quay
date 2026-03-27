@@ -46,16 +46,15 @@ class _StrictJWT(PyJWT):
         )
         return defaults
 
-    def _validate_claims(self, payload, options, audience=None, issuer=None, leeway=0, **kwargs):
+    def _validate_claims(
+        self, payload, options, audience=None, issuer=None, subject=None, leeway=0
+    ):
         if options.get("exp_max_s") is not None:
-            if "verify_expiration" in kwargs and not kwargs.get("verify_expiration"):
-                raise ValueError("exp_max_s option implies verify_expiration")
-
             options["verify_exp"] = True
 
         # Do all of the other checks
         super(_StrictJWT, self)._validate_claims(
-            payload, options, audience, issuer, leeway, **kwargs
+            payload, options, audience=audience, issuer=issuer, subject=subject, leeway=leeway
         )
 
         now = timegm(datetime.utcnow().utctimetuple())
