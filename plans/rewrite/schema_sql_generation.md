@@ -1,7 +1,7 @@
 # Schema SQL Generation for Go Parity
 
 Status: Draft
-Last updated: 2026-02-27
+Last updated: 2026-03-02
 
 ## 1. Purpose
 
@@ -89,6 +89,44 @@ Referenced by `db_migration_policy.md` §10.6.
 
 The `sed` post-processing strips timestamp-containing comments and session-variable `SET` statements that could vary between environments.
 
+## 4A. SQLite schema generation script: `scripts/sync-sqlc-schema-sqlite.sh`
+
+### 4A.1 Feasibility
+
+All 117 Alembic migrations run on SQLite without modification:
+
+- `data/migrations/env.py:108` uses `render_as_batch=True`, enabling SQLite-compatible ALTER TABLE via copy-and-rename.
+- PostgreSQL-specific DDL is dialect-guarded (`e8ed3fb547da` guards `ALTER SEQUENCE` with `if bind.engine.name == "postgresql"`; `34c8ef052ec9` guards `COMMIT` with `if dialect.name != "sqlite"`).
+- PostgreSQL-specific index options (`postgresql_concurrently=True`, `postgresql_using="gin"`, `postgresql_ops={"...": "gin_trgm_ops"}`) are silently ignored by SQLAlchemy on SQLite.
+- The existing test infrastructure already runs Alembic against SQLite via `test/fixtures.py`.
+
+### 4A.2 Steps
+
+1. Create temporary SQLite database file via `mktemp`.
+2. Run `DB_URI=sqlite:///$TMPDB TEST=true PYTHONPATH=. alembic upgrade head`.
+3. Dump schema: `sqlite3 $TMPDB .schema`.
+4. Post-process: strip `CREATE TABLE alembic_version`, normalize whitespace, collapse blank lines.
+5. Write output with header comment to target path (default: `internal/dal/sql/schema/sqlite/schema.sql`).
+6. Cleanup temp file on exit via `trap`.
+
+### 4A.3 Design decisions
+
+- **No container needed**: SQLite is file-based. Script executes in sub-second, significantly faster than the PostgreSQL path (~15-30s).
+- **Same Alembic environment**: Uses the same `env.py`, `TEST=true`, and `PYTHONPATH=.` as the PostgreSQL script, differing only in `DB_URI`.
+- **Determinism**: SQLite `.schema` output is deterministic for a given migration sequence on a freshly-created database.
+
+### 4A.4 Known dialect differences in the generated schema
+
+| Feature | PostgreSQL `schema.sql` | SQLite `schema.sql` | Impact on sqlc |
+|---------|------------------------|---------------------|----------------|
+| Auto-increment PK | `SERIAL`/`BIGSERIAL` + sequences | `INTEGER PRIMARY KEY` (implicit rowid) | sqlc handles both per engine config |
+| GIN/trigram indexes | `CREATE INDEX ... USING gin (...gin_trgm_ops)` | Absent (regular B-tree or omitted) | sqlc ignores indexes for codegen |
+| Boolean | `BOOLEAN` (native) | `INTEGER` (0/1) | sqlc SQLite engine maps to Go `bool` via override |
+| `VARCHAR(n)` | Length enforced | Type affinity only | Both map to Go `string` |
+| `BIGINT`/`BIGSERIAL` | Explicit 8-byte integer | `INTEGER` (always 8-byte internally) | Both map to Go `int64` |
+| Foreign keys | Enforced by default | Require `PRAGMA foreign_keys = ON` at connection | Schema-level FK syntax is the same |
+| Concurrent index creation | `postgresql_concurrently=True` | N/A | Absent from SQLite dump |
+
 ## 5. Makefile targets
 
 Added after the existing Go targets section (Makefile line ~380):
@@ -99,11 +137,15 @@ Added after the existing Go targets section (Makefile line ~380):
 ##################
 
 SCHEMA_SQL := internal/dal/sql/schema/postgres/schema.sql
+SCHEMA_SQL_SQLITE := internal/dal/sql/schema/sqlite/schema.sql
 
-.PHONY: generate-schema-sql check-schema-sql
+.PHONY: generate-schema-sql generate-schema-sql-sqlite check-schema-sql check-schema-sql-sqlite
 
 generate-schema-sql:
 	./scripts/sync-sqlc-schema.sh $(SCHEMA_SQL)
+
+generate-schema-sql-sqlite:
+	./scripts/sync-sqlc-schema-sqlite.sh $(SCHEMA_SQL_SQLITE)
 
 check-schema-sql:
 	@echo "==> Checking schema.sql is up to date..."
@@ -115,6 +157,17 @@ check-schema-sql:
 	 rm -f "$$TMPFILE"; exit 1); \
 	rm -f "$$TMPFILE"; \
 	echo "==> Schema is up to date."
+
+check-schema-sql-sqlite:
+	@echo "==> Checking SQLite schema.sql is up to date..."
+	@TMPFILE=$$(mktemp) && \
+	./scripts/sync-sqlc-schema-sqlite.sh "$$TMPFILE" && \
+	diff -u $(SCHEMA_SQL_SQLITE) "$$TMPFILE" || \
+	(echo ""; echo "ERROR: $(SCHEMA_SQL_SQLITE) is out of date."; \
+	 echo "Run 'make generate-schema-sql-sqlite' and commit the result."; \
+	 rm -f "$$TMPFILE"; exit 1); \
+	rm -f "$$TMPFILE"; \
+	echo "==> SQLite schema is up to date."
 ```
 
 ## 6. sqlc configuration: `sqlc.yaml`
@@ -136,7 +189,17 @@ sql:
         emit_empty_slices: true
 ```
 
-The SQLite engine entry (for mirror mode) will be added when mirror-mode query definitions are authored.
+The SQLite engine entry should be committed from day one alongside the PostgreSQL entry, even before mirror-mode query definitions are authored. This ensures the CI parity check (§7A) has both schema files to compare.
+
+```yaml
+  - engine: "sqlite"
+    queries: "internal/dal/sql/queries/sqlite/"
+    schema: "internal/dal/sql/schema/sqlite/"
+    gen:
+      go:
+        package: "sqlitequeries"
+        out: "internal/dal/repositories/sqlite/sqlc"
+```
 
 ## 7. CI gate: `.github/workflows/schema-drift.yml`
 
@@ -170,47 +233,85 @@ On pull requests touching any of:
 | Generated code changed | sqlc query or schema updated without regenerating | Run `sqlc generate`, commit generated files |
 | Go build failure | Schema change broke existing queries | Update affected `.sql` query files, regenerate |
 
+## 7A. PG/SQLite logical schema parity check
+
+### 7A.1 Purpose
+
+The PostgreSQL and SQLite schema files diverge in DDL syntax (see §4A.4), but must agree on logical structure: same tables, same columns, same types (modulo dialect mapping), same constraints (modulo unsupported features like GIN indexes).
+
+### 7A.2 Implementation
+
+A Python script (`scripts/check-schema-parity.py`, ~100 LOC) that:
+
+1. Parses `CREATE TABLE` statements from both `internal/dal/sql/schema/postgres/schema.sql` and `internal/dal/sql/schema/sqlite/schema.sql`.
+2. Extracts table names, column names, column ordering, and nullable flags.
+3. Compares and fails with a clear diff if table/column structure diverges.
+4. Allows known exceptions via an allowlist: GIN indexes, sequences, PG-specific DEFAULT expressions, type syntax differences (e.g., `SERIAL` vs `INTEGER PRIMARY KEY`).
+
+### 7A.3 CI integration
+
+Add to `.github/workflows/schema-drift.yml` as a step after both schema snapshots are validated:
+
+```yaml
+- name: Check PG/SQLite logical parity
+  run: python3 scripts/check-schema-parity.py
+```
+
+Triggered on PRs touching `internal/dal/sql/schema/**`.
+
 ## 8. Directory structure
 
 ```
 scripts/
-  sync-sqlc-schema.sh                         # Schema generation script
+  sync-sqlc-schema.sh                         # PostgreSQL schema generation script
+  sync-sqlc-schema-sqlite.sh                  # SQLite schema generation script
+  check-schema-parity.py                      # PG/SQLite logical parity check
 internal/
   dal/
     sql/
       schema/
         postgres/
           schema.sql                           # pg_dump output (committed, generated)
+        sqlite/
+          schema.sql                           # sqlite3 .schema output (committed, generated)
       queries/
         postgres/
+          .gitkeep                             # Placeholder for sqlc query files
+        sqlite/
           .gitkeep                             # Placeholder for sqlc query files
     repositories/
       postgres/
         sqlc/
           .gitkeep                             # Placeholder for sqlc generated code
-sqlc.yaml                                      # sqlc configuration
+      sqlite/
+        sqlc/
+          .gitkeep                             # Placeholder for sqlc generated code
+sqlc.yaml                                      # sqlc configuration (both PG and SQLite engines)
 .github/workflows/schema-drift.yml             # CI gate
-Makefile                                       # Edit: add generate-schema-sql, check-schema-sql
+Makefile                                       # Edit: add schema generation and check targets
 ```
 
 ## 9. Developer workflow
 
 1. Edit `data/database.py` (Peewee models) and/or create Alembic migration in `data/migrations/versions/`.
 2. Run `make generate-schema-sql` (~15-30 seconds, spins up ephemeral PostgreSQL).
-3. Review diff in `internal/dal/sql/schema/postgres/schema.sql`.
-4. Commit updated `schema.sql` alongside the migration file.
-5. (Future, when sqlc queries exist) Run `sqlc generate`, commit generated Go code.
-6. Push. CI verifies schema parity.
+3. Run `make generate-schema-sql-sqlite` (sub-second, no container needed).
+4. Review diffs in `internal/dal/sql/schema/postgres/schema.sql` and `internal/dal/sql/schema/sqlite/schema.sql`.
+5. Commit updated schema files alongside the migration file.
+6. (Future, when sqlc queries exist) Run `sqlc generate`, commit generated Go code.
+7. Push. CI verifies schema parity (PG snapshot, SQLite snapshot, PG/SQLite logical parity).
 
-If step 2 is skipped, CI fails with a diff and message: "Run `make generate-schema-sql` and commit the result."
+If steps 2-3 are skipped, CI fails with a diff and message identifying which schema file is out of date.
 
 ## 10. Verification criteria
 
 1. `make generate-schema-sql` produces a valid, complete PostgreSQL schema.
-2. Running it twice produces byte-identical output (determinism).
-3. Adding a trivial Alembic migration (e.g., new nullable column) causes `make check-schema-sql` to fail.
-4. After regeneration, `make check-schema-sql` passes.
-5. `sqlc generate` against the schema produces valid Go code (verifies `sqlc.yaml` configuration).
+2. `make generate-schema-sql-sqlite` produces a valid, complete SQLite schema.
+3. Running both generation scripts twice produces byte-identical output (determinism).
+4. Adding a trivial Alembic migration (e.g., new nullable column) causes both `make check-schema-sql` and `make check-schema-sql-sqlite` to fail.
+5. After regeneration, both check targets pass.
+6. PG/SQLite logical parity check (`scripts/check-schema-parity.py`) passes — both schemas have the same tables and columns.
+7. `sqlc generate` against both schemas produces valid Go code (verifies `sqlc.yaml` configuration).
 
 ## 11. Ownership
 

@@ -1,7 +1,7 @@
 # DB and Data Migration Policy
 
 Status: Draft
-Last updated: 2026-02-12
+Last updated: 2026-03-02
 
 ## 1. Purpose
 
@@ -163,6 +163,61 @@ At M5 switchover:
 - Alembic migrations are frozen (no new migrations authored).
 - `data/model/sqlalchemybridge.py` and Peewee model definitions become eligible for removal (tracked in `program_gates.md` under G8).
 
+#### 10.7.1 Constraints for Go migration tool selection
+
+Any Go migration tool must satisfy these project-specific requirements:
+
+1. **DBA operator compatibility**: Must be invokable as a CLI command from within a container (e.g., `quay migrate <revision>`), matching the existing `dba_operator.py` pattern that wraps migrations in Kubernetes `DatabaseMigration` CRDs.
+2. **Phase-gated migrations**: Must support upgrading to a specific revision, not just "head". The `active_migration.py` / `data/migrationutil.py` phase system gates migration rollout by revision.
+3. **Rollback support**: Must support downgrade operations — a gating criterion for M5 switchover.
+4. **FIPS/air-gap compatibility**: Must be embeddable as a Go library in the Quay binary. No external tool distribution required. Operators in air-gapped environments run migrations via the Quay container image.
+5. **Multi-database support**: PostgreSQL (primary) + SQLite (mirror mode). MySQL is deprecated and not required.
+6. **SQL-file migrations preferred**: Consistency with sqlc's SQL-first philosophy. Avoid Go-function migrations that tie execution to binary version.
+
+#### 10.7.2 Candidate comparison
+
+| | **golang-migrate** | **goose** | **atlas** |
+|---|---|---|---|
+| Migration format | SQL files (`.up.sql`/`.down.sql`) | SQL files or Go functions | SQL or HCL (declarative) |
+| Version tracking | `schema_migrations` (version + dirty) | `goose_db_version` (version + is_applied) | `atlas_schema_revisions` |
+| Specific revision | `migrate goto <version>` | `goose up-to <version>` | `atlas migrate apply --to <version>` |
+| Rollback | `migrate down <steps>` | `goose down` / `goose down-to` | `atlas migrate down --to <version>` |
+| PG + SQLite | Yes (separate drivers) | Yes | Yes |
+| Embeddable | Yes (Go library) | Yes (Go library) | Yes (Go SDK) |
+| SQL-only mode | SQL-only by design | Supports both SQL and Go | SQL migrations supported |
+| Schema introspection | No | No | Yes (can diff live DB vs desired) |
+
+#### 10.7.3 Recommendation
+
+**golang-migrate** as primary candidate:
+- SQL-only by design — no temptation to embed Go code in migrations.
+- Simple version model — sequential integers, easy to reason about.
+- `goto <version>` satisfies the phase-gated migration requirement.
+- Embeddable as library for air-gapped/FIPS deployment.
+
+**atlas** is worth evaluating at M5 for declarative schema diffing — it can compare a desired schema state (the `schema.sql` snapshot) against a live database and generate migrations automatically. This could eliminate hand-written migration files but is a significant workflow change requiring evaluation against real migrations before adoption.
+
+**goose** is viable but offers no advantages over golang-migrate for this project.
+
+#### 10.7.4 M5 transition mechanics
+
+1. **Freeze Alembic**: No new migration files authored in `data/migrations/versions/`. The last Alembic revision becomes permanent HEAD.
+2. **Baseline Go migration**: The `schema.sql` snapshot maintained throughout M1-M4 becomes `000001_baseline.up.sql` for golang-migrate. The `.down.sql` drops all tables in reverse dependency order.
+3. **Version table handoff**: golang-migrate uses a `schema_migrations` table. `alembic_version` remains in the database but is no longer consulted. A one-time handoff script creates the Go version table and marks baseline as applied.
+4. **Guard for existing databases**: The baseline migration checks for `alembic_version` — if found, skip DDL (database already has the schema), just mark baseline as applied.
+5. **DBA operator adaptation**: Update `dba_operator.py` (or its Go replacement) to invoke `quay migrate --to <version>` instead of `alembic upgrade <revision>`.
+
+#### 10.7.5 Shadow validation during M3-M4
+
+Before M5, validate the Go migration tool without giving it production authority:
+
+1. For each new Alembic migration, also write the equivalent golang-migrate `.up.sql`/`.down.sql` file.
+2. CI applies both Alembic and golang-migrate to separate ephemeral PostgreSQL instances.
+3. `pg_dump --schema-only` both, diff — must be byte-identical after normalization.
+4. This proves parity without risk to production and satisfies the "5 production-equivalent migrations" requirement.
+
 ### 10.8 PR requirements during coexistence
 
-Every PR that includes an Alembic migration (`data/migrations/versions/`) must also include the corresponding Go migration file. CI blocks the merge if one is present without the other. This ensures the parallel migration definitions stay synchronized from the start, not as a retroactive catch-up effort.
+Every PR that includes an Alembic migration (`data/migrations/versions/`) must also include the corresponding Go schema snapshot update — regenerated `internal/dal/sql/schema/postgres/schema.sql` and `internal/dal/sql/schema/sqlite/schema.sql` via `make generate-schema-sql generate-schema-sql-sqlite`. CI blocks the merge if the schema snapshots are stale relative to Alembic HEAD (see `schema_sql_generation.md` §7 and §7A for the CI gate).
+
+Starting in M3, when shadow validation begins (§10.7.5), PRs with Alembic migrations must also include the corresponding golang-migrate `.up.sql`/`.down.sql` file. CI validates parity between the two migration implementations.
