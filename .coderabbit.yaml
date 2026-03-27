@@ -1,4 +1,4 @@
 reviews:
-   tools:
-      ruff:
-         enabled: false
+  tools:
+    ruff:
+      enabled: false
