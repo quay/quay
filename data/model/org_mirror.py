@@ -678,9 +678,12 @@ def deactivate_excluded_repos(
     )
 
     # Chunk updates for SQLite compatibility (max ~999 variables)
+    # Rotate sync_transaction_id to invalidate any in-flight claim tokens,
+    # preventing a finishing worker from overwriting the new state via release.
     for i in range(0, len(vanished_ids), 900):
         chunk = vanished_ids[i : i + 900]
         OrgMirrorRepository.update(
+            sync_transaction_id=uuid_generator(),
             status_message="Repository no longer in source registry",
             **skip_fields,
         ).where(OrgMirrorRepository.id << chunk).execute()
@@ -688,6 +691,7 @@ def deactivate_excluded_repos(
     for i in range(0, len(filtered_ids), 900):
         chunk = filtered_ids[i : i + 900]
         OrgMirrorRepository.update(
+            sync_transaction_id=uuid_generator(),
             status_message="Repository excluded by filters",
             **skip_fields,
         ).where(OrgMirrorRepository.id << chunk).execute()
@@ -695,6 +699,7 @@ def deactivate_excluded_repos(
     for i in range(0, len(to_reactivate), 900):
         chunk = to_reactivate[i : i + 900]
         OrgMirrorRepository.update(
+            sync_transaction_id=uuid_generator(),
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
             status_message=None,
             sync_retries_remaining=MAX_SYNC_RETRIES,
