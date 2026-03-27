@@ -30,6 +30,7 @@ from data.model.org_mirror import is_namespace_org_mirrored
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
     format_date,
@@ -335,6 +336,14 @@ class Repository(RepositoryParamResource):
         repo_data = repo.to_dict()
         repo_data["can_write"] = has_write_permission
         repo_data["can_admin"] = AdministerRepositoryPermission(namespace, repository).can()
+
+        # Grant superusers effective permissions for UI visibility
+        if allow_if_global_readonly_superuser():
+            repo_data["can_admin"] = True
+        elif features.SUPERUSERS_FULL_ACCESS and allow_if_superuser():
+            repo_data["can_admin"] = True
+            if repo.state == RepositoryState.NORMAL:
+                repo_data["can_write"] = True
 
         if parsed_args["includeStats"]:
             stats = []
