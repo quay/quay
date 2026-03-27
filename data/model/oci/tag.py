@@ -525,8 +525,8 @@ def retarget_tag(
         tracker = getattr(model_cache, "repo_modification_tracker", None)
         if tracker:
             tracker.mark_repo_modified(namespace_name, repo_name)
-    except Exception:
-        logger.debug("Failed to mark repo modified for %s/%s", namespace_name, repo_name)
+    except Exception as e:
+        logger.warning("Failed to mark repo modified for %s/%s: %s", namespace_name, repo_name, e)
 
     # Best-effort audit log outside the transaction so a logging failure
     # does not roll back the tag creation.

@@ -1,3 +1,5 @@
+import logging
+
 from peewee import JOIN, SQL, fn
 
 from data.database import (
@@ -14,6 +16,8 @@ from data.database import (
 )
 from data.model import DataModelException, _basequery
 from util.names import parse_robot_username
+
+logger = logging.getLogger(__name__)
 
 
 def list_team_permissions(team):
@@ -375,8 +379,14 @@ def delete_user_permission(username, namespace_name, repository_name):
         tracker = getattr(model_cache, "repo_modification_tracker", None)
         if tracker and permission.user:
             tracker.mark_permission_revoked(permission.user.id, namespace_name, repository_name)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(
+            "Failed to mark permission revoked for user=%s, repo=%s/%s: %s",
+            permission.user.id if permission.user else None,
+            namespace_name,
+            repository_name,
+            e,
+        )
 
     permission.delete_instance()
 
@@ -396,13 +406,21 @@ def delete_team_permission(team_name, namespace_name, repository_name):
 
         tracker = getattr(model_cache, "repo_modification_tracker", None)
         if tracker and permission.team:
-            # Mark revocation for each team member
             from data.model import organization as org_model
 
-            for member in org_model.get_organization_team_members(permission.team.id):
-                tracker.mark_permission_revoked(member.id, namespace_name, repository_name)
-    except Exception:
-        pass
+            member_ids = [
+                member.id for member in org_model.get_organization_team_members(permission.team.id)
+            ]
+            if member_ids:
+                tracker.mark_permissions_revoked_batch(member_ids, namespace_name, repository_name)
+    except Exception as e:
+        logger.debug(
+            "Failed to mark team permission revoked for team=%s, repo=%s/%s: %s",
+            permission.team.id if permission.team else None,
+            namespace_name,
+            repository_name,
+            e,
+        )
 
     permission.delete_instance()
 
