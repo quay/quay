@@ -1,24 +1,22 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 import pytest
-from peewee import fn
 
 from app import app as application
 from app import instance_keys, storage
-from data.database import (
-    IndexerVersion,
-    IndexStatus,
-    Manifest,
-    ManifestSecurityStatus,
-)
+from data.database import IndexerVersion, IndexStatus, Manifest, ManifestSecurityStatus
 from data.registry_model import registry_model
 from data.secscan_model.datatypes import ScanLookupStatus
 from data.secscan_model.secscan_v4_model import IndexReportState
 from data.secscan_model.secscan_v4_model_v2 import V4SecurityScanner2
 from test.fixtures import *
-from util.secscan.v4.api import APIRequestFailure, InvalidContentSent, LayerTooLargeException
+from util.secscan.v4.api import (
+    APIRequestFailure,
+    InvalidContentSent,
+    LayerTooLargeException,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +24,8 @@ logger = logging.getLogger(__name__)
 @pytest.fixture()
 def set_secscan_config():
     application.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
+    application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 86400
+    application.config["SECURITY_SCANNER_V4_IN_PROGRESS_TIMEOUT"] = 1800
 
 
 @pytest.fixture()
@@ -62,9 +62,8 @@ def test_perform_indexing_not_indexed(initialized_db, v2_scanner):
 
 def test_perform_indexing_stale_in_progress(initialized_db, v2_scanner):
     """Test crash recovery: reclaim manifests stuck IN_PROGRESS."""
-    # Create a manifest stuck IN_PROGRESS for > 30 minutes
     manifest = Manifest.select().first()
-    stale_time = datetime.utcnow() - timedelta(minutes=35)
+    stale_time = datetime.now(timezone.utc) - timedelta(seconds=1800 + 300)  # Past 1800s timeout
 
     ManifestSecurityStatus.create(
         manifest=manifest,
@@ -84,13 +83,13 @@ def test_perform_indexing_stale_in_progress(initialized_db, v2_scanner):
     mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest)
     assert mss.index_status == IndexStatus.COMPLETED
     assert mss.indexer_hash == "test_state"
-    assert mss.last_indexed > stale_time
+    assert str(mss.last_indexed) > str(stale_time)
 
 
 def test_perform_indexing_failed_retry(initialized_db, v2_scanner):
     """Test retrying failed manifests after threshold."""
     manifest = Manifest.select().first()
-    old_time = datetime.utcnow() - timedelta(days=2)  # Past reindex threshold
+    old_time = datetime.now(timezone.utc) - timedelta(days=2)  # Past reindex threshold
 
     ManifestSecurityStatus.create(
         manifest=manifest,
@@ -109,7 +108,7 @@ def test_perform_indexing_failed_retry(initialized_db, v2_scanner):
     # Failed manifest should be retried and completed
     mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest)
     assert mss.index_status == IndexStatus.COMPLETED
-    assert mss.last_indexed > old_time
+    assert str(mss.last_indexed) > str(old_time)
 
 
 def test_perform_indexing_api_failure(initialized_db, v2_scanner):
@@ -184,10 +183,8 @@ def test_concurrent_indexing_batch_size(initialized_db, v2_scanner):
     # Perform indexing with small batch
     v2_scanner.perform_indexing(batch_size=batch_size)
 
-    # Should only process batch_size manifests
     indexed_count = ManifestSecurityStatus.select().count()
-    assert indexed_count <= batch_size
-    assert indexed_count <= manifest_count
+    assert indexed_count == batch_size
 
 
 def test_load_security_information_not_indexed(initialized_db, v2_scanner):
@@ -324,7 +321,7 @@ def test_perform_indexing_recent_manifests_noop(initialized_db, v2_scanner):
 def test_reindex_query_respects_threshold(initialized_db, v2_scanner):
     """Test that reindex query respects reindex threshold."""
     manifest = Manifest.select().first()
-    recent_time = datetime.utcnow() - timedelta(hours=1)  # Within threshold
+    recent_time = datetime.now(timezone.utc) - timedelta(hours=1)  # Within 86400s threshold
 
     ManifestSecurityStatus.create(
         manifest=manifest,
@@ -343,7 +340,8 @@ def test_reindex_query_respects_threshold(initialized_db, v2_scanner):
     # Should not reindex because it's within threshold
     mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest)
     assert mss.indexer_hash == "old_hash"  # Not updated
-    assert mss.last_indexed == recent_time
+    # last_indexed should remain unchanged (stored as string in SQLite with timezone-aware datetime)
+    assert str(mss.last_indexed) == str(recent_time)
 
 
 def test_none_report_handling(initialized_db, v2_scanner):

@@ -1,6 +1,6 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from peewee import IntegrityError, fn
 
@@ -151,7 +151,7 @@ class V4SecurityScanner2(SecurityScannerInterface):
 
     def _mark_batch_in_progress(self, candidates):
         """Mark claimed manifests as IN_PROGRESS via upsert."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         candidate_ids = [c.id for c in candidates]
 
         # Update existing ManifestSecurityStatus rows
@@ -208,7 +208,7 @@ class V4SecurityScanner2(SecurityScannerInterface):
 
     def _upsert_status(self, manifest_id, repo_id, index_status, indexer_hash, error_json):
         """Upsert ManifestSecurityStatus (update-first, create-on-miss)."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         rows_updated = (
             ManifestSecurityStatus.update(
@@ -505,13 +505,13 @@ class V4SecurityScanner2(SecurityScannerInterface):
             chunk_size,
         )
 
-        reindex_threshold = datetime.utcnow() - timedelta(
+        reindex_threshold = datetime.now(timezone.utc) - timedelta(
             seconds=self.app.config.get(
                 "SECURITY_SCANNER_V4_REINDEX_THRESHOLD",
                 DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD,
             )
         )
-        stale_threshold = datetime.utcnow() - timedelta(
+        stale_threshold = datetime.now(timezone.utc) - timedelta(
             seconds=self.app.config.get(
                 "SECURITY_SCANNER_V4_IN_PROGRESS_TIMEOUT", DEFAULT_IN_PROGRESS_TIMEOUT
             )
