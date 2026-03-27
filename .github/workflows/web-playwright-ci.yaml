@@ -63,7 +63,7 @@ jobs:
 
       - name: Run Database auth tests
         env:
-          PLAYWRIGHT_BLOB_OUTPUT_DIR: web/blob-results/db
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
         run: cd web && npx playwright test --grep-invert @auth:OIDC --reporter=blob
 
       - name: Swap to OIDC authentication
@@ -99,14 +99,22 @@ jobs:
       - name: Run OIDC auth tests
         if: always()
         env:
-          PLAYWRIGHT_BLOB_OUTPUT_DIR: web/blob-results/oidc
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
         run: cd web && npx playwright test --grep @auth:OIDC --reporter=blob
 
       - name: Merge test reports
         if: always()
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/results.json
         run: |
           cd web
-          npx playwright merge-reports --reporter=html,json blob-results || true
+          mkdir -p all-blob-reports
+          find blob-results -name '*.zip' -exec cp {} all-blob-reports/ \; 2>/dev/null
+          if [ "$(ls -A all-blob-reports 2>/dev/null)" ]; then
+            npx playwright merge-reports --reporter=html,json all-blob-reports
+          else
+            echo "::warning::No blob reports found. Test reports were not generated."
+          fi
 
       - name: Save PR number
         if: always()

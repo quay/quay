@@ -48,8 +48,8 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
       >
         <ModalHeader title="Cancel sync" />
         <ModalBody>
-          Are you sure you want to cancel the current sync operation? Future
-          scheduled syncs will continue as normal.
+          Are you sure you want to cancel the current sync operation? All
+          in-progress and scheduled syncs will be stopped.
         </ModalBody>
         <ModalFooter>
           <Button
@@ -122,13 +122,6 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
             value: config.sync_expiration_date
               ? formatDate(config.sync_expiration_date)
               : 'None',
-          },
-          {
-            label: 'Retries Remaining',
-            value:
-              config.sync_retries_remaining != null
-                ? `${config.sync_retries_remaining} / 3`
-                : '3 / 3',
           },
           {
             label: 'Connection',

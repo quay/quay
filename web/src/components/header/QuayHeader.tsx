@@ -35,7 +35,7 @@ export function QuayHeader({toggleDrawer}: {toggleDrawer: () => void}) {
         </MastheadToggle>
         <MastheadBrand>
           <MastheadLogo component={(props) => <Link {...props} to="/" />}>
-            <Brand src={logoUrl} alt="Red Hat Quay" />
+            <Brand src={logoUrl} alt="Red Hat Quay" className={'header-logo'} />
           </MastheadLogo>
         </MastheadBrand>
       </MastheadMain>
