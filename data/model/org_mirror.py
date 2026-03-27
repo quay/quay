@@ -623,14 +623,13 @@ def deactivate_excluded_repos(
     Args:
         config: The OrgMirrorConfig instance
         active_repo_names: Post-filter list of repo names from the source registry.
-            An empty list is treated as a no-op to guard against transient
-            source-registry failures that would incorrectly skip all repos.
+            An empty list will SKIP all tracked repos. The caller is responsible
+            for guarding against transient source-registry failures (e.g. by not
+            calling this function when the source returned no repos at all).
 
     Returns:
         Number of repos newly deactivated (set to SKIP)
     """
-    if not active_repo_names:
-        return 0
 
     active_set = set(active_repo_names)
 

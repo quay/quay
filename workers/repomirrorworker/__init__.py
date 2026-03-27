@@ -1127,8 +1127,12 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
     # Sync to database
     total_count, newly_created = sync_discovered_repos(claimed_config, filtered_repos)
 
-    # Deactivate repos no longer in source or excluded by filters
-    deactivated_count = deactivate_excluded_repos(claimed_config, filtered_repos)
+    # Deactivate repos no longer in source or excluded by filters.
+    # Only call when the source actually returned repos — if the source returned
+    # nothing, skip deactivation to guard against transient registry failures.
+    deactivated_count = 0
+    if all_repos:
+        deactivated_count = deactivate_excluded_repos(claimed_config, filtered_repos)
     if deactivated_count > 0:
         logger.info(
             "Deactivated %d repositories for org mirror %s (no longer in source or filtered out)",

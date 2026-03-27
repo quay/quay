@@ -2550,8 +2550,8 @@ class TestDeactivateExcludedRepos:
 
         assert count == 0
 
-    def test_empty_active_list_is_no_op(self, initialized_db):
-        """Empty active_repo_names returns 0 and changes nothing (transient failure guard)."""
+    def test_empty_active_list_skips_all(self, initialized_db):
+        """Empty active_repo_names SKIPs all tracked repos (filters excluded everything)."""
         org, robot = _create_org_and_robot("testdeact_empty")
         config = _create_org_mirror_config(org, robot)
 
@@ -2559,12 +2559,12 @@ class TestDeactivateExcludedRepos:
 
         count = deactivate_excluded_repos(config, [])
 
-        assert count == 0
+        assert count == 1
         repo_a = OrgMirrorRepository.get(
             (OrgMirrorRepository.org_mirror_config == config)
             & (OrgMirrorRepository.repository_name == "repo-a")
         )
-        assert repo_a.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+        assert repo_a.sync_status == OrgMirrorRepoStatus.SKIP
 
 
 class TestReleaseOrgMirrorRepoStatusMessage:
