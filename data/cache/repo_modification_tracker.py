@@ -147,6 +147,11 @@ class RepoModificationTracker:
         If Redis is unavailable, callers should fall back to primary DB instead of
         using read replicas.
 
+        Raises:
+            Exception: On Redis read errors. Callers should catch this and fall back
+                       to primary DB, since a swallowed error would be indistinguishable
+                       from "no blocking marker" and could allow stale replica reads.
+
         Args:
             user_id: User to check
             namespace: Repository namespace
@@ -162,51 +167,40 @@ class RepoModificationTracker:
             # No Redis, can't track - return allow but caller should use primary DB
             return False
 
-        try:
-            # Get revocation time
-            revoke_key = f"{KEY_PREFIX}permission_revoked:{user_id}:{namespace}:{repo_name}"
-            revoke_time_str = self.redis.get(revoke_key)
+        # Get revocation time — let Redis errors propagate to caller
+        # so it can fall back to primary DB
+        revoke_key = f"{KEY_PREFIX}permission_revoked:{user_id}:{namespace}:{repo_name}"
+        revoke_time_str = self.redis.get(revoke_key)
 
-            if revoke_time_str is None:
-                # No revocation recorded, allow access
-                return False
+        if revoke_time_str is None:
+            # No revocation recorded, allow access
+            return False
 
-            revoke_time = float(revoke_time_str)
+        revoke_time = float(revoke_time_str)
 
-            # Get modification time
-            mod_key = f"{KEY_PREFIX}repo_modified:{namespace}:{repo_name}"
-            mod_time_str = self.redis.get(mod_key)
+        # Get modification time
+        mod_key = f"{KEY_PREFIX}repo_modified:{namespace}:{repo_name}"
+        mod_time_str = self.redis.get(mod_key)
 
-            if mod_time_str is None:
-                # No modification tracking - assume old content, allow
-                return False
+        if mod_time_str is None:
+            # No modification tracking - assume old content, allow
+            return False
 
-            mod_time = float(mod_time_str)
+        mod_time = float(mod_time_str)
 
-            # Compare times
-            if mod_time > revoke_time:
-                # Repo was modified AFTER permission revocation - block access
-                logger.debug(
-                    "BLOCKING access: repo %s/%s modified after revocation. "
-                    "user=%s, revoked_at=%s, modified_at=%s",
-                    namespace,
-                    repo_name,
-                    user_id,
-                    revoke_time,
-                    mod_time,
-                )
-                return True
-            else:
-                # Repo was modified BEFORE revocation - allow access to old content
-                return False
-
-        except Exception as e:
-            # On error, fail open (allow) to avoid breaking legitimate requests
-            logger.warning(
-                "Error checking repo modification for user=%s, repo=%s/%s: %s - allowing access",
-                user_id,
+        # Compare times
+        if mod_time > revoke_time:
+            # Repo was modified AFTER permission revocation - block access
+            logger.debug(
+                "BLOCKING access: repo %s/%s modified after revocation. "
+                "user=%s, revoked_at=%s, modified_at=%s",
                 namespace,
                 repo_name,
-                e,
+                user_id,
+                revoke_time,
+                mod_time,
             )
+            return True
+        else:
+            # Repo was modified BEFORE revocation - allow access to old content
             return False
