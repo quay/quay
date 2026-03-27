@@ -2446,7 +2446,7 @@ class TestDeactivateExcludedRepos:
     """Tests for deactivate_excluded_repos()."""
 
     def test_deleted_repos_get_skipped(self, initialized_db):
-        """Repos no longer in source are marked SKIP with a status message."""
+        """Repos no longer in source are marked SKIP with a source-specific message."""
         org, robot = _create_org_and_robot("testdeact_deleted")
         config = _create_org_mirror_config(org, robot)
 
@@ -2455,7 +2455,9 @@ class TestDeactivateExcludedRepos:
         get_or_create_org_mirror_repo(config, "repo-c")
 
         # repo-b no longer in source
-        count = deactivate_excluded_repos(config, ["repo-a", "repo-c"])
+        count = deactivate_excluded_repos(
+            config, ["repo-a", "repo-c"], source_repo_names=["repo-a", "repo-c"]
+        )
 
         assert count == 1
         repo_b = OrgMirrorRepository.get(
@@ -2463,19 +2465,22 @@ class TestDeactivateExcludedRepos:
             & (OrgMirrorRepository.repository_name == "repo-b")
         )
         assert repo_b.sync_status == OrgMirrorRepoStatus.SKIP
-        assert repo_b.status_message is not None
+        assert repo_b.status_message == "Repository no longer in source registry"
         assert repo_b.sync_start_date is None
         assert repo_b.sync_expiration_date is None
 
     def test_filtered_repos_get_skipped(self, initialized_db):
-        """Repos excluded by filters are marked SKIP."""
+        """Repos excluded by filters are marked SKIP with a filter-specific message."""
         org, robot = _create_org_and_robot("testdeact_filtered")
         config = _create_org_mirror_config(org, robot)
 
         get_or_create_org_mirror_repo(config, "keep-me")
         get_or_create_org_mirror_repo(config, "filter-me-out")
 
-        count = deactivate_excluded_repos(config, ["keep-me"])
+        # filter-me-out exists in source but excluded by filters
+        count = deactivate_excluded_repos(
+            config, ["keep-me"], source_repo_names=["keep-me", "filter-me-out"]
+        )
 
         assert count == 1
         filtered = OrgMirrorRepository.get(
@@ -2483,6 +2488,7 @@ class TestDeactivateExcludedRepos:
             & (OrgMirrorRepository.repository_name == "filter-me-out")
         )
         assert filtered.sync_status == OrgMirrorRepoStatus.SKIP
+        assert filtered.status_message == "Repository excluded by filters"
 
     def test_active_repos_unaffected(self, initialized_db):
         """Repos in the active list are not changed."""
@@ -2565,6 +2571,56 @@ class TestDeactivateExcludedRepos:
             & (OrgMirrorRepository.repository_name == "repo-a")
         )
         assert repo_a.sync_status == OrgMirrorRepoStatus.SKIP
+
+    def test_mixed_vanished_and_filtered_repos(self, initialized_db):
+        """Repos get distinct messages based on whether they vanished or were filtered."""
+        org, robot = _create_org_and_robot("testdeact_mixed")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "active")
+        get_or_create_org_mirror_repo(config, "vanished")
+        get_or_create_org_mirror_repo(config, "filtered-out")
+
+        # Source has "active" and "filtered-out", but filters only keep "active"
+        count = deactivate_excluded_repos(
+            config,
+            ["active"],
+            source_repo_names=["active", "filtered-out"],
+        )
+
+        assert count == 2
+
+        vanished = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "vanished")
+        )
+        assert vanished.sync_status == OrgMirrorRepoStatus.SKIP
+        assert vanished.status_message == "Repository no longer in source registry"
+
+        filtered = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "filtered-out")
+        )
+        assert filtered.sync_status == OrgMirrorRepoStatus.SKIP
+        assert filtered.status_message == "Repository excluded by filters"
+
+    def test_no_source_names_uses_generic_message(self, initialized_db):
+        """Without source_repo_names, all skipped repos get the vanished message."""
+        org, robot = _create_org_and_robot("testdeact_nosource")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+        get_or_create_org_mirror_repo(config, "repo-b")
+
+        count = deactivate_excluded_repos(config, ["repo-a"])
+
+        assert count == 1
+        repo_b = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-b")
+        )
+        assert repo_b.sync_status == OrgMirrorRepoStatus.SKIP
+        assert repo_b.status_message == "Repository no longer in source registry"
 
 
 class TestReleaseOrgMirrorRepoStatusMessage:

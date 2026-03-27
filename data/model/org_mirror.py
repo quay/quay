@@ -612,6 +612,7 @@ def sync_discovered_repos(
 def deactivate_excluded_repos(
     config: OrgMirrorConfig,
     active_repo_names: List[str],
+    source_repo_names: Optional[List[str]] = None,
 ) -> int:
     """
     Mark repos as SKIP when no longer in the active list, and re-activate
@@ -626,12 +627,17 @@ def deactivate_excluded_repos(
             An empty list will SKIP all tracked repos. The caller is responsible
             for guarding against transient source-registry failures (e.g. by not
             calling this function when the source returned no repos at all).
+        source_repo_names: Pre-filter list of repo names from the source registry.
+            When provided, repos not in this list are marked as "no longer in source"
+            while repos in source but not in active are marked as "excluded by filters".
+            When None, a generic message is used.
 
     Returns:
         Number of repos newly deactivated (set to SKIP)
     """
 
     active_set = set(active_repo_names)
+    source_set = set(source_repo_names) if source_repo_names is not None else None
 
     # Fetch all repos for this config with their current status
     all_repos = list(
@@ -643,8 +649,8 @@ def deactivate_excluded_repos(
     )
 
     # Repos not in active list and not already SKIP → mark SKIP
-    to_skip = [
-        r.id
+    repos_to_skip = [
+        r
         for r in all_repos
         if r.repository_name not in active_set and r.sync_status != OrgMirrorRepoStatus.SKIP
     ]
@@ -656,17 +662,34 @@ def deactivate_excluded_repos(
         if r.repository_name in active_set and r.sync_status == OrgMirrorRepoStatus.SKIP
     ]
 
-    skip_message = "Repository no longer in source or excluded by filters"
+    # Categorize skipped repos by reason when source list is available
+    if source_set is not None:
+        vanished_ids = [r.id for r in repos_to_skip if r.repository_name not in source_set]
+        filtered_ids = [r.id for r in repos_to_skip if r.repository_name in source_set]
+    else:
+        vanished_ids = [r.id for r in repos_to_skip]
+        filtered_ids = []
+
+    skip_fields = dict(
+        sync_status=OrgMirrorRepoStatus.SKIP,
+        sync_start_date=None,
+        sync_expiration_date=None,
+        sync_retries_remaining=0,
+    )
 
     # Chunk updates for SQLite compatibility (max ~999 variables)
-    for i in range(0, len(to_skip), 900):
-        chunk = to_skip[i : i + 900]
+    for i in range(0, len(vanished_ids), 900):
+        chunk = vanished_ids[i : i + 900]
         OrgMirrorRepository.update(
-            sync_status=OrgMirrorRepoStatus.SKIP,
-            status_message=skip_message,
-            sync_start_date=None,
-            sync_expiration_date=None,
-            sync_retries_remaining=0,
+            status_message="Repository no longer in source registry",
+            **skip_fields,
+        ).where(OrgMirrorRepository.id << chunk).execute()
+
+    for i in range(0, len(filtered_ids), 900):
+        chunk = filtered_ids[i : i + 900]
+        OrgMirrorRepository.update(
+            status_message="Repository excluded by filters",
+            **skip_fields,
         ).where(OrgMirrorRepository.id << chunk).execute()
 
     for i in range(0, len(to_reactivate), 900):
@@ -677,7 +700,7 @@ def deactivate_excluded_repos(
             sync_retries_remaining=MAX_SYNC_RETRIES,
         ).where(OrgMirrorRepository.id << chunk).execute()
 
-    return len(to_skip)
+    return len(repos_to_skip)
 
 
 def get_eligible_org_mirror_repos():

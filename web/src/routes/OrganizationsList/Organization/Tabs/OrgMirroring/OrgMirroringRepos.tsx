@@ -192,10 +192,22 @@ export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
                     </Label>
                     {repo.status_message && (
                       <Tooltip content={repo.status_message}>
-                        <ExclamationTriangleIcon
-                          className="pf-v6-u-ml-sm pf-v6-u-warning-color-100"
+                        <button
+                          type="button"
+                          aria-label={repo.status_message}
                           data-testid={`status-warning-${repo.name}`}
-                        />
+                          className="pf-v6-u-ml-sm"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <ExclamationTriangleIcon className="pf-v6-u-warning-color-100" />
+                        </button>
                       </Tooltip>
                     )}
                   </Td>

@@ -1132,7 +1132,9 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
     # nothing, skip deactivation to guard against transient registry failures.
     deactivated_count = 0
     if all_repos:
-        deactivated_count = deactivate_excluded_repos(claimed_config, filtered_repos)
+        deactivated_count = deactivate_excluded_repos(
+            claimed_config, filtered_repos, source_repo_names=all_repos
+        )
     if deactivated_count > 0:
         logger.info(
             "Deactivated %d repositories for org mirror %s (no longer in source or filtered out)",
