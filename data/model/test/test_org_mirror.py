@@ -25,6 +25,7 @@ from data.model.org_mirror import (
     claim_org_mirror_config,
     claim_org_mirror_repo,
     create_org_mirror_config,
+    deactivate_excluded_repos,
     delete_org_mirror_config,
     expire_org_mirror_repo,
     get_eligible_org_mirror_repos,
@@ -35,6 +36,7 @@ from data.model.org_mirror import (
     get_org_mirror_config,
     get_org_mirror_config_count,
     get_org_mirror_repo_status_counts,
+    propagate_status_to_repos,
     release_org_mirror_repo,
     sync_discovered_repos,
     update_org_mirror_config,
@@ -2438,3 +2440,234 @@ class TestGetOrgMirrorRepoStatusCounts:
 
         for status in OrgMirrorRepoStatus:
             assert counts[status.name] == 0
+
+
+class TestDeactivateExcludedRepos:
+    """Tests for deactivate_excluded_repos()."""
+
+    def test_deleted_repos_get_skipped(self, initialized_db):
+        """Repos no longer in source are marked SKIP with a status message."""
+        org, robot = _create_org_and_robot("testdeact_deleted")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+        get_or_create_org_mirror_repo(config, "repo-b")
+        get_or_create_org_mirror_repo(config, "repo-c")
+
+        # repo-b no longer in source
+        count = deactivate_excluded_repos(config, ["repo-a", "repo-c"])
+
+        assert count == 1
+        repo_b = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-b")
+        )
+        assert repo_b.sync_status == OrgMirrorRepoStatus.SKIP
+        assert repo_b.status_message is not None
+        assert repo_b.sync_start_date is None
+        assert repo_b.sync_expiration_date is None
+
+    def test_filtered_repos_get_skipped(self, initialized_db):
+        """Repos excluded by filters are marked SKIP."""
+        org, robot = _create_org_and_robot("testdeact_filtered")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "keep-me")
+        get_or_create_org_mirror_repo(config, "filter-me-out")
+
+        count = deactivate_excluded_repos(config, ["keep-me"])
+
+        assert count == 1
+        filtered = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "filter-me-out")
+        )
+        assert filtered.sync_status == OrgMirrorRepoStatus.SKIP
+
+    def test_active_repos_unaffected(self, initialized_db):
+        """Repos in the active list are not changed."""
+        org, robot = _create_org_and_robot("testdeact_active")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+        get_or_create_org_mirror_repo(config, "repo-b")
+
+        count = deactivate_excluded_repos(config, ["repo-a", "repo-b"])
+
+        assert count == 0
+        for name in ["repo-a", "repo-b"]:
+            repo = OrgMirrorRepository.get(
+                (OrgMirrorRepository.org_mirror_config == config)
+                & (OrgMirrorRepository.repository_name == name)
+            )
+            assert repo.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+
+    def test_skip_repos_reactivated_when_back_in_active_list(self, initialized_db):
+        """Previously SKIP'd repos are reactivated to NEVER_RUN when they return."""
+        org, robot = _create_org_and_robot("testdeact_reactivate")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+        # Manually set to SKIP
+        OrgMirrorRepository.update(
+            sync_status=OrgMirrorRepoStatus.SKIP,
+            status_message="Previously skipped",
+        ).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-a")
+        ).execute()
+
+        # repo-a is back in active list
+        count = deactivate_excluded_repos(config, ["repo-a"])
+
+        assert count == 0
+        repo_a = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-a")
+        )
+        assert repo_a.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+        assert repo_a.status_message is None
+
+    def test_already_skipped_repos_not_re_updated(self, initialized_db):
+        """Repos already SKIP'd and still excluded are not re-updated."""
+        org, robot = _create_org_and_robot("testdeact_idempotent")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+        get_or_create_org_mirror_repo(config, "repo-b")
+
+        # First deactivation — repo-b excluded
+        deactivate_excluded_repos(config, ["repo-a"])
+
+        repo_b = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-b")
+        )
+        assert repo_b.sync_status == OrgMirrorRepoStatus.SKIP
+
+        # Second deactivation — repo-b still excluded, should return 0
+        count = deactivate_excluded_repos(config, ["repo-a"])
+
+        assert count == 0
+
+    def test_empty_active_list_is_no_op(self, initialized_db):
+        """Empty active_repo_names returns 0 and changes nothing (transient failure guard)."""
+        org, robot = _create_org_and_robot("testdeact_empty")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "repo-a")
+
+        count = deactivate_excluded_repos(config, [])
+
+        assert count == 0
+        repo_a = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "repo-a")
+        )
+        assert repo_a.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+
+
+class TestReleaseOrgMirrorRepoStatusMessage:
+    """Tests for status_message handling in release_org_mirror_repo()."""
+
+    def test_fail_preserves_status_message(self, initialized_db):
+        """On FAIL, the status_message is persisted."""
+        org, robot = _create_org_and_robot("testrelease_msg_fail")
+        config = _create_org_mirror_config(org, robot)
+
+        repo, _ = get_or_create_org_mirror_repo(config, "repo-a")
+
+        claimed = claim_org_mirror_repo(repo)
+        assert claimed is not None
+
+        released = release_org_mirror_repo(
+            claimed,
+            OrgMirrorRepoStatus.FAIL,
+            status_message="Tag sync failed: 2/5 tags",
+        )
+
+        assert released is not None
+        assert released.status_message == "Tag sync failed: 2/5 tags"
+        assert released.sync_status == OrgMirrorRepoStatus.FAIL
+
+    def test_success_clears_status_message(self, initialized_db):
+        """On SUCCESS, status_message is cleared even if caller provides one."""
+        org, robot = _create_org_and_robot("testrelease_msg_success")
+        config = _create_org_mirror_config(org, robot)
+
+        repo, _ = get_or_create_org_mirror_repo(config, "repo-a")
+        # Set an existing message
+        OrgMirrorRepository.update(status_message="old failure message").where(
+            OrgMirrorRepository.id == repo.id
+        ).execute()
+
+        claimed = claim_org_mirror_repo(repo)
+        assert claimed is not None
+
+        released = release_org_mirror_repo(
+            claimed,
+            OrgMirrorRepoStatus.SUCCESS,
+            status_message="should be cleared",
+        )
+
+        assert released is not None
+        assert released.status_message is None
+        assert released.sync_status == OrgMirrorRepoStatus.SUCCESS
+
+
+class TestPropagateStatusSkipsSkipRepos:
+    """Tests for propagate_status_to_repos() skipping SKIP repos."""
+
+    def test_sync_now_skips_skip_repos(self, initialized_db):
+        """SYNC_NOW propagation does not affect SKIP repos."""
+        org, robot = _create_org_and_robot("testprop_syncnow_skip")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "active-repo")
+        get_or_create_org_mirror_repo(config, "skipped-repo")
+
+        OrgMirrorRepository.update(sync_status=OrgMirrorRepoStatus.SKIP).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "skipped-repo")
+        ).execute()
+
+        propagate_status_to_repos(config, OrgMirrorRepoStatus.SYNC_NOW)
+
+        active = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "active-repo")
+        )
+        skipped = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "skipped-repo")
+        )
+
+        assert active.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert skipped.sync_status == OrgMirrorRepoStatus.SKIP
+
+    def test_cancel_skips_skip_repos(self, initialized_db):
+        """CANCEL propagation does not affect SKIP repos."""
+        org, robot = _create_org_and_robot("testprop_cancel_skip")
+        config = _create_org_mirror_config(org, robot)
+
+        get_or_create_org_mirror_repo(config, "active-repo")
+        get_or_create_org_mirror_repo(config, "skipped-repo")
+
+        OrgMirrorRepository.update(sync_status=OrgMirrorRepoStatus.SKIP).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "skipped-repo")
+        ).execute()
+
+        propagate_status_to_repos(config, OrgMirrorRepoStatus.CANCEL)
+
+        active = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "active-repo")
+        )
+        skipped = OrgMirrorRepository.get(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository_name == "skipped-repo")
+        )
+
+        assert active.sync_status == OrgMirrorRepoStatus.CANCEL
+        assert skipped.sync_status == OrgMirrorRepoStatus.SKIP

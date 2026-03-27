@@ -609,6 +609,78 @@ def sync_discovered_repos(
     return len(discovered_names), count_after - count_before
 
 
+def deactivate_excluded_repos(
+    config: OrgMirrorConfig,
+    active_repo_names: List[str],
+) -> int:
+    """
+    Mark repos as SKIP when no longer in the active list, and re-activate
+    previously SKIP'd repos that have returned.
+
+    This is called after discovery to handle repos that were deleted from
+    the source registry or filtered out by repository filters.
+
+    Args:
+        config: The OrgMirrorConfig instance
+        active_repo_names: Post-filter list of repo names from the source registry.
+            An empty list is treated as a no-op to guard against transient
+            source-registry failures that would incorrectly skip all repos.
+
+    Returns:
+        Number of repos newly deactivated (set to SKIP)
+    """
+    if not active_repo_names:
+        return 0
+
+    active_set = set(active_repo_names)
+
+    # Fetch all repos for this config with their current status
+    all_repos = list(
+        OrgMirrorRepository.select(
+            OrgMirrorRepository.id,
+            OrgMirrorRepository.repository_name,
+            OrgMirrorRepository.sync_status,
+        ).where(OrgMirrorRepository.org_mirror_config == config)
+    )
+
+    # Repos not in active list and not already SKIP → mark SKIP
+    to_skip = [
+        r.id
+        for r in all_repos
+        if r.repository_name not in active_set and r.sync_status != OrgMirrorRepoStatus.SKIP
+    ]
+
+    # Repos currently SKIP but back in active list → reactivate to NEVER_RUN
+    to_reactivate = [
+        r.id
+        for r in all_repos
+        if r.repository_name in active_set and r.sync_status == OrgMirrorRepoStatus.SKIP
+    ]
+
+    skip_message = "Repository no longer in source or excluded by filters"
+
+    # Chunk updates for SQLite compatibility (max ~999 variables)
+    for i in range(0, len(to_skip), 900):
+        chunk = to_skip[i : i + 900]
+        OrgMirrorRepository.update(
+            sync_status=OrgMirrorRepoStatus.SKIP,
+            status_message=skip_message,
+            sync_start_date=None,
+            sync_expiration_date=None,
+            sync_retries_remaining=0,
+        ).where(OrgMirrorRepository.id << chunk).execute()
+
+    for i in range(0, len(to_reactivate), 900):
+        chunk = to_reactivate[i : i + 900]
+        OrgMirrorRepository.update(
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            status_message=None,
+            sync_retries_remaining=MAX_SYNC_RETRIES,
+        ).where(OrgMirrorRepository.id << chunk).execute()
+
+    return len(to_skip)
+
+
 def get_eligible_org_mirror_repos():
     """
     Returns OrgMirrorRepository entries that are ready to sync.
@@ -758,6 +830,7 @@ def check_org_mirror_repo_sync_status(org_mirror_repo: OrgMirrorRepository) -> O
 def release_org_mirror_repo(
     org_mirror_repo: OrgMirrorRepository,
     sync_status: OrgMirrorRepoStatus,
+    status_message: Optional[str] = None,
 ) -> Optional[OrgMirrorRepository]:
     """
     Release an org mirror repo after sync attempt and update its status.
@@ -771,6 +844,7 @@ def release_org_mirror_repo(
     Args:
         org_mirror_repo: The OrgMirrorRepository to release
         sync_status: The result status (SUCCESS, FAIL, CANCEL, etc.)
+        status_message: Optional message explaining the status (cleared on SUCCESS)
 
     Returns:
         Updated OrgMirrorRepository if release successful, None otherwise
@@ -808,6 +882,9 @@ def release_org_mirror_repo(
         next_start_date = None
         retries = 0
 
+    # Clear status_message on success, persist on failure
+    persisted_message = None if sync_status == OrgMirrorRepoStatus.SUCCESS else status_message
+
     query = OrgMirrorRepository.update(
         sync_transaction_id=uuid_generator(),
         sync_status=sync_status,
@@ -815,6 +892,7 @@ def release_org_mirror_repo(
         sync_expiration_date=None,
         sync_retries_remaining=retries,
         last_sync_date=datetime.utcnow(),
+        status_message=persisted_message,
     ).where(
         OrgMirrorRepository.id == org_mirror_repo.id,
         OrgMirrorRepository.sync_transaction_id == org_mirror_repo.sync_transaction_id,
@@ -1145,8 +1223,10 @@ def propagate_status_to_repos(config: OrgMirrorConfig, status: OrgMirrorRepoStat
     """
     now = datetime.utcnow()
 
-    base_where = (OrgMirrorRepository.org_mirror_config == config) & (
-        OrgMirrorRepository.sync_status != status
+    base_where = (
+        (OrgMirrorRepository.org_mirror_config == config)
+        & (OrgMirrorRepository.sync_status != status)
+        & (OrgMirrorRepository.sync_status != OrgMirrorRepoStatus.SKIP)
     )
 
     if status == OrgMirrorRepoStatus.SYNC_NOW:
