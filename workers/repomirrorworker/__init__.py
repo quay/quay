@@ -1533,15 +1533,24 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         release_org_mirror_repo(claimed_repo, overall_status, status_message=status_message)
         released = True
 
+    except Exception:
+        logger.exception(
+            "Unexpected error during tag sync for org mirror %s/%s",
+            org.username,
+            claimed_repo.repository_name,
+        )
+        overall_status = OrgMirrorRepoStatus.FAIL
+        status_message = "Unexpected error during sync"
+        if not released:
+            release_org_mirror_repo(
+                claimed_repo,
+                overall_status,
+                status_message=status_message,
+            )
+            released = True
+        return OrgMirrorRepoStatus.FAIL
     finally:
         if not released:
-            # Unexpected exception — ensure the repo is released so it doesn't
-            # stay claimed until expiration
-            logger.exception(
-                "Unexpected error during tag sync for org mirror %s/%s, releasing repo",
-                org.username,
-                claimed_repo.repository_name,
-            )
             release_org_mirror_repo(
                 claimed_repo,
                 OrgMirrorRepoStatus.FAIL,
