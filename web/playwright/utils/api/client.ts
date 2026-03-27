@@ -1731,6 +1731,40 @@ export class ApiClient {
   }
 
   /**
+   * Permanently expire a tag (force delete).
+   * Uses POST /api/v1/repository/{namespace}/{repo}/tag/{tag}/expire
+   */
+  async expireTag(
+    namespace: string,
+    repo: string,
+    tag: string,
+    opts?: {
+      manifest_digest?: string;
+      is_alive?: boolean;
+      include_submanifests?: boolean;
+    },
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/tag/${tag}/expire`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: opts ?? {},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to expire tag ${tag} from ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
    * Set tag immutability.
    * Uses PUT /api/v1/repository/{namespace}/{repo}/tag/{tag}
    */
@@ -2169,4 +2203,150 @@ export class ApiClient {
       );
     }
   }
+
+  // Team sync methods
+
+  async enableTeamSync(
+    orgName: string,
+    teamName: string,
+    groupName: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/syncing`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+        data: {group_dn: groupName},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to enable team sync for ${orgName}/${teamName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async disableTeamSync(orgName: string, teamName: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/syncing`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to disable team sync for ${orgName}/${teamName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  // OAuth application methods
+
+  async createOAuthApplication(
+    orgName: string,
+    name: string,
+    redirectUri?: string,
+    appUri?: string,
+  ): Promise<OAuthApp> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/applications`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+        data: {
+          name,
+          redirect_uri: redirectUri || '',
+          application_uri: appUri || '',
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create OAuth app in ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return (await response.json()) as OAuthApp;
+  }
+
+  async getOAuthApplications(orgName: string): Promise<OAuthApp[]> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/organization/${orgName}/applications`,
+      {timeout: 5000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get OAuth apps for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    const data = await response.json();
+    return data.applications as OAuthApp[];
+  }
+
+  async deleteOAuthApplication(
+    orgName: string,
+    clientId: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/applications/${clientId}`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete OAuth app ${clientId} in ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async resetClientSecret(
+    orgName: string,
+    clientId: string,
+  ): Promise<OAuthApp> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/applications/${clientId}/resetclientsecret`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to reset client secret for ${clientId} in ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return (await response.json()) as OAuthApp;
+  }
+}
+
+export interface OAuthApp {
+  name: string;
+  client_id: string;
+  client_secret?: string;
+  application_uri?: string;
+  redirect_uri?: string;
+  description?: string;
+  avatar_email?: string;
 }

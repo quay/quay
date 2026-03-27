@@ -6,6 +6,7 @@ import {
   NotificationDrawerBody,
   NotificationDrawerHeader,
   Page,
+  PageSection,
 } from '@patternfly/react-core';
 
 import {
@@ -263,15 +264,16 @@ export function StandaloneMain() {
   return (
     <ErrorBoundary hasError={!!error} fallback={<SiteUnavailableError />}>
       <Page
-        header={<QuayHeader toggleDrawer={toggleDrawer} />}
+        masthead={<QuayHeader toggleDrawer={toggleDrawer} />}
         sidebar={<QuaySidebar />}
         isManagedSidebar
         defaultManagedSidebarIsOpen={true}
         notificationDrawer={notificationDrawer}
         isNotificationDrawerExpanded={isDrawerOpen}
+        isContentFilled
       >
         <Conditional if={quayConfig?.config?.UI_V2_FEEDBACK_FORM}>
-          <Banner variant="blue">
+          <Banner color="blue">
             <Flex
               spaceItems={{default: 'spaceItemsSm'}}
               justifyContent={{default: 'justifyContentCenter'}}
@@ -301,7 +303,7 @@ export function StandaloneMain() {
           </ErrorBoundary>
         </Conditional>
         <Alerts />
-        <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+        <PageSection isFilled>
           <Suspense fallback={<LoadingPage />}>
             <Routes>
               <Route index element={<Navigate to="/organization" replace />} />
@@ -320,7 +322,7 @@ export function StandaloneMain() {
             </Routes>
           </Suspense>
           <Outlet />
-        </div>
+        </PageSection>
         <QuayFooter />
       </Page>
     </ErrorBoundary>

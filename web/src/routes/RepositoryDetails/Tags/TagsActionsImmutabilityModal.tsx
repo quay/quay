@@ -1,10 +1,12 @@
 import {
   Alert,
   Button,
+  Content,
   Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
   ModalVariant,
-  TextContent,
-  Text,
 } from '@patternfly/react-core';
 import {useEffect} from 'react';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
@@ -98,14 +100,33 @@ export default function ImmutabilityModal(props: ImmutabilityModalProps) {
     <Modal
       id="immutability-modal"
       data-testid="immutability-modal"
-      title={title}
       isOpen={props.isOpen}
       onClose={onClose}
       variant={ModalVariant.small}
-      actions={[
+    >
+      <ModalHeader title={title} />
+      <ModalBody>
+        {props.tagsWithExpiration && props.tagsWithExpiration.length > 0 && (
+          <>
+            <Alert
+              isInline
+              variant="warning"
+              title="Tags with expiration will be skipped"
+              data-testid="expiring-tags-immutability-warning"
+            >
+              The following tags have expiration dates and cannot be made
+              immutable. Clear their expiration first:{' '}
+              {props.tagsWithExpiration.join(', ')}
+            </Alert>
+            <div style={{marginBottom: '1rem'}} />
+          </>
+        )}
+        <Content component="p">{description}</Content>
+      </ModalBody>
+      <ModalFooter>
         <Button key="cancel" variant="link" onClick={onClose}>
           Cancel
-        </Button>,
+        </Button>
         <Button
           key="confirm"
           variant="primary"
@@ -113,27 +134,8 @@ export default function ImmutabilityModal(props: ImmutabilityModalProps) {
           data-testid="confirm-immutability-btn"
         >
           {confirmButtonText}
-        </Button>,
-      ]}
-    >
-      {props.tagsWithExpiration && props.tagsWithExpiration.length > 0 && (
-        <>
-          <Alert
-            isInline
-            variant="warning"
-            title="Tags with expiration will be skipped"
-            data-testid="expiring-tags-immutability-warning"
-          >
-            The following tags have expiration dates and cannot be made
-            immutable. Clear their expiration first:{' '}
-            {props.tagsWithExpiration.join(', ')}
-          </Alert>
-          <div style={{marginBottom: '1rem'}} />
-        </>
-      )}
-      <TextContent>
-        <Text>{description}</Text>
-      </TextContent>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

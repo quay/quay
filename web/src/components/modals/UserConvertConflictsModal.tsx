@@ -1,13 +1,15 @@
 import {
   Button,
-  Modal,
-  ModalVariant,
   PageSection,
-  PageSectionVariants,
   TextInput,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useState} from 'react';
@@ -47,14 +49,71 @@ export const UserConvertConflictsModal = (
 
   return (
     <Modal
-      title={`Change account type`}
       id="bulk-delete-modal"
-      titleIconVariant="warning"
       aria-label={`Change account type`}
       variant={ModalVariant.medium}
       isOpen={props.isModalOpen}
       onClose={props.handleModalToggle}
-      actions={[
+    >
+      <ModalHeader title={`Change account type`} titleIconVariant="warning" />
+      <ModalBody>
+        <span>
+          This account cannot be converted into an organization, as it is a
+          member of another organization. Please leave the following
+          organization(s) first:
+        </span>
+        <PageSection hasBodyWrapper={false}>
+          <Toolbar>
+            <ToolbarContent>
+              <ToolbarItem>
+                <TextInput
+                  isRequired
+                  type="search"
+                  id="modal-with-form-form-name"
+                  name="search input"
+                  placeholder="Search"
+                  value={searchInput}
+                  onChange={(_, val) => onSearch(val)}
+                />
+              </ToolbarItem>
+              <ToolbarPagination
+                page={bulkModalPage}
+                perPage={bulkModalPerPage}
+                itemsList={itemsMarkedForDelete}
+                setPage={setBulkModalPage}
+                setPerPage={setBulkModalPerPage}
+              />
+            </ToolbarContent>
+          </Toolbar>
+          <Table aria-label="Simple table" variant="compact">
+            <Thead>
+              <Tr>
+                <Th>Organization</Th>
+                <Th>Role</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {paginatedBulkItemsList.map((item, idx) => (
+                <Tr key={idx}>
+                  <Td>{item.name}</Td>
+                  <Td>{item.is_org_admin ? 'Admin' : 'User'}</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          <Toolbar>
+            <ToolbarPagination
+              page={bulkModalPage}
+              perPage={bulkModalPerPage}
+              itemsList={itemsMarkedForDelete}
+              setPage={setBulkModalPage}
+              setPerPage={setBulkModalPerPage}
+              bottom={true}
+            />
+          </Toolbar>
+        </PageSection>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="cancel"
           id="delete-org-cancel"
@@ -62,64 +121,8 @@ export const UserConvertConflictsModal = (
           onClick={props.handleModalToggle}
         >
           Close
-        </Button>,
-      ]}
-    >
-      <span>
-        This account cannot be converted into an organization, as it is a member
-        of another organization. Please leave the following organization(s)
-        first:
-      </span>
-      <PageSection variant={PageSectionVariants.light}>
-        <Toolbar>
-          <ToolbarContent>
-            <ToolbarItem>
-              <TextInput
-                isRequired
-                type="search"
-                id="modal-with-form-form-name"
-                name="search input"
-                placeholder="Search"
-                value={searchInput}
-                onChange={(_, val) => onSearch(val)}
-              />
-            </ToolbarItem>
-            <ToolbarPagination
-              page={bulkModalPage}
-              perPage={bulkModalPerPage}
-              itemsList={props.items}
-              setPage={setBulkModalPage}
-              setPerPage={setBulkModalPerPage}
-            />
-          </ToolbarContent>
-        </Toolbar>
-        <Table aria-label="Simple table" variant="compact">
-          <Thead>
-            <Tr>
-              <Th>Organization</Th>
-              <Th>Role</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {paginatedBulkItemsList.map((item, idx) => (
-              <Tr key={idx}>
-                <Td>{item.name}</Td>
-                <Td>{item.is_org_admin ? 'Admin' : 'User'}</Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-        <Toolbar>
-          <ToolbarPagination
-            page={bulkModalPage}
-            perPage={bulkModalPerPage}
-            itemsList={props.items}
-            setPage={setBulkModalPage}
-            setPerPage={setBulkModalPerPage}
-            bottom={true}
-          />
-        </Toolbar>
-      </PageSection>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

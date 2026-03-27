@@ -6,6 +6,9 @@ import {
   LabelGroup,
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {StatusDisplay} from 'src/components/StatusDisplay';
 import {
@@ -40,10 +43,15 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
     <>
       <Modal
         variant={ModalVariant.small}
-        title="Cancel sync"
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Cancel sync" />
+        <ModalBody>
+          Are you sure you want to cancel the current sync operation? All
+          in-progress and scheduled syncs will be stopped.
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="confirm"
             variant="danger"
@@ -54,18 +62,15 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
             data-testid="confirm-cancel-sync-button"
           >
             Yes, cancel sync
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setIsCancelModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to cancel the current sync operation? All
-        in-progress and scheduled syncs will be stopped.
+          </Button>
+        </ModalFooter>
       </Modal>
       <Divider />
       <StatusDisplay
