@@ -3,23 +3,20 @@ import {
   EmptyState,
   EmptyStateBody,
   EmptyStateFooter,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateVariant,
   PageSection,
-  PageSectionVariants,
 } from '@patternfly/react-core';
 import {UserIcon} from '@patternfly/react-icons';
 
 export default function NewUserEmptyPage(props: NewUserEmptyPageProps) {
   return (
-    <PageSection variant={PageSectionVariants.light}>
-      <EmptyState variant={EmptyStateVariant.lg}>
-        <EmptyStateHeader
-          titleText="Welcome to Quay"
-          icon={<EmptyStateIcon icon={UserIcon} color="black" />}
-          headingLevel="h5"
-        />
+    <PageSection hasBodyWrapper={false}>
+      <EmptyState
+        headingLevel="h5"
+        icon={UserIcon}
+        titleText="Welcome to Quay"
+        variant={EmptyStateVariant.lg}
+      >
         <EmptyStateBody>
           To gain access to organizations and repositories on Quay.io you must{' '}
           <br />

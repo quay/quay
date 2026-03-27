@@ -1,7 +1,6 @@
 import {useState} from 'react';
 import {
   PageSection,
-  PageSectionVariants,
   Title,
   Form,
   FormGroup,
@@ -33,7 +32,7 @@ export default function BuildLogs() {
   // Check if BUILD_SUPPORT is enabled
   if (!quayConfig?.features?.BUILD_SUPPORT) {
     return (
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Alert variant="warning" title="Build support not enabled">
           Build logs are not available because BUILD_SUPPORT is not enabled in
           the registry configuration.
@@ -45,7 +44,7 @@ export default function BuildLogs() {
   // Check if user is superuser
   if (!isSuperUser) {
     return (
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Alert variant="danger" title="Access Denied">
           You must be a superuser to access build logs.
         </Alert>
@@ -182,12 +181,12 @@ export default function BuildLogs() {
   return (
     <>
       {/* Page Header */}
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <Title headingLevel="h1">Build Logs</Title>
       </PageSection>
 
       {/* Main Content */}
-      <PageSection>
+      <PageSection hasBodyWrapper={false}>
         {/* Build UUID Input Form */}
         <Form onSubmit={handleLoadBuild} style={{maxWidth: '600px'}}>
           <FormGroup label="Build UUID" isRequired fieldId="build-uuid">

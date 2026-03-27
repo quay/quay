@@ -121,7 +121,13 @@ test.describe(
       ).toBeVisible();
 
       // --- STEP 3: Verify Tag 2 is UNCHANGED ---
+      // Move away first to dismiss any lingering tooltip from tag1
+      await authenticatedPage.locator('body').hover({position: {x: 0, y: 0}});
+      await expect(
+        authenticatedPage.getByText('Copied to clipboard!'),
+      ).not.toBeVisible();
       await tag2NameCell.hover();
+      await expect(tag2CopyButton).toBeVisible();
       await tag2CopyButton.hover();
       await expect(authenticatedPage.getByText('Copy pull spec')).toBeVisible();
 
