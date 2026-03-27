@@ -1521,7 +1521,11 @@ class TestPerformOrgMirrorRepoEdgeCases:
                 result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
 
         assert result == OrgMirrorRepoStatus.FAIL
-        mock_release.assert_called_once_with(mock_claimed, OrgMirrorRepoStatus.FAIL)
+        mock_release.assert_called_once_with(
+            mock_claimed,
+            OrgMirrorRepoStatus.FAIL,
+            status_message="Failed to decrypt credentials",
+        )
 
 
 # =============================================================================
