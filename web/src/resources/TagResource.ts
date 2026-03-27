@@ -43,9 +43,28 @@ export interface Tag {
 export interface ManifestList {
   schemaVersion: number;
   mediaType: string;
-  manifests: Manifest[];
+  manifests: ManifestDescriptor[];
 }
 
+/**
+ * ManifestDescriptor reporesents a child manifest entry in a manifest list.
+ * Contains descriptor fields plus optional enriched fields.
+ */
+export interface ManifestDescriptor {
+  mediaType: string;
+  size: number;
+  digest: string;
+  platform: Platform;
+  // whether manifest context is available locally (not sparse)
+  is_present?: boolean;
+  // child manifest built timestamp if applicable
+  image_built?: string;
+}
+
+/**
+ * Manifest represents the full manifest with security and layer information.
+ * Used for single arch manifests and when fetching complete manifest details.
+ */
 export interface Manifest {
   mediaType: string;
   size: number;
@@ -98,7 +117,7 @@ export interface ManifestByDigestResponse {
   layers?: Layer[];
   layers_compressed_size?: number;
   modelcard?: string;
-  manifests?: Manifest[]; // Enriched child manifests (for manifest lists)
+  manifests?: ManifestDescriptor[]; // Enriched child manifests (for manifest lists)
 }
 
 export interface SecurityDetailsResponse {

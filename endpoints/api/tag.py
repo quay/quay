@@ -8,12 +8,14 @@ import traceback
 from datetime import datetime
 
 from flask import abort, request
+from peewee import SQL
 
 import features
 from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
 from auth.permissions import AdministerRepositoryPermission
 from data.database import Manifest as ManifestTable
+from data.database import db
 from data.model import ImmutableTagException
 from data.model.oci.manifest import is_manifest_present
 from data.model.oci.retriever import RepositoryContentRetriever
@@ -42,10 +44,29 @@ from endpoints.api import (
 )
 from endpoints.exception import InvalidRequest, NotFound, TagImmutable, Unauthorized
 from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
+from image.docker.schema2.list import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from image.docker.schema2.manifest import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+from image.oci.index import OCI_IMAGE_INDEX_CONTENT_TYPE
+from image.oci.manifest import OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from util.names import TAG_ERROR, TAG_REGEX
 from util.parsing import truthy_bool
 
 logger = logging.getLogger(__name__)
+
+
+def _fetch_config_timestamp(config_digest: str, retriever) -> str | None:
+    """
+    Fetches a config blob from storage and extracts the 'created' timestamp.
+    Returns the timestamp string or None if not found.
+    """
+    try:
+        config_bytes = retriever.get_blob_bytes_with_digest(config_digest)
+        if config_bytes:
+            config_json = json.loads(config_bytes.decode("utf-8"))
+            return config_json.get("created")
+    except Exception as e:
+        logger.debug("Failed to fetch config layer %s: %s", config_digest, e)
+    return None
 
 
 def _load_image_built_timestamp(tags: list, repository_id: int) -> dict[int, str]:
@@ -53,23 +74,36 @@ def _load_image_built_timestamp(tags: list, repository_id: int) -> dict[int, str
     Loads the image_built property for all tags in a repository which are not manifest lists. Returns
     a dictionary mapping between the manifest id and its creation date.
     """
-    config_digests_by_manifest = {}
     timestamp_cache = {}
-    manifest_bytes_str = None
+
+    # lists of ids for batch loading
+    v1_list = []
+    v2_list = []
 
     for tag in tags:
         if tag.manifest.is_manifest_list:
             continue
-        try:
-            if tag.manifest.internal_manifest_bytes is None:
-                logger.warning("Manifest %s has no internal_manifest_bytes.", tag.manifest._db_id)
-                continue
-            manifest_bytes_str = tag.manifest.internal_manifest_bytes.as_unicode()
-            media_type = tag.manifest.media_type
-            manifest_json = json.loads(manifest_bytes_str)
+        # Check what kind of image the tag is
+        if tag.manifest.media_type in (
+            OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        ):
+            v2_list.append(tag.manifest._db_id)
+            continue
+        if tag.manifest.media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
+            v1_list.append(tag.manifest._db_id)
+            continue
 
-            # handle schema 1 images separately
-            if media_type in list(DOCKER_SCHEMA1_CONTENT_TYPES):
+    # batch load all collected manifests in one fell swoop
+    if v1_list:
+        schema_v1_manifests = ManifestTable.select(
+            ManifestTable.id,
+            ManifestTable.digest,
+            ManifestTable.manifest_bytes,
+        ).where(ManifestTable.id << v1_list)
+        for manifest in schema_v1_manifests:
+            try:
+                manifest_json = json.loads(manifest.manifest_bytes)
                 history = manifest_json.get("history", [])
                 if history and len(history) > 0:
                     v1_compat_str = history[0].get("v1Compatibility")
@@ -77,33 +111,50 @@ def _load_image_built_timestamp(tags: list, repository_id: int) -> dict[int, str
                         v1_compat_json = json.loads(v1_compat_str)
                         created = v1_compat_json.get("created")
                         if created:
-                            timestamp_cache[tag.manifest._db_id] = created
-
-            # If image is Docker v2 schema 2 or OCI:
-            else:
-                config_obj = manifest_json.get("config")
-                if config_obj and config_obj.get("digest"):
-                    config_digests_by_manifest[tag.manifest._db_id] = config_obj["digest"]
-        except Exception as e:
-            logger.debug(
-                "Failed to parse manifest %s for batch loading: %s", tag.manifest.digest, e
-            )
-            continue
-
-    if not config_digests_by_manifest:
-        return timestamp_cache
+                            timestamp_cache[manifest.id] = created
+            except Exception as e:
+                logger.debug("Could not parse schema 1 manifest %s: %s", manifest.digest, e)
 
     retriever = RepositoryContentRetriever(repository_id, storage)
-    for manifest_id, config_digest in config_digests_by_manifest.items():
-        try:
-            config_bytes = retriever.get_blob_bytes_with_digest(config_digest)
-            if config_bytes:
-                config_json = json.loads(config_bytes.decode("utf-8"))
-                created = config_json.get("created")
-                if created:
-                    timestamp_cache[manifest_id] = created
-        except Exception as e:
-            logger.debug("Failed to fetch config layer %s: %s", config_digest, e)
+
+    if v2_list:
+        # Check if we're using PostgreSQL (supports JSONB operators)
+        is_postgres = db.obj.database.startswith("postgres")
+
+        if is_postgres:
+            # Optimized: Extract config digest using PostgreSQL JSONB operators
+            schema_v2_config_digests = (
+                ManifestTable.select(
+                    ManifestTable.id,
+                    SQL("manifest_bytes::jsonb->'config'->>'digest'").alias("config_digest"),
+                )
+                .where(ManifestTable.id << v2_list)
+                .dicts()
+            )
+
+            for row in schema_v2_config_digests:
+                config_digest = row.get("config_digest")
+                if config_digest:
+                    created = _fetch_config_timestamp(config_digest, retriever)
+                    if created:
+                        timestamp_cache[row["id"]] = created
+        else:
+            # Fallback for SQLite: Load manifest_bytes and parse in Python
+            schema_v2_manifests = ManifestTable.select(
+                ManifestTable.id,
+                ManifestTable.manifest_bytes,
+            ).where(ManifestTable.id << v2_list)
+
+            for manifest in schema_v2_manifests:
+                try:
+                    manifest_json = json.loads(manifest.manifest_bytes)
+                    config_digest = manifest_json.get("config", {}).get("digest")
+                    if config_digest:
+                        created = _fetch_config_timestamp(config_digest, retriever)
+                        if created:
+                            timestamp_cache[manifest.id] = created
+                except json.JSONDecodeError as e:
+                    logger.debug("Failed to parse manifest %d: %s", manifest.id, e)
     return timestamp_cache
 
 

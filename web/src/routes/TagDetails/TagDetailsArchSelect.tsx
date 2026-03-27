@@ -8,7 +8,7 @@ import {
   SelectList,
 } from '@patternfly/react-core';
 import {Select, SelectOption} from '@patternfly/react-core';
-import {Manifest} from 'src/resources/TagResource';
+import {ManifestDescriptor} from 'src/resources/TagResource';
 
 export default function ArchSelect(props: ArchSelectProps) {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -80,12 +80,12 @@ export default function ArchSelect(props: ArchSelectProps) {
   );
 }
 
-const getPlatformValue = (manifest: Manifest) =>
+const getPlatformValue = (manifest: ManifestDescriptor) =>
   `${manifest.platform.os} on ${manifest.platform.architecture}`;
 
 type ArchSelectProps = {
   digest: string;
-  options: Manifest[];
+  options: ManifestDescriptor[];
   setDigest: (digest: string) => void;
   render: boolean;
   style?: React.CSSProperties;

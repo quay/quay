@@ -35,6 +35,10 @@ from image.docker.schema1 import (
     DockerSchema1Manifest,
     MalformedSchema1Manifest,
 )
+from image.docker.schema2.list import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from image.docker.schema2.manifest import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+from image.oci.index import OCI_IMAGE_INDEX_CONTENT_TYPE
+from image.oci.manifest import OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from util.bytes import Bytes
 from util.timedeltastring import convert_to_timedelta
 
@@ -193,13 +197,16 @@ def list_repository_tag_history(
     specific_tag_name is given, the tags are further filtered by name. If since is given, tags are
     further filtered to newer than that date.
 
-    Returns the full manifest row including manifest bytes. The manifest bytes are needed to parse config
-    layer information but to maintain same query number.
+    Note that the returned Manifest will not contain the manifest contents.
     """
     query = (
         Tag.select(
             Tag,
-            Manifest,
+            Manifest.id,
+            Manifest.digest,
+            Manifest.media_type,
+            Manifest.layers_compressed_size,
+            Manifest.config_media_type,
             can_use_read_replica=True,
         )
         .join(Manifest)

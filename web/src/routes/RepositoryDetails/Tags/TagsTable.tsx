@@ -11,7 +11,11 @@ import {
 } from '@patternfly/react-table';
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
-import {Tag, Manifest, Label as ManifestLabel} from 'src/resources/TagResource';
+import {
+  Tag,
+  Label as ManifestLabel,
+  ManifestDescriptor,
+} from 'src/resources/TagResource';
 import {useRecoilValue} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';
 import {getTagDetailPath} from 'src/routes/NavigationPath';
@@ -28,7 +32,6 @@ import {
   TagIcon,
   CubeIcon,
   CopyIcon,
-  InfoCircleIcon,
 } from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
 import Labels from 'src/components/labels/Labels';
@@ -252,96 +255,78 @@ function TagsTableRow(props: RowProps) {
           onMouseLeave={() => setIsTagHovered(false)}
         >
           <div>
-            <div>
-              <Link
-                to={getTagDetailPath(
-                  location.pathname,
-                  props.org,
-                  props.repo,
-                  tag.name,
-                )}
-              >
-                {tag.name}
-              </Link>
-              {tag.cosign_signature_tag && (
-                <Tooltip content="This tag has been signed via cosign.">
-                  <ShieldAltIcon
-                    style={{marginLeft: '8px'}}
-                    aria-label="Cosign signed"
-                  />
-                </Tooltip>
+            <Link
+              to={getTagDetailPath(
+                location.pathname,
+                props.org,
+                props.repo,
+                tag.name,
               )}
-              {config?.features?.IMMUTABLE_TAGS && tag.immutable && (
-                <Tooltip content="This tag is immutable and cannot be modified or deleted">
-                  <LockIcon
-                    style={{
-                      marginLeft: '8px',
-                      color: 'var(--pf-t--global--icon-color--status--info--default)',
-                    }}
-                    aria-label="Immutable tag"
-                    data-testid="immutable-tag-icon"
-                  />
-                </Tooltip>
-              )}
-              {tag.is_sparse && (
-                <Tooltip content="This is a sparse manifest list - not all architectures are present locally">
-                  <Label
-                    color="orange"
-                    isCompact
-                    style={{marginLeft: '8px'}}
-                    data-testid="sparse-manifest-label"
-                  >
-                    Sparse ({tag.present_child_count}/{tag.child_manifest_count}
-                    )
-                  </Label>
-                </Tooltip>
-              )}
-              <span
-                className="copy-icon"
-                style={{visibility: isTagHovered ? 'visible' : 'hidden'}}
-              >
-                <Tooltip
-                  content={
-                    <div>
-                      {isTagCopied ? 'Copied to clipboard!' : `Copy pull spec`}
-                    </div>
-                  }
-                  position="top"
-                >
-                  <Button
-                    icon={<CopyIcon />}
-                    variant="plain"
-                    aria-label="Copy pull spec to clipboard"
-                    onClick={() => {
-                      const hostname =
-                        config?.config?.SERVER_HOSTNAME || window.location.host;
-                      props.copyToClipboard(
-                        `${hostname}/${props.org}/${props.repo}:${tag.name}`,
-                        `tag-${tag.name}`,
-                      );
-                    }}
-                  >
-                    <CopyIcon />
-                  </Button>
-                </Tooltip>
-              </span>
-            </div>
-            {tag.is_manifest_list && (
-              <div
-                style={{
-                  fontSize: '0.875rem',
-                  color: 'var(--pf-t--global--text--color--subtle)',
-                  marginTop: '4px',
-                }}
-              >
-                <InfoCircleIcon
-                  style={{marginRight: '6px'}}
-                  aria-label="Note"
+            >
+              {tag.name}
+            </Link>
+            {tag.cosign_signature_tag && (
+              <Tooltip content="This tag has been signed via cosign.">
+                <ShieldAltIcon
+                  style={{marginLeft: '8px'}}
+                  aria-label="Cosign signed"
                 />
-                Note: Child manifest build dates represent when the container
-                image was created.
-              </div>
+              </Tooltip>
             )}
+            {config?.features?.IMMUTABLE_TAGS && tag.immutable && (
+              <Tooltip content="This tag is immutable and cannot be modified or deleted">
+                <LockIcon
+                  style={{
+                    marginLeft: '8px',
+                    color:
+                      'var(--pf-t--global--icon-color--status--info--default)',
+                  }}
+                  aria-label="Immutable tag"
+                  data-testid="immutable-tag-icon"
+                />
+              </Tooltip>
+            )}
+            {tag.is_sparse && (
+              <Tooltip content="This is a sparse manifest list - not all architectures are present locally">
+                <Label
+                  color="orange"
+                  isCompact
+                  style={{marginLeft: '8px'}}
+                  data-testid="sparse-manifest-label"
+                >
+                  Sparse ({tag.present_child_count}/{tag.child_manifest_count})
+                </Label>
+              </Tooltip>
+            )}
+            <span
+              className="copy-icon"
+              style={{visibility: isTagHovered ? 'visible' : 'hidden'}}
+            >
+              <Tooltip
+                content={
+                  <div>
+                    {isTagCopied ? 'Copied to clipboard!' : `Copy pull spec`}
+                  </div>
+                }
+                position="top"
+              >
+                <Button
+                  icon={<CopyIcon />}
+                  variant="plain"
+                  aria-label="Copy pull spec to clipboard"
+                  onClick={() => {
+                    const hostname =
+                      config?.config?.SERVER_HOSTNAME || window.location.host;
+                    props.copyToClipboard(
+                      `${hostname}/${props.org}/${props.repo}:${tag.name}`,
+                      `tag-${tag.name}`,
+                    );
+                  }}
+                >
+                  <CopyIcon />
+                </Button>
+              </Tooltip>
+            </span>
           </div>
         </Td>
         <Conditional if={config?.features?.SECURITY_SCANNER}>
@@ -616,7 +601,7 @@ export default function TagsTable(props: TableProps) {
   };
 
   // Calculate manifest tracks for visual grouping of tags sharing the same digest
-  const {tracks, getTrackEntry, getLineClass, trackCount} = useManifestTracks(
+  const {getTrackEntry, getLineClass, trackCount} = useManifestTracks(
     props.allTags,
   );
 
@@ -761,7 +746,7 @@ interface SubRowProps {
   repo: string;
   tag: Tag;
   rowIndex: number;
-  manifest: Manifest;
+  manifest: ManifestDescriptor;
   isTagExpanded: (tag: Tag) => boolean;
   config: {
     features?: {

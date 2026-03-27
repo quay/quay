@@ -1,5 +1,5 @@
 import {PageSection, PanelFooter} from '@patternfly/react-core';
-import {CubesIcon} from '@patternfly/react-icons';
+import {CubesIcon, InfoCircleIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import {useRecoilState, useRecoilValue, useResetRecoilState} from 'recoil';
 import {
@@ -175,6 +175,21 @@ export default function TagsList(props: TagsProps) {
           selectTag={selectTag}
           repoDetails={props.repoDetails}
         />
+        {sortedTags.some((tag) => tag.is_manifest_list) && (
+          <div
+            style={{
+              fontSize: '0.875rem',
+              color: 'var(--pf-t--global--text--color--subtle)',
+              padding: '12px 16px',
+              backgroundColor:
+                'var(--pf-t--global--background--color--primary--default)',
+            }}
+          >
+            <InfoCircleIcon style={{marginRight: '6px'}} aria-label="Note" />
+            Note: Child manifest build dates represent when the container image
+            was created.
+          </div>
+        )}
         <TagsTable
           org={props.organization}
           repo={props.repository}

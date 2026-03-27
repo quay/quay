@@ -436,7 +436,7 @@ test.describe('Sparse Manifest Visualization', {tag: ['@tags']}, () => {
     await expect(sparseLabel).not.toBeVisible();
   });
 
-  test('shows N/A for security and size of missing architectures', async ({
+  test('shows n/a for security and size of missing architectures', async ({
     authenticatedPage,
     api,
   }) => {
@@ -504,9 +504,9 @@ test.describe('Sparse Manifest Visualization', {tag: ['@tags']}, () => {
     await expect(expandButton).toBeVisible({timeout: 10000});
     await expandButton.click();
 
-    // Wait for expanded content and check for N/A text
-    // The N/A appears for security and size columns on missing manifests
-    await expect(authenticatedPage.getByText('N/A').first()).toBeVisible({
+    // Wait for expanded content and check for n/a text
+    // The n/a appears for security and size columns on missing manifests
+    await expect(authenticatedPage.getByText('n/a').first()).toBeVisible({
       timeout: 10000,
     });
   });

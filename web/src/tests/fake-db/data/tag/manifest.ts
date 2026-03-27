@@ -1,6 +1,6 @@
 import {mock} from 'src/tests/fake-db/MockAxios';
 import {AxiosRequestConfig} from 'axios';
-import {ManifestByDigestResponse, Manifest} from 'src/resources/TagResource';
+import {ManifestByDigestResponse} from 'src/resources/TagResource';
 
 const manifest = {
   schemaVersion: 2,
