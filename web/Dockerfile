@@ -4,7 +4,7 @@ ARG quay_app_api_url=http://localhost:8080
 ENV REACT_QUAY_APP_API_URL=${quay_app_api_url}
 
 WORKDIR /opt/app-root
-COPY package.json .
+COPY package.json .npmrc ./
 RUN npm install
 
 COPY . .
@@ -19,4 +19,3 @@ COPY --from=build  /opt/app-root/server.js /opt/app-root/server.js
 EXPOSE 9000
 
 CMD ["node", "server.js"]
-

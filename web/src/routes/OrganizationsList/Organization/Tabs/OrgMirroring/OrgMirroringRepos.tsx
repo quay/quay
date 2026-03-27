@@ -9,7 +9,7 @@ import {
   SelectList,
   SelectOption,
   Spinner,
-  Text,
+  Content,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
@@ -97,22 +97,22 @@ export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
       {isLoading && <Spinner size="md" />}
 
       {error && (
-        <Text component="p" className="pf-v5-u-danger-color-100">
+        <Content component="p" className="pf-v6-u-danger-color-100">
           {error}
-        </Text>
+        </Content>
       )}
 
       {!isLoading && !error && repos.length === 0 && !statusFilter && (
-        <Text component="p">
+        <Content component="p">
           No repositories discovered yet. Repositories will appear here after
           the first sync.
-        </Text>
+        </Content>
       )}
 
       {!isLoading && !error && repos.length === 0 && statusFilter && (
-        <Text component="p">
+        <Content component="p">
           No repositories match the selected status filter.
-        </Text>
+        </Content>
       )}
 
       {!isLoading && !error && (total > 0 || statusFilter) && (

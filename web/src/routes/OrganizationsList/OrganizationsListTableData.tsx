@@ -147,7 +147,7 @@ export default function OrgTableData(props: OrgTableDataProps) {
               )}
               {props.userGlobalReadonlySuperuser && (
                 <FlexItem>
-                  <Label color="cyan">Global Readonly Superuser</Label>
+                  <Label color="teal">Global Readonly Superuser</Label>
                 </FlexItem>
               )}
               {props.userEnabled === false && (

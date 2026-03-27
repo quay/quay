@@ -1113,7 +1113,7 @@ test.describe(
 
       // Wait for the danger alert to appear
       const dangerAlert = authenticatedPage
-        .locator('.pf-v5-c-alert.pf-m-danger')
+        .locator('.pf-v6-c-alert.pf-m-danger')
         .last();
       await expect(dangerAlert).toBeVisible({timeout: 10000});
 
@@ -1121,7 +1121,7 @@ test.describe(
       await expect(dangerAlert).toContainText('Could not delete tag');
 
       // Expand the alert to reveal the detailed error message
-      await dangerAlert.locator('.pf-v5-c-alert__toggle button').click();
+      await dangerAlert.locator('.pf-v6-c-alert__toggle button').click();
 
       // Verify the alert contains the server's specific error message
       await expect(dangerAlert).toContainText(

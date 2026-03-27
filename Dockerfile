@@ -109,7 +109,7 @@ RUN if [ "$BUILD_ANGULAR" = "true" ]; then npm run --quiet build; fi
 # Build React UI
 FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest@sha256:3e7019795501caa3391374072aa9359ecc09b10bb5698ec54d8fbbc2ea6091aa AS build-ui
 WORKDIR /opt/app-root
-COPY --chown=1001:0 web/package.json web/package-lock.json  ./
+COPY --chown=1001:0 web/package.json web/package-lock.json web/.npmrc  ./
 RUN CYPRESS_INSTALL_BINARY=0 npm clean-install
 COPY --chown=1001:0 web .
 RUN npm run --quiet build

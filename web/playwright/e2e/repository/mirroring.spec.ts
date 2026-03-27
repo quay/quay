@@ -180,7 +180,9 @@ test.describe(
       ).toBeChecked();
 
       // Verify status section exists
-      await expect(authenticatedPage.getByText('Status')).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('heading', {name: 'Status'}),
+      ).toBeVisible();
       await expect(authenticatedPage.getByText('State')).toBeVisible();
 
       // Update the external reference

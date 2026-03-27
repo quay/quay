@@ -1001,25 +1001,40 @@ test.describe(
         sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
       });
 
-      // Mock the config GET response to include repo_sync_status_counts
+      // Navigate first to let the real config load, then set up a mock
+      // that injects repo_sync_status_counts and reload
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Now intercept with a deterministic mock (no route.fetch race)
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
         async (route) => {
           if (route.request().method() === 'GET') {
-            const response = await route.fetch();
-            const body = await response.json();
-            body.repo_sync_status_counts = {
-              SUCCESS: 5,
-              SYNCING: 2,
-              FAIL: 1,
-              NEVER_RUN: 3,
-              SYNC_NOW: 0,
-              CANCEL: 0,
-            };
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
-              body: JSON.stringify(body),
+              body: JSON.stringify({
+                is_enabled: true,
+                external_registry_type: 'quay',
+                external_registry_url: 'https://quay.io',
+                external_namespace: 'projectquay',
+                robot_username: robot.fullName,
+                sync_interval: 3600,
+                sync_start_date: syncStartDate
+                  .toISOString()
+                  .replace(/\.\d{3}Z$/, 'Z'),
+                repo_sync_status_counts: {
+                  SUCCESS: 5,
+                  SYNCING: 2,
+                  FAIL: 1,
+                  NEVER_RUN: 3,
+                  SYNC_NOW: 0,
+                  CANCEL: 0,
+                },
+              }),
             });
           } else {
             await route.continue();
@@ -1027,8 +1042,7 @@ test.describe(
         },
       );
 
-      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
-
+      await authenticatedPage.reload();
       await expect(
         authenticatedPage.getByTestId('org-mirror-form'),
       ).toBeVisible();
@@ -1037,11 +1051,14 @@ test.describe(
       const statusDisplay = authenticatedPage.getByTestId(
         'org-mirror-status-display',
       );
-      await expect(statusDisplay.getByText('Success: 5')).toBeVisible();
+      // Use longer timeout for CI where API responses may be slower
+      await expect(statusDisplay.getByText('Success: 5')).toBeVisible({
+        timeout: 15000,
+      });
       await expect(statusDisplay.getByText('Syncing: 2')).toBeVisible();
       await expect(statusDisplay.getByText('Failed: 1')).toBeVisible();
-      // NEVER_RUN is displayed as "Scheduled" via orgMirrorStatusLabels
-      await expect(statusDisplay.getByText('Scheduled: 3')).toBeVisible();
+      // NEVER_RUN is displayed as "Pending" via orgMirrorStatusLabels
+      await expect(statusDisplay.getByText('Pending: 3')).toBeVisible();
 
       // Zero-count statuses should NOT be displayed
       await expect(statusDisplay.getByText('Cancelled')).not.toBeVisible();

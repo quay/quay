@@ -16,7 +16,6 @@ import {
 } from '@patternfly/react-table';
 import {
   PageSection,
-  PageSectionVariants,
   Spinner,
   Title,
   Toolbar,
@@ -206,7 +205,7 @@ export default function PackagesTable({features}: PackagesProps) {
   }, [features]);
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <TableTitle />
       <Toolbar>
         <ToolbarContent>

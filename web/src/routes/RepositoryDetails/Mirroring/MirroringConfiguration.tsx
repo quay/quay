@@ -5,7 +5,7 @@ import {
   FormHelperText,
   TextInput,
   Button,
-  Text,
+  Content,
   Title,
   InputGroup,
   InputGroupText,
@@ -165,9 +165,12 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
                   />
                   {errors.syncStartDate && (
                     <FormHelperText>
-                      <Text component="p" className="pf-m-error pf-v5-u-mt-sm">
+                      <Content
+                        component="p"
+                        className="pf-m-error pf-v6-u-mt-sm"
+                      >
                         {errors.syncStartDate.message}
-                      </Text>
+                      </Content>
                     </FormHelperText>
                   )}
                 </div>
@@ -222,9 +225,9 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
                 />
                 {errors.syncStartDate && (
                   <FormHelperText>
-                    <Text component="p" className="pf-m-error">
+                    <Content component="p" className="pf-m-error">
                       {errors.syncStartDate.message}
-                    </Text>
+                    </Content>
                   </FormHelperText>
                 )}
               </>
@@ -237,7 +240,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         <InputGroup
           onPointerEnterCapture={() => setIsHovered(true)}
           onPointerLeaveCapture={() => setIsHovered(false)}
-          className={isHovered ? 'pf-v5-u-background-color-200' : ''}
+          className={isHovered ? 'pf-v6-u-background-color-200' : ''}
         >
           <Controller
             name="syncValue"
@@ -310,9 +313,9 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         </InputGroup>
         {errors.syncValue && (
           <FormHelperText>
-            <Text component="p" className="pf-m-error">
+            <Content component="p" className="pf-m-error">
               {errors.syncValue.message}
-            </Text>
+            </Content>
           </FormHelperText>
         )}
       </FormGroup>
@@ -341,7 +344,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
             <InputGroup
               onPointerEnterCapture={() => setIsHovered(true)}
               onPointerLeaveCapture={() => setIsHovered(false)}
-              className={isHovered ? 'pf-v5-u-background-color-200' : ''}
+              className={isHovered ? 'pf-v6-u-background-color-200' : ''}
             >
               <TextInput
                 type="number"
@@ -367,16 +370,16 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         />
         {errors.skopeoTimeoutInterval && (
           <FormHelperText>
-            <Text component="p" className="pf-m-error">
+            <Content component="p" className="pf-m-error">
               {errors.skopeoTimeoutInterval.message}
-            </Text>
+            </Content>
           </FormHelperText>
         )}
         <FormHelperText>
-          <Text component="p">
+          <Content component="p">
             Minimum timeout length: 300 seconds (5 minutes). Maximum timeout
             length: 43200 seconds (12 hours).
-          </Text>
+          </Content>
         </FormHelperText>
       </FormGroup>
 
@@ -417,9 +420,9 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
               />
               {errors.robotUsername && (
                 <FormHelperText>
-                  <Text component="p" className="pf-m-error">
+                  <Content component="p" className="pf-m-error">
                     {errors.robotUsername.message}
-                  </Text>
+                  </Content>
                 </FormHelperText>
               )}
             </>
