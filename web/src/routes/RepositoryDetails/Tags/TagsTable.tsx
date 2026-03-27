@@ -57,7 +57,9 @@ function SubRow(props: SubRowProps) {
           <ExpandableRowContent>
             {isMissing ? (
               <Tooltip content="This architecture is not present locally. It will be pulled on first access.">
-                <span style={{color: 'var(--pf-v5-global--Color--200)'}}>
+                <span
+                  style={{color: 'var(--pf-t--global--text--color--subtle)'}}
+                >
                   <ExclamationTriangleIcon
                     style={{marginRight: '4px'}}
                     aria-label="Missing architecture"
@@ -95,7 +97,7 @@ function SubRow(props: SubRowProps) {
         <Td dataLabel="security" noPadding={false} colSpan={1}>
           <ExpandableRowContent>
             {isMissing ? (
-              <span style={{color: 'var(--pf-v5-global--Color--200)'}}>
+              <span style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
                 N/A
               </span>
             ) : (
@@ -113,7 +115,9 @@ function SubRow(props: SubRowProps) {
       <Td dataLabel="size" noPadding={false} colSpan={1}>
         <ExpandableRowContent>
           {isMissing ? (
-            <span style={{color: 'var(--pf-v5-global--Color--200)'}}>N/A</span>
+            <span style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
+              N/A
+            </span>
           ) : (
             <ChildManifestSize
               org={props.org}
@@ -129,7 +133,7 @@ function SubRow(props: SubRowProps) {
             <span
               style={
                 isMissing
-                  ? {color: 'var(--pf-v5-global--Color--200)'}
+                  ? {color: 'var(--pf-t--global--text--color--subtle)'}
                   : undefined
               }
             >
@@ -241,7 +245,8 @@ function TagsTableRow(props: RowProps) {
               <LockIcon
                 style={{
                   marginLeft: '8px',
-                  color: 'var(--pf-v5-global--info-color--100)',
+                  color:
+                    'var(--pf-t--global--icon--color--status--info--default)',
                 }}
                 aria-label="Immutable tag"
                 data-testid="immutable-tag-icon"

@@ -11,11 +11,9 @@ import {
   Grid,
   GridItem,
   PageSection,
-  PageSectionVariants,
-  Text,
+  Content,
   TextArea,
-  TextContent,
-  TextVariants,
+  ContentVariants,
 } from '@patternfly/react-core';
 import {Table, Th, Td} from '@patternfly/react-table';
 import {useEffect, useState} from 'react';
@@ -152,7 +150,7 @@ export default function Information(props: InformationProps) {
   const dockerPullCommand = `docker pull ${serverHostname}/${organization}/${repository}`;
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <Grid hasGutter>
         {/* Repository Activity Heatmap */}
         <GridItem span={12} md={5}>
@@ -162,11 +160,11 @@ export default function Information(props: InformationProps) {
               {repoDetails?.stats && repoDetails.stats.length > 0 ? (
                 <ActivityHeatmap data={repoDetails.stats} itemName="action" />
               ) : (
-                <TextContent style={{textAlign: 'center', padding: '2rem'}}>
-                  <Text component={TextVariants.small}>
+                <Content style={{textAlign: 'center', padding: '2rem'}}>
+                  <Content component={ContentVariants.small}>
                     No activity data available
-                  </Text>
-                </TextContent>
+                  </Content>
+                </Content>
               )}
             </CardBody>
           </Card>
@@ -179,21 +177,21 @@ export default function Information(props: InformationProps) {
             <CardBody>
               <Grid hasGutter>
                 <GridItem span={12}>
-                  <TextContent>
-                    <Text component={TextVariants.small}>
+                  <Content>
+                    <Content component={ContentVariants.small}>
                       Pull this container with the following Podman command:
-                    </Text>
-                  </TextContent>
+                    </Content>
+                  </Content>
                   <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied">
                     {podmanPullCommand}
                   </ClipboardCopy>
                 </GridItem>
                 <GridItem span={12}>
-                  <TextContent>
-                    <Text component={TextVariants.small}>
+                  <Content>
+                    <Content component={ContentVariants.small}>
                       Pull this container with the following Docker command:
-                    </Text>
-                  </TextContent>
+                    </Content>
+                  </Content>
                   <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied">
                     {dockerPullCommand}
                   </ClipboardCopy>
@@ -211,7 +209,7 @@ export default function Information(props: InformationProps) {
               {!isEditing && (
                 <>
                   {description ? (
-                    <TextContent>
+                    <Content>
                       <Markdown
                         remarkPlugins={[remarkGfm]}
                         components={{
@@ -246,37 +244,35 @@ export default function Information(props: InformationProps) {
                       >
                         {description}
                       </Markdown>
-                    </TextContent>
+                    </Content>
                   ) : (
-                    <TextContent>
-                      <Text component={TextVariants.p}>
+                    <Content>
+                      <Content component={ContentVariants.p}>
                         No description provided
-                      </Text>
-                    </TextContent>
+                      </Content>
+                    </Content>
                   )}
                   {repoDetails?.can_write && !inReadOnlyMode && (
-                    <TextContent>
-                      <Text
-                        component={TextVariants.a}
-                        onClick={() => setIsEditing(true)}
-                        style={{cursor: 'pointer', marginTop: '1rem'}}
-                      >
-                        Edit description
-                      </Text>
-                    </TextContent>
+                    <Button
+                      variant="link"
+                      onClick={() => setIsEditing(true)}
+                      style={{paddingLeft: 0, marginTop: '1rem'}}
+                    >
+                      Edit description
+                    </Button>
                   )}
                 </>
               )}
               {isEditing && (
                 <>
-                  <TextContent>
-                    <Text
-                      component={TextVariants.small}
+                  <Content>
+                    <Content
+                      component={ContentVariants.small}
                       style={{marginBottom: '0.5rem'}}
                     >
                       Supports Markdown formatting
-                    </Text>
-                  </TextContent>
+                    </Content>
+                  </Content>
                   <TextArea
                     value={description}
                     onChange={(_event, value) => handleDescriptionChange(value)}

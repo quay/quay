@@ -427,7 +427,10 @@ export function Signin() {
                 Don&apos;t have an account?{' '}
                 <Link
                   to="/createaccount"
-                  style={{color: 'var(--pf-v5-global--link--Color)'}}
+                  data-testid="signin-create-account-link"
+                  style={{
+                    color: 'var(--pf-t--global--text--color--link--default)',
+                  }}
                 >
                   Create account
                 </Link>
