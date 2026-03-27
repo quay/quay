@@ -99,7 +99,7 @@ class V4SecurityScanner2(SecurityScannerInterface):
     def _not_indexed_query(self):
         """Manifests with no ManifestSecurityStatus row (never scanned)."""
         return (
-            Manifest.select()
+            Manifest.select(can_use_read_replica=True)
             .where(
                 ~fn.EXISTS(
                     ManifestSecurityStatus.select().where(
@@ -113,7 +113,7 @@ class V4SecurityScanner2(SecurityScannerInterface):
     def _stale_in_progress_query(self, stale_threshold):
         """Manifests stuck in IN_PROGRESS (crash recovery)."""
         return (
-            Manifest.select()
+            Manifest.select(can_use_read_replica=True)
             .join(ManifestSecurityStatus)
             .where(
                 ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
@@ -125,7 +125,7 @@ class V4SecurityScanner2(SecurityScannerInterface):
     def _failed_query(self, reindex_threshold):
         """Failed manifests past retry threshold."""
         return (
-            Manifest.select()
+            Manifest.select(can_use_read_replica=True)
             .join(ManifestSecurityStatus)
             .where(
                 ManifestSecurityStatus.index_status == IndexStatus.FAILED,
@@ -137,7 +137,7 @@ class V4SecurityScanner2(SecurityScannerInterface):
     def _needs_reindex_query(self, indexer_hash, reindex_threshold):
         """Manifests with outdated indexer hash (Clair DB updated)."""
         return (
-            Manifest.select()
+            Manifest.select(can_use_read_replica=True)
             .join(ManifestSecurityStatus)
             .where(
                 ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_UNSUPPORTED,
@@ -191,9 +191,19 @@ class V4SecurityScanner2(SecurityScannerInterface):
         """
         Atomically claim a batch of manifests using SELECT FOR UPDATE SKIP LOCKED.
         Returns list of claimed Manifest rows.
+
+        Two-step process:
+        1. Find candidate IDs on read replica (query_fn uses can_use_read_replica=True)
+        2. Claim those IDs on primary with FOR UPDATE SKIP LOCKED
         """
+        # Step 1: Find candidate IDs on read replica (outside transaction)
+        candidate_ids = [m.id for m in query_fn().limit(batch_size)]
+        if not candidate_ids:
+            return []
+
+        # Step 2: Claim on primary with FOR UPDATE SKIP LOCKED
         with db_transaction():
-            query = query_fn().limit(batch_size)
+            query = Manifest.select().where(Manifest.id.in_(candidate_ids))
             candidates = list(db_for_update(query, skip_locked=SKIP_LOCKED))
             if not candidates:
                 return []
