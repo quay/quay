@@ -1958,8 +1958,7 @@ class OrgMirrorStatus(IntEnum):
 class OrgMirrorRepoStatus(IntEnum):
     """
     Possible statuses of individual repositories discovered by organization mirroring.
-    Same values as RepoMirrorStatus for consistency.
-    Note: Filtered-out repos are not tracked (no OrgMirrorRepository entry created).
+    Same values as RepoMirrorStatus for consistency, plus SKIP for deactivated repos.
     """
 
     CANCEL = -2  # Sync cancelled
@@ -1968,6 +1967,7 @@ class OrgMirrorRepoStatus(IntEnum):
     SUCCESS = 1  # Last sync succeeded
     SYNCING = 2  # Currently syncing
     SYNC_NOW = 3  # Priority sync requested
+    SKIP = 4  # Repo no longer in source or excluded by filters
 
 
 class OrgMirrorConfig(BaseModel):
