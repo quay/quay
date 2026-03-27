@@ -1,0 +1,4 @@
+reviews:
+   tools:
+      ruff:
+         enabled: false
