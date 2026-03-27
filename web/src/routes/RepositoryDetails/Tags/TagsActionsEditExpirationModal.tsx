@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   ButtonVariant,
   DatePicker,
@@ -8,6 +9,9 @@ import {
   DescriptionListTerm,
   Label,
   Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
   ModalVariant,
   Split,
   SplitItem,
@@ -31,6 +35,12 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
   const initialDate: Date = isNullOrUndefined(props.expiration)
     ? null
     : new Date(props.expiration);
+
+  const mutableTags = props.immutableTags
+    ? props.tags.filter((tag) => !props.immutableTags.includes(tag))
+    : props.tags;
+  const allTagsImmutable =
+    props.immutableTags && props.immutableTags.length === props.tags.length;
 
   const isToday = (date: Date) => {
     const today = new Date();
@@ -162,7 +172,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
   const onSave = () => {
     const requestedDate =
       date === null || date === undefined ? null : date.getTime() / 1000;
-    setExpiration({tags: props.tags, expiration: requestedDate});
+    setExpiration({tags: mutableTags, expiration: requestedDate});
   };
 
   const onClose = () => {
@@ -195,76 +205,107 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     <>
       <Modal
         id="edit-expiration-modal"
-        title="Change Tags Expiration"
         isOpen={props.isOpen}
         onClose={onClose}
         variant={ModalVariant.medium}
-        actions={[
-          <Button key="cancel" variant="primary" onClick={onClose}>
-            Cancel
-          </Button>,
-          <Button
-            key="modal-action-button"
-            variant="primary"
-            isDisabled={!validDate}
-            onClick={onSave}
-          >
-            Change Expiration
-          </Button>,
-        ]}
         style={{
           overflowX: 'visible',
           overflowY: 'visible',
         }}
       >
-        <DescriptionList>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Tags that will be updated</DescriptionListTerm>
-            <DescriptionListDescription id="edit-expiration-tags">
-              {props.tags.map((tag) => (
-                <Label key={tag}>{tag}</Label>
-              ))}
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Expiration date</DescriptionListTerm>
-            <DescriptionListDescription>
-              <Split hasGutter style={{height: '4em'}}>
-                <SplitItem>
-                  <DatePicker
-                    placeholder="No date selected"
-                    value={dateFormat(date)}
-                    dateFormat={dateFormat}
-                    dateParse={(date: string) => new Date(date)}
-                    onChange={onDateChange}
-                    validators={[rangeValidator]}
-                  />
-                </SplitItem>
-                <SplitItem>
-                  <TimePicker
-                    id="expiration-time-picker"
-                    placeholder="No time selected"
-                    time={
-                      date === null || !validDate
-                        ? ' '
-                        : date.toLocaleTimeString()
-                    }
-                    onChange={onTimeChange}
-                    is24Hour={is24HourFormat()}
-                    minTime={minExpirationDateTime()}
-                    invalidMinMaxErrorMessage="Cannot set expiration date to the past."
-                    style={{width: '150px', whiteSpace: 'normal'}}
-                  />
-                </SplitItem>
-                <SplitItem>
-                  <Button variant={ButtonVariant.secondary} onClick={onClear}>
-                    Clear
-                  </Button>
-                </SplitItem>
-              </Split>
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-        </DescriptionList>
+        <ModalHeader title="Change Tags Expiration" />
+        <ModalBody>
+          {allTagsImmutable ? (
+            <Alert
+              isInline
+              variant="danger"
+              title="All selected tags are immutable"
+              data-testid="all-tags-immutable-error"
+            >
+              None of the selected tags can have their expiration changed
+              because they are all immutable.
+            </Alert>
+          ) : (
+            props.immutableTags &&
+            props.immutableTags.length > 0 && (
+              <>
+                <Alert
+                  isInline
+                  variant="warning"
+                  title="Immutable tags will be skipped"
+                  data-testid="immutable-tags-expiration-warning"
+                >
+                  The following tags are immutable and will not have their
+                  expiration changed: {props.immutableTags.join(', ')}
+                </Alert>
+                <div style={{marginBottom: '1rem'}} />
+              </>
+            )
+          )}
+          <DescriptionList>
+            <DescriptionListGroup>
+              <DescriptionListTerm>
+                Tags that will be updated
+              </DescriptionListTerm>
+              <DescriptionListDescription id="edit-expiration-tags">
+                {mutableTags.map((tag) => (
+                  <Label key={tag}>{tag}</Label>
+                ))}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Expiration date</DescriptionListTerm>
+              <DescriptionListDescription>
+                <Split hasGutter style={{height: '4em'}}>
+                  <SplitItem>
+                    <DatePicker
+                      placeholder="No date selected"
+                      value={dateFormat(date)}
+                      dateFormat={dateFormat}
+                      dateParse={(date: string) => new Date(date)}
+                      onChange={onDateChange}
+                      validators={[rangeValidator]}
+                    />
+                  </SplitItem>
+                  <SplitItem>
+                    <TimePicker
+                      id="expiration-time-picker"
+                      placeholder="No time selected"
+                      time={
+                        date === null || !validDate
+                          ? ' '
+                          : date.toLocaleTimeString()
+                      }
+                      onChange={onTimeChange}
+                      is24Hour={is24HourFormat()}
+                      minTime={minExpirationDateTime()}
+                      invalidMinMaxErrorMessage="Cannot set expiration date to the past."
+                      style={{width: '150px', whiteSpace: 'normal'}}
+                    />
+                  </SplitItem>
+                  <SplitItem>
+                    <Button variant={ButtonVariant.secondary} onClick={onClear}>
+                      Clear
+                    </Button>
+                  </SplitItem>
+                </Split>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        </ModalBody>
+        <ModalFooter>
+          <Button key="cancel" variant="primary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            key="modal-action-button"
+            variant="primary"
+            isDisabled={!validDate || allTagsImmutable}
+            onClick={onSave}
+          >
+            Change Expiration
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );
@@ -276,6 +317,7 @@ interface EditExpirationModalProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   tags: string[];
+  immutableTags?: string[];
   loadTags: () => void;
   expiration?: string;
   onComplete?: () => void;

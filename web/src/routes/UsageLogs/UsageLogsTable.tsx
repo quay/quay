@@ -2,6 +2,7 @@ import {
   Button,
   Flex,
   FlexItem,
+  PageSection,
   PanelFooter,
   Spinner,
   SearchInput,

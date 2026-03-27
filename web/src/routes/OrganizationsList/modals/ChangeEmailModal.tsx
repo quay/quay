@@ -1,12 +1,15 @@
 import {useState, useEffect} from 'react';
 import {
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
   TextInput,
   Alert,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {useChangeUserEmail} from 'src/hooks/UseUserActions';
 import {useChangeEmail} from 'src/hooks/UseCurrentUser';
@@ -129,11 +132,39 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
 
   return (
     <Modal
-      title={`Change Email for ${props.username}`}
       isOpen={props.isOpen}
       onClose={handleClose}
       variant={ModalVariant.medium}
-      actions={[
+    >
+      <ModalHeader title={`Change Email for ${props.username}`} />
+      <ModalBody>
+        <Form>
+          <FormGroup
+            label="Please enter a new email address. A verification email will be sent before the change is applied."
+            isRequired
+          >
+            <TextInput
+              id="new-email"
+              value={newEmail}
+              onChange={(_event, value) => setNewEmail(value)}
+              placeholder="user@example.com"
+              type="email"
+              isDisabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSubmit();
+                }
+              }}
+            />
+          </FormGroup>
+          {error && (
+            <Alert variant="danger" title="Error" isInline>
+              {error}
+            </Alert>
+          )}
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant="primary"
@@ -142,37 +173,11 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
           isDisabled={isLoading || !newEmail.trim()}
         >
           Change Email
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <FormGroup
-          label="Please enter a new email address. A verification email will be sent before the change is applied."
-          isRequired
-        >
-          <TextInput
-            id="new-email"
-            value={newEmail}
-            onChange={(_event, value) => setNewEmail(value)}
-            placeholder="user@example.com"
-            type="email"
-            isDisabled={isLoading}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSubmit();
-              }
-            }}
-          />
-        </FormGroup>
-        {error && (
-          <Alert variant="danger" title="Error" isInline>
-            {error}
-          </Alert>
-        )}
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

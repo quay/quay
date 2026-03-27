@@ -1,6 +1,5 @@
 import {
   PageSection,
-  PageSectionVariants,
   Title,
   Button,
   DatePicker,
@@ -20,7 +19,7 @@ function UsageLogsHeader() {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Usage Logs</Title>
         </div>
@@ -109,7 +108,7 @@ export default function UsageLogs() {
   return (
     <>
       <UsageLogsHeader />
-      <PageSection>
+      <PageSection hasBodyWrapper={false}>
         <Flex direction={{default: 'column'}}>
           <FlexItem>
             <Split hasGutter style={{marginBottom: '20px'}}>
