@@ -177,7 +177,7 @@ export default function Settings(props: SettingsProps) {
               data-testid={tab.name}
               title={
                 <TabTitleText
-                  className="pf-v5-u-text-nowrap"
+                  className="pf-v6-u-text-nowrap"
                   id={`pf-tab-${tab.id}`}
                 >
                   {tab.name}

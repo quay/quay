@@ -304,6 +304,33 @@ enable-ldap:
 	@echo "  Backup: local-dev/stack/config.yaml.backup"
 	@echo "  Apply changes: docker-compose restart quay"
 
+.PHONY: enable-oidc
+enable-oidc:
+	@echo "Merging Keycloak OIDC config into local-dev/stack/config.yaml..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/keycloak/keycloak-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "Keycloak OIDC configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Apply changes: $(DOCKER_COMPOSE) restart quay"
+
+.PHONY: local-dev-up-with-keycloak
+local-dev-up-with-keycloak: local-dev-up
+	$(DOCKER_COMPOSE) up -d keycloak
+	@echo "Waiting for Keycloak to be ready..."
+	@curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+		http://localhost:8081/realms/quay > /dev/null \
+		|| { echo "Keycloak failed to start. Recent logs:"; $(DOCKER_COMPOSE) logs --tail 50 keycloak; exit 1; }
+	@echo "Keycloak is ready. Merging OIDC config..."
+	@$(MAKE) enable-oidc
+	$(DOCKER_COMPOSE) restart quay
+
 .PHONY: enable-splunk
 enable-splunk:
 	@echo "Setting up Splunk for local development..."

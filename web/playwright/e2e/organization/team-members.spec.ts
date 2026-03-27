@@ -12,7 +12,7 @@ async function navigateToManageTeamMembers(
 
   await page.locator('#teams-view-search').fill(teamName);
   await expect(
-    page.locator('.pf-v5-c-pagination__total-items').first(),
+    page.locator('.pf-v6-c-pagination__total-items').first(),
   ).toContainText('1 - 1 of 1', {timeout: 15000});
 
   await page.getByTestId(`${teamName}-toggle-kebab`).click();
@@ -48,7 +48,7 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
 
     const searchInput = authenticatedPage.locator('#team-member-search-input');
     const paginationInfo = authenticatedPage
-      .locator('.pf-v5-c-pagination__total-items')
+      .locator('.pf-v6-c-pagination__total-items')
       .first();
 
     // Verify team member is shown
@@ -73,7 +73,7 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
 
     const searchInput = authenticatedPage.locator('#team-member-search-input');
     const paginationInfo = authenticatedPage
-      .locator('.pf-v5-c-pagination__total-items')
+      .locator('.pf-v6-c-pagination__total-items')
       .first();
 
     // Verify robot account is shown
@@ -99,7 +99,7 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId('save-team-description-btn').click();
 
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(`Successfully updated team:${team.name} description`);
     await expect(
       authenticatedPage.getByTestId('team-description-text'),
@@ -120,7 +120,7 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
     await authenticatedPage.getByTestId(`${robot.fullName}-del-btn`).click();
 
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(`Successfully deleted team member: ${robot.fullName}`);
   });
 
@@ -174,11 +174,54 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
 
     // Verify success
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(`Successfully added "${org.name}+${newRobotName}" to team`);
     await expect(
       authenticatedPage.getByTestId(`${org.name}+${newRobotName}`),
     ).toContainText(`${org.name}+${newRobotName}`);
+  });
+
+  test('pagination works with more than 20 members', async ({
+    authenticatedPage,
+    api,
+    superuserApi,
+  }) => {
+    const org = await api.organization('testorg');
+    const team = await api.team(org.name, 'paginationteam');
+
+    // Create 25 users (requires superuser) and add them to the team
+    for (let i = 0; i < 25; i++) {
+      const user = await superuserApi.user(`pguser${i}`);
+      await api.teamMember(org.name, team.name, user.username);
+    }
+
+    await navigateToManageTeamMembers(authenticatedPage, org.name, team.name);
+
+    const paginationInfo = authenticatedPage
+      .locator('.pf-v6-c-pagination__total-items')
+      .first();
+
+    // Verify pagination shows correct total (25 members)
+    await expect(paginationInfo).toContainText('of 25', {timeout: 15000});
+    await expect(paginationInfo).toContainText('1 - 20');
+
+    // Verify next page button is enabled and clickable
+    const nextPageBtn = authenticatedPage
+      .locator('#team-members-toolbar')
+      .getByRole('button', {name: 'Go to next page'});
+    await expect(nextPageBtn).toBeEnabled();
+
+    // Navigate to page 2
+    await nextPageBtn.click();
+
+    // Verify page 2 shows remaining members
+    await expect(paginationInfo).toContainText('21 - 25 of 25');
+
+    // Verify previous page button is enabled on page 2
+    const prevPageBtn = authenticatedPage
+      .locator('#team-members-toolbar')
+      .getByRole('button', {name: 'Go to previous page'});
+    await expect(prevPageBtn).toBeEnabled();
   });
 
   test('can add user to team', async ({authenticatedPage, api}) => {
@@ -206,7 +249,7 @@ test.describe('Manage Team Members', {tag: ['@organization']}, () => {
 
     // Verify success
     await expect(
-      authenticatedPage.locator('.pf-v5-c-alert.pf-m-success').last(),
+      authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
     ).toContainText(`Successfully added "${userToAdd}" to team`);
     await expect(authenticatedPage.getByTestId(userToAdd)).toContainText(
       userToAdd,

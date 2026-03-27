@@ -5,14 +5,11 @@ import {
   CardBody,
   EmptyState,
   EmptyStateBody,
-  EmptyStateHeader,
-  EmptyStateIcon,
   Pagination,
   PaginationVariant,
   SearchInput,
-  Text,
-  TextContent,
-  TextVariants,
+  Content,
+  ContentVariants,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
@@ -145,14 +142,16 @@ export const PackagesTable: React.FC = () => {
 
   return (
     <>
-      <TextContent style={{marginBottom: '1rem', marginTop: '2rem'}}>
-        <Text component={TextVariants.h2}>Packages and Projects used</Text>
-      </TextContent>
+      <Content style={{marginBottom: '1rem', marginTop: '2rem'}}>
+        <Content component={ContentVariants.h2}>
+          Packages and Projects used
+        </Content>
+      </Content>
       <Card>
         <CardBody>
           <Toolbar>
             <ToolbarContent>
-              <ToolbarItem variant="search-filter">
+              <ToolbarItem>
                 <SearchInput
                   placeholder="Search packages..."
                   value={searchValue}
@@ -198,12 +197,12 @@ export const PackagesTable: React.FC = () => {
                 <Tr>
                   <Td colSpan={3}>
                     <Bullseye>
-                      <EmptyState variant="sm">
-                        <EmptyStateHeader
-                          titleText="No results found"
-                          icon={<EmptyStateIcon icon={SearchIcon} />}
-                          headingLevel="h2"
-                        />
+                      <EmptyState
+                        headingLevel="h2"
+                        icon={SearchIcon}
+                        titleText="No results found"
+                        variant="sm"
+                      >
                         <EmptyStateBody>
                           No packages match your search criteria. Clear the
                           search to show all packages.

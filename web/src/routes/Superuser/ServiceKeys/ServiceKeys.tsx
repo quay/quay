@@ -1,6 +1,5 @@
 import {
   PageSection,
-  PageSectionVariants,
   Title,
   Toolbar,
   ToolbarContent,
@@ -11,11 +10,14 @@ import {
   DropdownList,
   DropdownItem,
   TextInput,
-  Modal,
-  ModalVariant,
   Button,
   Form,
   FormGroup,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -53,7 +55,7 @@ function ServiceKeysHeader() {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Service Keys</Title>
         </div>
@@ -337,7 +339,7 @@ export default function ServiceKeys() {
     return (
       <>
         <ServiceKeysHeader />
-        <PageSection>
+        <PageSection hasBodyWrapper={false}>
           <div>
             Error loading service keys:{' '}
             {error instanceof Error ? error.message : 'Unknown error'}
@@ -350,7 +352,7 @@ export default function ServiceKeys() {
   return (
     <>
       <ServiceKeysHeader />
-      <PageSection>
+      <PageSection hasBodyWrapper={false}>
         <div style={{marginBottom: '20px'}}>
           Service keys provide a recognized means of authentication between Quay
           and external services, as well as between external services. <br />
@@ -384,7 +386,7 @@ export default function ServiceKeys() {
               onItemSelect={onSelectKey}
               id="service-keys-checkbox"
             />
-            <ToolbarItem variant="search-filter">
+            <ToolbarItem>
               <TextInput
                 type="search"
                 id="service-keys-search-input"
@@ -624,12 +626,30 @@ export default function ServiceKeys() {
       {/* Bulk Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete Service Keys?"
-        titleIconVariant="warning"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         data-testid="bulk-delete-modal"
-        actions={[
+      >
+        <ModalHeader title="Delete Service Keys?" titleIconVariant="warning" />
+        <ModalBody>
+          <p>
+            Are you sure you want to delete the following{' '}
+            <strong>{selectedKeys.length}</strong> service key
+            {selectedKeys.length === 1 ? '' : 's'}? This action cannot be
+            undone.
+          </p>
+          <div style={{marginTop: '1rem'}}>
+            {selectedKeys.map((keyId) => {
+              const key = serviceKeys.find((k) => k.kid === keyId);
+              return (
+                <div key={keyId} style={{marginBottom: '0.5rem'}}>
+                  <strong>{key?.name || '(Unnamed)'}</strong> - {key?.service}
+                </div>
+              );
+            })}
+          </div>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="delete"
             variant="danger"
@@ -639,7 +659,7 @@ export default function ServiceKeys() {
             data-testid="confirm-bulk-delete"
           >
             Delete
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
@@ -647,34 +667,33 @@ export default function ServiceKeys() {
             isDisabled={isBulkDeleting}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <p>
-          Are you sure you want to delete the following{' '}
-          <strong>{selectedKeys.length}</strong> service key
-          {selectedKeys.length === 1 ? '' : 's'}? This action cannot be undone.
-        </p>
-        <div style={{marginTop: '1rem'}}>
-          {selectedKeys.map((keyId) => {
-            const key = serviceKeys.find((k) => k.kid === keyId);
-            return (
-              <div key={keyId} style={{marginBottom: '0.5rem'}}>
-                <strong>{key?.name || '(Unnamed)'}</strong> - {key?.service}
-              </div>
-            );
-          })}
-        </div>
+          </Button>
+        </ModalFooter>
       </Modal>
 
       {/* Set Friendly Name Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Set Friendly Name"
         isOpen={isNameModalOpen}
         onClose={() => setIsNameModalOpen(false)}
         data-testid="set-name-modal"
-        actions={[
+      >
+        <ModalHeader title="Set Friendly Name" />
+        <ModalBody>
+          <Form>
+            <FormGroup label="Friendly Name" fieldId="name-input">
+              <TextInput
+                id="name-input"
+                data-testid="friendly-name-input"
+                type="text"
+                value={newName}
+                onChange={(_event, value) => setNewName(value)}
+                placeholder="Enter a friendly name for this key"
+              />
+            </FormGroup>
+          </Form>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="save"
             variant="primary"
@@ -684,7 +703,7 @@ export default function ServiceKeys() {
             isDisabled={isUpdating}
           >
             Save
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
@@ -692,77 +711,47 @@ export default function ServiceKeys() {
             isDisabled={isUpdating}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <Form>
-          <FormGroup label="Friendly Name" fieldId="name-input">
-            <TextInput
-              id="name-input"
-              data-testid="friendly-name-input"
-              type="text"
-              value={newName}
-              onChange={(_event, value) => setNewName(value)}
-              placeholder="Enter a friendly name for this key"
-            />
-          </FormGroup>
-        </Form>
+          </Button>
+        </ModalFooter>
       </Modal>
 
       {/* Change Expiration Time Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Change Service Key Expiration"
         isOpen={isExpirationModalOpen}
         onClose={() => setIsExpirationModalOpen(false)}
         data-testid="change-expiration-modal"
-        actions={[
-          <Button
-            key="save"
-            variant="primary"
-            data-testid="save-expiration-button"
-            onClick={handleUpdateExpiration}
-            isLoading={isUpdating}
-            isDisabled={isUpdating}
-          >
-            Change Expiration
-          </Button>,
-          <Button
-            key="cancel"
-            variant="link"
-            onClick={() => setIsExpirationModalOpen(false)}
-            isDisabled={isUpdating}
-          >
-            Cancel
-          </Button>,
-        ]}
       >
-        <Form>
-          <FormGroup label="Expiration Date:" fieldId="expiration-input">
-            <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
-              <TextInput
-                id="expiration-input"
-                data-testid="expiration-date-input"
-                type="datetime-local"
-                value={newExpiration}
-                onChange={(_event, value) => setNewExpiration(value)}
-                placeholder="Select date and time"
-                style={{flex: 1}}
-              />
-              <Button
-                variant="link"
-                onClick={() => setNewExpiration('')}
-                style={{padding: '6px 8px', fontSize: '12px'}}
+        <ModalHeader title="Change Service Key Expiration" />
+        <ModalBody>
+          <Form>
+            <FormGroup label="Expiration Date:" fieldId="expiration-input">
+              <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                <TextInput
+                  id="expiration-input"
+                  data-testid="expiration-date-input"
+                  type="datetime-local"
+                  value={newExpiration}
+                  onChange={(_event, value) => setNewExpiration(value)}
+                  placeholder="Select date and time"
+                  style={{flex: 1}}
+                />
+                <Button
+                  variant="link"
+                  onClick={() => setNewExpiration('')}
+                  style={{padding: '6px 8px', fontSize: '12px'}}
+                >
+                  Clear
+                </Button>
+              </div>
+              <div
+                style={{fontSize: '12px', color: '#6c757d', marginTop: '8px'}}
               >
-                Clear
-              </Button>
-            </div>
-            <div style={{fontSize: '12px', color: '#6c757d', marginTop: '8px'}}>
-              If specified, the date and time that the key expires. It is highly
-              recommended to have an expiration date.
-            </div>
-          </FormGroup>
-          {/* {editingKey && (
+                If specified, the date and time that the key expires. It is
+                highly recommended to have an expiration date.
+              </div>
+            </FormGroup>
+            {/* {editingKey && (
             <div
               style={{
                 marginTop: '16px',
@@ -775,18 +764,47 @@ export default function ServiceKeys() {
               {editingKey.service}
             </div>
           )} */}
-        </Form>
+          </Form>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            key="save"
+            variant="primary"
+            data-testid="save-expiration-button"
+            onClick={handleUpdateExpiration}
+            isLoading={isUpdating}
+            isDisabled={isUpdating}
+          >
+            Change Expiration
+          </Button>
+          <Button
+            key="cancel"
+            variant="link"
+            onClick={() => setIsExpirationModalOpen(false)}
+            isDisabled={isUpdating}
+          >
+            Cancel
+          </Button>
+        </ModalFooter>
       </Modal>
 
       {/* Row Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete Service Key?"
-        titleIconVariant="warning"
         isOpen={isRowDeleteModalOpen}
         onClose={() => setIsRowDeleteModalOpen(false)}
         data-testid="delete-service-key-modal"
-        actions={[
+      >
+        <ModalHeader title="Delete Service Key?" titleIconVariant="warning" />
+        <ModalBody>
+          <p>
+            Are you sure you want to delete the service key{' '}
+            <strong>{editingKey?.name || '(Unnamed)'}</strong> for service{' '}
+            <strong>{editingKey?.service}</strong>? This action cannot be
+            undone.
+          </p>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="delete"
             variant="danger"
@@ -796,7 +814,7 @@ export default function ServiceKeys() {
             isDisabled={isDeleting}
           >
             Delete
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
@@ -804,14 +822,8 @@ export default function ServiceKeys() {
             isDisabled={isDeleting}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <p>
-          Are you sure you want to delete the service key{' '}
-          <strong>{editingKey?.name || '(Unnamed)'}</strong> for service{' '}
-          <strong>{editingKey?.service}</strong>? This action cannot be undone.
-        </p>
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );
