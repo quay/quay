@@ -648,11 +648,15 @@ def deactivate_excluded_repos(
         ).where(OrgMirrorRepository.org_mirror_config == config)
     )
 
-    # Repos not in active list and not already SKIP → mark SKIP
+    # Repos not in active list and not already SKIP or SYNCING → mark SKIP.
+    # SYNCING repos are left alone to avoid interrupting an active sync;
+    # they will be caught on the next discovery cycle.
     repos_to_skip = [
         r
         for r in all_repos
-        if r.repository_name not in active_set and r.sync_status != OrgMirrorRepoStatus.SKIP
+        if r.repository_name not in active_set
+        and r.sync_status != OrgMirrorRepoStatus.SKIP
+        and r.sync_status != OrgMirrorRepoStatus.SYNCING
     ]
 
     # Repos currently SKIP but back in active list → reactivate to NEVER_RUN
@@ -702,6 +706,8 @@ def deactivate_excluded_repos(
             sync_transaction_id=uuid_generator(),
             sync_status=OrgMirrorRepoStatus.NEVER_RUN,
             status_message=None,
+            sync_start_date=None,
+            sync_expiration_date=None,
             sync_retries_remaining=MAX_SYNC_RETRIES,
         ).where(OrgMirrorRepository.id << chunk).execute()
 
@@ -1261,12 +1267,14 @@ def propagate_status_to_repos(config: OrgMirrorConfig, status: OrgMirrorRepoStat
             sync_status=status,
             sync_start_date=now,
             sync_retries_remaining=MAX_SYNC_RETRIES,
+            status_message=None,
         ).where(base_where & (OrgMirrorRepository.sync_status != OrgMirrorRepoStatus.SYNCING))
     elif status == OrgMirrorRepoStatus.CANCEL:
         query = OrgMirrorRepository.update(
             sync_status=status,
             sync_start_date=None,
             sync_retries_remaining=0,
+            status_message=None,
         ).where(base_where)
     else:
         query = OrgMirrorRepository.update(sync_status=status).where(

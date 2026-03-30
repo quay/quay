@@ -1973,3 +1973,32 @@ class TestOrgMirrorMetrics:
 
         assert result == OrgMirrorRepoStatus.FAIL
         assert _get_counter_value(org_mirror_repo_sync_total, {"status": "fail"}) == fail_before + 1
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    def test_unexpected_exception_records_metrics(self, mock_token, mock_logs, initialized_db, app):
+        """Unexpected exception during tag sync should still record Prometheus metrics."""
+        org, robot = _create_org_and_robot("metrics_sync_test3")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="metrics-exception-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+        )
+
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, ["v1.0"], "", "")
+        mock_skopeo.copy.side_effect = RuntimeError("unexpected failure")
+        mock_token.return_value = "robot_token"
+
+        fail_before = _get_counter_value(org_mirror_repo_sync_total, {"status": "fail"})
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.FAIL
+        assert _get_counter_value(org_mirror_repo_sync_total, {"status": "fail"}) == fail_before + 1

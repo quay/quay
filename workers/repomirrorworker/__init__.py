@@ -1548,7 +1548,6 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
                 status_message=status_message,
             )
             released = True
-        return OrgMirrorRepoStatus.FAIL
     finally:
         if not released:
             release_org_mirror_repo(
@@ -1558,10 +1557,10 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
             )
             overall_status = OrgMirrorRepoStatus.FAIL
 
-    # Record Prometheus metrics
-    status_label = overall_status.name.lower()
-    org_mirror_repo_sync_total.labels(status=status_label).inc()
-    org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+        # Record Prometheus metrics — always, regardless of success or failure path
+        status_label = overall_status.name.lower()
+        org_mirror_repo_sync_total.labels(status=status_label).inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
 
     return overall_status
 
