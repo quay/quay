@@ -488,7 +488,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
     },
   );
 
-  test.describe('User Namespace Settings: Auto-Prune Policies tab (PROJQUAY-11158)', {tag: ['@feature:AUTO_PRUNE', '@user']}, () => {
+  test.describe('User Namespace Settings: Auto-Prune Policies tab', {tag: ['@feature:AUTO_PRUNE', '@user']}, () => {
     const username = TEST_USERS.user.username;
 
     // Helper: navigate to user namespace settings with a config override and
@@ -512,7 +512,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
       await expect(page.locator('#form-name')).toBeVisible();
     }
 
-    test('shows Auto-Prune Policies tab when PROXY_CACHE is enabled (PROJQUAY-11158)', async ({authenticatedPage}) => {
+    test('shows Auto-Prune Policies tab when PROXY_CACHE is enabled', async ({authenticatedPage}) => {
       // Regression scenario: React Query v4 keeps disabled queries in
       // isLoading=true. useFetchProxyCacheConfig is disabled for user orgs
       // (enabled = PROXY_CACHE && !isUserOrg). When PROXY_CACHE=true the
@@ -545,7 +545,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
       ).not.toBeAttached();
     });
 
-    test('shows Auto-Prune Policies tab when ORG_MIRROR is enabled (PROJQUAY-11158)', async ({authenticatedPage}) => {
+    test('shows Auto-Prune Policies tab when ORG_MIRROR is enabled', async ({authenticatedPage}) => {
       // Same bug path via useOrgMirrorExists being disabled for user orgs
       // while ORG_MIRROR feature flag is true.
       await gotoUserSettingsWithConfig(authenticatedPage, {
@@ -564,7 +564,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
       ).not.toBeAttached();
     });
 
-    test('shows Auto-Prune Policies tab when both PROXY_CACHE and ORG_MIRROR are enabled (PROJQUAY-11158)', async ({authenticatedPage}) => {
+    test('shows Auto-Prune Policies tab when both PROXY_CACHE and ORG_MIRROR are enabled', async ({authenticatedPage}) => {
       // Worst-case scenario: both exclusive features enabled simultaneously.
       // Both disabled hooks would each independently block mutualExclusionLoaded
       // without the fix.
