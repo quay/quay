@@ -13,7 +13,9 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  Tooltip,
 } from '@patternfly/react-core';
+import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {useQuery} from '@tanstack/react-query';
 import {
@@ -46,7 +48,7 @@ const repoStatusLabels: Record<string, string> = {
   DISCOVERED: 'Discovered',
 };
 
-// Filterable statuses — derived from shared label map for consistency
+// Filterable statuses — derived from repo-level label map for consistency
 const filterableStatuses: {value: string; label: string}[] = [
   'NEVER_RUN',
   'SYNC_NOW',
@@ -54,9 +56,10 @@ const filterableStatuses: {value: string; label: string}[] = [
   'SUCCESS',
   'FAIL',
   'CANCEL',
+  'SKIP',
 ].map((value) => ({
   value,
-  label: orgMirrorStatusLabels[value] ?? value,
+  label: repoStatusLabels[value] ?? value,
 }));
 
 export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
@@ -187,6 +190,26 @@ export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
                     <Label color={repoStatusColors[repo.sync_status] || 'grey'}>
                       {repoStatusLabels[repo.sync_status] || repo.sync_status}
                     </Label>
+                    {repo.status_message && (
+                      <Tooltip content={repo.status_message}>
+                        <button
+                          type="button"
+                          aria-label={repo.status_message}
+                          data-testid={`status-warning-${repo.name}`}
+                          className="pf-v6-u-ml-sm"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <ExclamationTriangleIcon className="pf-v6-u-warning-color-100" />
+                        </button>
+                      </Tooltip>
+                    )}
                   </Td>
                   <Td dataLabel="Discovery Date">
                     {repo.discovery_date

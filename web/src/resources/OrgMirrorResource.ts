@@ -10,7 +10,8 @@ export type OrgMirrorSyncStatus =
   | 'FAIL'
   | 'SYNCING'
   | 'SUCCESS'
-  | 'CANCEL';
+  | 'CANCEL'
+  | 'SKIP';
 
 // Source registry types
 export type SourceRegistryType = 'harbor' | 'quay';
@@ -186,6 +187,7 @@ export const orgMirrorStatusLabels: Record<OrgMirrorSyncStatus, string> = {
   SYNCING: 'Syncing',
   SUCCESS: 'Success',
   CANCEL: 'Cancelled',
+  SKIP: 'Skipped',
 };
 
 // Status color mapping for PatternFly labels
@@ -199,4 +201,5 @@ export const orgMirrorStatusColors: Record<
   SYNCING: 'blue',
   SUCCESS: 'green',
   CANCEL: 'orange',
+  SKIP: 'orange',
 };
