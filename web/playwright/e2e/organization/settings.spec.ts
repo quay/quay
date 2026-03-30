@@ -515,116 +515,114 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
         await expect(page.locator('#form-name')).toBeVisible();
       }
 
-      test(
-        'shows Auto-Prune Policies tab when PROXY_CACHE is enabled (PROJQUAY-11158)',
-        async ({authenticatedPage}) => {
-          // Regression scenario: React Query v4 keeps disabled queries in
-          // isLoading=true. useFetchProxyCacheConfig is disabled for user orgs
-          // (enabled = PROXY_CACHE && !isUserOrg). When PROXY_CACHE=true the
-          // hook is disabled but isLoading stays true, making proxyCacheResolved
-          // false and blocking mutualExclusionLoaded -> Auto-Prune hidden.
-          await gotoUserSettingsWithConfig(authenticatedPage, {
-            AUTO_PRUNE: true,
-            PROXY_CACHE: true,
-            IMMUTABLE_TAGS: false, // keeps immutabilityResolved=true immediately
-          });
+      test('shows Auto-Prune Policies tab when PROXY_CACHE is enabled (PROJQUAY-11158)', async ({
+        authenticatedPage,
+      }) => {
+        // Regression scenario: React Query v4 keeps disabled queries in
+        // isLoading=true. useFetchProxyCacheConfig is disabled for user orgs
+        // (enabled = PROXY_CACHE && !isUserOrg). When PROXY_CACHE=true the
+        // hook is disabled but isLoading stays true, making proxyCacheResolved
+        // false and blocking mutualExclusionLoaded -> Auto-Prune hidden.
+        await gotoUserSettingsWithConfig(authenticatedPage, {
+          AUTO_PRUNE: true,
+          PROXY_CACHE: true,
+          IMMUTABLE_TAGS: false, // keeps immutabilityResolved=true immediately
+        });
 
-          // Auto-Prune Policies tab must exist in the sidebar for user namespace
-          const autoPruneTab = authenticatedPage.getByTestId('Auto-Prune Policies');
-          await expect(autoPruneTab).toBeVisible();
+        // Auto-Prune Policies tab must exist in the sidebar for user namespace
+        const autoPruneTab = authenticatedPage.getByTestId(
+          'Auto-Prune Policies',
+        );
+        await expect(autoPruneTab).toBeVisible();
 
-          // Click the tab and verify the Auto-Prune content actually renders.
-          // This confirms the tab is not just present but fully navigable, and
-          // that the AutoPruning component mounts correctly for user namespaces.
-          await autoPruneTab.click();
-          await expect(
-            authenticatedPage.getByRole('heading', {
-              name: 'Auto-Pruning Policies',
-              level: 2,
-            }),
-          ).toBeVisible();
+        // Click the tab and verify the Auto-Prune content actually renders.
+        // This confirms the tab is not just present but fully navigable, and
+        // that the AutoPruning component mounts correctly for user namespaces.
+        await autoPruneTab.click();
+        await expect(
+          authenticatedPage.getByRole('heading', {
+            name: 'Auto-Pruning Policies',
+            level: 2,
+          }),
+        ).toBeVisible();
 
-          // Proxy Cache is an org-only feature; must never appear for user namespace
-          await expect(
-            authenticatedPage.getByTestId('Proxy Cache'),
-          ).not.toBeAttached();
-        },
-      );
+        // Proxy Cache is an org-only feature; must never appear for user namespace
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).not.toBeAttached();
+      });
 
-      test(
-        'shows Auto-Prune Policies tab when ORG_MIRROR is enabled (PROJQUAY-11158)',
-        async ({authenticatedPage}) => {
-          // Same bug path via useOrgMirrorExists being disabled for user orgs
-          // while ORG_MIRROR feature flag is true.
-          await gotoUserSettingsWithConfig(authenticatedPage, {
-            AUTO_PRUNE: true,
-            ORG_MIRROR: true,
-            IMMUTABLE_TAGS: false,
-          });
+      test('shows Auto-Prune Policies tab when ORG_MIRROR is enabled (PROJQUAY-11158)', async ({
+        authenticatedPage,
+      }) => {
+        // Same bug path via useOrgMirrorExists being disabled for user orgs
+        // while ORG_MIRROR feature flag is true.
+        await gotoUserSettingsWithConfig(authenticatedPage, {
+          AUTO_PRUNE: true,
+          ORG_MIRROR: true,
+          IMMUTABLE_TAGS: false,
+        });
 
-          await expect(
-            authenticatedPage.getByTestId('Auto-Prune Policies'),
-          ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Auto-Prune Policies'),
+        ).toBeVisible();
 
-          // Organization state is an org-only feature; must never appear for user namespace
-          await expect(
-            authenticatedPage.getByTestId('Organization state'),
-          ).not.toBeAttached();
-        },
-      );
+        // Organization state is an org-only feature; must never appear for user namespace
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+      });
 
-      test(
-        'shows Auto-Prune Policies tab when both PROXY_CACHE and ORG_MIRROR are enabled (PROJQUAY-11158)',
-        async ({authenticatedPage}) => {
-          // Worst-case scenario: both exclusive features enabled simultaneously.
-          // Both disabled hooks would each independently block mutualExclusionLoaded
-          // without the fix.
-          await gotoUserSettingsWithConfig(authenticatedPage, {
-            AUTO_PRUNE: true,
-            PROXY_CACHE: true,
-            ORG_MIRROR: true,
-            IMMUTABLE_TAGS: false,
-          });
+      test('shows Auto-Prune Policies tab when both PROXY_CACHE and ORG_MIRROR are enabled (PROJQUAY-11158)', async ({
+        authenticatedPage,
+      }) => {
+        // Worst-case scenario: both exclusive features enabled simultaneously.
+        // Both disabled hooks would each independently block mutualExclusionLoaded
+        // without the fix.
+        await gotoUserSettingsWithConfig(authenticatedPage, {
+          AUTO_PRUNE: true,
+          PROXY_CACHE: true,
+          ORG_MIRROR: true,
+          IMMUTABLE_TAGS: false,
+        });
 
-          await expect(
-            authenticatedPage.getByTestId('Auto-Prune Policies'),
-          ).toBeVisible();
+        await expect(
+          authenticatedPage.getByTestId('Auto-Prune Policies'),
+        ).toBeVisible();
 
-          await expect(
-            authenticatedPage.getByTestId('Proxy Cache'),
-          ).not.toBeAttached();
-          await expect(
-            authenticatedPage.getByTestId('Organization state'),
-          ).not.toBeAttached();
-        },
-      );
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).not.toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+      });
 
-      test(
-        'CLI configuration tab is visible and org-only tabs are absent in user namespace',
-        async ({authenticatedPage}) => {
-          // Confirms the tab set for user namespaces is correct: CLI config
-          // is user-only, Proxy Cache / Org State are org-only.
-          await gotoUserSettingsWithConfig(authenticatedPage, {
-            AUTO_PRUNE: true,
-            PROXY_CACHE: true,
-            ORG_MIRROR: true,
-            IMMUTABLE_TAGS: false,
-          });
+      test('CLI configuration tab is visible and org-only tabs are absent in user namespace', async ({
+        authenticatedPage,
+      }) => {
+        // Confirms the tab set for user namespaces is correct: CLI config
+        // is user-only, Proxy Cache / Org State are org-only.
+        await gotoUserSettingsWithConfig(authenticatedPage, {
+          AUTO_PRUNE: true,
+          PROXY_CACHE: true,
+          ORG_MIRROR: true,
+          IMMUTABLE_TAGS: false,
+        });
 
-          // CLI configuration is user-namespace only
-          await expect(
-            authenticatedPage.getByTestId('CLI configuration'),
-          ).toBeVisible();
+        // CLI configuration is user-namespace only
+        await expect(
+          authenticatedPage.getByTestId('CLI configuration'),
+        ).toBeVisible();
 
-          // Org-only tabs must not render in user namespace
-          await expect(
-            authenticatedPage.getByTestId('Proxy Cache'),
-          ).not.toBeAttached();
-          await expect(
-            authenticatedPage.getByTestId('Organization state'),
-          ).not.toBeAttached();
-        },
-      );
+        // Org-only tabs must not render in user namespace
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).not.toBeAttached();
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+      });
     },
   );
 
