@@ -426,6 +426,44 @@ GO_BINARY_NAME = quay
 GO_BUILD_DIR = bin
 GO_CMD_DIR = cmd/quay
 
+SCHEMA_DIR := internal/dal/schema
+SCHEMA_TMP := /tmp/quay-schema-tmp
+
+.PHONY: go-schema go-schema-check
+
+go-schema:
+	@echo "=== Running Alembic migrations against SQLite ==="
+	@rm -rf $(SCHEMA_TMP)
+	@mkdir -p $(SCHEMA_TMP)/stack $(SCHEMA_DIR)/sqlite
+	@echo 'DB_URI: sqlite:///$(SCHEMA_TMP)/quay.db' > $(SCHEMA_TMP)/stack/config.yaml
+	QUAYCONF=$(SCHEMA_TMP)/ PYTHONPATH="." alembic upgrade head
+	@echo "=== Extracting schema DDL ==="
+	sqlite3 $(SCHEMA_TMP)/quay.db .schema > $(SCHEMA_DIR)/sqlite/quay_schema.sql
+	@echo "=== Extracting seed data ==="
+	@sqlite3 $(SCHEMA_TMP)/quay.db \
+	  "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence' ORDER BY name;" \
+	  | while read table; do \
+	    count=$$(sqlite3 $(SCHEMA_TMP)/quay.db "SELECT COUNT(*) FROM \"$$table\";"); \
+	    if [ "$$count" -gt 0 ]; then \
+	      sqlite3 $(SCHEMA_TMP)/quay.db ".mode insert $$table" "SELECT * FROM \"$$table\" ORDER BY rowid;"; \
+	    fi; \
+	  done > $(SCHEMA_DIR)/sqlite/seed_data.sql
+	@echo "=== Generating Go types ==="
+	sqlc generate
+	@echo "=== Cleanup ==="
+	@rm -rf $(SCHEMA_TMP)
+	@echo "Done."
+
+go-schema-check:
+	@echo "=== Checking for schema drift ==="
+	$(MAKE) go-schema SCHEMA_DIR=/tmp/quay-schema-check
+	@diff $(SCHEMA_DIR)/sqlite/quay_schema.sql /tmp/quay-schema-check/sqlite/quay_schema.sql || \
+	  (echo "ERROR: sqlite/quay_schema.sql is out of date. Run 'make go-schema'." && exit 1)
+	@diff $(SCHEMA_DIR)/sqlite/seed_data.sql /tmp/quay-schema-check/sqlite/seed_data.sql || \
+	  (echo "ERROR: sqlite/seed_data.sql is out of date." && exit 1)
+	@rm -rf /tmp/quay-schema-check
+	@echo "Schema files are up to date."
+
 .PHONY: go-build go-test go-fmt go-vet go-clean
 
 go-build:
