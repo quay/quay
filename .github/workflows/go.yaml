@@ -12,12 +12,11 @@ on:
       - 'util/config/schema.py'
       - 'data/database.py'
       - 'data/fields.py'
-      - 'data/seed_data.py'
-      - 'data/model/sqlalchemybridge.py'
       - 'data/migrations/versions/**'
       - 'internal/dal/**'
-      - 'initdb.py'
       - 'sqlc.yaml'
+      - 'Makefile'
+      - 'tools/schema_fingerprint.py'
       - '!config-tool/**'
   pull_request:
     paths:
@@ -29,12 +28,11 @@ on:
       - 'util/config/schema.py'
       - 'data/database.py'
       - 'data/fields.py'
-      - 'data/seed_data.py'
-      - 'data/model/sqlalchemybridge.py'
       - 'data/migrations/versions/**'
       - 'internal/dal/**'
-      - 'initdb.py'
       - 'sqlc.yaml'
+      - 'Makefile'
+      - 'tools/schema_fingerprint.py'
       - '!config-tool/**'
 
 jobs:
