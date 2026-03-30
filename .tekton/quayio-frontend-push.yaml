@@ -10,7 +10,7 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
       == "master" && ( "web/***".pathChanged() || ".tekton/quayio-frontend-push.yaml".pathChanged()
       )
-    pipelinesascode.tekton.dev/pipeline: "https://raw.githubusercontent.com/quay/quay-konflux-configs/main/pipelines/quayio-build-pipeline.yaml"
+    pipelinesascode.tekton.dev/pipeline: "https://github.com/quay/quay-konflux-configs/blob/main/pipelines/quayio-build-pipeline.yaml"
     pipelinesascode.tekton.dev/target-namespace: "quayio-tenant"
   creationTimestamp: null
   labels:
