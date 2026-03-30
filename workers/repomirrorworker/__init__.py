@@ -32,6 +32,7 @@ from data.model.org_mirror import (
     check_org_mirror_repo_sync_status,
     claim_org_mirror_config,
     claim_org_mirror_repo,
+    deactivate_excluded_repos,
     matches_repository_filter,
     propagate_status_to_repos,
     release_org_mirror_config,
@@ -1126,6 +1127,21 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
     # Sync to database
     total_count, newly_created = sync_discovered_repos(claimed_config, filtered_repos)
 
+    # Deactivate repos no longer in source or excluded by filters.
+    # Only call when the source actually returned repos — if the source returned
+    # nothing, skip deactivation to guard against transient registry failures.
+    deactivated_count = 0
+    if all_repos:
+        deactivated_count = deactivate_excluded_repos(
+            claimed_config, filtered_repos, source_repo_names=all_repos
+        )
+    if deactivated_count > 0:
+        logger.info(
+            "Deactivated %d repositories for org mirror %s (no longer in source or filtered out)",
+            deactivated_count,
+            org_name,
+        )
+
     logger.info(
         "Discovery complete for org mirror %s: %d repos discovered, %d newly created",
         org_name,
@@ -1343,14 +1359,15 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
     # Ensure the local repository exists
     local_repo = _ensure_local_repository(config, claimed_repo)
     if not local_repo:
+        msg = f"Failed to create local repository for '{claimed_repo.repository_name}'"
         emit_org_mirror_log(
             config,
             claimed_repo,
             "org_mirror_sync_failed",
             "end",
-            f"Failed to create local repository for '{claimed_repo.repository_name}'",
+            msg,
         )
-        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL, status_message=msg)
         org_mirror_repo_sync_total.labels(status="fail").inc()
         org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
         return OrgMirrorRepoStatus.FAIL
@@ -1360,29 +1377,31 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
     try:
         tags = _get_all_tags_for_org_mirror(skopeo, config, external_reference)
     except RepoMirrorSkopeoException as e:
+        msg = f"Failed to list tags for '{external_reference}': {e.message}"
         emit_org_mirror_log(
             config,
             claimed_repo,
             "org_mirror_sync_failed",
             "end",
-            f"Failed to list tags for '{external_reference}': {e.message}",
+            msg,
             stdout=e.stdout,
             stderr=e.stderr,
         )
-        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL, status_message=msg)
         org_mirror_repo_sync_total.labels(status="fail").inc()
         org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
         return OrgMirrorRepoStatus.FAIL
     except Exception:
+        msg = f"Internal error listing tags for '{external_reference}'"
         emit_org_mirror_log(
             config,
             claimed_repo,
             "org_mirror_sync_failed",
             "end",
-            f"Internal error listing tags for '{external_reference}'",
+            msg,
             stderr=traceback.format_exc(),
         )
-        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL, status_message=msg)
         org_mirror_repo_sync_total.labels(status="fail").inc()
         org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
         return OrgMirrorRepoStatus.FAIL
@@ -1400,113 +1419,148 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
         return OrgMirrorRepoStatus.SUCCESS
 
-    # Sync each tag
+    # Sync each tag — wrapped in try/finally to ensure release on unexpected errors
     overall_status = OrgMirrorRepoStatus.SUCCESS
     failed_tags = []
     tag_errors = {}
+    status_message = None
+    released = False
 
     try:
-        username = (
-            config.external_registry_username.decrypt()
-            if config.external_registry_username
-            else None
-        )
-        password = (
-            config.external_registry_password.decrypt()
-            if config.external_registry_password
-            else None
-        )
-    except DecryptionFailureException:
-        logger.exception(
-            "Failed to decrypt credentials for org mirror %s/%s",
-            org.username,
-            claimed_repo.repository_name,
-        )
-        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL)
-        org_mirror_repo_sync_total.labels(status="fail").inc()
-        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
-        return OrgMirrorRepoStatus.FAIL
-
-    dest_server = (
-        app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
-    )
-    skopeo_timeout = config.skopeo_timeout
-
-    for tag in tags:
-        src_image = f"docker://{external_reference}:{tag}"
-        dest_image = f"docker://{dest_server}/{org.username}/{claimed_repo.repository_name}:{tag}"
-
-        with database.CloseForLongOperation(app.config):
-            result = skopeo.copy(
-                src_image,
-                dest_image,
-                timeout=skopeo_timeout,
-                src_tls_verify=config.external_registry_config.get("verify_tls", True),
-                dest_tls_verify=app.config.get("REPO_MIRROR_TLS_VERIFY", True),
-                src_username=username,
-                src_password=password,
-                dest_username=config.internal_robot.username,
-                dest_password=retrieve_robot_token(config.internal_robot),
-                proxy=config.external_registry_config.get("proxy", {}),
-                verbose_logs=verbose_logs,
-                unsigned_images=config.external_registry_config.get("unsigned_images", False),
+        try:
+            username = (
+                config.external_registry_username.decrypt()
+                if config.external_registry_username
+                else None
             )
-
-        # Check if cancel was requested before processing next tag
-        if check_org_mirror_repo_sync_status(claimed_repo) == OrgMirrorRepoStatus.CANCEL:
-            logger.info(
-                "Org mirror sync cancelled on repo %s/%s.",
+            password = (
+                config.external_registry_password.decrypt()
+                if config.external_registry_password
+                else None
+            )
+        except DecryptionFailureException:
+            logger.exception(
+                "Failed to decrypt credentials for org mirror %s/%s",
                 org.username,
                 claimed_repo.repository_name,
             )
-            overall_status = OrgMirrorRepoStatus.CANCEL
-            break
-
-        if not result.success:
             overall_status = OrgMirrorRepoStatus.FAIL
-            failed_tags.append(tag)
-            tag_errors[tag] = result.stderr or ""
-            logger.info("Org mirror: Source '%s' failed to sync.", src_image)
+            status_message = "Failed to decrypt credentials"
+            release_org_mirror_repo(claimed_repo, overall_status, status_message=status_message)
+            released = True
+            org_mirror_repo_sync_total.labels(status="fail").inc()
+            org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+            return OrgMirrorRepoStatus.FAIL
+
+        dest_server = (
+            app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+        )
+        skopeo_timeout = config.skopeo_timeout
+
+        for tag in tags:
+            src_image = f"docker://{external_reference}:{tag}"
+            dest_image = (
+                f"docker://{dest_server}/{org.username}/{claimed_repo.repository_name}:{tag}"
+            )
+
+            with database.CloseForLongOperation(app.config):
+                result = skopeo.copy(
+                    src_image,
+                    dest_image,
+                    timeout=skopeo_timeout,
+                    src_tls_verify=config.external_registry_config.get("verify_tls", True),
+                    dest_tls_verify=app.config.get("REPO_MIRROR_TLS_VERIFY", True),
+                    src_username=username,
+                    src_password=password,
+                    dest_username=config.internal_robot.username,
+                    dest_password=retrieve_robot_token(config.internal_robot),
+                    proxy=config.external_registry_config.get("proxy", {}),
+                    verbose_logs=verbose_logs,
+                    unsigned_images=config.external_registry_config.get("unsigned_images", False),
+                )
+
+            # Check if cancel was requested before processing next tag
+            if check_org_mirror_repo_sync_status(claimed_repo) == OrgMirrorRepoStatus.CANCEL:
+                logger.info(
+                    "Org mirror sync cancelled on repo %s/%s.",
+                    org.username,
+                    claimed_repo.repository_name,
+                )
+                overall_status = OrgMirrorRepoStatus.CANCEL
+                break
+
+            if not result.success:
+                overall_status = OrgMirrorRepoStatus.FAIL
+                failed_tags.append(tag)
+                tag_errors[tag] = result.stderr or ""
+                logger.info("Org mirror: Source '%s' failed to sync.", src_image)
+            else:
+                logger.info("Org mirror: Source '%s' successful sync.", src_image)
+
+        if overall_status == OrgMirrorRepoStatus.FAIL:
+            combined_stderr = "; ".join(f"[{t}]: {err}" for t, err in tag_errors.items() if err)
+            if len(combined_stderr) > 4096:
+                combined_stderr = combined_stderr[:4093] + "..."
+            status_message = f"Sync failed: {len(failed_tags)}/{len(tags)} tags failed"
+            emit_org_mirror_log(
+                config,
+                claimed_repo,
+                "org_mirror_sync_failed",
+                "end",
+                f"Sync failed for '{external_reference}': "
+                f"{len(failed_tags)}/{len(tags)} tags failed",
+                tags=", ".join(failed_tags),
+                stderr=combined_stderr,
+            )
+        elif overall_status == OrgMirrorRepoStatus.CANCEL:
+            emit_org_mirror_log(
+                config,
+                claimed_repo,
+                "org_mirror_sync_cancelled",
+                "end",
+                f"Sync cancelled for '{external_reference}'",
+            )
         else:
-            logger.info("Org mirror: Source '%s' successful sync.", src_image)
+            emit_org_mirror_log(
+                config,
+                claimed_repo,
+                "org_mirror_sync_success",
+                "end",
+                f"Successfully synced '{external_reference}': {len(tags)} tags",
+                tags=", ".join(tags),
+            )
 
-    if overall_status == OrgMirrorRepoStatus.FAIL:
-        combined_stderr = "; ".join(f"[{t}]: {err}" for t, err in tag_errors.items() if err)
-        if len(combined_stderr) > 4096:
-            combined_stderr = combined_stderr[:4093] + "..."
-        emit_org_mirror_log(
-            config,
-            claimed_repo,
-            "org_mirror_sync_failed",
-            "end",
-            f"Sync failed for '{external_reference}': {len(failed_tags)}/{len(tags)} tags failed",
-            tags=", ".join(failed_tags),
-            stderr=combined_stderr,
-        )
-    elif overall_status == OrgMirrorRepoStatus.CANCEL:
-        emit_org_mirror_log(
-            config,
-            claimed_repo,
-            "org_mirror_sync_cancelled",
-            "end",
-            f"Sync cancelled for '{external_reference}'",
-        )
-    else:
-        emit_org_mirror_log(
-            config,
-            claimed_repo,
-            "org_mirror_sync_success",
-            "end",
-            f"Successfully synced '{external_reference}': {len(tags)} tags",
-            tags=", ".join(tags),
-        )
+        release_org_mirror_repo(claimed_repo, overall_status, status_message=status_message)
+        released = True
 
-    release_org_mirror_repo(claimed_repo, overall_status)
+    except Exception:
+        logger.exception(
+            "Unexpected error during tag sync for org mirror %s/%s",
+            org.username,
+            claimed_repo.repository_name,
+        )
+        overall_status = OrgMirrorRepoStatus.FAIL
+        status_message = "Unexpected error during sync"
+        if not released:
+            release_org_mirror_repo(
+                claimed_repo,
+                overall_status,
+                status_message=status_message,
+            )
+            released = True
+    finally:
+        if not released:
+            release_org_mirror_repo(
+                claimed_repo,
+                OrgMirrorRepoStatus.FAIL,
+                status_message=f"Unexpected error during sync of '{external_reference}'",
+            )
+            overall_status = OrgMirrorRepoStatus.FAIL
 
-    # Record Prometheus metrics
-    status_label = overall_status.name.lower()
-    org_mirror_repo_sync_total.labels(status=status_label).inc()
-    org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+        # Record Prometheus metrics — always, regardless of success or failure path
+        status_label = overall_status.name.lower()
+        org_mirror_repo_sync_total.labels(status=status_label).inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
 
     return overall_status
 
