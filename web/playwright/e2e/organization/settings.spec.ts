@@ -492,52 +492,36 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
     'User Namespace Settings: Auto-Prune Policies tab',
     {tag: ['@feature:AUTO_PRUNE', '@user']},
     () => {
-      const username = TEST_USERS.user.username;
+      test('shows Auto-Prune tab and hides org-only tabs for user namespace', async ({
+        authenticatedPage,
+      }) => {
+        const username = TEST_USERS.user.username;
 
-      // Helper: navigate to user namespace settings with a config override and
-      // wait for the General Settings form to confirm the page is fully rendered.
-      async function gotoUserSettingsWithConfig(
-        page: Page,
-        featureOverrides: Record<string, boolean>,
-      ) {
-        await page.route('**/config', async (route) => {
+        // Regression: React Query v4 keeps disabled queries in isLoading=true.
+        // useOrgMirrorExists and useFetchProxyCacheConfig are disabled for user
+        // orgs (enabled = flag && !isUserOrg), but isLoading stays true when
+        // no cached data exists, blocking mutualExclusionLoaded and hiding the
+        // Auto-Prune tab. Enable both flags to cover both short-circuit paths.
+        await authenticatedPage.route('**/config', async (route) => {
           const response = await route.fetch();
           const body = await response.json();
-          Object.assign(body.features, featureOverrides);
+          Object.assign(body.features, {
+            AUTO_PRUNE: true,
+            PROXY_CACHE: true,
+            ORG_MIRROR: true,
+            IMMUTABLE_TAGS: false,
+          });
           await route.fulfill({response, body: JSON.stringify(body)});
         });
 
-        await page.goto(`/user/${username}?tab=Settings`);
+        await authenticatedPage.goto(`/user/${username}?tab=Settings`);
+        await expect(authenticatedPage.locator('#form-name')).toBeVisible();
 
-        // #form-name is always present in user namespace General Settings
-        // and appears only after quayConfig is resolved, making it a reliable
-        // signal that the tab list has been computed.
-        await expect(page.locator('#form-name')).toBeVisible();
-      }
-
-      test('shows Auto-Prune Policies tab when PROXY_CACHE is enabled', async ({
-        authenticatedPage,
-      }) => {
-        // Regression scenario: React Query v4 keeps disabled queries in
-        // isLoading=true. useFetchProxyCacheConfig is disabled for user orgs
-        // (enabled = PROXY_CACHE && !isUserOrg). When PROXY_CACHE=true the
-        // hook is disabled but isLoading stays true, making proxyCacheResolved
-        // false and blocking mutualExclusionLoaded -> Auto-Prune hidden.
-        await gotoUserSettingsWithConfig(authenticatedPage, {
-          AUTO_PRUNE: true,
-          PROXY_CACHE: true,
-          IMMUTABLE_TAGS: false, // keeps immutabilityResolved=true immediately
-        });
-
-        // Auto-Prune Policies tab must exist in the sidebar for user namespace
+        // Auto-Prune tab must be visible and navigable
         const autoPruneTab = authenticatedPage.getByTestId(
           'Auto-Prune Policies',
         );
         await expect(autoPruneTab).toBeVisible();
-
-        // Click the tab and verify the Auto-Prune content actually renders.
-        // This confirms the tab is not just present but fully navigable, and
-        // that the AutoPruning component mounts correctly for user namespaces.
         await autoPruneTab.click();
         await expect(
           authenticatedPage.getByRole('heading', {
@@ -545,70 +529,6 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
             level: 2,
           }),
         ).toBeVisible();
-
-        // Proxy Cache is an org-only feature; must never appear for user namespace
-        await expect(
-          authenticatedPage.getByTestId('Proxy Cache'),
-        ).not.toBeAttached();
-      });
-
-      test('shows Auto-Prune Policies tab when ORG_MIRROR is enabled', async ({
-        authenticatedPage,
-      }) => {
-        // Same bug path via useOrgMirrorExists being disabled for user orgs
-        // while ORG_MIRROR feature flag is true.
-        await gotoUserSettingsWithConfig(authenticatedPage, {
-          AUTO_PRUNE: true,
-          ORG_MIRROR: true,
-          IMMUTABLE_TAGS: false,
-        });
-
-        await expect(
-          authenticatedPage.getByTestId('Auto-Prune Policies'),
-        ).toBeVisible();
-
-        // Organization state is an org-only feature; must never appear for user namespace
-        await expect(
-          authenticatedPage.getByTestId('Organization state'),
-        ).not.toBeAttached();
-      });
-
-      test('shows Auto-Prune Policies tab when both PROXY_CACHE and ORG_MIRROR are enabled', async ({
-        authenticatedPage,
-      }) => {
-        // Worst-case scenario: both exclusive features enabled simultaneously.
-        // Both disabled hooks would each independently block mutualExclusionLoaded
-        // without the fix.
-        await gotoUserSettingsWithConfig(authenticatedPage, {
-          AUTO_PRUNE: true,
-          PROXY_CACHE: true,
-          ORG_MIRROR: true,
-          IMMUTABLE_TAGS: false,
-        });
-
-        await expect(
-          authenticatedPage.getByTestId('Auto-Prune Policies'),
-        ).toBeVisible();
-
-        await expect(
-          authenticatedPage.getByTestId('Proxy Cache'),
-        ).not.toBeAttached();
-        await expect(
-          authenticatedPage.getByTestId('Organization state'),
-        ).not.toBeAttached();
-      });
-
-      test('CLI configuration tab is visible and org-only tabs are absent in user namespace', async ({
-        authenticatedPage,
-      }) => {
-        // Confirms the tab set for user namespaces is correct: CLI config
-        // is user-only, Proxy Cache / Org State are org-only.
-        await gotoUserSettingsWithConfig(authenticatedPage, {
-          AUTO_PRUNE: true,
-          PROXY_CACHE: true,
-          ORG_MIRROR: true,
-          IMMUTABLE_TAGS: false,
-        });
 
         // CLI configuration is user-namespace only
         await expect(
