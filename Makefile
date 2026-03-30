@@ -428,10 +428,17 @@ go-schema:
 go-schema-check:
 	@echo "=== Checking for schema drift ==="
 	$(MAKE) go-schema SCHEMA_DIR=/tmp/quay-schema-check
-	@diff $(SCHEMA_DIR)/sqlite/quay_schema.sql /tmp/quay-schema-check/sqlite/quay_schema.sql || \
-	  (echo "ERROR: sqlite/quay_schema.sql is out of date. Run 'make go-schema'." && exit 1)
-	@diff $(SCHEMA_DIR)/sqlite/seed_data.sql /tmp/quay-schema-check/sqlite/seed_data.sql || \
-	  (echo "ERROR: sqlite/seed_data.sql is out of date." && exit 1)
+	@echo "=== Comparing database structure ==="
+	@rm -f /tmp/quay-drift-committed.db /tmp/quay-drift-fresh.db
+	@sqlite3 /tmp/quay-drift-committed.db < $(SCHEMA_DIR)/sqlite/quay_schema.sql
+	@sqlite3 /tmp/quay-drift-committed.db < $(SCHEMA_DIR)/sqlite/seed_data.sql
+	@sqlite3 /tmp/quay-drift-fresh.db < /tmp/quay-schema-check/sqlite/quay_schema.sql
+	@sqlite3 /tmp/quay-drift-fresh.db < /tmp/quay-schema-check/sqlite/seed_data.sql
+	@diff \
+	  <(python3 tools/schema_fingerprint.py /tmp/quay-drift-committed.db) \
+	  <(python3 tools/schema_fingerprint.py /tmp/quay-drift-fresh.db) || \
+	  (echo "ERROR: Schema drift detected. Run 'make go-schema' and commit." && exit 1)
+	@rm -f /tmp/quay-drift-committed.db /tmp/quay-drift-fresh.db
 	@rm -rf /tmp/quay-schema-check
 	@echo "Schema files are up to date."
 
