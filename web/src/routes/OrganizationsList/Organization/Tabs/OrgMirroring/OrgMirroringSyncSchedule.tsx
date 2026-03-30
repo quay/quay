@@ -24,12 +24,22 @@ interface OrgMirroringSyncScheduleProps {
   errors: FieldErrors<OrgMirroringFormData>;
   config: OrgMirrorConfig | null;
   isSyncingNow: boolean;
+  isCancellingSync: boolean;
+  isOrgSyncing: boolean;
   onSyncNow: () => Promise<void>;
 }
 
 export const OrgMirroringSyncSchedule: React.FC<
   OrgMirroringSyncScheduleProps
-> = ({control, errors, config, isSyncingNow, onSyncNow}) => {
+> = ({
+  control,
+  errors,
+  config,
+  isSyncingNow,
+  isCancellingSync,
+  isOrgSyncing,
+  onSyncNow,
+}) => {
   const [isSyncUnitOpen, setIsSyncUnitOpen] = useState(false);
 
   return (
@@ -74,16 +84,12 @@ export const OrgMirroringSyncSchedule: React.FC<
                 variant="primary"
                 size="sm"
                 type="button"
-                isLoading={isSyncingNow}
-                isDisabled={
-                  isSyncingNow ||
-                  config.sync_status === 'SYNCING' ||
-                  config.sync_status === 'SYNC_NOW'
-                }
+                isLoading={isSyncingNow || (isOrgSyncing && !isCancellingSync)}
+                isDisabled={isSyncingNow || isCancellingSync || isOrgSyncing}
                 data-testid="sync-now-button"
                 onClick={onSyncNow}
               >
-                Sync Now
+                {isOrgSyncing && !isCancellingSync ? 'Syncing' : 'Sync Now'}
               </Button>
             </SplitItem>
           </Split>
