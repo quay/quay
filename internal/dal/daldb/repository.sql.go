@@ -21,6 +21,34 @@ func (q *Queries) CountRepositories(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const getOrCreateRepository = `-- name: GetOrCreateRepository :one
+INSERT INTO repository (namespace_user_id, name, visibility_id, kind_id, badge_token, state)
+VALUES (?, ?, ?, ?, ?, 0)
+ON CONFLICT (namespace_user_id, name) DO UPDATE SET name = excluded.name
+RETURNING id
+`
+
+type GetOrCreateRepositoryParams struct {
+	NamespaceUserID sql.NullInt64 `json:"namespace_user_id"`
+	Name            string        `json:"name"`
+	VisibilityID    int64         `json:"visibility_id"`
+	KindID          int64         `json:"kind_id"`
+	BadgeToken      string        `json:"badge_token"`
+}
+
+func (q *Queries) GetOrCreateRepository(ctx context.Context, arg GetOrCreateRepositoryParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getOrCreateRepository,
+		arg.NamespaceUserID,
+		arg.Name,
+		arg.VisibilityID,
+		arg.KindID,
+		arg.BadgeToken,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getRepositoryByName = `-- name: GetRepositoryByName :one
 SELECT id, namespace_user_id, name, visibility_id, kind_id, state
 FROM repository
@@ -53,32 +81,4 @@ func (q *Queries) GetRepositoryByName(ctx context.Context, arg GetRepositoryByNa
 		&i.State,
 	)
 	return i, err
-}
-
-const upsertRepository = `-- name: UpsertRepository :one
-INSERT INTO repository (namespace_user_id, name, visibility_id, kind_id, badge_token, state)
-VALUES (?, ?, ?, ?, ?, 0)
-ON CONFLICT (namespace_user_id, name) DO UPDATE SET name = excluded.name
-RETURNING id
-`
-
-type UpsertRepositoryParams struct {
-	NamespaceUserID sql.NullInt64 `json:"namespace_user_id"`
-	Name            string        `json:"name"`
-	VisibilityID    int64         `json:"visibility_id"`
-	KindID          int64         `json:"kind_id"`
-	BadgeToken      string        `json:"badge_token"`
-}
-
-func (q *Queries) UpsertRepository(ctx context.Context, arg UpsertRepositoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, upsertRepository,
-		arg.NamespaceUserID,
-		arg.Name,
-		arg.VisibilityID,
-		arg.KindID,
-		arg.BadgeToken,
-	)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
 }
