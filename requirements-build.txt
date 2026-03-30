@@ -386,8 +386,13 @@ setuptools-scm==10.0.5 \
     #   pluggy
     #   python-dateutil
     #   setuptools-rust
-    #   urllib3
     #   zipp
+setuptools-scm==9.2.2 \
+    --hash=sha256:1c674ab4665686a0887d7e24c03ab25f24201c213e82ea689d2f3e169ef7ef57 \
+    --hash=sha256:30e8f84d2ab1ba7cb0e653429b179395d0c33775d54807fc5f1dd6671801aef7
+    # via
+    #   hatch-vcs
+    #   urllib3
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
     --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
@@ -459,7 +464,6 @@ setuptools==78.1.1 \
     #   pyasn1_modules
     #   pyhanko-certvalidator
     #   pyrsistent
-    #   python-dateutil
     #   pyyaml
     #   reportlab
     #   resumablesha256
