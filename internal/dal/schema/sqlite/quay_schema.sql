@@ -446,8 +446,8 @@ CREATE TABLE IF NOT EXISTS "messages" (
 	CONSTRAINT fk_messages_media_type_id_mediatype FOREIGN KEY(media_type_id) REFERENCES mediatype (id)
 );
 CREATE INDEX messages_uuid ON messages (uuid);
-CREATE INDEX messages_media_type_id ON messages (media_type_id);
 CREATE INDEX messages_severity ON messages (severity);
+CREATE INDEX messages_media_type_id ON messages (media_type_id);
 CREATE UNIQUE INDEX queueitem_state_id ON queueitem (state_id);
 CREATE TABLE repositorykind (
 	id INTEGER NOT NULL,
@@ -464,15 +464,15 @@ CREATE TABLE IF NOT EXISTS "repository" (
 	badge_token VARCHAR(255) NOT NULL,
 	kind_id INTEGER DEFAULT '1' NOT NULL, trust_enabled BOOLEAN DEFAULT (0) NOT NULL, state INTEGER DEFAULT '0' NOT NULL,
 	CONSTRAINT pk_repository PRIMARY KEY (id),
-	CONSTRAINT fk_repository_visibility_id_visibility FOREIGN KEY(visibility_id) REFERENCES visibility (id),
 	CONSTRAINT fk_repository_namespace_user_id_user FOREIGN KEY(namespace_user_id) REFERENCES user (id),
+	CONSTRAINT fk_repository_visibility_id_visibility FOREIGN KEY(visibility_id) REFERENCES visibility (id),
 	CONSTRAINT fk_repository_kind_id_repositorykind FOREIGN KEY(kind_id) REFERENCES repositorykind (id)
 );
-CREATE UNIQUE INDEX repository_namespace_user_id_name ON repository (namespace_user_id, name);
 CREATE INDEX repository_visibility_id ON repository (visibility_id);
-CREATE INDEX repository_name__fulltext ON repository (name);
+CREATE UNIQUE INDEX repository_namespace_user_id_name ON repository (namespace_user_id, name);
 CREATE INDEX repository_description__fulltext ON repository (description);
 CREATE INDEX repository_namespace_user_id ON repository (namespace_user_id);
+CREATE INDEX repository_name__fulltext ON repository (name);
 CREATE INDEX repository_kind_id ON repository (kind_id);
 CREATE TABLE teamsync (
 	id INTEGER NOT NULL,
@@ -520,18 +520,18 @@ CREATE TABLE IF NOT EXISTS "blobupload" (
 	storage_metadata TEXT,
 	chunk_count INTEGER DEFAULT '0' NOT NULL,
 	uncompressed_byte_count BIGINT,
-	created DATETIME DEFAULT '2026-03-30 14:45:14' NOT NULL,
+	created DATETIME DEFAULT '2026-03-30 16:06:31' NOT NULL,
 	piece_sha_state TEXT,
 	piece_hashes TEXT,
 	CONSTRAINT pk_blobupload PRIMARY KEY (id),
-	CONSTRAINT fk_blobupload_location_id_imagestoragelocation FOREIGN KEY(location_id) REFERENCES imagestoragelocation (id),
-	CONSTRAINT fk_blobupload_repository_id_repository FOREIGN KEY(repository_id) REFERENCES repository (id)
+	CONSTRAINT fk_blobupload_repository_id_repository FOREIGN KEY(repository_id) REFERENCES repository (id),
+	CONSTRAINT fk_blobupload_location_id_imagestoragelocation FOREIGN KEY(location_id) REFERENCES imagestoragelocation (id)
 );
-CREATE UNIQUE INDEX blobupload_repository_id_uuid ON blobupload (repository_id, uuid);
 CREATE INDEX blobupload_repository_id ON blobupload (repository_id);
-CREATE INDEX blobupload_location_id ON blobupload (location_id);
 CREATE INDEX blobupload_created ON blobupload (created);
+CREATE INDEX blobupload_location_id ON blobupload (location_id);
 CREATE UNIQUE INDEX blobupload_uuid ON blobupload (uuid);
+CREATE UNIQUE INDEX blobupload_repository_id_uuid ON blobupload (repository_id, uuid);
 CREATE TABLE deletednamespace (
 	id INTEGER NOT NULL,
 	namespace_id INTEGER NOT NULL,
@@ -704,15 +704,15 @@ CREATE TABLE IF NOT EXISTS "logentry" (
 	CONSTRAINT pk_logentry PRIMARY KEY (id),
 	CONSTRAINT fk_logentry_kind_id_logentrykind FOREIGN KEY(kind_id) REFERENCES logentrykind (id)
 );
-CREATE INDEX logentry_repository_id_datetime_kind_id ON logentry (repository_id, datetime, kind_id);
-CREATE INDEX logentry_kind_id ON logentry (kind_id);
-CREATE INDEX logentry_performer_id ON logentry (performer_id);
 CREATE INDEX logentry_account_id_datetime ON logentry (account_id, datetime);
-CREATE INDEX logentry_repository_id_datetime ON logentry (repository_id, datetime);
-CREATE INDEX logentry_repository_id ON logentry (repository_id);
+CREATE INDEX logentry_repository_id_datetime_kind_id ON logentry (repository_id, datetime, kind_id);
 CREATE INDEX logentry_performer_id_datetime ON logentry (performer_id, datetime);
+CREATE INDEX logentry_performer_id ON logentry (performer_id);
 CREATE INDEX logentry_datetime ON logentry (datetime);
+CREATE INDEX logentry_kind_id ON logentry (kind_id);
+CREATE INDEX logentry_repository_id_datetime ON logentry (repository_id, datetime);
 CREATE INDEX logentry_account_id ON logentry (account_id);
+CREATE INDEX logentry_repository_id ON logentry (repository_id);
 CREATE TABLE manifestlabel (
 	id INTEGER NOT NULL,
 	repository_id INTEGER NOT NULL,
@@ -733,14 +733,14 @@ CREATE TABLE IF NOT EXISTS "manifestblob" (
 	manifest_id INTEGER NOT NULL,
 	blob_id INTEGER NOT NULL,
 	CONSTRAINT pk_manifestblob PRIMARY KEY (id),
-	CONSTRAINT fk_manifestblob_manifest_id_manifest FOREIGN KEY(manifest_id) REFERENCES manifest (id),
 	CONSTRAINT fk_manifestblob_repository_id_repository FOREIGN KEY(repository_id) REFERENCES repository (id),
-	CONSTRAINT fk_manifestblob_blob_id_imagestorage FOREIGN KEY(blob_id) REFERENCES imagestorage (id)
+	CONSTRAINT fk_manifestblob_blob_id_imagestorage FOREIGN KEY(blob_id) REFERENCES imagestorage (id),
+	CONSTRAINT fk_manifestblob_manifest_id_manifest FOREIGN KEY(manifest_id) REFERENCES manifest (id)
 );
+CREATE INDEX manifestblob_blob_id ON manifestblob (blob_id);
+CREATE UNIQUE INDEX manifestblob_manifest_id_blob_id ON manifestblob (manifest_id, blob_id);
 CREATE INDEX manifestblob_repository_id ON manifestblob (repository_id);
 CREATE INDEX manifestblob_manifest_id ON manifestblob (manifest_id);
-CREATE UNIQUE INDEX manifestblob_manifest_id_blob_id ON manifestblob (manifest_id, blob_id);
-CREATE INDEX manifestblob_blob_id ON manifestblob (blob_id);
 CREATE TABLE IF NOT EXISTS "manifest" (
 	id INTEGER NOT NULL,
 	repository_id INTEGER NOT NULL,
@@ -751,11 +751,11 @@ CREATE TABLE IF NOT EXISTS "manifest" (
 	CONSTRAINT fk_manifest_repository_id_repository FOREIGN KEY(repository_id) REFERENCES repository (id),
 	CONSTRAINT fk_manifest_media_type_id_mediatype FOREIGN KEY(media_type_id) REFERENCES mediatype (id)
 );
-CREATE INDEX manifest_repository_id_media_type_id ON manifest (repository_id, media_type_id);
-CREATE INDEX manifest_digest ON manifest (digest);
-CREATE INDEX manifest_media_type_id ON manifest (media_type_id);
 CREATE UNIQUE INDEX manifest_repository_id_digest ON manifest (repository_id, digest);
+CREATE INDEX manifest_repository_id_media_type_id ON manifest (repository_id, media_type_id);
 CREATE INDEX manifest_repository_id ON manifest (repository_id);
+CREATE INDEX manifest_media_type_id ON manifest (media_type_id);
+CREATE INDEX manifest_digest ON manifest (digest);
 CREATE TABLE tagkind (
 	id INTEGER NOT NULL,
 	name VARCHAR(255) NOT NULL,
@@ -864,14 +864,14 @@ CREATE TABLE IF NOT EXISTS "accesstoken" (
 	token_code VARCHAR(255) NOT NULL,
 	token_name VARCHAR(255) NOT NULL,
 	CONSTRAINT pk_accesstoken PRIMARY KEY (id),
+	CONSTRAINT fk_accesstoken_repository_id_repository FOREIGN KEY(repository_id) REFERENCES repository (id),
 	CONSTRAINT fk_accesstoken_kind_id_accesstokenkind FOREIGN KEY(kind_id) REFERENCES accesstokenkind (id),
-	CONSTRAINT fk_accesstoken_role_id_role FOREIGN KEY(role_id) REFERENCES role (id),
-	CONSTRAINT fk_accesstoken_repository_id_repository FOREIGN KEY(repository_id) REFERENCES repository (id)
+	CONSTRAINT fk_accesstoken_role_id_role FOREIGN KEY(role_id) REFERENCES role (id)
 );
-CREATE UNIQUE INDEX accesstoken_token_name ON accesstoken (token_name);
-CREATE INDEX accesstoken_kind_id ON accesstoken (kind_id);
 CREATE INDEX accesstoken_repository_id ON accesstoken (repository_id);
 CREATE INDEX accesstoken_role_id ON accesstoken (role_id);
+CREATE INDEX accesstoken_kind_id ON accesstoken (kind_id);
+CREATE UNIQUE INDEX accesstoken_token_name ON accesstoken (token_name);
 CREATE TABLE IF NOT EXISTS "appspecificauthtoken" (
 	id INTEGER NOT NULL,
 	user_id INTEGER NOT NULL,
@@ -885,10 +885,10 @@ CREATE TABLE IF NOT EXISTS "appspecificauthtoken" (
 	CONSTRAINT pk_appspecificauthtoken PRIMARY KEY (id),
 	CONSTRAINT fk_appspecificauthtoken_user_id_user FOREIGN KEY(user_id) REFERENCES user (id)
 );
+CREATE UNIQUE INDEX appspecificauthtoken_token_name ON appspecificauthtoken (token_name);
+CREATE INDEX appspecificauthtoken_user_id ON appspecificauthtoken (user_id);
 CREATE INDEX appspecificauthtoken_uuid ON appspecificauthtoken (uuid);
 CREATE INDEX appspecificauthtoken_user_id_expiration ON appspecificauthtoken (user_id, expiration);
-CREATE INDEX appspecificauthtoken_user_id ON appspecificauthtoken (user_id);
-CREATE UNIQUE INDEX appspecificauthtoken_token_name ON appspecificauthtoken (token_name);
 CREATE TABLE IF NOT EXISTS "oauthaccesstoken" (
 	id INTEGER NOT NULL,
 	uuid VARCHAR(255) NOT NULL,
@@ -901,13 +901,13 @@ CREATE TABLE IF NOT EXISTS "oauthaccesstoken" (
 	token_code VARCHAR(255) NOT NULL,
 	token_name VARCHAR(255) NOT NULL,
 	CONSTRAINT pk_oauthaccesstoken PRIMARY KEY (id),
-	CONSTRAINT fk_oauthaccesstoken_application_id_oauthapplication FOREIGN KEY(application_id) REFERENCES oauthapplication (id),
-	CONSTRAINT fk_oauthaccesstoken_authorized_user_id_user FOREIGN KEY(authorized_user_id) REFERENCES user (id)
+	CONSTRAINT fk_oauthaccesstoken_authorized_user_id_user FOREIGN KEY(authorized_user_id) REFERENCES user (id),
+	CONSTRAINT fk_oauthaccesstoken_application_id_oauthapplication FOREIGN KEY(application_id) REFERENCES oauthapplication (id)
 );
-CREATE UNIQUE INDEX oauthaccesstoken_token_name ON oauthaccesstoken (token_name);
 CREATE INDEX oauthaccesstoken_authorized_user_id ON oauthaccesstoken (authorized_user_id);
-CREATE INDEX oauthaccesstoken_uuid ON oauthaccesstoken (uuid);
 CREATE INDEX oauthaccesstoken_application_id ON oauthaccesstoken (application_id);
+CREATE UNIQUE INDEX oauthaccesstoken_token_name ON oauthaccesstoken (token_name);
+CREATE INDEX oauthaccesstoken_uuid ON oauthaccesstoken (uuid);
 CREATE TABLE IF NOT EXISTS "oauthapplication" (
 	id INTEGER NOT NULL,
 	client_id VARCHAR(255) NOT NULL,
@@ -922,8 +922,8 @@ CREATE TABLE IF NOT EXISTS "oauthapplication" (
 	CONSTRAINT pk_oauthapplication PRIMARY KEY (id),
 	CONSTRAINT fk_oauthapplication_organization_id_user FOREIGN KEY(organization_id) REFERENCES user (id)
 );
-CREATE INDEX oauthapplication_client_id ON oauthapplication (client_id);
 CREATE INDEX oauthapplication_organization_id ON oauthapplication (organization_id);
+CREATE INDEX oauthapplication_client_id ON oauthapplication (client_id);
 CREATE TABLE IF NOT EXISTS "oauthauthorizationcode" (
 	id INTEGER NOT NULL,
 	application_id INTEGER NOT NULL,
@@ -954,21 +954,21 @@ CREATE TABLE IF NOT EXISTS "repositorybuildtrigger" (
 	secure_private_key TEXT,
 	fully_migrated BOOLEAN DEFAULT '0' NOT NULL,
 	CONSTRAINT pk_repositorybuildtrigger PRIMARY KEY (id),
-	CONSTRAINT fk_repositorybuildtrigger_repository_id_repository FOREIGN KEY(repository_id) REFERENCES repository (id),
-	CONSTRAINT fk_repositorybuildtrigger_connected_user_id_user FOREIGN KEY(connected_user_id) REFERENCES user (id),
 	CONSTRAINT fk_repositorybuildtrigger_service_id_buildtriggerservice FOREIGN KEY(service_id) REFERENCES buildtriggerservice (id),
+	CONSTRAINT fk_repositorybuildtrigger_write_token_id_accesstoken FOREIGN KEY(write_token_id) REFERENCES accesstoken (id),
+	CONSTRAINT fk_repositorybuildtrigger_connected_user_id_user FOREIGN KEY(connected_user_id) REFERENCES user (id),
 	CONSTRAINT fk_repositorybuildtrigger_pull_robot_id_user FOREIGN KEY(pull_robot_id) REFERENCES user (id),
-	CONSTRAINT fk_repositorybuildtrigger_disabled_reason_id_disablereason FOREIGN KEY(disabled_reason_id) REFERENCES disablereason (id),
-	CONSTRAINT fk_repositorybuildtrigger_write_token_id_accesstoken FOREIGN KEY(write_token_id) REFERENCES accesstoken (id)
+	CONSTRAINT fk_repositorybuildtrigger_repository_id_repository FOREIGN KEY(repository_id) REFERENCES repository (id),
+	CONSTRAINT fk_repositorybuildtrigger_disabled_reason_id_disablereason FOREIGN KEY(disabled_reason_id) REFERENCES disablereason (id)
 );
 CREATE INDEX repositorybuildtrigger_disabled_reason_id ON repositorybuildtrigger (disabled_reason_id);
-CREATE INDEX repositorybuildtrigger_service_id ON repositorybuildtrigger (service_id);
-CREATE INDEX repositorybuildtrigger_disabled_datetime ON repositorybuildtrigger (disabled_datetime);
-CREATE INDEX repositorybuildtrigger_pull_robot_id ON repositorybuildtrigger (pull_robot_id);
+CREATE INDEX repositorybuildtrigger_connected_user_id ON repositorybuildtrigger (connected_user_id);
 CREATE INDEX repositorybuildtrigger_repository_id ON repositorybuildtrigger (repository_id);
 CREATE INDEX repositorybuildtrigger_write_token_id ON repositorybuildtrigger (write_token_id);
+CREATE INDEX repositorybuildtrigger_service_id ON repositorybuildtrigger (service_id);
+CREATE INDEX repositorybuildtrigger_disabled_datetime ON repositorybuildtrigger (disabled_datetime);
 CREATE INDEX repositorybuildtrigger_uuid ON repositorybuildtrigger (uuid);
-CREATE INDEX repositorybuildtrigger_connected_user_id ON repositorybuildtrigger (connected_user_id);
+CREATE INDEX repositorybuildtrigger_pull_robot_id ON repositorybuildtrigger (pull_robot_id);
 CREATE TABLE deletedrepository (
 	id INTEGER NOT NULL,
 	repository_id INTEGER NOT NULL,
@@ -1111,12 +1111,12 @@ CREATE TABLE IF NOT EXISTS "user" (
 );
 CREATE INDEX user_organization ON user (organization);
 CREATE INDEX user_robot ON user (robot);
-CREATE INDEX user_uuid ON user (uuid);
+CREATE INDEX user_stripe_id ON user (stripe_id);
 CREATE INDEX user_last_accessed ON user (last_accessed);
 CREATE INDEX user_invoice_email_address ON user (invoice_email_address);
 CREATE UNIQUE INDEX user_username ON user (username);
-CREATE INDEX user_stripe_id ON user (stripe_id);
 CREATE UNIQUE INDEX user_email ON user (email);
+CREATE INDEX user_uuid ON user (uuid);
 CREATE TABLE organizationrhskus (
 	id INTEGER NOT NULL,
 	subscription_id INTEGER NOT NULL,
@@ -1215,16 +1215,16 @@ CREATE TABLE IF NOT EXISTS "repomirrorconfig" (
 	external_reference TEXT NOT NULL,
 	external_registry_password VARCHAR(9000), skopeo_timeout BIGINT DEFAULT '300' NOT NULL, architecture_filter TEXT,
 	CONSTRAINT pk_repomirrorconfig PRIMARY KEY (id),
-	CONSTRAINT fk_repomirrorconfig_root_rule_id_repomirrorrule FOREIGN KEY(root_rule_id) REFERENCES repomirrorrule (id),
 	CONSTRAINT fk_repomirrorconfig_internal_robot_id_user FOREIGN KEY(internal_robot_id) REFERENCES user (id),
-	CONSTRAINT fk_repomirrorconfig_repository_id_repository FOREIGN KEY(repository_id) REFERENCES repository (id)
+	CONSTRAINT fk_repomirrorconfig_repository_id_repository FOREIGN KEY(repository_id) REFERENCES repository (id),
+	CONSTRAINT fk_repomirrorconfig_root_rule_id_repomirrorrule FOREIGN KEY(root_rule_id) REFERENCES repomirrorrule (id)
 );
-CREATE INDEX repomirrorconfig_mirror_type ON repomirrorconfig (mirror_type);
-CREATE INDEX repomirrorconfig_root_rule_id ON repomirrorconfig (root_rule_id);
-CREATE UNIQUE INDEX repomirrorconfig_repository_id ON repomirrorconfig (repository_id);
 CREATE INDEX repomirrorconfig_sync_transaction_id ON repomirrorconfig (sync_transaction_id);
 CREATE INDEX repomirrorconfig_internal_robot_id ON repomirrorconfig (internal_robot_id);
+CREATE INDEX repomirrorconfig_mirror_type ON repomirrorconfig (mirror_type);
+CREATE UNIQUE INDEX repomirrorconfig_repository_id ON repomirrorconfig (repository_id);
 CREATE INDEX repomirrorconfig_sync_status ON repomirrorconfig (sync_status);
+CREATE INDEX repomirrorconfig_root_rule_id ON repomirrorconfig (root_rule_id);
 CREATE INDEX tag_repository_id_immutable ON tag (repository_id, immutable);
 CREATE INDEX tag_manifest_id_immutable ON tag (manifest_id, immutable);
 CREATE INDEX tag_manifest_id_lifetime_end_ms ON tag (manifest_id, lifetime_end_ms);
