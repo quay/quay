@@ -1,5 +1,6 @@
 import {type Page} from '@playwright/test';
 import {test, expect} from '../../fixtures';
+import {TEST_USERS} from '../../global-setup';
 
 test.describe('Organization Settings', {tag: ['@organization']}, () => {
   test.describe('General Settings', {tag: ['@feature:USER_METADATA']}, () => {
@@ -480,6 +481,64 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
         ).toBeVisible();
 
         // Organization state tab should not be visible (feature disabled)
+        await expect(
+          authenticatedPage.getByTestId('Organization state'),
+        ).not.toBeAttached();
+      });
+    },
+  );
+
+  test.describe(
+    'User Namespace Settings: Auto-Prune Policies tab',
+    {tag: ['@feature:AUTO_PRUNE', '@user']},
+    () => {
+      test('shows Auto-Prune tab and hides org-only tabs for user namespace', async ({
+        authenticatedPage,
+      }) => {
+        const username = TEST_USERS.user.username;
+
+        // Regression: React Query v4 keeps disabled queries in isLoading=true.
+        // useOrgMirrorExists and useFetchProxyCacheConfig are disabled for user
+        // orgs (enabled = flag && !isUserOrg), but isLoading stays true when
+        // no cached data exists, blocking mutualExclusionLoaded and hiding the
+        // Auto-Prune tab. Enable both flags to cover both short-circuit paths.
+        await authenticatedPage.route('**/config', async (route) => {
+          const response = await route.fetch();
+          const body = await response.json();
+          Object.assign(body.features, {
+            AUTO_PRUNE: true,
+            PROXY_CACHE: true,
+            ORG_MIRROR: true,
+            IMMUTABLE_TAGS: false,
+          });
+          await route.fulfill({response, body: JSON.stringify(body)});
+        });
+
+        await authenticatedPage.goto(`/user/${username}?tab=Settings`);
+        await expect(authenticatedPage.locator('#form-name')).toBeVisible();
+
+        // Auto-Prune tab must be visible and navigable
+        const autoPruneTab = authenticatedPage.getByTestId(
+          'Auto-Prune Policies',
+        );
+        await expect(autoPruneTab).toBeVisible();
+        await autoPruneTab.click();
+        await expect(
+          authenticatedPage.getByRole('heading', {
+            name: 'Auto-Pruning Policies',
+            level: 2,
+          }),
+        ).toBeVisible();
+
+        // CLI configuration is user-namespace only
+        await expect(
+          authenticatedPage.getByTestId('CLI configuration'),
+        ).toBeVisible();
+
+        // Org-only tabs must not render in user namespace
+        await expect(
+          authenticatedPage.getByTestId('Proxy Cache'),
+        ).not.toBeAttached();
         await expect(
           authenticatedPage.getByTestId('Organization state'),
         ).not.toBeAttached();
