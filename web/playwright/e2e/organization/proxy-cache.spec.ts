@@ -88,6 +88,38 @@ test.describe(
       ).toBeDisabled();
     });
 
+    test('proxy cache form is functional when FEATURE_IMMUTABLE_TAGS is disabled (PROJQUAY-11119)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('proxynoimm');
+
+      // Override config to disable IMMUTABLE_TAGS (the bug scenario)
+      await authenticatedPage.route('**/config', async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.features.IMMUTABLE_TAGS = false;
+        body.features.PROXY_CACHE = true;
+        await route.fulfill({response, body: JSON.stringify(body)});
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+
+      // The immutability error alert should NOT be visible
+      await expect(
+        authenticatedPage.getByTestId('immutability-error-alert'),
+      ).not.toBeAttached();
+
+      // Save button should be enabled (not blocked by immutability check)
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill('docker.io');
+      await expect(
+        authenticatedPage.getByTestId('save-proxy-cache-btn'),
+      ).toBeEnabled();
+    });
+
     test('proxy cache tab not visible for user namespaces', async ({
       authenticatedPage,
     }) => {
