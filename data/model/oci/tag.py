@@ -514,9 +514,19 @@ def retarget_tag(
             immutable=immutable,
         )
 
-        # Capture values for logging outside the transaction
-        namespace_name = repo.namespace_user.username if immutable_from_policy else None
-        repo_name = repo.name if immutable_from_policy else None
+        # Capture values for logging and tracking outside the transaction
+        namespace_name = repo.namespace_user.username
+        repo_name = repo.name
+
+    # Mark repo as modified (best-effort, outside transaction)
+    try:
+        from app import model_cache
+
+        tracker = getattr(model_cache, "repo_modification_tracker", None)
+        if tracker:
+            tracker.mark_repo_modified(namespace_name, repo_name)
+    except Exception as e:
+        logger.warning("Failed to mark repo modified for %s/%s: %s", namespace_name, repo_name, e)
 
     # Best-effort audit log outside the transaction so a logging failure
     # does not roll back the tag creation.
