@@ -529,9 +529,19 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
             IMMUTABLE_TAGS: false, // keeps immutabilityResolved=true immediately
           });
 
-          // Auto-Prune Policies must be visible for user namespace
+          // Auto-Prune Policies tab must exist in the sidebar for user namespace
+          const autoPruneTab = authenticatedPage.getByTestId('Auto-Prune Policies');
+          await expect(autoPruneTab).toBeVisible();
+
+          // Click the tab and verify the Auto-Prune content actually renders.
+          // This confirms the tab is not just present but fully navigable, and
+          // that the AutoPruning component mounts correctly for user namespaces.
+          await autoPruneTab.click();
           await expect(
-            authenticatedPage.getByTestId('Auto-Prune Policies'),
+            authenticatedPage.getByRole('heading', {
+              name: 'Auto-Pruning Policies',
+              level: 2,
+            }),
           ).toBeVisible();
 
           // Proxy Cache is an org-only feature; must never appear for user namespace
