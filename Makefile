@@ -439,6 +439,7 @@ go-schema:
 	QUAYCONF=$(SCHEMA_TMP)/ PYTHONPATH="." alembic upgrade head
 	@echo "=== Extracting schema DDL ==="
 	sqlite3 $(SCHEMA_TMP)/quay.db .schema > $(SCHEMA_DIR)/sqlite/quay_schema.sql
+	@sed -i '' 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/quay_schema.sql
 	@echo "=== Extracting seed data ==="
 	@sqlite3 $(SCHEMA_TMP)/quay.db \
 	  "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence' ORDER BY name;" \
@@ -448,6 +449,7 @@ go-schema:
 	      sqlite3 $(SCHEMA_TMP)/quay.db ".mode insert $$table" "SELECT * FROM \"$$table\" ORDER BY rowid;"; \
 	    fi; \
 	  done > $(SCHEMA_DIR)/sqlite/seed_data.sql
+	@sed -i '' 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/seed_data.sql
 	@echo "=== Generating Go types ==="
 	sqlc generate
 	@echo "=== Cleanup ==="
