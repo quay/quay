@@ -488,10 +488,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
     },
   );
 
-  test.describe(
-    'User Namespace Settings: Auto-Prune Policies tab (PROJQUAY-11158)',
-    {tag: ['@feature:AUTO_PRUNE', '@user']},
-    () => {
+  test.describe('User Namespace Settings: Auto-Prune Policies tab (PROJQUAY-11158)', {tag: ['@feature:AUTO_PRUNE', '@user']}, () => {
       const username = TEST_USERS.user.username;
 
       // Helper: navigate to user namespace settings with a config override and
