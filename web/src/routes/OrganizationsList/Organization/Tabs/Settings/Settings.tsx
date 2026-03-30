@@ -46,9 +46,13 @@ export default function Settings(props: SettingsProps) {
     !quayConfig?.features?.IMMUTABLE_TAGS ||
     (!isImmutabilityLoading && !isImmutabilityError);
   const proxyCacheResolved =
-    !quayConfig?.features?.PROXY_CACHE || !isProxyCacheLoading;
+    !quayConfig?.features?.PROXY_CACHE ||
+    props.isUserOrganization ||
+    !isProxyCacheLoading;
   const orgMirrorResolved =
-    !quayConfig?.features?.ORG_MIRROR || !isOrgMirrorLoading;
+    !quayConfig?.features?.ORG_MIRROR ||
+    props.isUserOrganization ||
+    !isOrgMirrorLoading;
   const mutualExclusionLoaded =
     orgMirrorResolved && proxyCacheResolved && immutabilityResolved;
 
