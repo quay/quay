@@ -10,7 +10,7 @@ import (
 	"database/sql"
 )
 
-const createUser = `-- name: CreateUser :one
+const createAdminUser = `-- name: CreateAdminUser :one
 INSERT INTO "user" (uuid, username, password_hash, email, verified,
   organization, robot, invoice_email, invalid_login_attempts,
   last_invalid_login, removed_tag_expiration_s, enabled, creation_date)
@@ -18,15 +18,15 @@ VALUES (?, ?, ?, ?, 1, 0, 0, 0, 0, datetime('now'), 1209600, 1, datetime('now'))
 RETURNING id
 `
 
-type CreateUserParams struct {
+type CreateAdminUserParams struct {
 	Uuid         sql.NullString `json:"uuid"`
 	Username     string         `json:"username"`
 	PasswordHash sql.NullString `json:"password_hash"`
 	Email        string         `json:"email"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
+func (q *Queries) CreateAdminUser(ctx context.Context, arg CreateAdminUserParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, createAdminUser,
 		arg.Uuid,
 		arg.Username,
 		arg.PasswordHash,

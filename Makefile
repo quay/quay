@@ -439,7 +439,7 @@ go-schema:
 	QUAYCONF=$(SCHEMA_TMP)/ PYTHONPATH="." alembic upgrade head
 	@echo "=== Extracting schema DDL ==="
 	sqlite3 $(SCHEMA_TMP)/quay.db .schema > $(SCHEMA_DIR)/sqlite/quay_schema.sql
-	@sed -i '' 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/quay_schema.sql
+	@sed 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/quay_schema.sql > $(SCHEMA_DIR)/sqlite/quay_schema.sql.tmp && mv $(SCHEMA_DIR)/sqlite/quay_schema.sql.tmp $(SCHEMA_DIR)/sqlite/quay_schema.sql
 	@echo "=== Extracting seed data ==="
 	@sqlite3 $(SCHEMA_TMP)/quay.db \
 	  "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence' ORDER BY name;" \
@@ -449,7 +449,7 @@ go-schema:
 	      sqlite3 $(SCHEMA_TMP)/quay.db ".mode insert $$table" "SELECT * FROM \"$$table\" ORDER BY rowid;"; \
 	    fi; \
 	  done > $(SCHEMA_DIR)/sqlite/seed_data.sql
-	@sed -i '' 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/seed_data.sql
+	@sed 's/[[:space:]]*$$//' $(SCHEMA_DIR)/sqlite/seed_data.sql > $(SCHEMA_DIR)/sqlite/seed_data.sql.tmp && mv $(SCHEMA_DIR)/sqlite/seed_data.sql.tmp $(SCHEMA_DIR)/sqlite/seed_data.sql
 	@echo "=== Generating Go types ==="
 	sqlc generate
 	@echo "=== Cleanup ==="
@@ -471,7 +471,11 @@ go-schema-check:
 	  (echo "ERROR: Schema drift detected. Run 'make go-schema' and commit." && exit 1)
 	@rm -f /tmp/quay-drift-committed.db /tmp/quay-drift-fresh.db
 	@rm -rf /tmp/quay-schema-check
-	@echo "Schema files are up to date."
+	@echo "=== Checking generated Go code ==="
+	@sqlc generate
+	@git diff --exit-code internal/dal/daldb/ || \
+	  (echo "ERROR: Generated Go code is out of date. Run 'make go-schema' and commit." && exit 1)
+	@echo "All checks passed."
 
 .PHONY: go-build go-test go-fmt go-vet go-clean
 
