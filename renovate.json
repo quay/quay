@@ -1,11 +1,44 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "vulnerabilityAlerts": {
-    "enabled": true
+    "enabled": false
   },
-  "osvVulnerabilityAlerts": true,
+  "osvVulnerabilityAlerts": false,
+  "dependencyDashboard": false,
   "extends": [
-    "github>konflux-ci/mintmaker-presets:cve-automerge-all"
+    "github>konflux-ci/mintmaker-presets:cve-automerge-all",
+    "github>quay/quay-konflux-configs"
+  ],
+  "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
+  "postUpdateOptions": ["gomodTidy"],
+  "packageRules": [
+    {
+      "description": "Group and defer all npm updates to monthly",
+      "matchManagers": ["npm"],
+      "groupName": "npm-all",
+      "schedule": ["on the first day of the month"],
+      "prPriority": -10
+    },
+    {
+      "description": "Group and defer all Python updates to monthly",
+      "matchManagers": ["pip_requirements"],
+      "groupName": "python-all",
+      "schedule": ["on the first day of the month"],
+      "prPriority": -10
+    },
+    {
+      "description": "Group and defer all Go updates to monthly",
+      "matchManagers": ["gomod"],
+      "groupName": "go-all",
+      "schedule": ["on the first day of the month"],
+      "prPriority": -10
+    },
+    {
+      "description": "Disable major version bumps for non-tekton managers",
+      "matchUpdateTypes": ["major"],
+      "matchManagers": ["npm", "pip_requirements", "gomod"],
+      "enabled": false
+    }
   ],
   "semanticCommits": "disabled",
   "commitMessagePrefix": "NO-ISSUE: chore(deps):"

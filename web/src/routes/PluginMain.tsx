@@ -113,7 +113,7 @@ function PluginMain() {
   return (
     <Page style={{height: '100vh'}}>
       {quayConfig?.config?.UI_V2_FEEDBACK_FORM && (
-        <Banner variant="blue">
+        <Banner color="blue">
           <Flex
             spaceItems={{default: 'spaceItemsSm'}}
             justifyContent={{default: 'justifyContentCenter'}}

@@ -8,9 +8,8 @@ import {
   MenuToggleElement,
   PageSection,
   PanelFooter,
-  Text,
-  TextContent,
-  TextVariants,
+  Content,
+  ContentVariants,
   ToggleGroup,
   ToggleGroupItem,
   ToggleGroupItemProps,
@@ -214,10 +213,13 @@ export default function AddToRepository(props: AddToRepositoryProps) {
 
   return (
     <>
-      <TextContent>
-        <Text component={TextVariants.h1}>Add to repository (optional)</Text>
-      </TextContent>
+      <Content>
+        <Content component={ContentVariants.h1}>
+          Add to repository (optional)
+        </Content>
+      </Content>
       <PageSection
+        hasBodyWrapper={false}
         {...(props.isWizardStep && {padding: {default: 'noPadding'}})}
       >
         <Toolbar>

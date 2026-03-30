@@ -21,7 +21,7 @@ export default function ReadonlyImmutabilityPolicy(
         {props.title}
       </Title>
       <DataList
-        className="pf-v5-u-mb-lg"
+        className="pf-v6-u-mb-lg"
         aria-label={`Immutability policy for ${props.title}`}
         isCompact
       >

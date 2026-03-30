@@ -150,7 +150,7 @@ export default function Settings(props: SettingsProps) {
             isInline
             variant="info"
             title="This repository is managed by organization-level mirroring. Some settings may be restricted."
-            className="pf-v5-u-mb-md"
+            className="pf-v6-u-mb-md"
             data-testid="org-mirror-repo-settings-banner"
           />
         )}

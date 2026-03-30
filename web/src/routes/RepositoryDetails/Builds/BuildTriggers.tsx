@@ -47,7 +47,7 @@ export default function BuildTriggers(props: BuildTriggersProps) {
           <ToolbarItem>
             <Title headingLevel="h2">Build Triggers</Title>
           </ToolbarItem>
-          <ToolbarItem align={{default: 'alignRight'}}>
+          <ToolbarItem align={{default: 'alignEnd'}}>
             <CreateBuildTriggerDropdown
               namespace={props.org}
               repo={props.repo}

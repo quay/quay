@@ -187,7 +187,9 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
 
       // Credentials modal should appear
       await expect(
-        authenticatedPage.getByText(`Credentials for ${username}`),
+        authenticatedPage.getByRole('heading', {
+          name: `Credentials for ${username}`,
+        }),
       ).toBeVisible();
 
       // Verify all credential format tabs exist

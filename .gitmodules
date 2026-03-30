@@ -1,0 +1,3 @@
+[submodule "web/build-tools"]
+	path = web/build-tools
+	url = https://github.com/RedHatInsights/insights-frontend-builder-common.git

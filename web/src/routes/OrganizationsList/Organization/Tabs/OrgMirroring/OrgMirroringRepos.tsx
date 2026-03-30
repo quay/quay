@@ -9,7 +9,7 @@ import {
   SelectList,
   SelectOption,
   Spinner,
-  Text,
+  Content,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
@@ -29,6 +29,7 @@ import {Link} from 'react-router-dom';
 interface OrgMirroringReposProps {
   config: OrgMirrorConfig | null;
   orgName: string;
+  isOrgSyncing: boolean;
 }
 
 // Repo-level statuses reuse the org-level maps, with one extra display-only status
@@ -42,24 +43,26 @@ const repoStatusColors: Record<
 
 const repoStatusLabels: Record<string, string> = {
   ...orgMirrorStatusLabels,
-  NEVER_RUN: 'Pending',
-  SYNC_NOW: 'Scheduled',
   DISCOVERED: 'Discovered',
 };
 
-// Filterable statuses — must match backend OrgMirrorRepoStatus enum values
+// Filterable statuses — derived from shared label map for consistency
 const filterableStatuses: {value: string; label: string}[] = [
-  {value: 'NEVER_RUN', label: 'Pending'},
-  {value: 'SYNC_NOW', label: 'Scheduled'},
-  {value: 'SYNCING', label: 'Syncing'},
-  {value: 'SUCCESS', label: 'Success'},
-  {value: 'FAIL', label: 'Failed'},
-  {value: 'CANCEL', label: 'Cancelled'},
-];
+  'NEVER_RUN',
+  'SYNC_NOW',
+  'SYNCING',
+  'SUCCESS',
+  'FAIL',
+  'CANCEL',
+].map((value) => ({
+  value,
+  label: orgMirrorStatusLabels[value] ?? value,
+}));
 
 export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
   config,
   orgName,
+  isOrgSyncing,
 }) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
@@ -75,7 +78,7 @@ export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
     queryFn: () =>
       getOrgMirrorRepos(orgName, page, perPage, statusFilter || undefined),
     enabled: !!config,
-    refetchInterval: config?.sync_status === 'SYNCING' ? 5000 : false,
+    refetchInterval: isOrgSyncing ? 5000 : false,
   });
 
   const repos = data?.repositories ?? [];
@@ -96,22 +99,22 @@ export const OrgMirroringRepos: React.FC<OrgMirroringReposProps> = ({
       {isLoading && <Spinner size="md" />}
 
       {error && (
-        <Text component="p" className="pf-v5-u-danger-color-100">
+        <Content component="p" className="pf-v6-u-danger-color-100">
           {error}
-        </Text>
+        </Content>
       )}
 
       {!isLoading && !error && repos.length === 0 && !statusFilter && (
-        <Text component="p">
+        <Content component="p">
           No repositories discovered yet. Repositories will appear here after
           the first sync.
-        </Text>
+        </Content>
       )}
 
       {!isLoading && !error && repos.length === 0 && statusFilter && (
-        <Text component="p">
+        <Content component="p">
           No repositories match the selected status filter.
-        </Text>
+        </Content>
       )}
 
       {!isLoading && !error && (total > 0 || statusFilter) && (

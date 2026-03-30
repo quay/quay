@@ -1,16 +1,15 @@
 import {useEffect, useState} from 'react';
 import {
-  Modal,
-  ModalVariant,
-  TextContent,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
   AlertGroup,
   Alert,
   AlertActionCloseButton,
   WizardHeader,
   Wizard,
   WizardStep,
+  Modal,
+  ModalVariant,
 } from '@patternfly/react-core';
 import {
   ITeamMember,
@@ -152,8 +151,6 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
           props.handleWizardToggle();
           setSelectedRepoPerms([]);
         }}
-        showClose={false}
-        hasNoBodyWrapper
       >
         <Wizard
           onClose={() => {
@@ -182,9 +179,11 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
           }
         >
           <WizardStep name="Name & Description" id="name-and-description">
-            <TextContent>
-              <Text component={TextVariants.h1}>Team name and description</Text>
-            </TextContent>
+            <Content>
+              <Content component={ContentVariants.h1}>
+                Team name and description
+              </Content>
+            </Content>
             <NameAndDescription
               name={props.teamName}
               description={props.teamDescription}
@@ -212,11 +211,11 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
             body={{hasNoPadding: isDrawerExpanded}}
           >
             <Conditional if={!isDrawerExpanded}>
-              <TextContent>
-                <Text component={TextVariants.h1}>
+              <Content>
+                <Content component={ContentVariants.h1}>
                   Add team member (optional)
-                </Text>
-              </TextContent>
+                </Content>
+              </Content>
             </Conditional>
             <AddTeamMember
               orgName={props.orgName}
@@ -233,9 +232,9 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
           </WizardStep>
 
           <WizardStep name="Review and Finish" id="review-and-finish">
-            <TextContent>
-              <Text component={TextVariants.h1}>Review</Text>
-            </TextContent>
+            <Content>
+              <Content component={ContentVariants.h1}>Review</Content>
+            </Content>
             <Review
               orgName={props.orgName}
               teamName={props.teamName}

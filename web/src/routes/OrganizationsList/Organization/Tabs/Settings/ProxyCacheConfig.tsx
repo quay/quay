@@ -181,7 +181,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           isInline
           variant="danger"
           title="Unable to determine organization mirror status. Proxy cache configuration is disabled until the mirror status can be verified."
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
           data-testid="org-mirror-error-alert"
         />
       )}
@@ -190,7 +190,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           isInline
           variant="warning"
           title="Proxy cache cannot be configured while organization-level mirroring is active. Remove the organization mirror configuration first."
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
           data-testid="org-mirror-conflict-alert"
         />
       )}
@@ -199,7 +199,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           isInline
           variant="danger"
           title="Unable to determine immutability policy status. Proxy cache configuration is disabled until the immutability status can be verified."
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
           data-testid="immutability-error-alert"
         />
       )}
@@ -208,7 +208,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           isInline
           variant="warning"
           title="Proxy cache cannot be configured while immutability policies are active. Remove all namespace immutability policies first."
-          className="pf-v5-u-mb-md"
+          className="pf-v6-u-mb-md"
           data-testid="immutability-conflict-alert"
         />
       )}

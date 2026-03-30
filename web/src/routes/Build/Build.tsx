@@ -13,9 +13,12 @@ import {
   DescriptionListTerm,
   Flex,
   FlexItem,
+  Spinner,
   Modal,
   ModalVariant,
-  Spinner,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {LoadingPage} from 'src/components/LoadingPage';
@@ -213,8 +216,8 @@ export default function Build() {
             <CodeBlock
               actions={[
                 <CodeBlockAction key="copy-logs" style={{margin: '.3em'}}>
-                  <Button key="copy" onClick={onCopy}>
-                    <CopyIcon /> Copy
+                  <Button icon={<CopyIcon />} key="copy" onClick={onCopy}>
+                    Copy
                   </Button>
                 </CodeBlockAction>,
                 <CodeBlockAction key="download-logs" style={{margin: '.3em'}}>
@@ -224,8 +227,12 @@ export default function Build() {
                       href={`/buildlogs/${build.id}`}
                       rel="noreferrer"
                     >
-                      <Button key="download" id="download-button">
-                        <DownloadIcon /> Download
+                      <Button
+                        icon={<DownloadIcon />}
+                        key="download"
+                        id="download-button"
+                      >
+                        Download
                       </Button>
                     </a>
                   </Conditional>
@@ -277,24 +284,24 @@ export default function Build() {
         </CardBody>
       </Card>
       <Modal
-        title="Cancel Build"
         variant={ModalVariant.small}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Cancel Build" />
+        <ModalBody>Are you sure you want to cancel this build?</ModalBody>
+        <ModalFooter>
           <Button key="confirm" variant="primary" onClick={() => cancelBuild()}>
             Cancel build
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to cancel this build?
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

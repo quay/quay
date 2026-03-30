@@ -5,16 +5,8 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
-  MenuToggle,
-  MenuToggleElement,
-  Select,
-  SelectList,
-  SelectOption,
   Spinner,
   TextInput,
-  TextInputGroup,
-  TextInputGroupMain,
-  TextInputGroupUtilities,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import TypeAheadSelect from 'src/components/TypeAheadSelect';
