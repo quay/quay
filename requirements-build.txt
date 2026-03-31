@@ -246,7 +246,6 @@ hatchling==1.29.0 \
     #   scikit-build-core
     #   soupsieve
     #   urllib3
-    #   vcs-versioning
 maturin==1.12.6 \
     --hash=sha256:06fc8d089f98623ce924c669b70911dfed30f9a29956c362945f727f9abc546b \
     --hash=sha256:2cb41139295eed6411d3cdafc7430738094c2721f34b7eeb44f33cac516115dc \
@@ -298,9 +297,9 @@ pluggy==1.6.0 \
     --hash=sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3 \
     --hash=sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
     # via hatchling
-poetry-core==2.3.1 \
-    --hash=sha256:96f791d5d7d4e040f3983d76779425cf9532690e2756a24fd5ca0f86af19ef82 \
-    --hash=sha256:db1cf63b782570deb38bfba61e2304a553eef0740dc17959a50cc0f5115ee634
+poetry-core==2.3.2 \
+    --hash=sha256:20cb71be27b774628da9f384effd9183dfceb53bcef84063248a8672aa47031f \
+    --hash=sha256:23df641b64f87fbb4ce1873c1915a4d4bb1b7d808c596e4307edc073e68d7234
     # via qrcode
 pybind11==3.0.2 \
     --hash=sha256:432f01aeb68e361a3a7fc7575c2c7f497595bf640f747acd909ff238dd766e06 \
@@ -377,9 +376,9 @@ setuptools-rust==1.12.1 \
     --hash=sha256:85ae70989d96c9cfeb5ef79cf3bac2d5200bc5564f720a06edceedbdf6664640 \
     --hash=sha256:b7ebd6a182e7aefa97a072e880530c9b0ec8fcca8617e0bb8ff299c1a064f693
     # via maturin
-setuptools-scm==10.0.3 \
-    --hash=sha256:2d8a8c46753b6f8b5e954470e0c7ccb2f48c370cead30a0e65090a7462614b7e \
-    --hash=sha256:742169fcd40326b4e7b7dc9cfd6c1804a95d4ffbb4184b4f4d4d008044cbc84d
+setuptools-scm==10.0.5 \
+    --hash=sha256:bbba8fe754516cdefd017f4456721775e6ef9662bd7887fb52ae26813d4838c3 \
+    --hash=sha256:f611037d8aae618221503b8fa89319f073438252ae3420e01c9ceec249131a0a
     # via
     #   APScheduler
     #   hatch-vcs
@@ -389,8 +388,13 @@ setuptools-scm==10.0.3 \
     #   pluggy
     #   python-dateutil
     #   setuptools-rust
-    #   urllib3
     #   zipp
+setuptools-scm==9.2.2 \
+    --hash=sha256:1c674ab4665686a0887d7e24c03ab25f24201c213e82ea689d2f3e169ef7ef57 \
+    --hash=sha256:30e8f84d2ab1ba7cb0e653429b179395d0c33775d54807fc5f1dd6671801aef7
+    # via
+    #   hatch-vcs
+    #   urllib3
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
     --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
@@ -399,9 +403,9 @@ trove-classifiers==2026.1.14.14 \
     --hash=sha256:00492545a1402b09d4858605ba190ea33243d361e2b01c9c296ce06b5c3325f3 \
     --hash=sha256:1f9553927f18d0513d8e5ff80ab8980b8202ce37ecae0e3274ed2ef11880e74d
     # via hatchling
-vcs-versioning==1.0.1 \
-    --hash=sha256:58b244773ac6a6a6d6611f7eaea2298923df0573f31578d666edbca16855d96d \
-    --hash=sha256:bd597fd2c79dc4ea0a59fc6a525793acb7d2ba06ee64b80750b97e92b6bcf691
+vcs-versioning==1.1.1 \
+    --hash=sha256:b541e2ba79fc6aaa3850f8a7f88af43d97c1c80649c01142ee4146eddbc599e4 \
+    --hash=sha256:fabd75a3cab7dd8ac02fe24a3a9ba936bf258667b5a62ed468c9a1da0f5775bc
     # via setuptools-scm
 wheel==0.46.2 \
     --hash=sha256:33ae60725d69eaa249bc1982e739943c23b34b58d51f1cb6253453773aca6e65 \
@@ -475,6 +479,7 @@ setuptools==78.1.1 \
     #   tzdata
     #   tzlocal
     #   uritools
+    #   vcs-versioning
     #   wrapt
     #   xhtml2pdf
     #   zipp
