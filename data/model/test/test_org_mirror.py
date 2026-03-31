@@ -1812,7 +1812,8 @@ class TestUpdateSyncStatusToCancel:
 
         assert result is not None
         assert result.sync_status == OrgMirrorStatus.CANCEL
-        assert result.sync_expiration_date is None
+        assert result.sync_expiration_date is not None
+        assert result.sync_start_date is None
         assert result.sync_retries_remaining == 0
 
     def test_cancel_when_sync_now(self, initialized_db):
@@ -1932,6 +1933,45 @@ class TestUpdateSyncStatusToCancel:
         assert syncing_repo.sync_status == OrgMirrorRepoStatus.SYNCING
         assert sync_now_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
         assert never_run_repo.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+
+    def test_cancel_not_eligible_after_release(self, initialized_db):
+        """
+        Regression test for PROJQUAY-10798: after the worker processes a cancel
+        and releases the config, it must NOT be re-picked by get_eligible_org_mirror_configs.
+        """
+        from data.model.org_mirror import (
+            get_eligible_org_mirror_configs,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+            claim_org_mirror_config,
+        )
+
+        org, robot = _create_org_and_robot("cancel_loop_test")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Simulate: config is syncing, user cancels
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        update_sync_status_to_cancel(config)
+
+        # Worker picks up the cancel
+        config = OrgMirrorConfig.get_by_id(config.id)
+        eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
+        assert config.id in eligible_ids
+
+        # Worker claims, processes, and releases
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+        release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        # After release, config must NOT be eligible again
+        config = OrgMirrorConfig.get_by_id(config.id)
+        eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
+        assert config.id not in eligible_ids
+        assert config.sync_status == OrgMirrorStatus.CANCEL
+        assert config.sync_expiration_date is None
 
 
 class TestPropagateStatusToRepos:
