@@ -2585,6 +2585,8 @@ class TestClaimOrgMirrorConfig:
         to NEVER_RUN via expire_org_mirror_config, even when
         sync_expiration_date is in the past.
         """
+        from unittest.mock import MagicMock, patch
+
         from data.model.org_mirror import update_sync_status_to_cancel
 
         org, robot = _create_org_and_robot("org_claim_cancel_no_expire")
@@ -2606,13 +2608,15 @@ class TestClaimOrgMirrorConfig:
         ).where(OrgMirrorConfig.id == config.id).execute()
         config = OrgMirrorConfig.get_by_id(config.id)
 
-        # Claim should pick it up but NOT reset it to NEVER_RUN first
-        claimed = claim_org_mirror_config(config)
-        assert claimed is not None
-        assert claimed.sync_status == OrgMirrorStatus.SYNCING
+        # Spy on expire_org_mirror_config to verify it is never called
+        with patch("data.model.org_mirror.expire_org_mirror_config", wraps=None) as expire_spy:
+            claimed = claim_org_mirror_config(config)
+            assert claimed is not None
+            assert claimed.sync_status == OrgMirrorStatus.SYNCING
 
-        # Verify original config was never transiently set to NEVER_RUN
-        # (the claim transitions CANCEL -> SYNCING directly via atomic update)
+            # Verify expire_org_mirror_config was never invoked —
+            # the claim transitions CANCEL -> SYNCING directly via atomic update
+            expire_spy.assert_not_called()
 
 
 class TestGetOrgMirrorRepoStatusCounts:
