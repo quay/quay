@@ -1132,8 +1132,14 @@ def claim_org_mirror_config(
             ):
                 return None
 
-        # If expired, reset for retry (stalled worker recovery)
-        if org_mirror_config.sync_expiration_date and now > org_mirror_config.sync_expiration_date:
+        # If expired and still SYNCING, reset for retry (stalled worker recovery).
+        # Only applies to SYNCING — CANCEL configs set sync_expiration_date=now
+        # and must not be reset before the worker propagates cancellation.
+        if (
+            org_mirror_config.sync_status == OrgMirrorStatus.SYNCING
+            and org_mirror_config.sync_expiration_date
+            and now > org_mirror_config.sync_expiration_date
+        ):
             expire_org_mirror_config(org_mirror_config)
             org_mirror_config = OrgMirrorConfig.get_by_id(org_mirror_config.id)
 

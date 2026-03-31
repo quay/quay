@@ -2579,6 +2579,41 @@ class TestClaimOrgMirrorConfig:
 
         assert result is None
 
+    def test_claim_does_not_expire_cancelled_config(self, initialized_db):
+        """
+        Regression: claim_org_mirror_config must not reset a CANCEL config
+        to NEVER_RUN via expire_org_mirror_config, even when
+        sync_expiration_date is in the past.
+        """
+        from data.model.org_mirror import update_sync_status_to_cancel
+
+        org, robot = _create_org_and_robot("org_claim_cancel_no_expire")
+        config = _create_org_mirror_config(
+            org,
+            robot,
+            sync_status=OrgMirrorStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+
+        # Cancel the config — sets sync_expiration_date=now
+        update_sync_status_to_cancel(config)
+        config = OrgMirrorConfig.get_by_id(config.id)
+        assert config.sync_status == OrgMirrorStatus.CANCEL
+
+        # Simulate time passing so sync_expiration_date is in the past
+        OrgMirrorConfig.update(
+            sync_expiration_date=datetime.utcnow() - timedelta(seconds=10),
+        ).where(OrgMirrorConfig.id == config.id).execute()
+        config = OrgMirrorConfig.get_by_id(config.id)
+
+        # Claim should pick it up but NOT reset it to NEVER_RUN first
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+        assert claimed.sync_status == OrgMirrorStatus.SYNCING
+
+        # Verify original config was never transiently set to NEVER_RUN
+        # (the claim transitions CANCEL -> SYNCING directly via atomic update)
+
 
 class TestGetOrgMirrorRepoStatusCounts:
     """Tests for get_org_mirror_repo_status_counts()."""
