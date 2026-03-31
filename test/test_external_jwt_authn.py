@@ -1,4 +1,5 @@
 import base64
+import socket
 import unittest
 from contextlib import contextmanager
 from datetime import datetime, timedelta
@@ -18,7 +19,11 @@ from features import FeatureNameValue
 from initdb import finished_database_for_testing, setup_database_for_testing
 from test.helpers import liveserver_app
 
-_PORT_NUMBER = 5001
+
+def _get_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
 
 
 @contextmanager
@@ -81,8 +86,7 @@ def _generate_certs():
 
 
 def _create_app(emails=True):
-    global _PORT_NUMBER
-    _PORT_NUMBER = _PORT_NUMBER + 1
+    port = _get_free_port()
 
     public_key, private_key_data = _generate_certs()
 
@@ -97,7 +101,7 @@ def _create_app(emails=True):
     ]
 
     jwt_app = Flask("testjwt")
-    jwt_app.config["SERVER_HOSTNAME"] = "localhost:%s" % _PORT_NUMBER
+    jwt_app.config["SERVER_HOSTNAME"] = "localhost:%s" % port
 
     def _get_basic_auth():
         data = base64.b64decode(request.headers["Authorization"][len("Basic ") :]).decode("utf-8")
@@ -183,7 +187,7 @@ def _create_app(emails=True):
         return make_response("Invalid username or password", 404)
 
     jwt_app.config["TESTING"] = True
-    return jwt_app, _PORT_NUMBER, public_key
+    return jwt_app, port, public_key
 
 
 class JWTAuthTestMixin:
