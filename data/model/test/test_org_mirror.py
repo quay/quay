@@ -1672,7 +1672,8 @@ class TestUpdateSyncStatusToCancel:
 
         assert result is not None
         assert result.sync_status == OrgMirrorStatus.CANCEL
-        assert result.sync_expiration_date is None
+        assert result.sync_expiration_date is not None
+        assert result.sync_start_date is None
         assert result.sync_retries_remaining == 0
 
     def test_cancel_when_sync_now(self, initialized_db):
@@ -1792,6 +1793,45 @@ class TestUpdateSyncStatusToCancel:
         assert syncing_repo.sync_status == OrgMirrorRepoStatus.SYNCING
         assert sync_now_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
         assert never_run_repo.sync_status == OrgMirrorRepoStatus.NEVER_RUN
+
+    def test_cancel_not_eligible_after_release(self, initialized_db):
+        """
+        Regression test for PROJQUAY-10798: after the worker processes a cancel
+        and releases the config, it must NOT be re-picked by get_eligible_org_mirror_configs.
+        """
+        from data.model.org_mirror import (
+            claim_org_mirror_config,
+            get_eligible_org_mirror_configs,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_loop_test")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # Simulate: config is syncing, user cancels
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        update_sync_status_to_cancel(config)
+
+        # Worker picks up the cancel
+        config = OrgMirrorConfig.get_by_id(config.id)
+        eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
+        assert config.id in eligible_ids
+
+        # Worker claims, processes, and releases
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+        release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        # After release, config must NOT be eligible again
+        config = OrgMirrorConfig.get_by_id(config.id)
+        eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
+        assert config.id not in eligible_ids
+        assert config.sync_status == OrgMirrorStatus.CANCEL
+        assert config.sync_expiration_date is None
 
 
 class TestPropagateStatusToRepos:
@@ -2398,6 +2438,45 @@ class TestClaimOrgMirrorConfig:
         result = claim_org_mirror_config(config, max_discovery_duration=1800)
 
         assert result is None
+
+    def test_claim_does_not_expire_cancelled_config(self, initialized_db):
+        """
+        Regression: claim_org_mirror_config must not reset a CANCEL config
+        to NEVER_RUN via expire_org_mirror_config, even when
+        sync_expiration_date is in the past.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from data.model.org_mirror import update_sync_status_to_cancel
+
+        org, robot = _create_org_and_robot("org_claim_cancel_no_expire")
+        config = _create_org_mirror_config(
+            org,
+            robot,
+            sync_status=OrgMirrorStatus.SYNCING,
+            sync_expiration_date=datetime.utcnow() + timedelta(hours=1),
+        )
+
+        # Cancel the config — sets sync_expiration_date=now
+        update_sync_status_to_cancel(config)
+        config = OrgMirrorConfig.get_by_id(config.id)
+        assert config.sync_status == OrgMirrorStatus.CANCEL
+
+        # Simulate time passing so sync_expiration_date is in the past
+        OrgMirrorConfig.update(
+            sync_expiration_date=datetime.utcnow() - timedelta(seconds=10),
+        ).where(OrgMirrorConfig.id == config.id).execute()
+        config = OrgMirrorConfig.get_by_id(config.id)
+
+        # Spy on expire_org_mirror_config to verify it is never called
+        with patch("data.model.org_mirror.expire_org_mirror_config", wraps=None) as expire_spy:
+            claimed = claim_org_mirror_config(config)
+            assert claimed is not None
+            assert claimed.sync_status == OrgMirrorStatus.SYNCING
+
+            # Verify expire_org_mirror_config was never invoked —
+            # the claim transitions CANCEL -> SYNCING directly via atomic update
+            expire_spy.assert_not_called()
 
 
 class TestGetOrgMirrorRepoStatusCounts:
