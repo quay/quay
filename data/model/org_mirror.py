@@ -843,10 +843,11 @@ def get_eligible_org_mirror_configs():
         OrgMirrorConfig.sync_expiration_date >> None
     )
 
-    # Cancel candidates - Status is CANCEL, need to propagate to repos
-    # No retries check since we set retries=0 when cancelling
+    # Cancel candidates - Status is CANCEL with a pending expiration date
+    # (set by update_sync_status_to_cancel). After the worker processes the cancel,
+    # release_org_mirror_config clears sync_expiration_date to None, preventing re-pickup.
     cancel_candidates_filter = (OrgMirrorConfig.sync_status == OrgMirrorStatus.CANCEL) & (
-        OrgMirrorConfig.sync_expiration_date >> None
+        OrgMirrorConfig.sync_expiration_date.is_null(False)
     )
 
     # Ready candidates - scheduled syncs that are due
@@ -1191,11 +1192,15 @@ def update_sync_status_to_cancel(org_mirror_config: OrgMirrorConfig) -> Optional
     if org_mirror_config.sync_status == OrgMirrorStatus.CANCEL:
         return None
 
-    # Force cancel the config (ignore transaction_id for interrupt)
+    # Force cancel the config (ignore transaction_id for interrupt).
+    # sync_expiration_date is set to now to signal "needs processing" — the worker
+    # clears it after propagating CANCEL to repos, preventing re-pickup.
+    now = datetime.utcnow()
     config_query = OrgMirrorConfig.update(
         sync_transaction_id=uuid_generator(),
         sync_status=OrgMirrorStatus.CANCEL,
-        sync_expiration_date=None,
+        sync_start_date=None,
+        sync_expiration_date=now,
         sync_retries_remaining=0,
     ).where(OrgMirrorConfig.id == org_mirror_config.id)
 
