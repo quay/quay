@@ -1940,10 +1940,10 @@ class TestUpdateSyncStatusToCancel:
         and releases the config, it must NOT be re-picked by get_eligible_org_mirror_configs.
         """
         from data.model.org_mirror import (
+            claim_org_mirror_config,
             get_eligible_org_mirror_configs,
             release_org_mirror_config,
             update_sync_status_to_cancel,
-            claim_org_mirror_config,
         )
 
         org, robot = _create_org_and_robot("cancel_loop_test")
