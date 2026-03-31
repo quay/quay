@@ -33,6 +33,9 @@ spec:
     value: web
   - name: submodules
     value: "true"
+  - name: build-args
+    value:
+    - NPM_BUILD_SCRIPT=build-plugin
   pipelineRef:
     name: quayio-build-pipeline
   taskRunTemplate:
