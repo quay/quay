@@ -3,11 +3,23 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.20"></a>
+## [v3.9.20] - 2026-03-30
+### PROJQUAY-11160: Chore
+- [0a7e2651](https://github.com/quay/quay/commit/0a7e265172bc30532254f152b72ddea6823609b8): fix CVE-2026-30922 in pyasn1 ([#5612](https://github.com/quay/quay/issues/5612))
+### [Redhat-3.9] Deps
+- [ac49c5b1](https://github.com/quay/quay/commit/ac49c5b1f3473fa2f4ff191db2a74187bcda9b71): upgrade of PyJWT to 2.12.0 (PROJQUAY-10916) ([#5571](https://github.com/quay/quay/issues/5571))
+- [188954a0](https://github.com/quay/quay/commit/188954a0240afc75e695fdd35e0bdddbf5a41d06): upgrade of jsrsasign to 11.1.1 (PROJQUAY-11068) ([#5553](https://github.com/quay/quay/issues/5553))
+### [Redhat-3.9] PROJQUAY-10946: Chore(Deps)
+- [98fddb62](https://github.com/quay/quay/commit/98fddb62acd98dfc2b998e4a89b54ff2a5741ee3): bump authlib from 1.6.7 to 1.6.9 ([#5434](https://github.com/quay/quay/issues/5434))
+
 <a name="v3.9.19"></a>
-## [v3.9.19] - 2026-03-05
+## [v3.9.19] - 2026-03-11
 ### NO-ISSUE: Fix(Ci)
 - [9ef4e59f](https://github.com/quay/quay/commit/9ef4e59f88313d5130a3951866a2943ecb966553): Add step install ibmcli and remove pip from requirements.txt ([#5233](https://github.com/quay/quay/issues/5233))
 - [81cb0dfb](https://github.com/quay/quay/commit/81cb0dfb8d873a27b71e3ce2fe0357ade25db378): Cherrypick build publish to 3.9 ([#5230](https://github.com/quay/quay/issues/5230))
+### [Redhat-3.9] Build(Deps): PROJQUAY-10856
+- [4dfb2aae](https://github.com/quay/quay/commit/4dfb2aaeee34c338b69a963ce52a5325b46d84c2): upgrade of Authlib to 1.6.7 ([#5342](https://github.com/quay/quay/issues/5342))
 ### [Redhat-3.9] Chore
 - [3d59de79](https://github.com/quay/quay/commit/3d59de79c0e5ff623ddaee7425aae4b61e8f9713): work around tox-docker gateway IP detection failure ([#5068](https://github.com/quay/quay/issues/5068))
 ### [Redhat-3.9] Chore(Deps)
@@ -25,6 +37,8 @@
 - [c0782894](https://github.com/quay/quay/commit/c078289474eb492098a07c4ada018ef540a50289): upgrade of Authlib to 1.6.6  ([#5306](https://github.com/quay/quay/issues/5306))
 ### [Redhat-3.9] PROJQUAY-10545: Deps
 - [e76c135e](https://github.com/quay/quay/commit/e76c135e8c3d2cb6575706e283323e89346e30c6): updated axios version to 1.13.5 ([#5279](https://github.com/quay/quay/issues/5279))
+### [Redhat-3.9] PROJQUAY-10677: Deps
+- [aca444d2](https://github.com/quay/quay/commit/aca444d2e0698acdeec94f76f622292d9eeb54c0): Bump rollup to 2.80 ([#5372](https://github.com/quay/quay/issues/5372))
 
 <a name="v3.9.18"></a>
 ## [v3.9.18] - 2026-02-11
@@ -1651,7 +1665,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.19...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.20...HEAD
+[v3.9.20]: https://github.com/quay/quay/compare/v3.9.19...v3.9.20
 [v3.9.19]: https://github.com/quay/quay/compare/v3.9.18...v3.9.19
 [v3.9.18]: https://github.com/quay/quay/compare/v3.9.17...v3.9.18
 [v3.9.17]: https://github.com/quay/quay/compare/v3.9.16...v3.9.17
