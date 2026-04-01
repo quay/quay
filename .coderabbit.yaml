@@ -198,14 +198,6 @@ reviews:
           Fail if: changes introduce new blocking calls, remove caching, or add unoptimized
           queries to the read path.
 
-finishing_touches:
-  docstrings:
-    enabled: false
-  unit_tests:
-    enabled: true
-  simplify:
-    enabled: true
-
 knowledge_base:
   code_guidelines:
     enabled: true
