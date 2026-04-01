@@ -1,5 +1,7 @@
-import logo from 'src/assets/quay.svg';
+import logo_dark from 'src/assets/quay.svg';
+import logo_light from 'src/assets/logo.svg';
 import rh_logo_dark from 'src/assets/RH_QuayIO2.svg';
+import rh_logo_light from 'src/assets/RH_QuayIO.svg';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useTheme} from 'src/contexts/ThemeContext';
 
@@ -7,10 +9,10 @@ import {useTheme} from 'src/contexts/ThemeContext';
  * Hook to determine the appropriate logo URL based on theme and configuration.
  *
  * Logo selection priority:
- * 1. If hostname is quay.io or stage.quay.io (Red Hat branding takes priority):
+ * 1. If hostname is quay.io or stage.quay.io → theme-aware Red Hat branding
  * 2. Else if BRANDING.logo_dark is configured AND dark theme is active → use logo_dark
  * 3. Else if BRANDING.logo is configured → use logo
- * 4. Else (downstream default) → quay.svg (no theme switching)
+ * 4. Else (downstream default) → theme-aware default logo
  *
  * Note: Customers can configure BRANDING.logo_dark for theme-aware custom branding.
  *
@@ -25,7 +27,7 @@ export function useLogo(): string {
     window?.location?.hostname === 'stage.quay.io' ||
     window?.location?.hostname === 'quay.io'
   ) {
-    return rh_logo_dark;
+    return isDarkTheme ? rh_logo_dark : rh_logo_light;
   }
 
   // Priority 2 & 3: Check for custom branding configuration
@@ -41,5 +43,5 @@ export function useLogo(): string {
   }
 
   // Priority 4: Default for downstream (self-hosted Quay)
-  return logo;
+  return isDarkTheme ? logo_dark : logo_light;
 }
