@@ -1,4 +1,173 @@
+language: "en-US"
+
 reviews:
   tools:
     ruff:
       enabled: false
+  profile: chill
+  poem: false
+  sequence_diagrams: false
+  in_progress_fortune: false
+  high_level_summary_in_walkthrough: true
+  collapse_walkthrough: true
+  changed_files_summary: true
+  review_status: true
+  abort_on_close: true
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+      - "[wip]"
+      - "[do not merge]"
+
+  path_filters:
+    - "!static/js/**"
+    - "!static/lib/**"
+    - "!**/*.min.js"
+    - "!**/*.min.css"
+    - "!**/vendor/**"
+    - "!**/*_generated*"
+    - "!**/node_modules/**"
+    - "!web/dist/**"
+
+  path_instructions:
+    - path: "data/migrations/versions/**/*.py"
+      instructions: |
+        Review Alembic migrations with extreme care for production safety at scale.
+        Critical tables have 100M+ rows: Manifest, ManifestBlob, Tag, ImageStorage.
+        High-volume tables: User, Repository (millions of rows).
+
+        Check for:
+        - ALTER TABLE operations that acquire ACCESS EXCLUSIVE locks on large tables
+        - Adding NOT NULL constraints without server defaults on large tables
+        - Column type changes that rewrite the table
+        - CREATE INDEX without CONCURRENTLY on tables with millions of rows
+        - UPDATE statements that touch all rows without batching
+        - Missing or incomplete downgrade() implementation
+        - Verify down_revision matches the current migration chain head
+
+    - path: "data/model/**/*.py"
+      instructions: |
+        Review database model code for query performance at scale.
+        Critical tables have 100M+ rows: Manifest, ManifestBlob, Tag, ImageStorage.
+        Traffic pattern: 98% reads (image pulls), 2% writes (pushes).
+
+        Watch for:
+        - N+1 query patterns: loops executing queries, missing joinedload()/selectinload()
+        - New filter()/WHERE clauses on columns without indexes
+        - Full table scans: queries without adequate WHERE clauses, LIKE '%pattern%'
+        - Long-running transactions that hold locks or span external calls (HTTP, storage)
+        - Missing read replica consideration for read-heavy paths
+
+    - path: "endpoints/**/*.py"
+      instructions: |
+        Review API endpoints for performance and security.
+        Read path (v2/ registry protocol) handles 98% of traffic.
+
+        Check for:
+        - Missing pagination on list endpoints
+        - External service calls (Clair, storage, auth) without timeouts
+        - Missing or incorrect caching headers
+        - Input validation gaps (SQL injection, path traversal, command injection)
+        - Proper authentication and authorization checks
+        - No sensitive data in logs or error responses
+
+    - path: "workers/**/*.py"
+      instructions: |
+        Review background workers for resource safety.
+
+        Check for:
+        - Jobs that scale proportionally to large table sizes without rate limiting
+        - Missing error handling that could cause infinite retry loops
+        - Large blob operations that buffer into memory instead of streaming
+        - Missing connection pooling or timeout configuration
+
+  pre_merge_checks:
+    title:
+      mode: "warning"
+      requirements: |
+        PR title must start with a Jira ticket reference (e.g., PROJQUAY-1234:) or
+        NO-ISSUE: for changes without a ticket. The prefix must be followed by a
+        concise description of the change.
+    description:
+      mode: "warning"
+    custom_checks:
+      - name: "Migration Safety at Scale"
+        mode: "warning"
+        instructions: |
+          Fail if any Alembic migration file in data/migrations/versions/ performs
+          an unsafe operation on a large table. Large tables are: Manifest, ManifestBlob,
+          Tag, ImageStorage (100M+ rows), User, Repository (millions of rows).
+
+          Unsafe operations that MUST fail:
+          1. CREATE INDEX without CONCURRENTLY on any large table
+          2. ALTER TABLE adding a NOT NULL column without a server default on a large table
+          3. ALTER TABLE changing a column type on a large table (causes full table rewrite)
+          4. UPDATE or DELETE on a large table without LIMIT/batching (backfill without chunking)
+          5. Adding a foreign key constraint with NOT VALID missing on a large table
+
+          Pass if: no migration files are changed, OR all migrations only touch small/new
+          tables, OR large-table operations use safe patterns (CONCURRENTLY, batched backfill,
+          NOT VALID + separate VALIDATE step).
+
+          Fail if: any of the unsafe operations above are performed on a large table.
+
+      - name: "Migration Downgrade Exists"
+        mode: "warning"
+        instructions: |
+          For every Alembic migration file added or modified in data/migrations/versions/:
+          verify that the downgrade() function contains actual rollback logic (not just `pass`
+          or an empty body).
+
+          Pass if: no migration files are changed, OR every migration has a downgrade()
+          with meaningful operations that reverse the upgrade().
+
+          Fail if: any migration has downgrade() that is empty, contains only `pass`,
+          or is missing entirely.
+
+      - name: "N+1 Query Prevention"
+        mode: "warning"
+        instructions: |
+          Fail if new or modified Python code in data/model/, endpoints/, or workers/
+          introduces an N+1 query pattern. Specifically check for:
+
+          1. SQLAlchemy queries executed inside a for/while loop iterating over query results
+          2. Accessing a lazy-loaded relationship attribute inside a loop without prior
+             joinedload() or selectinload() in the original query
+          3. Sequential individual queries (e.g., get_by_id in a loop) that could be replaced
+             with a single IN query or batch fetch
+
+          Pass if: no new loop-based query patterns are introduced, OR eager loading is
+          properly configured for relationships accessed in loops.
+
+          Fail if: any new code pattern would execute O(N) queries where a single query
+          or eager load would suffice.
+
+      - name: "Read Path Performance"
+        mode: "warning"
+        instructions: |
+          Fail if changes to the registry read path (endpoints/v2/, data/model/ functions
+          called during pull operations) introduce performance regressions. The read path
+          handles 98% of all traffic.
+
+          Check for:
+          1. New synchronous external service calls (HTTP requests to Clair, storage backends,
+             or auth services) without timeouts in the request path
+          2. New database queries added to the manifest/blob resolution hot path without
+             caching or query optimization
+          3. Removal or weakening of existing Redis caching on read-path endpoints
+          4. New file I/O or blocking operations in the v2 registry endpoints
+
+          Pass if: no read-path files are changed, OR changes do not add latency to the
+          pull/fetch flow.
+
+          Fail if: changes introduce new blocking calls, remove caching, or add unoptimized
+          queries to the read path.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
