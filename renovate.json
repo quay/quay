@@ -13,27 +13,6 @@
   "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
-      "description": "Group and defer all npm updates to monthly",
-      "matchManagers": ["npm"],
-      "groupName": "npm-all",
-      "schedule": ["on the first day of the month"],
-      "prPriority": -10
-    },
-    {
-      "description": "Group and defer all Python updates to monthly",
-      "matchManagers": ["pip_requirements"],
-      "groupName": "python-all",
-      "schedule": ["on the first day of the month"],
-      "prPriority": -10
-    },
-    {
-      "description": "Group and defer all Go updates to monthly",
-      "matchManagers": ["gomod"],
-      "groupName": "go-all",
-      "schedule": ["on the first day of the month"],
-      "prPriority": -10
-    },
-    {
       "description": "Disable major version bumps for non-tekton managers",
       "matchUpdateTypes": ["major"],
       "matchManagers": ["npm", "pip_requirements", "gomod"],
