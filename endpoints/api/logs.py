@@ -415,7 +415,7 @@ def _log_export_failure(user_or_org_name, request, ex, repository=None):
 
     metadata = {
         "date/time": datetime.utcnow(),
-        "error": ex,
+        "error": str(ex),
         "url": request.get_json().get("callback_url") or None,
         "email": request.get_json().get("callback_email") or None,
     }
@@ -460,9 +460,12 @@ class ExportRepositoryLogs(RepositoryParamResource):
             export_id = _queue_logs_export(
                 start_time, end_time, request.get_json(), namespace, repository_name=repository
             )
-        except (InvalidRequest, InvalidLogsDateRangeError) as ex:
-            _log_export_failure(namespace, request, ex, repository)
-            abort(400, ex)
+        except InvalidLogsDateRangeError as ex:
+            _log_export_failure(namespace, request, str(ex), repository)
+            raise InvalidRequest(str(ex))
+        except InvalidRequest:
+            _log_export_failure(namespace, request, "invalid request", repository)
+            raise
 
         _log_export_success(namespace, export_id, request, repository)
 
@@ -497,9 +500,12 @@ class ExportUserLogs(ApiResource):
 
         try:
             export_id = _queue_logs_export(start_time, end_time, request.get_json(), user.username)
-        except (InvalidRequest, InvalidLogsDateRangeError) as ex:
-            _log_export_failure(user.username, request, ex, None)
-            abort(400, ex)
+        except InvalidLogsDateRangeError as ex:
+            _log_export_failure(user.username, request, str(ex), None)
+            raise InvalidRequest(str(ex))
+        except InvalidRequest:
+            _log_export_failure(user.username, request, "invalid request", None)
+            raise
 
         _log_export_success(user.username, export_id, request, None)
 
@@ -540,9 +546,12 @@ class ExportOrgLogs(ApiResource):
 
             try:
                 export_id = _queue_logs_export(start_time, end_time, request.get_json(), orgname)
-            except (InvalidRequest, InvalidLogsDateRangeError) as ex:
-                _log_export_failure(orgname, request, ex, None)
-                abort(400, ex)
+            except InvalidLogsDateRangeError as ex:
+                _log_export_failure(orgname, request, str(ex), None)
+                raise InvalidRequest(str(ex))
+            except InvalidRequest:
+                _log_export_failure(orgname, request, "invalid request", None)
+                raise
 
             _log_export_success(orgname, export_id, request, None)
 
