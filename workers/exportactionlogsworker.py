@@ -272,6 +272,7 @@ class ExportActionLogsWorker(QueueWorker):
                         "exported_data_url": exported_data_url,
                         "status": result_status.value,
                     },
+                    allow_redirects=False,
                 )
 
                 if result.status_code != 200:
