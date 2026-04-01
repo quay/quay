@@ -34,18 +34,6 @@ reviews:
     - "!**/node_modules/**"
     - "!web/dist/**"
 
-  labeling_instructions:
-    - label: "database-migration"
-      instructions: "Apply when any file in data/migrations/versions/ is added or modified."
-    - label: "security"
-      instructions: "Apply when files in auth/, endpoints/ related to authentication/authorization, or any code handling tokens, passwords, or permissions are modified."
-    - label: "frontend"
-      instructions: "Apply when files in web/src/ or static/js/ are modified."
-    - label: "storage"
-      instructions: "Apply when files in storage/ are modified."
-    - label: "worker"
-      instructions: "Apply when files in workers/ are modified."
-
   path_instructions:
     - path: "data/migrations/versions/**/*.py"
       instructions: |
