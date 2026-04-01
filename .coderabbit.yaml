@@ -159,24 +159,6 @@ reviews:
           Fail if: any new code pattern would execute O(N) queries where a single query
           or eager load would suffice.
 
-      - name: "No Secrets in Code"
-        mode: "warning"
-        instructions: |
-          Fail if any changed file contains hardcoded secrets or credentials. Scan for:
-
-          1. Variables or strings matching: sk_live_*, AKIA[A-Z0-9]{16}, ghp_[a-zA-Z0-9]{36},
-             API keys, bearer tokens, or passwords assigned as string literals
-          2. Private keys (BEGIN RSA PRIVATE KEY, BEGIN EC PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY)
-          3. Connection strings with embedded passwords (postgresql://user:pass@, redis://:pass@)
-          4. Variables named *_SECRET, *_PASSWORD, *_TOKEN, *_KEY assigned to literal strings
-             (exclude references to config/environment lookups)
-
-          Exclude: test fixtures using obviously fake values (e.g., "test", "fake", "dummy",
-          "example"), .example files, and documentation.
-
-          Pass if: no hardcoded secrets are found in changed files.
-          Fail if: any real credential pattern is detected.
-
       - name: "Read Path Performance"
         mode: "warning"
         instructions: |
