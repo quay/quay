@@ -1097,7 +1097,7 @@ CONFIG_SCHEMA = {
         },
         "SSRF_ALLOWED_HOSTS": {
             "type": "array",
-            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for organization mirror source registries. Use for enterprise deployments where source registries are on private networks.",
+            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for organization mirror source registries and export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
             "uniqueItems": True,
             "items": {"type": "string"},
             "x-example": ["internal-harbor.corp.example.com", "10.0.0.0/8"],
