@@ -845,3 +845,8 @@ class DefaultConfig(ImmutableConfig):
     ENTITLEMENT_RECONCILIATION_MARKETPLACE_ENDPOINT = ""
 
     FEATURE_RH_MARKETPLACE = False
+
+    # Hostnames or CIDR ranges allowed to bypass URL validation blocklist
+    # for export log callbacks. Use for enterprise deployments where endpoints
+    # run on private networks.
+    SSRF_ALLOWED_HOSTS: List[str] = []
