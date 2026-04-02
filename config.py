@@ -901,3 +901,8 @@ class DefaultConfig(ImmutableConfig):
     # Disable pushes while allowing other registry operations.
     # Defaults to "False".
     DISABLE_PUSHES = False
+
+    # Hostnames or CIDR ranges allowed to bypass URL validation blocklist
+    # for export log callbacks. Use for enterprise deployments where endpoints
+    # run on private networks.
+    SSRF_ALLOWED_HOSTS: List[str] = []
