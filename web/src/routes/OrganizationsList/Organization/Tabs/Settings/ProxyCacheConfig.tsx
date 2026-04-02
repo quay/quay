@@ -23,6 +23,7 @@ import {
 } from 'src/hooks/UseProxyCache';
 import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
 import {useNamespaceImmutabilityPolicies} from 'src/hooks/UseNamespaceImmutabilityPolicies';
+import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
 import Alerts from 'src/routes/Alerts';
 
 type ProxyCacheConfigProps = {
@@ -44,6 +45,9 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
     defaultProxyCacheConfig,
   );
   const {addAlert, clearAllAlerts} = useUI();
+  const {config: quayConfig, isLoading: isQuayConfigLoading} =
+    useQuayConfigWithLoading();
+  const immutableTagsEnabled = !!quayConfig?.features?.IMMUTABLE_TAGS;
 
   const {fetchedProxyCacheConfig, isLoadingProxyCacheConfig} =
     useFetchProxyCacheConfig(props.organizationName, !props.isUser);
@@ -55,10 +59,16 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
   } = useOrgMirrorExists(props.organizationName);
   const {
     nsPolicies,
-    isLoading: isImmutabilityLoading,
-    isError: isImmutabilityError,
-  } = useNamespaceImmutabilityPolicies(props.organizationName);
-  const hasImmutabilityPolicies = (nsPolicies?.length ?? 0) > 0;
+    isLoading: rawImmutabilityLoading,
+    isError: rawImmutabilityError,
+  } = useNamespaceImmutabilityPolicies(
+    props.organizationName,
+    immutableTagsEnabled,
+  );
+  const isImmutabilityLoading = immutableTagsEnabled && rawImmutabilityLoading;
+  const isImmutabilityError = immutableTagsEnabled && rawImmutabilityError;
+  const hasImmutabilityPolicies =
+    immutableTagsEnabled && (nsPolicies?.length ?? 0) > 0;
 
   useEffect(() => {
     if (fetchedProxyCacheConfig) {
@@ -345,6 +355,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
               proxyCacheConfigValidation();
             }}
             isDisabled={
+              isQuayConfigLoading ||
               !proxyCacheConfig?.upstream_registry ||
               !!fetchedProxyCacheConfig?.upstream_registry ||
               isOrgMirrorLoading ||
