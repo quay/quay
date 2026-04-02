@@ -1232,32 +1232,24 @@ class TestRetargetTagRaceCondition:
         assert tag1_refreshed.lifetime_end_ms == later_ms
 
     def test_retarget_tag_repository_not_found_returns_none(self, initialized_db):
-        """Test that retarget_tag returns None when repository lock fails."""
+        """Test that retarget_tag returns None when repository no longer exists."""
         repo = model.repository.create_repository("devtable", "newrepo", None)
         manifest, _ = create_manifest_for_testing(repo, "reponotfound1")
 
-        def mock_db_for_update(query):
-            mock_result = MagicMock()
-            mock_result.get.side_effect = Repository.DoesNotExist()
-            return mock_result
-
-        with patch("data.model.oci.tag.db_for_update", mock_db_for_update):
+        with patch("data.model.oci.tag.Repository.select") as mock_select:
+            mock_select.return_value.where.return_value.get.side_effect = Repository.DoesNotExist()
             result = retarget_tag("failingtag", manifest.id, raise_on_error=False)
             assert result is None
 
     def test_retarget_tag_repository_not_found_raises_exception(self, initialized_db):
-        """Test that retarget_tag raises exception when repository lock fails and raise_on_error=True."""
+        """Test that retarget_tag raises exception when repository not found and raise_on_error=True."""
         from data.model.oci.tag import RetargetTagException
 
         repo = model.repository.create_repository("devtable", "newrepo", None)
         manifest, _ = create_manifest_for_testing(repo, "reponotfound2")
 
-        def mock_db_for_update(query):
-            mock_result = MagicMock()
-            mock_result.get.side_effect = Repository.DoesNotExist()
-            return mock_result
-
-        with patch("data.model.oci.tag.db_for_update", mock_db_for_update):
+        with patch("data.model.oci.tag.Repository.select") as mock_select:
+            mock_select.return_value.where.return_value.get.side_effect = Repository.DoesNotExist()
             with pytest.raises(RetargetTagException) as exc_info:
                 retarget_tag("failingtag", manifest.id, raise_on_error=True)
             assert "Repository no longer exists" in str(exc_info.value)
