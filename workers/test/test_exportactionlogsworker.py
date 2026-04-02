@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime, timedelta
-from test.fixtures import *
+from unittest.mock import patch
 
 import boto3
 import pytest
@@ -12,7 +12,12 @@ from app import storage as test_storage
 from data import database, model
 from data.logs_model import logs_model
 from storage import DistributedStorage, S3Storage, StorageContext
-from workers.exportactionlogsworker import POLL_PERIOD_SECONDS, ExportActionLogsWorker
+from test.fixtures import *
+from workers.exportactionlogsworker import (
+    POLL_PERIOD_SECONDS,
+    ExportActionLogsWorker,
+    ExportResult,
+)
 
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
@@ -41,7 +46,8 @@ def storage_engine(request):
             yield engine
 
 
-def test_export_logs_failure(initialized_db):
+@patch("workers.exportactionlogsworker.validate_external_registry_url")
+def test_export_logs_failure(mock_ssrf, initialized_db):
     # Make all uploads fail.
     test_storage.put_content("local_us", "except_upload", b"true")
 
@@ -91,7 +97,8 @@ def test_export_logs_failure(initialized_db):
         False,
     ],
 )
-def test_export_logs(initialized_db, storage_engine, has_logs):
+@patch("workers.exportactionlogsworker.validate_external_registry_url")
+def test_export_logs(mock_ssrf, initialized_db, storage_engine, has_logs):
     # Delete all existing logs.
     database.LogEntry3.delete().execute()
 
@@ -179,3 +186,53 @@ def test_export_logs(initialized_db, storage_engine, has_logs):
                 assert index in found
         else:
             assert created_json["logs"] == [{"terminator": True}]
+
+
+def _make_job_details(callback_url, callback_email=None):
+    """Helper to build a minimal job_details dict for _report_results tests."""
+    return {
+        "export_id": "test-export-id",
+        "start_time": "01/01/2026",
+        "end_time": "01/31/2026",
+        "namespace_name": "devtable",
+        "repository_name": "simple",
+        "callback_url": callback_url,
+        "callback_email": callback_email,
+    }
+
+
+class TestExportLogsWorkerCallbackValidation:
+    """Tests for callback URL validation in the export action logs worker."""
+
+    def test_blocked_callback_skips_post(self, initialized_db):
+        """Worker skips POST when callback URL points to a blocked address."""
+        worker = ExportActionLogsWorker(None)
+        called = [False]
+
+        @urlmatch(netloc=r"169.254.169.254")
+        def handle_request(url, request):
+            called[0] = True
+            return {"status_code": 200, "content": "{}"}
+
+        job_details = _make_job_details("http://169.254.169.254/latest/meta-data")
+
+        with HTTMock(handle_request):
+            worker._report_results(
+                job_details, ExportResult.SUCCESSFUL_EXPORT, "http://example.com/export"
+            )
+
+        assert not called[0]
+
+    def test_blocked_callback_still_sends_email(self, initialized_db):
+        """Worker skips POST but still sends email when callback URL is blocked."""
+        worker = ExportActionLogsWorker(None)
+        job_details = _make_job_details(
+            "http://169.254.169.254/latest/meta-data",
+            callback_email="test@example.com",
+        )
+
+        with patch("workers.exportactionlogsworker.send_logs_exported_email") as mock_email:
+            worker._report_results(
+                job_details, ExportResult.SUCCESSFUL_EXPORT, "http://example.com/export"
+            )
+            mock_email.assert_called_once()
