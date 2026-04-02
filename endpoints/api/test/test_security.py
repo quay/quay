@@ -63,7 +63,7 @@ NOTIFICATION_PARAMS = {
 TOKEN_PARAMS = {"token_uuid": "someuuid"}
 TRIGGER_PARAMS = {"repository": "devtable/simple", "trigger_uuid": "someuuid"}
 MANIFEST_PARAMS = {"repository": "devtable/simple", "manifestref": "sha256:deadbeef"}
-EXPORTLOGS_PARAMS = {"callback_url": "http://foo"}
+EXPORTLOGS_PARAMS = {"callback_email": "test@example.com"}
 
 
 SECURITY_TESTS: List[
