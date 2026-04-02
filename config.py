@@ -911,3 +911,8 @@ class DefaultConfig(ImmutableConfig):
     # Specific namespaces that be exceptions to the s3-cloudflare optimization
     # used for registry-proxy namespaces
     CDN_SPECIFIC_NAMESPACES: Optional[List[str]] = []
+
+    # Hostnames or CIDR ranges allowed to bypass URL validation blocklist
+    # for export log callbacks. Use for enterprise deployments where endpoints
+    # run on private networks.
+    SSRF_ALLOWED_HOSTS: List[str] = []

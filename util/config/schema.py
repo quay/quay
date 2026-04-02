@@ -1623,5 +1623,12 @@ CONFIG_SCHEMA = {
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
         },
+        "SSRF_ALLOWED_HOSTS": {
+            "type": "array",
+            "description": "List of hostnames or CIDR ranges allowed to bypass URL validation for export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
+            "uniqueItems": True,
+            "items": {"type": "string"},
+            "x-example": ["internal-service.corp.example.com", "10.0.0.0/8"],
+        },
     },
 }
