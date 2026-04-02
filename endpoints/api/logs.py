@@ -34,6 +34,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.exception import NotFound, Unauthorized
+from util.security.ssrf import SSRFBlockedError, validate_external_registry_url
 
 LOGS_PER_PAGE = 20
 SERVICE_LEVEL_LOG_KINDS = set(
@@ -322,11 +323,20 @@ EXPORT_LOGS_SCHEMA = {
 }
 
 
+def _validate_callback_url(url):
+    """Validate a callback URL and raise InvalidRequest on failure."""
+    try:
+        validate_external_registry_url(url, allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []))
+    except SSRFBlockedError:
+        raise InvalidRequest("Invalid callback URL")
+    except ValueError as e:
+        raise InvalidRequest(str(e))
+
+
 def _queue_logs_export(start_time, end_time, options, namespace_name, repository_name=None):
     callback_url = options.get("callback_url")
     if callback_url:
-        if not callback_url.startswith("https://") and not callback_url.startswith("http://"):
-            raise InvalidRequest("Invalid callback URL")
+        _validate_callback_url(callback_url)
 
     callback_email = options.get("callback_email")
     if callback_email:
