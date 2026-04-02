@@ -284,7 +284,7 @@ class TestQuota:
         repository_size_row = get_repository_size_row(self.org2repo1.id)
         assert repository_size_row is None
 
-        with assert_query_count(10):
+        with assert_query_count(9):
             with patch("data.model.quota.logger.info", MagicMock()) as mock_logger:
                 update_quota(
                     self.org2repo1.id,
@@ -313,7 +313,7 @@ class TestQuota:
         repository_size_row = get_repository_size_row(self.org2repo1.id)
         assert repository_size_row is None
 
-        with assert_query_count(8):
+        with assert_query_count(7):
             with patch("data.model.quota.logger.info", MagicMock()) as mock_logger:
                 update_quota(
                     self.org2repo1.id, org2repo1manifest2.id, {1: 10, 2: 20}, QuotaOperation.ADD
