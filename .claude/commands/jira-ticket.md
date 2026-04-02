@@ -159,18 +159,20 @@ Format the description in plain text with clear sections.
 
 #### Component (Required)
 
-Available components:
-- **quay.io** — General quay.io issues (default)
-- **registry-proxy** — Registry proxy related issues
-- **documentation** — Documentation changes
+Components depend on the selected project:
 
-Ask the user:
+**QUAYIO project:**
+- **quay.io** — General quay.io SaaS issues (default)
+- **registry-proxy** — Registry proxy related issues
+
+**PROJQUAY project:**
+- **quay** — Core Quay registry (default)
+- **quay-ui** — Quay frontend / UI issues
+- **quay-operator** — Quay Operator issues
+
+Present only the components relevant to the selected project. Ask the user:
 
 > Which component? (or type a new component name to create one)
-> 1. quay.io (default)
-> 2. registry-proxy
-> 3. documentation
-> 4. Other (specify)
 
 If the user specifies a new component name, note it — it will be created via the REST API after ticket creation.
 
@@ -189,8 +191,11 @@ Default to `@me` (current user). Ask if they want to assign to someone else.
 
 #### Labels (Optional)
 
-Suggest relevant labels based on the description content. Common labels include:
-- `kinesis`, `logging`, `sentry`, `storage`, `auth`, `ui`, `api`, `database`, `performance`, `security`
+Special labels to consider:
+- **`eus-applicable`** — Add this label if the ticket is a CVE or security fix
+- **`documentation`** — Add this label if the task relates to documenting changes
+
+If the description mentions a CVE or security vulnerability, proactively suggest `eus-applicable`. If it involves documentation work, proactively suggest `documentation`.
 
 Ask if the user wants to add, remove, or skip labels.
 
