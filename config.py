@@ -863,3 +863,8 @@ class DefaultConfig(ImmutableConfig):
 
     # whitelist for ROBOTS_DISALLOW to grant access/usage for mirroring
     ROBOTS_WHITELIST: Optional[List[str]] = []
+
+    # Hostnames or CIDR ranges allowed to bypass URL validation blocklist
+    # for export log callbacks. Use for enterprise deployments where endpoints
+    # run on private networks.
+    SSRF_ALLOWED_HOSTS: List[str] = []
