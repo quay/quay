@@ -35,6 +35,8 @@ spec:
   - name: build-args
     value:
     - NPM_BUILD_SCRIPT=build-plugin
+  - name: slack-notification-on-failure
+    value: "true"
   pipelineRef:
     name: quayio-build-pipeline
   taskRunTemplate:

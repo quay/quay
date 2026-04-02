@@ -30,6 +30,8 @@ spec:
     value: Dockerfile
   - name: path-context
     value: .
+  - name: slack-notification-on-failure
+    value: "true"
   pipelineRef:
     name: quayio-build-pipeline
   taskRunTemplate:
