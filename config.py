@@ -941,6 +941,11 @@ class DefaultConfig(ImmutableConfig):
     # Enabled superuser API to dump config,env,schema and drifts(unknown like typos)
     FEATURE_SUPERUSER_CONFIGDUMP = False
 
+    # Hostnames or CIDR ranges allowed to bypass URL validation blocklist
+    # for export log callbacks. Use for enterprise deployments where endpoints
+    # run on private networks.
+    SSRF_ALLOWED_HOSTS: List[str] = []
+
     # OTEL CONFIG
     FEATURE_OTEL_TRACING = False
     OTEL_TRACING_EXCLUDED_URLS = None
