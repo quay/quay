@@ -67,7 +67,7 @@ TOKEN_PARAMS = {"token_uuid": "someuuid"}
 TRIGGER_PARAMS = {"repository": "devtable/simple", "trigger_uuid": "someuuid"}
 MANIFEST_PARAMS = {"repository": "devtable/simple", "manifestref": "sha256:deadbeef"}
 TAG_PARAMS = {"repository": "devtable/simple", "tag": "latest"}
-EXPORTLOGS_PARAMS = {"callback_url": "http://foo"}
+EXPORTLOGS_PARAMS = {"callback_email": "test@example.com"}
 ORG_IMMUTABILITY_POLICY_PARAMS = {"orgname": "buynlarge", "policy_uuid": "someuuid"}
 REPO_IMMUTABILITY_POLICY_PARAMS = {"repository": "devtable/simple", "policy_uuid": "someuuid"}
 
