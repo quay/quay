@@ -128,6 +128,7 @@
     "minimatch": "^3.1.5",
     "filelist": {
       "minimatch": "^5.0.1"
-    }
+    },
+    "immutable": "^5.1.5"
   }
 }
