@@ -25,28 +25,28 @@ export const SimpleServiceWidget: React.FunctionComponent<
   return (
     <Card isPlain>
       <>
-        <CardBody className="pf-v5-u-p-md pf-v5-u-pb-0">
+        <CardBody className="pf-v6-u-p-md pf-v6-u-pb-0">
           <Content
             key={props.id}
-            className="pf-v5-u-display-flex pf-v5-u-flex-direction-column"
+            className="pf-v6-u-display-flex pf-v6-u-flex-direction-column"
           >
-            <Content component="p" className="pf-v5-u-flex-grow-1">
+            <Content component="p" className="pf-v6-u-flex-grow-1">
               {props.body}{' '}
             </Content>
           </Content>
         </CardBody>
-        <CardFooter className="pf-v5-u-p-md">
+        <CardFooter className="pf-v6-u-p-md">
           {props.isExternal ? (
             <a href={props.url}>
               {props.linkTitle}
-              <Icon className="pf-v5-u-ml-sm" isInline>
+              <Icon className="pf-v6-u-ml-sm" isInline>
                 <ExternalLinkAltIcon />
               </Icon>
             </a>
           ) : (
             <Link to={props.url}>
               {props.linkTitle}
-              <Icon className="pf-v5-u-ml-sm" isInline>
+              <Icon className="pf-v6-u-ml-sm" isInline>
                 <ArrowRightIcon />
               </Icon>
             </Link>
