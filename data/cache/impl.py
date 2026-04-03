@@ -1,10 +1,12 @@
 import json
 import logging
 import os
+import sys
 from abc import ABCMeta, abstractmethod
 from contextlib import contextmanager
 from datetime import datetime
 
+import bitmath
 from prometheus_client import Counter
 from pymemcache.client.base import PooledClient
 from redis import RedisError, StrictRedis
@@ -171,6 +173,12 @@ class MemcachedModelCache(DataModelCache):
         self.connect_timeout = connect_timeout
         self.client_pool = self._get_client_pool(max_pool_size)
 
+        try:
+            size_str = self.cache_config.get("value_size_limit", "1MiB")
+            self.value_size_limit_bytes = bitmath.parse_string_unsafe(size_str).to_Byte().value
+        except Exception as e:
+            raise ValueError(f"Invalid size string for memcached size limit: {size_str}") from e
+
     def _get_client_pool(self, max_pool_size=None):
         try:
             # Copied from the doc comment for Client.
@@ -235,6 +243,14 @@ class MemcachedModelCache(DataModelCache):
                 expires = (
                     convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
                 )
+
+                # best effort check for size limit
+                unserialized_value_size_bytes = sys.getsizeof(result)
+                if unserialized_value_size_bytes > self.value_size_limit_bytes:
+                    raise Exception(
+                        f"Unserialized value of cache item ({unserialized_value_size_bytes} bytes) already exceeds the configured limit of memcached ({self.value_size_limit_bytes} bytes)"
+                    )
+
                 client.set(
                     cache_key.key,
                     result,
@@ -246,10 +262,12 @@ class MemcachedModelCache(DataModelCache):
                     result,
                     cache_key.expiration,
                 )
-            except:
-                logger.warning(
-                    "Got exception when trying to set key %s to %s", cache_key.key, result
-                )
+            except Exception as e:
+                # not printing the full value as it could be large and spam logs
+                logger.warning("Got exception when trying to set key %s: %s", cache_key.key, e)
+
+                # print the full value only in debug mode
+                logger.debug("Not caching loaded result for key %s: %s", cache_key.key, result)
         else:
             logger.debug("Not caching loaded result for key %s: %s", cache_key.key, result)
 
@@ -323,11 +341,18 @@ class RedisDataModelCache(DataModelCache):
                     cache_key.expiration,
                 )
             except RedisError as re:
+                # not printing the full value as it could be large and spam logs
                 logger.warning(
-                    "Got RedisError exception when trying to set key %s to %s: %s",
+                    "Got RedisError exception when trying to set key %s: %s",
+                    cache_key.key,
+                    re,
+                )
+
+                # print the full value only in debug mode
+                logger.debug(
+                    "Not caching loaded result for key %s: %s",
                     cache_key.key,
                     result,
-                    re,
                 )
             except Exception as e:
                 logger.exception(
