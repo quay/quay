@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict fxmrevWdeqvsJK2qrfDBibqaVDzkdGEOr3EJHZQ3whLLSJmC0pjEOeA6rHwY82y
+\restrict FBqZW9BTbXeMmLkU0WCNq9ARuEXcluTJ3xFwhCotJe9Ucf8SgBaPAgH07mKgujZ
 
--- Dumped from database version 18.1 (Debian 18.1-1.pgdg13+2)
--- Dumped by pg_dump version 18.1 (Debian 18.1-1.pgdg13+2)
+-- Dumped from database version 18.3 (Debian 18.3-1.pgdg13+1)
+-- Dumped by pg_dump version 18.3 (Debian 18.3-1.pgdg13+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -42,7 +42,6 @@ ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXIS
 ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_method_id;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_linked_tag_id_tag;
-ALTER TABLE IF EXISTS ONLY public.tagpullstatistics DROP CONSTRAINT IF EXISTS fk_tagpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.servicekey DROP CONSTRAINT IF EXISTS fk_servicekey_approval_id_servicekeyapproval;
@@ -120,7 +119,6 @@ ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXIS
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_label_id_label;
-ALTER TABLE IF EXISTS ONLY public.manifestpullstatistics DROP CONSTRAINT IF EXISTS fk_manifestpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_child_manifest_id_manifest;
@@ -137,6 +135,9 @@ ALTER TABLE IF EXISTS ONLY public.imagestoragesignature DROP CONSTRAINT IF EXIST
 ALTER TABLE IF EXISTS ONLY public.imagestoragesignature DROP CONSTRAINT IF EXISTS fk_imagestoragesignature_kind_id_imagestoragesignaturekind;
 ALTER TABLE IF EXISTS ONLY public.imagestorageplacement DROP CONSTRAINT IF EXISTS fk_imagestorageplacement_storage_id_imagestorage;
 ALTER TABLE IF EXISTS ONLY public.imagestorageplacement DROP CONSTRAINT IF EXISTS fk_imagestorageplacement_location_id_imagestoragelocation;
+ALTER TABLE IF EXISTS ONLY public.helmrepoindexconfig DROP CONSTRAINT IF EXISTS fk_helmrepoindexconfig_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.helmchartmetadata DROP CONSTRAINT IF EXISTS fk_helmchartmetadata_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.helmchartmetadata DROP CONSTRAINT IF EXISTS fk_helmchartmetadata_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.federatedlogin DROP CONSTRAINT IF EXISTS fk_federatedlogin_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.federatedlogin DROP CONSTRAINT IF EXISTS fk_federatedlogin_service_id_loginservice;
 ALTER TABLE IF EXISTS ONLY public.emailconfirmation DROP CONSTRAINT IF EXISTS fk_emailconfirmation_user_id_user;
@@ -468,6 +469,10 @@ DROP INDEX IF EXISTS public.image_repository_id;
 DROP INDEX IF EXISTS public.image_parent_id;
 DROP INDEX IF EXISTS public.image_docker_image_id;
 DROP INDEX IF EXISTS public.image_ancestors;
+DROP INDEX IF EXISTS public.helmrepoindexconfig_repository_id;
+DROP INDEX IF EXISTS public.helmchartmetadata_repository_id;
+DROP INDEX IF EXISTS public.helmchartmetadata_manifest_id;
+DROP INDEX IF EXISTS public.helmchartmetadata_extraction_status;
 DROP INDEX IF EXISTS public.federatedlogin_user_id;
 DROP INDEX IF EXISTS public.federatedlogin_service_id_user_id;
 DROP INDEX IF EXISTS public.federatedlogin_service_id_service_ident;
@@ -622,6 +627,8 @@ ALTER TABLE IF EXISTS ONLY public.imagestorageplacement DROP CONSTRAINT IF EXIST
 ALTER TABLE IF EXISTS ONLY public.imagestoragelocation DROP CONSTRAINT IF EXISTS pk_imagestoragelocation;
 ALTER TABLE IF EXISTS ONLY public.imagestorage DROP CONSTRAINT IF EXISTS pk_imagestorage;
 ALTER TABLE IF EXISTS ONLY public.image DROP CONSTRAINT IF EXISTS pk_image;
+ALTER TABLE IF EXISTS ONLY public.helmrepoindexconfig DROP CONSTRAINT IF EXISTS pk_helmrepoindexconfig;
+ALTER TABLE IF EXISTS ONLY public.helmchartmetadata DROP CONSTRAINT IF EXISTS pk_helmchartmetadata;
 ALTER TABLE IF EXISTS ONLY public.federatedlogin DROP CONSTRAINT IF EXISTS pk_federatedlogin;
 ALTER TABLE IF EXISTS ONLY public.externalnotificationmethod DROP CONSTRAINT IF EXISTS pk_externalnotificationmethod;
 ALTER TABLE IF EXISTS ONLY public.externalnotificationevent DROP CONSTRAINT IF EXISTS pk_externalnotificationevent;
@@ -737,6 +744,8 @@ ALTER TABLE IF EXISTS public.imagestorageplacement ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.imagestoragelocation ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.imagestorage ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.image ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.helmrepoindexconfig ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.helmchartmetadata ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.federatedlogin ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.externalnotificationmethod ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.externalnotificationevent ALTER COLUMN id DROP DEFAULT;
@@ -942,6 +951,10 @@ DROP SEQUENCE IF EXISTS public.imagestorage_id_seq;
 DROP TABLE IF EXISTS public.imagestorage;
 DROP SEQUENCE IF EXISTS public.image_id_seq;
 DROP TABLE IF EXISTS public.image;
+DROP SEQUENCE IF EXISTS public.helmrepoindexconfig_id_seq;
+DROP TABLE IF EXISTS public.helmrepoindexconfig;
+DROP SEQUENCE IF EXISTS public.helmchartmetadata_id_seq;
+DROP TABLE IF EXISTS public.helmchartmetadata;
 DROP SEQUENCE IF EXISTS public.federatedlogin_id_seq;
 DROP TABLE IF EXISTS public.federatedlogin;
 DROP SEQUENCE IF EXISTS public.externalnotificationmethod_id_seq;
@@ -1868,6 +1881,106 @@ ALTER SEQUENCE public.federatedlogin_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.federatedlogin_id_seq OWNED BY public.federatedlogin.id;
+
+
+--
+-- Name: helmchartmetadata; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.helmchartmetadata (
+    id integer NOT NULL,
+    manifest_id integer NOT NULL,
+    repository_id integer NOT NULL,
+    chart_name character varying(255) NOT NULL,
+    chart_version character varying(255) NOT NULL,
+    app_version character varying(255),
+    api_version character varying(16) NOT NULL,
+    description text,
+    kube_version character varying(255),
+    chart_type character varying(32),
+    home character varying(2048),
+    icon_url character varying(2048),
+    deprecated boolean DEFAULT false NOT NULL,
+    sources text DEFAULT '[]'::text NOT NULL,
+    maintainers text DEFAULT '[]'::text NOT NULL,
+    chart_dependencies text DEFAULT '[]'::text CONSTRAINT helmchartmetadata_dependencies_not_null NOT NULL,
+    keywords text DEFAULT '[]'::text NOT NULL,
+    annotations text DEFAULT '{}'::text NOT NULL,
+    chart_yaml text NOT NULL,
+    readme text,
+    values_yaml text,
+    values_schema_json text,
+    provenance text,
+    provenance_key_id character varying(64),
+    provenance_hash_algorithm character varying(32),
+    provenance_signature_date character varying(64),
+    icon_data text,
+    icon_media_type character varying(128),
+    file_tree text DEFAULT '[]'::text NOT NULL,
+    image_references text DEFAULT '[]'::text NOT NULL,
+    extraction_status character varying(32) DEFAULT 'pending'::character varying NOT NULL,
+    extraction_error text
+);
+
+
+ALTER TABLE public.helmchartmetadata OWNER TO quay;
+
+--
+-- Name: helmchartmetadata_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.helmchartmetadata_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.helmchartmetadata_id_seq OWNER TO quay;
+
+--
+-- Name: helmchartmetadata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.helmchartmetadata_id_seq OWNED BY public.helmchartmetadata.id;
+
+
+--
+-- Name: helmrepoindexconfig; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.helmrepoindexconfig (
+    id integer NOT NULL,
+    repository_id integer NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    tag_pattern character varying(256)
+);
+
+
+ALTER TABLE public.helmrepoindexconfig OWNER TO quay;
+
+--
+-- Name: helmrepoindexconfig_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.helmrepoindexconfig_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.helmrepoindexconfig_id_seq OWNER TO quay;
+
+--
+-- Name: helmrepoindexconfig_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.helmrepoindexconfig_id_seq OWNED BY public.helmrepoindexconfig.id;
 
 
 --
@@ -3070,6 +3183,41 @@ ALTER SEQUENCE public.oauthauthorizationcode_id_seq OWNED BY public.oauthauthori
 
 
 --
+-- Name: organizationcontactemail; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.organizationcontactemail (
+    id integer NOT NULL,
+    organization_id integer NOT NULL,
+    contact_email character varying(255)
+);
+
+
+ALTER TABLE public.organizationcontactemail OWNER TO quay;
+
+--
+-- Name: organizationcontactemail_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.organizationcontactemail_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.organizationcontactemail_id_seq OWNER TO quay;
+
+--
+-- Name: organizationcontactemail_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.organizationcontactemail_id_seq OWNED BY public.organizationcontactemail.id;
+
+
+--
 -- Name: organizationrhskus; Type: TABLE; Schema: public; Owner: quay
 --
 
@@ -3104,41 +3252,6 @@ ALTER SEQUENCE public.organizationrhskus_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.organizationrhskus_id_seq OWNED BY public.organizationrhskus.id;
-
-
---
--- Name: organizationcontactemail; Type: TABLE; Schema: public; Owner: quay
---
-
-CREATE TABLE public.organizationcontactemail (
-    id integer NOT NULL,
-    organization_id integer NOT NULL,
-    contact_email character varying(255)
-);
-
-
-ALTER TABLE public.organizationcontactemail OWNER TO quay;
-
---
--- Name: organizationcontactemail_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
---
-
-CREATE SEQUENCE public.organizationcontactemail_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.organizationcontactemail_id_seq OWNER TO quay;
-
---
--- Name: organizationcontactemail_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
---
-
-ALTER SEQUENCE public.organizationcontactemail_id_seq OWNED BY public.organizationcontactemail.id;
 
 
 --
@@ -5473,6 +5586,20 @@ ALTER TABLE ONLY public.federatedlogin ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: helmchartmetadata id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.helmchartmetadata ALTER COLUMN id SET DEFAULT nextval('public.helmchartmetadata_id_seq'::regclass);
+
+
+--
+-- Name: helmrepoindexconfig id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.helmrepoindexconfig ALTER COLUMN id SET DEFAULT nextval('public.helmrepoindexconfig_id_seq'::regclass);
+
+
+--
 -- Name: image id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5697,17 +5824,17 @@ ALTER TABLE ONLY public.oauthauthorizationcode ALTER COLUMN id SET DEFAULT nextv
 
 
 --
--- Name: organizationrhskus id; Type: DEFAULT; Schema: public; Owner: quay
---
-
-ALTER TABLE ONLY public.organizationrhskus ALTER COLUMN id SET DEFAULT nextval('public.organizationrhskus_id_seq'::regclass);
-
-
---
 -- Name: organizationcontactemail id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
 ALTER TABLE ONLY public.organizationcontactemail ALTER COLUMN id SET DEFAULT nextval('public.organizationcontactemail_id_seq'::regclass);
+
+
+--
+-- Name: organizationrhskus id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.organizationrhskus ALTER COLUMN id SET DEFAULT nextval('public.organizationrhskus_id_seq'::regclass);
 
 
 --
@@ -6132,7 +6259,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-414c5e2fc487
+a7b8c9d0e1f2
 \.
 
 
@@ -6256,7 +6383,6 @@ COPY public.buildtriggerservice (id, name) FROM stdin;
 
 COPY public.deletednamespace (id, namespace_id, marked, original_username, original_email, queue_id) FROM stdin;
 1	2	2022-11-21 18:50:59.961607	quay	3a264858-3459-4996-adf8-21c7ed5c6bc4	1
-2	3	2022-11-21 18:51:08.104177	clair	33fc4ec1-a667-44f5-b1e1-c5a9c464ac85	2
 \.
 
 
@@ -6336,6 +6462,22 @@ COPY public.federatedlogin (id, user_id, service_id, service_ident, metadata_jso
 1	30	2	robot:30	{}
 2	31	2	robot:31	{}
 3	35	2	robot:35	{}
+\.
+
+
+--
+-- Data for Name: helmchartmetadata; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.helmchartmetadata (id, manifest_id, repository_id, chart_name, chart_version, app_version, api_version, description, kube_version, chart_type, home, icon_url, deprecated, sources, maintainers, chart_dependencies, keywords, annotations, chart_yaml, readme, values_yaml, values_schema_json, provenance, provenance_key_id, provenance_hash_algorithm, provenance_signature_date, icon_data, icon_media_type, file_tree, image_references, extraction_status, extraction_error) FROM stdin;
+\.
+
+
+--
+-- Data for Name: helmrepoindexconfig; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.helmrepoindexconfig (id, repository_id, enabled, tag_pattern) FROM stdin;
 \.
 
 
@@ -6848,6 +6990,8 @@ COPY public.logentrykind (id, name) FROM stdin;
 130	create_immutability_policy
 131	update_immutability_policy
 132	delete_immutability_policy
+133	tag_made_immutable_by_policy
+134	tags_made_immutable_by_policy
 \.
 
 
@@ -7104,18 +7248,18 @@ COPY public.oauthauthorizationcode (id, application_id, scope, data, code_creden
 
 
 --
--- Data for Name: organizationrhskus; Type: TABLE DATA; Schema: public; Owner: quay
---
-
-COPY public.organizationrhskus (id, subscription_id, org_id, user_id, quantity) FROM stdin;
-\.
-
-
---
 -- Data for Name: organizationcontactemail; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
 COPY public.organizationcontactemail (id, organization_id, contact_email) FROM stdin;
+\.
+
+
+--
+-- Data for Name: organizationrhskus; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.organizationrhskus (id, subscription_id, org_id, user_id, quantity) FROM stdin;
 \.
 
 
@@ -7184,8 +7328,7 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2026-01-22 19:36:20.881382	t	2026-01-22 22:31:20.868721	5	d6ad2871-2ca4-430c-a193-50693557d841
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2026-01-22 19:36:25.891006	t	2026-01-22 22:31:25.8845	5	6f99ab1d-bb41-41c1-9f3e-dbbc9d8031ad
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2026-01-22 19:36:25.891006	f	2026-04-08 00:52:30.008006	2	a1ff240e-b009-4655-bc06-05a1aca469f4
 \.
 
 
@@ -7447,7 +7590,6 @@ COPY public.repomirrorrule (id, uuid, repository_id, creation_date, rule_type, r
 
 COPY public.repository (id, namespace_user_id, name, visibility_id, description, badge_token, kind_id, trust_enabled, state) FROM stdin;
 2	1	nested/repo	2		637a151b-62db-4c26-a160-0ba01d1c96d4	1	f	0
-3	2	alpine	1		9d24b211-b0af-47e2-9a88-543483b68461	1	f	0
 4	4	clair-jwt	1		cc957b5d-c4f8-4359-9bc9-f6e667a216da	1	f	0
 5	28	testrepo	1		8f1a8b8a-a83c-404b-bdd0-c087d3226560	1	f	0
 6	4	repo1	1	This is the description of repo1	6c0cd2e2-d93c-43fa-9ca0-f181d1d1bf01	1	f	0
@@ -7603,6 +7745,7 @@ COPY public.repository (id, namespace_user_id, name, visibility_id, description,
 156	28	premierleague	1		94590e48-ff0e-4eb0-a74d-84416dedf157	1	f	0
 157	6	prometheus	1		d32b90ed-a1dc-4084-8691-70e492f3d34a	1	f	0
 1	1	hello-world	1	Hello, World!	b6c6a402-af02-4cc1-a4a9-48155b049f19	1	f	0
+3	2	alpine	1		9d24b211-b0af-47e2-9a88-543483b68461	1	f	3
 \.
 
 
@@ -7613,7 +7756,6 @@ COPY public.repository (id, namespace_user_id, name, visibility_id, description,
 COPY public.repositoryactioncount (id, repository_id, count, date) FROM stdin;
 1	1	0	2022-11-03
 2	2	0	2022-11-13
-3	3	0	2022-11-20
 4	4	0	2022-11-20
 5	5	0	2022-11-28
 6	6	0	2023-01-02
@@ -7843,7 +7985,6 @@ COPY public.repositorynotification (id, uuid, repository_id, event_id, method_id
 COPY public.repositorypermission (id, team_id, user_id, repository_id, role_id) FROM stdin;
 1	\N	1	1	1
 2	\N	1	2	1
-3	\N	1	3	1
 4	\N	1	4	1
 5	\N	1	5	1
 6	28	\N	5	3
@@ -8012,7 +8153,6 @@ COPY public.repositorypermission (id, team_id, user_id, repository_id, role_id) 
 COPY public.repositorysearchscore (id, repository_id, score, last_updated) FROM stdin;
 1	1	0	\N
 2	2	0	\N
-3	3	0	\N
 4	4	0	\N
 5	5	0	\N
 6	6	0	\N
@@ -8378,7 +8518,6 @@ COPY public.role (id, name) FROM stdin;
 --
 
 COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, expiration_date, rotation_duration, approval_id) FROM stdin;
-3	https://quaydev.io:443	SWe5UENywVJhTOLDAV_DFpN_7Y4tdFqMAROiWsdulrg	quay	{"n": "vMcd7RirlR3JKPZLiQ5mgWLcSTyV7Gdiy3eu27qHp6k7zAuI435m_1q6wj8x040WQJhCPxCDuq1_2YxCHof7DxXWvazJrROEEU8jDbst7N90jupr9Y7XKvIckrCgClCRgJrMipNiso5uSKV3WSu7Typ0AQU8eaa-fCMVpGuH9XrtFeUPxpTZZFnGkJVt5oWin5fxjOwLDGQO_Te0LNah5O0L14hd84-9TFhdkBCVKvYyhq4u0eA8YruuURGpDdB4Wc9DSUkqRbHvUvBu5fgx8TGR9t5QF2mIo8J6GOj3ccEG0xnMwrVEjlE1txDvhl7E6dqtyeyggmCL0O7C3-1YfQ", "e": "AQAB", "kty": "RSA", "kid": "SWe5UENywVJhTOLDAV_DFpN_7Y4tdFqMAROiWsdulrg"}	{"created_by": "CLI tool"}	2024-07-16 21:55:25.70086	2024-07-16 23:55:25.65144	\N	3
 \.
 
 
@@ -8387,8 +8526,6 @@ COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, exp
 --
 
 COPY public.servicekeyapproval (id, approver_id, approval_type, approved_date, notes) FROM stdin;
-2	\N	ServiceKeyApprovalType.AUTOMATIC	2024-06-07 15:53:13.57574	
-3	\N	ServiceKeyApprovalType.AUTOMATIC	2024-07-16 21:55:25.709753	
 \.
 
 
@@ -8651,7 +8788,6 @@ COPY public.uploadedblob (id, repository_id, blob_id, uploaded_at, expires_at) F
 
 COPY public."user" (id, uuid, username, password_hash, email, verified, stripe_id, organization, robot, invoice_email, invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled, invoice_email_address, company, family_name, given_name, location, maximum_queued_builds_count, creation_date, last_accessed) FROM stdin;
 2	478983be-9239-479c-9ca6-86d85eb5bcae	89aced10-1ceb-4fa0-a21d-eea28b821060	\N	eba37a66-0b41-4352-86c5-438a1875d5e5	f	\N	t	f	f	0	2022-11-21 18:49:53.667717	1209600	f	\N	\N	\N	\N	\N	\N	2022-11-21 18:49:53.667738	\N
-3	b72c9d43-eb51-4dee-996a-ef6e78c92db7	aee7990b-975d-42f2-b9be-b357a5aa3f3f	\N	33b3d332-b72f-4754-b9d3-816aca5261b3	f	\N	t	f	f	0	2022-11-21 18:50:35.411588	1209600	f	\N	\N	\N	\N	\N	\N	2022-11-21 18:50:35.411606	\N
 4	ec029590-9f7f-4886-9bec-d11925542ed6	projectquay	\N	4e003156-02a9-4d51-8c22-a110e7c86aa9	f	\N	t	f	f	0	2022-11-21 18:51:23.259811	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:51:23.259828	\N
 5	06cedae8-05d2-4449-8f66-1624493f3fd7	openshift-release-dev	\N	1616e6db-a68c-48ef-a1ce-7bfec0ebdc70	f	\N	t	f	f	0	2022-11-21 18:52:21.603187	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:52:21.6032	\N
 6	481e82b1-6bda-48c8-af55-2772bdfa0dae	prometheus	\N	02a65677-c97e-4998-ad50-6097a7608d10	f	\N	t	f	f	0	2022-11-21 18:52:35.747294	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:52:35.747312	\N
@@ -8895,6 +9031,20 @@ SELECT pg_catalog.setval('public.federatedlogin_id_seq', 3, true);
 
 
 --
+-- Name: helmchartmetadata_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.helmchartmetadata_id_seq', 1, false);
+
+
+--
+-- Name: helmrepoindexconfig_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.helmrepoindexconfig_id_seq', 1, false);
+
+
+--
 -- Name: image_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
@@ -8982,7 +9132,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 132, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 134, true);
 
 
 --
@@ -9080,7 +9230,7 @@ SELECT pg_catalog.setval('public.namespaceimmutabilitypolicy_id_seq', 1, false);
 -- Name: notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notification_id_seq', 2, true);
+SELECT pg_catalog.setval('public.notification_id_seq', 1, false);
 
 
 --
@@ -9119,17 +9269,17 @@ SELECT pg_catalog.setval('public.oauthauthorizationcode_id_seq', 1, false);
 
 
 --
--- Name: organizationrhskus_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
---
-
-SELECT pg_catalog.setval('public.organizationrhskus_id_seq', 1, false);
-
-
---
 -- Name: organizationcontactemail_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
 SELECT pg_catalog.setval('public.organizationcontactemail_id_seq', 1, false);
+
+
+--
+-- Name: organizationrhskus_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.organizationrhskus_id_seq', 1, false);
 
 
 --
@@ -9360,14 +9510,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 3, true);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 1, false);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 3, true);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, false);
 
 
 --
@@ -9724,6 +9874,22 @@ ALTER TABLE ONLY public.federatedlogin
 
 
 --
+-- Name: helmchartmetadata pk_helmchartmetadata; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.helmchartmetadata
+    ADD CONSTRAINT pk_helmchartmetadata PRIMARY KEY (id);
+
+
+--
+-- Name: helmrepoindexconfig pk_helmrepoindexconfig; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.helmrepoindexconfig
+    ADD CONSTRAINT pk_helmrepoindexconfig PRIMARY KEY (id);
+
+
+--
 -- Name: image pk_image; Type: CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -9980,19 +10146,19 @@ ALTER TABLE ONLY public.oauthauthorizationcode
 
 
 --
--- Name: organizationrhskus pk_organizationrhskus; Type: CONSTRAINT; Schema: public; Owner: quay
---
-
-ALTER TABLE ONLY public.organizationrhskus
-    ADD CONSTRAINT pk_organizationrhskus PRIMARY KEY (id);
-
-
---
 -- Name: organizationcontactemail pk_organizationcontactemail; Type: CONSTRAINT; Schema: public; Owner: quay
 --
 
 ALTER TABLE ONLY public.organizationcontactemail
     ADD CONSTRAINT pk_organizationcontactemail PRIMARY KEY (id);
+
+
+--
+-- Name: organizationrhskus pk_organizationrhskus; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.organizationrhskus
+    ADD CONSTRAINT pk_organizationrhskus PRIMARY KEY (id);
 
 
 --
@@ -10893,6 +11059,34 @@ CREATE INDEX federatedlogin_user_id ON public.federatedlogin USING btree (user_i
 
 
 --
+-- Name: helmchartmetadata_extraction_status; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX helmchartmetadata_extraction_status ON public.helmchartmetadata USING btree (extraction_status);
+
+
+--
+-- Name: helmchartmetadata_manifest_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX helmchartmetadata_manifest_id ON public.helmchartmetadata USING btree (manifest_id);
+
+
+--
+-- Name: helmchartmetadata_repository_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX helmchartmetadata_repository_id ON public.helmchartmetadata USING btree (repository_id);
+
+
+--
+-- Name: helmrepoindexconfig_repository_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX helmrepoindexconfig_repository_id ON public.helmrepoindexconfig USING btree (repository_id);
+
+
+--
 -- Name: image_ancestors; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -11691,6 +11885,20 @@ CREATE UNIQUE INDEX oauthauthorizationcode_code_name ON public.oauthauthorizatio
 
 
 --
+-- Name: organizationcontactemail_contact_email; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX organizationcontactemail_contact_email ON public.organizationcontactemail USING btree (contact_email);
+
+
+--
+-- Name: organizationcontactemail_organization_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX organizationcontactemail_organization_id ON public.organizationcontactemail USING btree (organization_id);
+
+
+--
 -- Name: organizationrhskus_subscription_id; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -11709,20 +11917,6 @@ CREATE UNIQUE INDEX organizationrhskus_subscription_id_org_id ON public.organiza
 --
 
 CREATE UNIQUE INDEX organizationrhskus_subscription_id_org_id_user_id ON public.organizationrhskus USING btree (subscription_id, org_id, user_id);
-
-
---
--- Name: organizationcontactemail_organization_id; Type: INDEX; Schema: public; Owner: quay
---
-
-CREATE UNIQUE INDEX organizationcontactemail_organization_id ON public.organizationcontactemail USING btree (organization_id);
-
-
---
--- Name: organizationcontactemail_contact_email; Type: INDEX; Schema: public; Owner: quay
---
-
-CREATE INDEX organizationcontactemail_contact_email ON public.organizationcontactemail USING btree (contact_email);
 
 
 --
@@ -13236,6 +13430,30 @@ ALTER TABLE ONLY public.federatedlogin
 
 
 --
+-- Name: helmchartmetadata fk_helmchartmetadata_manifest_id_manifest; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.helmchartmetadata
+    ADD CONSTRAINT fk_helmchartmetadata_manifest_id_manifest FOREIGN KEY (manifest_id) REFERENCES public.manifest(id) ON DELETE CASCADE;
+
+
+--
+-- Name: helmchartmetadata fk_helmchartmetadata_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.helmchartmetadata
+    ADD CONSTRAINT fk_helmchartmetadata_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
+
+
+--
+-- Name: helmrepoindexconfig fk_helmrepoindexconfig_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.helmrepoindexconfig
+    ADD CONSTRAINT fk_helmrepoindexconfig_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id) ON DELETE CASCADE;
+
+
+--
 -- Name: imagestorageplacement fk_imagestorageplacement_location_id_imagestoragelocation; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -13500,6 +13718,14 @@ ALTER TABLE ONLY public.oauthauthorizationcode
 
 
 --
+-- Name: organizationcontactemail fk_organizationcontactemail_organization_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.organizationcontactemail
+    ADD CONSTRAINT fk_organizationcontactemail_organization_id_user FOREIGN KEY (organization_id) REFERENCES public."user"(id);
+
+
+--
 -- Name: organizationrhskus fk_organizationrhskus_orgid; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -13513,14 +13739,6 @@ ALTER TABLE ONLY public.organizationrhskus
 
 ALTER TABLE ONLY public.organizationrhskus
     ADD CONSTRAINT fk_organizationrhskus_userid FOREIGN KEY (user_id) REFERENCES public."user"(id);
-
-
---
--- Name: organizationcontactemail fk_organizationcontactemail_organization_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
---
-
-ALTER TABLE ONLY public.organizationcontactemail
-    ADD CONSTRAINT fk_organizationcontactemail_organization_id_user FOREIGN KEY (organization_id) REFERENCES public."user"(id);
 
 
 --
@@ -14167,5 +14385,5 @@ ALTER TABLE ONLY public.userregion
 -- PostgreSQL database dump complete
 --
 
-\unrestrict fxmrevWdeqvsJK2qrfDBibqaVDzkdGEOr3EJHZQ3whLLSJmC0pjEOeA6rHwY82y
+\unrestrict FBqZW9BTbXeMmLkU0WCNq9ARuEXcluTJ3xFwhCotJe9Ucf8SgBaPAgH07mKgujZ
 

@@ -1823,6 +1823,68 @@ CONFIG_SCHEMA = {
             "description": "Comma separated list of urls to exclude from tracing",
             "x-example": "api/v1/.*,v2/([^/]+(/[^/]+)+)/(tags|blobs),v2/_catalog,v2/auth",
         },
+        "FEATURE_HELM_CHART_METADATA_EXTRACTION": {
+            "type": "boolean",
+            "description": "Enable asynchronous extraction and storage of Helm chart metadata from OCI artifacts. Defaults to True.",
+            "x-example": True,
+        },
+        "FEATURE_HELM_CHART_METADATA_BACKFILL": {
+            "type": "boolean",
+            "description": "Enable backfill of metadata for Helm charts pushed before FEATURE_HELM_CHART_METADATA_EXTRACTION was enabled. Defaults to True.",
+            "x-example": True,
+        },
+        "HELM_CHART_MAX_LAYER_SIZE": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum compressed size in bytes of a Helm chart layer to process. Defaults to 20MB.",
+            "x-example": 20971520,
+        },
+        "HELM_CHART_MAX_EXTRACTED_FILE_SIZE": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum size in bytes of an individual file extracted from a Helm chart archive. Defaults to 1MB.",
+            "x-example": 1048576,
+        },
+        "HELM_CHART_MAX_ICON_SIZE": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum size in bytes for a downloaded Helm chart icon. Defaults to 512KB.",
+            "x-example": 524288,
+        },
+        "HELM_CHART_ICON_DOWNLOAD_TIMEOUT": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Timeout in seconds for downloading a Helm chart icon. Defaults to 5.",
+            "x-example": 5,
+        },
+        "HELM_CHART_BACKFILL_WORKER_FREQUENCY": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Interval in seconds between Helm chart backfill worker cycles. Defaults to 3600 (1 hour).",
+            "x-example": 3600,
+        },
+        "HELM_CHART_BACKFILL_BATCH_SIZE": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum number of Helm charts enqueued per backfill cycle. Defaults to 500.",
+            "x-example": 500,
+        },
+        "HELM_CHART_BACKFILL_QUEUE_LIMIT": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Skip backfill cycle if the extraction queue already has this many items pending. Defaults to 1000.",
+            "x-example": 1000,
+        },
+        "HELM_CHART_METADATA_QUEUE_NAME": {
+            "type": "string",
+            "description": "Name of the work queue used for Helm chart metadata extraction jobs. Defaults to 'helmchartmetadata'.",
+            "x-example": "helmchartmetadata",
+        },
+        "FEATURE_HELM_REPO_INDEX": {
+            "type": "boolean",
+            "description": "Enable per-repository Helm repository index (index.yaml) generation. When enabled, repository admins can opt-in to serving an index.yaml for use with helm repo add. Defaults to True.",
+            "x-example": True,
+        },
     },
     "DEBUG": {
         "type": "boolean",

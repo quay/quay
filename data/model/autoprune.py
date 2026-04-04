@@ -583,10 +583,12 @@ def delete_autoprune_task(task):
 
 
 def prune_tags(tags, repo, namespace):
+    pruned_any = False
     for tag in tags:
         try:
             tag = oci.tag.delete_tag(repo.id, tag.name)
             if tag is not None:
+                pruned_any = True
                 log.log_action(
                     "autoprune_tag_delete",
                     namespace.username,
@@ -610,6 +612,11 @@ def prune_tags(tags, repo, namespace):
             raise Exception(
                 f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
             )
+
+    if pruned_any:
+        from data.model.oci.helmrepoindex import invalidate_helm_repo_index_cache
+
+        invalidate_helm_repo_index_cache(repo.id)
 
 
 def fetch_tags_expiring_by_tag_count_policy(

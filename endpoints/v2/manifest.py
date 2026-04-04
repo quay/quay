@@ -1,12 +1,13 @@
+import json
 import logging
 from functools import wraps
 
 from flask import Response, request, url_for
 
 import features
-from app import app, model_cache, pullmetrics, storage
+from app import app, helm_chart_metadata_queue, model_cache, pullmetrics, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
-from data.database import db_disallow_replica_use
+from data.database import HelmChartMetadata, db_disallow_replica_use
 from data.model import (
     ImmutableTagException,
     ManifestDoesNotExist,
@@ -489,6 +490,32 @@ def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
         track_and_log("push_repo", repository_ref, tag=tag_name, mediaType=manifest.media_type)
         spawn_notification(repository_ref, "repo_push", {"updated_tags": [tag_name]})
         image_pushes.labels("v2", 201, manifest.media_type).inc()
+
+        try:
+            if (
+                features.HELM_CHART_METADATA_EXTRACTION
+                and manifest.config_media_type == "application/vnd.cncf.helm.config.v1+json"
+                and not HelmChartMetadata.select()
+                .where(HelmChartMetadata.manifest == manifest._db_id)
+                .exists()
+            ):
+                helm_chart_metadata_queue.put(
+                    [namespace_name, repo_name, str(manifest._db_id)],
+                    json.dumps(
+                        {
+                            "manifest_id": manifest._db_id,
+                            "repository_id": repository_ref._db_id,
+                            "manifest_digest": manifest.digest,
+                        }
+                    ),
+                )
+        except Exception:
+            logger.exception(
+                "Failed to enqueue Helm metadata extraction for %s/%s %s",
+                namespace_name,
+                repo_name,
+                manifest.digest,
+            )
 
         return Response(
             "OK",

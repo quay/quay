@@ -87,6 +87,19 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_IMMUTABLE_TAGS":            true,
 	"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": true,
 
+	// Helm chart metadata extraction and repository index
+	"FEATURE_HELM_CHART_METADATA_BACKFILL":   true,
+	"FEATURE_HELM_CHART_METADATA_EXTRACTION": true,
+	"FEATURE_HELM_REPO_INDEX":                true,
+	"HELM_CHART_BACKFILL_BATCH_SIZE":         true,
+	"HELM_CHART_BACKFILL_QUEUE_LIMIT":        true,
+	"HELM_CHART_BACKFILL_WORKER_FREQUENCY":   true,
+	"HELM_CHART_ICON_DOWNLOAD_TIMEOUT":       true,
+	"HELM_CHART_MAX_EXTRACTED_FILE_SIZE":     true,
+	"HELM_CHART_MAX_ICON_SIZE":               true,
+	"HELM_CHART_MAX_LAYER_SIZE":              true,
+	"HELM_CHART_METADATA_QUEUE_NAME":         true,
+
 	// Team syncing
 	"FEATURE_TEAM_SYNCING":                    true,
 	"TEAM_RESYNC_STALE_TIME":                  true,
