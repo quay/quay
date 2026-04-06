@@ -1,6 +1,5 @@
-import {useRecoilState} from 'recoil';
-import {searchReposState} from 'src/atoms/RepositoryState';
 import {useEffect, useState} from 'react';
+import {OrgSearchState} from 'src/components/toolbar/SearchTypes';
 import {
   Dropdown,
   DropdownItem,
@@ -40,7 +39,12 @@ export default function AddToRepository(props: AddToRepositoryProps) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
   const [tableItems, setTableItems] = useState([]);
-  const [search, setSearch] = useRecoilState(searchReposState);
+  const [search, setSearch] = useState<OrgSearchState>({
+    query: '',
+    field: 'Repository',
+    isRegEx: false,
+    currentOrganization: null,
+  });
   const [robotRepoPermsMapping, setRobotRepoPermsMapping] = useState({});
   const [isUserEntry, setUserEntry] = useState(false);
   const [updatedRepoPerms, setUpdatedRepoPerms] = useState({});
