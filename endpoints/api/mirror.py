@@ -191,6 +191,7 @@ class RepoMirrorResource(RepositoryParamResource):
             "type": "object",
             "required": ["external_reference", "sync_interval", "sync_start_date", "root_rule"],
             "properties": common_properties,
+            "additionalProperties": False,
         },
         "UpdateMirrorConfig": {
             "description": "Update the repository mirroring configuration.",
@@ -301,6 +302,9 @@ class RepoMirrorResource(RepositoryParamResource):
             namespace_name, repository_name, data["robot_username"]
         )
         del data["robot_username"]
+
+        # Remove skopeo_timeout_interval if present - not supported on this branch
+        data.pop("skopeo_timeout_interval", None)
 
         mirror = model.repo_mirror.enable_mirroring_for_repository(
             repo, root_rule=rule, internal_robot=robot, **data
