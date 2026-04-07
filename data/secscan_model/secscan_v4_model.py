@@ -471,29 +471,24 @@ class V4SecurityScanner(SecurityScannerInterface):
                 hours=STALE_IN_PROGRESS_HOURS
             )
 
-            # Check for recently indexed manifests with status-specific thresholds
-            # For IN_PROGRESS: only skip if still fresh (>= 6h threshold)
+            # Single query with status-specific thresholds:
+            # For IN_PROGRESS: only skip if still fresh (>= stale threshold)
             # For others: skip if >= reindex threshold
-            recently_indexed_in_progress = ManifestSecurityStatus.select(
+            preempted_query = ManifestSecurityStatus.select(
                 ManifestSecurityStatus.manifest_id
             ).where(
                 ManifestSecurityStatus.manifest_id.in_(candidate_ids),
-                ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
-                ManifestSecurityStatus.last_indexed >= stale_in_progress_threshold,
+                (
+                    (ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS)
+                    & (ManifestSecurityStatus.last_indexed >= stale_in_progress_threshold)
+                )
+                | (
+                    (ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS)
+                    & (ManifestSecurityStatus.last_indexed >= reindex_threshold)
+                ),
             )
 
-            recently_indexed_other = ManifestSecurityStatus.select(
-                ManifestSecurityStatus.manifest_id
-            ).where(
-                ManifestSecurityStatus.manifest_id.in_(candidate_ids),
-                ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS,
-                ManifestSecurityStatus.last_indexed >= reindex_threshold,
-            )
-
-            preempted = {row.manifest_id for row in recently_indexed_in_progress}
-            preempted.update({row.manifest_id for row in recently_indexed_other})
-
-            return preempted
+            return {row.manifest_id for row in preempted_query}
 
         def batched_iterator_with_preemption_check(iterator, batch_size=20):
             """
