@@ -8,7 +8,7 @@ import {
 import React from 'react';
 import ArrowRightIcon from '@patternfly/react-icons/dist/js/icons/arrow-right-icon';
 import ExternalLinkAltIcon from '@patternfly/react-icons/dist/js/icons/external-link-alt-icon';
-import { Link } from 'react-router-dom';
+import {Link} from 'react-router-dom';
 import './simple-service-widget.scss';
 
 interface SimpleServiceWidgetProps {

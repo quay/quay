@@ -1,5 +1,5 @@
 import React from 'react';
-import { SimpleServiceWidget } from './simple-service-widget';
+import {SimpleServiceWidget} from './simple-service-widget';
 
 const QuayWidget: React.FunctionComponent = () => {
   return (
