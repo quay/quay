@@ -26,7 +26,7 @@ jobs:
         echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
 
     - name: Download test artifacts
-      uses: dawidd6/action-download-artifact@v14
+      uses: dawidd6/action-download-artifact@5c98f0b039f36ef966fdb7dfa9779262785ecb05 # v14
       with:
         name: qe-test-artifacts
         workflow: qe-tests.yaml
@@ -59,7 +59,7 @@ jobs:
 
     - name: Publish test results to PR
       if: steps.check-report.outputs.exists == 'true'
-      uses: ctrf-io/github-test-reporter@v1
+      uses: ctrf-io/github-test-reporter@0f299074936c32ccaab5be5230511f6b2b9080aa # v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
