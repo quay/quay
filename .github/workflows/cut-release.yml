@@ -17,7 +17,7 @@ jobs:
           echo "PREFIX=quay-${tag}/" >> $GITHUB_ENV
           echo "TAG=${tag}" >> $GITHUB_ENV
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
         with:
           fetch-depth: 0
       - name: Create Release Archive
@@ -38,7 +38,7 @@ jobs:
           echo "creating change log for tag: $TAG"
           /tmp/git-chglog --tag-filter-pattern "v3.*" -o changelog v3.6.0-alpha.4..
       - name: Upload Release Archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release
           path: |
@@ -61,12 +61,12 @@ jobs:
           tag=`basename ${{ github.ref }}`
           echo "VERSION=${tag}" >> $GITHUB_ENV
       - name: Fetch Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         id: download
         with:
           name: release
       - name: Create Release
-        uses: ncipollo/release-action@v1.11.1
+        uses: ncipollo/release-action@4c75f0f2e4ae5f3c807cf0904605408e319dcaac # v1.11.1
         id: create_release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -75,7 +75,7 @@ jobs:
           name: ${{ env.VERSION }} Release
           prerelease: ${{ contains(env.VERSION, 'alpha') || contains(env.VERSION, 'beta') || contains(env.VERSION, 'rc') }}
       - name: Publish Release Archive
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -97,7 +97,7 @@ jobs:
           echo "QUAY_USER=projectquay+quay_github" >> $GITHUB_ENV
           echo "::add-mask::${{ secrets.QUAY_TOKEN }}"
       - name: Fetch Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         id: download
         with:
           name: release

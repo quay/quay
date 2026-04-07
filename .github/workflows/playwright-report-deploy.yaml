@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - name: Download Playwright report artifact
-      uses: dawidd6/action-download-artifact@v8
+      uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
       with:
         name: playwright-report
         workflow: web-playwright-ci.yaml
@@ -28,7 +28,7 @@ jobs:
         path: ./playwright-report
 
     - name: Download PR number
-      uses: dawidd6/action-download-artifact@v8
+      uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
       with:
         name: pr-info
         workflow: web-playwright-ci.yaml
@@ -52,7 +52,7 @@ jobs:
         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
 
     - name: Comment PR with report URL
-      uses: actions/github-script@v8
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
       with:
         script: |
           const reportUrl = '${{ steps.deploy.outputs.url }}';
