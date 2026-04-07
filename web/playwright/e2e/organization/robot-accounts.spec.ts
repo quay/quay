@@ -563,17 +563,92 @@ test.describe(
 
       // Verify changing the dropdown works
       await authenticatedPage.locator('#toggle-descriptions').click();
-      await authenticatedPage.getByRole('menuitem', {name: 'Read'}).click();
+      await authenticatedPage.getByTestId('Read-permission-type').click();
       await expect(
         authenticatedPage.locator('#toggle-descriptions'),
       ).toContainText('Read');
 
       // Change back to None and verify
       await authenticatedPage.locator('#toggle-descriptions').click();
-      await authenticatedPage.getByRole('menuitem', {name: 'None'}).click();
+      await authenticatedPage.getByTestId('None-permission-type').click();
       await expect(
         authenticatedPage.locator('#toggle-descriptions'),
       ).toContainText('None');
+    });
+
+    test('robot wizard: selecting None permission deselects the repository (PROJQUAY-10931)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('nonepermorg');
+      const repo = await api.repository(org.name, 'nonerepo');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Robotaccounts`,
+      );
+
+      // Open the create robot account wizard
+      await authenticatedPage
+        .getByRole('button', {name: 'Create robot account'})
+        .click();
+      await expect(
+        authenticatedPage.locator('#create-robot-account-modal'),
+      ).toBeVisible();
+
+      // Fill in robot name to enable navigation
+      await authenticatedPage
+        .getByTestId('robot-wizard-form-name')
+        .fill('nonebot');
+
+      // Navigate to "Add to repository" step
+      const wizardNav = authenticatedPage.locator(
+        'nav[aria-label="Wizard steps"]',
+      );
+      await wizardNav.getByText('Add to repository (optional)').click();
+
+      // Select the repository checkbox
+      await authenticatedPage
+        .getByTestId(`checkbox-row-${repo.name}`)
+        .locator('input[type="checkbox"]')
+        .click();
+
+      // Verify it defaults to "Read" when selected
+      await expect(
+        authenticatedPage.getByTestId(
+          `${repo.name}-permission-dropdown-toggle`,
+        ),
+      ).toContainText('Read');
+
+      // Change permission to "None"
+      await authenticatedPage
+        .getByTestId(`${repo.name}-permission-dropdown-toggle`)
+        .click();
+      await authenticatedPage.getByTestId('None-permission-type').click();
+
+      // Verify the dropdown shows "None" (not reverting to "Read")
+      await expect(
+        authenticatedPage.getByTestId(
+          `${repo.name}-permission-dropdown-toggle`,
+        ),
+      ).toContainText('None');
+
+      // Verify the row checkbox is now unchecked
+      await expect(
+        authenticatedPage
+          .getByTestId(`checkbox-row-${repo.name}`)
+          .locator('input[type="checkbox"]'),
+      ).not.toBeChecked();
+
+      // Re-select the row and verify it defaults back to "Read"
+      await authenticatedPage
+        .getByTestId(`checkbox-row-${repo.name}`)
+        .locator('input[type="checkbox"]')
+        .click();
+      await expect(
+        authenticatedPage.getByTestId(
+          `${repo.name}-permission-dropdown-toggle`,
+        ),
+      ).toContainText('Read');
     });
 
     test.describe(
