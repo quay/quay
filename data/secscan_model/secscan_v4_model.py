@@ -599,36 +599,24 @@ class V4SecurityScanner(SecurityScannerInterface):
             )
 
             if rows_updated == 0:
-                # Either already IN_PROGRESS by another worker, or doesn't exist
+                # UPDATE missed: either row doesn't exist, or another worker owns it.
+                # Try to create the row; if it already exists, another worker has it.
                 try:
-                    existing = ManifestSecurityStatus.get(
-                        ManifestSecurityStatus.manifest == candidate
+                    ManifestSecurityStatus.create(
+                        manifest=candidate,
+                        repository=candidate.repository,
+                        index_status=IndexStatus.IN_PROGRESS,
+                        indexer_hash="in_progress",
+                        indexer_version=IndexerVersion.V4,
+                        metadata_json={},
                     )
-                    # Already IN_PROGRESS - another worker owns it
+                except IntegrityError:
+                    # Row already exists and is owned by another worker
                     logger.debug(
-                        "Manifest %d already IN_PROGRESS by another worker (status: %s)",
-                        candidate.id,
-                        existing.index_status,
+                        "Manifest %d already claimed by another worker", candidate.id
                     )
                     abt.set()
                     continue
-                except ManifestSecurityStatus.DoesNotExist:
-                    # Row doesn't exist, create it
-                    try:
-                        ManifestSecurityStatus.create(
-                            manifest=candidate,
-                            repository=candidate.repository,
-                            index_status=IndexStatus.IN_PROGRESS,
-                            indexer_hash="in_progress",
-                            indexer_version=IndexerVersion.V4,
-                            metadata_json={},
-                        )
-                    except IntegrityError:
-                        # Race condition: another worker just created it
-                        logger.debug(
-                            "Manifest %d was created by another worker during race", candidate.id
-                        )
-                        continue
 
             try:
                 (report, state) = self._secscan_api.index(manifest, layers)
@@ -641,6 +629,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 ManifestSecurityStatus.update(
                     index_status=IndexStatus.FAILED,
                     indexer_hash="api_failure",
+                    error_json={"error": str(ex)},
                     last_indexed=datetime.utcnow(),
                 ).where(
                     ManifestSecurityStatus.manifest == candidate,
@@ -747,6 +736,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 ManifestSecurityStatus.update(
                     index_status=IndexStatus.FAILED,
                     indexer_hash="unknown_state",
+                    error_json={"error": "unknown_state", "state": report.get("state")},
                     last_indexed=datetime.utcnow(),
                 ).where(
                     ManifestSecurityStatus.manifest == candidate,
