@@ -607,9 +607,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                     )
                 except IntegrityError:
                     # Row already exists and is owned by another worker
-                    logger.debug(
-                        "Manifest %d already claimed by another worker", candidate.id
-                    )
+                    logger.debug("Manifest %d already claimed by another worker", candidate.id)
                     abt.set()
                     continue
 
