@@ -40,6 +40,9 @@ from prometheus_client import REGISTRY
 logger = logging.getLogger(__name__)
 
 _MAX_DETAIL_PAGE = 1000
+_ISSUE_SAMPLE_CAP = 5
+
+_CACHE_CONTROL_NO_STORE = "no-cache, no-store, must-revalidate"
 
 
 def _utc_z_timestamp(when: datetime) -> str:
@@ -103,15 +106,21 @@ def _get_pending_tags_total(namespace=None):
 
 def _mirror_rows_query(namespace=None):
     """
-    RepoMirrorConfig rows with Repository and namespace User joined and selected
+    Enabled RepoMirrorConfig rows with Repository and namespace User joined and selected
     so repository.namespace_user is populated (avoids N+1 on .username).
+
+    Health aggregates and issue sampling use enabled configs only; disabled mirrors
+    are omitted from totals and from this listing.
     """
     q = (
         RepoMirrorConfig.select(RepoMirrorConfig, Repository, User)
         .join(Repository)
         .switch(Repository)
         .join(User, on=(Repository.namespace_user == User.id))
-        .where(Repository.state == RepositoryState.MIRROR)
+        .where(
+            Repository.state == RepositoryState.MIRROR,
+            RepoMirrorConfig.is_enabled == True,
+        )
     )
     if namespace:
         q = q.where(User.username == namespace)
@@ -119,7 +128,7 @@ def _mirror_rows_query(namespace=None):
 
 
 def _mirror_status_counts(namespace=None):
-    """Aggregated status counts without loading mirror rows."""
+    """Aggregated status counts for enabled mirror configs only (no row load)."""
     syncing_sum = fn.SUM(
         Case(None, [(RepoMirrorConfig.sync_status == RepoMirrorStatus.SYNCING, 1)], 0)
     )
@@ -141,7 +150,10 @@ def _mirror_status_counts(namespace=None):
         .join(Repository)
         .switch(Repository)
         .join(User, on=(Repository.namespace_user == User.id))
-        .where(Repository.state == RepositoryState.MIRROR)
+        .where(
+            Repository.state == RepositoryState.MIRROR,
+            RepoMirrorConfig.is_enabled == True,
+        )
     )
     if namespace:
         q = q.where(User.username == namespace)
@@ -169,10 +181,11 @@ def get_mirror_health_data(
         namespace: Optional namespace to filter results
         detailed: If true, include paginated per-repository rows under repositories.details
         detail_limit: Max repositories in detailed view (clamped 1..1000)
-        detail_offset: Pagination offset into the sorted mirror list
+        detail_offset: Pagination offset into the sorted mirror list (SQL LIMIT/OFFSET)
 
     Returns:
-        Dictionary with health status information
+        Dictionary with health status information. Totals and `details` use enabled
+        mirror configs only.
     """
     counts = _mirror_status_counts(namespace)
     total_repos = counts["total"]
@@ -197,29 +210,52 @@ def get_mirror_health_data(
     never_synced_repos = []
     failing_repos = []
     repos_detail = []
+    has_more = False
     lim = max(1, min(int(detail_limit), _MAX_DETAIL_PAGE)) if detailed else 0
     off = max(0, int(detail_offset)) if detailed else 0
 
-    row_query = _mirror_rows_query(namespace)
-    idx = 0
-    for mirror in row_query.iterator():
+    # Sample up to _ISSUE_SAMPLE_CAP of each issue type; stop early once all caps are reached.
+    scan_query = _mirror_rows_query(namespace)
+    for mirror in scan_query.iterator():
         namespace_name = mirror.repository.namespace_user.username
         repo_name = mirror.repository.name
         last_sync_ts = last_sync_timestamps.get((namespace_name, repo_name))
 
-        if mirror.sync_status == RepoMirrorStatus.FAIL and mirror.sync_retries_remaining == 0:
+        if (
+            mirror.sync_status == RepoMirrorStatus.FAIL
+            and mirror.sync_retries_remaining == 0
+            and len(failing_repos) < _ISSUE_SAMPLE_CAP
+        ):
             failing_repos.append(mirror)
 
-        if mirror.is_enabled and mirror.sync_status != RepoMirrorStatus.SYNCING:
+        if mirror.sync_status != RepoMirrorStatus.SYNCING:
             if last_sync_ts is None:
-                if mirror.sync_status == RepoMirrorStatus.NEVER_RUN:
+                if (
+                    mirror.sync_status == RepoMirrorStatus.NEVER_RUN
+                    and len(never_synced_repos) < _ISSUE_SAMPLE_CAP
+                ):
                     never_synced_repos.append(mirror)
-            else:
+            elif len(stale_repos) < _ISSUE_SAMPLE_CAP:
                 last_sync_dt = datetime.fromtimestamp(last_sync_ts, tz=timezone.utc)
                 if last_sync_dt < stale_threshold:
                     stale_repos.append(mirror)
 
-        if detailed and off <= idx < off + lim:
+        if (
+            len(stale_repos) >= _ISSUE_SAMPLE_CAP
+            and len(never_synced_repos) >= _ISSUE_SAMPLE_CAP
+            and len(failing_repos) >= _ISSUE_SAMPLE_CAP
+        ):
+            break
+
+    if detailed:
+        page_query = _mirror_rows_query(namespace).limit(lim + 1).offset(off)
+        page_rows = list(page_query)
+        has_more = len(page_rows) > lim
+        page_rows = page_rows[:lim]
+        for mirror in page_rows:
+            namespace_name = mirror.repository.namespace_user.username
+            repo_name = mirror.repository.name
+            last_sync_ts = last_sync_timestamps.get((namespace_name, repo_name))
             last_sync_value = None
             if last_sync_ts is not None:
                 last_sync_value = (
@@ -237,8 +273,6 @@ def get_mirror_health_data(
                     "retries_remaining": mirror.sync_retries_remaining,
                 }
             )
-
-        idx += 1
 
     if stale_repos:
         for repo in stale_repos[:5]:  # Limit to first 5 for brevity
@@ -293,15 +327,12 @@ def get_mirror_health_data(
                 },
             )
 
-    # Note: Worker count would ideally come from a coordination service or config
-    # For now, we assume workers are healthy if repos are being processed
+    # Summarizes repository mirror health only; not mirror worker process counts.
     workers_status = "healthy" if healthy else "degraded"
 
     result = {
         "healthy": healthy,
         "workers": {
-            "active": 0,  # Would need coordination service to track this accurately
-            "configured": 0,  # Would come from config
             "status": workers_status,
         },
         "repositories": {
@@ -321,7 +352,7 @@ def get_mirror_health_data(
         result["repositories"]["pagination"] = {
             "limit": lim,
             "offset": off,
-            "has_more": off + len(repos_detail) < total_repos,
+            "has_more": has_more,
         }
 
     return result
@@ -365,8 +396,8 @@ class RepositoryMirrorHealth(ApiResource):
         """
         Get the health status of repository mirroring operations.
 
-        Returns overall health status, worker information, and any issues.
-        HTTP status code reflects health: 200 for healthy, 503 for unhealthy.
+        Returns overall health status, `workers.status` (repository-derived summary),
+        and any issues. HTTP status reflects health: 200 for healthy, 503 for unhealthy.
         """
         namespace = parsed_args.get("namespace")
         detailed = parsed_args.get("detailed", False)
@@ -405,4 +436,8 @@ class RepositoryMirrorHealth(ApiResource):
         # Return 503 if unhealthy, 200 if healthy
         status_code = 200 if health_data["healthy"] else 503
 
-        return health_data, status_code
+        return (
+            health_data,
+            status_code,
+            {"Cache-Control": _CACHE_CONTROL_NO_STORE},
+        )

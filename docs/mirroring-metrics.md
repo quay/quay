@@ -268,6 +268,8 @@ quay_repository_rows_unmirrored 42
 
 The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags` samples in **this** process’s Prometheus registry. On typical deployments the API does not run the mirror worker, so that sum is often `0` unless metrics are shared with the worker process.
 
+All `repositories` totals (`total`, `syncing`, `completed`, `failed`, `never_run`) and the optional `repositories.details` list include **enabled** mirror configurations only; disabled mirrors are omitted.
+
 ### Response Schema
 
 #### Basic Response
@@ -276,8 +278,6 @@ The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags
 {
   "healthy": true,
   "workers": {
-    "active": 5,
-    "configured": 5,
     "status": "healthy"
   },
   "repositories": {
@@ -299,8 +299,6 @@ The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags
 {
   "healthy": false,
   "workers": {
-    "active": 3,
-    "configured": 5,
     "status": "degraded"
   },
   "repositories": {
@@ -336,10 +334,16 @@ The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags
 
 When `detailed=true` is specified:
 
+Each `repositories.details[]` item includes `last_sync`, which is either an ISO-8601 UTC timestamp string ending in `Z` or **`null`**. The API reads `quay_repository_mirror_last_sync_timestamp` from the in-process Prometheus registry in `endpoints/api/mirrorhealth.py`; when that metric has no sample for the repo in this process (typical when the mirror worker runs elsewhere), `last_sync` is `null`. Clients must treat the field as nullable.
+
+The `workers.status` field summarizes **repository mirror** health (derived from mirror row state), not mirror worker process counts.
+
 ```json
 {
   "healthy": true,
-  "workers": { ... },
+  "workers": {
+    "status": "healthy"
+  },
   "repositories": {
     "total": 150,
     "syncing": 3,
@@ -360,7 +364,7 @@ When `detailed=true` is specified:
         "repository": "repo2",
         "sync_status": "FAIL",
         "is_enabled": true,
-        "last_sync": "2025-12-09T09:00:00Z",
+        "last_sync": null,
         "retries_remaining": 0
       }
     ],
@@ -378,7 +382,7 @@ When `detailed=true` is specified:
 
 ### Health Determination Logic
 
-The `healthy` field and HTTP status (`503` when unhealthy) are driven by repository **failure rate**: more than **20%** of mirrors that have left `NEVER_RUN` are in `FAIL`, i.e. `failed / (total - never_run) > 0.2` when `(total - never_run) > 0`. Mirrors still in `NEVER_RUN` are counted in `repositories.never_run` and are excluded from that denominator so new configurations do not count as failures.
+The `healthy` field and HTTP status (`503` when unhealthy) are driven by repository **failure rate** over **enabled** mirrors only: more than **20%** of enabled mirrors that have left `NEVER_RUN` are in `FAIL`, i.e. `failed / (total - never_run) > 0.2` when `(total - never_run) > 0`. Mirrors still in `NEVER_RUN` are counted in `repositories.never_run` and are excluded from that denominator so new configurations do not count as failures.
 
 The `issues` array may additionally include **warnings** (stale sync, never synced), **errors** (retry exhaustion), and **critical** entries when the failure-rate threshold is exceeded. Other health services may apply further rules (for example long-running `SYNCING` states).
 
