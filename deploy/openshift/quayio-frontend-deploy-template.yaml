@@ -49,4 +49,3 @@ parameters:
     required: true
   - name: IMAGE
     value: quay.io/app-sre/quayio-frontend
-
