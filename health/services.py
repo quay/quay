@@ -184,7 +184,7 @@ def _check_mirror_workers(app):
     
     try:
         from data.database import RepoMirrorConfig, RepoMirrorStatus, Repository, RepositoryState
-        from datetime import datetime, timedelta
+        from datetime import datetime
         
         # Check if there are any enabled mirrors
         enabled_mirrors = (
@@ -192,38 +192,43 @@ def _check_mirror_workers(app):
             .join(Repository)
             .where(
                 (Repository.state == RepositoryState.MIRROR) &
-                (RepoMirrorConfig.is_enabled == True)
+                (RepoMirrorConfig.is_enabled)
             )
             .count()
         )
-        
+
         if enabled_mirrors == 0:
             return (True, "No enabled mirrors configured")
-        
-        # Check for repositories stuck in SYNCING state for too long (>12 hours)
-        stale_threshold = datetime.utcnow() - timedelta(hours=12)
+
+        # SYNCING rows use sync_expiration_date as the claim lease end (set in claim_mirror).
+        # If it is in the past, the worker should have released the mirror; still SYNCING means stuck.
+        now = datetime.utcnow()
         stuck_syncing = (
             RepoMirrorConfig.select()
             .join(Repository)
             .where(
                 (Repository.state == RepositoryState.MIRROR) &
-                (RepoMirrorConfig.is_enabled == True) &
+                (RepoMirrorConfig.is_enabled) &
                 (RepoMirrorConfig.sync_status == RepoMirrorStatus.SYNCING) &
-                (RepoMirrorConfig.sync_start_date < stale_threshold)
+                (RepoMirrorConfig.sync_expiration_date.is_null(False)) &
+                (RepoMirrorConfig.sync_expiration_date < now)
             )
             .count()
         )
-        
+
         if stuck_syncing > 0:
-            return (False, f"{stuck_syncing} repositories stuck in SYNCING state for over 12 hours")
-        
+            return (
+                False,
+                f"{stuck_syncing} repositories stuck in SYNCING state (sync claim expired)",
+            )
+
         # Check for high failure rate
         failed_mirrors = (
             RepoMirrorConfig.select()
             .join(Repository)
             .where(
                 (Repository.state == RepositoryState.MIRROR) &
-                (RepoMirrorConfig.is_enabled == True) &
+                (RepoMirrorConfig.is_enabled) &
                 (RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL) &
                 (RepoMirrorConfig.sync_retries_remaining == 0)
             )

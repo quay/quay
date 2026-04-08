@@ -1,256 +1,654 @@
-# Repository Mirroring Metrics
+# Repository Mirror Metrics and Health Endpoints
 
-This document describes the Prometheus metrics available for monitoring repository mirroring operations in Quay.
+This document describes the comprehensive metrics and health endpoints available for monitoring Quay's repository mirroring functionality.
 
-## Available Metrics
+## Overview
 
-### 1. Tags Pending Synchronization
+Quay exposes detailed Prometheus metrics and a dedicated health endpoint for repository mirroring operations. These provide visibility into:
 
-**Metric Name:** `quay_repository_mirror_pending_tags`  
-**Type:** Gauge  
-**Labels:** `namespace`, `repository`  
-**Description:** Total number of tags not yet synchronized for each mirrored repository.
+- Synchronization status and progress per repository
+- Failure tracking and categorization
+- Performance metrics (duration, throughput)
+- Overall system health
 
-This metric shows how many tags remain to be synced during an active synchronization run. It starts at the total number of matching tags and decrements as each tag is processed. Between sync runs, it will be 0.
+## Prometheus Metrics
 
-**Example Query:**
-```promql
-# Show pending tags for all repositories
-quay_repository_mirror_pending_tags
+All metrics are exposed via the standard Quay metrics endpoint (typically available at the Prometheus PushGateway on port `9091`).
 
-# Show repositories with pending tags
-quay_repository_mirror_pending_tags > 0
+### Core Mirroring Metrics
 
-# Show average pending tags per namespace
-avg by (namespace) (quay_repository_mirror_pending_tags)
+#### 1. Tags Pending Synchronization
+
+```
+quay_repository_mirror_pending_tags{namespace="org1",repository="repo1"} 5
 ```
 
-### 2. Last Synchronization Status
-
-**Metric Name:** `quay_repository_mirror_last_sync_status`  
 **Type:** Gauge  
-**Labels:** `namespace`, `repository`, `status`  
-**Description:** Indicates the status of the latest synchronization attempt per repository.
+**Labels:**
+- `namespace`: Organization or user namespace
+- `repository`: Repository name
 
-**Status Values:**
-- `1` = SUCCESS - All tags synchronized successfully
-- `0` = NEVER_RUN - Repository has never been synchronized
-- `-1` = FAIL - Synchronization failed
-- `-2` = CANCEL - Synchronization was cancelled
-- `2` = SYNCING - Currently synchronizing
-- `3` = SYNC_NOW - Queued for immediate synchronization
+**Description:** Total number of tags pending synchronization for each mirrored repository. This decreases as tags are synced during a mirroring operation.
 
-**Example Query:**
-```promql
-# Show all repositories with failed sync
-quay_repository_mirror_last_sync_status{status="FAIL"} == -1
+**Use Cases:**
+- Monitor synchronization progress in real-time
+- Identify repositories with large numbers of pending tags
+- Track workload distribution across mirrors
 
-# Show repositories currently syncing
-quay_repository_mirror_last_sync_status{status="SYNCING"} == 2
+---
 
-# Count repositories by status
-sum by (status) (quay_repository_mirror_last_sync_status)
+#### 2. Last Synchronization Status
+
+```
+quay_repository_mirror_last_sync_status{namespace="org1",repository="repo1",last_error_reason=""} 1
+quay_repository_mirror_last_sync_status{namespace="org2",repository="repo2",last_error_reason="auth_failed"} 0
 ```
 
-### 3. Complete Synchronization Indicator
-
-**Metric Name:** `quay_repository_mirror_sync_complete`  
 **Type:** Gauge  
-**Labels:** `namespace`, `repository`  
-**Description:** Boolean indicator of whether all tags were successfully synchronized in the last run.
+**Labels:**
+- `namespace`: Organization or user namespace
+- `repository`: Repository name
+- `last_error_reason`: Empty string (`""`) on the **canonical** time series for each repository (use this for counts and high-level alerts). When a sync fails, the worker also emits a **detail** time series with the same `namespace` / `repository` and `last_error_reason=<category>` for drill-down.
 
 **Values:**
-- `1` = Complete - All tags successfully synchronized
-- `0` = Incomplete - Some or all tags failed to synchronize
+- `0` = Failed
+- `1` = Success
+- `2` = In Progress
 
-**Example Query:**
+**Description:** Status of the last synchronization attempt. The canonical series (`last_error_reason=""`) always reflects the current status for that repo. On failure, a second series with a non-empty `last_error_reason` is set to the same value so you can attribute failures by category without double-counting repos—use the canonical label for `sum` / `count`, and the specific reason label for breakdowns.
+
+**Error Reason Categories:**
+- `auth_failed`: Authentication or authorization failures
+- `network_timeout`: Network timeout errors
+- `connection_error`: General connection issues
+- `not_found`: Repository or resource not found (404)
+- `tls_error`: TLS/SSL certificate errors
+- `decryption_failed`: Failed to decrypt credentials
+- `preempted`: Mirror job was preempted by another worker
+- `unknown_error`: Other unclassified errors
+
+**Use Cases:**
+- Alert on failed synchronizations
+- Identify patterns in failure types
+- Quickly determine current sync state without checking multiple metrics
+
+**Example Queries:**
 ```promql
-# Show repositories with incomplete syncs
-quay_repository_mirror_sync_complete == 0
+# Failing repositories (canonical series only — one sample per repo)
+quay_repository_mirror_last_sync_status{last_error_reason=""} == 0
 
-# Calculate percentage of successful syncs
-(sum(quay_repository_mirror_sync_complete) / count(quay_repository_mirror_sync_complete)) * 100
+# Successful repositories by namespace
+sum by (namespace) (quay_repository_mirror_last_sync_status{last_error_reason=""} == 1)
+
+# Failures attributed to auth (detail series)
+quay_repository_mirror_last_sync_status{last_error_reason="auth_failed"} == 0
 ```
 
-### 4. Synchronization Failure Counter
+---
 
-**Metric Name:** `quay_repository_mirror_sync_failures_total`  
+#### 3. Complete Synchronization Status
+
+```
+quay_repository_mirror_sync_complete{namespace="org1",repository="repo1"} 1
+quay_repository_mirror_sync_complete{namespace="org2",repository="repo2"} 0
+```
+
+**Type:** Gauge  
+**Labels:**
+- `namespace`: Organization or user namespace
+- `repository`: Repository name
+
+**Values:**
+- `0` = Incomplete (some tags failed to sync)
+- `1` = Complete (all tags successfully synchronized)
+
+**Description:** Indicates if all tags have been successfully synchronized in the last sync operation.
+
+**Use Cases:**
+- Alert on incomplete synchronizations
+- Track overall mirror health
+- Distinguish between complete failures and partial successes
+
+---
+
+#### 4. Synchronization Failure Counter
+
+```
+quay_repository_mirror_sync_failures_total{namespace="org1",repository="repo1",reason="network_timeout"} 3
+quay_repository_mirror_sync_failures_total{namespace="org2",repository="repo2",reason="auth_failed"} 7
+```
+
 **Type:** Counter  
-**Labels:** `namespace`, `repository`  
-**Description:** Total number of synchronization failures per repository. This counter increments each time a sync fails.
+**Labels:**
+- `namespace`: Organization or user namespace
+- `repository`: Repository name
+- `reason`: Categorized failure reason (see error reasons above)
 
-This is the key metric for alerting on mirroring issues. It accumulates over time and never decreases.
+**Description:** Cumulative counter of synchronization failures per repository. Increments on each failed sync attempt, with failures categorized by reason.
+
+**Use Cases:**
+- Set up alerts based on failure thresholds
+- Track failure rates over time
+- Identify consistently problematic repositories
+- Analyze failure patterns by type
+
+**Example Queries:**
+```promql
+# Failure rate per repository over 5 minutes
+rate(quay_repository_mirror_sync_failures_total[5m])
+
+# Repositories with more than 10 total failures
+quay_repository_mirror_sync_failures_total > 10
+
+# Most common failure types
+topk(5, sum by (reason) (quay_repository_mirror_sync_failures_total))
+```
+
+---
+
+### Supporting Metrics
+
+#### 5. Active Mirror Workers
+
+```
+quay_repository_mirror_workers_active 5
+```
+
+**Type:** Gauge  
+**Description:** Number of currently active mirror worker processes.
+
+**Use Cases:**
+- Verify worker processes are running
+- Monitor worker scaling
+- Alert when no workers are active
+
+---
+
+#### 6. Last Synchronization Timestamp
+
+```
+quay_repository_mirror_last_sync_timestamp{namespace="org1",repository="repo1"} 1697385600
+```
+
+**Type:** Gauge  
+**Labels:**
+- `namespace`: Organization or user namespace
+- `repository`: Repository name
+
+**Description:** Unix timestamp of when the last synchronization attempt started.
+
+**Use Cases:**
+- Alert on stale synchronizations
+- Track sync frequency
+- Identify mirrors that haven't run recently
 
 **Example Query:**
 ```promql
-# Show repositories with failures in the last hour
-increase(quay_repository_mirror_sync_failures_total[1h]) > 0
-
-# Show repositories with multiple recent failures (alert condition)
-increase(quay_repository_mirror_sync_failures_total[1h]) >= 3
-
-# Show failure rate
-rate(quay_repository_mirror_sync_failures_total[5m])
+# Repositories that haven't synced in over an hour
+(time() - quay_repository_mirror_last_sync_timestamp) > 3600
 ```
 
-## Alerting Examples
+---
 
-### Critical: Multiple Consecutive Failures
+#### 7. Synchronization Duration
 
-```yaml
-- alert: RepositoryMirrorMultipleFailures
-  expr: increase(quay_repository_mirror_sync_failures_total[1h]) >= 3
-  for: 5m
-  labels:
-    severity: critical
-  annotations:
-    summary: "Repository {{ $labels.namespace }}/{{ $labels.repository }} has failed to sync 3+ times in the last hour"
-    description: "Multiple mirror sync failures detected. Check repository configuration and external registry connectivity."
+```
+quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository="repo1",le="30"} 45
+quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository="repo1",le="60"} 82
+quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository="repo1",le="+Inf"} 100
 ```
 
-### Warning: Sync Incomplete
+**Type:** Histogram  
+**Labels:**
+- `namespace`: Organization or user namespace
+- `repository`: Repository name
 
-```yaml
-- alert: RepositoryMirrorIncompleteSync
-  expr: quay_repository_mirror_sync_complete == 0
-  for: 15m
-  labels:
-    severity: warning
-  annotations:
-    summary: "Repository {{ $labels.namespace }}/{{ $labels.repository }} has incomplete synchronization"
-    description: "Not all tags were successfully synchronized in the last run."
-```
+**Buckets:** 30s, 60s, 120s, 300s (5m), 600s (10m), 1200s (20m), 1800s (30m), 3600s (1h), 7200s (2h), +Inf
 
-### Warning: Long-Running Sync
+**Description:** Duration of synchronization operations, allowing percentile calculations and performance analysis.
 
-```yaml
-- alert: RepositoryMirrorSyncTakingTooLong
-  expr: quay_repository_mirror_pending_tags > 0
-  for: 2h
-  labels:
-    severity: warning
-  annotations:
-    summary: "Repository {{ $labels.namespace }}/{{ $labels.repository }} sync is taking longer than expected"
-    description: "{{ $value }} tags still pending after 2 hours. Sync may be stuck."
-```
+**Use Cases:**
+- Calculate 95th/99th percentile sync times
+- Identify slow mirrors
+- Track performance trends over time
+- Capacity planning
 
-### Info: Sync Currently Running
-
-```yaml
-- alert: RepositoryMirrorSyncInProgress
-  expr: quay_repository_mirror_last_sync_status{status="SYNCING"} == 2
-  for: 0m
-  labels:
-    severity: info
-  annotations:
-    summary: "Repository {{ $labels.namespace }}/{{ $labels.repository }} is currently syncing"
-    description: "This is informational only. Check pending tags metric for progress."
-```
-
-## Grafana Dashboard Examples
-
-### Panel: Sync Status Overview
-
+**Example Queries:**
 ```promql
-# Single stat panel showing total mirrored repositories
-count(quay_repository_mirror_sync_complete)
+# 95th percentile sync duration
+histogram_quantile(0.95, rate(quay_repository_mirror_sync_duration_seconds_bucket[5m]))
 
-# Single stat panel showing repositories with issues
-count(quay_repository_mirror_sync_complete == 0)
+# Average sync duration per repository
+rate(quay_repository_mirror_sync_duration_seconds_sum[5m]) / 
+rate(quay_repository_mirror_sync_duration_seconds_count[5m])
 ```
 
-### Panel: Failure Rate
+---
 
-```promql
-# Graph panel showing failure rate over time
-rate(quay_repository_mirror_sync_failures_total[5m])
+### Legacy Metric
+
+#### Unmirrored Repositories
+
+```
+quay_repository_rows_unmirrored 42
 ```
 
-### Panel: Sync Progress
+**Type:** Gauge  
+**Description:** Number of repositories in the database that have not yet been mirrored. This metric is maintained for backward compatibility.
 
-```promql
-# Bar gauge showing pending tags per repository
-quay_repository_mirror_pending_tags
+---
+
+## Health Endpoint
+
+### Endpoint Details
+
+**Path:** `/v1/repository/mirror/health`  
+**Method:** GET  
+**Authentication:** Required (fresh login)  
+**Response Format:** JSON
+
+### HTTP Status Codes
+
+- `200 OK`: System is healthy
+- `503 Service Unavailable`: System is unhealthy (critical issues detected)
+- `401 Unauthorized`: Authentication required
+- `403 Forbidden`: Insufficient permissions
+
+### Query Parameters
+
+- `namespace` (optional): Filter health check to specific namespace
+- `detailed` (optional, boolean): Include per-repository breakdown (default: false)
+
+### Response Schema
+
+#### Basic Response
+
+```json
+{
+  "healthy": true,
+  "workers": {
+    "active": 5,
+    "configured": 5,
+    "status": "healthy"
+  },
+  "repositories": {
+    "total": 150,
+    "syncing": 3,
+    "completed": 145,
+    "failed": 2
+  },
+  "tags_pending": 47,
+  "last_check": "2025-12-09T10:30:00Z",
+  "issues": []
+}
 ```
 
-### Table: Repository Status
+#### Unhealthy Response
 
-Use the following query with the "Table" visualization:
-```promql
-max by (namespace, repository, status) (quay_repository_mirror_last_sync_status)
+```json
+{
+  "healthy": false,
+  "workers": {
+    "active": 3,
+    "configured": 5,
+    "status": "degraded"
+  },
+  "repositories": {
+    "total": 150,
+    "syncing": 2,
+    "completed": 140,
+    "failed": 8
+  },
+  "tags_pending": 234,
+  "last_check": "2025-12-09T10:30:00Z",
+  "issues": [
+    {
+      "severity": "critical",
+      "message": "5.3% of repositories are failing (threshold: 20.0%)",
+      "timestamp": "2025-12-09T10:30:00Z"
+    },
+    {
+      "severity": "error",
+      "message": "Repository org2/repo2 has exhausted all retry attempts",
+      "timestamp": "2025-12-09T10:20:00Z"
+    },
+    {
+      "severity": "warning",
+      "message": "Repository org1/repo1 hasn't synced in over 24 hours",
+      "timestamp": "2025-12-09T10:25:00Z"
+    }
+  ]
+}
 ```
 
-## Metric Lifecycle
+#### Detailed Response
 
-### Initialization
-Metrics are automatically initialized when a mirror sync begins. No manual initialization is required.
+When `detailed=true` is specified:
 
-### Updates
-- **Pending Tags**: Updated in real-time as each tag is processed
-- **Last Status**: Updated at the end of each sync run
-- **Complete Indicator**: Updated at the end of each sync run
-- **Failure Counter**: Incremented each time a sync fails
-
-### Cleanup
-The `cleanup_mirror_metrics()` function can be called to remove metrics for deleted repositories:
-
-```python
-from workers.repomirrorworker import cleanup_mirror_metrics
-
-cleanup_mirror_metrics("myorg", "myrepo")
+```json
+{
+  "healthy": true,
+  "workers": { ... },
+  "repositories": {
+    "total": 150,
+    "syncing": 3,
+    "completed": 145,
+    "failed": 2,
+    "details": [
+      {
+        "namespace": "org1",
+        "repository": "repo1",
+        "sync_status": "SUCCESS",
+        "is_enabled": true,
+        "last_sync": "2025-12-09T10:15:00Z",
+        "retries_remaining": 3
+      },
+      {
+        "namespace": "org2",
+        "repository": "repo2",
+        "sync_status": "FAIL",
+        "is_enabled": true,
+        "last_sync": "2025-12-09T09:00:00Z",
+        "retries_remaining": 0
+      }
+    ]
+  },
+  "tags_pending": 47,
+  "last_check": "2025-12-09T10:30:00Z",
+  "issues": []
+}
 ```
 
-**Note:** Counter metrics (`quay_repository_mirror_sync_failures_total`) cannot be removed due to prometheus_client library limitations. They will naturally expire when the Quay process restarts or when Prometheus scrapes expire them.
+### Health Determination Logic
 
-## Cardinality Considerations
+The system is considered **unhealthy** if:
 
-These metrics use `namespace` and `repository` labels, which creates one time series per mirrored repository. For deployments with hundreds or thousands of mirrored repositories:
+1. More than 20% of enabled repositories are failing
+2. Any repositories have exhausted all retry attempts
+3. Repositories are stuck in SYNCING state for over 12 hours (checked by health service)
 
-1. **Monitor cardinality:** Track the number of unique label combinations
-2. **Set retention policies:** Configure Prometheus retention based on your storage capacity
-3. **Consider federation:** Use Prometheus federation for large deployments
-4. **Use aggregation:** Pre-aggregate metrics in recording rules when possible
+### Example Usage
 
-Example recording rule for aggregation:
+```bash
+# Basic health check
+curl -X GET "https://quay.example.com/v1/repository/mirror/health" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Health check for specific namespace
+curl -X GET "https://quay.example.com/v1/repository/mirror/health?namespace=myorg" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Detailed health check
+curl -X GET "https://quay.example.com/v1/repository/mirror/health?detailed=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## Example Prometheus Alert Rules
+
+### Critical Alerts
+
 ```yaml
 groups:
-  - name: mirror_aggregates
+  - name: quay_mirror_critical
     interval: 30s
     rules:
-      - record: namespace:quay_repository_mirror_failures:sum
-        expr: sum by (namespace) (increase(quay_repository_mirror_sync_failures_total[5m]))
+      - alert: QuayMirrorWorkersDown
+        expr: quay_repository_mirror_workers_active == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No active mirror workers"
+          description: "All mirror workers are down or not responding"
+
+      - alert: QuayMirrorHighFailureCount
+        expr: quay_repository_mirror_sync_failures_total > 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High number of mirror synchronization failures"
+          description: "Repository {{ $labels.namespace }}/{{ $labels.repository }} has {{ $value }} total failures"
 ```
 
-## Troubleshooting
+### Warning Alerts
 
-### Metrics Not Appearing
+```yaml
+      - alert: QuayMirrorSyncFailures
+        expr: rate(quay_repository_mirror_sync_failures_total[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Repository mirroring failures detected"
+          description: "Repository {{ $labels.namespace }}/{{ $labels.repository }} has {{ $value }} failures per second (reason: {{ $labels.reason }})"
 
-1. Verify that repository mirroring is enabled: `FEATURE_REPO_MIRROR=true`
-2. Check that at least one mirror sync has run
-3. Verify Prometheus is scraping the PushGateway on port 9091
-4. Check that `PROMETHEUS_PUSHGATEWAY_URL` is configured
+      - alert: QuayMirrorSyncStale
+        expr: time() - quay_repository_mirror_last_sync_timestamp > 3600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mirror synchronization is stale"
+          description: "Repository {{ $labels.namespace }}/{{ $labels.repository }} hasn't synced in over an hour"
 
-### Stale Metrics
+      - alert: QuayMirrorHighPendingTags
+        expr: sum(quay_repository_mirror_pending_tags) > 1000
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of pending tags"
+          description: "There are {{ $value }} tags pending synchronization across all repositories"
 
-Metrics persist in Prometheus/PushGateway until explicitly removed or until they expire. If you see metrics for deleted repositories:
+      - alert: QuayMirrorAuthFailures
+        expr: increase(quay_repository_mirror_sync_failures_total{reason="auth_failed"}[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mirror authentication failures"
+          description: "Repository {{ $labels.namespace }}/{{ $labels.repository }} has had {{ $value }} authentication failures in the last hour"
+```
 
-1. Call `cleanup_mirror_metrics()` for the deleted repository
-2. Restart the Quay worker processes to clear all metrics
-3. Configure Prometheus to drop old series based on staleness
+---
 
-### Incorrect Values
+## Example Grafana Dashboard Queries
 
-If metrics show unexpected values:
+### Panel 1: Synchronization Status Overview
 
-1. Check worker logs for errors during metric updates
-2. Verify the mirror sync is completing (check logs for "repo_mirror_sync_success" or "repo_mirror_sync_failed")
-3. Ensure multiple workers aren't processing the same repository simultaneously
-4. Check for race conditions in high-frequency sync scenarios
+```promql
+# Count of repositories by sync status (canonical series: last_error_reason="")
+sum by(namespace) (quay_repository_mirror_last_sync_status{last_error_reason=""} == 1)  # Success
+sum by(namespace) (quay_repository_mirror_last_sync_status{last_error_reason=""} == 0)  # Failed
+sum by(namespace) (quay_repository_mirror_last_sync_status{last_error_reason=""} == 2)  # In Progress
+```
 
-## Related Documentation
+**Visualization:** Pie chart or time series
 
-- [Prometheus Metrics Overview](prometheus.md)
-- [Repository Mirroring Configuration](https://access.redhat.com/documentation/en-us/red_hat_quay/3/html/manage_red_hat_quay/repo-mirroring-in-red-hat-quay)
-- [Prometheus Best Practices](https://prometheus.io/docs/practices/)
+---
 
+### Panel 2: Failure Rate
 
+```promql
+# Failures per second by repository
+rate(quay_repository_mirror_sync_failures_total[5m])
+
+# Total failure rate
+sum(rate(quay_repository_mirror_sync_failures_total[5m]))
+```
+
+**Visualization:** Time series
+
+---
+
+### Panel 3: Failures by Reason
+
+```promql
+# Count failures by reason
+sum by (reason) (quay_repository_mirror_sync_failures_total)
+
+# Failure rate by reason
+sum by (reason) (rate(quay_repository_mirror_sync_failures_total[5m]))
+```
+
+**Visualization:** Bar chart or table
+
+---
+
+### Panel 4: Pending Tags by Repository
+
+```promql
+# Top 10 repositories by pending tags
+topk(10, quay_repository_mirror_pending_tags)
+
+# Total pending tags
+sum(quay_repository_mirror_pending_tags)
+```
+
+**Visualization:** Bar chart or gauge
+
+---
+
+### Panel 5: Active Mirror Workers
+
+```promql
+quay_repository_mirror_workers_active
+```
+
+**Visualization:** Gauge or single stat
+
+---
+
+### Panel 6: Synchronization Duration
+
+```promql
+# 95th percentile sync duration
+histogram_quantile(0.95, rate(quay_repository_mirror_sync_duration_seconds_bucket[5m]))
+
+# 99th percentile sync duration
+histogram_quantile(0.99, rate(quay_repository_mirror_sync_duration_seconds_bucket[5m]))
+
+# Average duration by repository
+rate(quay_repository_mirror_sync_duration_seconds_sum{namespace="myorg"}[5m]) / 
+rate(quay_repository_mirror_sync_duration_seconds_count{namespace="myorg"}[5m])
+```
+
+**Visualization:** Time series or heatmap
+
+---
+
+### Panel 7: Incomplete Syncs
+
+```promql
+# Count of incomplete synchronizations
+count(quay_repository_mirror_sync_complete == 0)
+
+# List of repositories with incomplete syncs
+quay_repository_mirror_sync_complete == 0
+```
+
+**Visualization:** Single stat and table
+
+---
+
+## Best Practices
+
+### Metric Collection
+
+1. **Scrape Interval**: Set Prometheus scrape interval to 30-60 seconds for mirror metrics
+2. **Retention**: Keep at least 30 days of history for trend analysis
+3. **Cardinality Management**: Monitor the number of mirrored repositories; consider aggregating by namespace for very large deployments (100+ mirrors)
+
+### Alerting
+
+1. **Failure Thresholds**: Set alerts based on your SLA requirements
+2. **Notification Routing**: Route auth failures to security teams, network failures to infrastructure
+3. **Alert Fatigue**: Use appropriate `for` durations to avoid transient alert noise
+4. **Escalation**: Set up tiered alerts (warning → critical) based on failure count and duration
+
+### Monitoring
+
+1. **Dashboard Organization**: Create separate dashboards for:
+   - Overview (system-wide health)
+   - Per-namespace views
+   - Troubleshooting (detailed failure analysis)
+2. **Correlate Metrics**: Combine mirror metrics with system metrics (CPU, memory, network) for root cause analysis
+3. **Regular Review**: Weekly review of failure patterns and trends
+
+### Capacity Planning
+
+1. Monitor sync duration trends to predict when additional workers are needed
+2. Track total pending tags to understand workload
+3. Use histogram metrics to identify performance degradation before it impacts SLAs
+
+---
+
+## Troubleshooting Guide
+
+### High Failure Rate
+
+1. Check `quay_repository_mirror_sync_failures_total` broken down by `reason`
+2. For auth failures: Verify credentials, check token expiration
+3. For network timeouts: Check network connectivity, consider increasing `skopeo_timeout_interval`
+4. For TLS errors: Verify certificate validity, check `verify_tls` settings
+
+### Stale Synchronizations
+
+1. Query `quay_repository_mirror_last_sync_timestamp` to find affected repositories
+2. Check if `sync_interval` is appropriate for the repository update frequency
+3. Verify mirror workers are running and processing jobs
+4. Check if repositories are disabled
+
+### Slow Synchronization
+
+1. Use `quay_repository_mirror_sync_duration_seconds` histogram to identify slow mirrors
+2. Check repository size (number of tags, layer sizes)
+3. Verify network bandwidth between Quay and external registry
+4. Consider adjusting `skopeo_timeout_interval` for large images
+
+### Incomplete Synchronizations
+
+1. Query `quay_repository_mirror_sync_complete == 0` to find affected repositories
+2. Check logs for specific tag failures
+3. Review `quay_repository_mirror_sync_failures_total` by reason
+4. Verify tag patterns in mirror configuration are correct
+
+---
+
+## Integration with Existing Health Checks
+
+The mirror health service is automatically integrated into Quay's existing health check infrastructure:
+
+- Available via `/health/endtoend` endpoint (includes all services)
+- Can be monitored separately via the dedicated `/v1/repository/mirror/health` endpoint
+- Follows the same patterns as other Quay health services
+
+---
+
+## Backward Compatibility
+
+All existing metrics remain unchanged:
+- `quay_repository_rows_unmirrored` continues to function as before
+- New metrics are additive and don't affect existing monitoring setups
+- Old monitoring configurations will continue to work without modification
+
+---
+
+## Security Considerations
+
+1. **Authentication**: Both metrics and health endpoints require authentication
+2. **Namespace Filtering**: Users can only view health for namespaces they have access to
+3. **Sensitive Information**: Credentials and passwords are never exposed in metrics or health responses
+4. **Error Messages**: Failure reasons are categorized generically to avoid leaking sensitive details
+
+---
+
+## Additional Resources
+
+- [Prometheus Best Practices](https://prometheus.io/docs/practices/naming/)
+- [Grafana Dashboard Examples](https://grafana.com/grafana/dashboards/)
+- [Quay Configuration Documentation](https://docs.projectquay.io/)
+- [Repository Mirroring Guide](https://docs.projectquay.io/repo_mirror.html)
