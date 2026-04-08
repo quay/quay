@@ -30,6 +30,26 @@ jobs:
           configuration-path: .github/labeler.yml
           sync-labels: true
 
+  label-community:
+    name: Label Community Contributions
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_target'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Check OWNERS and label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if ! grep -qi "^- ${PR_AUTHOR}$" OWNERS; then
+            gh pr edit "$PR_NUMBER" --add-label "community-contribution"
+          fi
+
   capture-pr-data:
     name: Capture PR Data
     runs-on: ubuntu-latest
