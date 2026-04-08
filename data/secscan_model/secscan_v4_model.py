@@ -5,7 +5,7 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
 
-from peewee import JOIN, fn
+from peewee import JOIN, IntegrityError, fn
 
 import features
 from data.cache import cache_key
@@ -59,6 +59,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 86400  # 1 day
+STALE_IN_PROGRESS_HOURS = 6  # Hours before an IN_PROGRESS manifest is considered stale
 TAG_LIMIT = 100
 
 IndexReportState = namedtuple("IndexReportState", ["Index_Finished", "Index_Error"])(  # type: ignore[call-arg]
@@ -294,6 +295,17 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
+        def stale_in_progress_query():
+            stale_threshold = datetime.utcnow() - timedelta(hours=STALE_IN_PROGRESS_HOURS)
+            return (
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
+                .join(ManifestSecurityStatus)
+                .where(
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                    ManifestSecurityStatus.last_indexed < stale_threshold,
+                )
+            )
+
         def needs_reindexing_query(indexer_hash):
             return (
                 Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
@@ -321,6 +333,13 @@ class V4SecurityScanner(SecurityScannerInterface):
             ),
             yield_random_entries(
                 index_error_query,
+                Manifest.id,
+                batch_size,
+                max_id,
+                min_id,
+            ),
+            yield_random_entries(
+                stale_in_progress_query,
                 Manifest.id,
                 batch_size,
                 max_id,
@@ -437,21 +456,39 @@ class V4SecurityScanner(SecurityScannerInterface):
             Bulk check which manifest IDs have been recently indexed by another worker.
             Returns a set of manifest IDs that should be skipped.
 
+            Uses different thresholds based on status:
+            - IN_PROGRESS: skip if indexed within last STALE_IN_PROGRESS_HOURS (stale threshold)
+            - Other statuses: skip if indexed within reindex_threshold
+
             This replaces individual should_skip_indexing() calls with a single bulk query,
             reducing database round-trips by 50-100x per batch.
             """
             if not candidate_ids:
                 return set()
 
-            # Single query to check all candidates at once
-            recently_indexed = ManifestSecurityStatus.select(
+            # Stale IN_PROGRESS threshold - aligned with stale_in_progress_query()
+            stale_in_progress_threshold = datetime.utcnow() - timedelta(
+                hours=STALE_IN_PROGRESS_HOURS
+            )
+
+            # Single query with status-specific thresholds:
+            # For IN_PROGRESS: only skip if still fresh (>= stale threshold)
+            # For others: skip if >= reindex threshold
+            preempted_query = ManifestSecurityStatus.select(
                 ManifestSecurityStatus.manifest_id
             ).where(
                 ManifestSecurityStatus.manifest_id.in_(candidate_ids),
-                ManifestSecurityStatus.last_indexed >= reindex_threshold,
+                (
+                    (ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS)
+                    & (ManifestSecurityStatus.last_indexed >= stale_in_progress_threshold)
+                )
+                | (
+                    (ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS)
+                    & (ManifestSecurityStatus.last_indexed >= reindex_threshold)
+                ),
             )
 
-            return {row.manifest_id for row in recently_indexed}
+            return {row.manifest_id for row in preempted_query}
 
         def batched_iterator_with_preemption_check(iterator, batch_size=20):
             """
@@ -536,6 +573,44 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
+            # Atomically claim manifest for indexing by marking as IN_PROGRESS.
+            # Only claim if not already IN_PROGRESS to avoid concurrent workers indexing the same manifest.
+            # Also allow reclaiming manifests stuck IN_PROGRESS for longer than the stale threshold.
+            stale_in_progress_threshold = datetime.utcnow() - timedelta(
+                hours=STALE_IN_PROGRESS_HOURS
+            )
+            rows_updated = (
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.IN_PROGRESS,
+                    indexer_hash="in_progress",
+                    last_indexed=datetime.utcnow(),
+                )
+                .where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    (ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS)
+                    | (ManifestSecurityStatus.last_indexed < stale_in_progress_threshold),
+                )
+                .execute()
+            )
+
+            if rows_updated == 0:
+                # UPDATE missed: either row doesn't exist, or another worker owns it.
+                # Try to create the row; if it already exists, another worker has it.
+                try:
+                    ManifestSecurityStatus.create(
+                        manifest=candidate,
+                        repository=candidate.repository,
+                        index_status=IndexStatus.IN_PROGRESS,
+                        indexer_hash="in_progress",
+                        indexer_version=IndexerVersion.V4,
+                        metadata_json={},
+                    )
+                except IntegrityError:
+                    # Row already exists and is owned by another worker
+                    logger.debug("Manifest %d already claimed by another worker", candidate.id)
+                    abt.set()
+                    continue
+
             try:
                 (report, state) = self._secscan_api.index(manifest, layers)
             except InvalidContentSent as ex:
@@ -543,6 +618,16 @@ class V4SecurityScanner(SecurityScannerInterface):
                 logger.exception("Failed to perform indexing, invalid content sent")
                 continue
             except APIRequestFailure as ex:
+                # Mark as FAILED instead of deleting to preserve scan history
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.FAILED,
+                    indexer_hash="api_failure",
+                    error_json={"error": str(ex)},
+                    last_indexed=datetime.utcnow(),
+                ).where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                ).execute()
                 logger.exception("Failed to perform indexing, security scanner API error")
                 continue
             except LayerTooLargeException as ex:
@@ -640,7 +725,21 @@ class V4SecurityScanner(SecurityScannerInterface):
             elif report["state"] == IndexReportState.Index_Error:
                 index_status = IndexStatus.FAILED
             else:
-                # Unknown state don't save anything
+                # Unknown state - mark as FAILED instead of deleting to preserve scan history
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.FAILED,
+                    indexer_hash="unknown_state",
+                    error_json={"error": "unknown_state", "state": report.get("state")},
+                    last_indexed=datetime.utcnow(),
+                ).where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                ).execute()
+                logger.warning(
+                    "Unknown index state '%s' for manifest %d, marked as FAILED",
+                    report.get("state"),
+                    candidate.id,
+                )
                 continue
 
             with db_transaction():

@@ -14,7 +14,6 @@ from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 
-
 DEFAULT_INDEXING_INTERVAL = 30
 
 
