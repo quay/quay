@@ -250,7 +250,7 @@ describe('Repository Builds', () => {
     );
     cy.intercept(
       'GET',
-      '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+      '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
       {fixture: 'testrepo.json'},
     ).as('getRepo');
     cy.intercept('GET', '/api/v1/organization/testorg', {
@@ -263,7 +263,7 @@ describe('Repository Builds', () => {
       repoFixture.state = 'MIRROR';
       cy.intercept(
         'GET',
-        '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+        '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
         repoFixture,
       ).as('getRepo');
     });
@@ -285,7 +285,7 @@ describe('Repository Builds', () => {
       repoFixture.state = 'READONLY';
       cy.intercept(
         'GET',
-        '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+        '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
         repoFixture,
       ).as('getRepo');
     });
@@ -515,8 +515,8 @@ describe('Repository Builds', () => {
       'push to GitHub repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Disable Trigger').click();
     });
+    cy.contains('Disable Trigger').click();
     cy.contains('Disable Build Trigger');
     cy.contains('Are you sure you want to disable this build trigger?');
     cy.contains('button', 'Disable Build Trigger').click();
@@ -547,8 +547,8 @@ describe('Repository Builds', () => {
       'push to GitLab repository testgitorg/disabledrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Enable Trigger').click();
     });
+    cy.contains('Enable Trigger').click();
     cy.contains('Enable Build Trigger');
     cy.contains('Are you sure you want to enable this build trigger?');
     cy.contains('button', 'Enable Build Trigger').click();
@@ -573,8 +573,8 @@ describe('Repository Builds', () => {
       'push to GitHub repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('View Credentials').click();
     });
+    cy.contains('View Credentials').click();
     cy.contains('Trigger Credentials');
     cy.contains(
       'The following key has been automatically added to your source control repository.',
@@ -590,8 +590,8 @@ describe('Repository Builds', () => {
       'push to repository https://github.com/testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('View Credentials').click();
     });
+    cy.contains('View Credentials').click();
     cy.contains('Trigger Credentials');
     cy.contains(
       'In order to use this trigger, the following first requires action:',
@@ -627,8 +627,8 @@ describe('Repository Builds', () => {
       'push to GitLab repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('View Credentials').click();
     });
+    cy.contains('View Credentials').click();
     cy.contains('Trigger Credentials');
     cy.contains(
       'The following key has been automatically added to your source control repository.',
@@ -659,8 +659,8 @@ describe('Repository Builds', () => {
       'push to GitHub repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Delete Trigger').click();
     });
+    cy.contains('Delete Trigger').click();
     cy.contains('Delete Build Trigger');
     cy.contains(
       'Are you sure you want to delete this build trigger? No further builds will be automatically started.',
@@ -814,10 +814,13 @@ describe('Repository Builds', () => {
         cy.contains('push to GitHub repository testgitorg/testgitrepo');
         cy.contains('Branch/Tag:');
         cy.get('button[aria-label="Menu toggle"]').click();
-        cy.contains('master');
-        cy.contains('development');
-        cy.contains('1.0.0');
-        cy.contains('1.0.1').click();
+      });
+      // Select options render in a portal outside the modal
+      cy.contains('master');
+      cy.contains('development');
+      cy.contains('1.0.0');
+      cy.contains('1.0.1').click();
+      cy.get('#manually-start-build-modal').within(() => {
         cy.contains('button', 'Start Build').click();
         cy.get('@startBuild')
           .its('request.body')
@@ -845,8 +848,8 @@ describe('Repository Builds', () => {
       'push to GitHub repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Run Trigger').click();
     });
+    cy.contains('Run Trigger').click();
     submitBuild(cy);
   });
 
@@ -876,10 +879,13 @@ describe('Repository Builds', () => {
         cy.contains('push to GitLab repository testgitorg/testgitrepo');
         cy.contains('Branch/Tag:');
         cy.get('button[aria-label="Menu toggle"]').click();
-        cy.contains('master');
-        cy.contains('development');
-        cy.contains('1.0.0');
-        cy.contains('1.0.1').click();
+      });
+      // Select options render in a portal outside the modal
+      cy.contains('master');
+      cy.contains('development');
+      cy.contains('1.0.0');
+      cy.contains('1.0.1').click();
+      cy.get('#manually-start-build-modal').within(() => {
         cy.contains('button', 'Start Build').click();
         cy.get('@startBuild')
           .its('request.body')
@@ -907,8 +913,8 @@ describe('Repository Builds', () => {
       'push to GitLab repository testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Run Trigger').click();
     });
+    cy.contains('Run Trigger').click();
     submitBuild(cy);
   });
 
@@ -967,8 +973,8 @@ describe('Repository Builds', () => {
       'push to repository https://github.com/testgitorg/testgitrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
-      cy.contains('Run Trigger').click();
     });
+    cy.contains('Run Trigger').click();
     submitBuild(cy);
   });
 
@@ -981,7 +987,7 @@ describe('Repository Builds', () => {
     }).as('getBuildTriggers');
     cy.intercept(
       'GET',
-      '/api/v1/repository/testorg/privaterepo?includeStats=false&includeTags=false',
+      '/api/v1/repository/testorg/privaterepo?includeStats=true&includeTags=false',
       {statusCode: 200, body: {is_public: false}},
     ).as('getRepoDetails');
     cy.intercept(
@@ -1023,11 +1029,103 @@ describe('Repository Builds', () => {
         'A robot account with read access to that repository is required for the build:',
       );
       cy.get('#repository-creator-dropdown').click();
-      cy.contains('testorg+testrobot2');
-      cy.contains('testorg+testrobot').click();
+    });
+    // Dropdown options render in a portal outside the modal
+    cy.contains('testorg+testrobot2');
+    cy.contains('testorg+testrobot').click();
+    cy.get('#start-build-modal').within(() => {
       cy.contains('button', 'Start Build').click();
     });
     cy.contains('Build started with ID build001');
+  });
+
+  it('Sorts builds by date started correctly', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      builds: [
+        {
+          id: 'build1',
+          phase: 'complete',
+          started: 'Mon, 04 Nov 2024 14:21:00 -0000',
+          tags: [],
+        },
+        {
+          id: 'build2',
+          phase: 'complete',
+          started: 'Tue, 17 Sep 2024 10:15:00 -0000',
+          tags: [],
+        },
+        {
+          id: 'build3',
+          phase: 'complete',
+          started: 'Tue, 17 Sep 2024 16:30:00 -0000',
+          tags: [],
+        },
+      ],
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      triggers: [],
+    }).as('getBuildTriggers');
+
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    // Default sort should be descending (newest first)
+    cy.get('tbody tr').eq(0).should('contain', 'build1');
+    cy.get('tbody tr').eq(1).should('contain', 'build3');
+    cy.get('tbody tr').eq(2).should('contain', 'build2');
+
+    // Click to sort ascending (oldest first)
+    cy.get('th').contains('Date started').click();
+    cy.get('tbody tr').eq(0).should('contain', 'build2');
+    cy.get('tbody tr').eq(1).should('contain', 'build3');
+    cy.get('tbody tr').eq(2).should('contain', 'build1');
+  });
+
+  it('Sorts builds by Build ID correctly (hex values)', () => {
+    // Build IDs are hex strings that should be sorted numerically
+    // Hex values: 5468c229 < 69ab0698 < 7a86feb2
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      builds: [
+        {
+          id: '7a86feb2-1234-5678-9abc-def012345678',
+          phase: 'complete',
+          started: 'Mon, 04 Nov 2024 14:21:00 -0000',
+          tags: [],
+        },
+        {
+          id: '5468c229-1234-5678-9abc-def012345678',
+          phase: 'complete',
+          started: 'Tue, 17 Sep 2024 10:15:00 -0000',
+          tags: [],
+        },
+        {
+          id: '69ab0698-1234-5678-9abc-def012345678',
+          phase: 'complete',
+          started: 'Tue, 17 Sep 2024 16:30:00 -0000',
+          tags: [],
+        },
+      ],
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      triggers: [],
+    }).as('getBuildTriggers');
+
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    // Default sort is by date descending, click Build ID to sort by Build ID
+    cy.get('th').contains('Build ID').click();
+
+    // Ascending order: 5468c229 < 69ab0698 < 7a86feb2 (hex numeric sort)
+    cy.get('tbody tr').eq(0).should('contain', '5468c229');
+    cy.get('tbody tr').eq(1).should('contain', '69ab0698');
+    cy.get('tbody tr').eq(2).should('contain', '7a86feb2');
+
+    // Click again for descending order
+    cy.get('th').contains('Build ID').click();
+
+    // Descending order: 7a86feb2 > 69ab0698 > 5468c229
+    cy.get('tbody tr').eq(0).should('contain', '7a86feb2');
+    cy.get('tbody tr').eq(1).should('contain', '69ab0698');
+    cy.get('tbody tr').eq(2).should('contain', '5468c229');
   });
 });
 
@@ -1300,7 +1398,7 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
     );
     cy.intercept(
       'GET',
-      '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+      '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
       {fixture: 'testrepo.json'},
     ).as('getRepo');
     cy.intercept('GET', '/api/v1/organization/testorg', {
@@ -1774,7 +1872,7 @@ describe('Repository Builds - View build logs', () => {
       fixture.can_write = true;
       cy.intercept(
         'GET',
-        '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+        '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
         fixture,
       ).as('getrepo');
     });
@@ -1786,6 +1884,11 @@ describe('Repository Builds - View build logs', () => {
         const expectedData = buildData[index];
         cy.intercept(
           'GET',
+          '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
+          {fixture: 'testrepo.json'},
+        ).as('getRepo');
+        cy.intercept(
+          'GET',
           `/api/v1/repository/testorg/testrepo/build/${build.id}`,
           build,
         ).as(`getBuild${build.id}`);
@@ -1795,6 +1898,9 @@ describe('Repository Builds - View build logs', () => {
           {fixture: 'build-logs.json'},
         ).as('getBuildLogs');
         cy.visit(`/repository/testorg/testrepo/build/${build.id}`);
+        cy.wait('@getRepo');
+        cy.wait(`@getBuild${build.id}`);
+        cy.wait('@getBuildLogs');
         cy.get('#build-id').contains(build.id);
         cy.get('#started').contains(formatDate(build.started));
         cy.get('#status').contains(getBuildMessage(build.phase));

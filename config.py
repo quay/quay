@@ -43,6 +43,7 @@ CLIENT_WHITELIST = [
     "BRANDING",
     "DOCUMENTATION_ROOT",
     "FEATURE_REPO_MIRROR",
+    "FEATURE_ORG_MIRROR",
     "FEATURE_QUOTA_MANAGEMENT",
     "FEATURE_EDIT_QUOTA",
     "FEATURE_PROXY_CACHE",
@@ -56,6 +57,9 @@ CLIENT_WHITELIST = [
     "FEATURE_AUTO_PRUNE",
     "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY",
     "DEFAULT_UI",
+    "DISABLE_ANGULAR_UI",
+    "ROBOTS_DISALLOW",
+    "FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE",
 ]
 
 
@@ -263,6 +267,9 @@ class DefaultConfig(ImmutableConfig):
     # Real-time user events
     USER_EVENTS_REDIS = {"host": "localhost"}
 
+    # Pull metrics tracking (uses Redis DB 1)
+    PULL_METRICS_REDIS = {"host": "localhost", "db": 1}
+
     # Stripe config
     BILLING_TYPE = "FakeStripe"
 
@@ -277,6 +284,11 @@ class DefaultConfig(ImmutableConfig):
     EXCEPTION_LOG_TYPE = "FakeSentry"
     SENTRY_DSN = None
     SENTRY_PUBLIC_DSN = None
+
+    # Pyroscope continuous profiling (optional)
+    PROFILING_TYPE = ""
+    PYROSCOPE_SERVER_ADDRESS = None
+    PYROSCOPE_APPLICATION_NAME = "quay"
 
     # Github Config
     GITHUB_LOGIN_CONFIG: Optional[Dict[str, Any]] = None
@@ -370,6 +382,15 @@ class DefaultConfig(ImmutableConfig):
 
     # Allow realtime user events to be sent to redis
     FEATURE_USER_EVENTS = True
+
+    # Feature Flag: Whether to track and display image pull statistics
+    FEATURE_IMAGE_PULL_STATS = False
+
+    # Pull metrics thread pool configuration
+    PULL_METRICS_WORKER_COUNT = 5
+
+    # Redis flush worker configuration
+    REDIS_FLUSH_INTERVAL_SECONDS = 300  # 5 minutes default
 
     # Semver spec for which Docker versions we will blacklist
     # Documentation: http://pythonhosted.org/semantic_version/reference.html#semantic_version.Spec
@@ -532,6 +553,22 @@ class DefaultConfig(ImmutableConfig):
     # Repository mirror
     FEATURE_REPO_MIRROR = False
 
+    # Organization-level repository mirror
+    FEATURE_ORG_MIRROR = False
+
+    # Hostnames or CIDR ranges allowed to bypass SSRF blocklist for organization mirrors
+    # and export log callbacks. Use for enterprise deployments where endpoints run on
+    # private networks.
+    SSRF_ALLOWED_HOSTS: List[str] = []
+
+    # The number of seconds between organization mirror worker iterations
+    ORG_MIRROR_INTERVAL = 30
+
+    # Maximum duration (in seconds) for the org mirror discovery phase claim.
+    # If discovery takes longer than this, the claim expires and the worker retries.
+    # Increase for large source registries with many repositories.
+    ORG_MIRROR_MAX_DISCOVERY_DURATION = 1800  # 30 minutes
+
     # The number of seconds between indexing intervals in the repository mirror
     REPO_MIRROR_INTERVAL = 30
 
@@ -545,11 +582,19 @@ class DefaultConfig(ImmutableConfig):
     # Defaults to false, to allow partial mirroring of upstream repositories.
     REPO_MIRROR_ROLLBACK = False
 
+    # Maximum size in bytes of manifest list JSON to parse during mirroring.
+    # Prevents DoS via oversized manifests from malicious registries.
+    REPO_MIRROR_MAX_MANIFEST_LIST_SIZE = 10 * 1024 * 1024  # 10MB
+
+    # Maximum number of manifest entries to process during architecture-filtered mirroring.
+    # Prevents DoS via manifest lists with excessive entries.
+    REPO_MIRROR_MAX_MANIFEST_ENTRIES = 1000
+
     # "Secret" key for generating encrypted paging tokens. Only needed to be secret to
     # hide the ID range for production (in which this value is overridden). Should *not*
     # be relied upon for secure encryption otherwise.
     # This value is a Fernet key and should be 32bytes URL-safe base64 encoded.
-    PAGE_TOKEN_KEY = "0OYrc16oBuksR8T3JGB-xxYSlZ2-7I_zzqrLzggBJ58="
+    PAGE_TOKEN_KEY = "0OYrc16oBuksR8T3JGB-xxYSlZ2-7I_zzqrLzggBJ58="  # gitleaks:allow
 
     # The timeout for service key approval.
     UNAPPROVED_SERVICE_KEY_TTL_SEC = 60 * 60 * 24  # One day
@@ -630,6 +675,13 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether users can view and change their tag expiration.
     FEATURE_CHANGE_TAG_EXPIRATION = True
 
+    # Feature Flag: Whether tag immutability enforcement is enabled.
+    FEATURE_IMMUTABLE_TAGS = False
+
+    # Feature Flag: Whether immutable tags can have expiration dates set.
+    # When False (default), setting expiration on immutable tags is blocked.
+    FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE = False
+
     # Defines a secret for enabling the health-check endpoint's debug information.
     ENABLE_HEALTH_DEBUG_SECRET = None
 
@@ -673,7 +725,6 @@ class DefaultConfig(ImmutableConfig):
         "endpoint": ("127.0.0.1", 18080),
         "repository_blob_cache_ttl": "60s",
         "catalog_page_cache_ttl": "60s",
-        "namespace_geo_restrictions_cache_ttl": "240s",
         "active_repo_tags_cache_ttl": "120s",
         "value_size_limit": "1MiB",
     }
@@ -843,6 +894,11 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
 
+    # Feature Flag: Extended action logging for ESS Events of Interest compliance
+    # When enabled, logs include request URL, HTTP method, auth type, user agent, etc.
+    # This increases log volume by ~2.5-3x. Defaults to False (opt-in).
+    FEATURE_EXTENDED_ACTION_LOGGING = False
+
     # Feature Flag: Enable a background worker to check and download missing placeholder blobs
     FEATURE_PROXY_CACHE_BLOB_DOWNLOAD = True
 
@@ -850,8 +906,8 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_EXPORT_COMPLIANCE = False
 
     # Feature Flag: Enables user to try the beta UI Environment
-    FEATURE_UI_V2 = False
-    FEATURE_UI_MODELCARD = False
+    FEATURE_UI_V2 = True
+    FEATURE_UI_MODELCARD = True
     UI_MODELCARD_ARTIFACT_TYPE = "application/x-mlmodel"
     UI_MODELCARD_ANNOTATION: Optional[Dict[str, str]] = {}
     UI_MODELCARD_LAYER_ANNOTATION: Optional[Dict[str, str]] = {
@@ -859,10 +915,12 @@ class DefaultConfig(ImmutableConfig):
     }
 
     # User feedback form for UI-V2
-    UI_V2_FEEDBACK_FORM = "https://7qdvkuo9rkj.typeform.com/to/XH5YE79P"
+    UI_V2_FEEDBACK_FORM = None
 
     # Default to new UI
     DEFAULT_UI = "react"
+    # If true, disables legacy Angular UI pages and redirects
+    DISABLE_ANGULAR_UI = False
 
     # Export Compliance Endpoint
     EXPORT_COMPLIANCE_ENDPOINT = ""
@@ -929,3 +987,14 @@ class DefaultConfig(ImmutableConfig):
     # OTEL CONFIG
     FEATURE_OTEL_TRACING = False
     OTEL_TRACING_EXCLUDED_URLS = None
+
+    # Metrics tracking namespaces
+    # Supports two formats:
+    # 1. List format: ["namespace1", "namespace2"] - each namespace gets its own label
+    # 2. Dict format: {"bucket_name": ["namespace1", "namespace2"]} - multiple namespaces share a bucket
+    # Example: {"critical": ["redhat", "internal"], "customers": ["customer1", "customer2"]}
+    TRACKED_NAMESPACES: Union[List[str], Dict[str, Union[List[str], str]]] = []
+
+    # Feature Flag: Whether to allow sparse manifest indexes where not all architectures are required.
+    # When enabled, manifests for missing architectures will be skipped instead of raising errors.
+    FEATURE_SPARSE_INDEX = False

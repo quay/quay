@@ -6,7 +6,6 @@ import {
   DescriptionListTerm,
   Divider,
   PageSection,
-  PageSectionVariants,
   Skeleton,
 } from '@patternfly/react-core';
 import {ImageSize} from 'src/components/Table/ImageSize';
@@ -15,11 +14,15 @@ import {formatDate} from 'src/libs/utils';
 import {Tag} from 'src/resources/TagResource';
 import SecurityDetails from 'src/routes/RepositoryDetails/Tags/SecurityDetails';
 import CopyTags from './DetailsCopyTags';
+import Conditional from 'src/components/empty/Conditional';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export default function Details(props: DetailsProps) {
+  const config = useQuayConfig();
+
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <DescriptionList
           columnModifier={{
             default: '2Col',
@@ -94,18 +97,19 @@ export default function Details(props: DetailsProps) {
               )}
             </DescriptionListDescription>
           </DescriptionListGroup>
-          <DescriptionListGroup data-testid="vulnerabilities">
-            <DescriptionListTerm>Vulnerabilities</DescriptionListTerm>
-            <DescriptionListDescription>
-              <SecurityDetails
-                org={props.org}
-                repo={props.repo}
-                digest={props.digest}
-                tag={props.tag.name}
-                cacheResults={true}
-              />
-            </DescriptionListDescription>
-          </DescriptionListGroup>
+          <Conditional if={config?.features?.SECURITY_SCANNER}>
+            <DescriptionListGroup data-testid="vulnerabilities">
+              <DescriptionListTerm>Vulnerabilities</DescriptionListTerm>
+              <DescriptionListDescription>
+                <SecurityDetails
+                  org={props.org}
+                  repo={props.repo}
+                  digest={props.digest}
+                  tag={props.tag.name}
+                />
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </Conditional>
           <DescriptionListGroup data-testid="labels">
             <DescriptionListTerm>Labels</DescriptionListTerm>
             <DescriptionListDescription>
@@ -123,7 +127,7 @@ export default function Details(props: DetailsProps) {
         </DescriptionList>
       </PageSection>
       <Divider />
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <CopyTags
           org={props.org}
           repo={props.repo}

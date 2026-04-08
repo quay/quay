@@ -51,9 +51,9 @@
     "FEATURE_QUOTA_MANAGEMENT": false,
     "FEATURE_EDIT_QUOTA": true,
     "FEATURE_REPO_MIRROR": false,
+    "FEATURE_ORG_MIRROR": false,
     "LOCAL_OAUTH_HANDLER": "/oauth/localapp",
     "PREFERRED_URL_SCHEME": "http",
-    "RECAPTCHA_SITE_KEY": null,
     "REGISTRY_TITLE": "Mock Quay",
     "REGISTRY_TITLE_SHORT": "Quay",
     "SEARCH_MAX_RESULT_PAGE_COUNT": 10,
@@ -62,7 +62,18 @@
     "SERVER_HOSTNAME": "localhost:8080",
     "SETUP_COMPLETE": true,
     "STATIC_SITE_BUCKET": null,
-    "TAG_EXPIRATION_OPTIONS": ["0s", "1d", "1w", "2w", "4w", "80d", "90d", "180d", "365d", "2y"],
+    "TAG_EXPIRATION_OPTIONS": [
+      "0s",
+      "1d",
+      "1w",
+      "2w",
+      "4w",
+      "80d",
+      "90d",
+      "180d",
+      "365d",
+      "2y"
+    ],
     "PERMANENTLY_DELETE_TAGS": true,
     "FEATURE_AUTO_PRUNE": true,
     "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
@@ -77,7 +88,6 @@
     "ADVERTISE_V2": true,
     "AGGREGATED_LOG_COUNT_RETRIEVAL": true,
     "ANONYMOUS_ACCESS": true,
-    "APP_REGISTRY": false,
     "APP_SPECIFIC_TOKENS": true,
     "BILLING": true,
     "BITBUCKET_BUILD": true,
@@ -112,8 +122,6 @@
     "QUOTA_MANAGEMENT": true,
     "RATE_LIMITS": false,
     "READER_BUILD_LOGS": false,
-    "READONLY_APP_REGISTRY": false,
-    "RECAPTCHA": false,
     "REPOSITORY_ACTION_COUNTER": true,
     "REPOSITORY_GARBAGE_COLLECTION": true,
     "REPO_MIRROR": false,
@@ -134,6 +142,7 @@
     "USER_LOG_ACCESS": false,
     "USER_METADATA": true,
     "USER_RENAME": false,
+    "UI_MODELCARD": true,
     "AUTO_PRUNE": true,
     "IMAGE_EXPIRY_TRIGGER": true
   },
@@ -150,5 +159,6 @@
       "GITLAB_ENDPOINT": "https://gitlab.com/"
     }
   },
-  "registry_state": "normal"
+  "registry_state": "normal",
+  "version_number": "Quay test"
 }

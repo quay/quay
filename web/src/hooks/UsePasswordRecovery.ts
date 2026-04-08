@@ -10,7 +10,6 @@ export interface RecoveryResponse {
 
 export interface RecoveryRequest {
   email: string;
-  recaptcha_response?: string;
 }
 
 export function usePasswordRecovery() {
@@ -18,19 +17,13 @@ export function usePasswordRecovery() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RecoveryResponse | null>(null);
 
-  const requestRecovery = async (
-    email: string,
-    recaptchaResponse?: string | null,
-  ) => {
+  const requestRecovery = async (email: string) => {
     setIsLoading(true);
     setError(null);
     setResult(null);
 
     try {
       const payload: RecoveryRequest = {email};
-      if (recaptchaResponse) {
-        payload.recaptcha_response = recaptchaResponse;
-      }
 
       const response = await axios.post('/api/v1/recovery', payload);
       setResult(response.data);

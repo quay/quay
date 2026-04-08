@@ -1,9 +1,8 @@
 import {Button, Spinner, Title} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import Conditional from 'src/components/empty/Conditional';
 import RequestError from 'src/components/errors/RequestError';
-import {useAlerts} from 'src/hooks/UseAlerts';
 import {
   useCreateNamespaceAutoPrunePolicy,
   useDeleteNamespaceAutoPrunePolicy,
@@ -18,6 +17,7 @@ import {
 } from 'src/resources/NamespaceAutoPruneResource';
 import ReadonlyAutoprunePolicy from 'src/routes/RepositoryDetails/Settings/RepositoryAutoPruningReadonlyPolicy';
 import AutoPrunePolicyForm from 'src/components/AutoPrunePolicyForm';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 
 // Must match convert_to_timedelta from backend
 export const shorthandTimeUnits = {
@@ -30,7 +30,7 @@ export const shorthandTimeUnits = {
 
 export default function AutoPruning(props: AutoPruning) {
   const [policies, setPolicies] = useState([]);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const config = useQuayConfig();
   const {
     error,
@@ -100,7 +100,7 @@ export default function AutoPruning(props: AutoPruning) {
       addAlert({
         title: 'Could not create auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorCreatePolicyDetails.toString(),
+        message: getErrorMessageFromUnknown(errorCreatePolicyDetails),
       });
     }
   }, [errorCreatePolicy]);
@@ -110,7 +110,7 @@ export default function AutoPruning(props: AutoPruning) {
       addAlert({
         title: 'Could not update auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorUpdatePolicyDetails.toString(),
+        message: getErrorMessageFromUnknown(errorUpdatePolicyDetails),
       });
     }
   }, [errorUpdatePolicy]);
@@ -120,7 +120,7 @@ export default function AutoPruning(props: AutoPruning) {
       addAlert({
         title: 'Could not delete auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorDeletePolicyDetails.toString(),
+        message: getErrorMessageFromUnknown(errorDeletePolicyDetails),
       });
     }
   }, [errorDeletePolicy]);
@@ -182,7 +182,7 @@ export default function AutoPruning(props: AutoPruning) {
   }
 
   if (!isNullOrUndefined(error)) {
-    return <RequestError message={error.toString()} />;
+    return <RequestError err={error} />;
   }
 
   return (
@@ -208,7 +208,7 @@ export default function AutoPruning(props: AutoPruning) {
           onSave={onSave}
           policy={policy}
           index={index}
-          key={index}
+          key={policy.uuid || index}
           successFetchingPolicies={successFetchingPolicies}
         />
       ))}

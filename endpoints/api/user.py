@@ -28,19 +28,23 @@ from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
     CreateRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
     SuperUserPermission,
     UserAdminPermission,
     UserReadPermission,
 )
 from data import model
 from data.billing import get_plan
-from data.database import Repository as RepositoryTable
+from data.database import Repository, RepositoryKind, RepositoryState, Star, Visibility
 from data.model.notification import delete_notifications_by_kind
 from data.model.oauth import get_assigned_authorization_for_user
 from data.users.shared import can_create_user
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
+    allow_if_any_superuser,
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
     define_json_response,
     format_date,
     internal_only,
@@ -66,7 +70,13 @@ from endpoints.decorators import (
     readonly_call_allowed,
     restricted_user_readonly_call_allowed,
 )
-from endpoints.exception import DownstreamIssue, InvalidRequest, InvalidToken, NotFound
+from endpoints.exception import (
+    DownstreamIssue,
+    InvalidRequest,
+    InvalidToken,
+    NotFound,
+    Unauthorized,
+)
 from oauth.oidc import DiscoveryFailureException
 from oauth.pkce import code_challenge, generate_code_verifier
 from util.names import parse_single_urn
@@ -211,6 +221,17 @@ def user_view(user, previous_username=None):
                 "super_user": user
                 and user == get_authenticated_user()
                 and SuperUserPermission().can()
+            }
+        )
+
+    # Add global_readonly_super_user field for read-only superusers
+    # This is separate from super_user to distinguish the two types
+    if GlobalReadOnlySuperUserPermission().can():
+        user_response.update(
+            {
+                "global_readonly_super_user": user
+                and user == get_authenticated_user()
+                and GlobalReadOnlySuperUserPermission().can()
             }
         )
 
@@ -932,8 +953,6 @@ class Signout(ApiResource):
     """
 
     @nickname("logout")
-    @readonly_call_allowed
-    @restricted_user_readonly_call_allowed
     def post(self):
         """
         Request that the current user be signed out.
@@ -1336,10 +1355,11 @@ class StarredRepositoryList(ApiResource):
         """
         List all starred repositories.
         """
-        repo_query = model.repository.get_user_starred_repositories(get_authenticated_user())
+        user = get_authenticated_user()
+        repo_query = model.repository.get_user_starred_repositories(user)
 
         repos, next_page_token = model.modelutil.paginate(
-            repo_query, RepositoryTable, page_token=page_token, limit=REPOS_PER_PAGE
+            repo_query, Repository, page_token=page_token, limit=REPOS_PER_PAGE
         )
 
         def repo_view(repo_obj):

@@ -7,6 +7,7 @@ from flask import request
 from jsonschema import ValidationError
 
 import features
+from app import app
 from data import model
 from data.database import RepoMirrorRuleType
 from data.encryption import DecryptionFailureException
@@ -21,7 +22,7 @@ from endpoints.api import (
     show_if,
     validate_json_request,
 )
-from endpoints.exception import NotFound
+from endpoints.exception import InvalidRequest, NotFound
 from util.audit import track_and_log, wrap_repository
 from util.names import parse_robot_username
 
@@ -110,6 +111,15 @@ common_properties = {
         "type": "integer",
         "minimum": 300,
         "description": "Number of seconds mirroring job will run before timing out.",
+    },
+    "architecture_filter": {
+        "type": ["array", "null"],
+        "items": {"type": "string"},
+        "description": (
+            "List of architectures to mirror from multi-arch images. "
+            "Empty array or null means mirror all architectures. "
+            "Valid values: amd64, arm64, ppc64le, s390x."
+        ),
     },
 }
 
@@ -225,6 +235,7 @@ class RepoMirrorResource(RepositoryParamResource):
                 "sync_status",
                 "root_rule",
                 "robot_username",
+                "architecture_filter",
             ],
             "properties": common_properties,
         },
@@ -277,6 +288,7 @@ class RepoMirrorResource(RepositoryParamResource):
             "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": rules},
             "robot_username": robot,
             "skopeo_timeout_interval": timeout,
+            "architecture_filter": mirror.architecture_filter or [],
         }
 
     @require_repo_admin(allow_for_superuser=True)
@@ -293,6 +305,8 @@ class RepoMirrorResource(RepositoryParamResource):
         repo = model.repository.get_repository(namespace_name, repository_name)
         if not repo:
             raise NotFound()
+
+        self._reject_if_org_mirror_configured(namespace_name)
 
         if model.repo_mirror.get_mirror(repo):
             return (
@@ -322,10 +336,25 @@ class RepoMirrorResource(RepositoryParamResource):
         )
         del data["robot_username"]
 
+        # Extract architecture_filter before passing data to enable_mirroring_for_repository
+        arch_filter = data.pop("architecture_filter", None)
+
         mirror = model.repo_mirror.enable_mirroring_for_repository(
             repo, root_rule=rule, internal_robot=robot, **data
         )
         if mirror:
+            # Set architecture filter if provided
+            if arch_filter is not None:
+                if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
+                    return {
+                        "detail": "Architecture filtering requires FEATURE_SPARSE_INDEX to be enabled."
+                    }, 400
+                try:
+                    model.repo_mirror.validate_architecture_filter(arch_filter)
+                    model.repo_mirror.set_architecture_filter(repo, arch_filter)
+                except ValidationError as e:
+                    return {"detail": str(e)}, 400
+
             track_and_log(
                 "repo_mirror_config_changed",
                 wrap_repository(repo),
@@ -349,6 +378,8 @@ class RepoMirrorResource(RepositoryParamResource):
         repo = model.repository.get_repository(namespace_name, repository_name)
         if not repo:
             raise NotFound()
+
+        self._reject_if_org_mirror_configured(namespace_name)
 
         mirror = model.repo_mirror.get_mirror(repo)
         if not mirror:
@@ -428,6 +459,25 @@ class RepoMirrorResource(RepositoryParamResource):
                     wrap_repository(repo),
                     changed="skopeo_timeout_interval",
                     to=values["skopeo_timeout_interval"],
+                )
+
+        if "architecture_filter" in values:
+            arch_filter = values["architecture_filter"]
+            if arch_filter and not app.config.get("FEATURE_SPARSE_INDEX", False):
+                return {
+                    "detail": "Architecture filtering requires FEATURE_SPARSE_INDEX to be enabled."
+                }, 400
+            try:
+                model.repo_mirror.validate_architecture_filter(arch_filter)
+            except ValidationError as e:
+                return {"detail": str(e)}, 400
+
+            if model.repo_mirror.set_architecture_filter(repo, arch_filter or []):
+                track_and_log(
+                    "repo_mirror_config_changed",
+                    wrap_repository(repo),
+                    changed="architecture_filter",
+                    to=arch_filter,
                 )
 
         if "external_registry_username" in values and "external_registry_password" in values:
@@ -547,6 +597,16 @@ class RepoMirrorResource(RepositoryParamResource):
 
         return "", 201
 
+    def _reject_if_org_mirror_configured(self, namespace_name):
+        """Raise InvalidRequest if the namespace has an org-level mirror config."""
+        namespace_user = model.user.get_namespace_user(namespace_name)
+        if namespace_user and namespace_user.organization:
+            if model.org_mirror.get_org_mirror_config(namespace_user):
+                raise InvalidRequest(
+                    "Repository mirror configuration cannot be managed when "
+                    "organization-level mirroring is configured"
+                )
+
     def _setup_robot_for_mirroring(self, namespace_name, repo_name, robot_username):
         """
         Validate robot exists and give write permissions.
@@ -563,7 +623,7 @@ class RepoMirrorResource(RepositoryParamResource):
             robot, namespace_name, repo_name
         )
 
-        permission = next(permissions, None)
+        permission = next(iter(permissions), None)
 
         if not permission or permission.role.name == "read":
             model.permission.set_user_repo_permission(

@@ -12,7 +12,7 @@ import {
   Level,
   LevelItem,
   Title,
-  Text,
+  Content,
   MenuToggle,
   MenuToggleElement,
   DropdownGroup,
@@ -77,7 +77,7 @@ const MorePlansCard: React.FunctionComponent = () => {
 
   const dropdownItems = [
     <DropdownItem
-      id="medium"
+      data-testid="plan-medium"
       key="medium"
       component="button"
       onClick={() => setPricing('medium')}
@@ -85,7 +85,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['medium']}
     </DropdownItem>,
     <DropdownItem
-      id="large"
+      data-testid="plan-large"
       key="large"
       component="button"
       onClick={() => setPricing('large')}
@@ -93,7 +93,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['large']}
     </DropdownItem>,
     <DropdownItem
-      id="XL"
+      data-testid="plan-XL"
       key="XL"
       component="button"
       onClick={() => setPricing('XL')}
@@ -101,7 +101,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['XL']}
     </DropdownItem>,
     <DropdownItem
-      id="XXL"
+      data-testid="plan-XXL"
       key="XXL"
       component="button"
       onClick={() => setPricing('XXL')}
@@ -109,7 +109,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['XXL']}
     </DropdownItem>,
     <DropdownItem
-      id="XXXL"
+      data-testid="plan-XXXL"
       key="XXXL"
       component="button"
       onClick={() => setPricing('XXXL')}
@@ -117,7 +117,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['XXXL']}
     </DropdownItem>,
     <DropdownItem
-      id="XXXXL"
+      data-testid="plan-XXXXL"
       key="XXXXL"
       component="button"
       onClick={() => setPricing('XXXXL')}
@@ -125,7 +125,7 @@ const MorePlansCard: React.FunctionComponent = () => {
       {pricingText['XXXXL']}
     </DropdownItem>,
     <DropdownItem
-      id="XXXXXL"
+      data-testid="plan-XXXXXL"
       key="XXXXXL"
       component="button"
       onClick={() => setPricing('XXXXXL')}
@@ -140,19 +140,23 @@ const MorePlansCard: React.FunctionComponent = () => {
       toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
         <MenuToggle
           ref={toggleRef}
-          id="plans-dropdown"
+          data-testid="plans-dropdown"
           onClick={onToggleClick}
           isExpanded={isOpen}
           style={{margin: '10px'}}
         >
-          <Text id="selected-pricing">{pricingText[currentPricing]}</Text>
+          <Content component="p" data-testid="selected-pricing">
+            {pricingText[currentPricing]}
+          </Content>
         </MenuToggle>
       )}
       isOpen={isOpen}
       style={{alignSelf: 'center', minWidth: '241px', maxWidth: '241px'}}
     >
       <DropdownGroup>
-        <DropdownList id="plans-dropdown-options">{dropdownItems}</DropdownList>
+        <DropdownList data-testid="plans-dropdown-options">
+          {dropdownItems}
+        </DropdownList>
       </DropdownGroup>
     </Dropdown>
   );
@@ -168,16 +172,17 @@ const MorePlansCard: React.FunctionComponent = () => {
         -Team-based permissions <br />
       </CardBody>
       <CardFooter style={{textAlign: 'center'}}>
-        <Title id="pricing-value" headingLevel="h1">
+        <Title data-testid="pricing-value" headingLevel="h1">
           {pricings[currentPricing]}
         </Title>
         <Button
+          icon={<ExternalLinkAltIcon />}
           variant="danger"
           style={{marginTop: '10px'}}
           component="a"
           href={pricingLinks[currentPricing]}
         >
-          Start free trial <ExternalLinkAltIcon />
+          Start free trial
         </Button>
       </CardFooter>
     </Card>
@@ -186,7 +191,7 @@ const MorePlansCard: React.FunctionComponent = () => {
 
 export default function Pricing() {
   const planCards = (
-    <Level hasGutter style={{margin: '24px'}} id="purchase-plans">
+    <Level hasGutter style={{margin: '24px'}} data-testid="purchase-plans">
       <LevelItem>
         <Card className="pricing-card">
           <CardTitle>
@@ -199,12 +204,13 @@ export default function Pricing() {
           <CardFooter style={{textAlign: 'center'}}>
             <Title headingLevel="h1">$15/month</Title>
             <Button
+              icon={<ExternalLinkAltIcon />}
               variant="danger"
               style={{marginTop: '10px'}}
               component="a"
               href={pricingLinks.developer}
             >
-              Purchase plan <ExternalLinkAltIcon />
+              Purchase plan
             </Button>
           </CardFooter>
         </Card>
@@ -223,12 +229,13 @@ export default function Pricing() {
           <CardFooter style={{textAlign: 'center'}}>
             <Title headingLevel="h1">$30/month</Title>
             <Button
+              icon={<ExternalLinkAltIcon />}
               variant="danger"
               style={{marginTop: '10px'}}
               component="a"
               href={pricingLinks.micro}
             >
-              Purchase plan <ExternalLinkAltIcon />
+              Purchase plan
             </Button>
           </CardFooter>
         </Card>
@@ -247,12 +254,13 @@ export default function Pricing() {
           <CardFooter style={{textAlign: 'center'}}>
             <Title headingLevel="h1">$60/month</Title>
             <Button
+              icon={<ExternalLinkAltIcon />}
               variant="danger"
               style={{marginTop: '10px'}}
               component="a"
               href={pricingLinks.small}
             >
-              Purchase plan <ExternalLinkAltIcon />
+              Purchase plan
             </Button>
           </CardFooter>
         </Card>
@@ -273,14 +281,14 @@ export default function Pricing() {
           <Title headingLevel="h2">All plans include</Title>
         </CardTitle>
         <CardBody>
-          <Text>
+          <Content component="p">
             Quay.io offers various benefits such as automated container building
             in response to git pushes, a 30-day free trial, public repositories
             with free public download pages, robot accounts for automatic
             software deployment, team management, SSL encryption, logging and
             auditing functionalities, and Invoice History for easy billing and
             purchasing management.
-          </Text>
+          </Content>
         </CardBody>
       </Card>
 
@@ -290,7 +298,7 @@ export default function Pricing() {
           toggleContent={
             <Title
               headingLevel="h3"
-              style={{color: 'var(--pf-v5-global--Color--100)'}}
+              style={{color: 'var(--pf-t--global--text--color--regular)'}}
             >
               How do I use Quay with my servers and code?
             </Title>
@@ -321,7 +329,7 @@ export default function Pricing() {
           toggleContent={
             <Title
               headingLevel="h3"
-              style={{color: 'var(--pf-v5-global--Color--100)'}}
+              style={{color: 'var(--pf-t--global--text--color--regular)'}}
             >
               How is Quay optimized for a team environment?
             </Title>
@@ -347,57 +355,61 @@ export default function Pricing() {
           <DataListItem>
             <ExpandableSection
               toggleContent={
-                <Text className="faq-expand">Can I change my plan?</Text>
+                <Content component="p" className="faq-expand">
+                  Can I change my plan?
+                </Content>
               }
             >
-              <Text className="faq-field">
+              <Content component="p" className="faq-field">
                 Yes, you can change your plan at any time and your account will
                 be pro-rated for the difference. For large organizations, Red
                 Hat Quay offers unlimited users and repos.
-              </Text>
+              </Content>
             </ExpandableSection>
           </DataListItem>
           <DataListItem>
             <ExpandableSection
               toggleContent={
-                <Text className="faq-expand">
+                <Content component="p" className="faq-expand">
                   Do you offer special plans for business or academic
-                  instututions?
-                </Text>
+                  institutions?
+                </Content>
               }
             >
-              <Text className="faq-field">
+              <Content component="p" className="faq-field">
                 Please contact us at our support email address to discuss the
                 details of your organization and intended usage.
-              </Text>
+              </Content>
             </ExpandableSection>
           </DataListItem>
           <DataListItem>
             <ExpandableSection
               toggleContent={
-                <Text className="faq-expand">Can I use Quay for free?</Text>
+                <Content component="p" className="faq-expand">
+                  Can I use Quay for free?
+                </Content>
               }
             >
-              <Text className="faq-field">
+              <Content component="p" className="faq-field">
                 Yes! We offer unlimited storage and serving of public
                 repositories. We strongly believe in the open source community
                 and will do what we can to help!
-              </Text>
+              </Content>
             </ExpandableSection>
           </DataListItem>
           <DataListItem>
             <ExpandableSection
               toggleContent={
-                <Text className="faq-expand">
+                <Content component="p" className="faq-expand">
                   What types of payment do you accept?
-                </Text>
+                </Content>
               }
             >
-              <Text className="faq-field">
+              <Content component="p" className="faq-field">
                 Quay uses Stripe as our payment processor, so we can accept any
                 of the payment options they offer, which are currently: Visa,
                 MasterCard, American Express, JCB, Discover and Diners Club.
-              </Text>
+              </Content>
             </ExpandableSection>
           </DataListItem>
         </DataList>

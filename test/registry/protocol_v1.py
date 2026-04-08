@@ -1,6 +1,9 @@
 import json
 from enum import Enum, unique
 from io import BytesIO
+from typing import Dict
+
+from digest.checksums import compute_simple, compute_tarsum
 from test.registry.protocols import (
     Failures,
     ProtocolOptions,
@@ -8,9 +11,6 @@ from test.registry.protocols import (
     PushResult,
     RegistryProtocol,
 )
-from typing import Dict
-
-from digest.checksums import compute_simple, compute_tarsum
 
 
 @unique
@@ -34,7 +34,6 @@ class V1Protocol(RegistryProtocol):
             Failures.INVALID_AUTHENTICATION: 403,
             Failures.UNAUTHENTICATED: 401,
             Failures.UNAUTHORIZED: 403,
-            Failures.APP_REPOSITORY: 405,
             Failures.SLASH_REPOSITORY: 400,
             Failures.INVALID_REPOSITORY: 400,
             Failures.DISALLOWED_LIBRARY_NAMESPACE: 400,
@@ -49,7 +48,6 @@ class V1Protocol(RegistryProtocol):
             Failures.INVALID_AUTHENTICATION: 403,
             Failures.UNAUTHENTICATED: 403,
             Failures.UNAUTHORIZED: 403,
-            Failures.APP_REPOSITORY: 404,
             Failures.ANONYMOUS_NOT_ALLOWED: 401,
             Failures.DISALLOWED_LIBRARY_NAMESPACE: 400,
             Failures.NAMESPACE_DISABLED: 400,
@@ -73,9 +71,7 @@ class V1Protocol(RegistryProtocol):
             Failures.MIRROR_ROBOT_MISSING: 400,
             Failures.READONLY_REGISTRY: 405,
         },
-        V1ProtocolSteps.GET_LAYER: {
-            Failures.GEO_BLOCKED: 403,
-        },
+        V1ProtocolSteps.GET_LAYER: {},
         V1ProtocolSteps.GET_TAG: {
             Failures.UNKNOWN_TAG: 404,
         },

@@ -8,7 +8,7 @@ export const ToolbarPagination = (props: ToolbarPaginationProps) => {
   return (
     <ToolbarItem variant="pagination">
       <Pagination
-        itemCount={props.total || props.itemsList?.length}
+        itemCount={props.total ?? props.itemsList?.length}
         perPage={props.perPage}
         id={props.id ? props.id : 'toolbar-pagination'}
         page={props.page}
@@ -22,6 +22,7 @@ export const ToolbarPagination = (props: ToolbarPaginationProps) => {
           props.bottom ? PaginationVariant.bottom : PaginationVariant.top
         }
         isCompact={props.isCompact}
+        data-testid={props['data-testid']}
       />
     </ToolbarItem>
   );
@@ -37,4 +38,5 @@ type ToolbarPaginationProps = {
   id?: string;
   total?: number;
   isCompact?: boolean;
+  'data-testid'?: string;
 };

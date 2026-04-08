@@ -1,11 +1,13 @@
 import {ReactElement, useEffect, useState} from 'react';
 import {
+  Alert,
   PageSection,
-  PageSectionVariants,
   Spinner,
   Title,
   PanelFooter,
   DropdownItem,
+  Flex,
+  FlexItem,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useRecoilState} from 'recoil';
@@ -28,11 +30,14 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {RepositoryListColumnNames} from './ColumnNames';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {useFetchOrganizationQuota} from 'src/hooks/UseQuotaManagement';
 import {bytesToHumanReadable} from 'src/resources/QuotaResource';
+import Avatar from 'src/components/Avatar';
+import {generateAvatarFromName} from 'src/libs/avatarUtils';
 
 interface RepoListHeaderProps {
   shouldRender: boolean;
@@ -44,7 +49,7 @@ function RepoListHeader(props: RepoListHeaderProps) {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Repositories</Title>
         </div>
@@ -64,10 +69,12 @@ export default function RepositoriesList(props: RepositoriesListProps) {
 
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
 
-  // Fetch quota information for the organization
-  const {organizationQuota} = useFetchOrganizationQuota(currentOrg);
-  const {repos, loading, error, search, setSearch, searchFilter} =
+  // Fetch quota information - use 'self' viewMode for user namespaces, 'organization' for orgs
+  const viewMode = props.isUserOrganization ? 'self' : 'organization';
+  const {organizationQuota} = useFetchOrganizationQuota(currentOrg, viewMode);
+  const {repos, loading, error, search, setSearch, searchFilter, truncated} =
     useRepositories(currentOrg);
 
   repos?.sort((r1, r2) => {
@@ -279,11 +286,10 @@ export default function RepositoriesList(props: RepositoriesListProps) {
 
   // Return component Error state
   if (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
     return (
       <>
         <RepoListHeader shouldRender={currentOrg === null} />
-        <RequestError message={errorMessage} />
+        <RequestError err={error} />
       </>
     );
   }
@@ -297,13 +303,15 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         title="There are no viewable repositories"
         body="Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository."
         button={
-          <ToolbarButton
-            id=""
-            buttonValue="Create Repository"
-            Modal={createRepoModal}
-            isModalOpen={isCreateRepoModalOpen}
-            setModalOpen={setCreateRepoModalOpen}
-          />
+          !isReadOnlySuperUser ? (
+            <ToolbarButton
+              id=""
+              buttonValue="Create Repository"
+              Modal={createRepoModal}
+              isModalOpen={isCreateRepoModalOpen}
+              setModalOpen={setCreateRepoModalOpen}
+            />
+          ) : undefined
         }
       />
     );
@@ -312,8 +320,20 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   return (
     <>
       <RepoListHeader shouldRender={currentOrg === null} />
-      <PageSection variant={PageSectionVariants.light}>
-        <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
+      <PageSection hasBodyWrapper={false}>
+        <ErrorModal
+          title="Repository deletion failed"
+          error={err}
+          setError={setErr}
+        />
+        {truncated && (
+          <Alert
+            variant="info"
+            isInline
+            title="Showing first 10,000 repositories. Filter by organization to narrow results."
+            style={{marginBottom: '1em'}}
+          />
+        )}
         {quayConfig?.features?.QUOTA_MANAGEMENT &&
           quayConfig?.features?.EDIT_QUOTA &&
           currentOrg && (
@@ -329,14 +349,14 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           total={paginationProps.total}
           currentOrg={currentOrg}
           pageModal={createRepoModal}
-          showPageButton={true}
+          showPageButton={!isReadOnlySuperUser}
           buttonText="Create Repository"
           isModalOpen={isCreateRepoModalOpen}
           setModalOpen={setCreateRepoModalOpen}
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
-          kebabItems={kebabItems}
-          selectedRepoNames={selectedRepoNames}
+          kebabItems={!isReadOnlySuperUser ? kebabItems : []}
+          selectedRepoNames={!isReadOnlySuperUser ? selectedRepoNames : []}
           deleteModal={deleteRepositoryModal}
           deleteKebabIsOpen={isDeleteModalOpen}
           makePublicModalOpen={makePublicModalOpen}
@@ -356,7 +376,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
-              <Th />
+              {!isReadOnlySuperUser && <Th />}
               <Th modifier="wrap" sort={getSortableSort(0)}>
                 {RepositoryListColumnNames.name}
               </Th>
@@ -387,37 +407,51 @@ export default function RepositoriesList(props: RepositoriesListProps) {
             ) : (
               paginatedRepositoryList.map((repo, rowIndex) => (
                 <Tr key={rowIndex}>
-                  <Td
-                    select={{
-                      rowIndex,
-                      onSelect: (_event, isSelecting) =>
-                        onSelectRepo(repo, rowIndex, isSelecting),
-                      isSelected: isRepoSelected(repo),
-                      isDisabled: !isRepoSelectable(repo),
-                    }}
-                  />
+                  {!isReadOnlySuperUser && (
+                    <Td
+                      select={{
+                        rowIndex,
+                        onSelect: (_event, isSelecting) =>
+                          onSelectRepo(repo, rowIndex, isSelecting),
+                        isSelected: isRepoSelected(repo),
+                        isDisabled: !isRepoSelectable(repo),
+                      }}
+                    />
+                  )}
                   <Td dataLabel={RepositoryListColumnNames.name}>
-                    {currentOrg == null ? (
-                      <Link
-                        to={getRepoDetailPath(
-                          location.pathname,
-                          repo.namespace,
-                          repo.name,
+                    <Flex alignItems={{default: 'alignItemsCenter'}}>
+                      <FlexItem spacer={{default: 'spacerSm'}}>
+                        <Avatar
+                          avatar={generateAvatarFromName(
+                            currentOrg == null ? repo.namespace : currentOrg,
+                          )}
+                          size="sm"
+                        />
+                      </FlexItem>
+                      <FlexItem>
+                        {currentOrg == null ? (
+                          <Link
+                            to={getRepoDetailPath(
+                              location.pathname,
+                              repo.namespace,
+                              repo.name,
+                            )}
+                          >
+                            {repo.namespace}/{repo.name}
+                          </Link>
+                        ) : (
+                          <Link
+                            to={getRepoDetailPath(
+                              location.pathname,
+                              repo.namespace,
+                              repo.name,
+                            )}
+                          >
+                            {repo.name}
+                          </Link>
                         )}
-                      >
-                        {repo.namespace}/{repo.name}
-                      </Link>
-                    ) : (
-                      <Link
-                        to={getRepoDetailPath(
-                          location.pathname,
-                          repo.namespace,
-                          repo.name,
-                        )}
-                      >
-                        {repo.name}
-                      </Link>
-                    )}
+                      </FlexItem>
+                    </Flex>
                   </Td>
                   <Td dataLabel={RepositoryListColumnNames.visibility}>
                     {repo.is_public ? 'public' : 'private'}
@@ -476,4 +510,5 @@ export interface RepoListTableItem {
 
 interface RepositoriesListProps {
   organizationName: string;
+  isUserOrganization?: boolean;
 }

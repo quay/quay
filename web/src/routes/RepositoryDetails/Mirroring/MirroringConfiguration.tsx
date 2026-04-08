@@ -5,7 +5,7 @@ import {
   FormHelperText,
   TextInput,
   Button,
-  Text,
+  Content,
   Title,
   InputGroup,
   InputGroupText,
@@ -18,7 +18,7 @@ import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 import EntitySearch from 'src/components/EntitySearch';
 import {Entity} from 'src/resources/UserResource';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant} from 'src/contexts/UIContext';
 import {
   MirroringConfigResponse,
   getMirrorConfig,
@@ -26,6 +26,8 @@ import {
   syncMirror,
 } from 'src/resources/MirroringResource';
 import {MirroringFormData} from './types';
+import {FormDateTimePicker} from 'src/components/FormDateTimePicker';
+import {ArchitectureFilter} from './ArchitectureFilter';
 
 interface MirroringConfigurationProps {
   control: Control<MirroringFormData>;
@@ -47,6 +49,8 @@ interface MirroringConfigurationProps {
     title: string;
     message?: string;
   }) => void;
+  architectureFilter: string[];
+  setArchitectureFilter: (archs: string[]) => void;
 }
 
 export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
@@ -65,6 +69,8 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
   robotOptions,
   setConfig,
   addAlert,
+  architectureFilter,
+  setArchitectureFilter,
 }) => {
   return (
     <>
@@ -128,6 +134,12 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         data-testid="tags-input"
       />
 
+      <ArchitectureFilter
+        selectedArchitectures={architectureFilter}
+        onChange={setArchitectureFilter}
+        isDisabled={config ? !formValues.isEnabled : false}
+      />
+
       <FormGroup
         label={config ? 'Next Sync Date' : 'Start Date'}
         fieldId="sync_start_date"
@@ -145,22 +157,20 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
               }}
               render={({field: {value, onChange}}) => (
                 <div style={{flex: 1}}>
-                  <TextInput
-                    type="datetime-local"
-                    id="sync_start_date"
+                  <FormDateTimePicker
                     value={value}
-                    onChange={(_event, newValue) => onChange(newValue)}
-                    validated={
-                      errors.syncStartDate
-                        ? ValidatedOptions.error
-                        : ValidatedOptions.default
-                    }
+                    onChange={onChange}
+                    dateAriaLabel="Sync start date"
+                    timeAriaLabel="Sync start time"
                   />
                   {errors.syncStartDate && (
                     <FormHelperText>
-                      <Text component="p" className="pf-m-error pf-v5-u-mt-sm">
+                      <Content
+                        component="p"
+                        className="pf-m-error pf-v6-u-mt-sm"
+                      >
                         {errors.syncStartDate.message}
-                      </Text>
+                      </Content>
                     </FormHelperText>
                   )}
                 </div>
@@ -197,15 +207,31 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
             </Button>
           </div>
         ) : (
-          <FormTextInput
+          <Controller
             name="syncStartDate"
             control={control}
-            errors={errors}
-            label=""
-            fieldId="sync_start_date"
-            type="datetime-local"
-            required
-            isStack={false}
+            rules={{
+              required: 'This field is required',
+              validate: (value) =>
+                value?.trim() !== '' || 'This field is required',
+            }}
+            render={({field: {value, onChange}}) => (
+              <>
+                <FormDateTimePicker
+                  value={value}
+                  onChange={onChange}
+                  dateAriaLabel="Sync start date"
+                  timeAriaLabel="Sync start time"
+                />
+                {errors.syncStartDate && (
+                  <FormHelperText>
+                    <Content component="p" className="pf-m-error">
+                      {errors.syncStartDate.message}
+                    </Content>
+                  </FormHelperText>
+                )}
+              </>
+            )}
           />
         )}
       </FormGroup>
@@ -214,7 +240,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         <InputGroup
           onPointerEnterCapture={() => setIsHovered(true)}
           onPointerLeaveCapture={() => setIsHovered(false)}
-          className={isHovered ? 'pf-v5-u-background-color-200' : ''}
+          className={isHovered ? 'pf-v6-u-background-color-200' : ''}
         >
           <Controller
             name="syncValue"
@@ -287,9 +313,9 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         </InputGroup>
         {errors.syncValue && (
           <FormHelperText>
-            <Text component="p" className="pf-m-error">
+            <Content component="p" className="pf-m-error">
               {errors.syncValue.message}
-            </Text>
+            </Content>
           </FormHelperText>
         )}
       </FormGroup>
@@ -318,7 +344,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
             <InputGroup
               onPointerEnterCapture={() => setIsHovered(true)}
               onPointerLeaveCapture={() => setIsHovered(false)}
-              className={isHovered ? 'pf-v5-u-background-color-200' : ''}
+              className={isHovered ? 'pf-v6-u-background-color-200' : ''}
             >
               <TextInput
                 type="number"
@@ -344,16 +370,16 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         />
         {errors.skopeoTimeoutInterval && (
           <FormHelperText>
-            <Text component="p" className="pf-m-error">
+            <Content component="p" className="pf-m-error">
               {errors.skopeoTimeoutInterval.message}
-            </Text>
+            </Content>
           </FormHelperText>
         )}
         <FormHelperText>
-          <Text component="p">
+          <Content component="p">
             Minimum timeout length: 300 seconds (5 minutes). Maximum timeout
             length: 43200 seconds (12 hours).
-          </Text>
+          </Content>
         </FormHelperText>
       </FormGroup>
 
@@ -371,7 +397,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
               <EntitySearch
                 id="robot-user-select"
                 org={namespace}
-                includeTeams={true}
+                includeTeams={false}
                 onSelect={(robot: Entity) => {
                   setSelectedRobot(robot);
                   field.onChange(robot.name);
@@ -389,14 +415,14 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
                   })
                 }
                 defaultOptions={robotOptions}
-                placeholderText="Select a team or user..."
+                placeholderText="Select a robot user..."
                 data-testid="robot-user-select"
               />
               {errors.robotUsername && (
                 <FormHelperText>
-                  <Text component="p" className="pf-m-error">
+                  <Content component="p" className="pf-m-error">
                     {errors.robotUsername.message}
-                  </Text>
+                  </Content>
                 </FormHelperText>
               )}
             </>

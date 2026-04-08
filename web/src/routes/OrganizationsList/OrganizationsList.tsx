@@ -1,14 +1,16 @@
 import {
+  Alert,
   Button,
   DropdownItem,
-  Modal,
-  ModalVariant,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Title,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
-import PropTypes from 'prop-types';
 import {CubesIcon} from '@patternfly/react-icons';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
@@ -27,9 +29,10 @@ import RequestError from 'src/components/errors/RequestError';
 import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
 import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
-import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {
   useRegistrySize,
   useQueueRegistrySizeCalculation,
@@ -42,10 +45,25 @@ import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {OrganizationToolBar} from './OrganizationToolBar';
 import OrgTableData from './OrganizationsListTableData';
 import './css/Organizations.scss';
+import {IRegistrySize} from 'src/resources/RegistrySizeResource';
 
 export interface OrganizationsTableItem {
   name: string;
   isUser: boolean;
+  userEnabled?: boolean; // Only used when isUser is true
+  userSuperuser?: boolean; // Only used when isUser is true
+  userGlobalReadonlySuperuser?: boolean; // Only used when isUser is true
+}
+
+interface OrgListHeaderProps {
+  registrySize: IRegistrySize | null;
+  formatLastRan: (lastRan: number | null) => string;
+  getRegistrySizeStatus: () => string;
+  handleCalculateClick: () => void;
+  isQueuing: boolean;
+  showRegistrySize: boolean;
+  isExternalAuth: boolean;
+  isSuperUser: boolean;
 }
 
 function OrgListHeader({
@@ -55,17 +73,19 @@ function OrgListHeader({
   handleCalculateClick,
   isQueuing,
   showRegistrySize,
-}) {
+  isExternalAuth,
+  isSuperUser,
+}: OrgListHeaderProps) {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
-        <div className="co-m-nav-title--row pf-v5-u-display-flex pf-v5-u-justify-content-space-between pf-v5-u-align-items-flex-end">
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
+        <div className="co-m-nav-title--row pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-flex-end">
           <Title headingLevel="h1">Organizations</Title>
 
           {/* Registry Size Display - Inline with header for superusers */}
           {showRegistrySize && (
-            <div className="pf-v5-u-font-size-sm pf-v5-u-mb-xs">
+            <div className="pf-v6-u-font-size-sm pf-v6-u-mb-xs">
               <span>
                 Total Registry Size:{' '}
                 {registrySize
@@ -79,7 +99,7 @@ function OrgListHeader({
                 size="sm"
                 onClick={handleCalculateClick}
                 isDisabled={isQueuing}
-                className="pf-v5-u-ml-md"
+                className="pf-v6-u-ml-md"
               >
                 {isQueuing ? 'Calculating...' : 'Calculate'}
               </Button>
@@ -87,34 +107,48 @@ function OrgListHeader({
           )}
         </div>
       </PageSection>
+      {isSuperUser && isExternalAuth && (
+        <PageSection hasBodyWrapper={false}>
+          <Alert
+            variant="info"
+            isInline
+            title="External authentication configured"
+            data-testid="external-auth-alert"
+          >
+            Red Hat Quay is configured to use external authentication, so users
+            can only be created in that system
+          </Alert>
+        </PageSection>
+      )}
     </>
   );
 }
-
-OrgListHeader.propTypes = {
-  registrySize: PropTypes.object,
-  formatLastRan: PropTypes.func.isRequired,
-  getRegistrySizeStatus: PropTypes.func.isRequired,
-  handleCalculateClick: PropTypes.func.isRequired,
-  isQueuing: PropTypes.bool.isRequired,
-  showRegistrySize: PropTypes.bool.isRequired,
-};
 
 export default function OrganizationsList() {
   const [isOrganizationModalOpen, setOrganizationModalOpen] = useState(false);
   const [selectedOrganization, setSelectedOrganization] =
     useRecoilState(selectedOrgsState);
-  const [err, setErr] = useState<string[]>();
+  const [deletionErr, setDeletionErr] = useState<string[]>();
+  const [registryCalcErr, setRegistryCalcErr] = useState<string[]>();
   const [deleteModalIsOpen, setDeleteModalIsOpen] = useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
   const [isCalculateModalOpen, setCalculateModalOpen] = useState(false);
 
   // Get current user for superuser check
-  const {user} = useCurrentUser();
+  const {user, isSuperUser} = useCurrentUser();
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const quayConfig = useQuayConfig();
 
+  // Determine authentication type for external auth alert
+  const isExternalAuth =
+    quayConfig?.config?.AUTHENTICATION_TYPE &&
+    quayConfig.config.AUTHENTICATION_TYPE !== 'Database' &&
+    quayConfig.config.AUTHENTICATION_TYPE !== 'AppToken';
+
   // Registry size data (only fetch if superuser)
-  const {registrySize, refetch: refetchRegistrySize} = useRegistrySize();
+  const {registrySize, refetch: refetchRegistrySize} = useRegistrySize(
+    isSuperUser === true,
+  );
 
   // Registry size calculation mutation
   const {queueCalculation, isQueuing} = useQueueRegistrySizeCalculation({
@@ -124,7 +158,7 @@ export default function OrganizationsList() {
       setTimeout(() => refetchRegistrySize(), 1000);
     },
     onError: (errorMsg) => {
-      setErr([errorMsg]);
+      setRegistryCalcErr([errorMsg]);
       setCalculateModalOpen(false);
     },
   });
@@ -136,6 +170,8 @@ export default function OrganizationsList() {
     search,
     setSearch,
     deleteOrganizations,
+    deleteUsers,
+    userEmailMap,
   } = useOrganizations();
 
   const searchFilter = useRecoilValue(searchOrgsFilterState);
@@ -189,7 +225,28 @@ export default function OrganizationsList() {
     initialPerPage: 20,
   });
 
-  const isOrgSelectable = (org) => org.name !== ''; // Arbitrary logic for this example
+  const isOrgSelectable = (org) => {
+    if (org.name === '') return false;
+
+    // For read-only superusers, only allow selection of orgs/users they own
+    if (isReadOnlySuperUser) {
+      // Check if it's their own user account
+      if (org.isUser && org.name === user?.username) {
+        return true;
+      }
+      // Check if it's an organization they're a member of
+      if (
+        !org.isUser &&
+        user?.organizations?.some((o) => o.name === org.name)
+      ) {
+        return true;
+      }
+      // Otherwise, it's from the superuser endpoint - cannot select/delete
+      return false;
+    }
+
+    return true; // Regular users and full superusers can select anything
+  };
 
   // Logic for handling row-wise checkbox selection in <Td>
   const isOrganizationSelected = (ns: OrganizationsTableItem) =>
@@ -242,9 +299,30 @@ export default function OrganizationsList() {
   };
 
   const handleOrgDeletion = async () => {
-    const orgs = selectedOrganization.map((org) => org.name);
+    // Separate selected items into users and organizations
+    const users = selectedOrganization
+      .filter((item) => item.isUser)
+      .map((item) => item.name);
+    const orgs = selectedOrganization
+      .filter((item) => !item.isUser)
+      .map((item) => item.name);
+
     try {
-      await deleteOrganizations(orgs);
+      // Delete both users and organizations in parallel
+      const promises = [];
+      if (orgs.length > 0) {
+        promises.push(deleteOrganizations(orgs));
+      }
+      if (users.length > 0) {
+        promises.push(deleteUsers(users));
+      }
+
+      const results = await Promise.allSettled(promises);
+      const failures = results.filter((r) => r.status === 'rejected');
+      if (failures.length > 0) {
+        throw failures[0].reason;
+      }
+
       setDeleteModalIsOpen(!deleteModalIsOpen);
       setSelectedOrganization([]);
     } catch (err) {
@@ -253,16 +331,17 @@ export default function OrganizationsList() {
         const errMessages = [];
         // TODO: Would like to use for .. of instead of foreach
         // typescript complains saying we're using version prior to es6?
-        err.getErrors().forEach((error, org) => {
+        err.getErrors().forEach((error, name) => {
           errMessages.push(
-            addDisplayError(`Failed to delete org ${org}`, error.error),
+            addDisplayError(`Failed to delete ${name}`, error.error),
           );
         });
-        setErr(errMessages);
+        setDeletionErr(errMessages);
       } else {
-        setErr([addDisplayError('Failed to delete orgs', err)]);
+        setDeletionErr([
+          addDisplayError('Failed to delete selected items', err),
+        ]);
       }
-      setDeleteModalIsOpen(!deleteModalIsOpen);
       setSelectedOrganization([]);
     }
   };
@@ -309,7 +388,7 @@ export default function OrganizationsList() {
           (selectedOrg) => org.name === selectedOrg.name,
         ),
       )}
-      resourceName={'organizations'}
+      resourceName={'selected items'}
     />
   );
   useEffect(() => {
@@ -344,6 +423,8 @@ export default function OrganizationsList() {
           handleCalculateClick={() => undefined}
           isQueuing={false}
           showRegistrySize={false}
+          isExternalAuth={!!isExternalAuth}
+          isSuperUser={!!isSuperUser}
         />
         <LoadingPage />
       </>
@@ -361,8 +442,10 @@ export default function OrganizationsList() {
           handleCalculateClick={() => undefined}
           isQueuing={false}
           showRegistrySize={false}
+          isExternalAuth={!!isExternalAuth}
+          isSuperUser={!!user?.super_user}
         />
-        <RequestError message={error as string} />
+        <RequestError err={error} />
       </>
     );
   }
@@ -378,6 +461,8 @@ export default function OrganizationsList() {
           handleCalculateClick={() => undefined}
           isQueuing={false}
           showRegistrySize={false}
+          isExternalAuth={!!isExternalAuth}
+          isSuperUser={!!user?.super_user}
         />
         <Empty
           icon={CubesIcon}
@@ -406,14 +491,25 @@ export default function OrganizationsList() {
         handleCalculateClick={handleCalculateClick}
         isQueuing={isQueuing}
         showRegistrySize={
-          user?.super_user &&
-          quayConfig?.features?.QUOTA_MANAGEMENT &&
-          quayConfig?.features?.EDIT_QUOTA
+          isSuperUser === true &&
+          quayConfig?.features?.QUOTA_MANAGEMENT === true &&
+          quayConfig?.features?.EDIT_QUOTA === true
         }
+        isExternalAuth={!!isExternalAuth}
+        isSuperUser={!!user?.super_user}
       />
-      <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
+      <ErrorModal
+        title="Deletion failed"
+        error={deletionErr}
+        setError={setDeletionErr}
+      />
+      <ErrorModal
+        title="Registry calculation failed"
+        error={registryCalcErr}
+        setError={setRegistryCalcErr}
+      />
 
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <OrganizationToolBar
           search={search}
           setSearch={setSearch}
@@ -435,6 +531,7 @@ export default function OrganizationsList() {
           setSelectedOrganization={setSelectedOrganization}
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
+          isExternalAuth={!!isExternalAuth}
         />
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
@@ -443,28 +540,47 @@ export default function OrganizationsList() {
               <Th sort={getSortableSort(1)} modifier="wrap">
                 {ColumnNames.name}
               </Th>
+              {isSuperUser && quayConfig?.features?.MAILING && (
+                <Th>{ColumnNames.adminEmail}</Th>
+              )}
               <Th>{ColumnNames.repoCount}</Th>
               <Th>{ColumnNames.teamsCount}</Th>
               <Th>{ColumnNames.membersCount}</Th>
               <Th>{ColumnNames.robotsCount}</Th>
               <Th>{ColumnNames.lastModified}</Th>
+              {quayConfig?.features?.QUOTA_MANAGEMENT &&
+                quayConfig?.features?.EDIT_QUOTA && <Th>{ColumnNames.size}</Th>}
+              {isSuperUser && !isReadOnlySuperUser && (
+                <Th>{ColumnNames.options}</Th>
+              )}
             </Tr>
           </Thead>
           <Tbody>
             {paginatedOrganizationsList?.map((org, rowIndex) => (
               <Tr key={org.name}>
-                <Td
-                  select={{
-                    rowIndex,
-                    onSelect: (_event, isSelecting) =>
-                      onSelectOrganization(org, rowIndex, isSelecting),
-                    isSelected: isOrganizationSelected(org),
-                    isDisabled: !isOrgSelectable(org),
-                  }}
-                />
+                {isOrgSelectable(org) ? (
+                  <Td
+                    select={{
+                      rowIndex,
+                      onSelect: (_event, isSelecting) =>
+                        onSelectOrganization(org, rowIndex, isSelecting),
+                      isSelected: isOrganizationSelected(org),
+                    }}
+                  />
+                ) : (
+                  <Td />
+                )}
                 <OrgTableData
                   name={org.name}
                   isUser={org.isUser}
+                  userEnabled={org.userEnabled}
+                  userSuperuser={org.userSuperuser}
+                  userGlobalReadonlySuperuser={org.userGlobalReadonlySuperuser}
+                  userEmail={org.isUser ? userEmailMap[org.name] : undefined}
+                  quota_report={org.quota_report}
+                  selectedOrganization={selectedOrganization}
+                  setSelectedOrganization={setSelectedOrganization}
+                  avatar={org.avatar}
                 ></OrgTableData>
               </Tr>
             ))}
@@ -482,10 +598,17 @@ export default function OrganizationsList() {
       {/* Calculate Registry Size Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Confirm Registry Size Calculation"
         isOpen={isCalculateModalOpen}
         onClose={() => setCalculateModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Confirm Registry Size Calculation" />
+        <ModalBody>
+          <p>Are you sure you want to queue registry size calculation?</p>
+          <p style={{color: 'red', marginTop: '1em'}}>
+            This is a database intensive operation. Use with caution.
+          </p>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="confirm"
             variant="primary"
@@ -493,20 +616,15 @@ export default function OrganizationsList() {
             isDisabled={isQueuing}
           >
             {isQueuing ? 'Queuing...' : 'Calculate'}
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setCalculateModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <p>Are you sure you want to queue registry size calculation?</p>
-        <p style={{color: 'red', marginTop: '1em'}}>
-          This is a database intensive operation. Use with caution.
-        </p>
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

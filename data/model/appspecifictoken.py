@@ -58,6 +58,13 @@ def list_tokens(user):
     return AppSpecificAuthToken.select().where(AppSpecificAuthToken.user == user)
 
 
+def list_all_tokens():
+    """
+    Lists all tokens for all users. Should only be used by superusers.
+    """
+    return AppSpecificAuthToken.select()
+
+
 def revoke_token(token):
     """
     Revokes an app specific token by deleting it.
@@ -86,6 +93,18 @@ def get_expiring_tokens(user, soon):
     soon_datetime = datetime.now() + soon
     return AppSpecificAuthToken.select().where(
         AppSpecificAuthToken.user == user,
+        AppSpecificAuthToken.expiration <= soon_datetime,
+        AppSpecificAuthToken.expiration > datetime.now(),
+    )
+
+
+def get_all_expiring_tokens(soon):
+    """
+    Returns all tokens from all users that will be expiring "soon", where soon is defined
+    by the soon parameter (a timedelta from now). Should only be used by superusers.
+    """
+    soon_datetime = datetime.now() + soon
+    return AppSpecificAuthToken.select().where(
         AppSpecificAuthToken.expiration <= soon_datetime,
         AppSpecificAuthToken.expiration > datetime.now(),
     )

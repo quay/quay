@@ -1,4 +1,4 @@
-import {Popover, ClipboardCopy, Text} from '@patternfly/react-core';
+import {Popover, ClipboardCopy, Content} from '@patternfly/react-core';
 import {useRecoilState} from 'recoil';
 import {currentOpenPopoverState} from 'src/atoms/TagListState';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -21,44 +21,52 @@ export default function TablePopover(props: TablePopoverProps) {
       headerContent={<div>Fetch Tag</div>}
       bodyContent={
         <div>
-          <Text style={{fontWeight: 'bold'}}>Podman Pull (By Tag)</Text>
+          <Content component="p" style={{fontWeight: 'bold'}}>
+            Podman Pull (By Tag)
+          </Content>
           <ClipboardCopy
             data-testid="copy-tag-podman"
             isReadOnly
             hoverTip="Copy"
             clickTip="Copied"
           >
-            podman pull {domain}/{props.org}/{props.repo}:{props.tag}
+            {`podman pull ${domain}/${props.org}/${props.repo}:${props.tag}`}
           </ClipboardCopy>
           <br />
-          <Text style={{fontWeight: 'bold'}}>Podman Pull (By Digest)</Text>
+          <Content component="p" style={{fontWeight: 'bold'}}>
+            Podman Pull (By Digest)
+          </Content>
           <ClipboardCopy
             data-testid="copy-digest-podman"
             isReadOnly
             hoverTip="Copy"
             clickTip="Copied"
           >
-            podman pull {domain}/{props.org}/{props.repo}@{props.digest}
+            {`podman pull ${domain}/${props.org}/${props.repo}@${props.digest}`}
           </ClipboardCopy>
           <br />
-          <Text style={{fontWeight: 'bold'}}>Docker Pull (By Tag)</Text>
+          <Content component="p" style={{fontWeight: 'bold'}}>
+            Docker Pull (By Tag)
+          </Content>
           <ClipboardCopy
             data-testid="copy-tag-docker"
             isReadOnly
             hoverTip="Copy"
             clickTip="Copied"
           >
-            docker pull {domain}/{props.org}/{props.repo}:{props.tag}
+            {`docker pull ${domain}/${props.org}/${props.repo}:${props.tag}`}
           </ClipboardCopy>
           <br />
-          <Text style={{fontWeight: 'bold'}}>Docker Pull (By Digest)</Text>
+          <Content component="p" style={{fontWeight: 'bold'}}>
+            Docker Pull (By Digest)
+          </Content>
           <ClipboardCopy
             data-testid="copy-digest-docker"
             isReadOnly
             hoverTip="Copy"
             clickTip="Copied"
           >
-            docker pull {domain}/{props.org}/{props.repo}@{props.digest}
+            {`docker pull ${domain}/${props.org}/${props.repo}@${props.digest}`}
           </ClipboardCopy>
         </div>
       }

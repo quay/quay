@@ -50,11 +50,11 @@ def registry_services():
         "manifestbackfillworker": {"autostart": "true"},
         "manifestsubjectbackfillworker": {"autostart": "true"},
         "securityscanningnotificationworker": {"autostart": "true"},
-        "config-editor": {"autostart": "false"},
         "quotatotalworker": {"autostart": "true"},
         "quotaregistrysizeworker": {"autostart": "true"},
         "autopruneworker": {"autostart": "true"},
         "proxycacheblobworker": {"autostart": "true"},
+        "pullstatsredisflushworker": {"autostart": "true"},
     }
 
 
@@ -91,11 +91,11 @@ def config_services():
         "manifestbackfillworker": {"autostart": "false"},
         "manifestsubjectbackfillworker": {"autostart": "false"},
         "securityscanningnotificationworker": {"autostart": "false"},
-        "config-editor": {"autostart": "true"},
         "quotatotalworker": {"autostart": "false"},
         "quotaregistrysizeworker": {"autostart": "false"},
         "autopruneworker": {"autostart": "false"},
         "proxycacheblobworker": {"autostart": "false"},
+        "pullstatsredisflushworker": {"autostart": "false"},
     }
 
 
@@ -137,6 +137,7 @@ if __name__ == "__main__":
         config = registry_services()
     limit_services(config, QUAY_SERVICES)
     override_services(config, QUAY_OVERRIDE_SERVICES)
+
     generate_supervisord_config(
         os.path.join(QUAYCONF_DIR, "supervisord.conf"),
         config,

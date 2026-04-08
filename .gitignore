@@ -117,7 +117,20 @@ web/yarn-error.log*
 web/cypress/videos
 web/cypress/screenshots
 web/cypress/downloads
+web/cypress/reports
+
+# Playwright files
+web/playwright-report/
+web/test-results/
+web/.playwright/
 
 # marketplace
 local-dev/stack/quay-marketplace-api.crt
 local-dev/stack/quay-marketplace-api.key
+
+# Go build output
+bin/
+
+# claude
+.claude/plans
+.claude/implementation

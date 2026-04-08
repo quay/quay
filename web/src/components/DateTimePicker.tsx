@@ -1,8 +1,16 @@
 import React, {useState} from 'react';
 import {DatePicker, TimePicker} from '@patternfly/react-core';
-import PropTypes from 'prop-types';
+import {formatTimeForPicker, is24HourFormat} from 'src/libs/dateTimeUtils';
 
-export default function DateTimePicker(props) {
+interface DateTimePickerProps {
+  id?: string;
+  value: Date | null;
+  setValue: React.Dispatch<React.SetStateAction<Date | null>>;
+  futureDatesOnly?: boolean;
+  initialDate?: Date;
+}
+
+export default function DateTimePicker(props: DateTimePickerProps) {
   const {id, value, setValue, futureDatesOnly, initialDate} = props;
   const userLocale = navigator.language;
   const date = value ?? initialDate;
@@ -41,14 +49,6 @@ export default function DateTimePicker(props) {
     return '';
   }
 
-  function getFormattedTime(date) {
-    return date
-      ? `${date.getHours().toString().padStart(2, '0')}:${date
-          .getMinutes()
-          .toString()
-          .padStart(2, '0')}`
-      : '';
-  }
   return (
     <span id={id || 'date-time-picker'}>
       <DatePicker
@@ -58,18 +58,11 @@ export default function DateTimePicker(props) {
       />
       <TimePicker
         placeholder="Select time"
-        time={getFormattedTime(date)}
+        time={formatTimeForPicker(date)}
         onChange={onTimeChange}
-        is24Hour
+        is24Hour={is24HourFormat()}
+        stepMinutes={1}
       />
     </span>
   );
 }
-
-DateTimePicker.propTypes = {
-  id: PropTypes.string,
-  value: PropTypes.instanceOf(Date),
-  setValue: PropTypes.func.isRequired,
-  futureDatesOnly: PropTypes.bool,
-  initialDate: PropTypes.instanceOf(Date),
-};

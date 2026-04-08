@@ -22,6 +22,11 @@ from util.names import parse_robot_username
 # TODO: Move these to the configuration
 MAX_SYNC_RETRIES = 3
 
+# Valid architectures for multi-arch image filtering
+# These match the GOARCH values used by OCI/Docker
+# For now we only care about the most common arches for openshift
+VALID_ARCHITECTURES = {"amd64", "arm64", "ppc64le", "s390x"}
+
 # We need to increase the MAX_SYNC_DURATION because for certain very big images, 2 hours might not be enough
 # Previous value: 2 hours
 MAX_SYNC_DURATION = 60 * 60 * 12  # 12 Hours
@@ -364,6 +369,7 @@ def update_with_transaction(mirror, **kwargs):
         "external_registry_username",
         "external_registry_password",
         "external_registry_config",
+        "architecture_filter",
         "sync_interval",
         "sync_start_date",
         "sync_expiration_date",
@@ -577,6 +583,64 @@ def set_mirroring_robot(repository, robot):
     mirror = get_mirror(repository)
     mirror.internal_robot = robot
     mirror.save()
+
+
+# -------------------- Architecture Filter --------------------------#
+
+
+def validate_architecture_filter(arch_filter):
+    """
+    Validate architecture filter values.
+
+    Args:
+        arch_filter: List of architecture strings to validate, or None/empty.
+
+    Raises:
+        ValidationError: If arch_filter is not a list or contains invalid architectures.
+    """
+    if not arch_filter:
+        return  # Empty/null is valid (means all architectures)
+
+    if not isinstance(arch_filter, list):
+        raise ValidationError("architecture_filter must be an array")
+
+    invalid = set(arch_filter) - VALID_ARCHITECTURES
+    if invalid:
+        raise ValidationError(f"Invalid architectures: {', '.join(sorted(invalid))}")
+
+
+def get_architecture_filter(repository):
+    """
+    Returns the architecture filter for repository mirror.
+
+    Args:
+        repository: The repository to get the architecture filter for.
+
+    Returns:
+        List of architecture strings, empty list if not configured,
+        or None if the repository has no mirror configuration.
+    """
+    mirror = get_mirror(repository)
+    if mirror is None:
+        return None
+    return mirror.architecture_filter or []
+
+
+def set_architecture_filter(repository, architectures):
+    """
+    Sets the architecture filter for repository mirror.
+
+    Args:
+        repository: The repository to set the architecture filter for.
+        architectures: List of architecture strings (e.g., ["amd64", "arm64"]).
+                      Empty list means mirror all architectures.
+
+    Returns:
+        True if the update was successful, False otherwise.
+    """
+    validate_architecture_filter(architectures)
+    mirror = get_mirror(repository)
+    return bool(update_with_transaction(mirror, architecture_filter=architectures))
 
 
 # -------------------- Mirroring Rules --------------------------#

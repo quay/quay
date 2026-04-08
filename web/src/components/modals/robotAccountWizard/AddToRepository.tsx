@@ -1,6 +1,5 @@
-import {useRecoilState} from 'recoil';
-import {searchReposState} from 'src/atoms/RepositoryState';
 import {useEffect, useState} from 'react';
+import {OrgSearchState} from 'src/components/toolbar/SearchTypes';
 import {
   Dropdown,
   DropdownItem,
@@ -8,9 +7,8 @@ import {
   MenuToggleElement,
   PageSection,
   PanelFooter,
-  Text,
-  TextContent,
-  TextVariants,
+  Content,
+  ContentVariants,
   ToggleGroup,
   ToggleGroupItem,
   ToggleGroupItemProps,
@@ -41,7 +39,12 @@ export default function AddToRepository(props: AddToRepositoryProps) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
   const [tableItems, setTableItems] = useState([]);
-  const [search, setSearch] = useRecoilState(searchReposState);
+  const [search, setSearch] = useState<OrgSearchState>({
+    query: '',
+    field: 'Repository',
+    isRegEx: false,
+    currentOrganization: null,
+  });
   const [robotRepoPermsMapping, setRobotRepoPermsMapping] = useState({});
   const [isUserEntry, setUserEntry] = useState(false);
   const [updatedRepoPerms, setUpdatedRepoPerms] = useState({});
@@ -87,7 +90,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
       setTableItems(props.repos);
     }
     updateTable();
-  }, [props.robotPermissions]);
+  }, [props.robotPermissions, props.repos]);
 
   const updateTable = () => {
     if (!props.robotPermissions?.length) {
@@ -214,10 +217,13 @@ export default function AddToRepository(props: AddToRepositoryProps) {
 
   return (
     <>
-      <TextContent>
-        <Text component={TextVariants.h1}>Add to repository (optional)</Text>
-      </TextContent>
+      <Content>
+        <Content component={ContentVariants.h1}>
+          Add to repository (optional)
+        </Content>
+      </Content>
       <PageSection
+        hasBodyWrapper={false}
         {...(props.isWizardStep && {padding: {default: 'noPadding'}})}
       >
         <Toolbar>
@@ -317,7 +323,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
                       rowIndex={rowIndex}
                       setUserEntry={setUserEntry}
                       isUserEntry={isUserEntry}
-                      wizarStep={false}
+                      wizarStep={props.isWizardStep ?? false}
                     />
                   </Td>
                   <Td dataLabel={ColumnNames.lastUpdated}>

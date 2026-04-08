@@ -33,6 +33,7 @@ import CreateQuayNotification from './NotificationsCreateNotificationQuay';
 import CreateSlackNotification from './NotificationsCreateNotificationSlack';
 import CreateWebhookNotification from './NotificationsCreateNotificationWebhook';
 import RepoEventExpiry from './RepoEventExpiry';
+import {CreateTeamModal} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
 
 export default function CreateNotification(props: CreateNotificationProps) {
   const [isEventOpen, setIsEventOpen] = useState(false);
@@ -43,6 +44,9 @@ export default function CreateNotification(props: CreateNotificationProps) {
   const {events} = useEvents();
   const {notificationMethods} = useNotificationMethods();
   const [error, setError] = useState<string>('');
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [teamName, setTeamName] = useState('');
+  const [teamDescription, setTeamDescription] = useState('');
 
   const isValidateConfig = () => {
     if (event?.type == NotificationEventType.imageExpiry) {
@@ -51,10 +55,18 @@ export default function CreateNotification(props: CreateNotificationProps) {
     return true;
   };
 
+  const validateTeamName = (name: string) => {
+    const teamNameRegex = /^[a-z0-9_]{2,255}$/;
+    return teamNameRegex.test(name);
+  };
+
   return (
     <>
       <Title headingLevel="h3">Create notification</Title>
-      <Form id="create-notification-form">
+      <Form
+        id="create-notification-form"
+        data-testid="create-notification-form"
+      >
         <Conditional if={error != ''}>
           <Alert
             isInline
@@ -73,6 +85,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
               <MenuToggle
                 ref={toggleRef}
                 id="event-dropdown-toggle"
+                data-testid="notification-event-dropdown"
                 onClick={() => setIsEventOpen(() => !isEventOpen)}
                 isExpanded={isEventOpen}
               >
@@ -112,6 +125,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
               <MenuToggle
                 ref={toggleRef}
                 id="method-dropdown-toggle"
+                data-testid="notification-method-dropdown"
                 onClick={() => setIsMethodOpen(() => !isMethodOpen)}
                 isExpanded={isMethodOpen}
               >
@@ -157,6 +171,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
             isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
+            openCreateTeamModal={() => setIsTeamModalOpen(true)}
           />
         </Conditional>
         <Conditional if={method?.type == NotificationMethodType.flowdock}>
@@ -208,6 +223,20 @@ export default function CreateNotification(props: CreateNotificationProps) {
           />
         </Conditional>
       </Form>
+      <CreateTeamModal
+        orgName={props.org}
+        isModalOpen={isTeamModalOpen}
+        handleModalToggle={() => setIsTeamModalOpen(!isTeamModalOpen)}
+        teamName={teamName}
+        setTeamName={setTeamName}
+        description={teamDescription}
+        setDescription={setTeamDescription}
+        nameLabel="Team name"
+        descriptionLabel="Team description"
+        helperText="Enter a description for the team"
+        nameHelperText="Enter a unique team name (lowercase letters, numbers, and underscores only)"
+        validateName={validateTeamName}
+      />
     </>
   );
 }

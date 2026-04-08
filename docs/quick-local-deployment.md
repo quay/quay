@@ -6,7 +6,7 @@ If you'd like to understand a Quay deployment in more details continue reading..
 
 This guide is meant to show how to get Quay up and running with a minimum of external dependencies for testing or evaluation.  It aims to illustrate the components of a Quay installation to understand how the pieces fit together.  Please don't use this configuration for production or a highly available Quay installation.
 
-NOTE: This guide uses [podman](https://podman.io/) which assumes a Linux environment- on MacOS or Windows you should be able to substitute with `docker` without trouble.
+NOTE: This guide uses [podman](https://podman.io/), however you should be able to substitute with `docker` without trouble.
 
 As a starting point, create or locate a directory where you want to store Quay's configuration and image blobs- we will refer to this as $QUAY going forward.
 
@@ -22,7 +22,7 @@ $ cat /etc/hosts
 
 ## Set Up Postgres
 
-Quay will need a database to hold its image metadata (we will store images themselves on local disk in this tutorial).  Postgres is the recommended database, especially for highly available configurations.  Below we are pulling Red Hat's Postgres image but you should be able to use an image from other sources 
+Quay will need a database to hold its image metadata (we will store images themselves on local disk in this tutorial).  Postgres is the recommended database, especially for highly available configurations.  Below we are pulling Red Hat's Postgres image but you should be able to use an image from other sources
 
 ```
 $ mkdir -p $QUAY/postgres
@@ -63,7 +63,7 @@ $ sudo podman inspect -f "{{.NetworkSettings.IPAddress}}" redis
 
 
 
-## Build the Quay Configuration via ConfigTool. 
+## Build the Quay Configuration via ConfigTool.
 
 The ConfigTool resides on the Quay image and lets you generate Quay configuration files and set up your Postgres database.  It is a web application that guides you through the Quay configuration process.  The Quay configuration is a tar/zipped YAML file that you can save locally for Quay to read at startup time.
 
@@ -93,7 +93,7 @@ On main config screen, you will have a few fields to fill out:
 
 #### Server Configuration
 
-1. For `Server Hostname` use `quay:8080` (or `localhost` however the UI will complain).  
+1. For `Server Hostname` use `quay:8080` (or `localhost` however the UI will complain).
 1. For `TLS` choose `None (Not for Production)` - verify that you've included the port number in step above.
 
 #### redis
@@ -148,22 +148,22 @@ $ podman logs -f quay
 ```
 $ podman login --tls-verify=false quay:8080
 Username: quay
-Password: 
+Password:
 Login Succeeded!
 
 $ podman pull busybox
 Trying to pull docker.io/library/busybox...
 Getting image source signatures
-Copying blob 0669b0daf1fb done  
-Copying config 83aa35aa1c done  
+Copying blob 0669b0daf1fb done
+Copying config 83aa35aa1c done
 Writing manifest to image destination
 Storing signatures
 83aa35aa1c79e4b6957e018da6e322bfca92bf3b4696a211b42502543c242d6f
 $ podman tag docker.io/library/busybox:latest quay:8080/quay/busybox:latest
 $ podman push --tls-verify=false quay:8080/quay/busybox:latest
 Getting image source signatures
-Copying blob 195be5f8be1d done  
-Copying config 6d5fcfe5ff done  
+Copying blob 195be5f8be1d done
+Copying config 6d5fcfe5ff done
 Writing manifest to image destination
 Storing signatures
 
@@ -172,7 +172,7 @@ $ podman pull --tls-verify=false quay:8080/quay/busybox:latest
 Trying to pull quay:8080/quay/busybox:latest...
 Getting image source signatures
 Copying blob c23833bba716 [--------------------------------------] 0.0b / 0.0b
-Copying config 6d5fcfe5ff done  
+Copying config 6d5fcfe5ff done
 Writing manifest to image destination
 Storing signatures
 6d5fcfe5ff170471fcc3c8b47631d6d71202a1fd44cf3c147e50c8de21cf0648
@@ -181,12 +181,12 @@ Congratulations you have a local Quay instance running!  Of course this deployme
 
 
 ## Getting Clair Running
- 
+
 coming soon
 
 ## Next Steps
 
-Quay and Clair can also be run as services on a Kubernetes cluster.  This is becoming a more common deployment architecture and simplifies many of the operational aspects of running Quay and Clair.  Check out the [Quay on OpenShift Docs](https://docs.projectquay.io/deploy_quay_on_openshift.html#_appendix_a_project_quay_on_openshift_configuration_files) for more details on how set up Quay and Clair on OpenShift. 
+Quay and Clair can also be run as services on a Kubernetes cluster.  This is becoming a more common deployment architecture and simplifies many of the operational aspects of running Quay and Clair.  Check out the [Quay on OpenShift Docs](https://docs.projectquay.io/deploy_quay_on_openshift.html#_appendix_a_project_quay_on_openshift_configuration_files) for more details on how set up Quay and Clair on OpenShift.
 
 ## Troubleshooting
 
@@ -227,7 +227,7 @@ $ sudo podman inspect -f "{{.NetworkSettings.IPAddress}}" mysql
 Then you'll need to create a database for Quay by connecting to the IP address you just found (this step isn't needed for Postgres)
 ```
 $ sudo podman run -it --rm mysql:5.7.31 mysql -h10.88.0.108 -uroot -p
-Enter password: 
+Enter password:
 Welcome to the MySQL monitor.  Commands end with ; or \g.
 Your MySQL connection id is 2
 Server version: 5.7.31 MySQL Community Server (GPL)
@@ -252,4 +252,3 @@ Query OK, 1 row affected (0.02 sec)
 ```
 
 Lastly, when you run the Quay Config Tool, remember to pick `MySQL` as your database type and use the credentials `root/password` and database name `quay`.
-

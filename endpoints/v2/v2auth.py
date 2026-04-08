@@ -18,10 +18,16 @@ from auth.permissions import (
 )
 from data import model
 from data.database import RepositoryState
+from data.model.org_mirror import get_org_mirroring_robot, is_namespace_org_mirrored
 from data.model.repo_mirror import get_mirroring_robot
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
-from endpoints.api import log_action
+from endpoints.api import (
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
+    allow_if_superuser_with_full_access,
+    log_action,
+)
 from endpoints.decorators import anon_protect
 from endpoints.v2 import v2_bp
 from endpoints.v2.errors import (
@@ -260,7 +266,10 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
             # Lookup the repository. If it exists, make sure the entity has modify
             # permission. Otherwise, make sure the entity has create permission.
             if repository_ref:
-                if ModifyRepositoryPermission(namespace, reponame).can():
+                if (
+                    ModifyRepositoryPermission(namespace, reponame).can()
+                    or allow_if_superuser_with_full_access()
+                ):
                     if repository_ref is not None and repository_ref.kind != "image":
                         raise Unsupported(message=invalid_repo_message)
 
@@ -269,15 +278,39 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                         # In NORMAL mode, if the user has permission, then they can push.
                         final_actions.append("push")
                     elif repository_ref.state == RepositoryState.MIRROR:
-                        # In MIRROR mode, only the mirroring robot can push.
+                        # In MIRROR mode, only the repo-level mirroring robot can push.
                         mirror = model.repo_mirror.get_mirror(repository_ref.id)
                         robot = mirror.internal_robot if mirror is not None else None
+
+                        if robot is None:
+                            logger.error(
+                                "Repository %s/%s is in MIRROR state but has no "
+                                "RepoMirrorConfig — possible corrupt state",
+                                namespace,
+                                reponame,
+                            )
+
                         if robot is not None and user is not None and robot == user:
                             assert robot.robot
                             final_actions.append("push")
                         else:
                             logger.debug(
                                 "Repository %s/%s push requested for non-mirror robot %s: %s",
+                                namespace,
+                                reponame,
+                                robot,
+                                user,
+                            )
+                    elif repository_ref.state == RepositoryState.ORG_MIRROR:
+                        # In ORG_MIRROR mode, only the org-level mirroring robot can push.
+                        robot = get_org_mirroring_robot(repository_ref.id)
+
+                        if robot is not None and user is not None and robot == user:
+                            assert robot.robot
+                            final_actions.append("push")
+                        else:
+                            logger.debug(
+                                "Repository %s/%s push requested for non-org-mirror robot %s: %s",
                                 namespace,
                                 reponame,
                                 robot,
@@ -334,6 +367,14 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                         logger.debug(
                             "Restricted users cannot create repository %s/%s", namespace, reponame
                         )
+                    # Block push-on-create for org-mirrored namespaces — repos are
+                    # managed exclusively by the org mirror sync worker.
+                    elif features.ORG_MIRROR and is_namespace_org_mirrored(namespace):
+                        logger.debug(
+                            "Repository creation blocked: namespace %s is "
+                            "managed by organization-level mirroring",
+                            namespace,
+                        )
                     else:
                         logger.debug("Creating repository: %s/%s", namespace, reponame)
                         visibility = (
@@ -364,15 +405,11 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
         if features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace):
             can_pullthru = OrganizationMemberPermission(namespace).can() and user is not None
 
-        global_readonly_superuser = False
-        if features.SUPER_USERS and user is not None:
-            global_readonly_superuser = usermanager.is_global_readonly_superuser(user.username)
-
         if (
             ReadRepositoryPermission(namespace, reponame).can()
             or can_pullthru
             or repo_is_public
-            or global_readonly_superuser
+            or allow_if_global_readonly_superuser()
         ):
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
@@ -383,12 +420,16 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
 
     if "*" in requested_actions:
         # Grant * user is admin
-        if AdministerRepositoryPermission(namespace, reponame).can():
+        if (
+            AdministerRepositoryPermission(namespace, reponame).can()
+            or allow_if_superuser_with_full_access()
+        ):
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
 
             if repository_ref and repository_ref.state in (
                 RepositoryState.MIRROR,
+                RepositoryState.ORG_MIRROR,
                 RepositoryState.READ_ONLY,
             ):
                 logger.debug("No permission to administer repository %s/%s", namespace, reponame)

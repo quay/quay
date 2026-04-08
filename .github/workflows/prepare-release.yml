@@ -21,7 +21,7 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.branch }}
@@ -54,7 +54,7 @@ jobs:
           QUAY_VERSION=$(echo ${{ github.event.inputs.branch }} | cut -d'-' -f2)
           sed -in --regexp-extended "s/\/[0-9\.]+\//\/$QUAY_VERSION\//" CHANGELOG.md
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v3.5.1
+        uses: peter-evans/create-pull-request@ce699aa2d108e9d04fde047a71e44b2bf444b6dc # v3.5.1
         with:
           title: "${{ github.event.inputs.tag }} Changelog Bump"
           body: "This is an automated changelog commit."

@@ -41,6 +41,25 @@ TEMP_TAG_EXPIRATION_SEC = 300  # 5 minutes
 
 logger = logging.getLogger(__name__)
 
+
+def is_manifest_present(manifest) -> bool:
+    """
+    Check if manifest content is available (not sparse).
+
+    A manifest is considered "sparse" when it exists in the database but
+    has empty manifest_bytes. This typically happens with pull-through proxy
+    where child manifests of a manifest list may not be fetched until accessed.
+
+    Args:
+        manifest: A Manifest database row or object with manifest_bytes attribute.
+
+    Returns:
+        True if the manifest has content, False if it's sparse (empty/missing content).
+    """
+    manifest_bytes = manifest.manifest_bytes
+    return manifest_bytes is not None and manifest_bytes != ""
+
+
 CreatedManifest = namedtuple("CreatedManifest", ["manifest", "newly_created", "labels_to_apply"])
 
 
@@ -157,8 +176,7 @@ def create_manifest(
     repository_id: int,
     manifest: ManifestInterface | ManifestListInterface,
     raise_on_error: Literal[True] = ...,
-) -> Manifest:
-    ...
+) -> Manifest: ...
 
 
 @overload
@@ -166,8 +184,7 @@ def create_manifest(
     repository_id: int,
     manifest: ManifestInterface | ManifestListInterface,
     raise_on_error: Literal[False],
-) -> Optional[Manifest]:
-    ...
+) -> Optional[Manifest]: ...
 
 
 def create_manifest(
@@ -191,13 +208,13 @@ def create_manifest(
             config_media_type=manifest.config_media_type,
             layers_compressed_size=manifest.layers_compressed_size,
             subject_backfilled=True,  # TODO(kleesc): Remove once backfill is done
-            subject=manifest.subject.digest
-            if manifest.subject
-            else None,  # TODO(kleesc): Remove once fully on JSONB only
+            subject=(
+                manifest.subject.digest if manifest.subject else None
+            ),  # TODO(kleesc): Remove once fully on JSONB only
             artifact_type_backfilled=True,  # TODO(kleesc): Remove once backfill is done
-            artifact_type=manifest.artifact_type
-            if manifest.artifact_type
-            else None,  # TODO(kleesc): Remove once fully on JSONB only
+            artifact_type=(
+                manifest.artifact_type if manifest.artifact_type else None
+            ),  # TODO(kleesc): Remove once fully on JSONB only
         )
     except IntegrityError as e:
         # NOTE: An IntegrityError means (barring a bug) that the manifest was created by
@@ -324,6 +341,10 @@ def _create_manifest(
                     raise CreateManifestException(str(ex))
 
                 return None
+
+            # Skip manifests that were not loaded (e.g., due to sparse index configuration).
+            if child_manifest is None:
+                continue
 
             # Retrieve its labels.
             labels = child_manifest.get_manifest_labels(retriever)

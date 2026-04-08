@@ -24,6 +24,9 @@ INTERNAL_ONLY_PROPERTIES = {
     "DISABLED_FOR_PULL_LOGS",
     "FEATURE_DISABLE_PULL_LOGS_FOR_FREE_NAMESPACES",
     "FEATURE_CLEAR_EXPIRED_RAC_ENTRIES",
+    "FEATURE_IMAGE_PULL_STATS",
+    "PULL_METRICS_WORKER_COUNT",
+    "REDIS_FLUSH_INTERVAL_SECONDS",
     "ACTION_LOG_MAX_PAGE",
     "NON_RATE_LIMITED_NAMESPACES",
     "REPLICATION_QUEUE_NAME",
@@ -75,6 +78,9 @@ INTERNAL_ONLY_PROPERTIES = {
     "EXCEPTION_LOG_TYPE",
     "SENTRY_DSN",
     "SENTRY_PUBLIC_DSN",
+    "PROFILING_TYPE",
+    "PYROSCOPE_SERVER_ADDRESS",
+    "PYROSCOPE_APPLICATION_NAME",
     "BILLED_NAMESPACE_MAXIMUM_BUILD_COUNT",
     "THREAT_NAMESPACE_MAXIMUM_BUILD_COUNT",
     "IP_DATA_API_KEY",
@@ -303,6 +309,11 @@ CONFIG_SCHEMA = {
             "description": "Whether pull through proxy cache feature is enabled. Defaults to False",
             "x-example": False,
         },
+        "FEATURE_EXTENDED_ACTION_LOGGING": {
+            "type": "boolean",
+            "description": "Whether extended action logging is enabled for ESS Events of Interest compliance. When enabled, logs include request URL, HTTP method, auth type, user agent, and other request context. Increases log volume by ~2.5-3x. Defaults to False",
+            "x-example": False,
+        },
         "FEATURE_PROXY_CACHE_BLOB_DOWNLOAD": {
             "type": "boolean",
             "description": "Whether to enable a background worker to download placeholder blobs. Defaults to True",
@@ -462,6 +473,33 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        "PULL_METRICS_REDIS": {
+            "type": "object",
+            "description": "Connection information for Redis for pull metrics storage",
+            "required": ["host"],
+            "properties": {
+                "host": {
+                    "type": "string",
+                    "description": "The hostname at which Redis is accessible",
+                    "x-example": "my.redis.cluster",
+                },
+                "port": {
+                    "type": "number",
+                    "description": "The port at which Redis is accessible",
+                    "x-example": 1234,
+                },
+                "password": {
+                    "type": "string",
+                    "description": "The password to connect to the Redis instance",
+                    "x-example": "mypassword",
+                },
+                "db": {
+                    "type": "number",
+                    "description": "The Redis database number to use for pull metrics",
+                    "x-example": 1,
+                },
+            },
+        },
         # OAuth configuration.
         "GITHUB_LOGIN_CONFIG": {
             "type": ["object", "null"],
@@ -601,6 +639,11 @@ CONFIG_SCHEMA = {
                     "description": "Main logo image URL",
                     "x-example": "/static/img/quay-horizontal-color.svg",
                 },
+                "logo_dark": {
+                    "type": "string",
+                    "description": "Dark theme variant of main logo (for dark backgrounds)",
+                    "x-example": "/static/img/quay-horizontal-white.svg",
+                },
                 "footer_img": {
                     "type": "string",
                     "description": "Logo for UI footer",
@@ -630,6 +673,32 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "The prefix applied to all exposed Prometheus metrics. Defaults to `quay`",
             "x-example": "myregistry",
+        },
+        "TRACKED_NAMESPACES": {
+            "oneOf": [
+                {
+                    "type": "array",
+                    "description": "List of namespace names to track in metrics. Each namespace gets its own label.",
+                    "items": {"type": "string"},
+                    "x-example": ["redhat", "internal"],
+                },
+                {
+                    "type": "object",
+                    "description": "Mapping of bucket names to namespace lists. Multiple namespaces can share the same bucket label.",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"type": "array", "items": {"type": "string"}},
+                            {"type": "string"},
+                        ]
+                    },
+                    "x-example": {
+                        "critical": ["redhat", "internal"],
+                        "customers": ["customer1", "customer2"],
+                    },
+                },
+            ],
+            "description": "Namespaces to track in Prometheus metrics. Supports two formats: list (each namespace gets its own label) or dict (multiple namespaces share a bucket).",
+            "x-example": ["redhat"],
         },
         # Misc configuration.
         "BLACKLIST_V2_SPEC": {
@@ -680,6 +749,16 @@ CONFIG_SCHEMA = {
         "FEATURE_CHANGE_TAG_EXPIRATION": {
             "type": "boolean",
             "description": "Whether users and organizations are allowed to change the tag expiration for tags in their namespace. Defaults to True.",
+            "x-example": False,
+        },
+        "FEATURE_IMMUTABLE_TAGS": {
+            "type": "boolean",
+            "description": "Whether tag immutability enforcement is enabled. When enabled, immutable tags cannot be deleted or overwritten. Defaults to False.",
+            "x-example": True,
+        },
+        "FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": {
+            "type": "boolean",
+            "description": "Whether immutable tags can have expiration dates set. When False (default), setting expiration on immutable tags is blocked, and tags with expiration cannot be made immutable.",
             "x-example": False,
         },
         "DEFAULT_TAG_EXPIRATION": {
@@ -1000,6 +1079,29 @@ CONFIG_SCHEMA = {
             "description": "Whether to enable support for repository mirroring. Defaults to False",
             "x-example": False,
         },
+        # Feature Flag: Support Organization-Level Repository Mirroring.
+        "FEATURE_ORG_MIRROR": {
+            "type": "boolean",
+            "description": "Whether to enable support for organization-level repository mirroring. Defaults to False",
+            "x-example": False,
+        },
+        "ORG_MIRROR_INTERVAL": {
+            "type": "number",
+            "description": "The number of seconds between organization mirror worker iterations. Defaults to 30.",
+            "x-example": 30,
+        },
+        "ORG_MIRROR_MAX_DISCOVERY_DURATION": {
+            "type": "number",
+            "description": "Maximum time in seconds allowed for the tag discovery phase of organization mirror sync. Configs that exceed this duration during discovery are released so other workers can process them. Defaults to 1800 (30 minutes).",
+            "x-example": 1800,
+        },
+        "SSRF_ALLOWED_HOSTS": {
+            "type": "array",
+            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for organization mirror source registries and export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
+            "uniqueItems": True,
+            "items": {"type": "string"},
+            "x-example": ["internal-harbor.corp.example.com", "10.0.0.0/8"],
+        },
         "REPO_MIRROR_TLS_VERIFY": {
             "type": "boolean",
             "description": "Require HTTPS and verify certificates of Quay registry during mirror. Defaults to True",
@@ -1014,6 +1116,18 @@ CONFIG_SCHEMA = {
             "type": ["boolean", "null"],
             "description": "Enables rolling repository back to previous state in the event the mirror fails. Defaults to false",
             "x-example": "true",
+        },
+        "REPO_MIRROR_MAX_MANIFEST_LIST_SIZE": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum size in bytes of manifest list JSON to parse during mirroring. Prevents DoS via oversized manifests. Defaults to 10485760 (10MB).",
+            "x-example": 10485760,
+        },
+        "REPO_MIRROR_MAX_MANIFEST_ENTRIES": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum number of manifest entries to process during architecture-filtered mirroring. Prevents DoS via manifest lists with excessive entries. Defaults to 1000.",
+            "x-example": 1000,
         },
         # Feature Flag: V1 push restriction.
         "V1_PUSH_WHITELIST": {
@@ -1203,6 +1317,30 @@ CONFIG_SCHEMA = {
                             "description": "*Relative container path* to a single .pem file containing a CA certificate for SSL verification",
                             "x-example": "conf/stack/ssl-ca-cert.pem",
                         },
+                        "search_timeout": {
+                            "type": "number",
+                            "description": "Timeout in seconds for Splunk search queries. Increase for slow Splunk clusters or complex queries.",
+                            "x-example": 60,
+                            "default": 60,
+                            "minimum": 5,
+                            "maximum": 300,
+                        },
+                        "max_results": {
+                            "type": "number",
+                            "description": "Maximum number of results to return per search query. Larger values require more memory.",
+                            "x-example": 10000,
+                            "default": 10000,
+                            "minimum": 100,
+                            "maximum": 50000,
+                        },
+                        "export_batch_size": {
+                            "type": "number",
+                            "description": "Batch size for log export operations.",
+                            "x-example": 5000,
+                            "default": 5000,
+                            "minimum": 100,
+                            "maximum": 10000,
+                        },
                     },
                 },
                 "splunk_hec_config": {
@@ -1268,6 +1406,46 @@ CONFIG_SCHEMA = {
                             "default": 10,
                             "minimum": 1,
                             "maximum": 15,
+                        },
+                        "search_timeout": {
+                            "type": "number",
+                            "description": "Timeout in seconds for Splunk search queries. Increase for slow Splunk clusters or complex queries.",
+                            "x-example": 60,
+                            "default": 60,
+                            "minimum": 5,
+                            "maximum": 300,
+                        },
+                        "max_results": {
+                            "type": "number",
+                            "description": "Maximum number of results to return per search query. Larger values require more memory.",
+                            "x-example": 10000,
+                            "default": 10000,
+                            "minimum": 100,
+                            "maximum": 50000,
+                        },
+                        "export_batch_size": {
+                            "type": "number",
+                            "description": "Batch size for log export operations.",
+                            "x-example": 5000,
+                            "default": 5000,
+                            "minimum": 100,
+                            "maximum": 10000,
+                        },
+                        "search_host": {
+                            "type": "string",
+                            "description": "Splunk management host for search API. Defaults to HEC host if not specified.",
+                            "x-example": "splunk-mgmt.example.com",
+                        },
+                        "search_port": {
+                            "type": "number",
+                            "description": "Splunk management port for search API.",
+                            "x-example": 8089,
+                            "default": 8089,
+                        },
+                        "search_token": {
+                            "type": "string",
+                            "description": "Bearer token for Splunk search API. Optional. HEC tokens are ingest-only and cannot search, so a separate token is needed for reading logs. When not configured, audit log viewing in the UI is unavailable but log forwarding still works. See: https://docs.splunk.com/Documentation/SplunkCloud/latest/Config/ManageHECtokens",
+                            "x-example": "your-search-bearer-token",
                         },
                     },
                     "required": ["host", "hec_token"],
@@ -1405,6 +1583,11 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "User feedback form for UI-V2",
             "x-example": "http://url-for-user-feedback-form.com",
+        },
+        "DISABLE_ANGULAR_UI": {
+            "type": "boolean",
+            "description": "Disable legacy Angular UI pages and redirects. Defaults to False",
+            "x-example": False,
         },
         "FEATURE_UI_V2": {
             "type": "boolean",
@@ -1607,6 +1790,11 @@ CONFIG_SCHEMA = {
         "FEATURE_OTEL_TRACING": {
             "type": "boolean",
             "description": "Whether to enable open telemetry tracing on quay",
+            "x-example": False,
+        },
+        "FEATURE_SPARSE_INDEX": {
+            "type": "boolean",
+            "description": "Whether to allow sparse manifest indexes where not all architectures are required to be present. When enabled, manifests for missing architectures will be skipped instead of raising errors. Defaults to False",
             "x-example": False,
         },
         "OTEL_CONFIG": {
@@ -2127,6 +2315,24 @@ CONFIG_SCHEMA = {
         "x-example": "http://localhost:9091",
         "x-reference": None,
     },
+    "PROFILING_TYPE": {
+        "type": "string",
+        "description": "Continuous profiling type. Use 'Pyroscope' to enable; default is empty (disabled).",
+        "x-example": "",
+        "x-reference": None,
+    },
+    "PYROSCOPE_SERVER_ADDRESS": {
+        "type": ["string", "null"],
+        "description": "Pyroscope server URL when PROFILING_TYPE is Pyroscope.",
+        "x-example": "http://localhost:4040",
+        "x-reference": None,
+    },
+    "PYROSCOPE_APPLICATION_NAME": {
+        "type": "string",
+        "description": "Application name sent to Pyroscope. Defaults to 'quay'.",
+        "x-example": "quay",
+        "x-reference": None,
+    },
     "PUSH_TEMP_TAG_EXPIRATION_SEC": {
         "type": "number",
         "description": "Temporary Tag expiration time in seconds. Defaults to 3600",
@@ -2230,12 +2436,6 @@ CONFIG_SCHEMA = {
         "x-example": False,
         "x-reference": "https://docs.redhat.com/en/documentation/red_hat_quay/3.12/html/configure_red_hat_quay/config-fields-intro#config-fields-aci",
     },
-    "FEATURE_APP_REGISTRY": {
-        "type": "boolean",
-        "description": "[QUAY.IO] FEATURE_APP_REGISTRY. Defaults to False",
-        "x-example": False,
-        "x-reference": None,
-    },
     "GITLAB_TRIGGER_KIND": {
         "type": "object",
         "description": "[QUAY.IO] GITLAB_TRIGGER_KIND.",
@@ -2325,6 +2525,18 @@ CONFIG_SCHEMA = {
         "type": "number",
         "description": "LDAP_FOLLOW_REFERRALS. Defaults to 0",
         "x-example": 1,
+        "x-reference": None,
+    },
+    "FEATURE_LDAP_CACHING": {
+        "type": "boolean",
+        "description": "Enable in-memory caching for LDAP permission check results (superuser, restricted user). Reduces LDAP server load. Defaults to False.",
+        "x-example": True,
+        "x-reference": None,
+    },
+    "LDAP_CACHE_TTL": {
+        "type": "number",
+        "description": "Time-to-live in seconds for cached LDAP permission results. Defaults to 5.",
+        "x-example": 10,
         "x-reference": None,
     },
     "GLOBAL_PROMETHEUS_STATS_FREQUENCY": {

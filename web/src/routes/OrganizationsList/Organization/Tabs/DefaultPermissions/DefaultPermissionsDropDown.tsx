@@ -11,15 +11,14 @@ import {
   useUpdateDefaultPermission,
 } from 'src/hooks/UseDefaultPermissions';
 import {repoPermissions} from './DefaultPermissionsList';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {titleCase} from 'src/libs/utils';
 
 export default function DefaultPermissionsDropDown(
   props: DefaultPermissionsDropdownProps,
 ) {
   const [isOpen, setIsOpen] = useState(false);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {
     setDefaultPermission,

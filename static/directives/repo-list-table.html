@@ -51,7 +51,7 @@
     <td class="hidden-xs"
         ng-class="tablePredicateClass('is_starred', options.predicate, options.reverse)"
         style="width: 70px"
-        ng-if="loggedIn && repoKind != 'application' && !inReadOnlyMode">
+        ng-if="loggedIn && !inReadOnlyMode">
       <a ng-click="orderBy('is_starred')">Star</a>
     </td>
    </thead>
@@ -60,11 +60,7 @@
      <tr ng-repeat="repository in orderedRepositories.entries | slice:(reposPerPage * options.page):(reposPerPage * (options.page + 1))">
        <td class="repo-name-icon">
           <span class="avatar" size="24" data="::getAvatarData(repository.namespace)"></span>
-          <a href="/repository/{{ ::repository.namespace }}/{{ ::repository.name }}" ng-if="repoKind != 'application'">
-            <span class="namespace">{{ ::repository.namespace }}</span>
-            <span class="name">{{ ::repository.name }}</span>
-          </a>
-          <a href="/application/{{ ::repository.namespace }}/{{ ::repository.name }}" ng-if="repoKind == 'application'">
+          <a href="/repository/{{ ::repository.namespace }}/{{ ::repository.name }}">
             <span class="namespace">{{ ::repository.namespace }}</span>
             <span class="name">{{ ::repository.name }}</span>
           </a>
@@ -95,7 +91,7 @@
          <span class="strength-indicator" value="::repository.popularity" maximum="::maxPopularity"
                log-base="10"></span>
        </td>
-       <td ng-show="loggedIn && repoKind != 'application' && !inReadOnlyMode">
+       <td ng-show="loggedIn && !inReadOnlyMode">
         <span class="repo-star" repository="::repository"
               star-toggled="starToggled({'repository': repository})"></span>
        </td>

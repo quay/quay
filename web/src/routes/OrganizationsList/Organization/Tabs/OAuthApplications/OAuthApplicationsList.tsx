@@ -1,9 +1,4 @@
-import {
-  PageSection,
-  PageSectionVariants,
-  Spinner,
-  Button,
-} from '@patternfly/react-core';
+import {PageSection, Spinner, Button} from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useState} from 'react';
 import {
@@ -18,8 +13,7 @@ import ManageOAuthApplicationDrawer from './ManageOAuthApplicationDrawer';
 import Conditional from 'src/components/empty/Conditional';
 import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import ErrorModal from 'src/components/errors/ErrorModal';
 import Empty from 'src/components/empty/Empty';
 import {KeyIcon} from '@patternfly/react-icons';
@@ -44,7 +38,7 @@ export default function OAuthApplicationsList(
     IOAuthApplication[]
   >([]);
   const [error, setError] = useState<string[]>([]);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {
     loading,
@@ -211,7 +205,7 @@ export default function OAuthApplicationsList(
           orgName={props.orgName}
           updateSelectedApplication={updateSelectedApplication}
         >
-          <PageSection variant={PageSectionVariants.light}>
+          <PageSection hasBodyWrapper={false}>
             {error && error.length > 0 && (
               <ErrorModal
                 title="OAuth application operation failed"
@@ -316,7 +310,7 @@ export default function OAuthApplicationsList(
           </PageSection>
         </ManageOAuthApplicationDrawer>
       ) : (
-        <PageSection variant={PageSectionVariants.light}>
+        <PageSection hasBodyWrapper={false}>
           {error && error.length > 0 && (
             <ErrorModal
               title="OAuth application operation failed"

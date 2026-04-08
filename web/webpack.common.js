@@ -88,6 +88,7 @@ module.exports = (env) => {
         {
           test: /\.(jpg|jpeg|png|gif)$/i,
           include: [
+            path.resolve(__dirname, 'src/assets'),
             path.resolve(__dirname, 'node_modules/patternfly'),
             path.resolve(
               __dirname,

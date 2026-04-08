@@ -1,0 +1,50 @@
+name: Web CI Results
+on:
+  workflow_run:
+    workflows: ["Web CI"]
+    types:
+      - completed
+
+jobs:
+  publish-results:
+    name: Publish Test Results
+    runs-on: ubuntu-22.04
+    # Only run on pull request events
+    if: github.event.workflow_run.event == 'pull_request'
+
+    permissions:
+      # Required to post comments on PRs
+      pull-requests: write
+      # Required to add annotations
+      checks: write
+
+    steps:
+    - name: Download test results
+      uses: dawidd6/action-download-artifact@v8
+      with:
+        name: test-results
+        workflow: web-ci.yaml
+        run_id: ${{ github.event.workflow_run.id }}
+        path: .
+
+    - name: Read PR number
+      id: pr
+      run: |
+        PR_NUMBER=$(cat test-results/pr_number.txt)
+        echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+    - name: Publish test results to PR
+      uses: ctrf-io/github-test-reporter@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        report-path: web/cypress/reports/ctrf-report.json
+        issue: ${{ steps.pr.outputs.number }}
+        title: 'Cypress E2E Test Results'
+        annotate: true
+        on-fail-only: true
+        overwrite-comment: true
+        collapse-large-reports: true
+        summary-report: true
+        community-report: true
+        community-report-name: failed-detailed

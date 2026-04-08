@@ -1,8 +1,16 @@
 from datetime import datetime
+from unittest.mock import patch
 
 import pytest
 
+from app import app as quay_app
 from data import model
+from data.database import (
+    OrgMirrorConfig,
+    OrgMirrorStatus,
+    SourceRegistryType,
+    Visibility,
+)
 from endpoints.api.mirror import RepoMirrorResource, RepoMirrorSyncCancelResource
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
@@ -74,7 +82,7 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
 
     # Check the status of the robot.
     permissions = model.permission.get_user_repository_permissions(mirror_bot, "devtable", "simple")
-    permission = next(permissions, None)
+    permission = next(iter(permissions), None)
     assert permission and permission.role.name == expected_permission
 
     config = model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
@@ -175,6 +183,14 @@ def test_get_mirror(app):
         ("root_rule", {"rule_kind": "tag_glob_csv"}, 400),
         ("root_rule", {"rule_kind": "tag_glob_csv", "rule_value": []}, 400),
         ("root_rule", {"rule_kind": "incorrect", "rule_value": ["3.1", "3.1*"]}, 400),
+        ("architecture_filter", ["amd64"], 201),
+        ("architecture_filter", ["amd64", "arm64"], 201),
+        ("architecture_filter", ["amd64", "arm64", "ppc64le", "s390x"], 201),
+        ("architecture_filter", [], 201),
+        ("architecture_filter", None, 201),
+        ("architecture_filter", ["invalid_arch"], 400),
+        ("architecture_filter", ["amd64", "invalid"], 400),
+        ("architecture_filter", "amd64", 400),
     ],
 )
 def test_change_config(key, value, expected_status, app):
@@ -183,19 +199,28 @@ def test_change_config(key, value, expected_status, app):
     """
     mirror = _setup_mirror()
 
-    with client_with_identity("devtable", app) as cl:
-        params = {"repository": "devtable/simple"}
-        if key in ("http_proxy", "https_proxy", "no_proxy"):
-            request_body = {"external_registry_config": {"proxy": {key: value}}}
-        elif key == "verify_tls" or key == "unsigned_images":
-            request_body = {"external_registry_config": {key: value}}
-        else:
-            request_body = {key: value}
-        conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, expected_status)
+    # Enable FEATURE_SPARSE_INDEX for architecture_filter tests with valid non-empty values
+    sparse_ctx = patch.dict(quay_app.config, {"FEATURE_SPARSE_INDEX": True})
+    if key == "architecture_filter" and value:
+        sparse_ctx.__enter__()
 
-    with client_with_identity("devtable", app) as cl:
-        params = {"repository": "devtable/simple"}
-        resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200)
+    try:
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            if key in ("http_proxy", "https_proxy", "no_proxy"):
+                request_body = {"external_registry_config": {"proxy": {key: value}}}
+            elif key == "verify_tls" or key == "unsigned_images":
+                request_body = {"external_registry_config": {key: value}}
+            else:
+                request_body = {key: value}
+            conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, expected_status)
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200)
+    finally:
+        if key == "architecture_filter" and value:
+            sparse_ctx.__exit__(None, None, None)
 
     if expected_status < 400:
         if key == "external_registry_password":
@@ -206,6 +231,10 @@ def test_change_config(key, value, expected_status, app):
             assert resp.json["external_registry_config"]["unsigned_images"] == value
         elif key in ("http_proxy", "https_proxy", "no_proxy"):
             assert resp.json["external_registry_config"]["proxy"][key] == value
+        elif key == "architecture_filter":
+            # None is normalized to [] in the API response
+            expected_value = value if value is not None else []
+            assert resp.json[key] == expected_value
         else:
             assert resp.json[key] == value
     else:
@@ -217,6 +246,9 @@ def test_change_config(key, value, expected_status, app):
             assert resp.json["external_registry_config"][key] != value
         elif key in ("http_proxy", "https_proxy", "no_proxy"):
             assert resp.json["external_registry_config"]["proxy"][key] != value
+        elif key == "architecture_filter":
+            # On failure, architecture_filter should remain at default []
+            assert resp.json[key] == []
         else:
             assert resp.json[key] != value
 
@@ -276,3 +308,289 @@ def test_cancel_repo_mirroring(app):
         assert model.repo_mirror.check_repo_mirror_sync_status(mirror) == -2
         resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
         assert resp["sync_retries_remaining"] == 0
+
+
+def test_get_mirror_includes_architecture_filter(app):
+    """
+    Verify GET response includes architecture_filter field.
+    """
+    mirror = _setup_mirror()
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+
+    assert "architecture_filter" in resp
+    assert resp["architecture_filter"] == []
+
+
+def test_set_and_get_architecture_filter(app):
+    """
+    Verify architecture_filter can be set and retrieved correctly.
+    """
+    mirror = _setup_mirror()
+
+    with patch.dict(quay_app.config, {"FEATURE_SPARSE_INDEX": True}):
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+
+            # Set architecture filter
+            request_body = {"architecture_filter": ["amd64", "arm64"]}
+            conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, 201)
+
+            # Verify it was set correctly
+            resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+            assert resp["architecture_filter"] == ["amd64", "arm64"]
+
+            # Clear architecture filter
+            request_body = {"architecture_filter": []}
+            conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, 201)
+
+            # Verify it was cleared
+            resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+            assert resp["architecture_filter"] == []
+
+
+def test_create_mirror_with_architecture_filter(app):
+    """
+    Verify architecture_filter can be set during mirror creation.
+    """
+    mirror_bot, _ = model.user.create_robot(
+        "archfiltermirrorbot", model.user.get_namespace_user("devtable")
+    )
+
+    with patch.dict(quay_app.config, {"FEATURE_SPARSE_INDEX": True}):
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            request_body = {
+                "external_reference": "quay.io/foobar/barbaz",
+                "sync_interval": 100,
+                "skopeo_timeout_interval": 300,
+                "sync_start_date": "2019-08-20T17:51:00Z",
+                "root_rule": {
+                    "rule_kind": "tag_glob_csv",
+                    "rule_value": ["latest", "foo", "bar"],
+                },
+                "robot_username": "devtable+archfiltermirrorbot",
+                "architecture_filter": ["amd64", "s390x"],
+            }
+            conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 201)
+
+            # Verify the architecture_filter was set
+            resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+            assert resp["architecture_filter"] == ["amd64", "s390x"]
+
+
+def test_create_mirror_with_invalid_architecture_filter(app):
+    """
+    Verify creating mirror with invalid architecture_filter fails.
+    """
+    mirror_bot, _ = model.user.create_robot(
+        "invalidarchbot", model.user.get_namespace_user("devtable")
+    )
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        request_body = {
+            "external_reference": "quay.io/foobar/barbaz",
+            "sync_interval": 100,
+            "skopeo_timeout_interval": 300,
+            "sync_start_date": "2019-08-20T17:51:00Z",
+            "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+            "robot_username": "devtable+invalidarchbot",
+            "architecture_filter": ["invalid_arch"],
+        }
+        conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 400)
+
+
+def test_architecture_filter_blocked_when_sparse_index_disabled_post(app):
+    """
+    Verify POST with non-empty architecture_filter is rejected when FEATURE_SPARSE_INDEX is false.
+    """
+    mirror_bot, _ = model.user.create_robot(
+        "sparsepostbot", model.user.get_namespace_user("devtable")
+    )
+
+    with patch.dict(quay_app.config, {"FEATURE_SPARSE_INDEX": False}):
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            request_body = {
+                "external_reference": "quay.io/foobar/barbaz",
+                "sync_interval": 100,
+                "skopeo_timeout_interval": 300,
+                "sync_start_date": "2019-08-20T17:51:00Z",
+                "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+                "robot_username": "devtable+sparsepostbot",
+                "architecture_filter": ["amd64"],
+            }
+            resp = conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 400)
+            assert "FEATURE_SPARSE_INDEX" in resp.json["detail"]
+
+
+def test_architecture_filter_blocked_when_sparse_index_disabled_put(app):
+    """
+    Verify PUT with non-empty architecture_filter is rejected when FEATURE_SPARSE_INDEX is false.
+    """
+    mirror = _setup_mirror()
+
+    with patch.dict(quay_app.config, {"FEATURE_SPARSE_INDEX": False}):
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            request_body = {"architecture_filter": ["amd64", "arm64"]}
+            resp = conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, 400)
+            assert "FEATURE_SPARSE_INDEX" in resp.json["detail"]
+
+
+def test_architecture_filter_allowed_when_sparse_index_enabled_post(app):
+    """
+    Verify POST with architecture_filter succeeds when FEATURE_SPARSE_INDEX is true.
+    """
+    mirror_bot, _ = model.user.create_robot(
+        "sparseenabledbot", model.user.get_namespace_user("devtable")
+    )
+
+    with patch.dict(quay_app.config, {"FEATURE_SPARSE_INDEX": True}):
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+            request_body = {
+                "external_reference": "quay.io/foobar/barbaz",
+                "sync_interval": 100,
+                "skopeo_timeout_interval": 300,
+                "sync_start_date": "2019-08-20T17:51:00Z",
+                "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+                "robot_username": "devtable+sparseenabledbot",
+                "architecture_filter": ["amd64"],
+            }
+            conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 201)
+
+
+def test_empty_architecture_filter_allowed_when_sparse_index_disabled(app):
+    """
+    Verify POST/PUT with empty architecture_filter is allowed even when FEATURE_SPARSE_INDEX is false.
+    """
+    mirror = _setup_mirror()
+
+    with patch.dict(quay_app.config, {"FEATURE_SPARSE_INDEX": False}):
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/simple"}
+
+            # Empty list should be allowed
+            request_body = {"architecture_filter": []}
+            conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, 201)
+
+            # None should be allowed
+            request_body = {"architecture_filter": None}
+            conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, 201)
+
+
+def _create_org_mirror_config(orgname, robot_username):
+    """Helper to create an org mirror config for testing.
+
+    Creates the OrgMirrorConfig directly via the ORM to bypass the model-level
+    validation that requires the organization to have no existing repositories.
+    """
+    org = model.organization.get_organization(orgname)
+    robot = model.user.lookup_robot(robot_username)
+    return OrgMirrorConfig.create(
+        organization=org,
+        internal_robot=robot,
+        is_enabled=True,
+        external_registry_type=SourceRegistryType.HARBOR,
+        external_registry_url="https://harbor.example.com",
+        external_namespace="test-project",
+        visibility=Visibility.get(name="private"),
+        sync_interval=3600,
+        sync_start_date=datetime(2025, 1, 1, 0, 0, 0),
+        sync_status=OrgMirrorStatus.NEVER_RUN,
+        sync_retries_remaining=3,
+        skopeo_timeout=300,
+    )
+
+
+def test_create_repo_mirror_blocked_by_org_mirror(app):
+    """
+    Verify that creating a repo mirror config is rejected when the repository's
+    organization has an org-level mirror config.
+    """
+    config = _create_org_mirror_config("buynlarge", "buynlarge+coolrobot")
+
+    try:
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "buynlarge/orgrepo"}
+            request_body = {
+                "external_reference": "quay.io/foobar/barbaz",
+                "sync_interval": 100,
+                "skopeo_timeout_interval": 300,
+                "sync_start_date": "2019-08-20T17:51:00Z",
+                "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+                "robot_username": "buynlarge+coolrobot",
+            }
+            resp = conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 400)
+            assert resp.json["error_type"] == "invalid_request"
+    finally:
+        config.delete_instance()
+
+
+def test_update_repo_mirror_blocked_by_org_mirror(app):
+    """
+    Verify that updating a repo mirror config is rejected when the repository's
+    organization has an org-level mirror config.
+    """
+    # First create a repo mirror config (before org mirror exists)
+    repo = model.repository.get_repository("buynlarge", "orgrepo")
+    robot = model.user.lookup_robot("buynlarge+coolrobot")
+    rule = model.repo_mirror.create_rule(repo, ["latest"])
+    mirror = model.repo_mirror.enable_mirroring_for_repository(
+        repo,
+        root_rule=rule,
+        internal_robot=robot,
+        external_reference="quay.io/test/repo",
+        sync_interval=3600,
+        sync_start_date=datetime(2025, 1, 1, 0, 0, 0),
+        skopeo_timeout_interval=300,
+    )
+    assert mirror
+
+    # Now create an org mirror config
+    config = _create_org_mirror_config("buynlarge", "buynlarge+coolrobot")
+
+    try:
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "buynlarge/orgrepo"}
+            request_body = {"sync_interval": 7200}
+            resp = conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, 400)
+            assert resp.json["error_type"] == "invalid_request"
+    finally:
+        config.delete_instance()
+        mirror.delete_instance()
+        rule.delete_instance()
+
+
+def test_create_repo_mirror_allowed_without_org_mirror(app):
+    """
+    Verify that creating a repo mirror config still works for organizations
+    that do NOT have an org-level mirror config.
+    """
+    # Ensure no org mirror config exists for buynlarge
+    org = model.organization.get_organization("buynlarge")
+    assert model.org_mirror.get_org_mirror_config(org) is None
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "buynlarge/orgrepo"}
+        request_body = {
+            "external_reference": "quay.io/foobar/barbaz",
+            "sync_interval": 100,
+            "skopeo_timeout_interval": 300,
+            "sync_start_date": "2019-08-20T17:51:00Z",
+            "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+            "robot_username": "buynlarge+coolrobot",
+        }
+        conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 201)
+
+    # Clean up
+    repo = model.repository.get_repository("buynlarge", "orgrepo")
+    mirror = model.repo_mirror.get_mirror(repo)
+    if mirror:
+        rule = mirror.root_rule
+        mirror.delete_instance()
+        rule.delete_instance()

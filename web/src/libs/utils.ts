@@ -1,21 +1,22 @@
 import moment, {Duration} from 'moment';
+import React from 'react';
 import {ITeamMember} from 'src/hooks/UseMembers';
 import {VulnerabilitySeverity} from 'src/resources/TagResource';
 
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {
     case VulnerabilitySeverity.Critical:
-      return 'var(--pf-v5-global--palette--red-200)';
+      return 'var(--pf-t--global--icon--color--severity--critical--default)';
     case VulnerabilitySeverity.High:
-      return 'var(--pf-v5-global--palette--red-100)';
+      return 'var(--pf-t--global--icon--color--severity--important--default)';
     case VulnerabilitySeverity.Medium:
-      return 'var(--pf-v5-global--palette--orange-300)';
+      return 'var(--pf-t--global--icon--color--severity--moderate--default)';
     case VulnerabilitySeverity.Low:
-      return 'var(--pf-v5-global--palette--gold-300)';
+      return 'var(--pf-t--global--icon--color--severity--minor--default)';
     case VulnerabilitySeverity.None:
-      return 'var(--pf-v5-global--palette--green-400)';
+      return 'var(--pf-t--global--icon--color--severity--none--default)';
     default:
-      return 'var(--pf-v5-global--palette--black-300)';
+      return 'var(--pf-t--global--icon--color--severity--undefined--default)';
   }
 }
 
@@ -36,9 +37,14 @@ export function formatDate(
 }
 
 export function formatSize(sizeInBytes: number) {
-  if (!sizeInBytes) {
-    // null or undefined
+  // Handle null/undefined but allow 0 as a valid value
+  if (sizeInBytes === null || sizeInBytes === undefined) {
     return 'N/A';
+  }
+
+  // Handle 0 explicitly to avoid Math.log(0) = -Infinity
+  if (sizeInBytes === 0) {
+    return '0.00 KiB';
   }
 
   const i = Math.floor(Math.log(sizeInBytes) / Math.log(1024));
@@ -245,12 +251,58 @@ export const convertFromSeconds = (
 // Convert ISO date to datetime-local format
 export const formatDateForInput = (isoDate: string): string => {
   if (!isoDate) return '';
-  try {
-    const date = new Date(isoDate);
-    // Format as YYYY-MM-DDTHH:MM (datetime-local format)
-    return date.toISOString().slice(0, 16);
-  } catch (error) {
-    console.error('Error formatting date:', error);
+  const date = new Date(isoDate);
+  if (isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+export function formatRelativeTime(date: string | number): string {
+  if (!date || date == -1 || date === 'Never') {
+    return 'Never';
+  }
+
+  const adjustedDate = typeof date === 'number' ? date * 1000 : date;
+  return moment(adjustedDate).fromNow();
+}
+
+/**
+ * Recursively extracts plain text from a React node (JSX elements, fragments, etc.)
+ * This is useful for making JSX content searchable in filters.
+ *
+ * @param node - A React node (string, number, element, fragment, array, etc.)
+ * @returns The plain text content extracted from the React node
+ *
+ * @example
+ * const jsx = <>Push of <code>tag123</code> to repository <code>user/repo</code></>;
+ * extractTextFromReactNode(jsx); // Returns: "Push of tag123 to repository user/repo"
+ */
+export function extractTextFromReactNode(node: React.ReactNode): string {
+  // Handle primitives (strings and numbers)
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+
+  // Handle null, undefined, or boolean values
+  if (node == null || typeof node === 'boolean') {
     return '';
   }
-};
+
+  // Handle arrays (e.g., from fragments or multiple children)
+  if (Array.isArray(node)) {
+    return node.map(extractTextFromReactNode).join('');
+  }
+
+  // Handle React elements (check if it's a valid React element)
+  if (React.isValidElement(node)) {
+    // Recursively extract text from children
+    return extractTextFromReactNode(node.props.children);
+  }
+
+  // Fallback for unknown types
+  return '';
+}

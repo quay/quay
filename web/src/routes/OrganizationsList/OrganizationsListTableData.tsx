@@ -1,17 +1,21 @@
 import {Td} from '@patternfly/react-table';
-
-import {Skeleton} from '@patternfly/react-core';
+import {Skeleton, Flex, FlexItem, Label} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
-import {fetchOrg} from 'src/resources/OrganizationResource';
+import {fetchOrg, IAvatar} from 'src/resources/OrganizationResource';
+import Avatar from 'src/components/Avatar';
 import {IRepository} from 'src/resources/RepositoryResource';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {fetchMembersForOrg} from 'src/resources/MembersResource';
 import {fetchRobotsForNamespace} from 'src/resources/RobotsResource';
 import {formatDate} from 'src/libs/utils';
 import ColumnNames from './ColumnNames';
 import {OrganizationsTableItem} from './OrganizationsList';
 import {useQuery} from '@tanstack/react-query';
+import OrganizationOptionsKebab from './OrganizationOptionsKebab';
 import {useRepositories} from 'src/hooks/UseRepositories';
+import {renderQuotaConsumed} from 'src/libs/quotaUtils';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 interface CountProps {
   count: string | number;
@@ -37,18 +41,23 @@ function RepoLastModifiedDate(props: RepoLastModifiedDateProps) {
   );
 }
 
+interface OrgTableDataProps extends OrganizationsTableItem {
+  userEmail?: string;
+  quota_report?: import('src/libs/quotaUtils').IQuotaReport;
+  selectedOrganization?: OrganizationsTableItem[];
+  setSelectedOrganization?: (orgs: OrganizationsTableItem[]) => void;
+  avatar?: IAvatar;
+}
+
 // Get and assemble data from multiple endpoints to show in Org table
 // Only necessary because current API structure does not return all required data
-export default function OrgTableData(props: OrganizationsTableItem) {
-  // const queryClient = useQueryClient();
-  // useEffect(() => {
-  //   return () => {
-  //     queryClient.cancelQueries(['organization', props.name]);
-  //     queryClient.cancelQueries(['organization', props.name, 'members']);
-  //     queryClient.cancelQueries(['organization', props.name, 'robots']);
-  //     queryClient.cancelQueries(['organization', props.name, 'repositories']);
-  //   };
-  // }, [props.name]);
+export default function OrgTableData(props: OrgTableDataProps) {
+  const config = useQuayConfig();
+  // Get current user data for user avatars
+  const {user: currentUser} = useCurrentUser();
+
+  const {isSuperUser} = useCurrentUser();
+
   // Get organization
   const {data: organization} = useQuery(
     ['organization', props.name],
@@ -60,14 +69,18 @@ export default function OrgTableData(props: OrganizationsTableItem) {
   const {data: members} = useQuery(
     ['organization', props.name, 'members'],
     ({signal}) => fetchMembersForOrg(props.name, signal),
-    {placeholderData: props.isUser ? [] : undefined},
+    {
+      placeholderData: props.isUser ? [] : undefined,
+      enabled: !props.isUser,
+    },
   );
   const memberCount = props.isUser ? 0 : members ? members.length : null;
 
   // Get robots
   const {data: robots} = useQuery(
     ['organization', props.name, 'robots'],
-    ({signal}) => fetchRobotsForNamespace(props.name, false, signal),
+    ({signal}) => fetchRobotsForNamespace(props.name, props.isUser, signal),
+    {placeholderData: []},
   );
   const robotCount = robots ? robots.length : null;
 
@@ -95,24 +108,72 @@ export default function OrgTableData(props: OrganizationsTableItem) {
       : [],
   );
 
-  let teamCountVal: string;
-  if (!props.isUser) {
-    const {data: teams} = useQuery(
-      ['organization', props.name, 'teams'],
-      () => organization?.teams || [],
-    );
-    teamCountVal = organization?.teams
-      ? Object.keys(organization?.teams)?.length.toString()
-      : '0';
-  } else {
-    teamCountVal = 'N/A';
-  }
+  const teamCountVal: string = props.isUser
+    ? 'N/A'
+    : organization?.teams
+    ? Object.keys(organization.teams).length.toString()
+    : '0';
 
   return (
     <>
       <Td dataLabel={ColumnNames.name}>
-        <Link to={props.name}>{props.name}</Link>
+        <Flex
+          alignItems={{default: 'alignItemsCenter'}}
+          justifyContent={{default: 'justifyContentSpaceBetween'}}
+        >
+          <Flex alignItems={{default: 'alignItemsCenter'}}>
+            {/* Show avatar for all entries that have avatar data */}
+            {props.avatar && (
+              <FlexItem spacer={{default: 'spacerSm'}}>
+                <Avatar avatar={props.avatar} size="sm" />
+              </FlexItem>
+            )}
+            <FlexItem>
+              <Link to={props.name}>{props.name}</Link>
+            </FlexItem>
+          </Flex>
+          {/* Show status labels for users (right-aligned, superuser only) */}
+          {isSuperUser && props.isUser && (
+            <Flex spaceItems={{default: 'spaceItemsXs'}}>
+              {currentUser?.username === props.name && (
+                <FlexItem>
+                  <Label color="green">You</Label>
+                </FlexItem>
+              )}
+              {props.userSuperuser && (
+                <FlexItem>
+                  <Label color="blue">Superuser</Label>
+                </FlexItem>
+              )}
+              {props.userGlobalReadonlySuperuser && (
+                <FlexItem>
+                  <Label color="teal">Global Readonly Superuser</Label>
+                </FlexItem>
+              )}
+              {props.userEnabled === false && (
+                <FlexItem>
+                  <Label>Disabled</Label>
+                </FlexItem>
+              )}
+            </Flex>
+          )}
+        </Flex>
       </Td>
+      {isSuperUser && config?.features?.MAILING && (
+        <Td dataLabel={ColumnNames.adminEmail}>
+          {props.isUser ? (
+            props.userEmail ? (
+              <a href={`mailto:${props.userEmail}`}>{props.userEmail}</a>
+            ) : (
+              <span style={{color: '#888'}}>—</span>
+            )
+          ) : organization?.email ? (
+            <a href={`mailto:${organization.email}`}>{organization.email}</a>
+          ) : (
+            <span style={{color: '#888'}}>—</span>
+          )}
+        </Td>
+      )}
       <Td dataLabel={ColumnNames.repoCount}>
         <Count count={repoCount}></Count>
       </Td>
@@ -130,6 +191,43 @@ export default function OrgTableData(props: OrganizationsTableItem) {
           lastModifiedDate={lastModifiedDate}
         ></RepoLastModifiedDate>
       </Td>
+      {config?.features?.QUOTA_MANAGEMENT && config?.features?.EDIT_QUOTA && (
+        <Td dataLabel={ColumnNames.size}>
+          {props.isUser ? (
+            props.quota_report ? (
+              renderQuotaConsumed(props.quota_report, {
+                showPercentage: true,
+                showTotal: true,
+                showBackfill: true,
+              })
+            ) : (
+              <span style={{color: '#888'}}>—</span>
+            )
+          ) : (
+            renderQuotaConsumed(
+              props.quota_report || organization?.quota_report,
+              {
+                showPercentage: true,
+                showTotal: true,
+                showBackfill: true,
+              },
+            )
+          )}
+        </Td>
+      )}
+      {isSuperUser && (
+        <Td dataLabel={ColumnNames.options}>
+          <OrganizationOptionsKebab
+            name={props.name}
+            isUser={props.isUser}
+            userEnabled={props.userEnabled}
+            userSuperuser={props.userSuperuser}
+            userGlobalReadonlySuperuser={props.userGlobalReadonlySuperuser}
+            selectedOrganization={props.selectedOrganization}
+            setSelectedOrganization={props.setSelectedOrganization}
+          />
+        </Td>
+      )}
     </>
   );
 }

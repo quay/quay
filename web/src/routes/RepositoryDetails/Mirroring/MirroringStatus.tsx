@@ -1,7 +1,7 @@
 import React from 'react';
 import {Divider, Button} from '@patternfly/react-core';
 import {StatusDisplay} from 'src/components/StatusDisplay';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant} from 'src/contexts/UIContext';
 import {
   MirroringConfigResponse,
   getMirrorConfig,

@@ -9,6 +9,7 @@ from data.database import Repository
 from data.database import RepositoryAutoPrunePolicy as RepositoryAutoPrunePolicyTable
 from data.database import RepositoryState, User, db_for_update, get_epoch_timestamp_ms
 from data.model import (
+    ImmutableTagException,
     InvalidNamespaceAutoPruneMethod,
     InvalidNamespaceAutoPrunePolicy,
     InvalidNamespaceException,
@@ -597,6 +598,14 @@ def prune_tags(tags, repo, namespace):
                         "tag": tag.name,
                     },
                 )
+        except ImmutableTagException:
+            logger.info(
+                "Skipping immutable tag '%s' during auto-prune for repo %s/%s",
+                tag.name,
+                namespace.username,
+                repo.name,
+            )
+            continue
         except Exception as err:
             raise Exception(
                 f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
@@ -733,7 +742,10 @@ def execute_policies_for_repo(
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):
     try:
-        query = Repository.select(Repository.name, Repository.id,).where(
+        query = Repository.select(
+            Repository.name,
+            Repository.id,
+        ).where(
             Repository.state == RepositoryState.NORMAL,
             Repository.namespace_user == namespace_id,
         )

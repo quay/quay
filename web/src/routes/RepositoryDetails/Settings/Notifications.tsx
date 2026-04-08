@@ -198,7 +198,11 @@ export default function Notifications({
               </Td>
             </Tr>
             <Tr isExpanded={isExpanded(notification.uuid)}>
-              <Td colSpan={7} id="notification-config-details">
+              <Td
+                colSpan={7}
+                id="notification-config-details"
+                data-testid="notification-config-details"
+              >
                 <ExpandableRowContent>
                   <NotificationConfig notification={notification} />
                 </ExpandableRowContent>
@@ -301,16 +305,12 @@ function NotificationConfig({notification}: {notification: RepoNotification}) {
           </Conditional>
         </>
       );
-    // TODO: Quay notifications not supported in new UI until
-    // notification header has been implemented
-    // case NotificationMethodType.quaynotification:
-    //   return (
-    //     <Flex direction={{default: 'column'}}>
-    //       <FlexItem style={{marginBottom: 0}}>
-    //         {notificationMethod.title}
-    //       </FlexItem>
-    //     </Flex>
-    //   );
+    case NotificationMethodType.quaynotification:
+      return (
+        <FlexItem id="quay-notification-recipient" style={{color: 'grey'}}>
+          Recipient: {notification.config?.target?.name}
+        </FlexItem>
+      );
   }
 }
 

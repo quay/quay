@@ -140,8 +140,10 @@ class Log(
         )
 
     def to_dict(self, avatar, include_namespace=False):
+        kinds = _kinds()
+        kind_name = kinds.get(self.kind_id, "unknown")
         view = {
-            "kind": _kinds()[self.kind_id],
+            "kind": kind_name,
             "metadata": json.loads(self.metadata_json or "{}"),
             "ip": self.ip,
             "datetime": _format_date(self.datetime),
@@ -191,8 +193,10 @@ class AggregatedLogCount(namedtuple("AggregatedLogCount", ["kind_id", "count", "
     """
 
     def to_dict(self):
+        kinds = _kinds()
+        kind_name = kinds.get(self.kind_id, "unknown")
         view = {
-            "kind": _kinds()[self.kind_id],
+            "kind": kind_name,
             "count": self.count,
             "datetime": _format_date(self.datetime),
         }

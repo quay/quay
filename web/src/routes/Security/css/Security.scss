@@ -1,0 +1,13 @@
+.security-page {
+  // Full width - PatternFly PageSection handles padding
+
+  a {
+    color: var(--pf-t--global--text--color--link--default);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--pf-t--global--text--color--link--hover);
+      text-decoration: underline;
+    }
+  }
+}

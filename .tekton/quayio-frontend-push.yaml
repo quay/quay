@@ -1,0 +1,48 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/quay/quay?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+      == "master"
+    pipelinesascode.tekton.dev/pipeline: "https://github.com/quay/quay-konflux-configs/blob/main/pipelines/quayio-build-pipeline.yaml"
+    pipelinesascode.tekton.dev/target-namespace: "quayio-tenant"
+  creationTimestamp: null
+  labels:
+    appstudio.openshift.io/application: quayio-frontend
+    appstudio.openshift.io/component: quayio-frontend
+    pipelines.appstudio.openshift.io/type: build
+  name: quayio-frontend-on-push
+  namespace: quayio-tenant
+spec:
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/quayio-tenant/quayio-frontend/quayio-frontend:{{revision}}
+  - name: dockerfile
+    value: build-tools/Dockerfile
+  - name: path-context
+    value: web
+  - name: submodules
+    value: "true"
+  - name: build-args
+    value:
+    - NPM_BUILD_SCRIPT=build-plugin
+  - name: slack-notification-on-failure
+    value: "true"
+  pipelineRef:
+    name: quayio-build-pipeline
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-quayio-frontend
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+status: {}

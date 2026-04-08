@@ -17,6 +17,7 @@ class ApiErrorType(Enum):
     exceeds_license = "exceeds_license"
     not_found = "not_found"
     downstream_issue = "downstream_issue"
+    tag_immutable = "tag_immutable"
 
 
 ERROR_DESCRIPTION = {
@@ -30,6 +31,7 @@ ERROR_DESCRIPTION = {
     ApiErrorType.exceeds_license.value: "The action was refused because the current license does not allow it.",
     ApiErrorType.not_found.value: "The resource was not found.",
     ApiErrorType.downstream_issue.value: "An error occurred in a downstream service.",
+    ApiErrorType.tag_immutable.value: "The tag is immutable and cannot be modified or deleted.",
 }
 
 
@@ -141,3 +143,9 @@ class NotFound(ApiException):
 class DownstreamIssue(ApiException):
     def __init__(self, error_description, payload=None):
         ApiException.__init__(self, ApiErrorType.downstream_issue, 520, error_description, payload)
+
+
+class TagImmutable(ApiException):
+    def __init__(self, tag_name, operation, payload=None):
+        error_description = f"Cannot {operation} immutable tag '{tag_name}'"
+        ApiException.__init__(self, ApiErrorType.tag_immutable, 409, error_description, payload)

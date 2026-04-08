@@ -6,7 +6,6 @@ from peewee import IntegrityError, fn
 import features
 from data.database import (
     AccessToken,
-    ApprTag,
     BlobUpload,
     DeletedRepository,
     ImageStorage,
@@ -17,6 +16,7 @@ from data.database import (
     ManifestLabel,
     ManifestPullStatistics,
     ManifestSecurityStatus,
+    OrgMirrorRepository,
     QuotaRepositorySize,
     RepoMirrorConfig,
     Repository,
@@ -84,23 +84,10 @@ def purge_repository(repo, force=False):
     repo.state = RepositoryState.MARKED_FOR_DELETION
     repo.save()
 
-    # Delete the repository of all Appr-referenced entries.
-    # Note that new-model Tag's must be deleted in *two* passes, as they can reference parent tags,
-    # and MySQL is... particular... about such relationships when deleting.
-    if repo.kind.name == "application":
-        fst_pass = (
-            ApprTag.delete()
-            .where(ApprTag.repository == repo, ~(ApprTag.linked_tag >> None))
-            .execute()
-        )
-        snd_pass = ApprTag.delete().where(ApprTag.repository == repo).execute()
-        gc_table_rows_deleted.labels(table="ApprTag").inc(fst_pass + snd_pass)
-    else:
-        # GC to remove the images and storage.
-        _purge_repository_contents(repo)
+    # GC to remove the images and storage.
+    _purge_repository_contents(repo)
 
     # Ensure there are no additional tags, manifests, images or blobs in the repository.
-    assert ApprTag.select().where(ApprTag.repository == repo).count() == 0
     assert Tag.select().where(Tag.repository == repo).count() == 0
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
@@ -128,6 +115,7 @@ def purge_repository(repo, force=False):
     _chunk_delete_all(repo, RepositoryNotification, force=force)
     _chunk_delete_all(repo, BlobUpload, force=force)
     _chunk_delete_all(repo, RepoMirrorConfig, force=force)
+    _chunk_delete_all(repo, OrgMirrorRepository, force=force)
     _chunk_delete_all(repo, RepositoryAuthorizedEmail, force=force)
 
     # Delete pull statistics for the repository.
@@ -336,6 +324,22 @@ def _purge_oci_manifest(manifest, context):
 def _purge_oci_tag(tag, context, allow_non_expired=False):
     assert tag.repository_id == context.repository.id
 
+    # Safety: never purge immutable tags during GC when they should not expire
+    # allow_non_expired=True is used during repository deletion, which must always succeed
+    if (
+        not allow_non_expired
+        and features.IMMUTABLE_TAGS
+        and tag.immutable
+        and not config.app_config.get("FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False)
+    ):
+        logger.warning(
+            "Skipping GC of immutable tag %s (id=%s) in repository %s",
+            tag.name,
+            tag.id,
+            context.repository.id,
+        )
+        return False
+
     if not allow_non_expired:
         assert tag.lifetime_end_ms is not None
         assert tag.lifetime_end_ms <= oci_tag.get_epoch_timestamp_ms()
@@ -355,10 +359,21 @@ def _purge_oci_tag(tag, context, allow_non_expired=False):
         if reloaded_tag.lifetime_end_ms != tag.lifetime_end_ms:
             return False
 
+        # Delete pull statistics for the tag.
+        deleted_tag_pull_stats = (
+            TagPullStatistics.delete()
+            .where(
+                TagPullStatistics.repository == context.repository,
+                TagPullStatistics.tag_name == tag.name,
+            )
+            .execute()
+        )
+
         # Delete the tag.
         delete_tag_notifications_for_tag(tag)
         tag.delete_instance()
 
+    gc_table_rows_deleted.labels(table="TagPullStatistics").inc(deleted_tag_pull_stats)
     gc_table_rows_deleted.labels(table="Tag").inc()
 
 
@@ -395,13 +410,20 @@ def _check_manifest_used(manifest_id):
         # Check if the manifest is the subject of another manifest.
         # Note: Manifest referrers with a valid subject field are created a non expiring
         # hidden tag, in order to prevent GC from inadvertently removing a referrer.
-        try:
-            Manifest.select().join(Referrer, on=(Manifest.digest == Referrer.subject)).where(
-                Manifest.id == manifest_id
-            ).get()
+        if (
+            Manifest.select()
+            .where(
+                Manifest.id == manifest_id,
+                fn.EXISTS(
+                    Referrer.select().where(
+                        Referrer.subject == Manifest.digest,
+                        Referrer.repository == Manifest.repository,
+                    )
+                ),
+            )
+            .exists()
+        ):
             return True
-        except Manifest.DoesNotExist:
-            pass
 
     return False
 
@@ -492,6 +514,16 @@ def _garbage_collect_manifest(manifest_id, context):
             .execute()
         )
 
+        # Delete pull statistics for the manifest.
+        deleted_manifest_pull_stats = (
+            ManifestPullStatistics.delete()
+            .where(
+                ManifestPullStatistics.repository == context.repository,
+                ManifestPullStatistics.manifest_digest == manifest.digest,
+            )
+            .execute()
+        )
+
         # Delete the manifest.
         manifest.delete_instance()
 
@@ -509,6 +541,7 @@ def _garbage_collect_manifest(manifest_id, context):
     gc_table_rows_deleted.labels(table="ManifestChild").inc(deleted_manifest_child)
     gc_table_rows_deleted.labels(table="ManifestBlob").inc(deleted_manifest_blob)
     gc_table_rows_deleted.labels(table="ManifestSecurityStatus").inc(deleted_manifest_security)
+    gc_table_rows_deleted.labels(table="ManifestPullStatistics").inc(deleted_manifest_pull_stats)
     gc_table_rows_deleted.labels(table="Manifest").inc()
 
     return True

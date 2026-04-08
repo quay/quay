@@ -4,10 +4,11 @@ from functools import wraps
 from flask import Response, request, url_for
 
 import features
-from app import app, model_cache, storage
+from app import app, model_cache, pullmetrics, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.database import db_disallow_replica_use
 from data.model import (
+    ImmutableTagException,
     ManifestDoesNotExist,
     QuotaExceededException,
     RepositoryDoesNotExist,
@@ -40,6 +41,7 @@ from endpoints.v2.errors import (
     NameUnknown,
     QuotaExceeded,
     TagExpired,
+    TagImmutable,
 )
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -68,7 +70,7 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @log_unauthorized_pull
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @inject_registry_model()
 def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_model):
@@ -124,8 +126,21 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
         analytics_name="pull_repo_100x",
         analytics_sample=0.01,
         tag=manifest_ref,
+        mediaType=manifest_media_type,
     )
     image_pulls.labels("v2", "tag", 200).inc()
+
+    # Track pull metrics if feature is enabled
+    if features.IMAGE_PULL_STATS:
+        try:
+            if pullmetrics:
+                metrics = pullmetrics.get_event()
+                metrics.track_tag_pull(repository_ref, manifest_ref, manifest_digest)
+        except Exception as e:
+            logger.warning(
+                "Could not track tag pull metrics: %s. " "Pull statistics may not be recorded.",
+                str(e),
+            )
 
     return Response(
         manifest_bytes.as_unicode(),
@@ -142,7 +157,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @log_unauthorized_pull
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @inject_registry_model()
 def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_model):
@@ -170,8 +185,23 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
         image_pulls.labels("v2", "manifest", 404).inc()
         raise ManifestUnknown(str(e))
 
-    track_and_log("pull_repo", repository_ref, manifest_digest=manifest_ref)
+    track_and_log(
+        "pull_repo", repository_ref, manifest_digest=manifest_ref, mediaType=manifest.media_type
+    )
     image_pulls.labels("v2", "manifest", 200).inc()
+
+    # Track pull metrics if feature is enabled
+    if features.IMAGE_PULL_STATS:
+        try:
+            if pullmetrics:
+                metrics = pullmetrics.get_event()
+                metrics.track_manifest_pull(repository_ref, manifest_ref)
+        except Exception as e:
+            logger.warning(
+                "Could not track manifest pull metrics: %s. "
+                "Pull statistics may not be recorded.",
+                str(e),
+            )
 
     return Response(
         manifest.internal_manifest_bytes.as_unicode(),
@@ -277,6 +307,7 @@ def _doesnt_accept_schema_v1():
 @check_pushes_disabled
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest(request.content_type, request.data)
+
     return _write_manifest_and_log(namespace_name, repo_name, manifest_ref, parsed)
 
 
@@ -395,7 +426,10 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         if manifest is None:
             raise ManifestUnknown()
 
-        tags = registry_model.delete_tags_for_manifest(model_cache, manifest)
+        try:
+            tags = registry_model.delete_tags_for_manifest(model_cache, manifest)
+        except ImmutableTagException as ite:
+            raise TagImmutable(detail={"message": f"tag '{ite.tag_name}' is immutable"}) from ite
         if not tags:
             raise ManifestUnknown()
 
@@ -429,7 +463,11 @@ def delete_manifest_by_tag(namespace_name, repo_name, manifest_ref):
         if tag is None:
             raise ManifestUnknown()
 
-        deleted_tag = registry_model.delete_tag(model_cache, repository_ref, manifest_ref)
+        try:
+            deleted_tag = registry_model.delete_tag(model_cache, repository_ref, manifest_ref)
+        except ImmutableTagException as ite:
+            raise TagImmutable(detail={"message": f"tag '{ite.tag_name}' is immutable"}) from ite
+
         if not deleted_tag:
             raise ManifestUnknown()
 
@@ -448,7 +486,7 @@ def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
         if features.STORAGE_REPLICATION:
             _enqueue_blobs_for_replication(manifest, storage, namespace_name)
 
-        track_and_log("push_repo", repository_ref, tag=tag_name)
+        track_and_log("push_repo", repository_ref, tag=tag_name, mediaType=manifest.media_type)
         spawn_notification(repository_ref, "repo_push", {"updated_tags": [tag_name]})
         image_pushes.labels("v2", 201, manifest.media_type).inc()
 
@@ -491,6 +529,8 @@ def _write_manifest(
         raise ManifestInvalid(detail={"message": str(cme)})
     except RetargetTagException as rte:
         raise ManifestInvalid(detail={"message": str(rte)})
+    except ImmutableTagException as ite:
+        raise TagImmutable(detail={"message": f"tag '{ite.tag_name}' is immutable"}) from ite
     except QuotaExceededException as qee:
         raise QuotaExceeded()
 

@@ -40,6 +40,8 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: 3.12
+        cache: 'pip'
+        cache-dependency-path: requirements-dev.txt
 
     - name: Install dependencies
       run: |
@@ -58,6 +60,13 @@ jobs:
         docker restart quay-quay
         sleep 30
 
+    - name: Set up Node.js with npm caching
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: web/package-lock.json
+
     - name: Cypress run
       uses: cypress-io/github-action@v5
       with:
@@ -70,17 +79,20 @@ jobs:
       env:
         REACT_QUAY_APP_API_URL: http://localhost:8080
 
-    - uses: actions/upload-artifact@v4
-      if: failure()
-      with:
-        name: cypress-screenshots
-        path: web/cypress/screenshots
+    - name: Save PR number
+      if: always() && github.event_name == 'pull_request'
+      run: |
+        mkdir -p ./test-results
+        echo ${{ github.event.pull_request.number }} > ./test-results/pr_number.txt
 
-    - uses: actions/upload-artifact@v4
-      if: always()
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always() && github.event_name == 'pull_request'
       with:
-        name: cypress-videos
-        path: web/cypress/videos
+        name: test-results
+        path: |
+          web/cypress/reports/ctrf-report.json
+          test-results/pr_number.txt
 
     - name: Create report
       run: |
@@ -89,14 +101,17 @@ jobs:
         docker logs quay-quay >logs/quay.log 2>&1 || true
         docker logs quay-db >logs/quay-db.log 2>&1 || true
         docker logs quay-redis >logs/redis.log 2>&1 || true
-      if: always()
+      if: failure()
 
-    - name: Upload Quay logs
+    - name: Upload debugging artifacts
       uses: actions/upload-artifact@v4
+      if: failure()
       with:
-        name: logs
-        path: logs/
-      if: always()
+        name: cypress-debug
+        path: |
+          web/cypress/screenshots
+          web/cypress/videos
+          logs/
 
   frontend-plugin:
     name:  Build Frontend Plugin
@@ -104,6 +119,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+
+    - name: Set up Node.js with npm caching
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: web/package-lock.json
 
     - name: Install dependencies
       run: cd web && npm install

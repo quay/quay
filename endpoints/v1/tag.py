@@ -6,6 +6,8 @@ from flask import abort, jsonify, make_response, request, session
 from app import docker_v2_signing_key, model_cache, storage
 from auth.decorators import process_auth
 from auth.permissions import ModifyRepositoryPermission, ReadRepositoryPermission
+from data.model import ImmutableTagException
+from data.model.oci.tag import RetargetTagException
 from data.registry_model import registry_model
 from data.registry_model.manifestbuilder import lookup_manifest_builder
 from endpoints.decorators import (
@@ -102,12 +104,17 @@ def put_tag(namespace_name, repo_name, tag):
         if legacy_image is None:
             abort(400)
 
-        if (
-            registry_model.retarget_tag(
-                repository_ref, tag, legacy_image, storage, docker_v2_signing_key
-            )
-            is None
-        ):
+        try:
+            if (
+                registry_model.retarget_tag(
+                    repository_ref, tag, legacy_image, storage, docker_v2_signing_key
+                )
+                is None
+            ):
+                abort(400)
+        except ImmutableTagException:
+            abort(409, f"Tag '{tag}' is immutable and cannot be overwritten")
+        except RetargetTagException:
             abort(400)
 
         return make_response("Created", 200)
@@ -129,8 +136,11 @@ def delete_tag(namespace_name, repo_name, tag):
     )
 
     if permission.can() and repository_ref is not None:
-        if not registry_model.delete_tag(model_cache, repository_ref, tag):
-            abort(404)
+        try:
+            if not registry_model.delete_tag(model_cache, repository_ref, tag):
+                abort(404)
+        except ImmutableTagException:
+            abort(409, f"Tag '{tag}' is immutable and cannot be deleted")
 
         track_and_log("delete_tag", repository_ref, tag=tag)
         return make_response("Deleted", 200)

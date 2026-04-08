@@ -1,4 +1,4 @@
-import {Spinner} from '@patternfly/react-core';
+import {Button, Label, Spinner, Tooltip} from '@patternfly/react-core';
 import {
   ExpandableRowContent,
   Table,
@@ -11,93 +11,194 @@ import {
 } from '@patternfly/react-table';
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
-import {Tag, Manifest} from 'src/resources/TagResource';
-import {useResetRecoilState} from 'recoil';
+import {Tag, Manifest, Label as ManifestLabel} from 'src/resources/TagResource';
+import {useRecoilValue} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';
 import {getTagDetailPath} from 'src/routes/NavigationPath';
 import TablePopover from './TablePopover';
 import SecurityDetails from './SecurityDetails';
 import {formatDate} from 'src/libs/utils';
-import {SecurityDetailsState} from 'src/atoms/SecurityDetailsState';
+import {expandedViewState} from 'src/atoms/TagListState';
 import ColumnNames from './ColumnNames';
-import {DownloadIcon} from '@patternfly/react-icons';
+import {
+  DownloadIcon,
+  ExclamationTriangleIcon,
+  LockIcon,
+  ShieldAltIcon,
+  TagIcon,
+  CubeIcon,
+  CopyIcon,
+} from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
+import Labels from 'src/components/labels/Labels';
 import TagActions from './TagsActions';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import TagExpiration from './TagsTableExpiration';
+import {useQuayState} from 'src/hooks/UseQuayState';
 import ManifestListSize from 'src/components/Table/ManifestListSize';
+import {useTagPullStatistics} from 'src/hooks/UseTags';
+import TagExpiration from './TagsTableExpiration';
+import {useManifestTracks, TrackEntry} from './useManifestTracks';
+import ManifestTrackCell from './ManifestTrackCell';
+import './Tags.css';
 
 function SubRow(props: SubRowProps) {
+  const isMissing = props.manifest.is_present === false;
+  const location = useLocation();
+
   return (
     <Tr
-      key={`${props.manifest.platform.os}-${props.manifest.platform.architecture}-${props.rowIndex}`}
+      key={`${props.manifest.platform?.os}-${props.manifest.platform?.architecture}-${props.rowIndex}`}
       isExpanded={props.isTagExpanded(props.tag)}
     >
       <Td />
       {props.manifest.platform ? (
         <Td dataLabel="platform" noPadding={false} colSpan={2}>
           <ExpandableRowContent>
-            <Link
-              to={getTagDetailPath(
-                location.pathname,
-                props.org,
-                props.repo,
-                props.tag.name,
-                new Map([['digest', props.manifest.digest]]),
-              )}
-            >
-              {`${props.manifest.platform.os} on ${props.manifest.platform.architecture}`}
-            </Link>
+            {isMissing ? (
+              <Tooltip content="This architecture is not present locally. It will be pulled on first access.">
+                <span
+                  style={{color: 'var(--pf-t--global--text--color--subtle)'}}
+                >
+                  <ExclamationTriangleIcon
+                    style={{marginRight: '4px'}}
+                    aria-label="Missing architecture"
+                  />
+                  {`${props.manifest.platform.os} on ${props.manifest.platform.architecture}`}
+                  <Label
+                    color="grey"
+                    isCompact
+                    style={{marginLeft: '8px'}}
+                    data-testid="missing-manifest-label"
+                  >
+                    Missing
+                  </Label>
+                </span>
+              </Tooltip>
+            ) : (
+              <Link
+                to={getTagDetailPath(
+                  location.pathname,
+                  props.org,
+                  props.repo,
+                  props.tag.name,
+                  new Map([['digest', props.manifest.digest]]),
+                )}
+              >
+                {`${props.manifest.platform.os} on ${props.manifest.platform.architecture}`}
+              </Link>
+            )}
           </ExpandableRowContent>
         </Td>
       ) : (
         <Td />
       )}
-      <Td dataLabel="security" noPadding={false} colSpan={1}>
+      <Conditional if={props.config?.features?.SECURITY_SCANNER}>
+        <Td dataLabel="security" noPadding={false} colSpan={1}>
+          <ExpandableRowContent>
+            {isMissing ? (
+              <span style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
+                N/A
+              </span>
+            ) : (
+              <SecurityDetails
+                org={props.org}
+                repo={props.repo}
+                digest={props.manifest.digest}
+                tag={props.tag.name}
+                variant="condensed"
+              />
+            )}
+          </ExpandableRowContent>
+        </Td>
+      </Conditional>
+      <Td dataLabel="size" noPadding={false} colSpan={1}>
         <ExpandableRowContent>
-          <SecurityDetails
-            org={props.org}
-            repo={props.repo}
-            digest={props.manifest.digest}
-            tag={props.tag.name}
-            variant="condensed"
-          />
-        </ExpandableRowContent>
-      </Td>
-      <Td dataLabel="size" noPadding={false} colSpan={3}>
-        <ExpandableRowContent>
-          <ChildManifestSize
-            org={props.org}
-            repo={props.repo}
-            digest={props.manifest.digest}
-          />
+          {isMissing ? (
+            <span style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
+              N/A
+            </span>
+          ) : (
+            <ChildManifestSize
+              org={props.org}
+              repo={props.repo}
+              digest={props.manifest.digest}
+            />
+          )}
         </ExpandableRowContent>
       </Td>
       {props.manifest.digest ? (
         <Td dataLabel="digest" noPadding={false} colSpan={1}>
           <ExpandableRowContent>
-            {props.manifest.digest.substring(0, 19)}
+            <span
+              style={
+                isMissing
+                  ? {color: 'var(--pf-t--global--text--color--subtle)'}
+                  : undefined
+              }
+            >
+              {props.manifest.digest.substring(0, 19)}
+            </span>
           </ExpandableRowContent>
         </Td>
       ) : (
         <Td />
       )}
+      {props.trackCount > 0 && (
+        <Td className="manifest-track-cell">
+          <ManifestTrackCell
+            trackCount={props.trackCount}
+            rowIndex={props.parentRowIndex}
+            getTrackEntry={props.getTrackEntry}
+            getLineClass={props.getLineClass}
+            mode="continuation"
+          />
+        </Td>
+      )}
+      <Td
+        colSpan={
+          (props.config?.features?.IMAGE_PULL_STATS ? 4 : 2) +
+          (props.config?.features?.SECURITY_SCANNER ? 0 : 1)
+        }
+      />
     </Tr>
   );
 }
 
 function TagsTableRow(props: RowProps) {
+  const {inReadOnlyMode} = useQuayState();
   const config = useQuayConfig();
   const tag = props.tag;
   const rowIndex = props.rowIndex;
-
-  // Reset SecurityDetailsState so that loading skeletons appear when viewing report
-  const emptySecurityDetails = useResetRecoilState(SecurityDetailsState);
-  const resetSecurityDetails = () => emptySecurityDetails();
-
+  const expandedView = useRecoilValue(expandedViewState);
   const location = useLocation();
+  const [isTagHovered, setIsTagHovered] = useState(false);
+  const [isDigestHovered, setIsDigestHovered] = useState(false);
+
+  const isTagCopied = props.copiedKey === `tag-${tag.name}`;
+  const isDigestCopied = props.copiedKey === `digest-${tag.name}`;
+
+  // Calculate colspan dynamically based on whether actions column and pull stats columns are shown
+  // Columns: expand(1) + select(1) + tag(1) + security(0-1) + size(1) + lastModified(1) + expires(1) + manifest(1) + pull(1) + pullStats(0-2) + actions(0-1)
+  // Expanded row content spans all except first two (expand + select)
+  const hasActions = !inReadOnlyMode && props.repoDetails?.can_write;
+  const hasPullStats = config?.features?.IMAGE_PULL_STATS;
+  const hasSecurity = config?.features?.SECURITY_SCANNER;
+  const expandedColspan =
+    7 + (hasPullStats ? 2 : 0) + (hasActions ? 1 : 0) - (hasSecurity ? 0 : 1);
+
+  // Fetch pull statistics for this specific tag
+  const {
+    pullStatistics,
+    isLoading: isLoadingPullStats,
+    isError: isErrorPullStats,
+  } = useTagPullStatistics(
+    props.org,
+    props.repo,
+    tag.name,
+    config?.features?.IMAGE_PULL_STATS || false,
+  );
 
   return (
     <Tbody
@@ -126,7 +227,11 @@ function TagsTableRow(props: RowProps) {
             isSelected: props.selectedTags.includes(tag.name),
           }}
         />
-        <Td dataLabel={ColumnNames.name}>
+        <Td
+          dataLabel={ColumnNames.name}
+          onMouseEnter={() => setIsTagHovered(true)}
+          onMouseLeave={() => setIsTagHovered(false)}
+        >
           <Link
             to={getTagDetailPath(
               location.pathname,
@@ -134,24 +239,85 @@ function TagsTableRow(props: RowProps) {
               props.repo,
               tag.name,
             )}
-            onClick={resetSecurityDetails}
           >
             {tag.name}
           </Link>
-        </Td>
-        <Td dataLabel={ColumnNames.security}>
-          {tag.is_manifest_list ? (
-            'See Child Manifests'
-          ) : (
-            <SecurityDetails
-              org={props.org}
-              repo={props.repo}
-              digest={tag.manifest_digest}
-              tag={tag.name}
-              variant="condensed"
-            />
+          {tag.cosign_signature_tag && (
+            <Tooltip content="This tag has been signed via cosign.">
+              <ShieldAltIcon
+                style={{marginLeft: '8px'}}
+                aria-label="Cosign signed"
+              />
+            </Tooltip>
           )}
+          {config?.features?.IMMUTABLE_TAGS && tag.immutable && (
+            <Tooltip content="This tag is immutable and cannot be modified or deleted">
+              <LockIcon
+                style={{
+                  marginLeft: '8px',
+                  color:
+                    'var(--pf-t--global--icon--color--status--info--default)',
+                }}
+                aria-label="Immutable tag"
+                data-testid="immutable-tag-icon"
+              />
+            </Tooltip>
+          )}
+          {tag.is_sparse && (
+            <Tooltip content="This is a sparse manifest list - not all architectures are present locally">
+              <Label
+                color="orange"
+                isCompact
+                style={{marginLeft: '8px'}}
+                data-testid="sparse-manifest-label"
+              >
+                Sparse ({tag.present_child_count}/{tag.child_manifest_count})
+              </Label>
+            </Tooltip>
+          )}
+          <span
+            className="copy-icon"
+            style={{visibility: isTagHovered ? 'visible' : 'hidden'}}
+          >
+            <Tooltip
+              content={
+                <div>
+                  {isTagCopied ? 'Copied to clipboard!' : `Copy pull spec`}
+                </div>
+              }
+              position="top"
+            >
+              <Button
+                icon={<CopyIcon />}
+                variant="plain"
+                aria-label="Copy pull spec to clipboard"
+                onClick={() => {
+                  const hostname =
+                    config?.config?.SERVER_HOSTNAME || window.location.host;
+                  props.copyToClipboard(
+                    `${hostname}/${props.org}/${props.repo}:${tag.name}`,
+                    `tag-${tag.name}`,
+                  );
+                }}
+              />
+            </Tooltip>
+          </span>
         </Td>
+        <Conditional if={config?.features?.SECURITY_SCANNER}>
+          <Td dataLabel={ColumnNames.security}>
+            {tag.is_manifest_list ? (
+              'See Child Manifests'
+            ) : (
+              <SecurityDetails
+                org={props.org}
+                repo={props.repo}
+                digest={tag.manifest_digest}
+                tag={tag.name}
+                variant="condensed"
+              />
+            )}
+          </Td>
+        </Conditional>
         <Td dataLabel={ColumnNames.size}>
           {tag.manifest_list ? (
             <ManifestListSize manifests={tag.manifest_list.manifests} />
@@ -169,11 +335,76 @@ function TagsTableRow(props: RowProps) {
             tag={tag.name}
             expiration={tag.expiration}
             loadTags={props.loadTags}
+            immutable={tag.immutable}
+            repoState={props.repoDetails?.state}
           />
         </Td>
-        <Td dataLabel={ColumnNames.digest}>
+        <Td
+          dataLabel={ColumnNames.digest}
+          onMouseEnter={() => setIsDigestHovered(true)}
+          onMouseLeave={() => setIsDigestHovered(false)}
+        >
           {tag.manifest_digest.substring(0, 19)}
+          <span
+            className="copy-icon"
+            style={{visibility: isDigestHovered ? 'visible' : 'hidden'}}
+          >
+            <Tooltip
+              content={
+                <div>
+                  {isDigestCopied ? 'Copied to clipboard!' : `Copy digest`}
+                </div>
+              }
+              position="top"
+            >
+              <Button
+                icon={<CopyIcon />}
+                variant="plain"
+                aria-label="Copy manifest digest to clipboard"
+                onClick={() => {
+                  props.copyToClipboard(
+                    tag.manifest_digest,
+                    `digest-${tag.name}`,
+                  );
+                }}
+              />
+            </Tooltip>
+          </span>
         </Td>
+        {props.trackCount > 0 && (
+          <Td className="manifest-track-cell">
+            <ManifestTrackCell
+              trackCount={props.trackCount}
+              rowIndex={rowIndex}
+              getTrackEntry={props.getTrackEntry}
+              getLineClass={props.getLineClass}
+              onDotClick={props.selectTagsByManifest}
+              mode="tag"
+            />
+          </Td>
+        )}
+        <Conditional if={config?.features?.IMAGE_PULL_STATS}>
+          <Td dataLabel={ColumnNames.lastPulled}>
+            {isLoadingPullStats ? (
+              <Spinner size="sm" />
+            ) : isErrorPullStats ? (
+              'Error'
+            ) : pullStatistics?.last_tag_pull_date ? (
+              formatDate(pullStatistics.last_tag_pull_date)
+            ) : (
+              'Never'
+            )}
+          </Td>
+          <Td dataLabel={ColumnNames.pullCount}>
+            {isLoadingPullStats ? (
+              <Spinner size="sm" />
+            ) : isErrorPullStats ? (
+              '-'
+            ) : (
+              pullStatistics?.tag_pull_count ?? 0
+            )}
+          </Td>
+        </Conditional>
         <Td
           dataLabel={ColumnNames.pull}
           style={{
@@ -191,12 +422,7 @@ function TagsTableRow(props: RowProps) {
             <DownloadIcon />
           </TablePopover>
         </Td>
-        <Conditional
-          if={
-            props.repoDetails?.can_write &&
-            config?.registry_state !== 'readonly'
-          }
-        >
+        <Conditional if={props.repoDetails?.can_write && !inReadOnlyMode}>
           <Td>
             <TagActions
               org={props.org}
@@ -206,28 +432,118 @@ function TagsTableRow(props: RowProps) {
               expiration={tag.expiration}
               loadTags={props.loadTags}
               repoDetails={props.repoDetails}
+              isImmutable={tag.immutable}
             />
           </Td>
         </Conditional>
       </Tr>
       {tag.manifest_list
-        ? tag.manifest_list.manifests.map((manifest, rowIndex) => (
+        ? tag.manifest_list.manifests.map((manifest, manifestIdx) => (
             <SubRow
-              key={rowIndex}
+              key={manifestIdx}
               org={props.org}
               repo={props.repo}
               tag={tag}
-              rowIndex={rowIndex}
+              rowIndex={manifestIdx}
               manifest={manifest}
               isTagExpanded={props.isTagExpanded}
+              config={config}
+              trackCount={props.trackCount}
+              parentRowIndex={rowIndex}
+              getTrackEntry={props.getTrackEntry}
+              getLineClass={props.getLineClass}
             />
           ))
         : null}
+      {expandedView && (
+        <Tr className="expanded-row">
+          <Td />
+          <Td colSpan={expandedColspan}>
+            <div className="expanded-row-content">
+              <div className="expanded-row-section">
+                <Tooltip content="Manifest">
+                  <CubeIcon style={{marginRight: '8px'}} />
+                </Tooltip>
+                <Tooltip content="The content-addressable SHA256 hash of this tag">
+                  <span className="manifest-link">
+                    <span className="id-label">SHA256</span>{' '}
+                    <Link
+                      to={getTagDetailPath(
+                        location.pathname,
+                        props.org,
+                        props.repo,
+                        tag.name,
+                        new Map([['tab', 'layers']]),
+                      )}
+                    >
+                      {tag.manifest_digest.substring(
+                        'sha256:'.length,
+                        'sha256:'.length + 12,
+                      )}
+                    </Link>
+                  </span>
+                </Tooltip>
+              </div>
+              <div className="expanded-row-section">
+                <Tooltip content="Labels">
+                  <TagIcon style={{marginRight: '8px'}} />
+                </Tooltip>
+                <Labels
+                  org={props.org}
+                  repo={props.repo}
+                  digest={tag.manifest_digest}
+                  cache={props.labelCache}
+                  setCache={props.setLabelCache}
+                />
+              </div>
+              {tag.cosign_signature_tag && (
+                <div className="expanded-row-section">
+                  <Tooltip content="Cosign Signature">
+                    <ShieldAltIcon style={{marginRight: '8px'}} />
+                  </Tooltip>
+                  <Tooltip content="The artifact containing the cosign signature for this tag">
+                    <span className="manifest-link">
+                      <span className="id-label">cosign</span>{' '}
+                      <Link
+                        to={getTagDetailPath(
+                          location.pathname,
+                          props.org,
+                          props.repo,
+                          tag.cosign_signature_tag,
+                          new Map([['tab', 'layers']]),
+                        )}
+                      >
+                        {tag.cosign_signature_tag}
+                      </Link>
+                    </span>
+                  </Tooltip>
+                </div>
+              )}
+            </div>
+          </Td>
+          {props.trackCount > 0 && (
+            <Td className="manifest-track-cell">
+              <ManifestTrackCell
+                trackCount={props.trackCount}
+                rowIndex={rowIndex}
+                getTrackEntry={props.getTrackEntry}
+                getLineClass={props.getLineClass}
+                mode="continuation"
+              />
+            </Td>
+          )}
+          <Conditional if={props.repoDetails?.can_write && !inReadOnlyMode}>
+            <Td />
+          </Conditional>
+        </Tr>
+      )}
     </Tbody>
   );
 }
 
 export default function TagsTable(props: TableProps) {
+  const config = useQuayConfig();
+
   // Control expanded tags
   const [expandedTags, setExpandedTags] = useState<string[]>([]);
   const setTagExpanded = (tag: Tag, isExpanding = true) =>
@@ -240,6 +556,34 @@ export default function TagsTable(props: TableProps) {
         : otherExpandedtagNames;
     });
   const isTagExpanded = (tag: Tag) => expandedTags.includes(tag.name);
+
+  // Shared clipboard state
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyToClipboard = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
+  // Calculate manifest tracks for visual grouping of tags sharing the same digest
+  const {tracks, getTrackEntry, getLineClass, trackCount} = useManifestTracks(
+    props.allTags,
+  );
+
+  // Page offset converts local row index to global index for track lookup
+  const pageOffset = (props.page - 1) * props.perPage;
+
+  // Select all tags sharing a given manifest digest
+  const selectTagsByManifest = (manifestDigest: string) => {
+    const tagsWithManifest = props.allTags.filter(
+      (t) => t.manifest_digest === manifestDigest,
+    );
+    tagsWithManifest.forEach((t) => props.selectTag(t, undefined, true));
+  };
 
   return (
     <>
@@ -255,7 +599,9 @@ export default function TagsTable(props: TableProps) {
             <Th modifier="wrap" sort={props.getSortableSort?.(2)}>
               Tag
             </Th>
-            <Th modifier="wrap">Security</Th>
+            <Conditional if={config?.features?.SECURITY_SCANNER}>
+              <Th modifier="wrap">Security</Th>
+            </Conditional>
             <Th modifier="wrap" sort={props.getSortableSort?.(4)}>
               Size
             </Th>
@@ -268,23 +614,45 @@ export default function TagsTable(props: TableProps) {
             <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
               Manifest
             </Th>
+            {trackCount > 0 && (
+              <Th
+                className="manifest-track-header"
+                aria-label="Manifest tracks"
+              />
+            )}
+            <Conditional if={config?.features?.IMAGE_PULL_STATS}>
+              <Th modifier="wrap" sort={props.getSortableSort?.(8)}>
+                Last Pulled
+              </Th>
+              <Th modifier="wrap" sort={props.getSortableSort?.(9)}>
+                Pull Count
+              </Th>
+            </Conditional>
             <Th modifier="wrap">Pull</Th>
             <Th />
           </Tr>
         </Thead>
-        {props.tags.map((tag: Tag, rowIndex: number) => (
+        {props.tags.map((tag: Tag, localIndex: number) => (
           <TagsTableRow
-            key={rowIndex}
+            key={localIndex}
             org={props.org}
             repo={props.repo}
             tag={tag}
-            rowIndex={rowIndex}
+            rowIndex={pageOffset + localIndex}
             selectedTags={props.selectedTags}
             isTagExpanded={isTagExpanded}
             setTagExpanded={setTagExpanded}
             selectTag={props.selectTag}
             loadTags={props.loadTags}
             repoDetails={props.repoDetails}
+            labelCache={props.labelCache}
+            setLabelCache={props.setLabelCache}
+            copyToClipboard={copyToClipboard}
+            copiedKey={copiedKey}
+            trackCount={trackCount}
+            getTrackEntry={getTrackEntry}
+            getLineClass={getLineClass}
+            selectTagsByManifest={selectTagsByManifest}
           />
         ))}
       </Table>
@@ -301,6 +669,9 @@ interface TableProps {
   org: string;
   repo: string;
   tags: Tag[];
+  allTags: Tag[];
+  page: number;
+  perPage: number;
   loading: boolean;
   selectAllTags: (isSelecting: boolean) => void;
   selectedTags: string[];
@@ -308,6 +679,8 @@ interface TableProps {
   loadTags: () => void;
   repoDetails: RepositoryDetails;
   getSortableSort?: (columnIndex: number) => ThProps['sort'];
+  labelCache?: Record<string, ManifestLabel[]>;
+  setLabelCache?: (cache: Record<string, ManifestLabel[]>) => void;
 }
 
 interface RowProps {
@@ -321,6 +694,17 @@ interface RowProps {
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;
   loadTags: () => void;
   repoDetails: RepositoryDetails;
+  labelCache?: Record<string, ManifestLabel[]>;
+  setLabelCache?: (cache: Record<string, ManifestLabel[]>) => void;
+  copyToClipboard: (text: string, key: string) => void;
+  copiedKey: string | null;
+  trackCount: number;
+  getTrackEntry: (trackIndex: number, rowIndex: number) => TrackEntry | null;
+  getLineClass: (
+    trackIndex: number,
+    rowIndex: number,
+  ) => 'start' | 'middle' | 'end' | '';
+  selectTagsByManifest: (manifestDigest: string) => void;
 }
 
 interface SubRowProps {
@@ -330,4 +714,17 @@ interface SubRowProps {
   rowIndex: number;
   manifest: Manifest;
   isTagExpanded: (tag: Tag) => boolean;
+  config: {
+    features?: {
+      IMAGE_PULL_STATS?: boolean;
+      SECURITY_SCANNER?: boolean;
+    };
+  } | null;
+  trackCount: number;
+  parentRowIndex: number;
+  getTrackEntry: (trackIndex: number, rowIndex: number) => TrackEntry | null;
+  getLineClass: (
+    trackIndex: number,
+    rowIndex: number,
+  ) => 'start' | 'middle' | 'end' | '';
 }

@@ -75,6 +75,10 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
         ldap_restricted_user_filter = config.get("LDAP_RESTRICTED_USER_FILTER", None)
         ldap_referrals = int(config.get("LDAP_FOLLOW_REFERRALS", True))
 
+        # Caching options
+        enable_caching = config.get("FEATURE_LDAP_CACHING", False)
+        cache_ttl = config.get("LDAP_CACHE_TTL", 5)
+
         allow_tls_fallback = config.get("LDAP_ALLOW_INSECURE_FALLBACK", False)
         return LDAPUsers(
             ldap_uri,
@@ -95,6 +99,8 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
             ldap_global_readonly_superuser_filter=ldap_global_readonly_superuser_filter,
             ldap_restricted_user_filter=ldap_restricted_user_filter,
             ldap_referrals=ldap_referrals,
+            enable_caching=enable_caching,
+            cache_ttl=cache_ttl,
         )
 
     if authentication_type == "JWT":
@@ -464,9 +470,15 @@ class FederatedUserManager(ConfigUserManager):
         if not identifier:
             identifier = username
 
-        return self.federated_users.is_restricted_user(identifier) or super().is_restricted_user(
-            username
-        )
+        # When config whitelist is set, either source can restrict the user.
+        # When no config whitelist, LDAP result is authoritative - don't fall
+        # back to ConfigUserManager which defaults all users to restricted.
+        if super().restricted_whitelist_is_set():
+            return self.federated_users.is_restricted_user(
+                identifier
+            ) or super().is_restricted_user(username)
+
+        return self.federated_users.is_restricted_user(identifier)
 
     def has_restricted_users(self) -> bool:
         return self.federated_users.has_restricted_users() or super().has_restricted_users()

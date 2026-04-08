@@ -5,7 +5,7 @@ from typing import DefaultDict, Optional
 
 from flask_principal import Identity, Permission, identity_changed, identity_loaded
 
-from app import app, usermanager
+from app import app, model_cache, usermanager
 from auth import scopes
 from data import model
 
@@ -84,6 +84,7 @@ class QuayDeferredPermissionUser(Identity):
 
         self._namespace_wide_loaded = set()
         self._repositories_loaded = set()
+        self._repositories_loaded_from_primary = set()
         self._personal_loaded = False
 
         self._scope_set = auth_scopes
@@ -174,15 +175,68 @@ class QuayDeferredPermissionUser(Identity):
             logger.debug("Team added permission: {0}".format(team_grant))
             self.provides.add(team_grant)
 
-    def _populate_repository_provides(self, user_object, namespace_filter, repository_name):
+    def _populate_repository_provides(
+        self, user_object, namespace_filter, repository_name, for_write=False
+    ):
         """
         Populates the repository-specific provides for a particular user and repository.
         """
 
         if namespace_filter and repository_name:
-            permissions = model.permission.get_user_repository_permissions(
-                user_object, namespace_filter, repository_name
-            )
+            # For read operations, check if repo was modified after permission revocation
+            use_primary = for_write
+            if not for_write:
+                try:
+                    tracker = getattr(model_cache, "repo_modification_tracker", None)
+
+                    # If Redis tracking is unavailable, use primary DB as conservative fallback
+                    if not tracker or not tracker.redis:
+                        use_primary = True
+                        logger.debug(
+                            "Redis tracking unavailable - using PRIMARY DB as fallback. "
+                            "user=%s, repo=%s/%s",
+                            user_object.id,
+                            namespace_filter,
+                            repository_name,
+                        )
+                    elif tracker.should_block_read_access(
+                        user_object.id, namespace_filter, repository_name
+                    ):
+                        # Repo was modified after permission revocation.
+                        # Fall back to primary DB instead of hard-denying, because the
+                        # permission may have been re-granted since the revocation marker
+                        # was written. The primary will have the authoritative answer.
+                        use_primary = True
+                        logger.debug(
+                            "Repo modified after revocation - using PRIMARY DB. "
+                            "user=%s, repo=%s/%s",
+                            user_object.id,
+                            namespace_filter,
+                            repository_name,
+                        )
+                except Exception as e:
+                    # On error, fall back to primary DB for safety
+                    # Can't verify temporal access control, so use primary to avoid replication lag
+                    use_primary = True
+                    logger.warning(
+                        "Error checking repo modification tracker: %s - using PRIMARY DB as fallback",
+                        e,
+                    )
+
+            if use_primary:
+                # Write operations, tracker-flagged reads, or fallback scenarios
+                # require primary DB for immediate consistency
+                permissions = model.permission.get_user_repository_permissions_for_write(
+                    user_object, namespace_filter, repository_name
+                )
+                self._repositories_loaded_from_primary.add(
+                    "%s/%s" % (namespace_filter, repository_name)
+                )
+            else:
+                # Read operations (pull) can safely use replica when tracking is working
+                permissions = model.permission.get_user_repository_permissions_for_read(
+                    user_object, namespace_filter, repository_name
+                )
         else:
             permissions = model.permission.get_all_user_repository_permissions(user_object)
 
@@ -196,15 +250,16 @@ class QuayDeferredPermissionUser(Identity):
             self.provides.add(repo_grant)
 
     def _populate_superuser_provides(self, user_object):
-        if (
+        # Global readonly superusers and regular superusers are mutually exclusive.
+        # If a user is in both lists (misconfiguration), readonly takes precedence.
+        if usermanager.is_global_readonly_superuser(user_object.username):
+            logger.debug("Adding global readonly superuser to user: %s", user_object.username)
+            self.provides.add(_GlobalReadOnlySuperUserNeed())
+        elif (
             scopes.SUPERUSER in self._scope_set or scopes.DIRECT_LOGIN in self._scope_set
         ) and usermanager.is_superuser(user_object.username):
             logger.debug("Adding superuser to user: %s", user_object.username)
             self.provides.add(_SuperUserNeed())
-
-        if usermanager.is_global_readonly_superuser(user_object.username):
-            logger.debug("Adding global readonly superuser to user: %s", user_object.username)
-            self.provides.add(_GlobalReadOnlySuperUserNeed())
 
     def can(self, permission):
         logger.debug("Loading user permissions after deferring for: %s", self.id)
@@ -236,8 +291,22 @@ class QuayDeferredPermissionUser(Identity):
             return super(QuayDeferredPermissionUser, self).can(permission)
 
         # Lazy-load the repository-specific permissions.
-        if perm_repository and perm_repository not in self._repositories_loaded:
-            self._populate_repository_provides(user_object, perm_namespace, perm_repo_name)
+        # If a write check comes in for a repo previously loaded from a replica,
+        # reload from primary to avoid authorizing writes with stale grants.
+        is_write_check = perm_repository and isinstance(
+            permission, (ModifyRepositoryPermission, AdministerRepositoryPermission)
+        )
+        needs_load = perm_repository and perm_repository not in self._repositories_loaded
+        needs_primary_reload = (
+            is_write_check
+            and perm_repository in self._repositories_loaded
+            and perm_repository not in self._repositories_loaded_from_primary
+        )
+
+        if needs_load or needs_primary_reload:
+            self._populate_repository_provides(
+                user_object, perm_namespace, perm_repo_name, for_write=is_write_check
+            )
             self._repositories_loaded.add(perm_repository)
 
             # If we now have permission, no need to load any more permissions.

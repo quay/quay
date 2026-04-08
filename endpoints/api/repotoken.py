@@ -39,7 +39,7 @@ class RepositoryTokenList(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("listRepoTokens")
     def get(self, namespace_name, repo_name):
         """
@@ -90,7 +90,7 @@ class RepositoryToken(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getTokens")
     def get(self, namespace_name, repo_name, code):
         """

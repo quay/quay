@@ -1,12 +1,23 @@
 import logging
 import time
 
+from peewee import JOIN
+
 import features
 from app import app, proxy_cache_blob_queue
-from data.database import ImageStorage, ImageStoragePlacement, ManifestBlob
+from data.database import (
+    ImageStorage,
+    ImageStoragePlacement,
+    IndexStatus,
+    Manifest,
+    ManifestBlob,
+    ManifestSecurityStatus,
+    db_transaction,
+)
 from data.model import repository, user
 from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.registry_proxy_model import ProxyModel
+from util.locking import GlobalLock
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 from workers.queueworker import (
@@ -25,6 +36,68 @@ RESERVATION_SECONDS = 60 * 20
 
 
 class ProxyCacheBlobWorker(QueueWorker):
+    def _all_blobs_downloaded_for_manifest(self, manifest_id, repo_id):
+        """
+        Check if all blobs associated with a manifest have ImageStoragePlacement.
+        Returns True if all blobs are downloaded, False otherwise.
+        """
+        # LEFT JOIN to ImageStoragePlacement and check for any blobs missing a placement.
+        missing_placement = (
+            ManifestBlob.select()
+            .join(ImageStorage, on=(ManifestBlob.blob == ImageStorage.id))
+            .join(
+                ImageStoragePlacement,
+                JOIN.LEFT_OUTER,
+                on=(ImageStoragePlacement.storage == ImageStorage.id),
+            )
+            .where(
+                ManifestBlob.manifest == manifest_id,
+                ManifestBlob.repository == repo_id,
+                ImageStoragePlacement.id.is_null(),
+            )
+        )
+
+        return not missing_placement.exists()
+
+    def _reset_security_status_if_complete(self, blob_digest, repo_id):
+        """
+        Check if the downloaded blob completes all blobs for any manifest.
+        If so, reset the security status to allow Clair scanning.
+        """
+        # Find all manifests that include this blob
+        manifests = (
+            Manifest.select(Manifest.id)
+            .join(ManifestBlob)
+            .join(ImageStorage)
+            .where(
+                ManifestBlob.repository_id == repo_id,
+                ImageStorage.content_checksum == blob_digest,
+            )
+            .distinct()
+        )
+
+        for manifest in manifests:
+            # Check if all blobs for this manifest are downloaded
+            if self._all_blobs_downloaded_for_manifest(manifest.id, repo_id):
+                # Delete MANIFEST_UNSUPPORTED status to allow rescanning
+                with db_transaction():
+                    deleted = (
+                        ManifestSecurityStatus.delete()
+                        .where(
+                            ManifestSecurityStatus.manifest == manifest.id,
+                            ManifestSecurityStatus.repository == repo_id,
+                            ManifestSecurityStatus.index_status == IndexStatus.MANIFEST_UNSUPPORTED,
+                        )
+                        .execute()
+                    )
+
+                    if deleted > 0:
+                        logger.info(
+                            "Reset security status for manifest %s in repo %s - all blobs downloaded",
+                            manifest.id,
+                            repo_id,
+                        )
+
     def process_queue_item(self, job_details):
         repo_id = job_details["repo_id"]
         namespace_name = job_details["namespace"]
@@ -53,6 +126,11 @@ class ProxyCacheBlobWorker(QueueWorker):
                     repo_ref,
                     digest,
                 )
+
+                # Check if this blob completes all blobs for any manifest
+                # If so, reset the security status to allow Clair scanning
+                self._reset_security_status_if_complete(digest, repo_id)
+
             except:
                 logger.exception(
                     "Exception when downloading blob %s for repo id %s for proxy cache",
@@ -116,6 +194,11 @@ if __name__ == "__main__":
     if not features.PROXY_CACHE or not features.PROXY_CACHE_BLOB_DOWNLOAD:
         while True:
             time.sleep(100000)
+
+    # Configure global locking.
+    # For testing in CI we mock GlobalLock anyway, so we'll skip global initialization if TESTING is set:
+    if not app.config.get("TESTING", False):
+        GlobalLock.configure(app.config)
 
     logger.debug("Starting proxy cache blob worker")
     worker = ProxyCacheBlobWorker(

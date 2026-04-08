@@ -28,7 +28,7 @@ export function useNotificationMethods() {
     {
       type: NotificationMethodType.quaynotification,
       title: `${config?.config.REGISTRY_TITLE_SHORT} Notification`,
-      enabled: false, // TODO: Implemented but requires notifications in header to be created
+      enabled: true,
     },
     {
       type: NotificationMethodType.slack,

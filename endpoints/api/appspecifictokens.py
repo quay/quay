@@ -84,17 +84,22 @@ class AppTokens(ApiResource):
     @query_param("expiring", "If true, only returns those tokens expiring soon", type=truthy_bool)
     def get(self, parsed_args):
         """
-        Lists the app specific tokens for the user.
+        Lists the app specific tokens for the current user.
+
+        All users (including superusers) see only their own tokens.
+        For system-wide token auditing, superusers should use /v1/superuser/apptokens.
         """
+        user = get_authenticated_user()
         expiring = parsed_args["expiring"]
+
         if expiring:
             expiration = app.config.get("APP_SPECIFIC_TOKEN_EXPIRATION")
             token_expiration = convert_to_timedelta(expiration or _DEFAULT_TOKEN_EXPIRATION_WINDOW)
             seconds = math.ceil(token_expiration.total_seconds() * 0.1) or 1
             soon = timedelta(seconds=seconds)
-            tokens = model.appspecifictoken.get_expiring_tokens(get_authenticated_user(), soon)
+            tokens = model.appspecifictoken.get_expiring_tokens(user, soon)
         else:
-            tokens = model.appspecifictoken.list_tokens(get_authenticated_user())
+            tokens = model.appspecifictoken.list_tokens(user)
 
         return {
             "tokens": [token_view(token, include_code=False) for token in tokens],
@@ -137,8 +142,12 @@ class AppToken(ApiResource):
     def get(self, token_uuid):
         """
         Returns a specific app token for the user.
+
+        Users can only access their own tokens.
         """
-        token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=get_authenticated_user())
+        user = get_authenticated_user()
+        token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=user)
+
         if token is None:
             raise NotFound()
 

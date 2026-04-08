@@ -10,10 +10,11 @@ from flask import request
 from ua_parser import user_agent_parser
 
 import features
-from app import app, ip_resolver, model_cache, usermanager
+from app import app
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from data.database import RepositoryState
 from data.model import InvalidProxyCacheConfigException, PushesDisabledException
+from data.model.org_mirror import get_org_mirroring_robot
 from data.model.repo_mirror import get_mirror, get_mirroring_robot
 from data.model.repository import get_repository, get_repository_state
 from data.readreplica import ReadOnlyModeException
@@ -21,7 +22,6 @@ from data.registry_model import registry_model
 from data.registry_model.registry_proxy_model import ProxyModel
 from util.http import abort
 from util.names import ImplicitLibraryNamespaceNotAllowed, parse_namespace_repository
-from util.request import get_request_ip
 
 logger = logging.getLogger(__name__)
 
@@ -312,48 +312,6 @@ def require_xhr_from_browser(func):
     return wrapper
 
 
-def check_region_blacklisted(error_class=None, namespace_name_kwarg=None):
-    """
-    Decorator which checks if the incoming request is from a region geo IP blocked for the current
-    namespace.
-
-    The first argument to the wrapped function must be the namespace name.
-    """
-
-    def wrapper(wrapped):
-        @wraps(wrapped)
-        def decorated(*args, **kwargs):
-            if namespace_name_kwarg:
-                namespace_name = kwargs[namespace_name_kwarg]
-            else:
-                namespace_name = args[0]
-
-            region_blacklist = registry_model.get_cached_namespace_region_blacklist(
-                model_cache, namespace_name
-            )
-            if region_blacklist:
-                # Resolve the IP information and block if on the namespace's blacklist.
-                remote_ip = get_request_ip()
-                resolved_ip_info = ip_resolver.resolve_ip(remote_ip)
-                logger.debug("Resolved IP information for IP %s: %s", remote_ip, resolved_ip_info)
-
-                if (
-                    resolved_ip_info
-                    and resolved_ip_info.country_iso_code
-                    and resolved_ip_info.country_iso_code in region_blacklist
-                ):
-                    if error_class:
-                        raise error_class()
-
-                    abort(403, "Pulls of this data have been restricted geographically")
-
-            return wrapped(*args, **kwargs)
-
-        return decorated
-
-    return wrapper
-
-
 def check_repository_state(f):
     @wraps(f)
     def wrapper(namespace_name, repo_name, *args, **kwargs):
@@ -413,6 +371,24 @@ def check_repository_state(f):
                     "this to an administrator."
                 ) % (namespace_name, repo_name)
                 raise Exception(msg)
+
+        if repository.state == RepositoryState.ORG_MIRROR:
+            robot = get_org_mirroring_robot(repository)
+
+            if robot is None:
+                abort(
+                    500,
+                    "Repository %s/%s is set as an org mirror but no robot is assigned."
+                    % (namespace_name, repo_name),
+                )
+
+            elif user.id != robot.id:
+                abort(
+                    405,
+                    "Repository %s/%s is an org mirror. Org-mirrored repositories cannot be modified directly."
+                    % (namespace_name, repo_name),
+                )
+            # else: user.id == robot.id - User is designated robot for this org mirror repo.
 
         return f(namespace_name, repo_name, *args, **kwargs)
 

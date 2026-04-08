@@ -1,0 +1,32 @@
+{
+  "username": "superuser",
+  "email": "superuser@example.com",
+  "verified": true,
+  "super_user": true,
+  "avatar": {
+    "name": "superuser",
+    "hash": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+    "color": "#ff0000",
+    "kind": "user"
+  },
+  "organizations": [
+    {
+      "name": "testorg",
+      "avatar": {
+        "name": "testorg",
+        "hash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "color": "#00ff00",
+        "kind": "organization"
+      }
+    }
+  ],
+  "logins": [
+    {
+      "datetime": "Mon, 01 Jan 2024 00:00:00 -0000",
+      "ip": "192.168.1.1"
+    }
+  ],
+  "invoice_email": false,
+  "tag_expiration_s": 1209600,
+  "preferred_namespace": false
+}

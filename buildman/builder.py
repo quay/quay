@@ -22,6 +22,7 @@ from app import userfiles as user_files
 from buildman.manager.ephemeral import EphemeralBuilderManager
 from buildman.server import BuilderServer
 from util.log import logfile_path
+from util.saas.exceptionlog import _sentry_before_send_ignore_known
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +70,11 @@ def initialize_sentry():
                     environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
                     traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
                     profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),
+                    sample_rate=app.config.get("SENTRY_SAMPLE_RATE", 0.1),
                     integrations=integrations,
                     default_integrations=False,
                     auto_session_tracking=True,
+                    before_send=_sentry_before_send_ignore_known,
                 )
                 sentry_sdk.set_tag("service", "buildman")
                 sentry_sdk.set_tag("buildman", buildman_name)

@@ -10,11 +10,8 @@ from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
 from endpoints.api import allow_if_global_readonly_superuser, allow_if_superuser
 from endpoints.api.repository_models_interface import (
-    ApplicationRepository,
-    Channel,
     Count,
     ImageRepositoryRepository,
-    Release,
     Repository,
     RepositoryBaseElement,
     RepositoryDataInterface,
@@ -23,11 +20,6 @@ from endpoints.api.repository_models_interface import (
 
 MAX_DAYS_IN_3_MONTHS = 92
 REPOS_PER_PAGE = 100
-
-
-def _create_channel(channel, releases_channels_map):
-    releases_channels_map[channel.linked_tag.name].append(channel.name)
-    return Channel(channel.name, channel.linked_tag.name, channel.linked_tag.lifetime_start)
 
 
 class PreOCIModel(RepositoryDataInterface):
@@ -129,6 +121,10 @@ class PreOCIModel(RepositoryDataInterface):
             # Also note the +1 on the limit, as paginate_query uses the extra result to determine whether
             # there is a next page.
             start_id = model.modelutil.pagination_start(page_token)
+            # Global readonly superusers can always see all repos, regular superusers need FULL_ACCESS
+            _is_superuser = allow_if_global_readonly_superuser() or (
+                features.SUPERUSERS_FULL_ACCESS and allow_if_superuser()
+            )
             repo_query = model.repository.get_visible_repositories(
                 username=username,
                 include_public=public,
@@ -136,7 +132,8 @@ class PreOCIModel(RepositoryDataInterface):
                 limit=REPOS_PER_PAGE + 1,
                 kind_filter=repo_kind,
                 namespace=namespace,
-                is_superuser=allow_if_superuser() or allow_if_global_readonly_superuser(),
+                is_superuser=_is_superuser,
+                return_all=_is_superuser and not namespace,
             )
 
             repos, next_page_token = model.modelutil.paginate_query(

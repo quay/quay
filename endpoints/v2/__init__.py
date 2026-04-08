@@ -11,8 +11,10 @@ from app import app, get_app_url, usermanager
 from auth.auth_context import get_authenticated_context
 from auth.permissions import (
     AdministerRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
     ModifyRepositoryPermission,
     ReadRepositoryPermission,
+    SuperUserPermission,
 )
 from auth.registry_jwt_auth import get_auth_headers, process_registry_jwt_auth
 from data.model import PushesDisabledException, QuotaExceededException
@@ -36,7 +38,7 @@ from util.pagination import decrypt_page_token, encrypt_page_token
 from util.registry.dockerver import docker_version
 
 logger = logging.getLogger(__name__)
-v2_bp = timed_blueprint(Blueprint("v2", __name__))
+v2_bp = timed_blueprint(Blueprint("v2", __name__), get_app=lambda: app)
 
 
 @v2_bp.app_errorhandler(V2RegistryException)
@@ -178,7 +180,11 @@ def oci_tag_paginate(
 
 
 def _require_repo_permission(permission_class, scopes=None, allow_public=False):
-    def _require_permission(allow_for_superuser=False, disallow_for_restricted_users=False):
+    def _require_permission(
+        allow_for_superuser=False,
+        allow_for_global_readonly_superuser=False,
+        disallow_for_restricted_users=False,
+    ):
         def wrapper(func):
             @wraps(func)
             def wrapped(namespace_name, repo_name, *args, **kwargs):
@@ -210,10 +216,13 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
                         and context.authed_user is not None
                         and context.authed_user.username == namespace_name
                     ):
-                        if usermanager.is_restricted_user(
-                            context.authed_user.username,
-                            # include_robots=app.config["RESTRICTED_USER_INCLUDE_ROBOTS"],
-                        ) and not usermanager.is_superuser(context.authed_user.username):
+                        if (
+                            usermanager.is_restricted_user(
+                                context.authed_user.username,
+                                # include_robots=app.config["RESTRICTED_USER_INCLUDE_ROBOTS"],
+                            )
+                            and not SuperUserPermission().can()
+                        ):
                             raise Unauthorized(detail="Disallowed for restricted users.")
 
                 permission = permission_class(namespace_name, repo_name)
@@ -223,11 +232,13 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
 
                 # Superusers' extra permissions
                 if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser:
-                    context = get_authenticated_context()
+                    if SuperUserPermission().can():
+                        return func(namespace_name, repo_name, *args, **kwargs)
 
-                    if context is not None and context.authed_user is not None:
-                        if usermanager.is_superuser(context.authed_user.username):
-                            return func(namespace_name, repo_name, *args, **kwargs)
+                # Global readonly superusers' read-only permissions
+                if allow_for_global_readonly_superuser:
+                    if GlobalReadOnlySuperUserPermission().can():
+                        return func(namespace_name, repo_name, *args, **kwargs)
 
                 repository = namespace_name + "/" + repo_name
                 if allow_public:
@@ -249,14 +260,8 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
                         return func(namespace_name, repo_name, *args, **kwargs)
 
                     # Allow public imply a RepositoryRead scope, so we can grant superusers read-only access
-                    if features.SUPER_USERS and app.config.get("GLOBAL_READONLY_SUPER_USERS"):
-                        context = get_authenticated_context()
-                        if (
-                            context is not None
-                            and context.authed_user is not None
-                            and usermanager.is_global_readonly_superuser(context.authed_user)
-                        ):
-                            return func(namespace_name, repo_name, *args, **kwargs)
+                    if GlobalReadOnlySuperUserPermission().can():
+                        return func(namespace_name, repo_name, *args, **kwargs)
 
                 raise Unauthorized(repository=repository, scopes=scopes)
 
@@ -301,6 +306,11 @@ def v2_support_enabled():
         response = make_response("true", 401)
 
     response.headers.extend(get_auth_headers())
+
+    # Add sparse manifest capability headers
+    sparse_enabled = bool(features.SPARSE_INDEX) if hasattr(features, "SPARSE_INDEX") else False
+    response.headers["X-Sparse-Manifest-Support"] = "true" if sparse_enabled else "false"
+
     return response
 
 

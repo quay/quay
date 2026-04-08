@@ -13,6 +13,7 @@ BUILDLOGS_REDIS:
 DB_URI: postgresql://quay:quay@quay-db/quay
 DATABASE_SECRET_KEY: '30060361640793187613697366923211113205676925445650250274752125083971638376224'
 DEFAULT_TAG_EXPIRATION: 2w
+PERMANENTLY_DELETE_TAGS: true
 DISTRIBUTED_STORAGE_CONFIG:
   default:
   - LocalStorage
@@ -25,15 +26,16 @@ EXTERNAL_TLS_TERMINATION: true
 FEATURE_ANONYMOUS_ACCESS: true
 FEATURE_SUPER_USERS: true
 FEATURE_SUPERUSERS_FULL_ACCESS: true
-FEATURE_APP_REGISTRY: false
 FEATURE_APP_SPECIFIC_TOKENS: true
-FEATURE_BUILD_SUPPORT: false
+FEATURE_BUILD_SUPPORT: true
 FEATURE_CHANGE_TAG_EXPIRATION: true
 FEATURE_DIRECT_LOGIN: true
 FEATURE_GARBAGE_COLLECTION: false
+FEATURE_IMAGE_PULL_STATS: false
 FEATURE_MAILING: false
 FEATURE_PARTIAL_USER_AUTOCOMPLETE: true
 FEATURE_REPO_MIRROR: true
+FEATURE_ORG_MIRROR: true
 FEATURE_REQUIRE_TEAM_INVITE: true
 FEATURE_RESTRICTED_V1_PUSH: false
 FEATURE_SECURITY_NOTIFICATIONS: false
@@ -46,9 +48,10 @@ GITHUB_LOGIN_CONFIG: {}
 GITHUB_TRIGGER_CONFIG: {}
 GITLAB_TRIGGER_KIND: {}
 LOG_ARCHIVE_LOCATION: default
-MAIL_DEFAULT_SENDER: admin@example.com
-MAIL_PORT: 587
-MAIL_USE_TLS: true
+MAIL_DEFAULT_SENDER: quay@localhost
+MAIL_SERVER: quay-mailpit
+MAIL_PORT: 1025
+MAIL_USE_TLS: false
 PREFERRED_URL_SCHEME: http
 REGISTRY_TITLE: Red Hat Quay
 REGISTRY_TITLE_SHORT: Red Hat Quay
@@ -74,8 +77,20 @@ USERFILES_PATH: userfiles/
 USER_EVENTS_REDIS:
   host: quay-redis
   port: 6379
+PULL_METRICS_REDIS:
+  host: quay-redis
+  port: 6379
+  db: 1
 USE_CDN: false
-FEATURE_QUOTA_MANAGEMENT: false
+FEATURE_QUOTA_MANAGEMENT: true
+FEATURE_EDIT_QUOTA: true
+FEATURE_AUTO_PRUNE: true
+FEATURE_IMMUTABLE_TAGS: true
+FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE: false
+DEFAULT_NAMESPACE_AUTOPRUNE_POLICY:
+  method: number_of_tags
+  value: 100
+FEATURE_IMAGE_EXPIRY_TRIGGER: true
 BROWSER_API_CALLS_XHR_ONLY: False
 # CORS_ORIGIN: "https://stage.foo.redhat.com:1337 http://localhost:9000/"
 CORS_ORIGIN:
@@ -84,16 +99,16 @@ CORS_ORIGIN:
 FEATURE_UI_V2: True
 FEATURE_USER_METADATA: True
 # Local Keycloak OIDC provider (PKCE disabled initially)
-SOMEOIDC_LOGIN_CONFIG:
-  SERVICE_NAME: "Keycloak"
-  OIDC_SERVER: "http://host.containers.internal:8081/realms/quay/"
-  CLIENT_ID: "quay-ui"
-  CLIENT_SECRET: "KbIEbjqeK73iL6zhXZLaVSOCiD5mhB3h"
-  LOGIN_SCOPES: ["openid", "profile", "email"]
-  DEBUGGING: true
-  USE_PKCE: true
-  PKCE_METHOD: "S256"
-  PUBLIC_CLIENT: true # omit client_secret during token request when client is public
+#SOMEOIDC_LOGIN_CONFIG:
+#  SERVICE_NAME: "Keycloak"
+#  OIDC_SERVER: "http://host.containers.internal:8081/realms/quay/"
+#  CLIENT_ID: "quay-ui"
+#  CLIENT_SECRET: "KbIEbjqeK73iL6zhXZLaVSOCiD5mhB3h"
+#  LOGIN_SCOPES: ["openid", "profile", "email"]
+#  DEBUGGING: true
+#  USE_PKCE: true
+#  PKCE_METHOD: "S256"
+#  PUBLIC_CLIENT: true # omit client_secret during token request when client is public
 #RHSSO_LOGIN_CONFIG:
 #  CLIENT_ID: stage.quay.io
 #  CLIENT_SECRET: SECRET
@@ -104,3 +119,10 @@ SOMEOIDC_LOGIN_CONFIG:
 #  PREFERRED_USERNAME_CLAIM_NAME: preferred_username
 #  LOGIN_SCOPES: ['openid']
 DEFAULT_UI: "angular"
+
+# Pyroscope continuous profiling. To enable, uncomment and set PYROSCOPE_SERVER_ADDRESS for your setup:
+# - Quay on host (e.g. make run): http://localhost:4040
+# - Quay in Docker on Mac/Windows: http://host.docker.internal:4040
+# - Quay and Pyroscope on same Docker network: http://pyroscope:4040
+# PROFILING_TYPE: Pyroscope
+# PYROSCOPE_SERVER_ADDRESS: http://localhost:4040

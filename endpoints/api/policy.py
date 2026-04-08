@@ -14,8 +14,10 @@ from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
+    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     log_action,
     nickname,
     path_param,
@@ -73,10 +75,11 @@ class OrgAutoPrunePolicies(ApiResource):
         Lists the auto-prune policies for the organization
         """
         permission = AdministerOrganizationPermission(orgname)
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
         if (
             not permission.can()
-            and not allow_if_superuser()
             and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
         ):
             raise Unauthorized()
 
@@ -92,7 +95,7 @@ class OrgAutoPrunePolicies(ApiResource):
         Creates an auto-prune policy for the organization
         """
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can() and not allow_if_superuser():
+        if not permission.can() and not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         app_data = request.get_json()
@@ -181,10 +184,11 @@ class OrgAutoPrunePolicy(ApiResource):
         Fetches the auto-prune policy for the organization
         """
         permission = AdministerOrganizationPermission(orgname)
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
         if (
             not permission.can()
-            and not allow_if_superuser()
             and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
         ):
             raise Unauthorized()
 
@@ -202,7 +206,7 @@ class OrgAutoPrunePolicy(ApiResource):
         Updates the auto-prune policy for the organization
         """
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can() and not allow_if_superuser():
+        if not permission.can() and not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         app_data = request.get_json()
@@ -257,7 +261,7 @@ class OrgAutoPrunePolicy(ApiResource):
         Deletes the auto-prune policy for the organization
         """
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can() and not allow_if_superuser():
+        if not permission.can() and not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         try:
@@ -319,10 +323,11 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
         Lists the auto-prune policies for the repository
         """
         permission = AdministerRepositoryPermission(namespace, repository)
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
         if (
             not permission.can()
-            and not allow_if_superuser()
             and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
         ):
             raise Unauthorized()
 
@@ -343,7 +348,7 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
         Creates an auto-prune policy for the repository
         """
         permission = AdministerRepositoryPermission(namespace, repository)
-        if not permission.can() and not allow_if_superuser():
+        if not permission.can() and not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         if registry_model.lookup_repository(namespace, repository) is None:
@@ -439,10 +444,11 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         Fetches the auto-prune policy for the repository
         """
         permission = AdministerRepositoryPermission(namespace, repository)
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
         if (
             not permission.can()
-            and not allow_if_superuser()
             and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
         ):
             raise Unauthorized()
 
@@ -460,7 +466,7 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         Updates the auto-prune policy for the repository
         """
         permission = AdministerRepositoryPermission(namespace, repository)
-        if not permission.can() and not allow_if_superuser():
+        if not permission.can() and not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         app_data = request.get_json()
@@ -519,7 +525,7 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         Deletes the auto-prune policy for the repository
         """
         permission = AdministerRepositoryPermission(namespace, repository)
-        if not permission.can() and not allow_if_superuser():
+        if not permission.can() and not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         try:

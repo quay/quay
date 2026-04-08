@@ -1,7 +1,6 @@
 import {
-  TextContent,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
   TextInput,
   FormGroup,
   Form,
@@ -15,19 +14,21 @@ export default function DefaultPermissions(props: DefaultPermissionsProps) {
 
   return (
     <>
-      <TextContent>
-        <Text component={TextVariants.h1}>Default permissions (Optional)</Text>
-        <Text component={TextVariants.p}>
+      <Content>
+        <Content component={ContentVariants.h1}>
+          Default permissions (Optional)
+        </Content>
+        <Content component={ContentVariants.p}>
           The Default permissions panel defines permissions that should be
           granted automatically to a repository when it is created, in addition
           to the default of the repository&apos;s creator.
           <br />
           Permissions are assigned based on the user who created the repository.
-        </Text>
-        <Text component={TextVariants.p}>
+        </Content>
+        <Content component={ContentVariants.p}>
           Note: Permissions added here do not automatically get added to
           existing repositories.
-        </Text>
+        </Content>
 
         <Form>
           <FormGroup
@@ -47,7 +48,7 @@ export default function DefaultPermissions(props: DefaultPermissionsProps) {
           </FormGroup>
           <FormGroup label="Permission" fieldId="robot-permission" isRequired />
         </Form>
-      </TextContent>
+      </Content>
       <DropdownWithDescription
         dropdownItems={props.repoPermissions}
         onSelect={updateDefaultPermission}

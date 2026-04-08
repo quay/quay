@@ -1,5 +1,6 @@
 import {
   ActionGroup,
+  Alert,
   Button,
   Checkbox,
   Flex,
@@ -12,8 +13,7 @@ import {
   TextInput,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {
   IProxyCacheConfig,
   useCreateProxyCacheConfig,
@@ -21,6 +21,9 @@ import {
   useFetchProxyCacheConfig,
   useValidateProxyCacheConfig,
 } from 'src/hooks/UseProxyCache';
+import {useOrgMirrorExists} from 'src/hooks/UseOrgMirrorExists';
+import {useNamespaceImmutabilityPolicies} from 'src/hooks/UseNamespaceImmutabilityPolicies';
+import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
 import Alerts from 'src/routes/Alerts';
 
 type ProxyCacheConfigProps = {
@@ -41,10 +44,31 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
   const [proxyCacheConfig, setProxyCacheConfig] = useState<IProxyCacheConfig>(
     defaultProxyCacheConfig,
   );
-  const {addAlert, clearAllAlerts} = useAlerts();
+  const {addAlert, clearAllAlerts} = useUI();
+  const {config: quayConfig, isLoading: isQuayConfigLoading} =
+    useQuayConfigWithLoading();
+  const immutableTagsEnabled = !!quayConfig?.features?.IMMUTABLE_TAGS;
 
   const {fetchedProxyCacheConfig, isLoadingProxyCacheConfig} =
-    useFetchProxyCacheConfig(props.organizationName);
+    useFetchProxyCacheConfig(props.organizationName, !props.isUser);
+
+  const {
+    isOrgMirrored,
+    isLoading: isOrgMirrorLoading,
+    isError: isOrgMirrorError,
+  } = useOrgMirrorExists(props.organizationName);
+  const {
+    nsPolicies,
+    isLoading: rawImmutabilityLoading,
+    isError: rawImmutabilityError,
+  } = useNamespaceImmutabilityPolicies(
+    props.organizationName,
+    immutableTagsEnabled,
+  );
+  const isImmutabilityLoading = immutableTagsEnabled && rawImmutabilityLoading;
+  const isImmutabilityError = immutableTagsEnabled && rawImmutabilityError;
+  const hasImmutabilityPolicies =
+    immutableTagsEnabled && (nsPolicies?.length ?? 0) > 0;
 
   useEffect(() => {
     if (fetchedProxyCacheConfig) {
@@ -162,6 +186,42 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
 
   return (
     <Form id="form-form" maxWidth="70%">
+      {isOrgMirrorError && (
+        <Alert
+          isInline
+          variant="danger"
+          title="Unable to determine organization mirror status. Proxy cache configuration is disabled until the mirror status can be verified."
+          className="pf-v6-u-mb-md"
+          data-testid="org-mirror-error-alert"
+        />
+      )}
+      {isOrgMirrored && (
+        <Alert
+          isInline
+          variant="warning"
+          title="Proxy cache cannot be configured while organization-level mirroring is active. Remove the organization mirror configuration first."
+          className="pf-v6-u-mb-md"
+          data-testid="org-mirror-conflict-alert"
+        />
+      )}
+      {isImmutabilityError && (
+        <Alert
+          isInline
+          variant="danger"
+          title="Unable to determine immutability policy status. Proxy cache configuration is disabled until the immutability status can be verified."
+          className="pf-v6-u-mb-md"
+          data-testid="immutability-error-alert"
+        />
+      )}
+      {hasImmutabilityPolicies && (
+        <Alert
+          isInline
+          variant="warning"
+          title="Proxy cache cannot be configured while immutability policies are active. Remove all namespace immutability policies first."
+          className="pf-v6-u-mb-md"
+          data-testid="immutability-conflict-alert"
+        />
+      )}
       <FormGroup
         isInline
         label="Remote Registry"
@@ -295,8 +355,15 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
               proxyCacheConfigValidation();
             }}
             isDisabled={
+              isQuayConfigLoading ||
               !proxyCacheConfig?.upstream_registry ||
-              !!fetchedProxyCacheConfig?.upstream_registry
+              !!fetchedProxyCacheConfig?.upstream_registry ||
+              isOrgMirrorLoading ||
+              isOrgMirrorError ||
+              isOrgMirrored ||
+              isImmutabilityLoading ||
+              isImmutabilityError ||
+              hasImmutabilityPolicies
             }
           >
             Save

@@ -1,8 +1,4 @@
-import {
-  PageSection,
-  PageSectionVariants,
-  PanelFooter,
-} from '@patternfly/react-core';
+import {PageSection, PanelFooter} from '@patternfly/react-core';
 import {CubesIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import {useRecoilState, useRecoilValue, useResetRecoilState} from 'recoil';
@@ -22,33 +18,20 @@ import {
   ManifestByDigestResponse,
   Tag,
   TagsResponse,
+  Label,
   getManifestByDigest,
   getTags,
 } from 'src/resources/TagResource';
 import TagsTable from './TagsTable';
 import {TagsToolbar} from './TagsToolbar';
 import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
-
-// Utility function to detect cosign signature tags and SBOM/attestation artifacts
-function isCosignSignatureTag(tagName: string): boolean {
-  // Cosign signature pattern: sha256-<64 hex chars>.sig
-  const cosignPattern = /^sha256-[a-f0-9]{64}\.sig$/;
-  // SBOM pattern: sha256-<64 hex chars>.sbom
-  const sbomPattern = /^sha256-[a-f0-9]{64}\.sbom$/;
-  // Attestation pattern: sha256-<64 hex chars>.att
-  const attestationPattern = /^sha256-[a-f0-9]{64}\.att$/;
-
-  return (
-    cosignPattern.test(tagName) ||
-    sbomPattern.test(tagName) ||
-    attestationPattern.test(tagName)
-  );
-}
+import {enrichTagsWithCosignData, isCosignSignatureTag} from 'src/libs/cosign';
 
 export default function TagsList(props: TagsProps) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [err, setErr] = useState<string>();
+  const [labelCache, setLabelCache] = useState<Record<string, Label[]>>({});
   const resetSelectedTags = useResetRecoilState(selectedTagsState);
   const searchFilter = useRecoilValue(searchTagsFilterState);
   const resetSearch = useResetRecoilState(searchTagsState);
@@ -72,6 +55,8 @@ export default function TagsList(props: TagsProps) {
       5: (item: Tag) => item.last_modified, // Last Modified
       6: (item: Tag) => item.expiration || '', // Expires
       7: (item: Tag) => item.manifest_digest, // Manifest
+      8: (item: Tag) => item.last_pulled || '', // Last Pulled
+      9: (item: Tag) => item.pull_count || 0, // Pull Count
     },
     filter: searchFilter,
     initialPerPage: 20,
@@ -100,10 +85,22 @@ export default function TagsList(props: TagsProps) {
         tag.manifest_digest,
         true, // include_modelcard
       );
-      tag.manifest_list = JSON.parse(manifestResp.manifest_data);
+      const manifestList = JSON.parse(manifestResp.manifest_data);
+      // Map is_present onto each child manifest using child_manifests_presence
+      if (manifestList.manifests && tag.child_manifests_presence) {
+        manifestList.manifests = manifestList.manifests.map(
+          (m: {digest: string}) => ({
+            ...m,
+            is_present: tag.child_manifests_presence?.[m.digest] ?? true,
+          }),
+        );
+      }
+      tag.manifest_list = manifestList;
     };
+
     let page = 1;
     let hasAdditional = false;
+    let allTags: Tag[] = [];
     try {
       do {
         const resp: TagsResponse = await getTags(
@@ -116,15 +113,20 @@ export default function TagsList(props: TagsProps) {
             tag.is_manifest_list ? getManifest(tag) : null,
           ),
         );
-        if (page == 1) {
-          setTags(resp.tags);
-        } else {
-          setTags((currentTags) => [...currentTags, ...resp.tags]);
-        }
+
+        allTags = page == 1 ? resp.tags : [...allTags, ...resp.tags];
+
+        // Progressive rendering: update UI with tags as they load
+        setTags(allTags);
+        setLoading(false);
+
         hasAdditional = resp.has_additional;
         page++;
-        setLoading(false);
       } while (hasAdditional);
+      // After all tags are loaded, enrich with Cosign signature data
+      // This requires all tags to be present to build the signature map correctly
+      const enrichedTags = enrichTagsWithCosignData(allTags);
+      setTags(enrichedTags);
     } catch (error: unknown) {
       console.error(error);
       setLoading(false);
@@ -149,7 +151,7 @@ export default function TagsList(props: TagsProps) {
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <ErrorBoundary
         hasError={isErrorString(err)}
         fallback={<RequestError message={err} />}
@@ -172,6 +174,9 @@ export default function TagsList(props: TagsProps) {
           org={props.organization}
           repo={props.repository}
           tags={paginatedTags}
+          allTags={sortedTags}
+          page={paginationProps.page}
+          perPage={paginationProps.perPage}
           loading={loading}
           selectAllTags={selectAllTags}
           selectedTags={selectedTags}
@@ -179,6 +184,8 @@ export default function TagsList(props: TagsProps) {
           loadTags={loadTags}
           repoDetails={props.repoDetails}
           getSortableSort={getSortableSort}
+          labelCache={labelCache}
+          setLabelCache={setLabelCache}
         />
       </ErrorBoundary>
       <PanelFooter>

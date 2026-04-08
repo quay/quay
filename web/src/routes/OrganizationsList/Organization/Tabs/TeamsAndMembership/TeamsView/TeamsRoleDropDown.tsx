@@ -6,8 +6,7 @@ import {
   MenuToggle,
   MenuToggleElement,
 } from '@patternfly/react-core';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useUpdateTeamDetails} from 'src/hooks/UseTeams';
 import {titleCase} from 'src/libs/utils';
 
@@ -19,7 +18,7 @@ export enum teamPermissions {
 
 export function TeamsRoleDropDown(props: TeamsRoleDropDownProps) {
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {
     updateTeamDetails,

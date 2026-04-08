@@ -34,12 +34,13 @@ export default function RepoEventExpiry(props: RepoEventExpiryProps) {
         onChange={onChange}
         type={'number'}
         id="days-to-image-expiry"
+        data-testid="days-to-image-expiry"
         required
         validated={valid}
       />
       <Conditional if={valid == ValidatedOptions.error}>
         <HelperText>
-          <HelperTextItem variant="error" hasIcon>
+          <HelperTextItem variant="error">
             number of days should be more than 0.
           </HelperTextItem>
         </HelperText>

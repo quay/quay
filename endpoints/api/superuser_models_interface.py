@@ -139,9 +139,9 @@ class RepositoryBuild(
             "manual_user": self.job_config.get("manual_user", None),
             "is_writer": self.can_write,
             "trigger": self.trigger.to_dict(),
-            "trigger_metadata": self.job_config.get("trigger_metadata", None)
-            if self.can_read
-            else None,
+            "trigger_metadata": (
+                self.job_config.get("trigger_metadata", None) if self.can_read else None
+            ),
             "resource_key": self.resource_key,
             "pull_robot": user_view(self.pull_robot) if self.pull_robot else None,
             "repository": {
@@ -243,6 +243,7 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
             "verified": self.verified,
             "avatar": avatar.get_data_for_user(self),
             "super_user": usermanager.is_superuser(self.username),
+            "global_readonly_super_user": usermanager.is_global_readonly_superuser(self.username),
             "enabled": self.enabled,
         }
         if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA and self.quotas is not None:

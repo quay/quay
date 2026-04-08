@@ -5,7 +5,7 @@ from email.utils import formatdate
 from functools import partial, wraps
 
 import pytz
-from flask import Blueprint, request, session
+from flask import Blueprint, g, request, session
 from flask_restful import Api, Resource, abort, reqparse
 from flask_restful.utils import unpack
 from jsonschema import ValidationError, validate
@@ -16,8 +16,10 @@ from .__init__models_pre_oci import pre_oci_model as model
 from app import app, authentication, usermanager
 from auth import scopes
 from auth.auth_context import (
+    determine_auth_type_and_performer_kind,
     get_authenticated_context,
     get_authenticated_user,
+    get_sso_token,
     get_validated_oauth_token,
 )
 from auth.decorators import process_oauth
@@ -31,7 +33,7 @@ from auth.permissions import (
     UserReadPermission,
 )
 from data import model as data_model
-from data.database import RepositoryState
+from data.database import RepositoryState, User
 from data.logs_model import logs_model
 from digest import digest_tools
 from endpoints.csrf import csrf_protect
@@ -50,11 +52,11 @@ from endpoints.exception import (
 from util.metrics.prometheus import timed_blueprint
 from util.names import parse_namespace_repository
 from util.pagination import decrypt_page_token, encrypt_page_token
-from util.request import crossorigin, get_request_ip
+from util.request import crossorigin, get_request_ip, sanitize_request_url
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
-api_bp = timed_blueprint(Blueprint("api", __name__))
+api_bp = timed_blueprint(Blueprint("api", __name__), get_app=lambda: app)
 
 
 FRESH_LOGIN_TIMEOUT = convert_to_timedelta(app.config.get("FRESH_LOGIN_TIMEOUT", "10m"))
@@ -290,19 +292,6 @@ def disallow_for_user_namespace(func):
     return wrapped
 
 
-def disallow_for_app_repositories(func):
-    @wraps(func)
-    def wrapped(self, namespace_name, repository_name, *args, **kwargs):
-        # Lookup the repository with the given namespace and name and ensure it is not an application
-        # repository.
-        if model.is_app_repository(namespace_name, repository_name):
-            abort(501)
-
-        return func(self, namespace_name, repository_name, *args, **kwargs)
-
-    return wrapped
-
-
 def disallow_for_non_normal_repositories(func):
     @wraps(func)
     def wrapped(self, namespace_name, repository_name, *args, **kwargs):
@@ -350,11 +339,24 @@ def require_repo_permission(permission_class, scope, allow_public=False):
                 ):
                     return func(self, namespace, repository, *args, **kwargs)
 
-                if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser:
+                if allow_for_superuser:
                     user = get_authenticated_user()
 
-                    if user is not None and SuperUserPermission().can():
-                        return func(self, namespace, repository, *args, **kwargs)
+                    if user is not None:
+                        # For read operations that also allow global readonly superusers,
+                        # allow any superuser with FULL_ACCESS
+                        if (
+                            allow_for_global_readonly_superuser
+                            and features.SUPERUSERS_FULL_ACCESS
+                            and allow_if_any_superuser()
+                        ):
+                            return func(self, namespace, repository, *args, **kwargs)
+                        # For write operations, only allow regular superusers with FULL_ACCESS
+                        elif (
+                            not allow_for_global_readonly_superuser
+                            and allow_if_superuser_with_full_access()
+                        ):
+                            return func(self, namespace, repository, *args, **kwargs)
 
                 if allow_for_global_readonly_superuser and allow_if_global_readonly_superuser():
                     return func(self, namespace, repository, *args, **kwargs)
@@ -395,11 +397,7 @@ def require_user_permission(permission_class, scope=None):
                 if permission.can():
                     return func(self, *args, **kwargs)
 
-                if (
-                    features.SUPERUSERS_FULL_ACCESS
-                    and allow_for_superuser
-                    and SuperUserPermission().can()
-                ):
+                if allow_for_superuser and allow_if_superuser_with_full_access():
                     return func(self, *args, **kwargs)
 
                 raise Unauthorized()
@@ -497,22 +495,141 @@ log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 
 def allow_if_superuser():
+    """
+    Returns True if the user is a regular superuser (not global readonly).
+
+    This is for basic superuser panel access and should work when FEATURE_SUPER_USERS
+    is enabled, regardless of SUPERUSERS_FULL_ACCESS. This does NOT grant permission
+    to bypass normal access controls on other users' resources.
+
+    For operations that need to bypass normal permission checks (like accessing other
+    organizations or creating repos in other namespaces), use allow_if_superuser_with_full_access().
+    """
+    return SuperUserPermission().can()
+
+
+def allow_if_superuser_with_full_access():
+    """
+    Returns True if the user is a superuser with full access enabled.
+
+    This is for operations that bypass normal permission checks to access or modify
+    resources owned by other users/organizations. Examples include:
+    - Creating repositories in other namespaces
+    - Modifying teams/robots in other organizations
+    - Accessing private data of other organizations
+
+    Requires both:
+    - User is a superuser (FEATURE_SUPER_USERS enabled and user in SUPER_USERS list)
+    - FEATURE_SUPERUSERS_FULL_ACCESS is enabled
+
+    Note: Global readonly superusers are explicitly excluded from this permission.
+    """
     return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
 
 
+def allow_if_any_superuser():
+    """
+    Returns True if the user is either a regular superuser or a global readonly superuser.
+
+    Since these two types are mutually exclusive, this is a convenience helper for read-only
+    endpoints that should be accessible to both types of superusers (like viewing user lists,
+    logs, organizations in the superuser panel).
+
+    Note: Regular superusers work with just FEATURE_SUPER_USERS enabled. Global readonly
+    superusers are always allowed (when the feature is enabled) since they're read-only by design.
+    """
+    return allow_if_superuser() or allow_if_global_readonly_superuser()
+
+
 def allow_if_global_readonly_superuser():
-    if (
-        app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None) is None
-        and app.config.get("GLOBAL_READONLY_SUPER_USERS", None) is None
-    ):
+    ldap_filter = app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None)
+    config_users = app.config.get("GLOBAL_READONLY_SUPER_USERS", None)
+
+    logger.debug(
+        "allow_if_global_readonly_superuser: ldap_filter=%s, config_users=%s",
+        ldap_filter,
+        config_users,
+    )
+
+    if ldap_filter is None and config_users is None:
+        logger.debug("allow_if_global_readonly_superuser: returning False - no config")
         return False
 
     context = get_authenticated_context()
-    return (
-        context is not None
-        and context.authed_user is not None
-        and usermanager.is_global_readonly_superuser(context.authed_user.username)
+    logger.debug("allow_if_global_readonly_superuser: context=%s", context)
+
+    if context is None or context.authed_user is None:
+        logger.debug("allow_if_global_readonly_superuser: returning False - no context/user")
+        return False
+
+    username = context.authed_user.username
+
+    # Request-scoped cache using Flask's g object to avoid excessive LDAP binds.
+    # Without caching, each call to is_global_readonly_superuser() triggers a new
+    # LDAP bind operation. Since this function is called multiple times per request
+    # (e.g., in team_view() and org_view() for each item in a collection), this
+    # caused a significant increase in LDAP binds (from 27 to 43 per login).
+    # See: PROJQUAY-10426
+    cache_attr = "_is_global_readonly_superuser_cache"
+    if hasattr(g, cache_attr):
+        cached = getattr(g, cache_attr)
+        if username in cached:
+            logger.debug(
+                "allow_if_global_readonly_superuser: cache hit for user=%s, result=%s",
+                username,
+                cached[username],
+            )
+            return cached[username]
+    else:
+        setattr(g, cache_attr, {})
+
+    is_global_readonly = usermanager.is_global_readonly_superuser(username)
+    getattr(g, cache_attr)[username] = is_global_readonly
+
+    logger.debug(
+        "allow_if_global_readonly_superuser: user=%s, is_global_readonly=%s",
+        username,
+        is_global_readonly,
     )
+
+    return is_global_readonly
+
+
+def get_viewable_teams_for_org(orgname: str, user: User | None) -> set[str] | None:
+    """
+    Returns a set of team names that the user can view within the specified organization,
+    using request-scoped caching to avoid redundant database queries.
+
+    A user can view a team if:
+    1. They are a member of that team (any role)
+    2. They are an organization admin
+
+    If the user is an org admin, returns None to indicate all teams are viewable.
+    """
+    if user is None:
+        return set()
+
+    # Build cache key
+    cache_attr = "_viewable_teams_cache"
+    cache_key = f"{user.id}:{orgname}"
+
+    # Check cache first
+    if hasattr(g, cache_attr):
+        cached = getattr(g, cache_attr)
+        if cache_key in cached:
+            return cached[cache_key]
+    else:
+        setattr(g, cache_attr, {})
+
+    # Check if user is org admin - if so, they can view all teams
+    if data_model.permission.is_org_admin(user, orgname):
+        getattr(g, cache_attr)[cache_key] = None  # None means all teams viewable
+        return None
+
+    # Get the set of teams the user is a member of
+    user_teams = data_model.permission.get_user_teams_in_org(user, orgname)
+    getattr(g, cache_attr)[cache_key] = user_teams
+    return user_teams
 
 
 def verify_not_prod(func):
@@ -539,7 +656,7 @@ def require_fresh_login(func):
         if not user or user.robot:
             raise Unauthorized()
 
-        if get_validated_oauth_token():
+        if get_validated_oauth_token() or get_sso_token():
             return func(*args, **kwargs)
 
         last_login = session.get("login_time", datetime.datetime.min)
@@ -622,6 +739,7 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
     if not metadata:
         metadata = {}
 
+    # Add OAuth token metadata if present
     oauth_token = get_validated_oauth_token()
     if oauth_token:
         metadata["oauth_token_id"] = oauth_token.id
@@ -634,6 +752,36 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
     if repo_name is not None:
         repo = data_model.repository.get_repository(user_or_orgname, repo_name)
 
+    # Extended logging fields (opt-in via FEATURE_EXTENDED_ACTION_LOGGING)
+    extended_params = {}
+    if app.config.get("FEATURE_EXTENDED_ACTION_LOGGING", False):
+        # Use shared helper for consistent auth detection across all logging paths
+        auth_type, performer_kind = determine_auth_type_and_performer_kind(
+            auth_context=get_authenticated_context(),
+            oauth_token=oauth_token,
+        )
+
+        # Capture user agent
+        user_agent = None
+        if request.user_agent:
+            user_agent = request.user_agent.string
+
+        # Get request ID if available (set by RequestWithId class in app.py)
+        request_id = getattr(request, "request_id", None)
+
+        # Get X-Forwarded-For header for original client IP behind proxies
+        x_forwarded_for = request.headers.get("X-Forwarded-For")
+
+        extended_params = {
+            "request_url": sanitize_request_url(request.url),
+            "http_method": request.method,
+            "auth_type": auth_type,
+            "user_agent": user_agent,
+            "performer_kind": performer_kind,
+            "request_id": request_id,
+            "x_forwarded_for": x_forwarded_for,
+        }
+
     logs_model.log_action(
         kind,
         user_or_orgname,
@@ -641,6 +789,7 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, 
         performer=performer,
         ip=get_request_ip(),
         metadata=metadata,
+        **extended_params,
     )
 
 
@@ -687,14 +836,17 @@ def deprecated():
 import endpoints.api.appspecifictokens
 import endpoints.api.billing
 import endpoints.api.build
+import endpoints.api.capabilities
 import endpoints.api.discovery
 import endpoints.api.error
 import endpoints.api.globalmessages
+import endpoints.api.immutability_policy
 import endpoints.api.logs
 import endpoints.api.manifest
 import endpoints.api.mirror
 import endpoints.api.mirrorhealth
 import endpoints.api.namespacequota
+import endpoints.api.org_mirror
 import endpoints.api.organization
 import endpoints.api.permission
 import endpoints.api.policy

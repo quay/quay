@@ -1,11 +1,9 @@
 import {
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Spinner,
-  TextContent,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
   DropdownItem,
 } from '@patternfly/react-core';
 import {
@@ -50,8 +48,8 @@ import {
 import {useRobotRepoPermissions} from 'src/hooks/useRobotAccounts';
 import RobotTokensModal from 'src/components/modals/RobotTokensModal';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {RobotFederationModal} from 'src/components/modals/RobotFederationModal';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 
@@ -113,7 +111,9 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   const [isRobotFederationModalOpen, setRobotFederationModalOpen] =
     useState<boolean>(false);
 
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
+  const quayConfig = useQuayConfig();
+  const robotsDisallowed = quayConfig?.config?.ROBOTS_DISALLOW === true;
 
   const {robotAccountsForOrg} = useRobotAccounts({
     name: props.organizationName,
@@ -489,15 +489,21 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       <Empty
         title="There are no viewable robot accounts for this repository"
         icon={CubesIcon}
-        body="Either no robot accounts exist yet or you may not have permission to view any. If you have the permissions, you may create robot accounts in this repository."
+        body={
+          robotsDisallowed
+            ? 'Robot accounts have been disabled. Please contact your administrator.'
+            : 'Either no robot accounts exist yet or you may not have permission to view any. If you have the permissions, you may create robot accounts in this repository.'
+        }
         button={
-          <ToolbarButton
-            id=""
-            buttonValue="Create robot account"
-            Modal={createRobotModal}
-            isModalOpen={isCreateRobotModalOpen}
-            setModalOpen={setCreateRobotModalOpen}
-          />
+          !robotsDisallowed ? (
+            <ToolbarButton
+              id=""
+              buttonValue="Create robot account"
+              Modal={createRobotModal}
+              isModalOpen={isCreateRobotModalOpen}
+              setModalOpen={setCreateRobotModalOpen}
+            />
+          ) : null
         }
       />
     );
@@ -514,9 +520,9 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           </Tr>
           <Tr>
             <Td colSpan={8} style={{textAlign: 'center'}}>
-              <TextContent>
-                <Text component={TextVariants.h3}>Loading</Text>
-              </TextContent>
+              <Content>
+                <Content component={ContentVariants.h3}>Loading</Content>
+              </Content>
             </Td>
           </Tr>
         </Tbody>
@@ -525,7 +531,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   }
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <ErrorModal title={errTitle} error={err} setError={setErr} />
         <RobotAccountsToolBar
           search={search}
@@ -539,6 +545,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           pageModal={createRobotModal}
           isModalOpen={isCreateRobotModalOpen}
           setModalOpen={setCreateRobotModalOpen}
+          hideCreateButton={robotsDisallowed}
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
           kebabItems={kebabItems}
@@ -618,6 +625,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           aria-label="Expandable table"
           variant="compact"
           id="robot-accounts-table"
+          data-testid="robot-accounts-table"
         >
           <Thead>
             <Tr>

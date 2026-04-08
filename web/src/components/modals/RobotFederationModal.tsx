@@ -15,15 +15,14 @@ import {PlusIcon, TrashIcon} from '@patternfly/react-icons';
 import React, {useEffect, useState} from 'react';
 import DisplayModal from './robotAccountWizard/DisplayModal';
 import {useRobotFederation} from 'src/hooks/useRobotFederation';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 function RobotFederationForm(props: RobotFederationFormProps) {
   const [federationFormState, setFederationFormState] = useState<
     RobotFederationFormEntryProps[]
   >([]);
 
-  const alerts = useAlerts();
+  const {addAlert} = useUI();
 
   const {robotFederationConfig, loading, fetchError, setRobotFederationConfig} =
     useRobotFederation({
@@ -33,13 +32,13 @@ function RobotFederationForm(props: RobotFederationFormProps) {
         setFederationFormState(
           result.map((config) => ({...config, isExpanded: false})),
         );
-        alerts.addAlert({
+        addAlert({
           title: 'Robot federation config saved',
           variant: AlertVariant.Success,
         });
       },
       onError: (e) => {
-        alerts.addAlert({
+        addAlert({
           title: e.error_message || 'Error saving federation config',
           variant: AlertVariant.Failure,
         });
@@ -138,12 +137,12 @@ function RobotFederationForm(props: RobotFederationFormProps) {
             )}
             <FlexItem align={{default: 'alignRight'}}>
               <Button
+                icon={<PlusIcon />}
+                aria-label="Add federation entry"
                 onClick={() => {
                   addFederationConfigEntry();
                 }}
-              >
-                <PlusIcon />
-              </Button>
+              ></Button>
             </FlexItem>
           </Flex>
         </FormGroup>
@@ -172,13 +171,13 @@ function RobotFederationFormEntry(props: RobotFederationFormEntryProps) {
           }}
           actions={
             <Button
+              icon={<TrashIcon />}
+              aria-label="Remove federation entry"
               onClick={() => {
                 props.onRemove(props.index);
               }}
               variant="danger"
-            >
-              <TrashIcon />
-            </Button>
+            ></Button>
           }
         />
       }

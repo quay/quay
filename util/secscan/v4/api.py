@@ -235,9 +235,11 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             body["layers"].append(
                 {
                     "hash": str(l.layer_info.blob_digest),
-                    "uri": self._blob_url_retriever.url_for_download(manifest.repository, l.blob)
-                    if not l.layer_info.is_remote
-                    else l.layer_info.urls[0],
+                    "uri": (
+                        self._blob_url_retriever.url_for_download(manifest.repository, l.blob)
+                        if not l.layer_info.is_remote
+                        else l.layer_info.urls[0]
+                    ),
                     "headers": _join(
                         {
                             "Accept": ["application/gzip"],
@@ -358,14 +360,14 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
                 "Security scanner endpoint responded with 400 HTTP status code: %s"
                 % resp.content.decode("ascii")
             )
-            logger.exception(msg)
+            logger.error(msg)
             raise BadRequestResponseException(resp)
         elif resp.status_code // 100 != 2:
             msg = (
                 "Security scanner endpoint responded with non-200 HTTP status code: %s"
                 % resp.status_code
             )
-            logger.exception(msg)
+            logger.error(msg)
             raise Non200ResponseException(resp)
 
         if not is_valid_response(action, resp):

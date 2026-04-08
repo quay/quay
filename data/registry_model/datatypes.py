@@ -214,6 +214,7 @@ class Tag(
             "lifetime_end_ts",
             "lifetime_start_ms",
             "lifetime_end_ms",
+            "immutable",
         ],
     )
 ):
@@ -235,6 +236,7 @@ class Tag(
             lifetime_start_ts=tag.lifetime_start_ms // 1000,
             lifetime_end_ts=tag.lifetime_end_ms // 1000 if tag.lifetime_end_ms else None,
             manifest_digest=manifest_row.digest if manifest_row else tag.manifest.digest,
+            immutable=tag.immutable,
             inputs=dict(
                 legacy_id_handler=legacy_id_handler,
                 manifest_row=manifest_row or tag.manifest,

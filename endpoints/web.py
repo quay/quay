@@ -20,7 +20,7 @@ from flask import (
 from flask_login import current_user
 
 import features
-from _init import ROOT_DIR
+from _init import ROOT_DIR, __version__
 from app import app, authentication, avatar
 from app import billing as stripe
 from app import (
@@ -77,6 +77,7 @@ from health.healthcheck import get_healthchecker
 from util.cache import no_cache
 from util.headers import parse_basic_auth
 from util.invoice import renderInvoiceToPdf
+from util.metrics.prometheus import ui_page_views
 from util.registry.gzipinputstream import GzipInputStream
 from util.request import crossorigin, get_request_ip
 from util.useremails import send_email_changed
@@ -841,6 +842,7 @@ def request_authorization_code():
 @param_required("scope")
 @param_required("username")
 @process_auth_or_cookie
+@csrf_protect()
 def assign_user_to_app():
     response_type = request.args.get("response_type", "code")
     client_id = request.args.get("client_id", None)
@@ -1132,6 +1134,12 @@ def user_initialize():
 @web.route("/config", methods=["GET", "OPTIONS"])
 @crossorigin(anonymous=False)
 def config():
+    if request.method == "GET":
+        ui_page_views.labels(ui="react").inc()
+    version_number = ""
+    if not features.BILLING:
+        version_number = "Quay %s" % __version__
+
     response = jsonify(
         {
             "config": frontend_visible_config(app.config),
@@ -1140,6 +1148,7 @@ def config():
             "external_login": get_external_login_config(),
             "registry_state": app.config.get("REGISTRY_STATE", "normal"),
             "account_recovery_mode": app.config.get("ACCOUNT_RECOVERY_MODE", False),
+            "version_number": version_number,
         }
     )
     return response

@@ -1,10 +1,6 @@
 import {PackagesChart} from './PackagesChart';
 import PackagesTable from './PackagesTable';
-import {useRecoilState, useRecoilValue} from 'recoil';
-import {
-  SecurityDetailsErrorState,
-  SecurityDetailsState,
-} from 'src/atoms/SecurityDetailsState';
+import {useSecurityDetails} from 'src/hooks/UseSecurityDetails';
 import {isErrorString} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
 import {
@@ -12,10 +8,10 @@ import {
   FailedState,
   UnsupportedState,
 } from 'src/routes/TagDetails/SecurityReport/SecurityReportScanStates';
+import {Layer} from 'src/resources/TagResource';
 
-export function Packages() {
-  const data = useRecoilValue(SecurityDetailsState);
-  const error = useRecoilValue(SecurityDetailsErrorState);
+export function Packages(props: PackagesProps) {
+  const {data, error} = useSecurityDetails(props.org, props.repo, props.digest);
 
   if (isErrorString(error)) {
     return <RequestError message={error} />;
@@ -36,7 +32,14 @@ export function Packages() {
     <>
       <PackagesChart features={features} />
       <hr />
-      <PackagesTable features={features} />
+      <PackagesTable features={features} layers={props.layers} />
     </>
   );
+}
+
+export interface PackagesProps {
+  org: string;
+  repo: string;
+  digest: string;
+  layers?: Layer[];
 }

@@ -20,6 +20,7 @@ from cachetools.func import lru_cache
 from peewee import *
 from peewee import Function, __exception_wrapper__  # type: ignore
 from playhouse.pool import (
+    MaxConnectionsExceeded,
     PooledDatabase,
     PooledMySQLDatabase,
     PooledPostgresqlDatabase,
@@ -27,7 +28,6 @@ from playhouse.pool import (
 )
 from sqlalchemy.engine.url import make_url
 
-from data.decorators import deprecated_model
 from data.encryption import FieldEncrypter
 from data.estimate import mysql_estimate_row_count, normal_row_count
 from data.fields import (
@@ -285,6 +285,9 @@ class RetryOperationalError(object):
                 # https://github.com/PyMySQL/PyMySQL/blob/main/pymysql/connections.py#L1354
                 raise
 
+            if self.in_transaction():
+                raise
+
             if not self.is_closed():
                 self.close()
 
@@ -452,6 +455,70 @@ class ObservableDatabase(object):
 class ObservablePooledDatabase(ObservableDatabase):
     """Wrapper around Peewee's PooledDatabase class for observability."""
 
+    def _connect(self, _retry_count=0):
+        """
+        Override internal connection method to validate connection availability from the connection pool.
+        This acts like SQLAlchemy's pool_pre_ping with exponential backoff for high concurrency.
+        """
+        # Limit retries to prevent long delays in high-concurrency scenarios
+        # With 50+ concurrent requests, we want individual requests to fail faster
+        # rather than each one retrying 20+ times
+        max_retries = 7
+        if _retry_count >= max_retries:
+            raise OperationalError(
+                f"Unable to obtain healthy connection after {max_retries} attempts"
+            )
+
+        try:
+            conn = super(ObservablePooledDatabase, self)._connect()
+        except MaxConnectionsExceeded:
+            # Pool exhausted - wait with exponential backoff before retrying
+            # Base delay: 10ms, max delay: 200ms to prevent long waits
+            delay = min(0.01 * (2**_retry_count), 0.2)
+            # Add jitter to prevent thundering herd (±25% randomization)
+            jitter = delay * (0.75 + uniform(0, 0.5))
+            logger.debug(
+                "Connection pool exhausted (attempt %d/%d), retrying after %.3fs",
+                _retry_count + 1,
+                max_retries,
+                jitter,
+            )
+            time.sleep(jitter)
+            return self._connect(_retry_count=_retry_count + 1)
+
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            return conn  # Connection is healthy
+        except Exception as e:
+            # Catch ALL exceptions during liveness check - includes ProtocolViolation,
+            # OperationalError, InterfaceError, and any other DB-related errors
+            logger.warning(
+                "Pooled connection failed liveness check (attempt %d/%d), discarding: %s",
+                _retry_count + 1,
+                max_retries,
+                e,
+            )
+
+            # Manually remove from _in_use tracking and close the connection
+            try:
+                # Remove from pool's _in_use dict to prevent connection leak
+                key = self.conn_key(conn)
+                self._in_use.pop(key, None)
+
+                # Close the actual connection (bypassing pool return logic)
+                super(ObservablePooledDatabase, self)._close(conn, close_conn=True)
+            except Exception as ex:
+                logger.debug("Error closing stale connection: %s", ex)
+
+            # Small delay before retry to allow other requests to complete
+            if _retry_count > 0:
+                delay = min(0.01 * _retry_count, 0.05)  # 10-50ms
+                time.sleep(delay)
+
+            # Recursively retry - pool will provide another connection (or create new one)
+            return self._connect(_retry_count=_retry_count + 1)
+
     def connect(self, reuse_if_open=False):
         ret = super(ObservablePooledDatabase, self).connect(reuse_if_open)
         db_pooled_connections_in_use.set(len(self._in_use))
@@ -537,6 +604,24 @@ def _db_from_url(
         driver_autocommit = db_kwargs["_driver_autocommit"]
         db_kwargs.pop("_driver_autocommit", None)
 
+    # For SQLite, configure PRAGMAs using peewee's built-in mechanism.
+    # This is applied during _add_conn_hooks() before connect() returns,
+    # using the raw cursor, which avoids recursion issues (PROJQUAY-9799).
+    if parsed_url.drivername == "sqlite":
+        db_kwargs.setdefault("pragmas", {})
+        db_kwargs["pragmas"].update(
+            {
+                "busy_timeout": 10000,
+                "journal_mode": "wal",
+                "wal_autocheckpoint": 1000,
+                "synchronous": "normal",
+            }
+        )
+        logger.info(
+            "Configured SQLite PRAGMA settings for database: %s",
+            parsed_url.database,
+        )
+
     created = driver(parsed_url.database, **db_kwargs)
     if driver_autocommit:
         created.connect_params["autocommit"] = driver_autocommit
@@ -545,55 +630,6 @@ def _db_from_url(
     # https://github.com/coleifer/peewee/commit/36bd887ac07647c60dfebe610b34efabec675706
     if parsed_url.drivername.find("mysql") >= 0:
         created.compound_select_parentheses = 0
-
-    # Configure SQLite-specific PRAGMA statements for database locking optimization
-    if parsed_url.drivername == "sqlite":
-
-        def _configure_sqlite_pragmas(db_instance):
-            """Configure SQLite-specific PRAGMA statements to prevent database locks."""
-            try:
-                # Set busy timeout to 10 seconds to handle concurrent access
-                db_instance.execute_sql("PRAGMA busy_timeout = 10000;")
-                db_instance.execute_sql("PRAGMA journal_mode = WAL;")
-                db_instance.execute_sql(
-                    "PRAGMA wal_autocheckpoint = 1000;"
-                )  # Set WAL checkpointing to 1000 pages
-                db_instance.execute_sql(
-                    "PRAGMA synchronous = NORMAL;"
-                )  # Balance durability/performance
-
-                # Verify the PRAGMA settings were applied
-                busy_timeout_result = db_instance.execute_sql("PRAGMA busy_timeout;")
-                journal_mode_result = db_instance.execute_sql("PRAGMA journal_mode;")
-
-                # Extract actual values from results
-                busy_timeout_value = (
-                    busy_timeout_result.fetchone()[0] if busy_timeout_result else "unknown"
-                )
-                journal_mode_value = (
-                    journal_mode_result.fetchone()[0] if journal_mode_result else "unknown"
-                )
-
-                logger.info(
-                    "Applied SQLite PRAGMA statements for database: %s - busy_timeout: %s, journal_mode: %s",
-                    parsed_url.database,
-                    busy_timeout_value,
-                    journal_mode_value,
-                )
-            except Exception as e:
-                logger.warning(
-                    "Failed to configure SQLite optimizations for %s: %s", parsed_url.database, e
-                )
-
-        # Override connect method to apply PRAGMA statements on each connection
-        original_connect = created.connect
-
-        def enhanced_connect(reuse_if_open=False):
-            result = original_connect(reuse_if_open)
-            _configure_sqlite_pragmas(created)
-            return result
-
-        created.connect = enhanced_connect
 
     return created
 
@@ -831,52 +867,52 @@ class User(BaseModel):
 
             # These models don't need to use transitive deletes, because the referenced objects
             # are cleaned up directly in the model.
-            skip_transitive_deletes = (
-                {
-                    Repository,
-                    Team,
-                    RepositoryBuild,
-                    ServiceKeyApproval,
-                    RepositoryBuildTrigger,
-                    ServiceKey,
-                    RepositoryPermission,
-                    TeamMemberInvite,
-                    Star,
-                    RepositoryAuthorizedEmail,
-                    TeamMember,
-                    PermissionPrototype,
-                    AccessToken,
-                    OAuthAccessToken,
-                    BlobUpload,
-                    RepositoryNotification,
-                    OAuthAuthorizationCode,
-                    RepositoryActionCount,
-                    TeamSync,
-                    RepositorySearchScore,
-                    DeletedNamespace,
-                    DeletedRepository,
-                    RepoMirrorRule,
-                    NamespaceGeoRestriction,
-                    ManifestSecurityStatus,
-                    RepoMirrorConfig,
-                    UploadedBlob,
-                    QuotaRepositorySize,
-                    QuotaNamespaceSize,
-                    UserOrganizationQuota,
-                    QuotaLimits,
-                    RedHatSubscriptions,
-                    OrganizationRhSkus,
-                    NamespaceAutoPrunePolicy,
-                    AutoPruneTaskStatus,
-                    RepositoryAutoPrunePolicy,
-                    OauthAssignedToken,
-                    TagNotificationSuccess,
-                    TagPullStatistics,
-                    ManifestPullStatistics,
-                }
-                | appr_classes
-                | v22_classes
-            )
+            skip_transitive_deletes = {
+                Repository,
+                Team,
+                RepositoryBuild,
+                ServiceKeyApproval,
+                RepositoryBuildTrigger,
+                ServiceKey,
+                RepositoryPermission,
+                TeamMemberInvite,
+                Star,
+                RepositoryAuthorizedEmail,
+                TeamMember,
+                PermissionPrototype,
+                AccessToken,
+                OAuthAccessToken,
+                BlobUpload,
+                RepositoryNotification,
+                OAuthAuthorizationCode,
+                RepositoryActionCount,
+                TeamSync,
+                RepositorySearchScore,
+                DeletedNamespace,
+                DeletedRepository,
+                RepoMirrorRule,
+                ManifestSecurityStatus,
+                RepoMirrorConfig,
+                UploadedBlob,
+                QuotaRepositorySize,
+                QuotaNamespaceSize,
+                UserOrganizationQuota,
+                QuotaLimits,
+                RedHatSubscriptions,
+                OrganizationRhSkus,
+                NamespaceAutoPrunePolicy,
+                AutoPruneTaskStatus,
+                RepositoryAutoPrunePolicy,
+                NamespaceImmutabilityPolicy,
+                RepositoryImmutabilityPolicy,
+                OauthAssignedToken,
+                TagNotificationSuccess,
+                TagPullStatistics,
+                ManifestPullStatistics,
+                OrgMirrorConfig,
+                OrgMirrorRepository,
+                OrganizationContactEmail,
+            } | v22_classes
             delete_instance_filtered(self, User, delete_nullable, skip_transitive_deletes)
 
 
@@ -921,19 +957,6 @@ class DeletedNamespace(BaseModel):
     original_username = CharField(index=True)
     original_email = CharField(index=True)
     queue_id = CharField(null=True, index=True)
-
-
-class NamespaceGeoRestriction(BaseModel):
-    namespace = QuayUserField(index=True, allows_robots=False)
-    added = DateTimeField(default=datetime.utcnow)
-    description = CharField()
-    unstructured_json = JSONField()
-    restricted_region_iso_code = CharField(index=True)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("namespace", "restricted_region_iso_code"), True),)
 
 
 class UserPromptTypes(object):
@@ -1043,6 +1066,7 @@ class RepositoryState(IntEnum):
     NORMAL:    Regular repo where all actions are possible
     READ_ONLY: Only read actions, such as pull, are allowed regardless of specific user permissions
     MIRROR:    Equivalent to READ_ONLY except that mirror robot has write permission
+    ORG_MIRROR: Equivalent to MIRROR but for repositories created via organization-level mirroring
     MARKED_FOR_DELETION: Indicates the repository has been marked for deletion and should be hidden
                          and un-usable.
     """
@@ -1051,6 +1075,7 @@ class RepositoryState(IntEnum):
     READ_ONLY = 1
     MIRROR = 2
     MARKED_FOR_DELETION = 3
+    ORG_MIRROR = 4
 
 
 class Repository(BaseModel):
@@ -1079,28 +1104,26 @@ class Repository(BaseModel):
 
         # These models don't need to use transitive deletes, because the referenced objects
         # are cleaned up directly
-        skip_transitive_deletes = (
-            {
-                RepositoryBuild,
-                RepositoryBuildTrigger,
-                BlobUpload,
-                Label,
-                RepositorySearchScore,
-                RepoMirrorConfig,
-                RepoMirrorRule,
-                DeletedRepository,
-                ManifestSecurityStatus,
-                UploadedBlob,
-                QuotaNamespaceSize,
-                QuotaRepositorySize,
-                RepositoryAutoPrunePolicy,
-                TagNotificationSuccess,
-                TagPullStatistics,
-                ManifestPullStatistics,
-            }
-            | appr_classes
-            | v22_classes
-        )
+        skip_transitive_deletes = {
+            RepositoryBuild,
+            RepositoryBuildTrigger,
+            BlobUpload,
+            Label,
+            RepositorySearchScore,
+            RepoMirrorConfig,
+            RepoMirrorRule,
+            DeletedRepository,
+            ManifestSecurityStatus,
+            UploadedBlob,
+            QuotaNamespaceSize,
+            QuotaRepositorySize,
+            RepositoryAutoPrunePolicy,
+            RepositoryImmutabilityPolicy,
+            TagNotificationSuccess,
+            TagPullStatistics,
+            ManifestPullStatistics,
+            OrgMirrorRepository,
+        } | v22_classes
 
         delete_instance_filtered(self, Repository, delete_nullable, skip_transitive_deletes)
 
@@ -1725,131 +1748,6 @@ class Label(BaseModel):
     source_type = EnumField(LabelSourceType)
 
 
-class ApprBlob(BaseModel):
-    """
-    ApprBlob represents a content-addressable object stored outside of the database.
-    """
-
-    digest = CharField(index=True, unique=True)
-    media_type = EnumField(MediaType)
-    size = BigIntegerField()
-    uncompressed_size = BigIntegerField(null=True)
-
-
-class ApprBlobPlacementLocation(BaseModel):
-    """
-    ApprBlobPlacementLocation is an enumeration of the possible storage locations for ApprBlobs.
-    """
-
-    name = CharField(index=True, unique=True)
-
-
-class ApprBlobPlacement(BaseModel):
-    """
-    ApprBlobPlacement represents the location of a Blob.
-    """
-
-    blob = ForeignKeyField(ApprBlob)
-    location = EnumField(ApprBlobPlacementLocation)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("blob", "location"), True),)
-
-
-class ApprManifest(BaseModel):
-    """
-    ApprManifest represents the metadata and collection of blobs that comprise an Appr image.
-    """
-
-    digest = CharField(index=True, unique=True)
-    media_type = EnumField(MediaType)
-    manifest_json = JSONField()
-
-
-class ApprManifestBlob(BaseModel):
-    """
-    ApprManifestBlob is a many-to-many relation table linking ApprManifests and ApprBlobs.
-    """
-
-    manifest = ForeignKeyField(ApprManifest, index=True)
-    blob = ForeignKeyField(ApprBlob, index=True)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("manifest", "blob"), True),)
-
-
-class ApprManifestList(BaseModel):
-    """
-    ApprManifestList represents all of the various Appr manifests that compose an ApprTag.
-    """
-
-    digest = CharField(index=True, unique=True)
-    manifest_list_json = JSONField()
-    schema_version = CharField()
-    media_type = EnumField(MediaType)
-
-
-class ApprTagKind(BaseModel):
-    """
-    ApprTagKind is a enumtable to reference tag kinds.
-    """
-
-    name = CharField(index=True, unique=True)
-
-
-class ApprTag(BaseModel):
-    """
-    ApprTag represents a user-facing alias for referencing an ApprManifestList.
-    """
-
-    name = CharField()
-    repository = ForeignKeyField(Repository)
-    manifest_list = ForeignKeyField(ApprManifestList, null=True)
-    lifetime_start = BigIntegerField(default=get_epoch_timestamp_ms)
-    lifetime_end = BigIntegerField(null=True, index=True)
-    hidden = BooleanField(default=False)
-    reverted = BooleanField(default=False)
-    protected = BooleanField(default=False)
-    tag_kind = EnumField(ApprTagKind)
-    linked_tag = ForeignKeyField("self", null=True, backref="tag_parents")
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = (
-            (("repository", "name"), False),
-            (("repository", "name", "hidden"), False),
-            # This unique index prevents deadlocks when concurrently moving and deleting tags
-            (("repository", "name", "lifetime_end"), True),
-        )
-
-
-ApprChannel = ApprTag.alias()
-
-
-class ApprManifestListManifest(BaseModel):
-    """
-    ApprManifestListManifest is a many-to-many relation table linking ApprManifestLists and
-    ApprManifests.
-    """
-
-    manifest_list = ForeignKeyField(ApprManifestList, index=True)
-    manifest = ForeignKeyField(ApprManifest, index=True)
-    operating_system = CharField(null=True)
-    architecture = CharField(null=True)
-    platform_json = JSONField(null=True)
-    media_type = EnumField(MediaType)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("manifest_list", "media_type"), False),)
-
-
 class AppSpecificAuthToken(BaseModel):
     """
     AppSpecificAuthToken represents a token generated by a user for use with an external application
@@ -2074,6 +1972,11 @@ class RepoMirrorConfig(BaseModel):
     external_registry_password = EncryptedCharField(max_length=9000, null=True)
     external_registry_config = JSONField(default={})
 
+    # Architecture filter for multi-arch images. JSON array of architecture strings.
+    # Empty array or null means mirror all architectures.
+    # Example: ["amd64", "arm64"]
+    architecture_filter = JSONField(default=[], null=True)
+
     # Worker Queueing
     sync_interval = IntegerField()  # seconds between syncs
     sync_start_date = DateTimeField(null=True)  # next start time
@@ -2087,6 +1990,149 @@ class RepoMirrorConfig(BaseModel):
 
     # Skopeo timeout
     skopeo_timeout = BigIntegerField()
+
+
+# ============================================================================
+# Organization-Level Mirroring Models
+# ============================================================================
+
+
+@unique
+class SourceRegistryType(IntEnum):
+    """
+    Types of source registries for organization mirroring.
+    """
+
+    HARBOR = 1
+    QUAY = 2
+
+
+@unique
+class OrgMirrorStatus(IntEnum):
+    """
+    Possible statuses of organization-level mirroring.
+    Same values as RepoMirrorStatus for consistency.
+    """
+
+    CANCEL = -2
+    FAIL = -1
+    NEVER_RUN = 0
+    SUCCESS = 1
+    SYNCING = 2
+    SYNC_NOW = 3
+
+
+@unique
+class OrgMirrorRepoStatus(IntEnum):
+    """
+    Possible statuses of individual repositories discovered by organization mirroring.
+    Same values as RepoMirrorStatus for consistency, plus SKIP for deactivated repos.
+    """
+
+    CANCEL = -2  # Sync cancelled
+    FAIL = -1  # Sync failed
+    NEVER_RUN = 0  # Discovered but never synced
+    SUCCESS = 1  # Last sync succeeded
+    SYNCING = 2  # Currently syncing
+    SYNC_NOW = 3  # Priority sync requested
+    SKIP = 4  # Repo no longer in source or excluded by filters
+
+
+class OrgMirrorConfig(BaseModel):
+    """
+    Represents an organization-level mirror configuration that syncs all repositories
+    from a source namespace to a target Quay organization.
+    """
+
+    # One config per organization (unique constraint)
+    organization = QuayUserField(allows_robots=False, null=False, index=True, unique=True)
+    creation_date = DateTimeField(default=datetime.utcnow)
+    is_enabled = BooleanField(default=True)
+
+    # Mirror type (supports PULL only)
+    mirror_type = ClientEnumField(RepoMirrorType, default=RepoMirrorType.PULL)
+
+    # External registry configuration
+    external_registry_type = ClientEnumField(SourceRegistryType)
+    external_registry_url = CharField(max_length=2048)  # e.g., "https://harbor.example.com"
+    external_namespace = CharField(max_length=255)  # e.g., "my-project" for Harbor
+
+    # Credentials for external registry
+    external_registry_username = EncryptedCharField(max_length=4096, null=True)
+    external_registry_password = EncryptedCharField(max_length=9000, null=True)
+    external_registry_config = JSONField(default={})  # TLS settings, proxy, etc.
+
+    # Robot account for creating repos and pushing images in target org
+    internal_robot = QuayUserField(allows_robots=True, backref="orgmirrorpullrobot")
+
+    # Repository filtering - list of glob patterns (e.g., ["ubuntu", "debian*"])
+    # Empty list means mirror all repositories
+    repository_filters = JSONField(default=[])
+
+    # Architecture filtering - list of architectures (e.g., ["amd64", "arm64"])
+    # Empty list means mirror all architectures
+    architecture_filter = JSONField(default=[])
+
+    # Visibility for created repositories
+    visibility = EnumField(Visibility)
+
+    # If True, delete mirror repos when they no longer exist in source
+    # Default False: stale repos remain in mirror
+    delete_stale_repos = BooleanField(default=False)
+
+    # Worker scheduling
+    sync_interval = IntegerField()  # seconds between syncs
+    sync_start_date = DateTimeField(null=True)  # next scheduled sync
+    sync_expiration_date = DateTimeField(null=True)  # max duration for current sync
+    sync_retries_remaining = IntegerField(default=3)
+    sync_status = ClientEnumField(OrgMirrorStatus, default=OrgMirrorStatus.NEVER_RUN)
+    sync_transaction_id = CharField(default=uuid_generator, max_length=36)
+
+    # Skopeo timeout for individual image syncs
+    skopeo_timeout = BigIntegerField(default=300)
+
+
+class OrgMirrorRepository(BaseModel):
+    """
+    Tracks individual repositories discovered by organization-level mirroring.
+    """
+
+    org_mirror_config = ForeignKeyField(OrgMirrorConfig, backref="discovered_repos")
+    repository_name = CharField(max_length=255)  # Name without namespace prefix
+
+    # Link to created Quay repository (null until created)
+    repository = ForeignKeyField(Repository, null=True, backref="org_mirror_entry")
+
+    # Discovery and sync tracking
+    discovery_date = DateTimeField(default=datetime.utcnow)
+    sync_status = ClientEnumField(OrgMirrorRepoStatus, default=OrgMirrorRepoStatus.NEVER_RUN)
+    sync_start_date = DateTimeField(null=True)
+    sync_expiration_date = DateTimeField(null=True)
+    sync_retries_remaining = IntegerField(default=3)  # Retry attempts for failed syncs
+    sync_transaction_id = CharField(default=uuid_generator, max_length=36)
+    last_sync_date = DateTimeField(null=True)
+    status_message = TextField(null=True)  # Error message or skip reason
+
+    creation_date = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            # Repository name must be unique within an org mirror config
+            (("org_mirror_config", "repository_name"), True),
+            # Composite index for efficient status counting per org mirror config
+            (("org_mirror_config", "sync_status"), False),
+        )
+
+
+class OrganizationContactEmail(BaseModel):
+    organization = QuayUserField(index=True, allows_robots=False, unique=True)
+    contact_email = CharField(null=True, index=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
 
 
 @unique
@@ -2203,6 +2249,19 @@ class RepositoryAutoPrunePolicy(BaseModel):
     policy = JSONField(null=False, default={})
 
 
+class NamespaceImmutabilityPolicy(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, unique=True, null=False)
+    namespace = QuayUserField(index=True, null=False)
+    policy = JSONField(null=False, default={})
+
+
+class RepositoryImmutabilityPolicy(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, unique=True, null=False)
+    repository = ForeignKeyField(Repository, index=True, null=False)
+    namespace = QuayUserField(index=True, null=False)
+    policy = JSONField(null=False, default={})
+
+
 class OauthAssignedToken(BaseModel):
     uuid = CharField(default=uuid_generator, max_length=36, index=True, unique=True, null=False)
     assigned_user = QuayUserField(index=True, unique=False, null=False)
@@ -2231,19 +2290,6 @@ LEGACY_INDEX_MAP = {
 }
 
 
-appr_classes = set(
-    [
-        ApprTag,
-        ApprTagKind,
-        ApprBlobPlacementLocation,
-        ApprManifestList,
-        ApprManifestBlob,
-        ApprBlob,
-        ApprManifestListManifest,
-        ApprManifest,
-        ApprBlobPlacement,
-    ]
-)
 v22_classes = set([Manifest, ManifestLabel, ManifestBlob, TagKind, ManifestChild, Tag])
 
 is_model = lambda x: inspect.isclass(x) and issubclass(x, BaseModel) and x is not BaseModel

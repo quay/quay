@@ -102,7 +102,6 @@ const privateResponse = {
 
 describe('Marketplace Section', () => {
   beforeEach(() => {
-    cy.exec('npm run quay:seed');
     cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
@@ -116,7 +115,7 @@ describe('Marketplace Section', () => {
     cy.intercept('GET', '/api/v1/user/private', privateResponse);
     cy.intercept('GET', '/api/v1/user/plan', plansResponse);
     cy.visit('/organization/user1?tab=Settings');
-    cy.get('#pf-tab-1-billinginformation').click();
+    cy.get('#pf-tab-billinginformation').click();
     cy.get('#user-subscription-list').contains(
       '2x MW02701 belonging to user namespace',
     );
@@ -148,7 +147,7 @@ describe('Marketplace Section', () => {
     );
 
     cy.visit('/organization/projectquay?tab=Settings');
-    cy.get('#pf-tab-1-billinginformation').click();
+    cy.get('#pf-tab-billinginformation').click();
     cy.get('#attach-subscription-button').click();
     cy.get('#subscription-select-toggle').click();
     cy.get('#subscription-select-list').contains('2x MW02701').click();
@@ -180,7 +179,7 @@ describe('Marketplace Section', () => {
     cy.intercept('GET', '/api/v1/organization/projectquay/plan', plansResponse);
 
     cy.visit('/organization/projectquay?tab=Settings');
-    cy.get('#pf-tab-1-billinginformation').click();
+    cy.get('#pf-tab-billinginformation').click();
     cy.get('#form-form')
       .contains('0 of unlimited private repositories used')
       .should('exist');

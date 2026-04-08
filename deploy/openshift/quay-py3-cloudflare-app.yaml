@@ -129,6 +129,10 @@ objects:
     name: quay-py3-cloudflare-app
     labels:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+    annotations:
+      ignore-check.kube-linter.io/unset-cpu-requirements: "no cpu limits"
+      ${{QUAY_DISABLE_MIN_REPLICAS_CHECK}}: ${{QUAY_DISABLE_MIN_REPLICAS_REASON}}
+      ${{QUAY_DISABLE_ANTI_AFFINITY_CHECK}}: ${{QUAY_DISABLE_ANTI_AFFINITY_REASON}}
   spec:
     replicas: ${{QUAY_APP_DEPLOYMENT_REPLICAS}}
     minReadySeconds: ${{QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS}}
@@ -148,7 +152,6 @@ objects:
           ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
         annotations:
           ${{QUAY_APP_COMPONENT_ANNOTATIONS_KEY}}: ${{QUAY_APP_COMPONENT_ANNOTATIONS_VALUE}}
-          ${{QUAY_DISABLE_MIN_REPLICAS_CHECK}}: ${{QUAY_DISABLE_MIN_REPLICAS_REASON}}
       spec:
         volumes:
         - name: configvolume
@@ -398,11 +401,17 @@ parameters:
     value: "false"
     displayName: debug log
   - name: QUAY_DISABLE_MIN_REPLICAS_CHECK
-    value: "check_not_disabled"
+    value: "min-replicas-check-not-disabled"
     displayName: disable DVO check for minimum replicas
   - name: QUAY_DISABLE_MIN_REPLICAS_REASON
     value: ""
     displayName: reason for disabling check
+  - name: QUAY_DISABLE_ANTI_AFFINITY_CHECK
+    value: "anti-affinity-check-not-disabled"
+    displayName: disable DVO check for anti-affinity
+  - name: QUAY_DISABLE_ANTI_AFFINITY_REASON
+    value: ""
+    displayName: reason for disabling anti-affinity check
   - name: QUAY_APP_COMPONENT_ANNOTATIONS_KEY
     value: "quay-py3-cloudflare-app-deployment"
     displayName: quay app annotation

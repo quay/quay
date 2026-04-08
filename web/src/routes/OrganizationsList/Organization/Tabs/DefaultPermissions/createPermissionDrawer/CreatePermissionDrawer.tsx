@@ -26,6 +26,7 @@ import {useCreateDefaultPermission} from 'src/hooks/UseDefaultPermissions';
 import {Entity} from 'src/resources/UserResource';
 import React from 'react';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
 import {CreateTeamWizard} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createTeamWizard/CreateTeamWizard';
 import {CreateTeamModal} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
@@ -34,8 +35,7 @@ import Conditional from 'src/components/empty/Conditional';
 import {useFetchTeams} from 'src/hooks/UseTeams';
 import {repoPermissions} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/DefaultPermissionsList';
 import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {validateTeamName} from 'src/libs/utils';
 
 export default function CreatePermissionDrawer(
@@ -74,7 +74,9 @@ export default function CreatePermissionDrawer(
   const {robots, isLoadingRobots} = useFetchRobotAccounts(props.orgName);
   // Get teams
   const {teams, isLoadingTeams} = useFetchTeams(props.orgName);
-  const {addAlert} = useAlerts();
+  const quayConfig = useQuayConfig();
+  const robotsDisallowed = quayConfig?.config?.ROBOTS_DISALLOW === true;
+  const {addAlert} = useUI();
 
   const permissionRadioButtons = (
     <>
@@ -125,18 +127,24 @@ export default function CreatePermissionDrawer(
           ))
         )}
       </SelectGroup>
-      <Divider component="li" key={7} />
-      <SelectOption
-        data-testid="create-new-robot-accnt-btn"
-        key="create-robot-account"
-        component="button"
-        onClick={() =>
-          setIsCreateRobotModalForCreatorOpen(!isCreateRobotModalForCreatorOpen)
-        }
-        isFocused
-      >
-        <DesktopIcon /> &nbsp; Create robot account
-      </SelectOption>
+      {!robotsDisallowed && (
+        <>
+          <Divider component="li" key={7} />
+          <SelectOption
+            data-testid="create-new-robot-accnt-btn"
+            key="create-robot-account"
+            component="button"
+            onClick={() =>
+              setIsCreateRobotModalForCreatorOpen(
+                !isCreateRobotModalForCreatorOpen,
+              )
+            }
+            isFocused
+          >
+            <DesktopIcon /> &nbsp; Create robot account
+          </SelectOption>
+        </>
+      )}
     </React.Fragment>,
   ];
 
@@ -293,19 +301,21 @@ export default function CreatePermissionDrawer(
       >
         <UsersIcon /> &nbsp; Create team
       </SelectOption>
-      <SelectOption
-        data-testid="create-new-robot-accnt-btn"
-        key="Create robot account2"
-        component="button"
-        onClick={() =>
-          setIsCreateRobotModalForAppliedToOpen(
-            !isCreateRobotModalForAppliedToOpen,
-          )
-        }
-        isFocused
-      >
-        <DesktopIcon /> &nbsp; Create robot account
-      </SelectOption>
+      {!robotsDisallowed && (
+        <SelectOption
+          data-testid="create-new-robot-accnt-btn"
+          key="Create robot account2"
+          component="button"
+          onClick={() =>
+            setIsCreateRobotModalForAppliedToOpen(
+              !isCreateRobotModalForAppliedToOpen,
+            )
+          }
+          isFocused
+        >
+          <DesktopIcon /> &nbsp; Create robot account
+        </SelectOption>
+      )}
     </React.Fragment>,
   ];
 
@@ -406,7 +416,7 @@ export default function CreatePermissionDrawer(
         {createRobotModalForAppliedTo}
       </Conditional>
       <DrawerPanelContent>
-        <DrawerHead className="pf-v5-c-title pf-m-xl">
+        <DrawerHead className="pf-v6-c-title pf-m-xl">
           <h6
             tabIndex={
               props.drawerContent != OrganizationDrawerContentType.None ? 0 : -1
@@ -421,7 +431,7 @@ export default function CreatePermissionDrawer(
           </DrawerActions>
         </DrawerHead>
         <DrawerPanelBody>
-          <h3 className="pf-v5-c-title pf-m-md">
+          <h3 className="pf-v6-c-title pf-m-md">
             Applies when a repository is created by:
           </h3>
         </DrawerPanelBody>

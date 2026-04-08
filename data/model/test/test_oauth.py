@@ -94,3 +94,218 @@ def test_get_token_assignment_for_client_id(initialized_db):
         )
         == token_assignment
     )
+
+
+# Security tests for PROJQUAY-9849: OAuth Redirect URI Validation Bypass
+def test_validate_redirect_uri_blocks_subdomain_takeover(initialized_db):
+    """Test that subdomain takeover attacks are blocked"""
+    org = model.organization.get_organization("buynlarge")
+    # Create app with proper FQDN for subdomain testing
+    application = model.oauth.create_application(
+        org, "test_subdomain", "https://example.com", "https://example.com/callback"
+    )
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Subdomain takeover attack
+        malicious_uri = "https://example.com.evil.com/callback"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri)
+
+
+def test_validate_redirect_uri_blocks_path_traversal(initialized_db):
+    """Test that path traversal attacks are blocked"""
+    application, _, _, _ = setup()
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Literal path traversal
+        malicious_uri = f"{application.redirect_uri}/../../evil"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri)
+
+        # Relative path traversal
+        malicious_uri_2 = f"{application.redirect_uri}/../evil"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri_2)
+
+
+def test_validate_redirect_uri_blocks_url_encoded_traversal(initialized_db):
+    """Test that URL-encoded path traversal is blocked (critical coverage gap)"""
+    application, _, _, _ = setup()
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # URL-encoded ../ (%2e%2e)
+        malicious_uri = f"{application.redirect_uri}/%2e%2e/evil"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri)
+
+        # Double URL-encoded ../ (%252e%252e - percent symbol itself encoded)
+        malicious_uri_2 = f"{application.redirect_uri}/%252e%252e/evil"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri_2)
+
+
+def test_validate_redirect_uri_blocks_scheme_mismatch(initialized_db):
+    """Test that scheme downgrade attacks are blocked"""
+    org = model.organization.get_organization("buynlarge")
+    # Create app with HTTPS to test scheme downgrade
+    application = model.oauth.create_application(
+        org, "test_https_scheme", "https://example.com", "https://example.com/callback"
+    )
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Configured as https, block http downgrade
+        malicious_uri = "http://example.com/callback"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri)
+
+
+def test_validate_redirect_uri_blocks_domain_mismatch(initialized_db):
+    """Test that different domains are blocked"""
+    application, _, _, _ = setup()
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Different domain entirely
+        malicious_uri = "https://evil.com/callback"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri)
+
+
+def test_validate_redirect_uri_allows_exact_match(initialized_db):
+    """Test that exact matches are allowed"""
+    application, _, _, _ = setup()
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Exact match should work
+        assert db_auth_provider.validate_redirect_uri(
+            application.client_id, application.redirect_uri
+        )
+
+
+def test_validate_redirect_uri_allows_subpath(initialized_db):
+    """Test that legitimate subpaths are allowed"""
+    application, _, _, _ = setup()
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Subpath should work
+        legitimate_uri = f"{application.redirect_uri}/success"
+        assert db_auth_provider.validate_redirect_uri(application.client_id, legitimate_uri)
+
+
+def test_validate_redirect_uri_allows_query_params(initialized_db):
+    """Test that query parameters are allowed"""
+    application, _, _, _ = setup()
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Query params should work (no % in path, only in query string)
+        legitimate_uri = f"{application.redirect_uri}?code=123&state=abc"
+        assert db_auth_provider.validate_redirect_uri(application.client_id, legitimate_uri)
+
+
+def test_validate_redirect_uri_blocks_percent_in_path(initialized_db):
+    """Test that percent-encoding in path after prefix is blocked"""
+    application, _, _, _ = setup()
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Any percent-encoding after configured prefix should be blocked
+        malicious_uri = f"{application.redirect_uri}/%20space"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri)
+
+        # Block even benign-looking encoding
+        malicious_uri_2 = f"{application.redirect_uri}/success%2Fpath"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri_2)
+
+
+def test_validate_redirect_uri_with_internal_redirect(initialized_db):
+    """Test that internal redirects work correctly"""
+    application, _, _, _ = setup()
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        with patch("data.model.oauth.get_app_url", return_value="https://quay.io"):
+            db_auth_provider = MockDatabaseAuthorizationProvider()
+
+            # Internal redirect should be allowed with exact match
+            internal_uri = "https://quay.io/oauth/callback"
+            assert db_auth_provider.validate_redirect_uri(application.client_id, internal_uri)
+
+
+def test_validate_redirect_uri_blocks_empty_uri(initialized_db):
+    """Test that empty or None redirect URIs are blocked"""
+    application, _, _, _ = setup()
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Empty string should be blocked
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, "")
+
+        # None should be blocked
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, None)
+
+
+def test_validate_redirect_uri_blocks_username_in_uri(initialized_db):
+    """Test that URIs with username are blocked"""
+    org = model.organization.get_organization("buynlarge")
+    # Create app with https URI to test username blocking
+    application = model.oauth.create_application(
+        org, "test_https", "https://example.com", "https://example.com/callback"
+    )
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # URI with username should be blocked
+        malicious_uri = "https://user@example.com/callback"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri)
+
+        # URI with username and password should be blocked
+        malicious_uri_2 = "https://user:pass@example.com/callback"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri_2)
+
+
+def test_validate_redirect_uri_with_root_path(initialized_db):
+    """Test validation when configured URI has root path"""
+    org = model.organization.get_organization("buynlarge")
+    # Create app with root path
+    application = model.oauth.create_application(
+        org, "test_root", "http://example.com", "http://example.com/"
+    )
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Valid subpath from root should be allowed
+        assert db_auth_provider.validate_redirect_uri(
+            application.client_id, "http://example.com/callback"
+        )
+
+        # Path not starting with / should be blocked
+        assert not db_auth_provider.validate_redirect_uri(
+            application.client_id, "http://example.comevil"
+        )
+
+
+def test_validate_redirect_uri_blocks_path_prefix_mismatch(initialized_db):
+    """Test that non-matching path prefixes are blocked"""
+    application, _, _, _ = setup()
+
+    with patch("data.model.oauth.url_for", return_value="/oauth/callback"):
+        db_auth_provider = MockDatabaseAuthorizationProvider()
+
+        # Completely different path should be blocked
+        malicious_uri = "http://foo/different/path"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri)
+
+        # Path that doesn't match configured prefix
+        malicious_uri_2 = "http://foo/ba"
+        assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri_2)

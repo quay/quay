@@ -13,9 +13,12 @@ import {
   DescriptionListTerm,
   Flex,
   FlexItem,
+  Spinner,
   Modal,
   ModalVariant,
-  Spinner,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {LoadingPage} from 'src/components/LoadingPage';
@@ -38,8 +41,8 @@ import {
   TriggeredBuildDescription,
 } from 'src/routes/RepositoryDetails/Builds/BuildHistory';
 import Conditional from 'src/components/empty/Conditional';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {useEffect, useState} from 'react';
 import {
   AngleDownIcon,
@@ -58,7 +61,7 @@ import {RepositoryBuildPhase} from 'src/resources/BuildResource';
 export default function Build() {
   const location = useLocation();
   const navigate = useNavigate();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [poll, setPoll] = useState<boolean>(true);
   const [showTimestamps, setShowTimestamps] = useState<boolean>(false);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -132,9 +135,7 @@ export default function Build() {
   }
 
   if (isError) {
-    return (
-      <RequestError message={'Could not load build;' + error.toString()} />
-    );
+    return <RequestError err={error} />;
   }
 
   if (!repoDetails?.can_write && !repoDetails?.can_admin) {
@@ -215,8 +216,8 @@ export default function Build() {
             <CodeBlock
               actions={[
                 <CodeBlockAction key="copy-logs" style={{margin: '.3em'}}>
-                  <Button key="copy" onClick={onCopy}>
-                    <CopyIcon /> Copy
+                  <Button icon={<CopyIcon />} key="copy" onClick={onCopy}>
+                    Copy
                   </Button>
                 </CodeBlockAction>,
                 <CodeBlockAction key="download-logs" style={{margin: '.3em'}}>
@@ -226,8 +227,12 @@ export default function Build() {
                       href={`/buildlogs/${build.id}`}
                       rel="noreferrer"
                     >
-                      <Button key="download" id="download-button">
-                        <DownloadIcon /> Download
+                      <Button
+                        icon={<DownloadIcon />}
+                        key="download"
+                        id="download-button"
+                      >
+                        Download
                       </Button>
                     </a>
                   </Conditional>
@@ -282,20 +287,21 @@ export default function Build() {
         variant={ModalVariant.small}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Cancel Build" />
+        <ModalBody>Are you sure you want to cancel this build?</ModalBody>
+        <ModalFooter>
           <Button key="confirm" variant="primary" onClick={() => cancelBuild()}>
             Cancel build
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to cancel this build?
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

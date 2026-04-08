@@ -17,6 +17,7 @@ interface UsageLogsProps {
   organization: string;
   repository: string;
   type: string;
+  isActive?: boolean;
 }
 
 function formatDate(date: string) {
@@ -61,12 +62,41 @@ export default function UsageLogs(props: UsageLogsProps) {
     });
   }, [logStartDate, logEndDate]);
 
-  const rangeValidator = (date: Date) => {
+  // Helper to parse date string back to Date object for comparison
+  const parseFormattedDate = (dateStr: string): Date => {
+    const [month, day, year] = dateStr.split('/');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  };
+
+  const startDateValidator = (date: Date) => {
     if (date < minDate) {
-      return 'Date is before the allowable range';
+      return 'Logs are only available for the past month';
     } else if (date > maxDate) {
-      return 'Date is after the allowable range';
+      return 'Cannot select future dates';
     }
+
+    // Check if start date is after end date
+    const endDate = parseFormattedDate(logEndDate);
+    if (date > endDate) {
+      return 'From date cannot be after To date';
+    }
+
+    return '';
+  };
+
+  const endDateValidator = (date: Date) => {
+    if (date < minDate) {
+      return 'Logs are only available for the past month';
+    } else if (date > maxDate) {
+      return 'Cannot select future dates';
+    }
+
+    // Check if end date is before start date
+    const startDate = parseFormattedDate(logStartDate);
+    if (date < startDate) {
+      return 'To date cannot be before From date';
+    }
+
     return '';
   };
 
@@ -79,6 +109,7 @@ export default function UsageLogs(props: UsageLogsProps) {
               <Button
                 variant="secondary"
                 onClick={() => setChartHidden(!chartHidden)}
+                data-testid="usage-logs-chart-toggle"
               >
                 {chartHidden ? 'Show Chart' : 'Hide Chart'}
               </Button>
@@ -87,19 +118,19 @@ export default function UsageLogs(props: UsageLogsProps) {
             <SplitItem>
               <DatePicker
                 value={logStartDate}
-                onChange={(_event, str, date) => {
+                onChange={(_event, str) => {
                   setLogStartDate(formatDate(str));
                 }}
-                validators={[rangeValidator]}
+                validators={[startDateValidator]}
               />
             </SplitItem>
             <SplitItem>
               <DatePicker
                 value={logEndDate}
-                onChange={(_event, str, date) => {
+                onChange={(_event, str) => {
                   setLogEndDate(formatDate(str));
                 }}
-                validators={[rangeValidator]}
+                validators={[endDateValidator]}
               />
             </SplitItem>
             <SplitItem>
@@ -114,15 +145,15 @@ export default function UsageLogs(props: UsageLogsProps) {
           </Split>
         </FlexItem>
         <FlexItem>
-          {chartHidden ? null : (
-            <UsageLogsGraph
-              starttime={logStartDate}
-              endtime={logEndDate}
-              repo={props.repository}
-              org={props.organization}
-              type={props.type}
-            />
-          )}
+          <UsageLogsGraph
+            starttime={logStartDate}
+            endtime={logEndDate}
+            repo={props.repository}
+            org={props.organization}
+            type={props.type}
+            isHidden={chartHidden}
+            enabled={props.isActive !== false}
+          />
         </FlexItem>
         <FlexItem>
           <UsageLogsTable
@@ -131,6 +162,7 @@ export default function UsageLogs(props: UsageLogsProps) {
             repo={props.repository}
             org={props.organization}
             type={props.type}
+            enabled={props.isActive !== false}
           />
         </FlexItem>
       </Flex>
@@ -227,11 +259,24 @@ export const logKinds = {
   repo_mirror_sync_test_success: 'Test Repository Mirror success',
   repo_mirror_sync_test_failed: 'Test Repository Mirror failed',
   repo_mirror_sync_test_started: 'Test Repository Mirror started',
+  org_mirror_enabled: 'Enable Organization Mirror',
+  org_mirror_disabled: 'Disable Organization Mirror',
+  org_mirror_config_changed: 'Change Organization Mirror Configuration',
+  org_mirror_sync_started: 'Start Organization Mirror Sync',
+  org_mirror_sync_success: 'Organization Mirror Sync Success',
+  org_mirror_sync_failed: 'Organization Mirror Sync Failed',
+  org_mirror_sync_now_requested: 'Organization Mirror Immediate Sync Requested',
+  org_mirror_sync_cancelled: 'Organization Mirror Sync Cancelled',
+  org_mirror_repo_created: 'Organization Mirror Repository Created',
+  org_mirror_repo_creation_failed:
+    'Organization Mirror Repository Creation Failed',
   create_proxy_cache_config: 'Create Proxy Cache Config',
   delete_proxy_cache_config: 'Delete Proxy Cache Config',
   start_build_trigger: 'Manual build trigger',
   cancel_build: 'Cancel build',
   login_success: 'Login success',
+  logout_success: 'Logout success',
+  change_repo_state: 'Change repository state',
   permanently_delete_tag: 'Permanently Delete Tag',
   autoprune_tag_delete: 'Autoprune worker tag deletion',
   create_namespace_autoprune_policy: 'Create Namespace Autoprune Policy',
@@ -240,9 +285,20 @@ export const logKinds = {
   create_repository_autoprune_policy: 'Create Repository Autoprune Policy',
   update_repository_autoprune_policy: 'Update Repository Autoprune Policy',
   delete_repository_autoprune_policy: 'Delete Repository Autoprune Policy',
+  create_immutability_policy: 'Create Immutability Policy',
+  update_immutability_policy: 'Update Immutability Policy',
+  delete_immutability_policy: 'Delete Immutability Policy',
+  tag_made_immutable_by_policy: 'Tag Made Immutable by Policy',
+  tags_made_immutable_by_policy: 'Tags Made Immutable by Policy',
   oauth_token_assigned: 'OAuth token assigned',
   enable_team_sync: 'Enable Team Sync',
   disable_team_sync: 'Disable Team Sync',
+  add_repo_webhook: 'Add webhook',
+  delete_repo_webhook: 'Delete webhook',
+  delete_tag_failed: 'Delete Tag failed',
+  login_failure: 'Login failure',
+  pull_repo_failed: 'Pull repository failed',
+  push_repo_failed: 'Push to repository failed',
   export_logs_success: 'Export logs queued for delivery',
   export_logs_failure: 'Export logs failure',
 };

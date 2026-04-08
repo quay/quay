@@ -1,30 +1,44 @@
 import {Banner, Flex, FlexItem, Page} from '@patternfly/react-core';
 
 import {Navigate, Outlet, Route, Routes} from 'react-router-dom';
-import {RecoilRoot, useSetRecoilState} from 'recoil';
+import {RecoilRoot} from 'recoil';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
 import useChrome from '@redhat-cloud-services/frontend-components/useChrome';
 
 import {NavigationPath} from './NavigationPath';
-import OrganizationsList from './OrganizationsList/OrganizationsList';
-import Organization from './OrganizationsList/Organization/Organization';
-import RepositoryTagRouter from './RepositoryTagRouter';
-import RepositoriesList from './RepositoriesList/RepositoriesList';
-import {useEffect, useState, useMemo} from 'react';
+import {useEffect, useState, useMemo, lazy, Suspense} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 import {GlobalAuthState} from '../resources/AuthResource';
-import {IsPluginState} from '../atoms/QuayConfigState';
 import {CreateNewUser} from 'src/components/modals/CreateNewUser';
 import NewUserEmptyPage from 'src/components/NewUserEmptyPage';
 import axios from 'axios';
 import axiosIns from 'src/libs/axios';
-import ManageMembersList from './OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
-import OverviewList from './OverviewList/OverviewList';
 import {LoadingPage} from 'src/components/LoadingPage';
+import SystemStatusBanner from 'src/components/SystemStatusBanner';
+import {UIProvider} from 'src/contexts/UIContext';
+
+// Lazy load route components for better performance
+const OrganizationsList = lazy(
+  () => import('./OrganizationsList/OrganizationsList'),
+);
+const Organization = lazy(
+  () => import('./OrganizationsList/Organization/Organization'),
+);
+const RepositoryTagRouter = lazy(() => import('./RepositoryTagRouter'));
+const RepositoriesList = lazy(
+  () => import('./RepositoriesList/RepositoriesList'),
+);
+const ManageMembersList = lazy(
+  () =>
+    import(
+      './OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList'
+    ),
+);
+const OverviewList = lazy(() => import('./OverviewList/OverviewList'));
 
 const NavigationRoutes = [
   {
@@ -68,7 +82,6 @@ function PluginMain() {
   }
 
   const quayConfig = useQuayConfig();
-  const setIsPluginState = useSetRecoilState(IsPluginState);
   const [isConfirmUserModalOpen, setConfirmUserModalOpen] = useState(false);
   const [tokenReady, setTokenReady] = useState(false);
 
@@ -79,7 +92,7 @@ function PluginMain() {
     });
   }, []);
 
-  const {user, loading, error} = useCurrentUser(tokenReady);
+  const {user, loading} = useCurrentUser(tokenReady);
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
@@ -88,7 +101,6 @@ function PluginMain() {
   }, [quayConfig]);
 
   useEffect(() => {
-    setIsPluginState(true);
     if (user?.prompts && user.prompts.includes('confirm_username')) {
       setConfirmUserModalOpen(true);
     }
@@ -100,8 +112,8 @@ function PluginMain() {
 
   return (
     <Page style={{height: '100vh'}}>
-      {!user && (
-        <Banner variant="gold">
+      {quayConfig?.config?.UI_V2_FEEDBACK_FORM && (
+        <Banner color="blue">
           <Flex
             spaceItems={{default: 'spaceItemsSm'}}
             justifyContent={{default: 'justifyContentCenter'}}
@@ -110,34 +122,20 @@ function PluginMain() {
               <InfoCircleIcon />
             </FlexItem>
             <FlexItem>
-              We are currently experiencing authentication issues with RH SSO.
-              Our team is actively investigating this issue and working to
-              restore authentication.
+              Please use{' '}
+              <a
+                href={quayConfig?.config?.UI_V2_FEEDBACK_FORM}
+                target="_blank"
+                rel="noreferrer"
+              >
+                this form
+              </a>{' '}
+              to provide feedback on your experience
             </FlexItem>
           </Flex>
         </Banner>
       )}
-      <Banner variant="blue">
-        <Flex
-          spaceItems={{default: 'spaceItemsSm'}}
-          justifyContent={{default: 'justifyContentCenter'}}
-        >
-          <FlexItem>
-            <InfoCircleIcon />
-          </FlexItem>
-          <FlexItem>
-            Please use{' '}
-            <a
-              href={quayConfig?.config?.UI_V2_FEEDBACK_FORM}
-              target="_blank"
-              rel="noreferrer"
-            >
-              this form
-            </a>{' '}
-            to provide feedback on your experience
-          </FlexItem>
-        </Flex>
-      </Banner>
+      <SystemStatusBanner />
       {user && (
         <CreateNewUser
           user={user}
@@ -148,13 +146,15 @@ function PluginMain() {
       {user?.prompts && user.prompts.includes('confirm_username') ? (
         <NewUserEmptyPage setCreateUserModalOpen={setConfirmUserModalOpen} />
       ) : (
-        <Routes>
-          <Route index element={<Navigate to="organization" replace />} />
-          {NavigationRoutes.map(({path, Component}, key) => (
-            <Route path={path} key={key} element={Component} />
-          ))}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<LoadingPage />}>
+          <Routes>
+            <Route index element={<Navigate to="organization" replace />} />
+            {NavigationRoutes.map(({path, Component}, key) => (
+              <Route path={path} key={key} element={Component} />
+            ))}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       )}
       <Outlet />
     </Page>
@@ -177,9 +177,11 @@ export default function PluginMainRoot() {
 
   return (
     <RecoilRoot>
-      <QueryClientProvider client={queryClient}>
-        <PluginMain />
-      </QueryClientProvider>
+      <UIProvider>
+        <QueryClientProvider client={queryClient}>
+          <PluginMain />
+        </QueryClientProvider>
+      </UIProvider>
     </RecoilRoot>
   );
 }

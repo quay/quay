@@ -25,6 +25,17 @@ export interface Tag {
   expiration?: string;
   end_ts?: number;
   modelcard?: string;
+  cosign_signature_tag?: string;
+  cosign_signature_manifest_digest?: string;
+  pull_count?: number;
+  last_pulled?: string;
+  immutable?: boolean;
+  // Sparse manifest info (only present for manifest lists)
+  is_sparse?: boolean;
+  child_manifest_count?: number;
+  present_child_count?: number;
+  // Map of child manifest digest to presence status
+  child_manifests_presence?: Record<string, boolean>;
 }
 
 export interface ManifestList {
@@ -40,10 +51,20 @@ export interface Manifest {
   platform: Platform;
   security: SecurityDetailsResponse;
   layers: Layer[];
+  // Whether manifest content is available locally (not sparse)
+  is_present?: boolean;
 }
 
 export interface Layer {
-  size: number;
+  index: number;
+  compressed_size: number;
+  is_remote: boolean;
+  urls: string[];
+  command: string[];
+  comment: string;
+  author: string;
+  blob_digest: string;
+  created_datetime: string;
 }
 
 export interface Platform {
@@ -69,8 +90,9 @@ export interface ManifestByDigestResponse {
   digest: string;
   is_manifest_list: boolean;
   manifest_data: string;
-  config_media_type?: any;
-  layers?: any;
+  config_media_type?: string;
+  layers?: Layer[];
+  layers_compressed_size?: number;
   modelcard?: string;
 }
 
@@ -79,9 +101,9 @@ export interface SecurityDetailsResponse {
   data: Data;
 }
 export interface Data {
-  Layer: Layer;
+  Layer: SecurityLayer;
 }
-export interface Layer {
+export interface SecurityLayer {
   Name: string;
   ParentName: string;
   NamespaceName: string;
@@ -244,12 +266,6 @@ export async function deleteLabel(
   }
 }
 
-interface TagLocation {
-  org: string;
-  repo: string;
-  tag: string;
-}
-
 export async function bulkDeleteTags(
   org: string,
   repo: string,
@@ -328,11 +344,13 @@ export async function getManifestByDigest(
   org: string,
   repo: string,
   digest: string,
-  include_modelcard: boolean,
+  include_modelcard = false,
 ) {
-  const response: AxiosResponse<ManifestByDigestResponse> = await axios.get(
-    `/api/v1/repository/${org}/${repo}/manifest/${digest}?include_modelcard=true`,
-  );
+  const url = `/api/v1/repository/${org}/${repo}/manifest/${digest}${
+    include_modelcard ? '?include_modelcard=true' : ''
+  }`;
+  const response: AxiosResponse<ManifestByDigestResponse> =
+    await axios.get(url);
   assertHttpCode(response.status, 200);
   return response.data;
 }
@@ -387,6 +405,33 @@ export async function setExpiration(
   }
 }
 
+export async function setTagImmutability(
+  org: string,
+  repo: string,
+  tag: string,
+  immutable: boolean,
+) {
+  try {
+    await axios.put(`/api/v1/repository/${org}/${repo}/tag/${tag}`, {
+      immutable: immutable,
+    });
+  } catch (error) {
+    throw new ResourceError('Unable to set tag immutability', tag, error);
+  }
+}
+
+export async function bulkSetTagImmutability(
+  org: string,
+  repo: string,
+  tags: string[],
+  immutable: boolean,
+) {
+  const responses = await Promise.allSettled(
+    tags.map((tag) => setTagImmutability(org, repo, tag, immutable)),
+  );
+  throwIfError(responses, 'Error setting immutability for tags');
+}
+
 export async function restoreTag(
   org: string,
   repo: string,
@@ -399,6 +444,7 @@ export async function restoreTag(
       manifest_digest: digest,
     },
   );
+  assertHttpCode(response.status, 200);
 }
 
 export async function permanentlyDeleteTag(
@@ -415,4 +461,41 @@ export async function permanentlyDeleteTag(
       is_alive: false,
     },
   );
+  assertHttpCode(response.status, 200);
+}
+
+export interface TagPullStatistics {
+  tag_name: string;
+  tag_pull_count: number;
+  last_tag_pull_date: string | null;
+  current_manifest_digest: string;
+  manifest_pull_count: number;
+  last_manifest_pull_date: string | null;
+}
+
+export async function getTagPullStatistics(
+  org: string,
+  repo: string,
+  tag: string,
+) {
+  try {
+    const response: AxiosResponse<TagPullStatistics> = await axios.get(
+      `/api/v1/repository/${org}/${repo}/tag/${tag}/pull_statistics`,
+    );
+    assertHttpCode(response.status, 200);
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      throw new ResourceError(
+        'Pull statistics not available (feature may be disabled or no data)',
+        `${org}/${repo}:${tag}`,
+        error,
+      );
+    }
+    throw new ResourceError(
+      'Unable to fetch pull statistics',
+      `${org}/${repo}:${tag}`,
+      error,
+    );
+  }
 }

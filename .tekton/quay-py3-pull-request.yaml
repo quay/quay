@@ -1,0 +1,44 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/quay/quay?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
+      == "master"
+    pipelinesascode.tekton.dev/pipeline: "https://github.com/quay/quay-konflux-configs/blob/main/pipelines/quayio-build-pipeline.yaml"
+    pipelinesascode.tekton.dev/target-namespace: "quayio-tenant"
+  creationTimestamp: null
+  labels:
+    appstudio.openshift.io/application: quay-py3
+    appstudio.openshift.io/component: quay-py3
+    pipelines.appstudio.openshift.io/type: build
+  name: quay-py3-on-pull-request
+  namespace: quayio-tenant
+spec:
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/quayio-tenant/quay-py3/quay-py3:on-pr-{{revision}}
+  - name: image-expires-after
+    value: 5d
+  - name: dockerfile
+    value: Dockerfile
+  - name: path-context
+    value: .
+  pipelineRef:
+    name: quayio-build-pipeline
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-quay-py3
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+status: {}

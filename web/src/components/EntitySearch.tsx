@@ -65,14 +65,20 @@ export default function EntitySearch(props: EntitySearchProps) {
     value: string | number | undefined,
   ) => {
     if (value && value !== 'no results') {
+      // If onTeamSelect is provided and this is a team selection from defaultOptions
+      const isTeamSelection = props.onTeamSelect && !searchTerm;
+
       setSearchTerm(value as string);
       setSelectedEntityName(value as string);
-    }
-    // onClear() prop can be skipped in case the value needs to be cleared automatically from
-    // the dropdown after selection (used in AddTeamMember wizard step)
-    if (!props.onClear) {
-      setSearchTerm('');
-      setSelectedEntityName('');
+
+      if (isTeamSelection) {
+        props.onTeamSelect(value as string);
+      } else if (!props.onClear) {
+        // onClear() prop can be skipped in case the value needs to be cleared automatically from
+        // the dropdown after selection (used in AddTeamMember wizard step)
+        setSearchTerm('');
+        setSelectedEntityName('');
+      }
     }
     setIsOpen(false);
     setFocusedItemIndex(null);
@@ -111,6 +117,7 @@ export default function EntitySearch(props: EntitySearchProps) {
         <TextInputGroupUtilities>
           {!!searchTerm && (
             <Button
+              icon={<TimesIcon aria-hidden />}
               variant="plain"
               onClick={() => {
                 setSelectedEntityName('');
@@ -119,9 +126,7 @@ export default function EntitySearch(props: EntitySearchProps) {
                 props?.onClear();
               }}
               aria-label="Clear input value"
-            >
-              <TimesIcon aria-hidden />
-            </Button>
+            />
           )}
         </TextInputGroupUtilities>
       </TextInputGroup>
@@ -185,6 +190,7 @@ interface EntitySearchProps {
   onSelect: (selectedItem: Entity) => void;
   onClear?: () => void;
   onError?: () => void;
+  onTeamSelect?: (teamName: string) => void;
   id?: string;
   defaultOptions?: React.ReactNode;
   defaultSelection?: string;

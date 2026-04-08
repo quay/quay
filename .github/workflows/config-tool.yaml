@@ -17,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
 
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@7b8cf10d4e4a01d4992d18a89f4d7dc5a3e6d6f4 # v4.3.0
         with:
-          go-version: ^1.23
+          go-version-file: config-tool/go.mod
           cache-dependency-path: config-tool/go.sum
 
       - name: Verify go.mod
@@ -32,14 +32,14 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v4
-        with:
-          go-version: ^1.23
-          cache-dependency-path: config-tool/go.sum
-
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@7b8cf10d4e4a01d4992d18a89f4d7dc5a3e6d6f4 # v4.3.0
+        with:
+          go-version-file: config-tool/go.mod
+          cache-dependency-path: config-tool/go.sum
 
       - name: Build
         run: cd ./config-tool && go build -v ./...
@@ -47,7 +47,7 @@ jobs:
   tests:
     name: Tests
     runs-on: ubuntu-latest
-    container: docker.io/library/golang:1.23
+    container: docker.io/library/golang:1.24.8
     services:
       postgres:
         image: postgres:11.5
@@ -67,7 +67,7 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
       - name: Workaround for dubious ownership issue
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Build
@@ -76,31 +76,3 @@ jobs:
         run: cd ./config-tool && go test ./pkg/lib/fieldgroups/...
         env:
           GODEBUG: x509ignoreCN=0
-
-  cypress:
-    name: Cypress
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Docker Build
-        run: cd config-tool && docker build -t localhost/config-tool:latest .
-      - name: Cypress run
-        uses: cypress-io/github-action@v5
-        with:
-          browser: chrome
-          start: docker run --rm -p 8080:8080 -v ${{ github.workspace }}/config-tool/pkg/lib/editor/cypress/conf:/conf localhost/config-tool:latest editor --config-dir /conf --password qwerty
-          wait-on: 'http://localhost:8080'
-          wait-on-timeout: 120
-          working-directory: config-tool/pkg/lib/editor
-      - name: Upload screenshots and videos
-        uses: actions/upload-artifact@v4
-        if: success() || failure()
-        with:
-          name: cypress-artifacts
-          path: |
-            config-tool/pkg/lib/editor/cypress/screenshots
-            config-tool/pkg/lib/editor/cypress/videos
-          if-no-files-found: ignore

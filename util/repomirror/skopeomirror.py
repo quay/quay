@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import subprocess
 from collections import namedtuple
 from pipes import quote
@@ -8,6 +9,21 @@ from tempfile import SpooledTemporaryFile
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+_SANITIZE_PATTERNS = [
+    (re.compile(r"(Authorization:\s*)\S+.*", re.IGNORECASE), r"\1[REDACTED]"),
+    (re.compile(r"(--(src-creds|dest-creds|creds)[=\s]+)\S+", re.IGNORECASE), r"\1[REDACTED]"),
+    (re.compile(r'("auth"\s*:\s*")[^"]+(")', re.IGNORECASE), r"\1[REDACTED]\2"),
+]
+
+
+def sanitize_skopeo_output(output: Optional[str]) -> Optional[str]:
+    if not output:
+        return output
+    for pattern, replacement in _SANITIZE_PATTERNS:
+        output = pattern.sub(replacement, output)
+    return output
+
 
 # success: True or False whether call was successful
 # tags: list of tags or empty list
@@ -91,6 +107,88 @@ class SkopeoMirror(object):
 
         return SkopeoResults(result.success, all_tags, result.stdout, result.stderr)
 
+    def inspect_raw(
+        self,
+        image: str,
+        timeout: int,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        verify_tls: bool = True,
+        proxy: Optional[dict[str, str]] = None,
+        verbose_logs: bool = False,
+    ) -> SkopeoResults:
+        """
+        Fetch the raw manifest (or manifest list) for an image.
+        Uses: skopeo inspect --raw docker://image
+        """
+        args = ["/usr/bin/skopeo"]
+        if verbose_logs:
+            args = args + ["--debug"]
+        args = args + ["inspect", "--raw", "--tls-verify=%s" % verify_tls]
+        args = args + self.external_registry_credentials("--creds", username, password)
+        args = args + [image]
+        return self.run_skopeo(args, proxy or {}, timeout)
+
+    def inspect(
+        self,
+        image: str,
+        timeout: int,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        verify_tls: bool = True,
+        proxy: Optional[dict[str, str]] = None,
+        verbose_logs: bool = False,
+    ) -> SkopeoResults:
+        """
+        Inspect image metadata (resolves config blob).
+        Uses: skopeo inspect docker://image
+        Returns JSON with Architecture, Os, Digest, etc.
+        """
+        args = ["/usr/bin/skopeo"]
+        if verbose_logs:
+            args = args + ["--debug"]
+        args = args + ["inspect", "--tls-verify=%s" % verify_tls]
+        args = args + self.external_registry_credentials("--creds", username, password)
+        args = args + [image]
+        return self.run_skopeo(args, proxy or {}, timeout)
+
+    def copy_by_digest(
+        self,
+        src_image_with_digest: str,
+        dest_image_with_digest: str,
+        timeout: int,
+        src_tls_verify: bool = True,
+        dest_tls_verify: bool = True,
+        src_username: Optional[str] = None,
+        src_password: Optional[str] = None,
+        dest_username: Optional[str] = None,
+        dest_password: Optional[str] = None,
+        proxy: Optional[dict[str, str]] = None,
+        verbose_logs: bool = False,
+        unsigned_images: bool = False,
+    ) -> SkopeoResults:
+        """
+        Copy a specific manifest by digest (no --all flag).
+        """
+        args = ["/usr/bin/skopeo"]
+        if verbose_logs:
+            args = args + ["--debug"]
+        if unsigned_images:
+            args = args + ["--insecure-policy"]
+        args = args + [
+            "copy",
+            "--preserve-digests",
+            "--remove-signatures",
+            "--src-tls-verify=%s" % src_tls_verify,
+            "--dest-tls-verify=%s" % dest_tls_verify,
+        ]
+        args = args + self.external_registry_credentials(
+            "--dest-creds", dest_username, dest_password
+        )
+        args = args + self.external_registry_credentials("--src-creds", src_username, src_password)
+        args = args + [quote(src_image_with_digest), quote(dest_image_with_digest)]
+        return self.run_skopeo(args, proxy or {}, timeout)
+
     def external_registry_credentials(
         self, arg: str, username: Optional[str], password: Optional[str]
     ) -> list[str]:
@@ -137,11 +235,14 @@ class SkopeoMirror(object):
             finally:
                 stdoutpipe.seek(0)
                 stderrpipe.seek(0)
-                stdout = stdoutpipe.read().decode("utf-8")
-                stderr = stderrpipe.read().decode("utf-8")
+                stdout = sanitize_skopeo_output(stdoutpipe.read().decode("utf-8"))
+                stderr = sanitize_skopeo_output(stderrpipe.read().decode("utf-8"))
 
                 if job.returncode != 0:
-                    logger.debug("Skopeo [STDERR]: %s" % stderr)
-                    logger.debug("Skopeo [STDOUT]: %s" % stdout)
+                    logger.debug(
+                        "Skopeo command failed (exit code %s): %s",
+                        job.returncode,
+                        stderr.strip(),
+                    )
 
                 return SkopeoResults(job.returncode == 0, [], stdout, stderr)

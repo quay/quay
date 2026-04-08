@@ -10,11 +10,11 @@ jobs:
     name: conventional commit check
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
 
       - name: check conventional commit
         id: check-for-cc
-        uses: agenthunt/conventional-commit-checker-action@v2.0.0
+        uses: agenthunt/conventional-commit-checker-action@9e552d650d0e205553ec7792d447929fc78e012b # v2.0.0
         with:
-          pr-title-regex: '^(?:\[[^\]]+\] )?(?:[a-z]+(?:\([^)]+\))?: .+ \(PROJQUAY-[0-9]+\)|(?:chore|build\(deps\)|build\(deps-dev\)): .+)$'
+          pr-title-regex: '^(?:\[redhat-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
           pr-body-regex: '(.*)?'

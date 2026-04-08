@@ -1,6 +1,8 @@
 import json
 import logging
+import posixpath
 from datetime import datetime, timedelta
+from urllib.parse import unquote, urlparse
 
 from flask import url_for
 
@@ -64,18 +66,53 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
             url_for("web.oauth_local_handler"),
         )
 
+        # Exact match for internal redirect
         if redirect_uri == internal_redirect_url:
             return True
 
         try:
             oauth_app = OAuthApplication.get(client_id=client_id)
-            if (
-                oauth_app.redirect_uri
-                and redirect_uri
-                and redirect_uri.startswith(oauth_app.redirect_uri)
-            ):
-                return True
-            return False
+
+            if not oauth_app.redirect_uri or not redirect_uri:
+                return False
+
+            # Parse URLs for secure validation
+            configured = urlparse(oauth_app.redirect_uri)
+            provided = urlparse(redirect_uri)
+
+            # Scheme must match exactly (prevent protocol downgrade)
+            if configured.scheme != provided.scheme:
+                return False
+
+            # Netloc must match exactly (prevent subdomain takeover)
+            if configured.netloc != provided.netloc:
+                return False
+
+            # Block username/password in URI (security risk)
+            if provided.username or provided.password:
+                return False
+
+            # Decode path to catch encoded traversal attacks (e.g., %2e%2e)
+            provided_path_decoded = unquote(provided.path)
+
+            # Block path traversal attempts (both encoded and literal)
+            if ".." in provided_path_decoded:
+                return False
+
+            # Block @ in path (can be used for credential injection)
+            if "@" in provided.path:
+                return False
+
+            # Strict validation: path prefix must match
+            if not provided.path.startswith(configured.path):
+                return False
+
+            # Block percent-encoding after prefix (prevents double-encoding attacks)
+            path_after_prefix = provided.path[len(configured.path) :]
+            if "%" in path_after_prefix:
+                return False
+
+            return True
         except OAuthApplication.DoesNotExist:
             return False
 

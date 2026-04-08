@@ -1,33 +1,65 @@
 import fnmatch
+import json
 import logging
-import logging.config
 import os
 import re
 import time
 import traceback
 from typing import Optional
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
+import requests
 from prometheus_client import Counter, Gauge, Histogram
 
 import features
 from app import app
 from data import database
-from data.database import RepoMirrorConfig, RepoMirrorStatus
+from data.database import (
+    OrgMirrorConfig,
+    OrgMirrorRepository,
+    OrgMirrorRepoStatus,
+    OrgMirrorStatus,
+    RepoMirrorConfig,
+    RepoMirrorStatus,
+    Repository,
+    RepositoryState,
+)
 from data.encryption import DecryptionFailureException
 from data.logs_model import logs_model
+from data.model import repository as repository_model
 from data.model.oci.tag import delete_tag, lookup_alive_tags_shallow, retarget_tag
+from data.model.org_mirror import (
+    check_org_mirror_repo_sync_status,
+    claim_org_mirror_config,
+    claim_org_mirror_repo,
+    deactivate_excluded_repos,
+    matches_repository_filter,
+    propagate_status_to_repos,
+    release_org_mirror_config,
+    release_org_mirror_repo,
+    schedule_org_mirror_repos_for_sync,
+    sync_discovered_repos,
+)
 from data.model.repo_mirror import (
-    change_retries_remaining,
-    change_sync_status,
     check_repo_mirror_sync_status,
     claim_mirror,
     release_mirror,
 )
 from data.model.user import retrieve_robot_token
 from data.registry_model import registry_model
+from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
 from notifications import spawn_notification
 from util.audit import wrap_repository
+from util.orgmirror import get_registry_adapter
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
+from workers.repomirrorworker.manifest_utils import (
+    ManifestSizeLimitExceeded,
+    filter_manifests_by_architecture,
+    get_available_architectures,
+    get_manifest_media_type,
+    is_manifest_list,
+)
+from workers.repomirrorworker.org_mirror_model import org_mirror_model
 from workers.repomirrorworker.repo_mirror_model import repo_mirror_model as model
 
 logger = logging.getLogger(__name__)
@@ -40,7 +72,7 @@ unmirrored_repositories = Gauge(
 
 # Repository mirroring metrics
 repo_mirror_tags_pending = Gauge(
-    "quay_repository_mirror_tags_pending",
+    "quay_repository_mirror_pending_tags",
     "Total number of tags pending synchronization for each mirrored repository",
     labelnames=["namespace", "repository"],
 )
@@ -80,6 +112,48 @@ repo_mirror_sync_duration_seconds = Histogram(
     "Duration of the last synchronization operation",
     labelnames=["namespace", "repository"],
     buckets=(30, 60, 120, 300, 600, 1200, 1800, 3600, 7200, float("inf")),
+)
+
+unmirrored_org_repositories = Gauge(
+    "quay_org_mirror_repositories_unmirrored",
+    "number of org-level mirror repositories in the database that have not yet been mirrored",
+)
+
+pending_org_mirror_discovery = Gauge(
+    "quay_org_mirror_configs_pending_discovery",
+    "number of org-level mirror configs pending repository discovery",
+)
+
+org_mirror_discovery_total = Counter(
+    "quay_org_mirror_discovery_total",
+    "total number of org-level mirror discovery operations",
+    labelnames=["status"],
+)
+
+org_mirror_discovery_duration_seconds = Histogram(
+    "quay_org_mirror_discovery_duration_seconds",
+    "duration of org-level mirror discovery operations in seconds",
+)
+
+org_mirror_repos_discovered = Gauge(
+    "quay_org_mirror_repos_discovered",
+    "number of repositories discovered in last org-level mirror discovery",
+)
+
+org_mirror_repos_created_total = Counter(
+    "quay_org_mirror_repos_created_total",
+    "total number of repositories created by org-level mirroring",
+)
+
+org_mirror_repo_sync_total = Counter(
+    "quay_org_mirror_repo_sync_total",
+    "total number of org-level mirror repository sync operations",
+    labelnames=["status"],
+)
+
+org_mirror_repo_sync_duration_seconds = Histogram(
+    "quay_org_mirror_repo_sync_duration_seconds",
+    "duration of org-level mirror repository sync operations in seconds",
 )
 
 # Used only for testing - should not be set in production
@@ -151,8 +225,8 @@ def process_mirrors(skopeo, token=None):
                     "Another repository mirror worker pre-empted us for repository: %s", mirror.id
                 )
                 abt.set()
-            except Exception as e:  # TODO: define exceptions
-                logger.exception("Repository Mirror service unavailable: %s" % e)
+            except Exception:  # TODO: define exceptions
+                logger.exception("Repository Mirror service unavailable")
                 return None
 
             unmirrored_repositories.set(num_remaining)
@@ -292,12 +366,10 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 if mirror.external_registry_password
                 else None
             )
-        except DecryptionFailureException as e:
+        except DecryptionFailureException:
             logger.exception(
                 "Failed to decrypt username or password for mirroring %s", mirror.repository
             )
-            failure_reason = _map_failure_to_reason(str(e))
-            _update_mirror_metrics_on_failure(namespace, repository_name, failure_reason, sync_start_time)
             raise
 
         dest_server = (
@@ -305,6 +377,17 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         )
 
         skopeo_timeout = mirror.skopeo_timeout
+
+        # Check for architecture filter
+        architecture_filter = mirror.architecture_filter or []
+        use_arch_filter = bool(architecture_filter)
+        if use_arch_filter:
+            logger.info(
+                "Architecture filter for %s/%s: %s",
+                mirror.repository.namespace_user.username,
+                mirror.repository.name,
+                architecture_filter,
+            )
 
         for tag_index, tag in enumerate(tags):
             src_image = "docker://%s:%s" % (mirror.external_reference, tag)
@@ -314,23 +397,33 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 mirror.repository.name,
                 tag,
             )
-            with database.CloseForLongOperation(app.config):
-                result = skopeo.copy(
-                    src_image,
-                    dest_image,
-                    timeout=skopeo_timeout,
-                    src_tls_verify=mirror.external_registry_config.get("verify_tls", True),
-                    dest_tls_verify=app.config.get(
-                        "REPO_MIRROR_TLS_VERIFY", True
-                    ),  # TODO: is this a config choice or something else?
-                    src_username=username,
-                    src_password=password,
-                    dest_username=mirror.internal_robot.username,
-                    dest_password=retrieve_robot_token(mirror.internal_robot),
-                    proxy=mirror.external_registry_config.get("proxy", {}),
-                    verbose_logs=verbose_logs,
-                    unsigned_images=mirror.external_registry_config.get("unsigned_images", False),
+
+            if use_arch_filter:
+                # Use architecture-filtered copy
+                result = copy_filtered_architectures(
+                    skopeo, mirror, tag, architecture_filter, verbose_logs=verbose_logs
                 )
+            else:
+                # Use existing --all copy
+                with database.CloseForLongOperation(app.config):
+                    result = skopeo.copy(
+                        src_image,
+                        dest_image,
+                        timeout=skopeo_timeout,
+                        src_tls_verify=mirror.external_registry_config.get("verify_tls", True),
+                        dest_tls_verify=app.config.get(
+                            "REPO_MIRROR_TLS_VERIFY", True
+                        ),  # TODO: is this a config choice or something else?
+                        src_username=username,
+                        src_password=password,
+                        dest_username=mirror.internal_robot.username,
+                        dest_password=retrieve_robot_token(mirror.internal_robot),
+                        proxy=mirror.external_registry_config.get("proxy", {}),
+                        verbose_logs=verbose_logs,
+                        unsigned_images=mirror.external_registry_config.get(
+                            "unsigned_images", False
+                        ),
+                    )
 
             # Update pending tags metric after processing each tag
             remaining_tags = len(tags) - (tag_index + 1)
@@ -378,7 +471,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
 
         delete_obsolete_tags(mirror, tags)
 
-    except PreemptedException as e:
+    except PreemptedException:
         overall_status = RepoMirrorStatus.FAIL
         failure_reason = "preempted"
         emit_log(
@@ -390,7 +483,6 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             stdout="Not applicable",
             stderr="Not applicable",
         )
-        release_mirror(mirror, overall_status)
         return
 
     except Exception as e:
@@ -407,7 +499,6 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             stdout="Not applicable",
             stderr=traceback.format_exc(),
         )
-        release_mirror(mirror, overall_status)
         return
     finally:
         sync_duration = time.time() - sync_start_time
@@ -444,7 +535,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 rollback(mirror, now_ms)
             else:
                 rollback(mirror, now_ms, failed_tags)
-        if overall_status == RepoMirrorStatus.CANCEL:
+        elif overall_status == RepoMirrorStatus.CANCEL:
             log_message = "'%s' with tag pattern '%s'"
             emit_log(
                 mirror,
@@ -454,7 +545,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 stdout="Not applicable",
                 stderr="Not applicable",
             )
-        else:
+        elif overall_status == RepoMirrorStatus.SUCCESS:
             emit_log(
                 mirror,
                 "repo_mirror_sync_success",
@@ -463,7 +554,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
                 tags=", ".join(tags),
             )
-        
+
         # Update mirroring metrics
         # Set complete sync metric (1 if all tags synced successfully, 0 otherwise)
         is_complete = 1 if (overall_status == RepoMirrorStatus.SUCCESS and len(failed_tags) == 0) else 0
@@ -471,7 +562,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             namespace=namespace,
             repository=repository_name,
         ).set(is_complete)
-        
+
         # Set last sync status metric based on final status
         if overall_status == RepoMirrorStatus.SUCCESS:
             status_value = 1
@@ -482,12 +573,18 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         else:  # FAIL or CANCEL
             status_value = 0
             error_reason = failure_reason or "unknown_error"
-        
+
         repo_mirror_last_sync_status.labels(
             namespace=namespace,
             repository=repository_name,
-            last_error_reason=error_reason,
+            last_error_reason="",
         ).set(status_value)
+        if error_reason:
+            repo_mirror_last_sync_status.labels(
+                namespace=namespace,
+                repository=repository_name,
+                last_error_reason=error_reason,
+            ).set(status_value)
         
         # Record sync duration
         repo_mirror_sync_duration_seconds.labels(
@@ -631,6 +728,345 @@ def delete_obsolete_tags(mirror, tags):
     return obsolete_tags
 
 
+def _get_v2_bearer_token(server, scheme, namespace, repo_name, username, password, verify_tls):
+    """
+    Get a bearer token for v2 registry authentication.
+
+    Performs the OAuth2 token exchange required by v2 registries.
+    """
+
+    # First, make a request to get the WWW-Authenticate challenge
+    v2_url = f"{scheme}://{server}/v2/"
+    try:
+        resp = requests.get(v2_url, verify=verify_tls, timeout=30)
+        if resp.status_code == 200:
+            # No auth required or already authenticated
+            return None
+
+        www_auth = resp.headers.get("WWW-Authenticate", "")
+        if not www_auth:
+            logger.warning("No WWW-Authenticate header found")
+            return None
+
+        # Parse the WWW-Authenticate header
+        # Format: Bearer realm="...",service="...",scope="..."
+        realm_match = re.search(r'realm="([^"]+)"', www_auth)
+        service_match = re.search(r'service="([^"]+)"', www_auth)
+
+        if not realm_match:
+            logger.warning("Could not parse realm from WWW-Authenticate header")
+            return None
+
+        realm = realm_match.group(1)
+        service = service_match.group(1) if service_match else None
+        scope = f"repository:{namespace}/{repo_name}:push,pull"
+
+        # Build token URL using urllib.parse to handle existing query params in realm
+        parsed_realm = urlparse(realm)
+        existing_params = parse_qs(parsed_realm.query)
+
+        # Add service and scope params (only add service if present)
+        new_params = {}
+        if service:
+            new_params["service"] = service
+        new_params["scope"] = scope
+
+        # Merge existing params with new params (new params take precedence)
+        for key, value in existing_params.items():
+            if key not in new_params:
+                new_params[key] = value[0] if len(value) == 1 else value
+
+        # Reconstruct the URL with merged query parameters
+        token_url = urlunparse(
+            (
+                parsed_realm.scheme,
+                parsed_realm.netloc,
+                parsed_realm.path,
+                parsed_realm.params,
+                urlencode(new_params),
+                parsed_realm.fragment,
+            )
+        )
+
+        token_resp = requests.get(
+            token_url, auth=(username, password), verify=verify_tls, timeout=30
+        )
+        if token_resp.status_code != 200:
+            logger.error("Failed to get bearer token: %s", token_resp.status_code)
+            return None
+
+        try:
+            token_data = token_resp.json()
+        except json.JSONDecodeError:
+            logger.error("Token endpoint returned non-JSON response")
+            return None
+
+        return token_data.get("token") or token_data.get("access_token")
+
+    except requests.RequestException:
+        logger.exception("Error getting bearer token")
+        return None
+
+
+def push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
+    """
+    Push original manifest list bytes directly to preserve digest.
+
+    Returns True on success, False on failure.
+    """
+    dest_server = (
+        app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+    )
+    namespace = mirror.repository.namespace_user.username
+    repo_name = mirror.repository.name
+    scheme = app.config.get("PREFERRED_URL_SCHEME", "https")
+    url = f"{scheme}://{dest_server}/v2/{namespace}/{repo_name}/manifests/{tag}"
+
+    robot_username = mirror.internal_robot.username
+    robot_token = retrieve_robot_token(mirror.internal_robot)
+    dest_tls_verify = app.config.get("REPO_MIRROR_TLS_VERIFY", True)
+
+    try:
+        # Get bearer token using v2 OAuth flow
+        bearer_token = _get_v2_bearer_token(
+            dest_server,
+            scheme,
+            namespace,
+            repo_name,
+            robot_username,
+            robot_token,
+            dest_tls_verify,
+        )
+
+        headers = {"Content-Type": media_type or OCI_IMAGE_INDEX_CONTENT_TYPE}
+        if bearer_token:
+            headers["Authorization"] = f"Bearer {bearer_token}"
+            auth = None
+        else:
+            # Fall back to basic auth if token exchange fails
+            auth = (robot_username, robot_token)
+
+        response = requests.put(
+            url,
+            data=(
+                manifest_bytes.encode("utf-8")
+                if isinstance(manifest_bytes, str)
+                else manifest_bytes
+            ),
+            headers=headers,
+            auth=auth,
+            verify=dest_tls_verify,
+            timeout=60,
+        )
+        if response.status_code in (200, 201):
+            logger.info("Pushed sparse manifest list for %s/%s:%s", namespace, repo_name, tag)
+            return True
+        logger.error("Failed to push manifest list: %s", response.status_code)
+        return False
+    except requests.RequestException:
+        logger.exception("Request failed pushing manifest list")
+        return False
+
+
+def copy_filtered_architectures(skopeo, mirror, tag, architecture_filter, verbose_logs=False):
+    """
+    Copy only specified architectures from a multi-arch image.
+
+    Returns tuple of (success, stdout, stderr).
+    """
+    from util.repomirror.skopeomirror import SkopeoResults
+
+    # Get credentials
+    username = (
+        mirror.external_registry_username.decrypt() if mirror.external_registry_username else None
+    )
+    password = (
+        mirror.external_registry_password.decrypt() if mirror.external_registry_password else None
+    )
+
+    dest_server = (
+        app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+    )
+    src_image_base = f"docker://{mirror.external_reference}"
+    src_image_tag = f"{src_image_base}:{tag}"
+    dest_image_base = (
+        f"docker://{dest_server}/{mirror.repository.namespace_user.username}/"
+        f"{mirror.repository.name}"
+    )
+
+    proxy = mirror.external_registry_config.get("proxy", {})
+    src_tls_verify = mirror.external_registry_config.get("verify_tls", True)
+    dest_tls_verify = app.config.get("REPO_MIRROR_TLS_VERIFY", True)
+    unsigned_images = mirror.external_registry_config.get("unsigned_images", False)
+
+    # Step 1: Inspect manifest
+    with database.CloseForLongOperation(app.config):
+        result = skopeo.inspect_raw(
+            src_image_tag,
+            mirror.skopeo_timeout,
+            username=username,
+            password=password,
+            verify_tls=src_tls_verify,
+            proxy=proxy,
+            verbose_logs=verbose_logs,
+        )
+
+    if not result.success:
+        logger.error("Failed to inspect manifest for %s", src_image_tag)
+        return SkopeoResults(False, [], result.stdout, result.stderr)
+
+    manifest_bytes = result.stdout
+
+    max_manifest_size = app.config.get("REPO_MIRROR_MAX_MANIFEST_LIST_SIZE", 10 * 1024 * 1024)
+    max_manifest_entries = app.config.get("REPO_MIRROR_MAX_MANIFEST_ENTRIES", 1000)
+
+    # Reject oversized manifests before parsing
+    if len(manifest_bytes) > max_manifest_size:
+        logger.error(
+            "Manifest for %s exceeds size limit: %d bytes (limit: %d bytes)",
+            src_image_tag,
+            len(manifest_bytes),
+            max_manifest_size,
+        )
+        return SkopeoResults(
+            False, [], "", f"Manifest exceeds size limit: {len(manifest_bytes)} bytes"
+        )
+
+    # Step 2: Check if manifest list
+    try:
+        manifest_is_list = is_manifest_list(manifest_bytes, max_size=max_manifest_size)
+    except ManifestSizeLimitExceeded as exc:
+        logger.error("Manifest for %s rejected: %s", src_image_tag, exc)
+        return SkopeoResults(False, [], "", str(exc))
+
+    if not manifest_is_list:
+        # Inspect image metadata to check architecture against filter
+        with database.CloseForLongOperation(app.config):
+            inspect_result = skopeo.inspect(
+                src_image_tag,
+                mirror.skopeo_timeout,
+                username=username,
+                password=password,
+                verify_tls=src_tls_verify,
+                proxy=proxy,
+                verbose_logs=verbose_logs,
+            )
+
+        if not inspect_result.success:
+            logger.error("Failed to inspect image metadata for %s", src_image_tag)
+            return SkopeoResults(False, [], inspect_result.stdout, inspect_result.stderr)
+
+        try:
+            image_info = json.loads(inspect_result.stdout)
+            image_arch = image_info.get("Architecture", "")
+        except (json.JSONDecodeError, AttributeError):
+            logger.error("Failed to parse inspect output for %s", src_image_tag)
+            return SkopeoResults(False, [], "", "Failed to parse image inspect output")
+
+        if image_arch not in architecture_filter:
+            logger.info(
+                "Skipping %s: architecture '%s' not in filter %s",
+                src_image_tag,
+                image_arch,
+                architecture_filter,
+            )
+            return SkopeoResults(True, [], "", "")
+
+        logger.info("Image %s matches architecture filter (%s), copying", src_image_tag, image_arch)
+        with database.CloseForLongOperation(app.config):
+            result = skopeo.copy(
+                src_image_tag,
+                f"{dest_image_base}:{tag}",
+                timeout=mirror.skopeo_timeout,
+                src_tls_verify=src_tls_verify,
+                dest_tls_verify=dest_tls_verify,
+                src_username=username,
+                src_password=password,
+                dest_username=mirror.internal_robot.username,
+                dest_password=retrieve_robot_token(mirror.internal_robot),
+                proxy=proxy,
+                verbose_logs=verbose_logs,
+                unsigned_images=unsigned_images,
+            )
+        return result
+
+    # Step 3: Filter and validate architectures
+    available = get_available_architectures(
+        manifest_bytes, max_size=max_manifest_size, max_entries=max_manifest_entries
+    )
+    matching = [a for a in architecture_filter if a in available]
+    missing = [a for a in architecture_filter if a not in available]
+
+    if missing:
+        logger.warning("Architectures not in source %s: %s", src_image_tag, missing)
+    if not matching:
+        return SkopeoResults(
+            False,
+            [],
+            "",
+            f"No matching architectures. Requested: {architecture_filter}, Available: {available}",
+        )
+
+    filtered = filter_manifests_by_architecture(
+        manifest_bytes, matching, max_size=max_manifest_size, max_entries=max_manifest_entries
+    )
+    logger.info("Mirroring %d architectures for %s: %s", len(filtered), src_image_tag, matching)
+
+    # Step 4: Verify FEATURE_SPARSE_INDEX is enabled before copying
+    if not app.config.get("FEATURE_SPARSE_INDEX", False):
+        return SkopeoResults(
+            False,
+            [],
+            "",
+            "Sparse manifest list push requires FEATURE_SPARSE_INDEX to be enabled. "
+            "Architecture filtering copies only selected architectures but pushes the "
+            "original manifest list, which references architectures that were not copied. "
+            "Enable FEATURE_SPARSE_INDEX in your Quay configuration to allow this.",
+        )
+
+    # Step 5: Copy each architecture by digest
+    all_stdout, all_stderr = [], []
+    for entry in filtered:
+        digest = entry.get("digest")
+        arch = entry.get("platform", {}).get("architecture", "unknown")
+        logger.info("Copying architecture %s (%s)", arch, digest)
+
+        with database.CloseForLongOperation(app.config):
+            result = skopeo.copy_by_digest(
+                f"{src_image_base}@{digest}",
+                f"{dest_image_base}@{digest}",
+                timeout=mirror.skopeo_timeout,
+                src_tls_verify=src_tls_verify,
+                dest_tls_verify=dest_tls_verify,
+                src_username=username,
+                src_password=password,
+                dest_username=mirror.internal_robot.username,
+                dest_password=retrieve_robot_token(mirror.internal_robot),
+                proxy=proxy,
+                verbose_logs=verbose_logs,
+                unsigned_images=unsigned_images,
+            )
+        all_stdout.append(f"[{arch}] {result.stdout}")
+        all_stderr.append(f"[{arch}] {result.stderr}")
+        if not result.success:
+            logger.error("Failed to copy arch %s", arch)
+            return SkopeoResults(False, [], "\n".join(all_stdout), "\n".join(all_stderr))
+
+    # Step 6: Push original manifest list
+    media_type = get_manifest_media_type(manifest_bytes)
+    if not push_sparse_manifest_list(mirror, tag, manifest_bytes, media_type):
+        return SkopeoResults(
+            False, [], "\n".join(all_stdout), "Failed to push sparse manifest list"
+        )
+
+    return SkopeoResults(True, [], "\n".join(all_stdout), "\n".join(all_stderr))
+
+
+def _truncate(text: str, max_len: int = 512) -> str:
+    max_len = max(max_len, 4)
+    return text[: max_len - 3] + "..." if len(text) > max_len else text
+
+
 # TODO: better to call 'track_and_log()' https://jira.coreos.com/browse/QUAY-1821
 def emit_log(mirror, log_kind, verb, message, tag=None, tags=None, stdout=None, stderr=None):
     logs_model.log_action(
@@ -661,28 +1097,34 @@ def _update_mirror_metrics_on_failure(namespace, repository_name, failure_reason
     """
     Helper function to update metrics when a mirror sync fails.
     """
+    reason = failure_reason or "unknown_error"
     repo_mirror_tags_pending.labels(
         namespace=namespace,
         repository=repository_name,
     ).set(0)
-    
+
     repo_mirror_last_sync_status.labels(
         namespace=namespace,
         repository=repository_name,
-        last_error_reason=failure_reason or "unknown_error",
+        last_error_reason="",
     ).set(0)
-    
+    repo_mirror_last_sync_status.labels(
+        namespace=namespace,
+        repository=repository_name,
+        last_error_reason=reason,
+    ).set(0)
+
     repo_mirror_sync_complete.labels(
         namespace=namespace,
         repository=repository_name,
     ).set(0)
-    
+
     repo_mirror_sync_failures_total.labels(
         namespace=namespace,
         repository=repository_name,
-        reason=failure_reason or "unknown_error",
+        reason=reason,
     ).inc()
-    
+
     # Record duration if available
     if sync_start_time:
         sync_duration = time.time() - sync_start_time
@@ -701,17 +1143,17 @@ def cleanup_mirror_metrics(namespace, repository_name):
         repo_mirror_tags_pending.remove(namespace, repository_name)
         repo_mirror_sync_complete.remove(namespace, repository_name)
         repo_mirror_last_sync_timestamp.remove(namespace, repository_name)
-        
-        # Note: Last sync status has an additional 'last_error_reason' label, 
+
+        # Note: Last sync status has an additional 'last_error_reason' label,
         # so we need to remove all possible combinations
         # Since we can't enumerate all possible error reasons, we'll try common ones
-        for error_reason in ["", "auth_failed", "network_timeout", "connection_error", 
+        for error_reason in ["", "auth_failed", "network_timeout", "connection_error",
                              "not_found", "tls_error", "decryption_failed", "unknown_error", "preempted"]:
             try:
                 repo_mirror_last_sync_status.remove(namespace, repository_name, error_reason)
             except (KeyError, ValueError):
                 pass
-        
+
         # Note: Counter and Histogram metrics cannot be easily removed in prometheus_client,
         # they will naturally expire when not updated
     except (KeyError, AttributeError):
@@ -721,3 +1163,859 @@ def cleanup_mirror_metrics(namespace, repository_name):
             namespace,
             repository_name,
         )
+
+
+# ==============================================================================
+# Organization-level Mirror Functions
+# ==============================================================================
+
+
+def process_org_mirror_discovery(token=None):
+    """
+    Performs repository discovery for org-level mirrors whose sync time is due.
+
+    This is Phase 1 of org-level mirroring:
+    1. Find eligible OrgMirrorConfig entries
+    2. For each config, fetch repository list from source registry
+    3. Apply glob filters and populate OrgMirrorRepository table
+    4. Schedule discovered repos for sync
+
+    Args:
+        token: Optional OrgMirrorConfigToken to resume from previous run
+
+    Returns:
+        Next OrgMirrorConfigToken or None if done
+    """
+    if not features.ORG_MIRROR:
+        logger.debug("Organization mirror disabled; skipping process_org_mirror_discovery")
+        return None
+
+    iterator, next_token = org_mirror_model.configs_to_discover(start_token=token)
+    if not iterator:
+        logger.debug("Found no additional organization mirror configs for discovery")
+        return next_token
+
+    with database.UseThenDisconnect(app.config):
+        for org_mirror_config, abt, num_remaining in iterator:
+            try:
+                perform_org_mirror_discovery(org_mirror_config)
+            except PreemptedException:
+                logger.info(
+                    "Another worker pre-empted us for org mirror config: %s",
+                    org_mirror_config.id,
+                )
+                abt.set()
+            except Exception:
+                logger.exception("Organization Mirror discovery failed")
+                # Continue to next config instead of returning
+                continue
+
+            pending_org_mirror_discovery.set(num_remaining)
+
+    return next_token
+
+
+def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
+    """
+    Perform repository discovery for a single org-level mirror config.
+
+    Fetches repository list from source registry, applies filters,
+    and populates OrgMirrorRepository table.
+
+    Handles special statuses:
+    - CANCEL: Skips discovery, propagates CANCEL to all repos
+    - SYNC_NOW: Runs discovery, propagates SYNC_NOW to all repos
+
+    Args:
+        org_mirror_config: The OrgMirrorConfig to discover repos for
+
+    Raises:
+        PreemptedException: If another worker claimed this config first
+    """
+    discovery_start_time = time.monotonic()
+
+    # Remember the original status before claiming (claim changes it to SYNCING)
+    original_status = org_mirror_config.sync_status
+
+    # Claim the config for this worker
+    claimed_config = claim_org_mirror_config(org_mirror_config)
+    if not claimed_config:
+        raise PreemptedException
+
+    org_name = claimed_config.organization.username
+
+    # Handle CANCEL: skip discovery, propagate CANCEL to repos
+    if original_status == OrgMirrorStatus.CANCEL:
+        logger.info(
+            "Processing cancel for org mirror: %s (config_id=%s)",
+            org_name,
+            claimed_config.id,
+        )
+
+        # Propagate CANCEL to all repos
+        cancelled_count = propagate_status_to_repos(claimed_config, OrgMirrorRepoStatus.CANCEL)
+
+        logger.info(
+            "Cancelled %d repositories for org mirror %s",
+            cancelled_count,
+            org_name,
+        )
+
+        _emit_org_config_log(
+            claimed_config,
+            "org_mirror_sync_failed",
+            "cancelled",
+            f"Sync cancelled: {cancelled_count} repos set to cancelled",
+        )
+
+        # Release with CANCEL status
+        release_org_mirror_config(claimed_config, OrgMirrorStatus.CANCEL)
+        org_mirror_discovery_total.labels(status="cancel").inc()
+        org_mirror_discovery_duration_seconds.observe(time.monotonic() - discovery_start_time)
+        return
+
+    logger.info(
+        "Starting repository discovery for org mirror: %s (config_id=%s)",
+        org_name,
+        claimed_config.id,
+    )
+
+    # Emit log for discovery start
+    _emit_org_config_log(
+        claimed_config,
+        "org_mirror_sync_started",
+        "start",
+        f"Starting repository discovery for organization '{org_name}'",
+    )
+
+    # Get credentials for source registry
+    username = None
+    password = None
+    try:
+        if claimed_config.external_registry_username:
+            username = claimed_config.external_registry_username.decrypt()
+        if claimed_config.external_registry_password:
+            password = claimed_config.external_registry_password.decrypt()
+    except DecryptionFailureException as e:
+        logger.error(
+            "Failed to decrypt credentials for org mirror config %s: %s",
+            claimed_config.id,
+            e,
+        )
+        _emit_org_config_log(
+            claimed_config,
+            "org_mirror_sync_failed",
+            "end",
+            f"Failed to decrypt source registry credentials: {_truncate(str(e))}",
+        )
+        release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        org_mirror_discovery_total.labels(status="fail").inc()
+        org_mirror_discovery_duration_seconds.observe(time.monotonic() - discovery_start_time)
+        return
+
+    # Create registry adapter
+    try:
+        adapter = get_registry_adapter(
+            registry_type=claimed_config.external_registry_type,
+            url=claimed_config.external_registry_url,
+            namespace=claimed_config.external_namespace,
+            username=username,
+            password=password,
+            config=claimed_config.external_registry_config,
+            allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+        )
+    except ValueError as e:
+        logger.error(
+            "Failed to create registry adapter for org mirror config %s: %s",
+            claimed_config.id,
+            e,
+        )
+        _emit_org_config_log(
+            claimed_config,
+            "org_mirror_sync_failed",
+            "end",
+            f"Failed to create registry adapter: {_truncate(str(e))}",
+        )
+        release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        org_mirror_discovery_total.labels(status="fail").inc()
+        org_mirror_discovery_duration_seconds.observe(time.monotonic() - discovery_start_time)
+        return
+
+    # Fetch repositories from source
+    try:
+        all_repos = adapter.list_repositories()
+    except Exception as e:
+        logger.error(
+            "Failed to list repositories from source registry for org mirror config %s: %s",
+            claimed_config.id,
+            e,
+        )
+        _emit_org_config_log(
+            claimed_config,
+            "org_mirror_sync_failed",
+            "end",
+            f"Failed to fetch repositories from source: {_truncate(str(e))}",
+        )
+        release_org_mirror_config(claimed_config, OrgMirrorStatus.FAIL)
+        org_mirror_discovery_total.labels(status="fail").inc()
+        org_mirror_discovery_duration_seconds.observe(time.monotonic() - discovery_start_time)
+        return
+
+    # Apply glob filters
+    filters = claimed_config.repository_filters
+    if filters:
+        filtered_repos = [r for r in all_repos if matches_repository_filter(r, filters)]
+        logger.info(
+            "Filtered %d repositories to %d for org mirror config %s",
+            len(all_repos),
+            len(filtered_repos),
+            claimed_config.id,
+        )
+    else:
+        filtered_repos = all_repos
+
+    # Sync to database
+    total_count, newly_created = sync_discovered_repos(claimed_config, filtered_repos)
+
+    # Deactivate repos no longer in source or excluded by filters.
+    # Only call when the source actually returned repos — if the source returned
+    # nothing, skip deactivation to guard against transient registry failures.
+    deactivated_count = 0
+    if all_repos:
+        deactivated_count = deactivate_excluded_repos(
+            claimed_config, filtered_repos, source_repo_names=all_repos
+        )
+    if deactivated_count > 0:
+        logger.info(
+            "Deactivated %d repositories for org mirror %s (no longer in source or filtered out)",
+            deactivated_count,
+            org_name,
+        )
+
+    logger.info(
+        "Discovery complete for org mirror %s: %d repos discovered, %d newly created",
+        org_name,
+        total_count,
+        newly_created,
+    )
+
+    # Propagate status to repos based on original config status
+    if original_status == OrgMirrorStatus.SYNC_NOW:
+        # SYNC_NOW: propagate to all repos for immediate sync
+        propagated_count = propagate_status_to_repos(claimed_config, OrgMirrorRepoStatus.SYNC_NOW)
+        logger.info(
+            "Propagated SYNC_NOW to %d repositories for org mirror %s",
+            propagated_count,
+            org_name,
+        )
+    else:
+        # Normal scheduled sync: only schedule NEVER_RUN repos
+        scheduled_count = schedule_org_mirror_repos_for_sync(claimed_config)
+        logger.info(
+            "Scheduled %d repositories for sync for org mirror %s",
+            scheduled_count,
+            org_name,
+        )
+
+    # Emit success log
+    _emit_org_config_log(
+        claimed_config,
+        "org_mirror_sync_success",
+        "end",
+        f"Discovery completed: {total_count} repos discovered, {newly_created} new",
+    )
+
+    # Release the config
+    release_org_mirror_config(
+        claimed_config,
+        OrgMirrorStatus.SUCCESS,
+        _repos_discovered=total_count,
+        _repos_created=newly_created,
+    )
+
+    # Record Prometheus metrics for successful discovery
+    org_mirror_discovery_total.labels(status="success").inc()
+    org_mirror_discovery_duration_seconds.observe(time.monotonic() - discovery_start_time)
+    org_mirror_repos_discovered.set(total_count)
+    if newly_created > 0:
+        org_mirror_repos_created_total.inc(newly_created)
+
+
+def _emit_org_config_log(
+    config: OrgMirrorConfig,
+    log_kind: str,
+    verb: str,
+    message: str,
+):
+    """
+    Emit an audit log for an org mirror config operation.
+
+    Args:
+        config: The OrgMirrorConfig
+        log_kind: The log kind (e.g., 'org_mirror_sync_started')
+        verb: The verb for the action
+        message: Human-readable message
+    """
+    org = config.organization
+    logs_model.log_action(
+        log_kind,
+        namespace_name=org.username,
+        performer=config.internal_robot,
+        ip=None,
+        metadata={
+            "message": message,
+            "org_mirror_config_id": config.id,
+            "external_registry_url": config.external_registry_url,
+            "external_namespace": config.external_namespace,
+        },
+    )
+
+
+def _emit_org_repo_created_log(
+    config: OrgMirrorConfig,
+    org_mirror_repo: OrgMirrorRepository,
+):
+    """
+    Emit an audit log when a repository is created via org mirror.
+
+    Args:
+        config: The OrgMirrorConfig
+        org_mirror_repo: The OrgMirrorRepository that was created
+    """
+    org = config.organization
+    external_reference = _build_external_reference(config, org_mirror_repo.repository_name)
+
+    logs_model.log_action(
+        "org_mirror_repo_created",
+        namespace_name=org.username,
+        repository_name=org_mirror_repo.repository_name,
+        performer=config.internal_robot,
+        ip=None,
+        metadata={
+            "external_reference": external_reference,
+            "visibility": config.visibility.name,
+            "via_org_mirror": True,
+        },
+    )
+
+
+def _emit_org_repo_creation_failed_log(
+    config: OrgMirrorConfig,
+    org_mirror_repo: OrgMirrorRepository,
+    error: str,
+):
+    """
+    Emit an audit log when repository creation fails via org mirror.
+
+    Args:
+        config: The OrgMirrorConfig
+        org_mirror_repo: The OrgMirrorRepository that failed to create
+        error: The error message
+    """
+    org = config.organization
+    external_reference = _build_external_reference(config, org_mirror_repo.repository_name)
+
+    logs_model.log_action(
+        "org_mirror_repo_creation_failed",
+        namespace_name=org.username,
+        repository_name=org_mirror_repo.repository_name,
+        performer=config.internal_robot,
+        ip=None,
+        metadata={
+            "external_reference": external_reference,
+            "error": error,
+        },
+    )
+
+
+def process_org_mirrors(skopeo, token=None):
+    """
+    Performs mirroring of org-level mirror repositories whose last sync time is greater than
+    sync interval.
+
+    If a token is provided, scanning will begin where the token indicates it previously completed.
+
+    Args:
+        skopeo: SkopeoMirror instance for image operations
+        token: Optional OrgMirrorToken to resume from previous run
+
+    Returns:
+        Next OrgMirrorToken or None if done
+    """
+    if not features.ORG_MIRROR:
+        logger.debug("Organization mirror disabled; skipping process_org_mirrors")
+        return None
+
+    iterator, next_token = org_mirror_model.repositories_to_mirror(start_token=token)
+    if not iterator:
+        logger.debug("Found no additional organization mirror repositories to sync")
+        return next_token
+
+    with database.UseThenDisconnect(app.config):
+        for org_mirror_repo, abt, num_remaining in iterator:
+            try:
+                perform_org_mirror_repo(skopeo, org_mirror_repo)
+            except PreemptedException:
+                logger.info(
+                    "Another org mirror worker pre-empted us for repository: %s",
+                    org_mirror_repo.id,
+                )
+                abt.set()
+            except Exception:
+                logger.exception("Organization Mirror service unavailable")
+                return None
+
+            unmirrored_org_repositories.set(num_remaining)
+
+    return next_token
+
+
+def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepository):
+    """
+    Perform mirror sync for a single org-level mirror repository.
+
+    Syncs all tags from the external repository to the internal Quay repository.
+
+    Args:
+        skopeo: SkopeoMirror instance for image operations
+        org_mirror_repo: The OrgMirrorRepository to sync
+
+    Returns:
+        OrgMirrorRepoStatus indicating the result
+    """
+    verbose_logs = os.getenv("DEBUGLOG", "false").lower() == "true"
+    repo_sync_start_time = time.monotonic()
+
+    # Claim the repo for this worker
+    claimed_repo = claim_org_mirror_repo(org_mirror_repo)
+    if not claimed_repo:
+        raise PreemptedException
+
+    # Get parent config for credentials and settings
+    config = claimed_repo.org_mirror_config
+    org = config.organization
+
+    # Build external reference
+    external_reference = _build_external_reference(config, claimed_repo.repository_name)
+
+    emit_org_mirror_log(
+        config,
+        claimed_repo,
+        "org_mirror_sync_started",
+        "start",
+        f"Starting sync for '{external_reference}'",
+    )
+
+    # Ensure the local repository exists
+    local_repo = _ensure_local_repository(config, claimed_repo)
+    if not local_repo:
+        msg = f"Failed to create local repository for '{claimed_repo.repository_name}'"
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_failed",
+            "end",
+            msg,
+        )
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL, status_message=msg)
+        org_mirror_repo_sync_total.labels(status="fail").inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+        return OrgMirrorRepoStatus.FAIL
+
+    # Fetch all tags from remote
+    tags = []
+    try:
+        tags = _get_all_tags_for_org_mirror(skopeo, config, external_reference)
+    except RepoMirrorSkopeoException as e:
+        msg = f"Failed to list tags for '{external_reference}': {e.message}"
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_failed",
+            "end",
+            msg,
+            stdout=e.stdout,
+            stderr=e.stderr,
+        )
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL, status_message=msg)
+        org_mirror_repo_sync_total.labels(status="fail").inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+        return OrgMirrorRepoStatus.FAIL
+    except Exception:
+        msg = f"Internal error listing tags for '{external_reference}'"
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_failed",
+            "end",
+            msg,
+            stderr=traceback.format_exc(),
+        )
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL, status_message=msg)
+        org_mirror_repo_sync_total.labels(status="fail").inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+        return OrgMirrorRepoStatus.FAIL
+
+    if not tags:
+        emit_org_mirror_log(
+            config,
+            claimed_repo,
+            "org_mirror_sync_success",
+            "end",
+            f"No tags found for '{external_reference}'",
+        )
+        release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.SUCCESS)
+        org_mirror_repo_sync_total.labels(status="success").inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+        return OrgMirrorRepoStatus.SUCCESS
+
+    # Sync each tag — wrapped in try/finally to ensure release on unexpected errors
+    overall_status = OrgMirrorRepoStatus.SUCCESS
+    failed_tags = []
+    tag_errors = {}
+    status_message = None
+    released = False
+
+    try:
+        try:
+            username = (
+                config.external_registry_username.decrypt()
+                if config.external_registry_username
+                else None
+            )
+            password = (
+                config.external_registry_password.decrypt()
+                if config.external_registry_password
+                else None
+            )
+        except DecryptionFailureException:
+            logger.exception(
+                "Failed to decrypt credentials for org mirror %s/%s",
+                org.username,
+                claimed_repo.repository_name,
+            )
+            overall_status = OrgMirrorRepoStatus.FAIL
+            status_message = "Failed to decrypt credentials"
+            release_org_mirror_repo(claimed_repo, overall_status, status_message=status_message)
+            released = True
+            org_mirror_repo_sync_total.labels(status="fail").inc()
+            org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+            return OrgMirrorRepoStatus.FAIL
+
+        dest_server = (
+            app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+        )
+        skopeo_timeout = config.skopeo_timeout
+
+        for tag in tags:
+            src_image = f"docker://{external_reference}:{tag}"
+            dest_image = (
+                f"docker://{dest_server}/{org.username}/{claimed_repo.repository_name}:{tag}"
+            )
+
+            with database.CloseForLongOperation(app.config):
+                result = skopeo.copy(
+                    src_image,
+                    dest_image,
+                    timeout=skopeo_timeout,
+                    src_tls_verify=config.external_registry_config.get("verify_tls", True),
+                    dest_tls_verify=app.config.get("REPO_MIRROR_TLS_VERIFY", True),
+                    src_username=username,
+                    src_password=password,
+                    dest_username=config.internal_robot.username,
+                    dest_password=retrieve_robot_token(config.internal_robot),
+                    proxy=config.external_registry_config.get("proxy", {}),
+                    verbose_logs=verbose_logs,
+                    unsigned_images=config.external_registry_config.get("unsigned_images", False),
+                )
+
+            # Check if cancel was requested before processing next tag
+            if check_org_mirror_repo_sync_status(claimed_repo) == OrgMirrorRepoStatus.CANCEL:
+                logger.info(
+                    "Org mirror sync cancelled on repo %s/%s.",
+                    org.username,
+                    claimed_repo.repository_name,
+                )
+                overall_status = OrgMirrorRepoStatus.CANCEL
+                break
+
+            if not result.success:
+                overall_status = OrgMirrorRepoStatus.FAIL
+                failed_tags.append(tag)
+                tag_errors[tag] = result.stderr or ""
+                logger.info("Org mirror: Source '%s' failed to sync.", src_image)
+            else:
+                logger.info("Org mirror: Source '%s' successful sync.", src_image)
+
+        if overall_status == OrgMirrorRepoStatus.FAIL:
+            combined_stderr = "; ".join(f"[{t}]: {err}" for t, err in tag_errors.items() if err)
+            if len(combined_stderr) > 4096:
+                combined_stderr = combined_stderr[:4093] + "..."
+            status_message = f"Sync failed: {len(failed_tags)}/{len(tags)} tags failed"
+            emit_org_mirror_log(
+                config,
+                claimed_repo,
+                "org_mirror_sync_failed",
+                "end",
+                f"Sync failed for '{external_reference}': "
+                f"{len(failed_tags)}/{len(tags)} tags failed",
+                tags=", ".join(failed_tags),
+                stderr=combined_stderr,
+            )
+        elif overall_status == OrgMirrorRepoStatus.CANCEL:
+            emit_org_mirror_log(
+                config,
+                claimed_repo,
+                "org_mirror_sync_cancelled",
+                "end",
+                f"Sync cancelled for '{external_reference}'",
+            )
+        else:
+            emit_org_mirror_log(
+                config,
+                claimed_repo,
+                "org_mirror_sync_success",
+                "end",
+                f"Successfully synced '{external_reference}': {len(tags)} tags",
+                tags=", ".join(tags),
+            )
+
+        release_org_mirror_repo(claimed_repo, overall_status, status_message=status_message)
+        released = True
+
+    except Exception:
+        logger.exception(
+            "Unexpected error during tag sync for org mirror %s/%s",
+            org.username,
+            claimed_repo.repository_name,
+        )
+        overall_status = OrgMirrorRepoStatus.FAIL
+        status_message = "Unexpected error during sync"
+        if not released:
+            release_org_mirror_repo(
+                claimed_repo,
+                overall_status,
+                status_message=status_message,
+            )
+            released = True
+    finally:
+        if not released:
+            release_org_mirror_repo(
+                claimed_repo,
+                OrgMirrorRepoStatus.FAIL,
+                status_message=f"Unexpected error during sync of '{external_reference}'",
+            )
+            overall_status = OrgMirrorRepoStatus.FAIL
+
+        # Record Prometheus metrics — always, regardless of success or failure path
+        status_label = overall_status.name.lower()
+        org_mirror_repo_sync_total.labels(status=status_label).inc()
+        org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+
+    return overall_status
+
+
+def _build_external_reference(config: OrgMirrorConfig, repository_name: str) -> str:
+    """
+    Build the external registry reference for an org mirror repository.
+
+    Args:
+        config: The OrgMirrorConfig containing registry URL and namespace
+        repository_name: The repository name
+
+    Returns:
+        Full external reference (e.g., "registry.example.com/namespace/repo")
+    """
+    url = config.external_registry_url.rstrip("/")
+    # Remove protocol prefix if present
+    if url.startswith("https://"):
+        url = url[8:]
+    elif url.startswith("http://"):
+        url = url[7:]
+
+    return f"{url}/{config.external_namespace}/{repository_name}"
+
+
+def _ensure_local_repository(
+    config: OrgMirrorConfig,
+    org_mirror_repo: OrgMirrorRepository,
+) -> Optional[Repository]:
+    """
+    Ensure the local Quay repository exists for the org mirror repo.
+
+    Creates the repository if it doesn't exist, using the visibility from the config.
+
+    Args:
+        config: The OrgMirrorConfig
+        org_mirror_repo: The OrgMirrorRepository
+
+    Returns:
+        The Repository instance or None if creation failed
+    """
+    org = config.organization
+    repo_name = org_mirror_repo.repository_name
+
+    # Check if repo already linked
+    if org_mirror_repo.repository:
+        return org_mirror_repo.repository
+
+    # Try to find existing repository
+    try:
+        existing_repo = Repository.get(
+            (Repository.namespace_user == org) & (Repository.name == repo_name)
+        )
+        # Link it to the org mirror repo
+        org_mirror_repo.repository = existing_repo
+        org_mirror_repo.save()
+        return existing_repo
+    except Repository.DoesNotExist:
+        pass
+
+    # Create new repository
+    try:
+        visibility_name = config.visibility.name
+        new_repo = repository_model.create_repository(
+            org.username,
+            repo_name,
+            config.internal_robot,
+            visibility=visibility_name,
+            repo_kind="image",
+        )
+        if new_repo:
+            # Set repository state to ORG_MIRROR for org-level mirroring
+            repo_db = Repository.get(Repository.id == new_repo.id)
+            repo_db.state = RepositoryState.ORG_MIRROR
+            repo_db.save()
+
+            # Link to org mirror repo
+            org_mirror_repo.repository = repo_db
+            org_mirror_repo.save()
+
+            logger.info(
+                "Created mirror repository %s/%s for org mirror",
+                org.username,
+                repo_name,
+            )
+
+            # Emit audit event for repository creation
+            _emit_org_repo_created_log(config, org_mirror_repo)
+
+            return repo_db
+    except Exception as e:
+        logger.exception("Failed to create repository %s/%s", org.username, repo_name)
+
+        # Emit audit event for repository creation failure
+        _emit_org_repo_creation_failed_log(config, org_mirror_repo, str(e))
+
+    return None
+
+
+def _get_all_tags_for_org_mirror(
+    skopeo: SkopeoMirror,
+    config: OrgMirrorConfig,
+    external_reference: str,
+) -> list[str]:
+    """
+    Get all tags from the external registry for an org mirror repository.
+
+    Args:
+        skopeo: SkopeoMirror instance
+        config: The OrgMirrorConfig containing credentials
+        external_reference: The full external reference
+
+    Returns:
+        List of tag names
+
+    Raises:
+        RepoMirrorSkopeoException: If skopeo fails to list tags
+    """
+    verbose_logs = os.getenv("DEBUGLOG", "false").lower() == "true"
+
+    try:
+        username = (
+            config.external_registry_username.decrypt()
+            if config.external_registry_username
+            else None
+        )
+        password = (
+            config.external_registry_password.decrypt()
+            if config.external_registry_password
+            else None
+        )
+    except DecryptionFailureException as e:
+        logger.exception(
+            "Failed to decrypt credentials for org mirror when listing tags for %s",
+            external_reference,
+        )
+        raise RepoMirrorSkopeoException(
+            f"Failed to decrypt credentials: {e}",
+            stdout="",
+            stderr=str(e),
+        ) from e
+
+    skopeo_timeout = config.skopeo_timeout
+
+    with database.CloseForLongOperation(app.config):
+        result = skopeo.tags(
+            f"docker://{external_reference}",
+            timeout=skopeo_timeout,
+            username=username,
+            password=password,
+            verbose_logs=verbose_logs,
+            verify_tls=config.external_registry_config.get("verify_tls", True),
+            proxy=config.external_registry_config.get("proxy", {}),
+        )
+
+    if not result.success:
+        raise RepoMirrorSkopeoException(
+            f"skopeo list-tags failed: {_skopeo_inspect_failure(result)}",
+            result.stdout,
+            result.stderr,
+        )
+
+    return result.tags
+
+
+def emit_org_mirror_log(
+    config: OrgMirrorConfig,
+    org_mirror_repo: OrgMirrorRepository,
+    log_kind: str,
+    verb: str,
+    message: str,
+    tag: Optional[str] = None,
+    tags: Optional[str] = None,
+    stdout: Optional[str] = None,
+    stderr: Optional[str] = None,
+):
+    """
+    Emit a log entry for organization-level mirror operations.
+
+    Args:
+        config: The OrgMirrorConfig
+        org_mirror_repo: The OrgMirrorRepository being processed
+        log_kind: The type of log entry
+        verb: Action verb (start, end, etc.)
+        message: Log message
+        tag: Optional single tag
+        tags: Optional comma-separated list of tags
+        stdout: Optional stdout from skopeo
+        stderr: Optional stderr from skopeo
+    """
+    org = config.organization
+    repo_name = org_mirror_repo.repository_name
+
+    logs_model.log_action(
+        log_kind,
+        namespace_name=org.username,
+        repository_name=repo_name,
+        metadata={
+            "verb": verb,
+            "namespace": org.username,
+            "repo": repo_name,
+            "message": message,
+            "tag": tag,
+            "tags": tags,
+            "stdout": stdout,
+            "stderr": stderr,
+        },
+    )

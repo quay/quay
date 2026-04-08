@@ -2,5 +2,5 @@ package redis
 
 // Fields returns a list of strings representing the fields in this field group
 func (fg *RedisFieldGroup) Fields() []string {
-	return []string{"BUILDLOGS_REDIS", "USER_EVENTS_REDIS"}
+	return []string{"BUILDLOGS_REDIS", "USER_EVENTS_REDIS", "PULL_METRICS_REDIS"}
 }

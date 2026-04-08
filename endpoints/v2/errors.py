@@ -121,6 +121,13 @@ class TagAlreadyExists(V2RegistryException):
         )
 
 
+class TagImmutable(V2RegistryException):
+    def __init__(self, detail=None):
+        super(TagImmutable, self).__init__(
+            "TAG_IMMUTABLE", "tag is immutable and cannot be overwritten", detail, 409
+        )
+
+
 class TagInvalid(V2RegistryException):
     def __init__(self, detail=None):
         super(TagInvalid, self).__init__("TAG_INVALID", "manifest tag did not match URI", detail)
@@ -197,15 +204,6 @@ class NamespaceDisabled(V2RegistryException):
     def __init__(self, message=None):
         message = message or "This namespace is disabled. Please contact your system administrator."
         super(NamespaceDisabled, self).__init__("DENIED", message, {}, 405)
-
-
-class BlobDownloadGeoBlocked(V2RegistryException):
-    def __init__(self, detail=None):
-        message = (
-            "The region from which you are pulling has been geo-ip blocked. "
-            + "Please contact the namespace owner."
-        )
-        super(BlobDownloadGeoBlocked, self).__init__("DENIED", message, detail, 403)
 
 
 class ReadOnlyMode(V2RegistryException):

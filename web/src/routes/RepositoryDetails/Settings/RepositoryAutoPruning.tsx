@@ -1,9 +1,8 @@
 import {Button, Spinner, Title} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import Conditional from 'src/components/empty/Conditional';
 import RequestError from 'src/components/errors/RequestError';
-import {useAlerts} from 'src/hooks/UseAlerts';
 import {useNamespaceAutoPrunePolicies} from 'src/hooks/UseNamespaceAutoPrunePolicies';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {
@@ -19,10 +18,11 @@ import ReadonlyAutoprunePolicy from './RepositoryAutoPruningReadonlyPolicy';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import AutoPrunePolicyForm from 'src/components/AutoPrunePolicyForm';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 
 export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   const [policies, setPolicies] = useState([]);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {organization} = useOrganization(props.organizationName);
   const {user} = useCurrentUser();
   const config = useQuayConfig();
@@ -146,7 +146,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
       addAlert({
         title: 'Could not create repository auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorDetailsRepoPolicyCreation.toString(),
+        message: getErrorMessageFromUnknown(errorDetailsRepoPolicyCreation),
       });
     }
   }, [errorRepoPolicyCreation]);
@@ -156,7 +156,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
       addAlert({
         title: 'Could not update repository auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorDetailsRepoPolicyUpdation.toString(),
+        message: getErrorMessageFromUnknown(errorDetailsRepoPolicyUpdation),
       });
     }
   }, [errorRepoPolicyUpdation]);
@@ -166,7 +166,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
       addAlert({
         title: 'Could not delete repository auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorDetailsRepoPolicyDeletion.toString(),
+        message: getErrorMessageFromUnknown(errorDetailsRepoPolicyDeletion),
       });
     }
   }, [errorRepoPolicyDeletion]);
@@ -203,7 +203,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   }
 
   if (!isNullOrUndefined(errorFetchingRepoPolicies)) {
-    return <RequestError message={errorFetchingRepoPolicies.toString()} />;
+    return <RequestError err={errorFetchingRepoPolicies} />;
   }
 
   return (
@@ -243,7 +243,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
           onSave={onSave}
           policy={policy}
           index={index}
-          key={index}
+          key={policy.uuid || index}
           successFetchingPolicies={successFetchingRepoPolicies}
         />
       ))}

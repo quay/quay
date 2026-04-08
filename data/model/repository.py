@@ -9,8 +9,8 @@ from cachetools.func import ttl_cache
 from peewee import JOIN, SQL, Case, IntegrityError, fn
 
 import data
+import features
 from data.database import (
-    ApprTag,
     BlobUpload,
     DeletedRepository,
     ExternalNotificationEvent,
@@ -139,6 +139,10 @@ def create_repository(
 
     try:
         with db_transaction():
+            if features.ORG_MIRROR:
+                # Lock the org row to serialize against concurrent org mirror config creation
+                db_for_update(User.select().where(User.id == namespace_user.id)).get()
+
             # Check if the repository exists to avoid an IntegrityError if possible.
             existing = get_repository(namespace, name)
             if existing is not None:
@@ -365,32 +369,6 @@ def get_visible_repositories(
         query = query.limit(limit).order_by(SQL("rid"))
 
     return query
-
-
-def get_app_repository(namespace_name, repository_name):
-    """
-    Find an application repository.
-    """
-    try:
-        return _basequery.get_existing_repository(
-            namespace_name, repository_name, kind_filter="application"
-        )
-    except Repository.DoesNotExist:
-        return None
-
-
-def get_app_search(lookup, search_fields=None, username=None, limit=50):
-    if search_fields is None:
-        search_fields = set([SEARCH_FIELDS.name.name])
-
-    return get_filtered_matching_repositories(
-        lookup,
-        filter_username=username,
-        search_fields=search_fields,
-        repo_kind="application",
-        offset=0,
-        limit=limit,
-    )
 
 
 def _get_namespace_user(username):

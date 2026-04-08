@@ -1,5 +1,7 @@
 import json
 import logging
+from calendar import timegm
+from datetime import datetime
 
 import requests
 
@@ -8,6 +10,17 @@ from data.logs_model.logs_producer.interface import LogProducerInterface
 from data.model import config
 
 logger = logging.getLogger(__name__)
+
+
+def _splunk_json_serialize(obj):
+    """
+    Custom JSON serializer for Splunk log entries.
+    Converts datetime objects to Unix epoch timestamps instead of
+    using str() which produces ambiguous ISO strings without timezone info.
+    """
+    if isinstance(obj, datetime):
+        return timegm(obj.utctimetuple())
+    return str(obj)
 
 
 class SplunkHECLogsProducer(LogProducerInterface):
@@ -27,6 +40,7 @@ class SplunkHECLogsProducer(LogProducerInterface):
         splunk_host=None,
         splunk_sourcetype=None,
         timeout=10,
+        **kwargs,  # Ignore extra config params (search_host, search_timeout, etc.)
     ):
         splunk_port = port if port else (443 if verify_ssl else 80)
         self.hec_url = f"{url_scheme}://{host}:{splunk_port}/services/collector/event"
@@ -57,7 +71,7 @@ class SplunkHECLogsProducer(LogProducerInterface):
                 log_event["index"] = self.index
 
             log_data = json.dumps(
-                log_event, sort_keys=True, default=str, ensure_ascii=False
+                log_event, sort_keys=True, default=_splunk_json_serialize, ensure_ascii=False
             ).encode("utf-8")
 
             response = requests.post(

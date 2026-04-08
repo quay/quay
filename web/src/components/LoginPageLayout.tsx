@@ -1,0 +1,60 @@
+import React, {useEffect} from 'react';
+import {ListVariant, LoginPage} from '@patternfly/react-core';
+import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
+import {useLogo} from 'src/hooks/UseLogo';
+import {useLoginFooterItems} from 'src/components/LoginFooter';
+import SystemStatusBanner from 'src/components/SystemStatusBanner';
+import {GlobalMessages} from 'src/components/GlobalMessages';
+import './LoginPageLayout.css';
+
+interface LoginPageLayoutProps {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function LoginPageLayout({
+  title,
+  description,
+  children,
+  className = 'pf-u-background-color-100 pf-v6-u-text-align-left',
+}: LoginPageLayoutProps) {
+  const {config: quayConfig, isLoading: configLoading} =
+    useQuayConfigWithLoading();
+  const footerListItems = useLoginFooterItems();
+  const logoUrl = useLogo();
+
+  // Use REGISTRY_TITLE from config for brand alt text, fallback to 'Quay'
+  const brandAltText = quayConfig?.config?.REGISTRY_TITLE || 'Quay';
+
+  // Set document title from registry title
+  useEffect(() => {
+    if (quayConfig?.config?.REGISTRY_TITLE) {
+      document.title = `${quayConfig.config.REGISTRY_TITLE} • Quay`;
+    }
+  }, [quayConfig]);
+
+  // Don't render with fallback branding while config is loading
+  if (configLoading) {
+    return null;
+  }
+
+  return (
+    <>
+      <SystemStatusBanner />
+      <GlobalMessages />
+      <LoginPage
+        className={className}
+        brandImgSrc={logoUrl}
+        brandImgAlt={brandAltText}
+        textContent={description}
+        loginTitle={title}
+        footerListItems={footerListItems}
+        footerListVariants={ListVariant.inline}
+      >
+        {children}
+      </LoginPage>
+    </>
+  );
+}

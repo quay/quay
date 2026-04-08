@@ -39,7 +39,7 @@ integration-test:
 registry-test:
 	TEST=true PYTHONPATH="." py.test  \
 	--cov="." --cov-report=html --cov-report=term-missing \
-	-m 'not e2e' --timeout=3600 --verbose -x \
+	-n auto -m 'not e2e' --timeout=3600 --verbose -x \
 	test/registry/registry_tests.py
 
 buildman-test:
@@ -74,7 +74,7 @@ ensure-test-db:
 	fi
 
 install-pre-commit-hook:
-	pip install pre-commit==2.20.0
+	pip install pre-commit==4.5.0
 	pre-commit install
 
 PG_PASSWORD := quay
@@ -91,7 +91,7 @@ test_postgres:
 	$(DOCKER) rm -f $(CONTAINER) || true
 	$(DOCKER) run --name $(CONTAINER) \
 		-e POSTGRES_PASSWORD=$(PG_PASSWORD) -e POSTGRES_USER=$(PG_USER) \
-		-p $(PG_PORT):5432 -d postgres:12.1
+		-p $(PG_PORT):5432 -d postgres:18
 	$(DOCKER) exec -it $(CONTAINER) bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	$(DOCKER) exec -it $(CONTAINER) bash -c "psql -U $(PG_USER) -d quay -c 'CREATE EXTENSION pg_trgm;'"
 	$(TEST_ENV) alembic upgrade head
@@ -241,7 +241,7 @@ local-dev-up-react: local-dev-clean | build-image-quay
 	BUILD_ANGULAR=false DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) stop quay
 	BUILD_ANGULAR=false DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
 	# Wait for backend to be ready
-	while ! docker exec quay-quay test -e /tmp/gunicorn_web.sock 2>/dev/null; do echo "Waiting for backend..."; sleep 3; done
+	while ! $(DOCKER) exec quay-quay test -e /tmp/gunicorn_web.sock 2>/dev/null; do echo "Waiting for backend..."; sleep 3; done
 	@echo "You can now access the React frontend at http://localhost:8080"
 
 local-docker-rebuild:
@@ -266,6 +266,10 @@ local-dev-up-with-clair: local-dev-up
 	$(DOCKER) exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d clair
 
+.PHONY: local-dev-up-with-repomirror
+local-dev-up-with-repomirror: local-dev-up
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d repomirror
+
 .PHONY: local-dev-up-static
 local-dev-up-static: local-dev-clean
 	$(DOCKER_COMPOSE) -f docker-compose.static up -d redis quay-db
@@ -280,3 +284,133 @@ local-dev-up-static: local-dev-clean
 local-dev-down:
 	$(DOCKER_COMPOSE) down
 	$(MAKE) local-dev-clean
+
+.PHONY: local-dev-reset-db
+local-dev-reset-db:
+	$(DOCKER_COMPOSE) rm -fsv quay-db quay
+	$(DOCKER) volume rm -f quay_quay-db-data
+	$(DOCKER_COMPOSE) up -d quay-db
+	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
+	@echo "Database has been reset. Quay will run migrations on startup."
+
+.PHONY: enable-ldap
+enable-ldap:
+	@echo "Merging LDAP config into local-dev/stack/config.yaml..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@if ! $(DOCKER_COMPOSE) ps ldap 2>/dev/null | grep -q "Up"; then \
+		echo "⚠ Warning: LDAP container not running. Start with: docker-compose up -d ldap"; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/ldap/ldap-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "✓ LDAP configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Apply changes: docker-compose restart quay"
+
+.PHONY: enable-oidc
+enable-oidc:
+	@echo "Merging Keycloak OIDC config into local-dev/stack/config.yaml..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/keycloak/keycloak-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "Keycloak OIDC configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Apply changes: $(DOCKER_COMPOSE) restart quay"
+
+.PHONY: local-dev-up-with-keycloak
+local-dev-up-with-keycloak: local-dev-up
+	$(DOCKER_COMPOSE) up -d keycloak
+	@echo "Waiting for Keycloak to be ready..."
+	@curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+		http://localhost:8081/realms/quay > /dev/null \
+		|| { echo "Keycloak failed to start. Recent logs:"; $(DOCKER_COMPOSE) logs --tail 50 keycloak; exit 1; }
+	@echo "Keycloak is ready. Merging OIDC config..."
+	@$(MAKE) enable-oidc
+	$(DOCKER_COMPOSE) restart quay
+
+.PHONY: enable-splunk
+enable-splunk:
+	@echo "Setting up Splunk for local development..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@if ! $(DOCKER_COMPOSE) ps splunk 2>/dev/null | grep -q "Up"; then \
+		echo "Starting Splunk container..."; \
+		$(DOCKER_COMPOSE) up -d splunk; \
+	fi
+	@echo "Waiting for Splunk to be healthy (this may take 60-90 seconds)..."
+	@timeout=180; \
+	while [ $$timeout -gt 0 ]; do \
+		if $(DOCKER) inspect --format='{{.State.Health.Status}}' quay-splunk 2>/dev/null | grep -q "healthy"; then \
+			break; \
+		fi; \
+		sleep 5; \
+		timeout=$$((timeout - 5)); \
+	done; \
+	if [ $$timeout -le 0 ]; then \
+		echo "Error: Splunk did not become healthy in time"; \
+		exit 1; \
+	fi
+	@echo "Initializing Splunk (creating index and token)..."
+	@$(DOCKER) exec quay-splunk bash /tmp/init-splunk.sh
+	@echo "Merging Splunk config into local-dev/stack/config.yaml..."
+	@BEARER_TOKEN=$$($(DOCKER) exec quay-splunk cat /tmp/quay_splunk_bearer_token 2>/dev/null || echo ""); \
+	if [ -z "$$BEARER_TOKEN" ]; then \
+		echo "⚠ Warning: Could not retrieve bearer token."; \
+		echo "  You may need to set bearer_token manually in config.yaml"; \
+		BEARER_TOKEN="REPLACE_WITH_BEARER_TOKEN"; \
+	fi; \
+	cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup; \
+	ESCAPED_TOKEN=$$(echo "$$BEARER_TOKEN" | sed 's/[\/&]/\\&/g'); \
+	sed "s/BEARER_TOKEN_PLACEHOLDER/$$ESCAPED_TOKEN/" \
+		local-dev/splunk/splunk-config.yaml > /tmp/splunk-config-resolved.yaml; \
+	yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml /tmp/splunk-config-resolved.yaml > local-dev/stack/config.yaml.tmp; \
+	mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml; \
+	rm -f /tmp/splunk-config-resolved.yaml
+	@echo "✓ Splunk configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Splunk UI: http://localhost:8000 (admin/changeme1)"
+	@echo "  Apply changes: $(DOCKER_COMPOSE) restart quay"
+
+##############
+# Go targets #
+##############
+
+GO_BINARY_NAME = quay
+GO_BUILD_DIR = bin
+GO_CMD_DIR = cmd/quay
+
+.PHONY: go-build go-test go-fmt go-vet go-clean
+
+go-build:
+	@mkdir -p $(GO_BUILD_DIR)
+	go build -o $(GO_BUILD_DIR)/$(GO_BINARY_NAME) ./$(GO_CMD_DIR)
+
+go-test:
+	go test -cover -race ./...
+
+go-fmt:
+	go fmt ./...
+
+go-vet:
+	go vet ./...
+	golangci-lint ./...
+
+go-clean:
+	rm -rf $(GO_BUILD_DIR)
+	go mod tidy

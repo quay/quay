@@ -94,7 +94,9 @@ def conduct_call(
         body = raw_body
 
     # Required for anonymous calls to not exception.
-    g.identity = Identity(None, "none")
+    # Only set an anonymous identity if one doesn't already exist.
+    if not hasattr(g, "identity") or g.identity is None:
+        g.identity = Identity(None, "none")
 
     rv = client.open(final_url, method=method, data=body, headers=headers)
     msg = "%s %s: got %s expected: %s | %s" % (

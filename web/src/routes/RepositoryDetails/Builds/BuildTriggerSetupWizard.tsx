@@ -12,8 +12,7 @@ import ContextStep from './BuildTriggerSetupWizardContext';
 import RobotAccounts from './BuildTriggerSetupWizardRobotAccounts';
 import ReviewAndFinishProps from './BuildTriggerSetupWizardReviewAndFinish';
 import {useActivateBuildTrigger} from 'src/hooks/UseBuildTriggers';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import SelectOrganization from './BuildTriggerSetupWizardOrganization';
 import {isNullOrUndefined} from 'src/libs/utils';
 import HostedRepository from './BuildTriggerSetupWizardHostedRepository';
@@ -45,7 +44,7 @@ export default function BuildTriggerSetupWizard(
     repoUrl,
     !isNullOrUndefined(repoUrl) && repoUrl !== '' && !isCustomGit,
   );
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {activateTrigger} = useActivateBuildTrigger(
     props.org,
     props.repo,

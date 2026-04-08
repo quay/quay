@@ -1,5 +1,12 @@
-import {Flex, FlexItem, Tab, Tabs, TabTitleText} from '@patternfly/react-core';
-import {useState} from 'react';
+import {
+  Alert,
+  Flex,
+  FlexItem,
+  Tab,
+  Tabs,
+  TabTitleText,
+} from '@patternfly/react-core';
+import {useEffect, useState} from 'react';
 import {DrawerContentType} from 'src/routes/RepositoryDetails/Types';
 import DeleteRepository from './DeleteRepository';
 import Permissions from './Permissions';
@@ -9,10 +16,11 @@ import {RepositoryStateForm} from './RepositoryState';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import RepositoryAutoPruning from 'src/routes/RepositoryDetails/Settings/RepositoryAutoPruning';
+import RepositoryImmutabilityPolicies from 'src/routes/RepositoryDetails/Settings/RepositoryImmutabilityPolicies';
 import {useOrganization} from 'src/hooks/UseOrganization';
 
 export default function Settings(props: SettingsProps) {
-  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [activeTabKey, setActiveTabKey] = useState('userandrobotpermissions');
   const config = useQuayConfig();
   const {isUserOrganization} = useOrganization(props.org);
 
@@ -28,7 +36,9 @@ export default function Settings(props: SettingsProps) {
         />
       ),
     },
-    ...(config?.features?.AUTO_PRUNE && props.repoDetails?.can_write
+    ...(config?.features?.AUTO_PRUNE &&
+    props.repoDetails?.can_write &&
+    props.repoDetails?.state !== 'ORG_MIRROR'
       ? [
           {
             name: 'Repository Auto-Prune Policies',
@@ -38,6 +48,22 @@ export default function Settings(props: SettingsProps) {
                 organizationName={props.org}
                 repoName={props.repo}
                 isUser={isUserOrganization}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(config?.features?.IMMUTABLE_TAGS &&
+    props.repoDetails?.can_write &&
+    props.repoDetails?.state !== 'ORG_MIRROR'
+      ? [
+          {
+            name: 'Immutability Policies',
+            id: 'repositoryimmutabilitypolicies',
+            content: (
+              <RepositoryImmutabilityPolicies
+                organizationName={props.org}
+                repoName={props.repo}
               />
             ),
           },
@@ -87,30 +113,48 @@ export default function Settings(props: SettingsProps) {
     },
   ];
 
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.some((tab) => tab.id === activeTabKey)) {
+      setActiveTabKey(tabs[0].id);
+    }
+  }, [tabs, activeTabKey]);
+
+  const activeTab = tabs.find((tab) => tab.id === activeTabKey) ?? tabs[0];
+
   return (
     <Flex flexWrap={{default: 'nowrap'}}>
       <FlexItem>
         <Tabs
-          activeKey={activeTabIndex}
-          onSelect={(e, index: number) => setActiveTabIndex(index)}
+          activeKey={activeTabKey}
+          onSelect={(e, key: string | number) => setActiveTabKey(String(key))}
           isVertical
           aria-label="Repository Settings Tabs"
           role="region"
         >
-          {tabs.map((tab, tabIndex) => (
+          {tabs.map((tab) => (
             <Tab
               key={tab.id}
-              eventKey={tabIndex}
+              eventKey={tab.id}
               title={<TabTitleText>{tab.name}</TabTitleText>}
+              data-testid={`settings-tab-${tab.id}`}
             />
           ))}
         </Tabs>
       </FlexItem>
       <FlexItem
-        alignSelf={{default: 'alignSelfCenter'}}
+        alignSelf={{default: 'alignSelfFlexStart'}}
         style={{padding: '20px', width: '100%'}}
       >
-        {tabs.at(activeTabIndex).content}
+        {props.repoDetails?.state === 'ORG_MIRROR' && (
+          <Alert
+            isInline
+            variant="info"
+            title="This repository is managed by organization-level mirroring. Some settings may be restricted."
+            className="pf-v6-u-mb-md"
+            data-testid="org-mirror-repo-settings-banner"
+          />
+        )}
+        {activeTab?.content}
       </FlexItem>
     </Flex>
   );

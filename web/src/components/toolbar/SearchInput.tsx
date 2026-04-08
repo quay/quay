@@ -4,7 +4,10 @@ import {SearchState} from './SearchTypes';
 
 export function SearchInput(props: SearchInput) {
   const setSearchState = (val) => {
-    props.onChange((prev: SearchState) => ({...prev, query: val.trim()}));
+    props.onChange((prev: SearchState) => ({
+      ...prev,
+      query: props.allowSpaces ? val : val.trim(),
+    }));
   };
 
   return (
@@ -13,6 +16,7 @@ export function SearchInput(props: SearchInput) {
         isRequired
         type="search"
         id={props.id ? props.id : 'toolbar-text-input'}
+        data-testid={props.id ? props.id : 'toolbar-text-input'}
         name="search input"
         placeholder={`Search by ${props.searchState.field}...`}
         value={props.searchState.query}
@@ -26,4 +30,5 @@ interface SearchInput {
   searchState: SearchState;
   onChange: SetterOrUpdater<SearchState>;
   id?: string;
+  allowSpaces?: boolean;
 }

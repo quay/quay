@@ -1,19 +1,20 @@
 import {
   Button,
   Modal,
+  ModalBody,
+  ModalFooter,
   ModalVariant,
   TextInput,
   Title,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useCreateTag} from 'src/hooks/UseTags';
 import {isNullOrUndefined} from 'src/libs/utils';
 
 export default function AddTagModal(props: AddTagModalProps) {
   const [value, setValue] = useState('');
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {createTag, successCreateTag, errorCreateTag} = useCreateTag(
     props.org,
     props.repo,
@@ -52,23 +53,31 @@ export default function AddTagModal(props: AddTagModalProps) {
     <>
       <Modal
         id="add-tag-modal"
-        header={
-          <Title headingLevel="h2">
-            Add tag to manifest {props.manifest.substring(0, 19)}
-          </Title>
-        }
         aria-label="Add tag modal"
         isOpen={props.isOpen}
         onClose={() => props.setIsOpen(false)}
         variant={ModalVariant.small}
-        actions={[
+      >
+        <Title headingLevel="h2">
+          Add tag to manifest {props.manifest.substring(0, 19)}
+        </Title>
+        <ModalBody>
+          <TextInput
+            value={value}
+            type="text"
+            onChange={(_event, value) => setValue(value)}
+            aria-label="new tag name"
+            placeholder="New tag name"
+          />
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="cancel"
             variant="primary"
             onClick={() => props.setIsOpen(false)}
           >
             Cancel
-          </Button>,
+          </Button>
           <Button
             key="modal-action-button"
             variant="primary"
@@ -77,16 +86,8 @@ export default function AddTagModal(props: AddTagModalProps) {
             }}
           >
             Create tag
-          </Button>,
-        ]}
-      >
-        <TextInput
-          value={value}
-          type="text"
-          onChange={(_event, value) => setValue(value)}
-          aria-label="new tag name"
-          placeholder="New tag name"
-        />
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

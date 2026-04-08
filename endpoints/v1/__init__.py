@@ -11,7 +11,7 @@ from util.http import abort
 from util.metrics.prometheus import timed_blueprint
 
 logger = logging.getLogger(__name__)
-v1_bp = timed_blueprint(Blueprint("v1", __name__))
+v1_bp = timed_blueprint(Blueprint("v1", __name__), get_app=lambda: app)
 
 
 # Note: This is *not* part of the Docker index spec. This is here for our own health check,

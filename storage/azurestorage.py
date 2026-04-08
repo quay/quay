@@ -67,9 +67,11 @@ class AzureStorage(BaseStorage):
         self._azure_connection_string = endpoint_url
 
         self._blob_service_client = BlobServiceClient(
-            self._azure_connection_string
-            if self._azure_connection_string
-            else AZURE_STORAGE_URL_STRING["global"].format(self._azure_account_name),
+            (
+                self._azure_connection_string
+                if self._azure_connection_string
+                else AZURE_STORAGE_URL_STRING["global"].format(self._azure_account_name)
+            ),
             credential=self._azure_account_key,
         )
 

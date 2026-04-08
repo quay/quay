@@ -41,7 +41,7 @@ Python 3.9 and earlier are currently supported.
 Run either of the following in the quay directory where the repository is forked. It installs the pre-commit checks like trailing-whitespace, new line at EOF, secret leaks and black required before pushing to git.
 
 ```
-pip install pre-commit==2.20.0
+pip install pre-commit==4.5.0
 
 pre-commit install
 ```

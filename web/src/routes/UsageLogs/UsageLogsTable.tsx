@@ -1,6 +1,9 @@
 import {
+  Alert,
+  Button,
   Flex,
   FlexItem,
+  PageSection,
   PanelFooter,
   Spinner,
   SearchInput,
@@ -22,7 +25,32 @@ import {getLogs} from 'src/hooks/UseUsageLogs';
 import {useLogDescriptions} from 'src/hooks/UseLogDescriptions';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
-import {useState, useMemo} from 'react';
+import {extractTextFromReactNode} from 'src/libs/utils';
+import {useState, useMemo, useEffect, useRef} from 'react';
+
+interface LogEntry {
+  datetime: string;
+  kind: string;
+  metadata: {
+    [key: string]: string;
+    namespace?: string;
+    repo?: string;
+    performer?: string;
+  };
+  namespace?: {
+    name?: string;
+    username?: string;
+  };
+  performer?: {
+    name?: string;
+  };
+  ip: string;
+}
+
+interface LogPage {
+  logs: LogEntry[];
+  nextPage?: string;
+}
 
 interface UsageLogsTableProps {
   starttime: string;
@@ -30,6 +58,8 @@ interface UsageLogsTableProps {
   org: string;
   repo: string;
   type: string;
+  isSuperuser?: boolean;
+  enabled?: boolean;
 }
 
 interface LogEntry {
@@ -56,23 +86,25 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     setFilterValue(value);
   };
 
-  const filterLogs = (data: LogPage, filterValue: string): LogPage => {
-    data.logs = data.logs.filter(function (log: LogEntry) {
-      return log.kind.includes(filterValue);
-    });
-    return data;
-  };
-
   const {
     data: logs,
     isLoading: loadingLogs,
     isError: errorLogs,
+    error: fetchError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey: [
       'usageLogs',
       props.starttime,
       props.endtime,
-      {org: props.org, repo: props.repo ? props.repo : 'isOrg', type: 'table'},
+      {
+        org: props.org,
+        repo: props.repo ? props.repo : 'isOrg',
+        type: 'table',
+        isSuperuser: props.isSuperuser,
+      },
     ],
     queryFn: async ({pageParam = undefined}) => {
       const logResp = await getLogs(
@@ -81,16 +113,13 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
         props.starttime,
         props.endtime,
         pageParam,
+        props.isSuperuser,
       );
       return logResp;
     },
+    initialPageParam: undefined,
     getNextPageParam: (lastPage: LogPage) => lastPage.nextPage,
-    select: (data) => {
-      data.pages = data.pages.map((logs: LogPage) =>
-        filterLogs(logs, filterValue),
-      );
-      return data;
-    },
+    enabled: props.enabled !== false,
   });
 
   // Flatten all log pages into a single array for our table hook
@@ -102,8 +131,37 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
   // Create filter function for the table hook
   const searchFilter = useMemo(() => {
     if (!filterValue) return undefined;
-    return (log: LogEntry) => log.kind.includes(filterValue);
-  }, [filterValue]);
+    const searchTerm = filterValue.toLowerCase();
+    return (log: LogEntry) => {
+      // Search across multiple fields for better filtering
+      const namespace = log.namespace?.name || log.namespace?.username || '';
+      const repo = log.metadata?.repo
+        ? `${log.metadata?.namespace || ''}/${log.metadata.repo}`
+        : '';
+      const performer =
+        log.performer?.name || (log.metadata?.performer as string) || '';
+      const ip = log.ip || '';
+      const kind = log.kind || '';
+
+      // Get the description text if available
+      // Use extractTextFromReactNode to convert JSX elements to searchable plain text
+      const description = logDescriptions[log.kind]
+        ? typeof logDescriptions[log.kind] === 'function'
+          ? extractTextFromReactNode(logDescriptions[log.kind](log.metadata))
+          : extractTextFromReactNode(logDescriptions[log.kind])
+        : '';
+
+      // Check if any field contains the search term (case-insensitive)
+      return (
+        namespace.toLowerCase().includes(searchTerm) ||
+        repo.toLowerCase().includes(searchTerm) ||
+        performer.toLowerCase().includes(searchTerm) ||
+        ip.toLowerCase().includes(searchTerm) ||
+        kind.toLowerCase().includes(searchTerm) ||
+        description.toLowerCase().includes(searchTerm)
+      );
+    };
+  }, [filterValue, logDescriptions]);
 
   // Use unified table hook for sorting and pagination
   const {
@@ -123,8 +181,47 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     initialSort: {columnIndex: 0, direction: 'desc'}, // Default sort: newest first
   });
 
+  // Add intersection observer ref for infinite scroll
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {threshold: 0.1},
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   if (loadingLogs) return <Spinner />;
-  if (errorLogs) return <RequestError message="Unable to retrieve logs" />;
+
+  // tslint:disable-next-line:curly
+  if (errorLogs) {
+    return <RequestError message="Unable to retrieve logs" />;
+  }
+
+  // Check if log viewing is unavailable (e.g. Splunk HEC without search_token)
+  const firstPage = logs?.pages?.[0] as LogPage & {
+    unavailable?: boolean;
+    message?: string;
+  };
+  if (firstPage?.unavailable) {
+    return (
+      <PageSection hasBodyWrapper={false}>
+        <Alert variant="info" isInline title="Log viewing is not available">
+          {firstPage.message}
+        </Alert>
+      </PageSection>
+    );
+  }
 
   return (
     <>
@@ -139,19 +236,26 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                 onChange={(_event, value) => filterOnChange(value)}
                 onClear={() => filterOnChange('')}
                 id="log-filter-input"
+                data-testid="usage-logs-filter-input"
               />
             </SplitItem>
           </Split>
         </FlexItem>
         <FlexItem>
           <div style={{margin: '20px'}}>
-            <Table variant="compact" aria-label="Usage logs table">
+            <Table
+              variant="compact"
+              aria-label="Usage logs table"
+              data-testid="usage-logs-table"
+            >
               <Thead>
                 <Tr>
                   <Th width={15} sort={getSortableSort(0)}>
                     Date & Time
                   </Th>
                   <Th sort={getSortableSort(1)}>Description</Th>
+                  {props.isSuperuser && <Th>Namespace</Th>}
+                  {!props.repo && <Th>Repository</Th>}
                   <Th sort={getSortableSort(2)}>Performed by</Th>
                   <Th sort={getSortableSort(3)}>IP Address</Th>
                 </Tr>
@@ -171,10 +275,22 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                           ) as React.ReactNode)
                         : 'No description available'}
                     </Td>
+                    {props.isSuperuser && (
+                      <Td>
+                        {log.namespace?.name || log.namespace?.username || ''}
+                      </Td>
+                    )}
+                    {!props.repo && (
+                      <Td>
+                        {log.metadata?.namespace && log.metadata?.repo
+                          ? `${log.metadata.namespace}/${log.metadata.repo}`
+                          : log.metadata?.repo || ''}
+                      </Td>
+                    )}
                     <Td>
                       {log.performer?.name
                         ? log.performer?.name
-                        : (log.metadata?.performer as string) || 'Unknown'}
+                        : (log.metadata?.performer as string) || '(anonymous)'}
                     </Td>
                     <Td>{log.ip}</Td>
                   </Tr>
@@ -183,6 +299,25 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
             </Table>
           </div>
         </FlexItem>
+
+        {/* Intersection observer trigger for infinite scroll */}
+        <div ref={loadMoreRef} style={{height: '20px'}} />
+
+        {/* Load More button and loading indicator */}
+        {hasNextPage && (
+          <FlexItem>
+            <div style={{textAlign: 'center', margin: '20px'}}>
+              {isFetchingNextPage ? (
+                <Spinner size="lg" />
+              ) : (
+                <Button variant="secondary" onClick={() => fetchNextPage()}>
+                  Load More Logs
+                </Button>
+              )}
+            </div>
+          </FlexItem>
+        )}
+
         <PanelFooter>
           <ToolbarPagination {...paginationProps} bottom={true} />
         </PanelFooter>
