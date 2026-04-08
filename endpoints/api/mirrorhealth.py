@@ -32,6 +32,14 @@ from prometheus_client import REGISTRY
 
 logger = logging.getLogger(__name__)
 
+_MAX_DETAIL_PAGE = 1000
+
+
+def _utc_z_timestamp(when: datetime) -> str:
+    """Format an aware UTC datetime as ISO-8601 with Z suffix."""
+    utc = when.astimezone(timezone.utc)
+    return utc.isoformat().replace("+00:00", "Z")
+
 
 def _get_last_sync_timestamps():
     """
@@ -86,47 +94,54 @@ def _get_pending_tags_total(namespace=None):
     return int(total) if total == int(total) else total
 
 
-def get_mirror_health_data(namespace=None):
+def get_mirror_health_data(
+    namespace=None,
+    detailed=False,
+    detail_limit=100,
+    detail_offset=0,
+):
     """
     Gather health data for repository mirroring operations.
-    
+
     Args:
         namespace: Optional namespace to filter results
-        
+        detailed: If true, include paginated per-repository rows under repositories.details
+        detail_limit: Max repositories in detailed view (clamped 1..1000)
+        detail_offset: Pagination offset into the sorted mirror list
+
     Returns:
         Dictionary with health status information
     """
-    # Build base query
+    # Build base query (stable order for paginated details)
     query = (
         RepoMirrorConfig.select(RepoMirrorConfig, Repository)
         .join(Repository)
         .where(Repository.state == RepositoryState.MIRROR)
+        .order_by(Repository.namespace_user_id, Repository.name)
     )
-    
+
     # Filter by namespace if provided
     if namespace:
         from data.database import User
+
         query = query.switch(Repository).join(User).where(User.username == namespace)
-    
+
     mirrors = list(query)
-    
+
     # Count repositories by sync status
     total_repos = len(mirrors)
     syncing = sum(1 for m in mirrors if m.sync_status == RepoMirrorStatus.SYNCING)
     completed = sum(1 for m in mirrors if m.sync_status == RepoMirrorStatus.SUCCESS)
-    failed = sum(
-        1
-        for m in mirrors
-        if m.sync_status in (RepoMirrorStatus.FAIL, RepoMirrorStatus.NEVER_RUN)
-    )
-    
+    failed = sum(1 for m in mirrors if m.sync_status == RepoMirrorStatus.FAIL)
+    never_run = sum(1 for m in mirrors if m.sync_status == RepoMirrorStatus.NEVER_RUN)
+
     # From in-process Prometheus registry when mirror worker shares this process; else 0.
     tags_pending = _get_pending_tags_total(namespace)
-    
+
     # Determine overall health status
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     issues = []
-    
+
     # Stale detection: last sync from quay_repository_mirror_last_sync_timestamp in REGISTRY—not
     # mirror.sync_start_date (that field is the next scheduled run). Missing samples: skip stale
     # (never-synced NEVER_RUN handled separately); enabled repos with no metric are not flagged stale.
@@ -144,19 +159,17 @@ def get_mirror_health_data(namespace=None):
             if mirror.sync_status == RepoMirrorStatus.NEVER_RUN:
                 never_synced_repos.append(mirror)
             continue
-        last_sync_dt = datetime.fromtimestamp(last_sync_ts, tz=timezone.utc).replace(
-            tzinfo=None
-        )
+        last_sync_dt = datetime.fromtimestamp(last_sync_ts, tz=timezone.utc)
         if last_sync_dt < stale_threshold:
             stale_repos.append(mirror)
-    
+
     if stale_repos:
         for repo in stale_repos[:5]:  # Limit to first 5 for brevity
             issues.append(
                 {
                     "severity": "warning",
                     "message": f"Repository {repo.repository.namespace_user.username}/{repo.repository.name} hasn't synced in over 24 hours",
-                    "timestamp": now.isoformat() + "Z",
+                    "timestamp": _utc_z_timestamp(now),
                 }
             )
     if never_synced_repos:
@@ -165,52 +178,56 @@ def get_mirror_health_data(namespace=None):
                 {
                     "severity": "warning",
                     "message": f"Repository {repo.repository.namespace_user.username}/{repo.repository.name} has never been synced",
-                    "timestamp": now.isoformat() + "Z",
+                    "timestamp": _utc_z_timestamp(now),
                 }
             )
-    
+
     # Check for repeatedly failing repositories
     failing_repos = [
         m
         for m in mirrors
         if m.sync_status == RepoMirrorStatus.FAIL and m.sync_retries_remaining == 0
     ]
-    
+
     if failing_repos:
         for repo in failing_repos[:5]:  # Limit to first 5
             issues.append(
                 {
                     "severity": "error",
                     "message": f"Repository {repo.repository.namespace_user.username}/{repo.repository.name} has exhausted all retry attempts",
-                    "timestamp": now.isoformat() + "Z",
+                    "timestamp": _utc_z_timestamp(now),
                 }
             )
-    
+
     # Determine if system is healthy
     # System is unhealthy if:
-    # - More than 20% of repos are failing
+    # - More than 20% of repos that have run (non-NEVER_RUN) are failing
     # - Any critical errors exist
     critical_threshold = 0.2
     healthy = True
-    
-    if total_repos > 0:
-        failure_rate = failed / total_repos
+
+    mirrors_for_failure_rate = total_repos - never_run
+    if mirrors_for_failure_rate > 0:
+        failure_rate = failed / mirrors_for_failure_rate
         if failure_rate > critical_threshold:
             healthy = False
             issues.insert(
                 0,
                 {
                     "severity": "critical",
-                    "message": f"{failure_rate*100:.1f}% of repositories are failing (threshold: {critical_threshold*100}%)",
-                    "timestamp": now.isoformat() + "Z",
+                    "message": (
+                        f"{failure_rate * 100:.1f}% of repositories are failing "
+                        f"(threshold: {critical_threshold * 100:.1f}%)"
+                    ),
+                    "timestamp": _utc_z_timestamp(now),
                 },
             )
-    
+
     # Note: Worker count would ideally come from a coordination service or config
     # For now, we assume workers are healthy if repos are being processed
     workers_status = "healthy" if healthy else "degraded"
-    
-    return {
+
+    result = {
         "healthy": healthy,
         "workers": {
             "active": 0,  # Would need coordination service to track this accurately
@@ -222,11 +239,47 @@ def get_mirror_health_data(namespace=None):
             "syncing": syncing,
             "completed": completed,
             "failed": failed,
+            "never_run": never_run,
         },
         "tags_pending": tags_pending,
-        "last_check": now.isoformat() + "Z",
+        "last_check": _utc_z_timestamp(now),
         "issues": issues,
     }
+
+    if detailed:
+        lim = max(1, min(int(detail_limit), _MAX_DETAIL_PAGE))
+        off = max(0, int(detail_offset))
+        page = mirrors[off : off + lim]
+        repos_detail = []
+        for mirror in page:
+            namespace_name = mirror.repository.namespace_user.username
+            repo_name = mirror.repository.name
+            last_sync_ts = last_sync_timestamps.get((namespace_name, repo_name))
+            last_sync_value = None
+            if last_sync_ts is not None:
+                last_sync_value = (
+                    datetime.fromtimestamp(last_sync_ts, tz=timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z")
+                )
+            repos_detail.append(
+                {
+                    "namespace": namespace_name,
+                    "repository": repo_name,
+                    "sync_status": mirror.sync_status.name,
+                    "is_enabled": mirror.is_enabled,
+                    "last_sync": last_sync_value,
+                    "retries_remaining": mirror.sync_retries_remaining,
+                }
+            )
+        result["repositories"]["details"] = repos_detail
+        result["repositories"]["pagination"] = {
+            "limit": lim,
+            "offset": off,
+            "has_more": off + len(repos_detail) < total_repos,
+        }
+
+    return result
 
 
 @resource("/v1/repository/mirror/health")
@@ -251,16 +304,30 @@ class RepositoryMirrorHealth(ApiResource):
         type=bool,
         default=False,
     )
+    @query_param(
+        "limit",
+        "Maximum repositories in detailed view (when detailed=true)",
+        type=int,
+        default=100,
+    )
+    @query_param(
+        "offset",
+        "Offset into the sorted mirror list for detailed view",
+        type=int,
+        default=0,
+    )
     def get(self, parsed_args):
         """
         Get the health status of repository mirroring operations.
-        
+
         Returns overall health status, worker information, and any issues.
         HTTP status code reflects health: 200 for healthy, 503 for unhealthy.
         """
         namespace = parsed_args.get("namespace")
         detailed = parsed_args.get("detailed", False)
-        
+        detail_limit = parsed_args.get("limit", 100)
+        detail_offset = parsed_args.get("offset", 0)
+
         authed_user = get_authenticated_user()
         if not authed_user:
             raise Unauthorized()
@@ -282,49 +349,15 @@ class RepositoryMirrorHealth(ApiResource):
                         namespace
                     ).can():
                         raise Unauthorized()
-        
-        health_data = get_mirror_health_data(namespace=namespace)
-        
-        # Add detailed per-repository information if requested
-        if detailed:
-            query = (
-                RepoMirrorConfig.select(RepoMirrorConfig, Repository)
-                .join(Repository)
-                .where(Repository.state == RepositoryState.MIRROR)
-            )
-            
-            if namespace:
-                from data.database import User
-                query = query.switch(Repository).join(User).where(User.username == namespace)
-            
-            repos_detail = []
-            last_sync_timestamps = _get_last_sync_timestamps()
-            for mirror in query:
-                namespace_name = mirror.repository.namespace_user.username
-                repo_name = mirror.repository.name
-                last_sync_ts = last_sync_timestamps.get((namespace_name, repo_name))
-                last_sync_value = None
-                if last_sync_ts is not None:
-                    last_sync_value = (
-                        datetime.fromtimestamp(last_sync_ts, tz=timezone.utc)
-                        .isoformat()
-                        .replace("+00:00", "Z")
-                    )
-                repos_detail.append(
-                    {
-                        "namespace": namespace_name,
-                        "repository": repo_name,
-                        "sync_status": mirror.sync_status.name,
-                        "is_enabled": mirror.is_enabled,
-                        "last_sync": last_sync_value,
-                        "retries_remaining": mirror.sync_retries_remaining,
-                    }
-                )
-            
-            health_data["repositories"]["details"] = repos_detail
-        
+
+        health_data = get_mirror_health_data(
+            namespace=namespace,
+            detailed=detailed,
+            detail_limit=detail_limit,
+            detail_offset=detail_offset,
+        )
+
         # Return 503 if unhealthy, 200 if healthy
         status_code = 200 if health_data["healthy"] else 503
-        
-        return health_data, status_code
 
+        return health_data, status_code

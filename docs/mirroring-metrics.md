@@ -23,7 +23,7 @@ All metrics are exposed via the standard Quay metrics endpoint (typically availa
 
 #### 1. Tags Pending Synchronization
 
-```
+```text
 quay_repository_mirror_pending_tags{namespace="org1",repository="repo1"} 5
 ```
 
@@ -43,7 +43,7 @@ quay_repository_mirror_pending_tags{namespace="org1",repository="repo1"} 5
 
 #### 2. Last Synchronization Status
 
-```
+```text
 quay_repository_mirror_last_sync_status{namespace="org1",repository="repo1",last_error_reason=""} 1
 quay_repository_mirror_last_sync_status{namespace="org2",repository="repo2",last_error_reason="auth_failed"} 0
 ```
@@ -92,7 +92,7 @@ quay_repository_mirror_last_sync_status{last_error_reason="auth_failed"} == 0
 
 #### 3. Complete Synchronization Status
 
-```
+```text
 quay_repository_mirror_sync_complete{namespace="org1",repository="repo1"} 1
 quay_repository_mirror_sync_complete{namespace="org2",repository="repo2"} 0
 ```
@@ -117,7 +117,7 @@ quay_repository_mirror_sync_complete{namespace="org2",repository="repo2"} 0
 
 #### 4. Synchronization Failure Counter
 
-```
+```text
 quay_repository_mirror_sync_failures_total{namespace="org1",repository="repo1",reason="network_timeout"} 3
 quay_repository_mirror_sync_failures_total{namespace="org2",repository="repo2",reason="auth_failed"} 7
 ```
@@ -154,7 +154,7 @@ topk(5, sum by (reason) (quay_repository_mirror_sync_failures_total))
 
 #### 5. Active Mirror Workers
 
-```
+```text
 quay_repository_mirror_workers_active 5
 ```
 
@@ -170,7 +170,7 @@ quay_repository_mirror_workers_active 5
 
 #### 6. Last Synchronization Timestamp
 
-```
+```text
 quay_repository_mirror_last_sync_timestamp{namespace="org1",repository="repo1"} 1697385600
 ```
 
@@ -196,7 +196,7 @@ quay_repository_mirror_last_sync_timestamp{namespace="org1",repository="repo1"} 
 
 #### 7. Synchronization Duration
 
-```
+```text
 quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository="repo1",le="30"} 45
 quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository="repo1",le="60"} 82
 quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository="repo1",le="+Inf"} 100
@@ -233,7 +233,7 @@ rate(quay_repository_mirror_sync_duration_seconds_count[5m])
 
 #### Unmirrored Repositories
 
-```
+```text
 quay_repository_rows_unmirrored 42
 ```
 
@@ -262,6 +262,8 @@ quay_repository_rows_unmirrored 42
 
 - `namespace` (optional): Filter health check to specific namespace
 - `detailed` (optional, boolean): Include per-repository breakdown (default: false)
+- `limit` (optional, integer): Maximum repositories returned in `repositories.details` when `detailed=true` (default: 100, max: 1000)
+- `offset` (optional, integer): Offset into the sorted mirror list for paginated details (default: 0)
 
 The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags` samples in **this** process’s Prometheus registry. On typical deployments the API does not run the mirror worker, so that sum is often `0` unless metrics are shared with the worker process.
 
@@ -281,7 +283,8 @@ The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags
     "total": 150,
     "syncing": 3,
     "completed": 145,
-    "failed": 2
+    "failed": 2,
+    "never_run": 0
   },
   "tags_pending": 47,
   "last_check": "2025-12-09T10:30:00Z",
@@ -300,17 +303,18 @@ The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags
     "status": "degraded"
   },
   "repositories": {
-    "total": 150,
+    "total": 100,
     "syncing": 2,
-    "completed": 140,
-    "failed": 8
+    "completed": 54,
+    "failed": 19,
+    "never_run": 25
   },
   "tags_pending": 234,
   "last_check": "2025-12-09T10:30:00Z",
   "issues": [
     {
       "severity": "critical",
-      "message": "5.3% of repositories are failing (threshold: 20.0%)",
+      "message": "25.3% of repositories are failing (threshold: 20.0%)",
       "timestamp": "2025-12-09T10:30:00Z"
     },
     {
@@ -340,6 +344,7 @@ When `detailed=true` is specified:
     "syncing": 3,
     "completed": 145,
     "failed": 2,
+    "never_run": 0,
     "details": [
       {
         "namespace": "org1",
@@ -357,7 +362,12 @@ When `detailed=true` is specified:
         "last_sync": "2025-12-09T09:00:00Z",
         "retries_remaining": 0
       }
-    ]
+    ],
+    "pagination": {
+      "limit": 100,
+      "offset": 0,
+      "has_more": false
+    }
   },
   "tags_pending": 47,
   "last_check": "2025-12-09T10:30:00Z",
@@ -367,11 +377,9 @@ When `detailed=true` is specified:
 
 ### Health Determination Logic
 
-The system is considered **unhealthy** if:
+The `healthy` field and HTTP status (`503` when unhealthy) are driven by repository **failure rate**: more than **20%** of mirrors that have left `NEVER_RUN` are in `FAIL`, i.e. `failed / (total - never_run) > 0.2` when `(total - never_run) > 0`. Mirrors still in `NEVER_RUN` are counted in `repositories.never_run` and are excluded from that denominator so new configurations do not count as failures.
 
-1. More than 20% of enabled repositories are failing
-2. Any repositories have exhausted all retry attempts
-3. Repositories are stuck in SYNCING state for over 12 hours (checked by health service)
+The `issues` array may additionally include **warnings** (stale sync, never synced), **errors** (retry exhaustion), and **critical** entries when the failure-rate threshold is exceeded. Other health services may apply further rules (for example long-running `SYNCING` states).
 
 ### Example Usage
 
@@ -386,6 +394,10 @@ curl -X GET "https://quay.example.com/v1/repository/mirror/health?namespace=myor
 
 # Detailed health check
 curl -X GET "https://quay.example.com/v1/repository/mirror/health?detailed=true" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Paginated detailed view
+curl -X GET "https://quay.example.com/v1/repository/mirror/health?detailed=true&limit=50&offset=50" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
