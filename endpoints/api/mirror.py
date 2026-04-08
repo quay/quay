@@ -69,6 +69,12 @@ common_properties = {
         },
         "description": "A list of glob-patterns used to determine which tags should be synchronized.",
     },
+    "skopeo_timeout_interval": {
+        "type": "integer",
+        "minimum": 300,
+        "maximum": 43200,
+        "description": "Skopeo timeout interval in seconds. Accepted for compatibility but not persisted.",
+    },
     "external_registry_config": {
         "type": "object",
         "properties": {
