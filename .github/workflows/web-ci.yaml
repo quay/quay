@@ -50,6 +50,13 @@ jobs:
 
     - name: Integration Test
       run:  |
+        # Bind mount uses the workspace tree; built UI assets are gitignored and only live in
+        # the image. Restore them so Angular routes and /search (proxied to Flask) can render.
+        docker rm -f quay-static-extract 2>/dev/null || true
+        docker create --name quay-static-extract localhost/quay-local:latest
+        docker cp quay-static-extract:/quay-registry/static/build ./static/build
+        docker cp quay-static-extract:/quay-registry/static/patternfly ./static/patternfly
+        docker rm -f quay-static-extract
         docker restart quay-quay
         sleep 30
         make integration-test
