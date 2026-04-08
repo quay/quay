@@ -15,6 +15,10 @@ Quay exposes detailed Prometheus metrics and a dedicated health endpoint for rep
 
 All metrics are exposed via the standard Quay metrics endpoint (typically available at the Prometheus PushGateway on port `9091`).
 
+**Names in this document match the worker export:** the pending-tags gauge is exported as `quay_repository_mirror_pending_tags` (internal Python name `repo_mirror_tags_pending` in `workers/repomirrorworker`). There is no `quay_repository_mirror_tags_pending` symbol.
+
+**`quay_repository_mirror_last_sync_status`:** the implementation uses labels `namespace`, `repository`, and `last_error_reason` only—there is no `status` label and values are **0** (failed), **1** (success), and **2** (in progress), not a −2..3 range. The canonical series uses `last_error_reason=""`; failures may also set a second series with `last_error_reason=<category>` for the same value.
+
 ### Core Mirroring Metrics
 
 #### 1. Tags Pending Synchronization
@@ -258,6 +262,8 @@ quay_repository_rows_unmirrored 42
 
 - `namespace` (optional): Filter health check to specific namespace
 - `detailed` (optional, boolean): Include per-repository breakdown (default: false)
+
+The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags` samples in **this** process’s Prometheus registry. On typical deployments the API does not run the mirror worker, so that sum is often `0` unless metrics are shared with the worker process.
 
 ### Response Schema
 

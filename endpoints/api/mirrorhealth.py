@@ -11,7 +11,6 @@ from datetime import datetime, timedelta, timezone
 import features
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
-    AdministerOrganizationPermission,
     OrganizationMemberPermission,
     UserAdminPermission,
 )
@@ -63,6 +62,30 @@ def _get_last_sync_timestamps():
     return timestamps
 
 
+def _get_pending_tags_total(namespace=None):
+    """
+    Sum quay_repository_mirror_pending_tags gauge values from this process's registry.
+
+    Same limitation as _get_last_sync_timestamps: values exist only if the mirror worker
+    registers metrics in this process; otherwise this returns 0.
+    """
+    total = 0.0
+    try:
+        for metric in REGISTRY.collect():
+            if metric.name != "quay_repository_mirror_pending_tags":
+                continue
+            for sample in metric.samples:
+                if sample.name != "quay_repository_mirror_pending_tags":
+                    continue
+                if namespace is not None and sample.labels.get("namespace") != namespace:
+                    continue
+                total += float(sample.value)
+            break
+    except Exception as ex:
+        logger.debug("Unable to read pending tags from registry: %s", ex)
+    return int(total) if total == int(total) else total
+
+
 def get_mirror_health_data(namespace=None):
     """
     Gather health data for repository mirroring operations.
@@ -97,15 +120,16 @@ def get_mirror_health_data(namespace=None):
         if m.sync_status in (RepoMirrorStatus.FAIL, RepoMirrorStatus.NEVER_RUN)
     )
     
-    # Calculate total pending tags (this is an approximation since we don't store this in DB)
-    # In a real implementation, this would come from metrics or a cached value
-    tags_pending = 0  # Would need to query from metrics or calculate
+    # From in-process Prometheus registry when mirror worker shares this process; else 0.
+    tags_pending = _get_pending_tags_total(namespace)
     
     # Determine overall health status
     now = datetime.utcnow()
     issues = []
     
-    # Check for repositories that haven't synced recently (stale syncs)
+    # Stale detection: last sync from quay_repository_mirror_last_sync_timestamp in REGISTRY—not
+    # mirror.sync_start_date (that field is the next scheduled run). Missing samples: skip stale
+    # (never-synced NEVER_RUN handled separately); enabled repos with no metric are not flagged stale.
     stale_threshold = now - timedelta(hours=24)
     last_sync_timestamps = _get_last_sync_timestamps()
     stale_repos = []
