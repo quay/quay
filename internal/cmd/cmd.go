@@ -17,6 +17,8 @@ func Run(args []string) int {
 	switch args[1] {
 	case "config":
 		return runConfig(args[2:])
+	case "install":
+		return runInstall(args[2:])
 	case "db":
 		return runDB(args[2:])
 	case "serve":
@@ -39,6 +41,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, `usage: quay <command> [flags]
 
 commands:
+  install           Set up registry (database, certs, user, Quadlet service)
   config            Configuration tools (validate)
   db                Database lifecycle (init, version, upgrade)
   serve             Start the OCI container registry
