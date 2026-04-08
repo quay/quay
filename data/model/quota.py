@@ -149,35 +149,6 @@ def _blobs_existing_in_repository(repository_id: int, manifest_id: int, blob_ids
     )
 
 
-def blob_exists_in_namespace(namespace_id: int, manifest_id: int, blob_id: int):
-    # Return true if there exists some other manifest within the namespace that
-    # references this blob
-    return (
-        ManifestBlob.select(1)
-        .join(Repository, on=(ManifestBlob.repository == Repository.id))
-        .where(
-            Repository.namespace_user == namespace_id,
-            ManifestBlob.blob == blob_id,
-            ManifestBlob.manifest != manifest_id,
-        )
-        .exists()
-    )
-
-
-def blob_exists_in_repository(repository_id: int, manifest_id: int, blob_id: int):
-    # Return true if there exists some other manifest within the repository that
-    # references this blob
-    return (
-        ManifestBlob.select(1)
-        .where(
-            ManifestBlob.repository == repository_id,
-            ManifestBlob.blob == blob_id,
-            ManifestBlob.manifest != manifest_id,
-        )
-        .exists()
-    )
-
-
 def write_namespace_total(
     namespace_id: int, manifest_id: int, namespace_total: int, operation: str
 ):

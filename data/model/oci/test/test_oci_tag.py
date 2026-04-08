@@ -8,7 +8,7 @@ from playhouse.test_utils import assert_query_count
 
 from app import storage
 from data import model
-from data.database import ImageStorageLocation, ManifestChild, Repository, Tag, User
+from data.database import ImageStorageLocation, ManifestChild, Repository, Tag, User, db
 from data.model import ImmutableTagException
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.manifest import get_or_create_manifest
@@ -49,6 +49,26 @@ from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 from util.bytes import Bytes
+
+
+def _force_delete_repository(repo_id):
+    """Delete a repository while bypassing FK constraints (works on SQLite and PostgreSQL).
+
+    Used to simulate a race condition where a repository is deleted between
+    manifest lookup and repository lookup inside retarget_tag.
+    """
+    is_sqlite = "sqlite" in type(db.obj).__name__.lower()
+    if is_sqlite:
+        db.execute_sql("PRAGMA foreign_keys = OFF")
+    else:
+        db.execute_sql("SET session_replication_role = 'replica'")
+    try:
+        Repository.delete().where(Repository.id == repo_id).execute()
+    finally:
+        if is_sqlite:
+            db.execute_sql("PRAGMA foreign_keys = ON")
+        else:
+            db.execute_sql("SET session_replication_role = 'origin'")
 
 
 def _populate_blob(content):
@@ -1236,10 +1256,14 @@ class TestRetargetTagRaceCondition:
         repo = model.repository.create_repository("devtable", "newrepo", None)
         manifest, _ = create_manifest_for_testing(repo, "reponotfound1")
 
-        with patch("data.model.oci.tag.Repository.select") as mock_select:
-            mock_select.return_value.where.return_value.get.side_effect = Repository.DoesNotExist()
-            result = retarget_tag("failingtag", manifest.id, raise_on_error=False)
-            assert result is None
+        # Delete the repository to simulate it being removed between manifest
+        # lookup and repository lookup inside retarget_tag.
+        # Temporarily disable FK constraints so we can remove the repo while
+        # the manifest row still exists (mimicking a race condition).
+        _force_delete_repository(repo.id)
+
+        result = retarget_tag("failingtag", manifest.id, raise_on_error=False)
+        assert result is None
 
     def test_retarget_tag_repository_not_found_raises_exception(self, initialized_db):
         """Test that retarget_tag raises exception when repository not found and raise_on_error=True."""
@@ -1248,8 +1272,12 @@ class TestRetargetTagRaceCondition:
         repo = model.repository.create_repository("devtable", "newrepo", None)
         manifest, _ = create_manifest_for_testing(repo, "reponotfound2")
 
-        with patch("data.model.oci.tag.Repository.select") as mock_select:
-            mock_select.return_value.where.return_value.get.side_effect = Repository.DoesNotExist()
-            with pytest.raises(RetargetTagException) as exc_info:
-                retarget_tag("failingtag", manifest.id, raise_on_error=True)
-            assert "Repository no longer exists" in str(exc_info.value)
+        # Delete the repository to simulate it being removed between manifest
+        # lookup and repository lookup inside retarget_tag.
+        # Temporarily disable FK constraints so we can remove the repo while
+        # the manifest row still exists (mimicking a race condition).
+        _force_delete_repository(repo.id)
+
+        with pytest.raises(RetargetTagException) as exc_info:
+            retarget_tag("failingtag", manifest.id, raise_on_error=True)
+        assert "Repository no longer exists" in str(exc_info.value)

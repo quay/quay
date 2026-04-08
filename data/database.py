@@ -1,10 +1,12 @@
 # pylint: disable=old-style-class,no-init
 from __future__ import annotations
 
+import hashlib
 import inspect
 import logging
 import os
 import string
+import struct
 import sys
 import time
 import uuid
@@ -240,9 +242,6 @@ def compute_advisory_lock_id(namespace, key):
 
     Returns a value in the range of a PostgreSQL bigint (-2^63 to 2^63-1).
     """
-    import hashlib
-    import struct
-
     h = hashlib.sha256(f"{namespace}:{key}".encode()).digest()
     # Unpack as signed 64-bit integer to match PostgreSQL bigint range
     return struct.unpack(">q", h[:8])[0]
