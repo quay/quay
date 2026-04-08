@@ -63,6 +63,7 @@ make types-test                      # Type checking (mypy)
 3. **No secrets:** Never commit credentials, API keys, or sensitive config
 4. **Imports:** Follow existing import ordering patterns in each file
 5. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
+6. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
 
 ## Local Dev URLs
 
