@@ -134,3 +134,8 @@ bin/
 # claude
 .claude/plans
 .claude/implementation
+
+# Local mirror-metrics notes (not part of upstream quay)
+/ARCHITECTURE.md
+/IMPLEMENTATION_SUMMARY.md
+/QUICKSTART.md
