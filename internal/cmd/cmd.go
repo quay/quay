@@ -21,6 +21,8 @@ func Run(args []string) int {
 		return runDB(args[2:])
 	case "serve":
 		return runServe(args[2:])
+	case "user":
+		return runUser(args[2:])
 	case "version":
 		return runVersion()
 	case "help", "-h", "--help":
@@ -39,6 +41,7 @@ func usage() {
 commands:
   config            Configuration tools (validate)
   db                Database lifecycle (init, version, upgrade)
-  serve             Start a minimal OCI container registry
+  serve             Start the OCI container registry
+  user              User management (create)
   version           Print version information`)
 }
