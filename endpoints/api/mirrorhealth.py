@@ -15,7 +15,13 @@ from auth.permissions import (
     UserAdminPermission,
 )
 from data import model
-from data.database import RepoMirrorConfig, RepoMirrorStatus, Repository, RepositoryState
+from data.database import (
+    RepoMirrorConfig,
+    RepoMirrorStatus,
+    Repository,
+    RepositoryState,
+    User,
+)
 from endpoints.api import (
     ApiResource,
     allow_if_global_readonly_superuser,
@@ -27,7 +33,8 @@ from endpoints.api import (
     resource,
     show_if,
 )
-from endpoints.exception import Unauthorized
+from endpoints.exception import NotFound, Unauthorized
+from peewee import Case, fn
 from prometheus_client import REGISTRY
 
 logger = logging.getLogger(__name__)
@@ -94,6 +101,61 @@ def _get_pending_tags_total(namespace=None):
     return int(total) if total == int(total) else total
 
 
+def _mirror_rows_query(namespace=None):
+    """
+    RepoMirrorConfig rows with Repository and namespace User joined and selected
+    so repository.namespace_user is populated (avoids N+1 on .username).
+    """
+    q = (
+        RepoMirrorConfig.select(RepoMirrorConfig, Repository, User)
+        .join(Repository)
+        .switch(Repository)
+        .join(User, on=(Repository.namespace_user == User.id))
+        .where(Repository.state == RepositoryState.MIRROR)
+    )
+    if namespace:
+        q = q.where(User.username == namespace)
+    return q.order_by(Repository.namespace_user_id, Repository.name)
+
+
+def _mirror_status_counts(namespace=None):
+    """Aggregated status counts without loading mirror rows."""
+    syncing_sum = fn.SUM(
+        Case(None, [(RepoMirrorConfig.sync_status == RepoMirrorStatus.SYNCING, 1)], 0)
+    )
+    completed_sum = fn.SUM(
+        Case(None, [(RepoMirrorConfig.sync_status == RepoMirrorStatus.SUCCESS, 1)], 0)
+    )
+    failed_sum = fn.SUM(Case(None, [(RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL, 1)], 0))
+    never_run_sum = fn.SUM(
+        Case(None, [(RepoMirrorConfig.sync_status == RepoMirrorStatus.NEVER_RUN, 1)], 0)
+    )
+    q = (
+        RepoMirrorConfig.select(
+            fn.COUNT(RepoMirrorConfig.id).alias("total"),
+            syncing_sum.alias("syncing"),
+            completed_sum.alias("completed"),
+            failed_sum.alias("failed"),
+            never_run_sum.alias("never_run"),
+        )
+        .join(Repository)
+        .switch(Repository)
+        .join(User, on=(Repository.namespace_user == User.id))
+        .where(Repository.state == RepositoryState.MIRROR)
+    )
+    if namespace:
+        q = q.where(User.username == namespace)
+    dict_rows = list(q.dicts())
+    row = dict_rows[0] if dict_rows else {}
+    return {
+        "total": int(row["total"] or 0),
+        "syncing": int(row["syncing"] or 0),
+        "completed": int(row["completed"] or 0),
+        "failed": int(row["failed"] or 0),
+        "never_run": int(row["never_run"] or 0),
+    }
+
+
 def get_mirror_health_data(
     namespace=None,
     detailed=False,
@@ -112,28 +174,12 @@ def get_mirror_health_data(
     Returns:
         Dictionary with health status information
     """
-    # Build base query (stable order for paginated details)
-    query = (
-        RepoMirrorConfig.select(RepoMirrorConfig, Repository)
-        .join(Repository)
-        .where(Repository.state == RepositoryState.MIRROR)
-        .order_by(Repository.namespace_user_id, Repository.name)
-    )
-
-    # Filter by namespace if provided
-    if namespace:
-        from data.database import User
-
-        query = query.switch(Repository).join(User).where(User.username == namespace)
-
-    mirrors = list(query)
-
-    # Count repositories by sync status
-    total_repos = len(mirrors)
-    syncing = sum(1 for m in mirrors if m.sync_status == RepoMirrorStatus.SYNCING)
-    completed = sum(1 for m in mirrors if m.sync_status == RepoMirrorStatus.SUCCESS)
-    failed = sum(1 for m in mirrors if m.sync_status == RepoMirrorStatus.FAIL)
-    never_run = sum(1 for m in mirrors if m.sync_status == RepoMirrorStatus.NEVER_RUN)
+    counts = _mirror_status_counts(namespace)
+    total_repos = counts["total"]
+    syncing = counts["syncing"]
+    completed = counts["completed"]
+    failed = counts["failed"]
+    never_run = counts["never_run"]
 
     # From in-process Prometheus registry when mirror worker shares this process; else 0.
     tags_pending = _get_pending_tags_total(namespace)
@@ -149,19 +195,50 @@ def get_mirror_health_data(
     last_sync_timestamps = _get_last_sync_timestamps()
     stale_repos = []
     never_synced_repos = []
-    for mirror in mirrors:
-        if not mirror.is_enabled or mirror.sync_status == RepoMirrorStatus.SYNCING:
-            continue
+    failing_repos = []
+    repos_detail = []
+    lim = max(1, min(int(detail_limit), _MAX_DETAIL_PAGE)) if detailed else 0
+    off = max(0, int(detail_offset)) if detailed else 0
+
+    row_query = _mirror_rows_query(namespace)
+    idx = 0
+    for mirror in row_query.iterator():
         namespace_name = mirror.repository.namespace_user.username
         repo_name = mirror.repository.name
         last_sync_ts = last_sync_timestamps.get((namespace_name, repo_name))
-        if last_sync_ts is None:
-            if mirror.sync_status == RepoMirrorStatus.NEVER_RUN:
-                never_synced_repos.append(mirror)
-            continue
-        last_sync_dt = datetime.fromtimestamp(last_sync_ts, tz=timezone.utc)
-        if last_sync_dt < stale_threshold:
-            stale_repos.append(mirror)
+
+        if mirror.sync_status == RepoMirrorStatus.FAIL and mirror.sync_retries_remaining == 0:
+            failing_repos.append(mirror)
+
+        if mirror.is_enabled and mirror.sync_status != RepoMirrorStatus.SYNCING:
+            if last_sync_ts is None:
+                if mirror.sync_status == RepoMirrorStatus.NEVER_RUN:
+                    never_synced_repos.append(mirror)
+            else:
+                last_sync_dt = datetime.fromtimestamp(last_sync_ts, tz=timezone.utc)
+                if last_sync_dt < stale_threshold:
+                    stale_repos.append(mirror)
+
+        if detailed and off <= idx < off + lim:
+            last_sync_value = None
+            if last_sync_ts is not None:
+                last_sync_value = (
+                    datetime.fromtimestamp(last_sync_ts, tz=timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z")
+                )
+            repos_detail.append(
+                {
+                    "namespace": namespace_name,
+                    "repository": repo_name,
+                    "sync_status": mirror.sync_status.name,
+                    "is_enabled": mirror.is_enabled,
+                    "last_sync": last_sync_value,
+                    "retries_remaining": mirror.sync_retries_remaining,
+                }
+            )
+
+        idx += 1
 
     if stale_repos:
         for repo in stale_repos[:5]:  # Limit to first 5 for brevity
@@ -181,13 +258,6 @@ def get_mirror_health_data(
                     "timestamp": _utc_z_timestamp(now),
                 }
             )
-
-    # Check for repeatedly failing repositories
-    failing_repos = [
-        m
-        for m in mirrors
-        if m.sync_status == RepoMirrorStatus.FAIL and m.sync_retries_remaining == 0
-    ]
 
     if failing_repos:
         for repo in failing_repos[:5]:  # Limit to first 5
@@ -247,31 +317,6 @@ def get_mirror_health_data(
     }
 
     if detailed:
-        lim = max(1, min(int(detail_limit), _MAX_DETAIL_PAGE))
-        off = max(0, int(detail_offset))
-        page = mirrors[off : off + lim]
-        repos_detail = []
-        for mirror in page:
-            namespace_name = mirror.repository.namespace_user.username
-            repo_name = mirror.repository.name
-            last_sync_ts = last_sync_timestamps.get((namespace_name, repo_name))
-            last_sync_value = None
-            if last_sync_ts is not None:
-                last_sync_value = (
-                    datetime.fromtimestamp(last_sync_ts, tz=timezone.utc)
-                    .isoformat()
-                    .replace("+00:00", "Z")
-                )
-            repos_detail.append(
-                {
-                    "namespace": namespace_name,
-                    "repository": repo_name,
-                    "sync_status": mirror.sync_status.name,
-                    "is_enabled": mirror.is_enabled,
-                    "last_sync": last_sync_value,
-                    "retries_remaining": mirror.sync_retries_remaining,
-                }
-            )
         result["repositories"]["details"] = repos_detail
         result["repositories"]["pagination"] = {
             "limit": lim,
@@ -339,7 +384,7 @@ class RepositoryMirrorHealth(ApiResource):
         else:
             namespace_user = model.user.get_namespace_user(namespace)
             if not namespace_user:
-                raise Unauthorized()
+                raise NotFound()
             if not (allow_if_superuser() or allow_if_global_readonly_superuser()):
                 if namespace_user.organization:
                     if not OrganizationMemberPermission(namespace).can():

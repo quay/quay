@@ -257,6 +257,7 @@ quay_repository_rows_unmirrored 42
 - `503 Service Unavailable`: System is unhealthy (critical issues detected)
 - `401 Unauthorized`: Authentication required
 - `403 Forbidden`: Insufficient permissions
+- `404 Not Found`: `namespace` query parameter names a user or organization that does not exist
 
 ### Query Parameters
 
