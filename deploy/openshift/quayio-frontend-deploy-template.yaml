@@ -34,7 +34,6 @@ objects:
           config:
             title: "Quay.io"
             icon: "QuayIcon"
-            headerLink: {}
       module:
         manifestLocation: "/apps/quay/fed-mods.json"
         modules:
