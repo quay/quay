@@ -176,24 +176,21 @@ def _check_disk_space(for_warning):
 def _check_mirror_workers(app):
     """
     Returns the status of repository mirror workers.
-    
+
     Checks if mirror feature is enabled and if mirrors are being processed.
     """
     if not features.REPO_MIRROR:
         return (True, "Mirror feature is disabled")
-    
+
     try:
         from data.database import RepoMirrorConfig, RepoMirrorStatus, Repository, RepositoryState
         from datetime import datetime
-        
+
         # Check if there are any enabled mirrors
         enabled_mirrors = (
             RepoMirrorConfig.select()
             .join(Repository)
-            .where(
-                (Repository.state == RepositoryState.MIRROR) &
-                (RepoMirrorConfig.is_enabled)
-            )
+            .where((Repository.state == RepositoryState.MIRROR) & (RepoMirrorConfig.is_enabled))
             .count()
         )
 
@@ -207,11 +204,11 @@ def _check_mirror_workers(app):
             RepoMirrorConfig.select()
             .join(Repository)
             .where(
-                (Repository.state == RepositoryState.MIRROR) &
-                (RepoMirrorConfig.is_enabled) &
-                (RepoMirrorConfig.sync_status == RepoMirrorStatus.SYNCING) &
-                (RepoMirrorConfig.sync_expiration_date.is_null(False)) &
-                (RepoMirrorConfig.sync_expiration_date < now)
+                (Repository.state == RepositoryState.MIRROR)
+                & (RepoMirrorConfig.is_enabled)
+                & (RepoMirrorConfig.sync_status == RepoMirrorStatus.SYNCING)
+                & (RepoMirrorConfig.sync_expiration_date.is_null(False))
+                & (RepoMirrorConfig.sync_expiration_date < now)
             )
             .count()
         )
@@ -227,21 +224,24 @@ def _check_mirror_workers(app):
             RepoMirrorConfig.select()
             .join(Repository)
             .where(
-                (Repository.state == RepositoryState.MIRROR) &
-                (RepoMirrorConfig.is_enabled) &
-                (RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL) &
-                (RepoMirrorConfig.sync_retries_remaining == 0)
+                (Repository.state == RepositoryState.MIRROR)
+                & (RepoMirrorConfig.is_enabled)
+                & (RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL)
+                & (RepoMirrorConfig.sync_retries_remaining == 0)
             )
             .count()
         )
-        
+
         if enabled_mirrors > 0:
             failure_rate = failed_mirrors / enabled_mirrors
             if failure_rate > 0.5:  # More than 50% failing
-                return (False, f"High mirror failure rate: {failure_rate*100:.1f}% ({failed_mirrors}/{enabled_mirrors})")
-        
+                return (
+                    False,
+                    f"High mirror failure rate: {failure_rate*100:.1f}% ({failed_mirrors}/{enabled_mirrors})",
+                )
+
         return (True, f"{enabled_mirrors} mirrors configured, {failed_mirrors} failing")
-        
+
     except Exception as ex:
         logger.exception("Mirror worker check failed with exception %s", ex)
         # Return True to avoid false alarms if there's a DB issue (handled elsewhere)

@@ -421,9 +421,10 @@ class RepositoryMirrorHealth(ApiResource):
                     if not OrganizationMemberPermission(namespace).can():
                         raise Unauthorized()
                 else:
-                    if authed_user.username != namespace and not UserAdminPermission(
-                        namespace
-                    ).can():
+                    if (
+                        authed_user.username != namespace
+                        and not UserAdminPermission(namespace).can()
+                    ):
                         raise Unauthorized()
 
         health_data = get_mirror_health_data(
