@@ -35,6 +35,7 @@ from endpoints.api import (
 )
 from endpoints.exception import NotFound, Unauthorized
 from peewee import Case, fn
+from util.parsing import truthy_bool
 from prometheus_client import REGISTRY
 
 logger = logging.getLogger(__name__)
@@ -377,7 +378,7 @@ class RepositoryMirrorHealth(ApiResource):
     @query_param(
         "detailed",
         "Include per-repository breakdown",
-        type=bool,
+        type=truthy_bool,
         default=False,
     )
     @query_param(
