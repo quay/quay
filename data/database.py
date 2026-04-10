@@ -1,10 +1,12 @@
 # pylint: disable=old-style-class,no-init
 from __future__ import annotations
 
+import hashlib
 import inspect
 import logging
 import os
 import string
+import struct
 import sys
 import time
 import uuid
@@ -219,6 +221,37 @@ SCHEME_SPECIALIZED_FOR_UPDATE = {
 }
 
 
+def real_advisory_xact_lock(lock_id):
+    """Acquire a PostgreSQL transaction-scoped advisory lock.
+
+    The lock is automatically released when the transaction ends (commit or rollback).
+    Unlike row-level locks (SELECT FOR UPDATE), advisory locks do not block readers
+    and do not require locking an actual row.
+    """
+    db.execute_sql("SELECT pg_advisory_xact_lock(%s)", (lock_id,))
+
+
+def null_advisory_xact_lock(lock_id):
+    """No-op advisory lock for databases that don't support it (e.g. SQLite)."""
+    pass
+
+
+def compute_advisory_lock_id(namespace, key):
+    """Compute a deterministic 64-bit signed integer lock ID from a namespace string and
+    an integer key. The namespace prevents collisions between different lock use cases.
+
+    Returns a value in the range of a PostgreSQL bigint (-2^63 to 2^63-1).
+    """
+    h = hashlib.sha256(f"{namespace}:{key}".encode()).digest()
+    # Unpack as signed 64-bit integer to match PostgreSQL bigint range
+    return struct.unpack(">q", h[:8])[0]
+
+
+SCHEME_SPECIALIZED_ADVISORY_LOCK = {
+    "sqlite": null_advisory_xact_lock,
+}
+
+
 class CallableProxy(Proxy):
     def __call__(self, *args, **kwargs):
         if self.obj is None:
@@ -388,6 +421,7 @@ db_disallow_replica_use = CallableProxy()
 db_concat_func = CallableProxy()
 db_encrypter = Proxy()
 db_count_estimator = CallableProxy()
+db_advisory_xact_lock = CallableProxy()
 ensure_under_transaction = CallableProxy()
 
 
@@ -656,6 +690,9 @@ def configure(config_object, testing=False):
     )
     db_concat_func.initialize(
         SCHEME_SPECIALIZED_CONCAT.get(parsed_write_uri.drivername, function_concat)
+    )
+    db_advisory_xact_lock.initialize(
+        SCHEME_SPECIALIZED_ADVISORY_LOCK.get(parsed_write_uri.drivername, real_advisory_xact_lock)
     )
     db_encrypter.initialize(FieldEncrypter(config_object.get("DATABASE_SECRET_KEY")))
     db_count_estimator.initialize(SCHEME_ESTIMATOR_FUNCTION[parsed_write_uri.drivername])

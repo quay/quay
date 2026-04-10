@@ -76,22 +76,33 @@ def update_sizes(repository_id: int, manifest_id: int, blobs: dict, operation: s
         )
         return
 
+    # Batch-check which blobs already exist in the namespace and repository
+    # using two set-based queries instead of 2N individual queries.
+    blob_ids = set(blobs.keys())
+    existing_in_namespace = _blobs_existing_in_namespace(namespace_id, manifest_id, blob_ids)
+    # Only check repo existence for blobs that DO exist in the namespace,
+    # since blobs not in namespace can't be in the repo either.
+    blobs_to_check_in_repo = blob_ids & existing_in_namespace
+    existing_in_repo = (
+        _blobs_existing_in_repository(repository_id, manifest_id, blobs_to_check_in_repo)
+        if blobs_to_check_in_repo
+        else set()
+    )
+
     # Addition - if the blob already referenced it's already been counted
     # Subtraction - should only happen on the deletion of the last blob, if another exists
     # don't subtract
     namespace_total = 0
     repository_total = 0
     for blob_id, blob_image_size in blobs.items():
-
-        # If the blob doesn't exist in the namespace it doesn't exist in the repo either
-        # so add the total to both. If it exists in the namespace we need to check
-        # if it exists in the repository.
         blob_size = blob_image_size if blob_image_size is not None else 0
-        if not blob_exists_in_namespace(namespace_id, manifest_id, blob_id):
-            namespace_total = namespace_total + blob_size
-            repository_total = repository_total + blob_size
-        elif not blob_exists_in_repository(repository_id, manifest_id, blob_id):
-            repository_total = repository_total + blob_size
+        if blob_id not in existing_in_namespace:
+            # New to both namespace and repo
+            namespace_total += blob_size
+            repository_total += blob_size
+        elif blob_id not in existing_in_repo:
+            # Exists in namespace but new to this repo
+            repository_total += blob_size
 
     write_namespace_total(namespace_id, manifest_id, namespace_total, operation)
 
@@ -99,32 +110,42 @@ def update_sizes(repository_id: int, manifest_id: int, blobs: dict, operation: s
     write_repository_total(repository_id, manifest_id, repository_total, operation)
 
 
-def blob_exists_in_namespace(namespace_id: int, manifest_id: int, blob_id: int):
-    # Return true if there exists some other manifest within the namespace that
-    # references this blob
-    return (
-        ManifestBlob.select(1)
-        .join(Repository, on=(ManifestBlob.repository == Repository.id))
-        .where(
-            Repository.namespace_user == namespace_id,
-            ManifestBlob.blob == blob_id,
-            ManifestBlob.manifest != manifest_id,
+def _blobs_existing_in_namespace(namespace_id: int, manifest_id: int, blob_ids: set) -> set:
+    """Return the subset of blob_ids that are already referenced by other manifests
+    in the namespace. Uses a single query instead of one per blob."""
+    if not blob_ids:
+        return set()
+    return set(
+        row.blob_id
+        for row in (
+            ManifestBlob.select(ManifestBlob.blob)
+            .join(Repository, on=(ManifestBlob.repository == Repository.id))
+            .where(
+                Repository.namespace_user == namespace_id,
+                ManifestBlob.blob << blob_ids,
+                ManifestBlob.manifest != manifest_id,
+            )
+            .distinct()
         )
-        .exists()
     )
 
 
-def blob_exists_in_repository(repository_id: int, manifest_id: int, blob_id: int):
-    # Return true if there exists some other manifest within the repository that
-    # references this blob
-    return (
-        ManifestBlob.select(1)
-        .where(
-            ManifestBlob.repository == repository_id,
-            ManifestBlob.blob == blob_id,
-            ManifestBlob.manifest != manifest_id,
+def _blobs_existing_in_repository(repository_id: int, manifest_id: int, blob_ids: set) -> set:
+    """Return the subset of blob_ids that are already referenced by other manifests
+    in the repository. Uses a single query instead of one per blob."""
+    if not blob_ids:
+        return set()
+    return set(
+        row.blob_id
+        for row in (
+            ManifestBlob.select(ManifestBlob.blob)
+            .where(
+                ManifestBlob.repository == repository_id,
+                ManifestBlob.blob << blob_ids,
+                ManifestBlob.manifest != manifest_id,
+            )
+            .distinct()
         )
-        .exists()
     )
 
 
