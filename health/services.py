@@ -237,7 +237,7 @@ def _check_mirror_workers(app):
             if failure_rate > 0.5:  # More than 50% failing
                 return (
                     False,
-                    f"High mirror failure rate: {failure_rate*100:.1f}% ({failed_mirrors}/{enabled_mirrors})",
+                    f"High mirror failure rate: {failure_rate * 100:.1f}% ({failed_mirrors}/{enabled_mirrors})",
                 )
 
         return (True, f"{enabled_mirrors} mirrors configured, {failed_mirrors} failing")
