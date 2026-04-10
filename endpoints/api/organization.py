@@ -182,6 +182,7 @@ class OrganizationList(ApiResource):
     }
 
     @require_user_admin(disallow_for_restricted_users=features.RESTRICTED_USERS)
+    @require_fresh_login
     @nickname("createOrganization")
     @validate_json_request("NewOrg")
     def post(self):
@@ -304,6 +305,7 @@ class Organization(ApiResource):
         return org_view(org, teams)
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("changeOrganizationDetails")
     @validate_json_request("UpdateOrg")
     def put(self, orgname):
@@ -640,6 +642,7 @@ class OrganizationMember(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("removeOrganizationMember")
     def delete(self, orgname, membername):
         """
@@ -774,6 +777,7 @@ class OrganizationApplications(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("createOrganizationApplication")
     @validate_json_request("NewApp")
     def post(self, orgname):
@@ -871,6 +875,7 @@ class OrganizationApplicationResource(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("updateOrganizationApplication")
     @validate_json_request("UpdateApp")
     def put(self, orgname, client_id):
@@ -906,6 +911,7 @@ class OrganizationApplicationResource(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("deleteOrganizationApplication")
     def delete(self, orgname, client_id):
         """
@@ -941,6 +947,8 @@ class OrganizationApplicationResetClientSecret(ApiResource):
     Custom verb for resetting the client secret of an application.
     """
 
+    @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("resetOrganizationApplicationClientSecret")
     def post(self, orgname, client_id):
         """

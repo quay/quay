@@ -1,3 +1,4 @@
+import datetime
 import json
 from unittest.mock import Mock
 
@@ -5,11 +6,13 @@ import pytest
 import requests
 
 from data import model
-from endpoints.api import api
+from endpoints.api import FRESH_LOGIN_TIMEOUT, api
 from endpoints.api.robot import (
     OrgRobot,
     OrgRobotFederation,
     OrgRobotList,
+    RegenerateOrgRobot,
+    RegenerateUserRobot,
     UserRobot,
     UserRobotList,
 )
@@ -266,3 +269,47 @@ def test_parse_federation_config(app, fed_config, raises_error, error_message):
             assert error_message in str(ex.value)
         else:
             parsed = OrgRobotFederation()._parse_federation_config(request)
+
+
+@pytest.mark.parametrize(
+    "endpoint, method, params, body",
+    [
+        (UserRobot, "PUT", {"robot_shortname": "newbot"}, None),
+        (UserRobot, "DELETE", {"robot_shortname": "dtrobot"}, None),
+        (OrgRobot, "PUT", {"orgname": "buynlarge", "robot_shortname": "newbot"}, None),
+        (OrgRobot, "DELETE", {"orgname": "buynlarge", "robot_shortname": "coolrobot"}, None),
+        (RegenerateUserRobot, "POST", {"robot_shortname": "dtrobot"}, None),
+        (
+            RegenerateOrgRobot,
+            "POST",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            None,
+        ),
+        (
+            OrgRobotFederation,
+            "POST",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            [{"issuer": "https://test.example.com", "subject": "test"}],
+        ),
+        (
+            OrgRobotFederation,
+            "DELETE",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            None,
+        ),
+    ],
+)
+def test_robot_mutation_requires_fresh_login(endpoint, method, params, body, app):
+    """Verify that all robot mutation endpoints require a fresh login session."""
+    with client_with_identity("devtable", app) as cl:
+        with cl.session_transaction() as sess:
+            sess["login_time"] = (
+                datetime.datetime.now() - FRESH_LOGIN_TIMEOUT - datetime.timedelta(minutes=10)
+            )
+
+        result = conduct_api_call(cl, endpoint, method, params, body, expected_code=401)
+        data = result.json
+        assert (
+            data.get("title") == "fresh_login_required"
+            or data.get("error_type") == "fresh_login_required"
+        )
