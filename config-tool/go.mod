@@ -1,6 +1,6 @@
 module github.com/quay/quay/config-tool
 
-go 1.25.0
+go 1.24.8
 
 require (
 	cuelang.org/go v0.6.0
@@ -15,7 +15,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/iancoleman/strcase v0.3.0
-	github.com/jackc/pgx/v5 v5.9.1
+	github.com/jackc/pgx/v5 v5.7.4
 	github.com/jojomi/go-spew v1.1.1-0.20180323180114-b94c73b27dc1
 	github.com/json-iterator/go v1.1.12
 	github.com/lib/pq v1.10.9
