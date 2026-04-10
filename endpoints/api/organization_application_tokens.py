@@ -37,6 +37,7 @@ from endpoints.api import (
     page_support,
     parse_args,
     path_param,
+    require_fresh_login,
     require_scope,
     resource,
     validate_json_request,
@@ -196,6 +197,7 @@ class OrganizationApplicationTokens(ApiResource):
         return {"tokens": [token_view(token) for token in tokens]}, next_page_token
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("createOrganizationApplicationToken")
     @validate_json_request("NewToken")
     def post(self, orgname, client_id):
@@ -273,6 +275,7 @@ class OrganizationApplicationToken(ApiResource):
     """
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("deleteOrganizationApplicationToken")
     def delete(self, orgname, client_id, token_uuid):
         """

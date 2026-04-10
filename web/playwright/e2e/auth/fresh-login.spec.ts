@@ -1,6 +1,13 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 
+const freshLoginRequiredBody = {
+  title: 'fresh_login_required',
+  error_type: 'fresh_login_required',
+  detail: 'The action requires a fresh login to succeed.',
+  status: 401,
+};
+
 test.describe(
   'Fresh Login - Database auth password modal',
   {tag: ['@auth', '@auth:Database']},
@@ -13,12 +20,7 @@ test.describe(
           route.fulfill({
             status: 401,
             contentType: 'application/json',
-            body: JSON.stringify({
-              title: 'fresh_login_required',
-              error_type: 'fresh_login_required',
-              detail: 'The action requires a fresh login to succeed.',
-              status: 401,
-            }),
+            body: JSON.stringify(freshLoginRequiredBody),
           }),
         );
 
@@ -43,12 +45,7 @@ test.describe(
           route.fulfill({
             status: 401,
             contentType: 'application/json',
-            body: JSON.stringify({
-              title: 'fresh_login_required',
-              error_type: 'fresh_login_required',
-              detail: 'The action requires a fresh login to succeed.',
-              status: 401,
-            }),
+            body: JSON.stringify(freshLoginRequiredBody),
           }),
         );
 
@@ -57,6 +54,33 @@ test.describe(
 
         await page.getByRole('button', {name: 'Cancel'}).click();
         await expect(page.getByText('Please Verify').first()).not.toBeVisible();
+      },
+    );
+
+    test(
+      'wrong password dismisses modal and shows error alert',
+      {tag: '@superuser'},
+      async ({superuserPage: page}) => {
+        await page.route('**/api/v1/superuser/logs*', (route) =>
+          route.fulfill({
+            status: 401,
+            contentType: 'application/json',
+            body: JSON.stringify(freshLoginRequiredBody),
+          }),
+        );
+
+        await page.goto('/usage-logs');
+        await expect(page.getByText('Please Verify').first()).toBeVisible();
+
+        await page.locator('#fresh-password').fill('definitely-not-password');
+        await page.getByRole('button', {name: 'Verify'}).click();
+
+        await expect(page.getByText('Please Verify').first()).not.toBeVisible({
+          timeout: 10000,
+        });
+        await expect(
+          page.getByText('Invalid verification credentials'),
+        ).toBeVisible();
       },
     );
 
@@ -71,12 +95,7 @@ test.describe(
             await route.fulfill({
               status: 401,
               contentType: 'application/json',
-              body: JSON.stringify({
-                title: 'fresh_login_required',
-                error_type: 'fresh_login_required',
-                detail: 'The action requires a fresh login to succeed.',
-                status: 401,
-              }),
+              body: JSON.stringify(freshLoginRequiredBody),
             });
           } else {
             await route.continue();
