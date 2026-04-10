@@ -29,6 +29,7 @@ from endpoints.api import (
     nickname,
     path_param,
     related_user_resource,
+    require_fresh_login,
     require_scope,
     require_user_admin,
     resource,
@@ -298,6 +299,7 @@ class UserCard(ApiResource):
         return get_card(user)
 
     @require_user_admin()
+    @require_fresh_login
     @nickname("setUserCard")
     @validate_json_request("UserCard")
     def post(self):
@@ -389,6 +391,7 @@ class OrganizationCard(ApiResource):
 
         raise Unauthorized()
 
+    @require_fresh_login
     @nickname("setOrgCard")
     @validate_json_request("OrgCard")
     def post(self, orgname):
@@ -474,6 +477,7 @@ class UserPlan(ApiResource):
     }
 
     @require_user_admin()
+    @require_fresh_login
     @nickname("createUserSubscription")
     @validate_json_request("UserSubscription")
     def post(self):
@@ -532,6 +536,7 @@ class UserPlan(ApiResource):
             abort(500, message=str(e))
 
     @require_user_admin()
+    @require_fresh_login
     @nickname("updateUserSubscription")
     @validate_json_request("UserSubscription")
     def put(self):
@@ -612,6 +617,7 @@ class OrganizationPlan(ApiResource):
     }
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("createOrgSubscription")
     @validate_json_request("OrgSubscription")
     def post(self, orgname):
@@ -675,6 +681,7 @@ class OrganizationPlan(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("updateOrgSubscription")
     @validate_json_request("OrgSubscription")
     def put(self, orgname):
@@ -996,6 +1003,7 @@ class OrganizationRhSku(ApiResource):
         abort(401)
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("bindSkuToOrg")
     def post(self, orgname):
         """
@@ -1063,6 +1071,7 @@ class OrganizationRhSku(ApiResource):
 @show_if(features.BILLING)
 class OrganizationRhSkuBatchRemoval(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("batchRemoveSku")
     def post(self, orgname):
         """
@@ -1097,6 +1106,7 @@ class OrganizationRhSkuSubscriptionField(ApiResource):
     """
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("removeSkuFromOrg")
     def delete(self, orgname, subscription_id):
         """

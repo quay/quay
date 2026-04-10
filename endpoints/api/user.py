@@ -700,6 +700,7 @@ class ClientKey(ApiResource):
     }
 
     @require_user_admin()
+    @require_fresh_login
     @nickname("generateUserClientKey")
     @validate_json_request("GenerateClientKey")
     def post(self):
@@ -807,6 +808,7 @@ class ConvertToOrganization(ApiResource):
     }
 
     @require_user_admin()
+    @require_fresh_login
     @nickname("convertUserToOrganization")
     @validate_json_request("ConvertUser")
     def post(self):
@@ -1046,6 +1048,7 @@ class DetachExternal(ApiResource):
     """
 
     @require_user_admin()
+    @require_fresh_login
     @nickname("detachExternalLogin")
     def post(self, service_id):
         """
@@ -1273,6 +1276,7 @@ class UserAuthorization(ApiResource):
         return authorization_view(access_token)
 
     @require_user_admin()
+    @require_fresh_login
     @nickname("deleteUserAuthorization")
     def delete(self, access_token_uuid):
         access_token = model.oauth.lookup_access_token_for_user(
