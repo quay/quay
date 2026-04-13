@@ -82,22 +82,25 @@ export const test = base.extend<ApiTestFixtures, ApiWorkerFixtures>({
       });
 
       try {
-        await initializeSuperuser(
-          request,
-          baseUrl,
-          ADMIN.username,
-          ADMIN.password,
-          ADMIN.email,
-        );
-      } catch (e) {
-        // Only ignore "already initialized" — surface real bootstrap failures
-        if (!(e instanceof Error && e.message.includes('already'))) {
-          throw e;
+        try {
+          await initializeSuperuser(
+            request,
+            baseUrl,
+            ADMIN.username,
+            ADMIN.password,
+            ADMIN.email,
+          );
+        } catch (e) {
+          // Only ignore "already initialized" — surface real bootstrap failures
+          if (!(e instanceof Error && e.message.includes('already'))) {
+            throw e;
+          }
         }
-      }
 
-      await request.dispose();
-      await use();
+        await use();
+      } finally {
+        await request.dispose();
+      }
     },
     {scope: 'worker'},
   ],
@@ -160,10 +163,13 @@ export const test = base.extend<ApiTestFixtures, ApiWorkerFixtures>({
     const request = await playwright.request.newContext({
       ignoreHTTPSErrors: true,
     });
-    const client = new RawApiClient(request, baseUrl);
-    await client.signIn(ADMIN.username, ADMIN.password);
-    await use(client);
-    await request.dispose();
+    try {
+      const client = new RawApiClient(request, baseUrl);
+      await client.signIn(ADMIN.username, ADMIN.password);
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
   },
 
   userClient: async (
@@ -173,19 +179,25 @@ export const test = base.extend<ApiTestFixtures, ApiWorkerFixtures>({
     const request = await playwright.request.newContext({
       ignoreHTTPSErrors: true,
     });
-    const client = new RawApiClient(request, baseUrl);
-    await client.signIn(TEST_USER.username, password);
-    await use(client);
-    await request.dispose();
+    try {
+      const client = new RawApiClient(request, baseUrl);
+      await client.signIn(TEST_USER.username, password);
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
   },
 
   anonClient: async ({playwright, baseUrl}, use) => {
     const request = await playwright.request.newContext({
       ignoreHTTPSErrors: true,
     });
-    const client = new RawApiClient(request, baseUrl);
-    await use(client);
-    await request.dispose();
+    try {
+      const client = new RawApiClient(request, baseUrl);
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
   },
 });
 
