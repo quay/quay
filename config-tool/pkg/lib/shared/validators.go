@@ -25,7 +25,7 @@ import (
 	"github.com/go-ldap/ldap/v3"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-sql-driver/mysql"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
