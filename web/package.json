@@ -50,7 +50,7 @@
     "build": "webpack --config webpack.prod.js",
     "start-plugin": "NODE_ENV=development webpack serve --color --progress --config webpack.plugin.js",
     "build-plugin": "NODE_ENV=production webpack --config webpack.plugin.js",
-    "test": "react-scripts test",
+    "test": "jest --config jest.config.js",
     "format": "prettier --config .prettierrc \"src/**/*.{ts,tsx}\" --write",
     "test:integration": "cypress run",
     "test:e2e": "playwright test",

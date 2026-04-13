@@ -1,4 +1,4 @@
-import logo_dark from 'src/assets/quay.svg';
+import logo_dark from 'src/assets/logo-dark.svg';
 import logo_light from 'src/assets/logo.svg';
 import rh_logo_dark from 'src/assets/RH_QuayIO2.svg';
 import rh_logo_light from 'src/assets/RH_QuayIO.svg';
@@ -11,10 +11,13 @@ import {useTheme} from 'src/contexts/ThemeContext';
  * Logo selection priority:
  * 1. If hostname is quay.io or stage.quay.io → theme-aware Red Hat branding
  * 2. Else if BRANDING.logo_dark is configured AND dark theme is active → use logo_dark
- * 3. Else if BRANDING.logo is configured → use logo
- * 4. Else (downstream default) → theme-aware default logo
+ * 3. Else if BRANDING.logo is configured AND light theme is active → use logo
+ * 4. Else (downstream default, or dark mode without logo_dark) → theme-aware default logo
  *
- * Note: Customers can configure BRANDING.logo_dark for theme-aware custom branding.
+ * Note: When BRANDING.logo is set but BRANDING.logo_dark is not, dark mode falls
+ * through to the default dark logo to avoid rendering a light-colored logo against
+ * a dark background. Customers can configure BRANDING.logo_dark for fully custom
+ * theme-aware branding.
  *
  * @returns {string} The logo URL to display
  */
@@ -36,8 +39,10 @@ export function useLogo(): string {
     if (isDarkTheme && quayConfig.config.BRANDING.logo_dark) {
       return quayConfig.config.BRANDING.logo_dark;
     }
-    // Otherwise use the regular logo if configured
-    if (quayConfig.config.BRANDING.logo) {
+    // Use the regular logo only in light mode; in dark mode without logo_dark
+    // fall through to the default theme-aware logo to avoid serving a
+    // light-colored logo against a dark background.
+    if (!isDarkTheme && quayConfig.config.BRANDING.logo) {
       return quayConfig.config.BRANDING.logo;
     }
   }
