@@ -27,6 +27,7 @@ import {
   APIRequestContext,
   BrowserContext,
 } from '@playwright/test';
+import {uniqueName} from '../e2e/shared/test-utils';
 import {TEST_USERS, TEST_USERS_OIDC} from './global-setup';
 import {API_URL} from './utils/config';
 import {
@@ -1241,14 +1242,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 // Re-export expect for convenience
 export {expect};
 
-/**
- * Utility to generate unique names for test resources
- */
-export function uniqueName(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random()
-    .toString(36)
-    .substring(2, 8)}`;
-}
+export {uniqueName} from '../e2e/shared/test-utils';
 
 // ============================================================================
 // Mailpit: Re-export from utils for backward compatibility
