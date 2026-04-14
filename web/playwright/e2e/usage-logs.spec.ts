@@ -218,102 +218,54 @@ test.describe(
   'Usage Logs Repository column namespace deduplication',
   {tag: ['@logs', '@PROJQUAY-10605']},
   () => {
-    test('superuser view shows only repo name in Repository column (not namespace/repo)', async ({
-      superuserPage,
-    }) => {
-      // The superuser usage logs page at /usage-logs uses isSuperuser=true and
-      // fetches from /api/v1/superuser/logs — mock that endpoint
-      await superuserPage.route('**/api/v1/superuser/logs*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            logs: [
-              {
-                kind: 'push_repo',
-                datetime: new Date().toISOString(),
-                metadata: {
-                  namespace: 'nsdedup',
-                  repo: 'myimage',
-                  performer: 'testuser',
-                },
-                performer: {name: 'testuser'},
-                ip: '127.0.0.1',
-              },
-            ],
-          }),
-        });
-      });
-      await superuserPage.route(
-        '**/api/v1/superuser/aggregatelogs*',
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({aggregated: []}),
-          });
-        },
-      );
+    test(
+      'superuser view shows only repo name in Repository column (not namespace/repo)',
+      {tag: '@superuser'},
+      async ({superuserPage, superuserApi}) => {
+        // Creating a repo generates a real create_repo log with {namespace, repo} metadata
+        const repo = await superuserApi.repository();
+        const orgName = repo.fullName.split('/')[0];
+        const repoName = repo.fullName.split('/')[1];
 
-      // Navigate to the superuser usage logs page (isSuperuser=true is hardcoded there)
-      await superuserPage.goto('/usage-logs');
+        // Superuser usage logs page — isSuperuser=true, shows Namespace + Repository columns
+        await superuserPage.goto('/usage-logs');
 
-      const table = superuserPage.getByTestId('usage-logs-table');
-      await expect(table).toBeVisible();
+        const table = superuserPage.getByTestId('usage-logs-table');
+        await expect(table).toBeVisible();
 
-      // Repository column should show only 'myimage', NOT 'nsdedup/myimage'
-      await expect(table.getByText('myimage')).toBeVisible();
-      await expect(table.getByText('nsdedup/myimage')).not.toBeVisible();
-    });
+        // Filter to find our specific log entry
+        await superuserPage.getByPlaceholder('Filter logs').fill(repoName);
+        await superuserPage.waitForTimeout(500);
+
+        // Repository column should show only repoName, NOT orgName/repoName
+        await expect(table.getByText(repoName).first()).toBeVisible();
+        await expect(
+          table.getByText(`${orgName}/${repoName}`),
+        ).not.toBeVisible();
+      },
+    );
 
     test('non-superuser view shows full namespace/repo in Repository column', async ({
       authenticatedPage,
       api,
     }) => {
-      const org = await api.organization('nsdedupns');
+      // Creating a repo generates a real create_repo log with {namespace, repo} metadata
+      const repo = await api.repository();
+      const orgName = repo.fullName.split('/')[0];
+      const repoName = repo.fullName.split('/')[1];
 
-      await authenticatedPage.route(
-        `**/api/v1/organization/${org.name}/logs*`,
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              logs: [
-                {
-                  kind: 'push_repo',
-                  datetime: new Date().toISOString(),
-                  metadata: {
-                    namespace: org.name,
-                    repo: 'myimage',
-                    performer: 'testuser',
-                  },
-                  performer: {name: 'testuser'},
-                  ip: '127.0.0.1',
-                },
-              ],
-            }),
-          });
-        },
-      );
-      await authenticatedPage.route(
-        `**/api/v1/organization/${org.name}/aggregatelogs*`,
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({aggregated: []}),
-          });
-        },
-      );
-
-      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+      // Org-level logs — isSuperuser=false, no Namespace column, Repository shows full path
+      await authenticatedPage.goto(`/organization/${orgName}?tab=Logs`);
 
       const table = authenticatedPage.getByTestId('usage-logs-table');
       await expect(table).toBeVisible();
 
-      // Non-superuser: Repository column shows full namespace/repo
-      await expect(table.getByText(`${org.name}/myimage`)).toBeVisible();
+      // Filter to find the create_repo log entry
+      await authenticatedPage.getByPlaceholder('Filter logs').fill(repoName);
+      await authenticatedPage.waitForTimeout(500);
+
+      // Repository column shows full namespace/repo in non-superuser view
+      await expect(table.getByText(`${orgName}/${repoName}`)).toBeVisible();
     });
   },
 );
