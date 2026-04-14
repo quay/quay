@@ -215,116 +215,68 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
 });
 
 test.describe(
-  'Usage Logs Load More behavior',
+  'Usage Logs Load More button behavior',
   {tag: ['@logs', '@PROJQUAY-10795']},
   () => {
-    test('shows spinner instead of button while fetching next page', async ({
+    test('shows Load More button when additional pages are available', async ({
       authenticatedPage,
       api,
     }) => {
       const org = await api.organization('loadmore');
 
-      let callCount = 0;
+      // Intercept only to inject next_page token — real log data, just signals more pages exist
       await authenticatedPage.route(
-        `**/api/v1/organization/${org.name}/logs*`,
+        `**/api/v1/organization/${org.name}/logs**`,
         async (route) => {
-          callCount++;
-          if (callCount === 1) {
-            // First page — returns next_page token so hasNextPage=true
-            // The hook maps response.data.next_page -> nextPage for getNextPageParam
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({
-                logs: Array.from({length: 5}, (_, i) => ({
-                  kind: 'push_repo',
-                  datetime: new Date(Date.now() - i * 1000).toISOString(),
-                  metadata: {namespace: org.name, repo: `repo${i}`},
-                  performer: {name: 'testuser'},
-                  ip: '127.0.0.1',
-                })),
-                next_page: 'page2token',
-              }),
-            });
-          } else {
-            // Second page — delay to allow spinner observation
-            await new Promise((r) => setTimeout(r, 2000));
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({logs: []}),
-            });
-          }
-        },
-      );
-      await authenticatedPage.route(
-        `**/api/v1/organization/${org.name}/aggregatelogs*`,
-        async (route) => {
+          const response = await route.fetch();
+          const body = await response.json();
           await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({aggregated: []}),
+            response,
+            json: {...body, next_page: 'faketoken'},
           });
         },
       );
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
 
-      const table = authenticatedPage.getByTestId('usage-logs-table');
-      await expect(table).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('usage-logs-table'),
+      ).toBeVisible();
 
-      // Load More button should be visible when there is a next page
+      // Load More button should appear when hasNextPage=true
       await expect(
         authenticatedPage.getByTestId('load-more-button'),
       ).toBeVisible();
-
-      // Click Load More to trigger second page fetch
-      await authenticatedPage.getByTestId('load-more-button').click();
-
-      // While fetching, spinner should be visible and button should not be
       await expect(
         authenticatedPage.getByTestId('load-more-spinner'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByTestId('load-more-button'),
       ).not.toBeVisible();
     });
 
-    test('Load More button appears when next page is available', async ({
+    test('shows spinner when Load More is clicked', async ({
       authenticatedPage,
       api,
     }) => {
-      const org = await api.organization('loadmorebtn');
+      const org = await api.organization('loadmorespinner');
 
+      let requestCount = 0;
       await authenticatedPage.route(
-        `**/api/v1/organization/${org.name}/logs*`,
+        `**/api/v1/organization/${org.name}/logs**`,
         async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              logs: [
-                {
-                  kind: 'push_repo',
-                  datetime: new Date().toISOString(),
-                  metadata: {namespace: org.name, repo: 'myimage'},
-                  performer: {name: 'testuser'},
-                  ip: '127.0.0.1',
-                },
-              ],
-              next_page: 'sometoken',
-            }),
-          });
-        },
-      );
-      await authenticatedPage.route(
-        `**/api/v1/organization/${org.name}/aggregatelogs*`,
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({aggregated: []}),
-          });
+          requestCount++;
+          if (requestCount === 1) {
+            // First page: inject next_page so button appears
+            const response = await route.fetch();
+            const body = await response.json();
+            await route.fulfill({
+              response,
+              json: {...body, next_page: 'faketoken'},
+            });
+          } else {
+            // Second page: delay slightly so we can observe the spinner
+            await new Promise((r) => setTimeout(r, 800));
+            const response = await route.fetch();
+            await route.fulfill({response});
+          }
         },
       );
 
@@ -332,13 +284,18 @@ test.describe(
       await expect(
         authenticatedPage.getByTestId('usage-logs-table'),
       ).toBeVisible();
-
-      // Load More button should be visible when next_page token exists
       await expect(
         authenticatedPage.getByTestId('load-more-button'),
       ).toBeVisible();
+
+      await authenticatedPage.getByTestId('load-more-button').click();
+
+      // Spinner should appear while fetching
       await expect(
         authenticatedPage.getByTestId('load-more-spinner'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('load-more-button'),
       ).not.toBeVisible();
     });
   },
