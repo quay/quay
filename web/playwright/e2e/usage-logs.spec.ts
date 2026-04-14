@@ -266,6 +266,16 @@ test.describe(
       const loadMoreBtn = authenticatedPage.getByTestId('load-more-button');
       await expect(loadMoreBtn).toBeVisible();
 
+      // Delay the next-page response so the spinner stays visible long enough
+      // to assert on. route.continue() passes through to the real API — no mocking.
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/logs*`,
+        async (route) => {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await route.continue();
+        },
+      );
+
       // Click Load More — spinner should appear while fetching the next page
       await loadMoreBtn.click();
 
