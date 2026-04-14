@@ -122,23 +122,21 @@ Each test should be self-contained with try/finally cleanup. Tag with `{tag: ['@
 - Mark vulnerability tests with `test.skip` + `// Requires Clair` comment
 - Replace `cy.push_image()` calls with `pushImage()` / `pushMultiArchImage()` from `container.ts`
 
-### 1.5 Workflow changes (TODO)
+### 1.5 CI integration (automatic — no workflow changes needed)
 
-Modify `.github/workflows/qe-tests.yaml`:
-- Add a new job `qe-api-tests-playwright` alongside the existing Docker-image job
-- Install `skopeo` and `oras` in the runner
-- Run: `npx playwright test --grep @api`
-- Keep the Docker-image job running for comparison during transition
-
-Add trigger paths:
-```yaml
-paths:
-  - "endpoints/**"
-  - "web/playwright/e2e/api/**"
-  - "web/playwright/utils/**"
-  - ".github/actions/setup-quay/**"
-  - ".github/workflows/qe-tests.yaml"
+API tests run automatically in the existing `web-playwright-ci.yaml` workflow. That workflow runs:
+```bash
+npx playwright test --grep-invert @auth:OIDC   # Database auth tests (includes @api)
+npx playwright test --grep @auth:OIDC           # OIDC auth tests (excludes @api)
 ```
+
+Since API tests are tagged `@auth:Database` (not `@auth:OIDC`), they're picked up by the first run. The workflow already:
+- Triggers on changes to `web/**`
+- Installs `skopeo` for image push tests
+- Sets up Quay with Clair and Keycloak
+- Uploads Playwright HTML/JSON reports
+
+No new workflow, no new job, no trigger path changes.
 
 ---
 
@@ -204,28 +202,21 @@ Source: `quay_api_v2_testing.cy.js` — only tests not already inline in `_all`.
 
 Auth: V2 Bearer token via `GET /v2/auth?service=...&scope=...` with Basic auth (use `getV2Token` from `auth.ts`).
 
-### 2.6 Workflow: matrix strategy
+### 2.6 CI considerations for special configurations
 
-```yaml
-strategy:
-  matrix:
-    suite:
-      - api-v1-superuser
-      - api-v1-superuser-exclusive
-      - api-v1-normal-user
-      - api-v1-readonly-superuser
-      - api-v1-immutability
-      - api-v2
-```
+Most API tests run automatically in `web-playwright-ci.yaml` (see 1.5). However, some suites require specific Quay config that differs from the default CI setup:
 
-Each suite gets its own `setup-quay` instance with appropriate config.
+- **Readonly superuser (2.3)**: Needs `GLOBAL_READONLY_SUPER_USERS` configured. Use `@feature:GLOBAL_READONLY_SUPER_USERS` tag to auto-skip if not configured, or add the config to the existing `setup-quay` step.
+- **Immutability (2.4)**: Needs `FEATURE_IMMUTABLE_TAGS: true`. The existing CI already enables this (the `FEATURE_IMMUTABLE_TAGS` flag is set). Use `@feature:IMMUTABLE_TAGS` tag for auto-skip if not.
+
+If certain suites can't run with the default CI config, they should be tagged to auto-skip rather than creating separate workflow jobs. The `@feature:X` auto-skip mechanism already handles this.
 
 ---
 
 ## Phase 3: Cleanup + Clair (future, 5-10 days)
 
 - Remove Docker-image-based job from `qe-tests.yaml` once Playwright tests are stable (2+ weeks)
-- Enable Clair in a separate workflow job for vulnerability API tests
+- Clair/vulnerability API tests already run in `web-playwright-ci.yaml` (Clair is enabled in the existing CI setup)
 - Remove ported files from quay-tests repo
 
 ---
@@ -241,8 +232,9 @@ Each suite gets its own `setup-quay` instance with appropriate config.
 | `quay-tests/quay-api-tests/cypress/e2e/quay_api_testing_gobal_readonly_supuer_user.cy.js` | 3-role auth pattern |
 | `quay-tests/quay-api-tests/cypress/e2e/quay_api_v2_testing.cy.js` | V2 API tests |
 | `quay-tests/quay-api-tests/cypress/e2e/quay_api_testing_all_new_ui.cy.js` | 21 unique immutability tests |
-| `quay/quay:.github/workflows/qe-tests.yaml` | Workflow to modify |
-| `quay/quay:.github/actions/setup-quay/action.yaml` | Composite action (may need new config inputs) |
+| `quay/quay:.github/workflows/web-playwright-ci.yaml` | Existing Playwright CI workflow (API tests run here automatically) |
+| `quay/quay:.github/workflows/qe-tests.yaml` | Docker-image-based Cypress job (to be removed in Phase 3) |
+| `quay/quay:.github/actions/setup-quay/action.yaml` | Composite action (may need config inputs for readonly superuser) |
 
 ## ~~Open question~~ Resolved
 
@@ -270,9 +262,10 @@ Each suite gets its own `setup-quay` instance with appropriate config.
 | 8 | Readonly Superuser Role Tests (3-role auth) | ~400-500 | 30-40 | PR 1 | |
 | 9 | Immutability API Tests (unique from new_ui) | ~350-450 | ~21 | PR 1 | |
 | 10 | V2 Registry API Tests (+ V2 client helper) | ~600 | 30-40 | PR 1 | |
-| 11 | CI Workflow Integration (qe-tests.yaml) | ~100-150 | 0 | PR 1 | |
 
-**Dependency graph:** PRs 2-10 can be developed in parallel after PR 1 merges. PR 11 ideally after PRs 2-3.
+**Dependency graph:** PRs 2-10 can be developed in parallel after PR 1 merges.
+
+**CI:** No separate workflow PR needed. API tests run automatically in the existing `web-playwright-ci.yaml` workflow alongside UI tests. The only CI work is removing the Docker-image-based `qe-tests.yaml` job once ported tests are stable (Phase 3).
 
 **Source location:** All source Cypress tests are in the `quay-tests` repo at `quay-api-tests/cypress/`. No container extraction needed — reference the files directly:
 - Test files: `quay-api-tests/cypress/e2e/quay_api_testing_*.cy.js`
