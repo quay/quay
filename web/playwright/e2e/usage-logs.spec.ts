@@ -270,11 +270,13 @@ test.describe(
       await authenticatedPage.getByPlaceholder('Filter logs').fill(repoName);
       await authenticatedPage.waitForTimeout(500);
 
-      // Scope to td cells with exact text to avoid matching Description column
+      // Scope to td cells with exact text to avoid matching Description column.
+      // Use .first() to avoid strict mode violation if multiple log rows exist.
       await expect(
         table
           .locator('td')
-          .filter({hasText: new RegExp(`^${orgName}/${repoName}$`)}),
+          .filter({hasText: new RegExp(`^${orgName}/${repoName}$`)})
+          .first(),
       ).toBeVisible();
     });
   },
