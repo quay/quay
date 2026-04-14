@@ -218,6 +218,9 @@ test.describe(
   'Usage Logs Repository column namespace deduplication',
   {tag: ['@logs', '@PROJQUAY-10605']},
   () => {
+    // Escape special regex characters in generated names (e.g. dots, plus signs)
+    const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     test(
       'superuser view shows only repo name in Repository column (not namespace/repo)',
       {tag: '@superuser'},
@@ -237,16 +240,18 @@ test.describe(
         await superuserPage.getByPlaceholder('Filter logs').fill(repoName);
         await superuserPage.waitForTimeout(500);
 
-        // Scope to td cells with exact text to avoid matching Description column
-        // (Description may contain "Create repository orgName/repoName" as partial text)
+        // Scope to td cells with exact text to avoid matching Description column.
+        // Escape regex metacharacters in case generated names contain them.
         const repoNameCell = table
           .locator('td')
-          .filter({hasText: new RegExp(`^${repoName}$`)});
+          .filter({hasText: new RegExp(`^${escapeRegex(repoName)}$`)});
         await expect(repoNameCell.first()).toBeVisible();
         await expect(
-          table
-            .locator('td')
-            .filter({hasText: new RegExp(`^${orgName}/${repoName}$`)}),
+          table.locator('td').filter({
+            hasText: new RegExp(
+              `^${escapeRegex(orgName)}/${escapeRegex(repoName)}$`,
+            ),
+          }),
         ).not.toBeVisible();
       },
     );
@@ -270,12 +275,16 @@ test.describe(
       await authenticatedPage.getByPlaceholder('Filter logs').fill(repoName);
       await authenticatedPage.waitForTimeout(500);
 
-      // Scope to td cells with exact text to avoid matching Description column.
-      // Use .first() to avoid strict mode violation if multiple log rows exist.
+      // Scope to td cells with exact text. Use .first() to avoid strict mode
+      // violation if multiple log rows exist for the same repo.
       await expect(
         table
           .locator('td')
-          .filter({hasText: new RegExp(`^${orgName}/${repoName}$`)})
+          .filter({
+            hasText: new RegExp(
+              `^${escapeRegex(orgName)}/${escapeRegex(repoName)}$`,
+            ),
+          })
           .first(),
       ).toBeVisible();
     });
