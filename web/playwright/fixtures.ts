@@ -33,6 +33,7 @@ import {API_URL} from './utils/config';
 import {
   ApiClient,
   PrototypeRole,
+  RawApiClient,
   RepositoryVisibility,
   ServiceKey,
   TeamRole,
@@ -935,6 +936,15 @@ type TestFixtures = {
   // API client for superuser with auto-cleanup
   superuserApi: TestApi;
 
+  // RawApiClient authenticated as admin/superuser (no browser required)
+  adminClient: RawApiClient;
+
+  // RawApiClient authenticated as normal user (no browser required)
+  userClient: RawApiClient;
+
+  // Unauthenticated RawApiClient (no browser required)
+  anonClient: RawApiClient;
+
   // Auto-fixture: skips tests based on @feature: tags (runs automatically)
   _autoSkipByFeature: void;
 
@@ -1034,17 +1044,20 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   cachedQuayConfig: [
-    async ({browser}, use) => {
-      // Create a temporary context just to fetch config
-      const context = await browser.newContext();
-      const response = await context.request.get(`${API_URL}/config`);
-      if (!response.ok()) {
-        await context.close();
-        throw new Error(`Failed to fetch Quay config: ${response.status()}`);
+    async ({playwright}, use) => {
+      const request = await playwright.request.newContext({
+        ignoreHTTPSErrors: true,
+      });
+      try {
+        const response = await request.get(`${API_URL}/config`);
+        if (!response.ok()) {
+          throw new Error(`Failed to fetch Quay config: ${response.status()}`);
+        }
+        const config = (await response.json()) as QuayConfig;
+        await use(config);
+      } finally {
+        await request.dispose();
       }
-      const config = (await response.json()) as QuayConfig;
-      await context.close();
-      await use(config);
     },
     {scope: 'worker'},
   ],
@@ -1123,6 +1136,56 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const testApi = new TestApi(client);
     await use(testApi);
     await testApi.cleanup();
+  },
+
+  // =========================================================================
+  // API-only fixtures (no browser required)
+  // =========================================================================
+
+  adminClient: async ({playwright, cachedQuayConfig}, use) => {
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      const users =
+        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
+          ? TEST_USERS_OIDC
+          : TEST_USERS;
+      await client.signIn(users.admin.username, users.admin.password);
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
+  userClient: async ({playwright, cachedQuayConfig}, use) => {
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      const users =
+        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
+          ? TEST_USERS_OIDC
+          : TEST_USERS;
+      await client.signIn(users.user.username, users.user.password);
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
+  },
+
+  anonClient: async ({playwright}, use) => {
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      await use(client);
+    } finally {
+      await request.dispose();
+    }
   },
 
   // =========================================================================

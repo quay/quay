@@ -63,14 +63,16 @@ export default defineConfig({
   ],
 
   // Configure web server for local development
-  // Note: In OpenShift CI (Prow), services are already running on the cluster
-  webServer: process.env.OPENSHIFT_CI
-    ? undefined
-    : {
-        command:
-          'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && npm run start:integration',
-        url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
-        reuseExistingServer: true,
-        timeout: 120 * 1000,
-      },
+  // Note: In OpenShift CI (Prow), services are already running on the cluster.
+  // API-only tests (test:api) skip this since they only need Quay, not the frontend.
+  webServer:
+    process.env.OPENSHIFT_CI || process.env.PLAYWRIGHT_SKIP_WEBSERVER
+      ? undefined
+      : {
+          command:
+            'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && npm run start:integration',
+          url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
+          reuseExistingServer: true,
+          timeout: 120 * 1000,
+        },
 });
