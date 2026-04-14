@@ -75,7 +75,7 @@ make types-test                      # Type checking (mypy)
   - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
   - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
   - `NO-ISSUE: docs(agents): add contributing guide`
-- **Branch naming:** `fix/projquay-XXXXX-short-description` or `feat/projquay-XXXXX-short-description`
+- **Branch naming:** `<type>/projquay-XXXXX-short-description` where `<type>` matches the PR type
 
 ### Fork Workflow
 
@@ -92,7 +92,7 @@ Use the `/pr` skill — it handles fork detection, auth, and fallbacks automatic
 
 ### Jira Integration
 
-After opening a PR, comment `/jira refresh` to link the ticket and validate the target version. Set **Target Version** to the current release (`quay-v3.18.0` for master-bound work) on the Jira ticket before opening the PR, or the bot will block merging.
+After opening a PR, comment `/jira refresh` to link the ticket and validate the target version. Set **Target Version** to the current development release (check the active versions in Jira) on the Jira ticket before opening the PR, or the bot will block merging.
 
 ### Code Review (CodeRabbit)
 
@@ -103,7 +103,8 @@ Resolve every inline CodeRabbit comment — either fix the code or reply explain
 Git worktrees don't inherit `node_modules`. Pre-commit hooks (Prettier, ESLint) will fail silently without this symlink:
 
 ```bash
-ln -sf /workspace/repos/quay/web/node_modules /workspace/repos/<worktree>/web/node_modules
+ln -sf "$(git -C /path/to/main/repo rev-parse --show-toplevel)/web/node_modules" \
+       "$(git rev-parse --show-toplevel)/web/node_modules"
 ```
 
 ## Local Dev URLs
