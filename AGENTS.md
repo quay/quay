@@ -55,6 +55,7 @@ make types-test                      # Type checking (mypy)
 | Global readonly superuser feature | `agent_docs/global_readonly_superuser.md` |
 | Local development setup | `agent_docs/development.md` |
 | React frontend | `web/AGENTS.md` |
+| Frontend E2E tests, Playwright fixtures | `web/playwright/MIGRATION.md` |
 
 ## Universal Conventions
 
@@ -64,6 +65,44 @@ make types-test                      # Type checking (mypy)
 4. **Imports:** Follow existing import ordering patterns in each file
 5. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
 6. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
+
+## Contributing
+
+### PR & Commit Format
+
+- **PR title:** `PROJQUAY-XXXXX: type(scope): lowercase description`
+  - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
+  - Example: `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
+- **Branch naming:** `fix/projquay-XXXXX-short-description` or `feat/projquay-XXXXX-short-description`
+
+### Fork Workflow
+
+**Never push directly to `quay/quay`.** Always use a fork.
+
+```bash
+gh repo list <your-user> --fork   # check for existing fork
+git remote add fork https://github.com/<your-user>/quay.git
+git push -u fork <branch>
+gh pr create --repo quay/quay --head <your-user>:<branch>
+```
+
+Use the `/pr` skill — it handles fork detection, auth, and fallbacks automatically.
+
+### Jira Integration
+
+After opening a PR, comment `/jira refresh` to link the ticket and validate the target version. Set **Target Version** to the current release (`quay-v3.18.0` for master-bound work) on the Jira ticket before opening the PR, or the bot will block merging.
+
+### Code Review (CodeRabbit)
+
+Resolve every inline CodeRabbit comment — either fix the code or reply explaining why it's not actionable. The bot re-reviews on each push.
+
+### Worktrees (Frontend)
+
+Git worktrees don't inherit `node_modules`. Pre-commit hooks (Prettier, ESLint) will fail silently without this symlink:
+
+```bash
+ln -sf /workspace/repos/quay/web/node_modules /workspace/repos/<worktree>/web/node_modules
+```
 
 ## Local Dev URLs
 
