@@ -223,30 +223,27 @@ test.describe(
     }) => {
       // The superuser usage logs page at /usage-logs uses isSuperuser=true and
       // fetches from /api/v1/superuser/logs — mock that endpoint
-      await superuserPage.route(
-        '**/api/v1/superuser/logs*',
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              logs: [
-                {
-                  kind: 'push_repo',
-                  datetime: new Date().toISOString(),
-                  metadata: {
-                    namespace: 'nsdedup',
-                    repo: 'myimage',
-                    performer: 'testuser',
-                  },
-                  performer: {name: 'testuser'},
-                  ip: '127.0.0.1',
+      await superuserPage.route('**/api/v1/superuser/logs*', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            logs: [
+              {
+                kind: 'push_repo',
+                datetime: new Date().toISOString(),
+                metadata: {
+                  namespace: 'nsdedup',
+                  repo: 'myimage',
+                  performer: 'testuser',
                 },
-              ],
-            }),
-          });
-        },
-      );
+                performer: {name: 'testuser'},
+                ip: '127.0.0.1',
+              },
+            ],
+          }),
+        });
+      });
       await superuserPage.route(
         '**/api/v1/superuser/aggregatelogs*',
         async (route) => {
