@@ -224,26 +224,19 @@ test.describe(
     }) => {
       const org = await api.organization('loadmore');
 
-      // Intercept only to inject next_page token — real log data, just signals more pages exist
-      await authenticatedPage.route(
-        `**/api/v1/organization/${org.name}/logs**`,
-        async (route) => {
-          const response = await route.fetch();
-          const body = await response.json();
-          await route.fulfill({
-            response,
-            json: {...body, next_page: 'faketoken'},
-          });
-        },
+      // Create 21 repos to generate 21 log entries — enough to trigger pagination (page size: 20)
+      await Promise.all(
+        Array.from({length: 21}, (_, i) =>
+          api.repository(org.name, `repo${i}`),
+        ),
       );
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
 
-      await expect(
-        authenticatedPage.getByTestId('usage-logs-table'),
-      ).toBeVisible();
+      const table = authenticatedPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
 
-      // Load More button should appear when hasNextPage=true
+      // With 21 log entries, the API returns a next_page token
       await expect(
         authenticatedPage.getByTestId('load-more-button'),
       ).toBeVisible();
@@ -258,45 +251,28 @@ test.describe(
     }) => {
       const org = await api.organization('loadmorespinner');
 
-      let requestCount = 0;
-      await authenticatedPage.route(
-        `**/api/v1/organization/${org.name}/logs**`,
-        async (route) => {
-          requestCount++;
-          if (requestCount === 1) {
-            // First page: inject next_page so button appears
-            const response = await route.fetch();
-            const body = await response.json();
-            await route.fulfill({
-              response,
-              json: {...body, next_page: 'faketoken'},
-            });
-          } else {
-            // Second page: delay slightly so we can observe the spinner
-            await new Promise((r) => setTimeout(r, 800));
-            const response = await route.fetch();
-            await route.fulfill({response});
-          }
-        },
+      // Create 21 repos to generate 21 real log entries
+      await Promise.all(
+        Array.from({length: 21}, (_, i) =>
+          api.repository(org.name, `repo${i}`),
+        ),
       );
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
-      await expect(
-        authenticatedPage.getByTestId('usage-logs-table'),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByTestId('load-more-button'),
-      ).toBeVisible();
+      const table = authenticatedPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
 
-      await authenticatedPage.getByTestId('load-more-button').click();
+      // Load More button is visible because there are more than 20 logs
+      const loadMoreBtn = authenticatedPage.getByTestId('load-more-button');
+      await expect(loadMoreBtn).toBeVisible();
 
-      // Spinner should appear while fetching
+      // Click Load More — spinner should appear while fetching the next page
+      await loadMoreBtn.click();
+
       await expect(
         authenticatedPage.getByTestId('load-more-spinner'),
       ).toBeVisible();
-      await expect(
-        authenticatedPage.getByTestId('load-more-button'),
-      ).not.toBeVisible();
+      await expect(loadMoreBtn).not.toBeVisible();
     });
   },
 );
