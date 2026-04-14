@@ -15,6 +15,37 @@ The `quay-tests` repo has ~450 API test cases across 6 Cypress files in `quay-ap
 
 ---
 
+## Architecture
+
+All API tests are integrated into the main Playwright suite — one config, one fixtures file, one test directory. API tests are distinguished by the `@api` tag.
+
+**Test location:** `web/playwright/e2e/api/*.spec.ts` (alongside UI tests in `web/playwright/e2e/`)
+
+**Fixtures:** `adminClient`, `userClient`, `anonClient` (all `RawApiClient` instances) in `web/playwright/fixtures.ts`, using `playwright.request` (no browser required)
+
+**Helpers:**
+- `RawApiClient` at `web/playwright/utils/api/raw-client.ts` — returns raw `APIResponse` for status code assertions
+- `ApiClient` at `web/playwright/utils/api/client.ts` — existing high-level client (81 methods, throws on error), used for setup/teardown
+- Auth helpers at `web/playwright/utils/api/auth.ts`
+- CSRF token handling at `web/playwright/utils/api/csrf.ts`
+- Container/image ops at `web/playwright/utils/container.ts` — `pushImage`, `pushMultiArchImage` (skopeo), `orasAttach` (oras)
+- Test utils at `web/playwright/utils/test-utils.ts` — `uniqueName(prefix)`
+
+**Running tests:**
+```bash
+npm run test:e2e          # All tests (UI + API together)
+npm run test:api          # Only @api tests (no browser, no frontend build)
+npm run test:e2e:no-api   # Only UI tests
+```
+
+**Test patterns:**
+- Tag all API test describe blocks with `{tag: ['@api', '@auth:Database']}`
+- Import `test`, `expect`, `uniqueName` from `../../fixtures`
+- Tests are parallel and self-contained (create + cleanup per test via try/finally)
+- Use `adminClient`/`userClient` for assertions, existing `ApiClient` for setup when needed
+
+---
+
 ## Phase 1: Infrastructure + Smoke Tests ~~(3-5 days)~~ DONE
 
 > **Status:** Complete. PR quay/quay#5715 open on branch `worktree-api-test-infrastructure`.
@@ -37,42 +68,36 @@ Source translated: `quay-api-tests/cypress/support/commands.js` lines 1-180
 - Returns full `APIResponse` for status code assertions in negative tests
 - Complements the existing `ApiClient` (which throws on errors and is used for setup/teardown)
 
-**`web/playwright/utils/image-ops.ts`** — Shell command wrappers
-- `pushImage(hostname, user, pass, source, sourceTag, org, repo, targetTag)` — `execFileSync('skopeo copy ...')`
-- `pushImageAll(...)` — same with `--all` for manifest lists
-- `orasAttach(hostname, namespace, repo, user, pass, tag, artifactType, annotation, path)` — `execFileSync('oras attach ...')`
-- `isSkopeoAvailable()`, `isOrasAvailable()` — tool availability checks
+**`web/playwright/utils/container.ts`** — Container and image operation helpers
+- `pushImage(namespace, repo, tag, username, password)` — push via podman/docker
+- `pushMultiArchImage(namespace, repo, tag, username, password)` — push manifest list via skopeo `--all`
+- `orasAttach(namespace, repo, tag, username, password, artifactType, annotation, filePath)` — attach OCI artifact via oras
+- `isContainerRuntimeAvailable()`, `isOrasAvailable()` — tool availability checks
 
 Source translated: `quay-api-tests/cypress/support/commands.js` lines 200-311
 
-**`web/playwright/shared/csrf.ts`** — Shared CSRF token fetch (used by both `RawApiClient` and `ApiClient`)
+**`web/playwright/utils/api/csrf.ts`** — CSRF token fetch (used by `RawApiClient`, `ApiClient`, and auth helpers)
 
-**`web/playwright/shared/test-utils.ts`** — `uniqueName(prefix)` utility (used by both API and UI tests)
+**`web/playwright/utils/test-utils.ts`** — `uniqueName(prefix)` utility for generating unique test resource names
 
-### 1.2 Playwright API config (DONE)
+### 1.2 API fixtures (DONE)
 
-**`web/playwright/api/playwright.api.config.ts`**
-- No browser needed — uses Playwright's `request` context only
-- `testDir: './suites'`
-- `fullyParallel: false`, `workers: 1` (tests within a file are serial)
-- `timeout: 60_000` per test (some API calls are slow)
-- Reporters: GitHub (CI) + JSON output
+**`web/playwright/fixtures.ts`** — API fixtures integrated into the main fixtures file:
+- Test-scoped: `adminClient`, `userClient`, `anonClient` (all `RawApiClient` instances using `playwright.request`, no browser)
+- Uses `TEST_USERS` from `global-setup.ts` for credentials
+- `PLAYWRIGHT_SKIP_WEBSERVER=1` set by `test:api` script to skip frontend build
 
-### 1.3 API fixtures (DONE)
+### 1.3 Smoke tests (DONE)
 
-**`web/playwright/api/fixtures.ts`**
-- Worker-scoped: `_adminInitialized` (init or sign-in), `_testUserInitialized` (self-registration)
-- Test-scoped: `adminClient`, `userClient`, `anonClient` (all `RawApiClient` instances)
-- Credentials from env vars with defaults matching CI setup
+**`web/playwright/e2e/api/smoke.spec.ts`** — 4 parallel tests validating the infrastructure:
+- Admin org CRUD (create, read, delete)
+- Repository creation in an organization
+- Permission boundary (user gets 403 on superuser endpoints)
+- Auth boundary (unauthenticated request rejected)
 
-### 1.4 Smoke tests (DONE)
+### 1.4 Port `quay_api_testing_all.cy.js` (NEXT)
 
-**`web/playwright/api/suites/smoke.spec.ts`** — 5 tests validating the infrastructure:
-- Admin org CRUD, repo creation, 403/401 permission boundaries
-
-### 1.5 Port `quay_api_testing_all.cy.js` (NEXT)
-
-**`web/playwright/api/suites/api-v1-superuser.spec.ts`**
+**`web/playwright/e2e/api/api-v1-superuser.spec.ts`**
 
 Translation pattern:
 ```typescript
@@ -82,36 +107,35 @@ cy.request({ method: "POST", url: `${endpoint}/api/v1/organization/`,
   .then(response => { expect(response.status).to.eq(200); });
 
 // Playwright:
-const response = await client.post('/api/v1/organization/', {
+const response = await adminClient.post('/api/v1/organization/', {
   name: org_name, email: "test@test.com"
 });
 expect(response.status()).toBe(200);
 ```
 
-Structure: `test.describe.serial('Quay API v1', () => { ... })` to preserve execution order.
+Each test should be self-contained with try/finally cleanup. Tag with `{tag: ['@api', '@auth:Database']}`.
 
 **What to skip/change:**
 - Remove the `create Quay Oauth Token` UI test (dead code, line 406 DOM assertion)
 - Remove hardcoded Red Hat registry credentials — skip mirror sync tests, or parameterize via env
 - Replace `cy.wait(300000)` with `expect.poll()` (5s intervals, 300s timeout)
 - Mark vulnerability tests with `test.skip` + `// Requires Clair` comment
-- Replace `cy.push_image()` calls with `pushImage()` from `image-ops.ts`
+- Replace `cy.push_image()` calls with `pushImage()` / `pushMultiArchImage()` from `container.ts`
 
-### 1.6 Workflow changes (TODO)
+### 1.5 Workflow changes (TODO)
 
 Modify `.github/workflows/qe-tests.yaml`:
 - Add a new job `qe-api-tests-playwright` alongside the existing Docker-image job
 - Install `skopeo` and `oras` in the runner
-- Run: `npx playwright test --config playwright/api/playwright.api.config.ts`
+- Run: `npx playwright test --grep @api`
 - Keep the Docker-image job running for comparison during transition
 
 Add trigger paths:
 ```yaml
 paths:
   - "endpoints/**"
-  - "web/playwright/api/**"
+  - "web/playwright/e2e/api/**"
   - "web/playwright/utils/**"
-  - "web/playwright/shared/**"
   - ".github/actions/setup-quay/**"
   - ".github/workflows/qe-tests.yaml"
 ```
@@ -122,7 +146,7 @@ paths:
 
 ### 2.1 Superuser-exclusive tests
 
-**`web/playwright/api/suites/api-v1-superuser-exclusive.spec.ts`**
+**`web/playwright/e2e/api/api-v1-superuser-exclusive.spec.ts`**
 
 Source: `quay_api_testing_super_user.cy.js` — only endpoints NOT covered by `_all`:
 - Service keys: create, approve, list, update, delete
@@ -136,7 +160,7 @@ Source: `quay_api_testing_super_user.cy.js` — only endpoints NOT covered by `_
 
 ### 2.2 Normal user permission boundaries
 
-**`web/playwright/api/suites/api-v1-normal-user.spec.ts`**
+**`web/playwright/e2e/api/api-v1-normal-user.spec.ts`**
 
 Source: `quay_api_testing_normal_user.cy.js`
 
@@ -149,7 +173,7 @@ Tests verify: same CRUD operations as superuser but from a non-privileged user. 
 
 ### 2.3 Readonly superuser restrictions
 
-**`web/playwright/api/suites/api-v1-readonly-superuser.spec.ts`**
+**`web/playwright/e2e/api/api-v1-readonly-superuser.spec.ts`**
 
 Source: `quay_api_testing_gobal_readonly_supuer_user.cy.js`
 
@@ -166,7 +190,7 @@ GLOBAL_READONLY_SUPER_USERS:
 
 ### 2.4 Immutability policy tests
 
-**`web/playwright/api/suites/api-v1-immutability.spec.ts`**
+**`web/playwright/e2e/api/api-v1-immutability.spec.ts`**
 
 Source: 21 unique tests from `quay_api_testing_all_new_ui.cy.js` (the rest is a duplicate of `_all`).
 
@@ -174,7 +198,7 @@ Source: 21 unique tests from `quay_api_testing_all_new_ui.cy.js` (the rest is a 
 
 ### 2.5 V2 Registry API
 
-**`web/playwright/api/suites/api-v2.spec.ts`**
+**`web/playwright/e2e/api/api-v2.spec.ts`**
 
 Source: `quay_api_v2_testing.cy.js` — only tests not already inline in `_all`.
 
@@ -202,7 +226,6 @@ Each suite gets its own `setup-quay` instance with appropriate config.
 
 - Remove Docker-image-based job from `qe-tests.yaml` once Playwright tests are stable (2+ weeks)
 - Enable Clair in a separate workflow job for vulnerability API tests
-- Optionally refactor from `test.describe.serial` to independent tests with Playwright fixtures
 - Remove ported files from quay-tests repo
 
 ---
@@ -231,14 +254,13 @@ Each suite gets its own `setup-quay` instance with appropriate config.
 2. **Phase 2**: Total Playwright test count should be ~350 (450 minus duplicates in `_all_new_ui` minus vuln tests).
 3. **Each phase**: Open PR on quay/quay, verify `qe-tests` workflow passes, review CTRF report in PR comments.
 
-
 ---
 
 ## PR Roadmap (added 2026-04-13)
 
 | PR | Title | Est. Lines | Est. Tests | Dep | Status |
 |----|-------|-----------|------------|-----|--------|
-| 1 | API Test Infrastructure (config, fixtures, helpers) | ~400-500 | 5 smoke | — | **PR #5715 open** |
+| 1 | API Test Infrastructure (config, fixtures, helpers) | ~400-500 | 4 smoke | — | **PR #5715 open** |
 | 2 | Organization & User API Tests | ~400-500 | 20-25 | PR 1 | |
 | 3 | Repository API Tests | ~400-500 | 20-25 | PR 1 | |
 | 4 | Repository Features (perms, notifs, tags, builds) | ~500-600 | 25-30 | PR 1 | |
@@ -252,73 +274,7 @@ Each suite gets its own `setup-quay` instance with appropriate config.
 
 **Dependency graph:** PRs 2-10 can be developed in parallel after PR 1 merges. PR 11 ideally after PRs 2-3.
 
-**Architecture:** All API tests live under `web/playwright/api/` with their own config (no browser, serial execution). Helpers are integrated into the existing `web/playwright/utils/` structure:
-- `RawApiClient` at `web/playwright/utils/api/raw-client.ts` — returns raw `APIResponse` for status code assertions
-- `ApiClient` at `web/playwright/utils/api/client.ts` — existing high-level client (81 methods, throws on error), used for setup/teardown
-- Auth helpers at `web/playwright/utils/api/auth.ts`
-- Image ops at `web/playwright/utils/image-ops.ts`
-- Shared CSRF + test utils at `web/playwright/shared/`
-- API fixtures at `web/playwright/api/fixtures.ts`
-
-**Source location:** All source Cypress tests are in the `quay-tests` repo (this repo) at `quay-api-tests/cypress/`. No container extraction needed — reference the files directly:
+**Source location:** All source Cypress tests are in the `quay-tests` repo at `quay-api-tests/cypress/`. No container extraction needed — reference the files directly:
 - Test files: `quay-api-tests/cypress/e2e/quay_api_testing_*.cy.js`
 - Custom commands/helpers: `quay-api-tests/cypress/support/commands.js`
 - Config: `quay-api-tests/cypress.config.js`
-
----
-
-## Structure Update — 2026-04-14
-
-> **The sections above reference an outdated directory structure.** PR #5715 was reworked to consolidate API tests into the main Playwright suite. This section supersedes all path/config references above.
-
-### What changed
-
-The separate API test infrastructure (`web/playwright/api/`) was merged into the main suite. There is now **one Playwright config, one fixtures file, one test directory**.
-
-### Old → New path mapping
-
-| Old path (references above) | New path |
-|---|---|
-| `web/playwright/api/playwright.api.config.ts` | **Deleted** — uses main `web/playwright.config.ts` |
-| `web/playwright/api/fixtures.ts` | **Deleted** — fixtures merged into `web/playwright/fixtures.ts` |
-| `web/playwright/api/suites/smoke.spec.ts` | `web/playwright/e2e/api/smoke.spec.ts` |
-| `web/playwright/api/suites/*.spec.ts` | `web/playwright/e2e/api/*.spec.ts` |
-| `web/playwright/shared/csrf.ts` | `web/playwright/utils/api/csrf.ts` |
-| `web/playwright/shared/test-utils.ts` | `web/playwright/utils/test-utils.ts` |
-
-### Updated architecture
-
-- **All API tests** live under `web/playwright/e2e/api/` alongside UI tests in `web/playwright/e2e/`
-- **API tests are tagged `@api`** and filtered via `--grep @api` (no separate Playwright config)
-- **API fixtures** (`adminClient`, `userClient`, `anonClient`) are in the main `web/playwright/fixtures.ts`, using `playwright.request` (no browser)
-- **Tests are parallel** — each test is self-contained with inline cleanup (no serial execution, no shared state)
-- **`PLAYWRIGHT_SKIP_WEBSERVER=1`** is set by `npm run test:api` to skip the frontend build
-
-### Running tests
-
-```bash
-npm run test:e2e          # All tests (UI + API together)
-npm run test:api          # Only @api tests (no browser, no frontend build)
-npm run test:e2e:no-api   # Only UI tests
-```
-
-### Impact on future PRs
-
-When porting test files (PRs 2-10 in the roadmap above), place them at:
-- `web/playwright/e2e/api/api-v1-superuser.spec.ts` (not `web/playwright/api/suites/`)
-- Tag all describe blocks with `{tag: ['@api', '@auth:Database']}`
-- Use `adminClient`/`userClient`/`anonClient` from `../../fixtures`
-- Tests should be parallel and self-contained (create + cleanup per test)
-
-### Workflow paths update
-
-For section 1.6 workflow triggers, replace:
-```yaml
-# Old
-- "web/playwright/api/**"
-- "web/playwright/shared/**"
-
-# New
-- "web/playwright/e2e/api/**"
-- "web/playwright/utils/**"
-```
