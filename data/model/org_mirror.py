@@ -153,7 +153,14 @@ def create_org_mirror_config(
         # Lock the org row to serialize against concurrent repo creation
         db_for_update(User.select().where(User.id == organization.id)).get()
 
-        if Repository.select().where(Repository.namespace_user == organization).exists():
+        if (
+            Repository.select()
+            .where(
+                (Repository.namespace_user == organization)
+                & (Repository.state != RepositoryState.MARKED_FOR_DELETION)
+            )
+            .exists()
+        ):
             raise DataModelException(
                 "Cannot create organization mirror: the organization already contains "
                 "repositories. Organization mirroring requires an empty organization."

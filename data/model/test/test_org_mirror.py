@@ -14,6 +14,8 @@ from data.database import (
     OrgMirrorRepository,
     OrgMirrorRepoStatus,
     OrgMirrorStatus,
+    Repository,
+    RepositoryState,
     SourceRegistryType,
     User,
     Visibility,
@@ -385,6 +387,86 @@ class TestCreateOrgMirrorConfig:
         assert retrieved is not None
         assert retrieved.id == created.id
         assert retrieved.external_registry_url == created.external_registry_url
+
+    def test_create_org_mirror_config_allows_deleted_repos(self, initialized_db):
+        """
+        Creating org mirror config should succeed when the organization only has
+        repositories in MARKED_FOR_DELETION state (pending garbage collection).
+
+        Regression test for PROJQUAY-10982.
+        """
+        org, robot = _create_org_and_robot("create_test_deleted_repos")
+        visibility = Visibility.get(name="private")
+
+        # Create a repo and mark it for deletion (simulating user-deleted repos
+        # that haven't been garbage collected yet)
+        repo = model.repository.create_repository(
+            org.username, "deleted-repo", None, visibility="private"
+        )
+        repo.state = RepositoryState.MARKED_FOR_DELETION
+        repo.save()
+
+        # Verify the repo exists in the DB but is marked for deletion
+        assert (
+            Repository.select()
+            .where(
+                (Repository.namespace_user == org)
+                & (Repository.state == RepositoryState.MARKED_FOR_DELETION)
+            )
+            .exists()
+        )
+
+        # Should succeed — MARKED_FOR_DELETION repos should not block creation
+        config = create_org_mirror_config(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="my-project",
+            visibility=visibility,
+            sync_interval=3600,
+            sync_start_date=datetime.utcnow(),
+        )
+
+        assert config is not None
+        assert config.organization == org
+
+    def test_create_org_mirror_config_rejects_normal_repos_with_deleted(self, initialized_db):
+        """
+        Creating org mirror config should still be rejected when the organization
+        has NORMAL-state repositories, even if it also has MARKED_FOR_DELETION ones.
+
+        Regression test for PROJQUAY-10982.
+        """
+        org, robot = _create_org_and_robot("create_test_mixed_repos")
+        visibility = Visibility.get(name="private")
+
+        # Create a repo marked for deletion
+        deleted_repo = model.repository.create_repository(
+            org.username, "deleted-repo", None, visibility="private"
+        )
+        deleted_repo.state = RepositoryState.MARKED_FOR_DELETION
+        deleted_repo.save()
+
+        # Create a normal repo
+        model.repository.create_repository(
+            org.username, "normal-repo", None, visibility="private"
+        )
+
+        # Should still reject — a NORMAL repo exists
+        with pytest.raises(DataModelException) as excinfo:
+            create_org_mirror_config(
+                organization=org,
+                internal_robot=robot,
+                external_registry_type=SourceRegistryType.HARBOR,
+                external_registry_url="https://harbor.example.com",
+                external_namespace="my-project",
+                visibility=visibility,
+                sync_interval=3600,
+                sync_start_date=datetime.utcnow(),
+            )
+
+        assert "already contains repositories" in str(excinfo.value)
 
 
 class TestDeleteOrgMirrorConfig:
