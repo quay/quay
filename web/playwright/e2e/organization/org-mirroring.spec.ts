@@ -1489,7 +1489,9 @@ test.describe(
 
       // The Robot User FormGroup label should be present in the form
       await expect(
-        authenticatedPage.getByTestId('org-mirror-form').getByText('Robot User'),
+        authenticatedPage
+          .getByTestId('org-mirror-form')
+          .getByText('Robot User'),
       ).toBeVisible();
 
       // PatternFly renders the required asterisk as a <span> with class
@@ -1499,9 +1501,7 @@ test.describe(
       await expect(
         authenticatedPage
           .getByTestId('org-mirror-form')
-          .locator(
-            '.pf-v6-c-form__label-required, .pf-c-form__label-required',
-          )
+          .locator('.pf-v6-c-form__label-required, .pf-c-form__label-required')
           .first(),
       ).toBeVisible();
     });
@@ -1519,9 +1519,7 @@ test.describe(
       );
 
       // Wait for the mirroring configuration form to appear
-      await expect(
-        authenticatedPage.getByText('Robot User'),
-      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Robot User')).toBeVisible();
 
       // PatternFly renders the required asterisk as a <span> with class
       // pf-v6-c-form__label-required (PF6) or pf-c-form__label-required (PF5).
