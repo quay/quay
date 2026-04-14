@@ -687,6 +687,38 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
     });
   });
 
+  test.describe('Navigation from org context (PROJQUAY-10862)', () => {
+    test('account settings shows user settings, not the org just visited', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // Create an org so we can visit its page first
+      const org = await api.organization('navctx');
+
+      // Visit the org page
+      await authenticatedPage.goto(`/organization/${org.name}`);
+      await expect(
+        authenticatedPage.getByRole('heading', {name: org.name}),
+      ).toBeVisible();
+
+      // Click Account Settings via the user menu
+      await authenticatedPage.getByTestId('user-menu-toggle').click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Account Settings'})
+        .click();
+
+      // Should land on the USER's settings, not the org's
+      await expect(authenticatedPage).toHaveURL(
+        new RegExp(`/(user|organization)/${username}.*tab=Settings`),
+      );
+
+      // Verify the page shows the user's username, not the org name
+      await expect(authenticatedPage.locator('#form-name')).toHaveValue(
+        username,
+      );
+    });
+  });
+
   test.describe('URL Normalization', () => {
     test('normalizes lowercase "settings" to correct tab', async ({
       authenticatedPage,
