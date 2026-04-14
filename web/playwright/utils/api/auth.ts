@@ -33,8 +33,9 @@ export async function initializeSuperuser(
 
   if (!response.ok()) {
     const body = await response.text();
-    // If user already exists, try to get token via signin
-    if (body.includes('already')) {
+    // If user already exists or the initialize endpoint is disabled (404),
+    // fall back to signing in with the provided credentials.
+    if (body.includes('already') || response.status() === 404) {
       return getAccessToken(request, baseUrl, username, password);
     }
     throw new Error(

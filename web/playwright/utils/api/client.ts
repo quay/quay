@@ -5,6 +5,7 @@
  */
 
 import {APIRequestContext} from '@playwright/test';
+import {requestCsrfToken} from '../../shared/csrf';
 import {API_URL} from '../config';
 
 export type RepositoryVisibility = 'public' | 'private';
@@ -214,14 +215,7 @@ export class ApiClient {
 
   private async fetchToken(): Promise<string> {
     if (!this.csrfToken) {
-      const response = await this.request.get(`${API_URL}/csrf_token`, {
-        timeout: 5000,
-      });
-      if (!response.ok()) {
-        throw new Error(`Failed to get CSRF token: ${response.status()}`);
-      }
-      const data = await response.json();
-      this.csrfToken = data.csrf_token;
+      this.csrfToken = await requestCsrfToken(this.request, API_URL);
     }
     return this.csrfToken;
   }

@@ -7,7 +7,7 @@
  *
  * Usage:
  * ```typescript
- * import {test, expect} from '../helpers/fixtures';
+ * import {test, expect} from '../fixtures';
  *
  * test('admin can create org', async ({adminClient}) => {
  *   const response = await adminClient.post('/api/v1/organization/', {
@@ -21,10 +21,10 @@
 
 import {test as base, expect} from '@playwright/test';
 
-import {requestCsrfToken} from '../../shared/csrf';
-import {uniqueName} from '../../shared/test-utils';
-import {RawApiClient} from './api-client';
-import {initializeSuperuser} from './auth';
+import {requestCsrfToken} from '../shared/csrf';
+import {uniqueName} from '../shared/test-utils';
+import {RawApiClient} from '../utils/api/raw-client';
+import {initializeSuperuser} from '../utils/api/auth';
 
 // Default credentials — matching the existing CI setup
 const ADMIN = {
@@ -202,4 +202,4 @@ export const test = base.extend<ApiTestFixtures, ApiWorkerFixtures>({
 });
 
 export {expect};
-export {uniqueName} from '../../shared/test-utils';
+export {uniqueName} from '../shared/test-utils';

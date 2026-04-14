@@ -6,7 +6,7 @@
  * porting any Cypress tests.
  */
 
-import {test, expect, uniqueName} from '../helpers';
+import {test, expect, uniqueName} from '../fixtures';
 
 test.describe.serial('API Test Infrastructure Smoke', () => {
   const orgName = uniqueName('smoke_org');
@@ -67,7 +67,7 @@ test.describe.serial('API Test Infrastructure Smoke', () => {
   // Cleanup even if earlier tests fail — prevent orphaned resources
   test.afterAll(async () => {
     const baseUrl = process.env.QUAY_API_URL || 'http://localhost:8080';
-    const {RawApiClient} = await import('../helpers/api-client');
+    const {RawApiClient} = await import('../../utils/api/raw-client');
     // Use global fetch for cleanup — Playwright fixtures aren't available in afterAll
     const {request: playwrightRequest} = await import('@playwright/test');
     const reqContext = await playwrightRequest.newContext({
