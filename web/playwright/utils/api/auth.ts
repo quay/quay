@@ -7,7 +7,7 @@
 
 import {APIRequestContext} from '@playwright/test';
 
-import {requestCsrfToken} from '../../shared/csrf';
+import {requestCsrfToken} from './csrf';
 
 /**
  * Initialize the first superuser via the Quay initialize API.

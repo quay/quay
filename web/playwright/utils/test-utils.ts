@@ -1,5 +1,5 @@
 /**
- * Shared test utilities used by both UI (Playwright) and API test suites.
+ * Test utilities for Playwright tests.
  */
 
 /**

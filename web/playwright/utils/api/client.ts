@@ -5,7 +5,7 @@
  */
 
 import {APIRequestContext} from '@playwright/test';
-import {requestCsrfToken} from '../../shared/csrf';
+import {requestCsrfToken} from './csrf';
 import {API_URL} from '../config';
 
 export type RepositoryVisibility = 'public' | 'private';

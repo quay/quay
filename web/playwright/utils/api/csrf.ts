@@ -1,5 +1,5 @@
 /**
- * Shared CSRF token handling used by both UI and API test suites.
+ * CSRF token handling for Playwright tests.
  */
 
 import {APIRequestContext} from '@playwright/test';

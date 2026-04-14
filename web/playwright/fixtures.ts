@@ -27,7 +27,7 @@ import {
   APIRequestContext,
   BrowserContext,
 } from '@playwright/test';
-import {uniqueName} from './shared/test-utils';
+import {uniqueName} from './utils/test-utils';
 import {TEST_USERS, TEST_USERS_OIDC} from './global-setup';
 import {API_URL} from './utils/config';
 import {
@@ -1305,7 +1305,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 // Re-export expect for convenience
 export {expect};
 
-export {uniqueName} from './shared/test-utils';
+export {uniqueName} from './utils/test-utils';
 
 // ============================================================================
 // Mailpit: Re-export from utils for backward compatibility

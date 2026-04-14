@@ -11,7 +11,7 @@
 
 import {APIRequestContext, APIResponse} from '@playwright/test';
 
-import {requestCsrfToken} from '../../shared/csrf';
+import {requestCsrfToken} from './csrf';
 
 export class RawApiClient {
   private request: APIRequestContext;
