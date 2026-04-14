@@ -184,7 +184,7 @@ def _check_mirror_workers(app):
 
     try:
         from data.database import RepoMirrorConfig, RepoMirrorStatus, Repository, RepositoryState
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         # Check if there are any enabled mirrors
         enabled_mirrors = (
@@ -199,7 +199,7 @@ def _check_mirror_workers(app):
 
         # SYNCING rows use sync_expiration_date as the claim lease end (set in claim_mirror).
         # If it is in the past, the worker should have released the mirror; still SYNCING means stuck.
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         stuck_syncing = (
             RepoMirrorConfig.select()
             .join(Repository)

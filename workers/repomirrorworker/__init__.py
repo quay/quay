@@ -96,11 +96,6 @@ repo_mirror_sync_failures_total = Counter(
 )
 
 # Additional supporting metrics
-repo_mirror_workers_active = Gauge(
-    "quay_repository_mirror_workers_active",
-    "Number of currently active mirror workers",
-)
-
 repo_mirror_last_sync_timestamp = Gauge(
     "quay_repository_mirror_last_sync_timestamp",
     "Unix timestamp of the last synchronization attempt",
@@ -1140,46 +1135,6 @@ def _update_mirror_metrics_on_failure(namespace, repository_name, failure_reason
             namespace=namespace,
             repository=repository_name,
         ).observe(sync_duration)
-
-
-def cleanup_mirror_metrics(namespace, repository_name):
-    """
-    Remove metrics for a repository that is being deleted or disabled.
-    This helps prevent stale metrics from accumulating.
-    """
-    try:
-        repo_mirror_tags_pending.remove(namespace, repository_name)
-        repo_mirror_sync_complete.remove(namespace, repository_name)
-        repo_mirror_last_sync_timestamp.remove(namespace, repository_name)
-
-        # Note: Last sync status has an additional 'last_error_reason' label,
-        # so we need to remove all possible combinations
-        # Since we can't enumerate all possible error reasons, we'll try common ones
-        for error_reason in [
-            "",
-            "auth_failed",
-            "network_timeout",
-            "connection_error",
-            "not_found",
-            "tls_error",
-            "decryption_failed",
-            "unknown_error",
-            "preempted",
-        ]:
-            try:
-                repo_mirror_last_sync_status.remove(namespace, repository_name, error_reason)
-            except (KeyError, ValueError):
-                pass
-
-        # Note: Counter and Histogram metrics cannot be easily removed in prometheus_client,
-        # they will naturally expire when not updated
-    except (KeyError, AttributeError):
-        # Metrics may not exist or removal not supported
-        logger.debug(
-            "Could not remove metrics for %s/%s - may not exist",
-            namespace,
-            repository_name,
-        )
 
 
 # ==============================================================================
