@@ -1506,30 +1506,40 @@ test.describe(
       ).toBeVisible();
     });
 
-    test('shows required asterisk on Robot User field in repo mirror config', async ({
-      authenticatedPage,
-      api,
-    }) => {
-      const org = await api.organization('repomirrrreq');
-      const repo = await api.repository(org.name, 'testrepo');
+    test(
+      'shows required asterisk on Robot User field in repo mirror config',
+      {tag: '@feature:REPO_MIRROR'},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('repomirrrreq');
+        const repo = await api.repository(org.name, 'testrepo');
 
-      // Navigate directly to the repository mirroring configuration tab
-      await authenticatedPage.goto(
-        `/repository/${org.name}/${repo.name}?tab=mirroring`,
-      );
+        // Must set MIRROR state before the form renders
+        await api.setMirrorState(org.name, repo.name);
 
-      // Wait for the mirroring configuration form to appear
-      await expect(authenticatedPage.getByText('Robot User')).toBeVisible();
+        // Navigate to the repository mirroring configuration tab
+        await authenticatedPage.goto(
+          `/repository/${org.name}/${repo.name}?tab=mirroring`,
+        );
 
-      // PatternFly renders the required asterisk as a <span> with class
-      // pf-v6-c-form__label-required (PF6) or pf-c-form__label-required (PF5).
-      // isRequired on the FormGroup wrapping the Robot User field causes this
-      // span to be inserted next to the label text.
-      await expect(
-        authenticatedPage
-          .locator('.pf-v6-c-form__label-required, .pf-c-form__label-required')
-          .first(),
-      ).toBeVisible();
-    });
+        // Wait for the mirroring form to render
+        const form = authenticatedPage.getByTestId('mirror-form');
+        await expect(form).toBeVisible();
+
+        // The Robot User FormGroup label should be present
+        await expect(form.getByText('Robot User')).toBeVisible();
+
+        // PatternFly renders the required asterisk as a <span> with class
+        // pf-v6-c-form__label-required (PF6) or pf-c-form__label-required (PF5).
+        // isRequired on the FormGroup wrapping the Robot User field causes this
+        // span to be inserted next to the label text.
+        await expect(
+          form
+            .locator(
+              '.pf-v6-c-form__label-required, .pf-c-form__label-required',
+            )
+            .first(),
+        ).toBeVisible();
+      },
+    );
   },
 );
