@@ -15,8 +15,7 @@ import {ProxyCacheConfig} from './ProxyCacheConfig';
 import {QuotaManagement} from './QuotaManagement';
 
 export default function Settings(props: SettingsProps) {
-  const organizationName = location.pathname.split('/')[2];
-  const {isUserOrganization} = useOrganization(organizationName);
+  const {isUserOrganization} = useOrganization(props.organizationName);
 
   const [activeTabId, setActiveTabId] = useState('generalsettings');
   const quayConfig = useQuayConfig();
