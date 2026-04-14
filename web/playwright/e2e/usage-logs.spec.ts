@@ -237,10 +237,16 @@ test.describe(
         await superuserPage.getByPlaceholder('Filter logs').fill(repoName);
         await superuserPage.waitForTimeout(500);
 
-        // Repository column should show only repoName, NOT orgName/repoName
-        await expect(table.getByText(repoName).first()).toBeVisible();
+        // Scope to td cells with exact text to avoid matching Description column
+        // (Description may contain "Create repository orgName/repoName" as partial text)
+        const repoNameCell = table
+          .locator('td')
+          .filter({hasText: new RegExp(`^${repoName}$`)});
+        await expect(repoNameCell.first()).toBeVisible();
         await expect(
-          table.getByText(`${orgName}/${repoName}`),
+          table
+            .locator('td')
+            .filter({hasText: new RegExp(`^${orgName}/${repoName}$`)}),
         ).not.toBeVisible();
       },
     );
@@ -264,8 +270,12 @@ test.describe(
       await authenticatedPage.getByPlaceholder('Filter logs').fill(repoName);
       await authenticatedPage.waitForTimeout(500);
 
-      // Repository column shows full namespace/repo in non-superuser view
-      await expect(table.getByText(`${orgName}/${repoName}`)).toBeVisible();
+      // Scope to td cells with exact text to avoid matching Description column
+      await expect(
+        table
+          .locator('td')
+          .filter({hasText: new RegExp(`^${orgName}/${repoName}$`)}),
+      ).toBeVisible();
     });
   },
 );
