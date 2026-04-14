@@ -71,10 +71,10 @@ make types-test                      # Type checking (mypy)
 ### PR & Commit Format
 
 - **PR title:** `PROJQUAY-XXXXX: type(scope): lowercase description`
-  - Use `NO-ISSUE:` prefix when there is no associated Jira ticket
+  - Use `NO-ISSUE:` when there is no associated Jira ticket
   - Types: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`
-  - Examples: `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
-  - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`NO-ISSUE: docs(agents): add contributing guide`
+  - `PROJQUAY-10983: fix(mirroring): add isRequired to robot user field`
+  - `NO-ISSUE: docs(agents): add contributing guide`
 - **Branch naming:** `fix/projquay-XXXXX-short-description` or `feat/projquay-XXXXX-short-description`
 
 ### Fork Workflow
