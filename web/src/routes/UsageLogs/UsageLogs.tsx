@@ -245,6 +245,7 @@ export const logKinds = {
   manifest_label_add: 'Add Manifest Label',
   manifest_label_delete: 'Delete Manifest Label',
   change_tag_expiration: 'Change tag expiration',
+  change_tag_immutability: 'Change tag immutability',
   create_app_specific_token: 'Create external app token',
   revoke_app_specific_token: 'Revoke external app token',
   repo_mirror_enabled: 'Enable Repository Mirror',
