@@ -13,7 +13,7 @@ vi.mock('src/libs/axios', () => ({
 
 /** QueryClientProvider wrapper for hooks that use React Query mutations. */
 function wrapper({children}: {children: React.ReactNode}) {
-  const queryClient = createTestQueryClient();
+  const [queryClient] = React.useState(() => createTestQueryClient());
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );

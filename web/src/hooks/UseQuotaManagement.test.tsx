@@ -44,7 +44,7 @@ const mockQuota = {
 
 /** QueryClientProvider wrapper for hooks that use React Query. */
 function wrapper({children}: {children: React.ReactNode}) {
-  const queryClient = createTestQueryClient();
+  const [queryClient] = React.useState(() => createTestQueryClient());
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
