@@ -1,6 +1,19 @@
 import {test, expect} from '../fixtures';
+import type {Page} from '@playwright/test';
 import {pushImage} from '../utils/container';
 import {TEST_USERS} from '../global-setup';
+
+async function assertChartLegend(
+  page: Page,
+  legends: string[],
+  chartTestId = 'usage-logs-chart',
+): Promise<void> {
+  const chart = page.getByTestId(chartTestId);
+  await expect(chart).toBeVisible();
+  for (const text of legends) {
+    await expect(chart.getByText(text)).toBeVisible();
+  }
+}
 
 test.describe('Usage Logs', {tag: ['@logs']}, () => {
   test('displays organization usage logs with chart and table', async ({
@@ -168,11 +181,11 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
 
   test.describe(
     'chart log kind mapping',
-    {tag: ['@PROJQUAY-11079', '@feature:QUOTA_MANAGEMENT']},
+    {tag: ['@PROJQUAY-11079']},
     () => {
       test(
         'org_create_quota and org_change_quota appear in the chart legend',
-        {tag: ['@feature:EDIT_QUOTA']},
+        {tag: ['@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA']},
         async ({superuserPage, superuserApi}) => {
           const org = await superuserApi.organization('chartquota');
           // Create quota → logs org_create_quota (superuser-only operation)
@@ -185,15 +198,10 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
           );
 
           await superuserPage.goto(`/organization/${org.name}?tab=Logs`);
-
-          const chart = superuserPage.getByTestId('usage-logs-chart');
-          await expect(chart).toBeVisible();
-          await expect(
-            chart.getByText('Create Organization Quota'),
-          ).toBeVisible();
-          await expect(
-            chart.getByText('Change Organization Quota'),
-          ).toBeVisible();
+          await assertChartLegend(superuserPage, [
+            'Create Organization Quota',
+            'Change Organization Quota',
+          ]);
         },
       );
 
@@ -212,10 +220,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         ]);
 
         await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
-
-        const chart = authenticatedPage.getByTestId('usage-logs-chart');
-        await expect(chart).toBeVisible();
-        await expect(chart.getByText('Create Robot Federation')).toBeVisible();
+        await assertChartLegend(authenticatedPage, ['Create Robot Federation']);
       });
 
       test(
@@ -237,12 +242,9 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
           await api.raw.setTagImmutability(org.name, repo.name, 'v1.0.0', true);
 
           await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
-
-          const chart = authenticatedPage.getByTestId('usage-logs-chart');
-          await expect(chart).toBeVisible();
-          await expect(
-            chart.getByText('Change tag immutability'),
-          ).toBeVisible();
+          await assertChartLegend(authenticatedPage, [
+            'Change tag immutability',
+          ]);
         },
       );
     },
