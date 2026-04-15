@@ -3,7 +3,7 @@
 Prioritized checklist of testable areas in `web/src/`, with effort estimates and implementation guidance.
 
 **Stack:** Vitest + React Testing Library + happy-dom
-**Current state:** 142 tests passing across 9 files. Phases 1-2 complete. Playwright covers E2E (58 tests).
+**Current state:** 180 tests passing across 11 files. Phases 1-3 complete. Playwright covers E2E (58 tests).
 **Target:** ~460 unit tests across 7 phases
 
 ## Completed: Framework Setup
@@ -42,16 +42,14 @@ Prioritized checklist of testable areas in `web/src/`, with effort estimates and
 
 ---
 
-## Phase 3: Contexts (~35 tests)
+## Phase 3: Contexts — COMPLETE (38 tests)
 
-Small surface area, high value — these are used everywhere.
+| File | Tests | Status |
+|------|-------|--------|
+| `src/contexts/UIContext.tsx` | 15 | **Done** — sidebar toggle + localStorage persistence, alert add/remove/clear with key generation, `useUI()` outside provider throws |
+| `src/contexts/ThemeContext.tsx` | 23 | **Done** — LIGHT/DARK/AUTO switching, localStorage persistence + invalid fallback, `matchMedia` listener lifecycle (register/respond/cleanup/unmount), DOM class toggle (`pf-v6-theme-dark`), default context without provider |
 
-| File | What to Test | Est. Tests |
-|------|-------------|-----------|
-| `src/contexts/UIContext.tsx` | Sidebar toggle + localStorage persistence, alert add/remove/clear, `useUI()` outside provider throws | ~15 |
-| `src/contexts/ThemeContext.tsx` | Dark/light/auto theme switching, localStorage persistence, `matchMedia` listener, DOM class updates | ~20 |
-
-**Effort:** ~1 day. Uses `renderHook` with provider wrapper.
+**Notes:** First use of `renderHook` in the codebase. ThemeContext tests use a `createMockMediaQueryList` helper returning a stable object with `_triggerChange` for simulating system theme changes. Per-test `vi.spyOn(window, 'matchMedia')` overrides the global mock; `restoreMocks: true` handles cleanup. DOM class cleanup in `afterEach` since `vitest.setup.ts` only clears localStorage.
 
 ---
 
@@ -160,15 +158,15 @@ Leave these to Playwright E2E:
 |-------|-------|-------|--------|--------|
 | 1 | Pure utilities | 105 | 1-2 days | **Complete** |
 | 2 | Error handling + cookies | 31 | 1 day | **Complete** |
-| 3 | Contexts | ~35 | 1 day | Pending |
+| 3 | Contexts | 38 | 1 day | **Complete** |
 | 4 | Complex hooks | ~60 | 2-3 days | Pending |
 | 5 | API resources | ~80 | 3-4 days | Pending |
 | 6 | Standard hooks | ~100 | 3-4 days | Pending |
 | 7 | Components | 6/~80 | 3-4 days | **In progress** — LoadingPage (6) done |
 
-**Current: 142 tests passing across 9 files | Target: ~460 tests**
+**Current: 180 tests passing across 11 files | Target: ~460 tests**
 
-Phases 1-3 deliver the most value per test written. Phase 4's `usePaginatedSortableTable` is the single highest-ROI target. Phases 5-7 are incremental and can be spread over sprints.
+Phases 1-3 are complete and deliver the most value per test written. Phase 4's `usePaginatedSortableTable` is the single highest-ROI target. Phases 5-7 are incremental and can be spread over sprints.
 
 ---
 
