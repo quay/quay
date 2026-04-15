@@ -26,7 +26,7 @@ function createMockAxiosError(
     status != null
       ? ({
           status,
-          data: data ?? {},
+          data: data === undefined ? {} : data,
           statusText: '',
           headers: {},
           config: emptyConfig,
