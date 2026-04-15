@@ -449,9 +449,7 @@ class TestCreateOrgMirrorConfig:
         deleted_repo.save()
 
         # Create a normal repo
-        model.repository.create_repository(
-            org.username, "normal-repo", None, visibility="private"
-        )
+        model.repository.create_repository(org.username, "normal-repo", None, visibility="private")
 
         # Should still reject — a NORMAL repo exists
         with pytest.raises(DataModelException) as excinfo:
