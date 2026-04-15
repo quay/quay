@@ -99,21 +99,37 @@ Follow the conventions from `AGENTS.md`:
 
 ### 2.2 Pre-Commit Quality Checks
 
-Before committing, run the format and lint script:
+The project uses `pre-commit` with hooks defined in `.pre-commit-config.yaml`. Ensure hooks are installed:
 
 ```bash
-bash scripts/format-and-lint.sh
+make install-pre-commit-hook
+# or: pre-commit install
 ```
 
-This runs:
-- **Black** (line-length=100, target-version=py312) -- Python formatting
-- **isort** (profile=black) -- import sorting
-- **Flake8** (max-line-length=100, max-complexity=10) -- linting
-- **gitleaks** -- secret detection
-- **trailing-whitespace** and **end-of-file-fixer**
-- **ESLint** -- for `web/` JavaScript/TypeScript files
+Pre-commit runs automatically on `git commit`. To run manually before committing:
 
-Fix any issues before proceeding.
+```bash
+# Run on staged files
+bash scripts/format-and-lint.sh
+
+# Run on all files
+bash scripts/format-and-lint.sh --all-files
+
+# Run a specific hook
+bash scripts/format-and-lint.sh --hook black
+```
+
+The pre-commit config includes:
+- **gitleaks** -- secret detection
+- **Black** (line-length=100, target-version=py39) -- Python formatting
+- **isort** (profile=black) -- import sorting
+- **config-files-check** -- validates config file changes
+- **no-new-cypress-tests** -- blocks new Cypress tests (use Playwright)
+- **requirements-build-sync** -- checks requirements-build.txt is updated
+- **ESLint** -- for `web/` JavaScript/TypeScript files
+- **trailing-whitespace** and **end-of-file-fixer**
+
+Fix any issues before proceeding. Some hooks (Black, isort, ESLint) auto-fix files -- re-stage and commit.
 
 ### 2.3 Testing
 
@@ -242,8 +258,8 @@ When CI fails, diagnose and fix:
 
 | CI Job | What It Checks | Common Fixes |
 |--------|---------------|--------------|
-| Format (Black) | Python formatting | Run `black --line-length=100 --target-version=py312 .` |
-| Format (Flake8) | Linting | Fix reported issues (ignored: C901,E203,E262,E265,E266,E402,E501,E712,E713,E722,E731,E741,F401,F403,F405,F811,F821,F841,W503) |
+| Format (Black) | Python formatting | Run `pre-commit run black --all-files` |
+| Format (Flake8) | Linting | Fix reported issues; run `flake8` locally |
 | Pre-commit | All pre-commit hooks | Run `pre-commit run --all-files` |
 | Unit tests | Python unit tests | Run failing test locally, fix code |
 | Types (mypy) | Type checking | Fix type annotations |
@@ -361,34 +377,11 @@ bash scripts/jira-ops.sh transition PROJQUAY-1234 "Code Review"
 
 ## Hook Recommendations
 
-These Claude Code hooks can be configured in `.claude/settings.json` to automate quality enforcement:
+These Claude Code hooks can be configured in `.claude/settings.json` to automate quality enforcement. See `claude-settings-recommended.json` for the full config.
 
-### Pre-commit Formatting Hook (UserPromptSubmit)
+### Pre-commit Hook (ensures hooks are installed before commit)
 
-Automatically runs formatting before any commit operation:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c 'INPUT=$(cat); CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\"); if echo \"$CMD\" | grep -qE \"^git commit\"; then bash scripts/format-and-lint.sh 2>&1 | tail -5; fi'",
-            "timeout": 60
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### PR Title Validation Hook
-
-Validates PR title format before `gh pr create`:
+Git's pre-commit hooks run automatically on `git commit` if installed. This Claude hook ensures they stay installed:
 
 ```json
 {
@@ -398,34 +391,25 @@ Validates PR title format before `gh pr create`:
       "hooks": [
         {
           "type": "command",
-          "command": "bash -c 'INPUT=$(cat); CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\"); if echo \"$CMD\" | grep -qE \"gh pr create\"; then TITLE=$(echo \"$CMD\" | grep -oP \"--title \\\"\\K[^\\\"]+\"); if [ -n \"$TITLE\" ]; then bash scripts/validate-pr-title.sh \"$TITLE\"; fi; fi'",
-          "timeout": 10
+          "command": "bash -c '...if git commit detected, ensure pre-commit install...'",
+          "timeout": 15,
+          "_comment": "pre-commit runs automatically on commit; this just ensures hooks are installed"
         }
       ]
     }
   ]
 }
 ```
+
+The project's `.pre-commit-config.yaml` handles all formatting and linting automatically on commit. If a hook fails, the commit is blocked -- fix the issues (some hooks auto-fix), re-stage, and commit again.
+
+### PR Title Validation Hook
+
+Validates PR title format before `gh pr create` to avoid CI failures on the Pull Request Lint workflow.
 
 ### Embargo Check Hook (from upstream)
 
-The existing embargo check hook from the Quay repo should be carried over:
-
-```json
-{
-  "UserPromptSubmit": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": ".claude/scripts/check-embargo.sh",
-          "timeout": 30
-        }
-      ]
-    }
-  ]
-}
-```
+The existing embargo check hook from the Quay repo (`.claude/scripts/check-embargo.sh`) blocks processing of embargoed JIRA tickets.
 
 ---
 
@@ -444,16 +428,17 @@ The existing embargo check hook from the Quay repo should be carried over:
 
 **Traffic pattern:** 98% reads (image pulls), 2% writes (pushes)
 
-### Formatting Standards
+### Formatting & Linting (via pre-commit)
 
-- **Black:** line-length=100, target-version=py312
-- **isort:** profile=black
-- **Flake8:** max-line-length=100, max-complexity=10, extend-ignore=E704
-- **ESLint:** for `web/` files
+All formatting and linting is managed by `pre-commit` (`.pre-commit-config.yaml`). Install once:
 
-### Pre-commit Hooks (upstream)
+```bash
+make install-pre-commit-hook  # or: pre-commit install
+```
 
-The Quay repo has these pre-commit hooks:
+Hooks run automatically on every `git commit`. To run manually: `pre-commit run --all-files`
+
+**Configured hooks:**
 1. `gitleaks` -- secret detection
 2. `black` -- Python formatting
 3. `isort` -- import sorting
