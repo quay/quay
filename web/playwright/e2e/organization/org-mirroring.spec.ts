@@ -542,13 +542,18 @@ test.describe(
 
       await authenticatedPage.getByTestId('submit-button').click();
 
-      // Verify the specific API error message is shown, not the generic HTTP error
-      await expect(
-        authenticatedPage.getByText(specificErrorMessage).first(),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText('Request failed with status code 400'),
-      ).not.toBeVisible();
+      // Wait for the error alert to appear
+      const errorAlert = authenticatedPage
+        .locator('.pf-v6-c-alert')
+        .filter({hasText: 'Error saving organization mirror configuration'});
+      await expect(errorAlert).toBeVisible({timeout: 10000});
+
+      // The alert message is in a collapsed expandable section; verify the
+      // specific API error text is present in the alert (not the generic HTTP error)
+      await expect(errorAlert).toContainText(specificErrorMessage);
+      await expect(errorAlert).not.toContainText(
+        'Request failed with status code 400',
+      );
     });
 
     test('shows discovered repositories table when config exists', async ({
