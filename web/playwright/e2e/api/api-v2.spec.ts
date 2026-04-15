@@ -29,6 +29,11 @@ test.describe(
   'V2 Registry API',
   {tag: ['@api', '@v2', '@container', '@auth:Database']},
   () => {
+    // Tests share state (orgName, repoName, manifestDigest) and must run
+    // sequentially — e.g. "delete manifest by digest" invalidates the digest
+    // for later tests.
+    test.describe.configure({mode: 'serial'});
+
     const username = TEST_USERS.user.username;
     const password = TEST_USERS.user.password;
 
@@ -245,14 +250,27 @@ test.describe(
           scope,
         );
 
-        const r = await request.get(
-          `${API_URL}/v2/${orgName}/${repoName}/referrers/${manifestDigest}`,
-          {headers: {authorization: `Bearer ${v2Token}`}},
-        );
-        expect(r.status()).toBe(200);
-
-        const body = await r.json();
-        expect(body.manifests).toHaveLength(3);
+        // Referrer index may take a moment to reflect all three attachments;
+        // poll until the count stabilises instead of asserting immediately.
+        await expect
+          .poll(
+            async () => {
+              const r = await request.get(
+                `${API_URL}/v2/${orgName}/${repoName}/referrers/${manifestDigest}`,
+                {headers: {authorization: `Bearer ${v2Token}`}},
+              );
+              expect(r.status()).toBe(200);
+              const body = await r.json();
+              return body.manifests.length;
+            },
+            {
+              message:
+                'Waiting for referrer index to contain all 3 attachments',
+              timeout: 10_000,
+              intervals: [500, 1_000, 2_000],
+            },
+          )
+          .toBe(3);
       } finally {
         await request.dispose();
       }
