@@ -678,6 +678,7 @@ test.describe(
               rule_value: ['latest'],
             },
             robot_username: `${orgName}+${mirrorRobot}`,
+            skopeo_timeout_interval: 300,
             external_registry_config: {
               verify_tls: true,
               unsigned_images: false,
@@ -1283,7 +1284,7 @@ test.describe('Normal User - Logs', {tag: ['@api', '@auth:Database']}, () => {
     const r = await userClient.get('/api/v1/user/aggregatelogs');
     expect(r.status()).toBe(200);
     const body = await r.json();
-    expect(body.logs).toBeDefined();
+    expect(body.aggregated).toBeDefined();
   });
 
   test('can get repository logs', async ({userClient}) => {
@@ -1351,7 +1352,7 @@ test.describe('Normal User - Logs', {tag: ['@api', '@auth:Database']}, () => {
       );
       expect(r.status()).toBe(200);
       const body = await r.json();
-      expect(body.logs).toBeDefined();
+      expect(body.aggregated).toBeDefined();
     } finally {
       await userClient.delete(`/api/v1/organization/${orgName}`);
     }
@@ -1370,7 +1371,7 @@ test.describe('Normal User - Logs', {tag: ['@api', '@auth:Database']}, () => {
       );
       expect(r.status()).toBe(200);
       const body = await r.json();
-      expect(body.logs).toBeDefined();
+      expect(body.aggregated).toBeDefined();
     } finally {
       await userClient.delete(`/api/v1/organization/${orgName}`);
     }
@@ -1613,25 +1614,26 @@ test.describe(
       const r = await userClient.post('/api/v1/superuser/keys', {
         service: 'test_svc',
         name: 'should_fail_key',
+        expiration: null,
       });
       expect(r.status()).toBe(403);
     });
 
-    test('gets 403 on GET /superuser/registrysettings', async ({
+    test('gets 404 on GET /superuser/registrysettings (endpoint removed)', async ({
       userClient,
     }) => {
       const r = await userClient.get('/api/v1/superuser/registrysettings');
-      expect(r.status()).toBe(403);
+      expect(r.status()).toBe(404);
     });
 
-    test('gets 403 on POST /superuser/config/validate/{service}', async ({
+    test('gets 404 on POST /superuser/config/validate/{service} (endpoint removed)', async ({
       userClient,
     }) => {
       const r = await userClient.post(
         '/api/v1/superuser/config/validate/database',
         {},
       );
-      expect(r.status()).toBe(403);
+      expect(r.status()).toBe(404);
     });
 
     test('gets 403 on GET /superuser/organizations/', async ({userClient}) => {
