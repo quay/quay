@@ -129,6 +129,7 @@
     "filelist": {
       "minimatch": "^5.0.1"
     },
-    "immutable": "^5.1.5"
+    "immutable": "^5.1.5",
+    "svgo": "4.0.1"
   }
 }
