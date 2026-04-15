@@ -47,15 +47,16 @@ test.describe(
           users.readonly.password,
         );
       } catch {
-        // If readonly user cannot sign in, skip the whole suite
-        test.skip(true, 'Readonly superuser is not available');
+        // Skip only when the readonly user is not configured
+        test.skip(true, 'Readonly superuser is not configured');
         return;
       }
 
       // Verify readonly user actually has superuser privileges
-      const whoami = await readonlyClient.get('/api/v1/user/');
-      if (whoami.status() !== 200) {
-        test.skip(true, 'Readonly superuser cannot authenticate');
+      // (GET /api/v1/superuser/users/ requires superuser access)
+      const suCheck = await readonlyClient.get('/api/v1/superuser/users/');
+      if (suCheck.status() !== 200) {
+        test.skip(true, 'Readonly user does not have superuser privileges');
         return;
       }
 
@@ -1175,9 +1176,14 @@ test.describe(
         expect([200, 404]).toContain(r.status());
       });
 
-      test('cannot POST mirror config', async () => {
+      test('cannot POST mirror config', async ({adminClient}) => {
         const mirrorBot = uniqueName('mirrorbot').replace(/-/g, '_');
-        // Create the robot first via admin
+        // Create the robot first via admin so the API doesn't reject for missing robot
+        await adminClient.put(
+          `/api/v1/organization/${orgName}/robots/${mirrorBot}`,
+          {description: 'mirror robot for test'},
+        );
+
         const r = await readonlyClient.post(
           `/api/v1/repository/${orgName}/${repoName}/mirror`,
           {
@@ -1275,15 +1281,12 @@ test.describe(
         expect(r.status()).toBe(200);
       });
 
-      test('cannot POST app token for other user', async () => {
-        // This should succeed since it creates a token for the readonly
-        // user's own account. The Cypress test verified the readonly user
-        // could list their own tokens, which we also validate.
+      test('can POST own app token (self-action)', async () => {
         const r = await readonlyClient.post('/api/v1/user/apptoken', {
           title: 'ro_test_token',
         });
-        // Readonly can create own app tokens (200) -- this is a self-action
-        expect([200, 403]).toContain(r.status());
+        // Creating a token for one's own account is a self-action, not a write
+        expect(r.status()).toBe(200);
       });
     });
 
