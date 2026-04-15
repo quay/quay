@@ -96,7 +96,14 @@ test.describe('User CRUD', {tag: ['@api', '@auth:Database']}, () => {
         {enabled: false},
       );
       expect(response.status()).toBe(200);
-      const body = await response.json();
+
+      // The PUT response returns stale user data (fetched before the
+      // update is applied), so verify the change with a follow-up GET.
+      const getResp = await adminClient.get(
+        `/api/v1/superuser/users/${username}`,
+      );
+      expect(getResp.status()).toBe(200);
+      const body = await getResp.json();
       expect(body.enabled).toBe(false);
     } finally {
       await adminClient.delete(`/api/v1/superuser/users/${username}`);
