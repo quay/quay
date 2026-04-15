@@ -545,7 +545,8 @@ test.describe(
       // Wait for the error alert to appear
       const errorAlert = authenticatedPage
         .locator('.pf-v6-c-alert')
-        .filter({hasText: 'Error saving organization mirror configuration'});
+        .filter({hasText: 'Error saving organization mirror configuration'})
+        .first();
       await expect(errorAlert).toBeVisible({timeout: 10000});
 
       // The alert message is in a collapsed expandable section; verify the
