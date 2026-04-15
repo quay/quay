@@ -75,54 +75,50 @@ test.describe(
 // ---------------------------------------------------------------------------
 // Proxy Cache
 // ---------------------------------------------------------------------------
-test.describe(
-  'Proxy Cache',
-  {tag: ['@api', '@feature:PROXY_CACHE']},
-  () => {
-    test('validate, create, get, and delete proxy cache config', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('proxycache');
+test.describe('Proxy Cache', {tag: ['@api', '@feature:PROXY_CACHE']}, () => {
+  test('validate, create, get, and delete proxy cache config', async ({
+    superuserApi,
+    adminClient,
+  }) => {
+    const org = await superuserApi.organization('proxycache');
 
-      // Validate proxy cache config
-      const validateResp = await adminClient.post(
-        `/api/v1/organization/${org.name}/validateproxycache`,
-        {
-          upstream_registry: 'quay.io',
-          expiration_s: 86400,
-          insecure: false,
-          upstream_registry_username: 'dummyuser',
-          upstream_registry_password: 'dummypassword',
-        },
-      );
-      // 202 means validation was accepted (may or may not connect)
-      expect(validateResp.status()).toBe(202);
-
-      // Create proxy cache config
-      const client = superuserApi.raw;
-      await client.createProxyCacheConfig(org.name, {
+    // Validate proxy cache config
+    const validateResp = await adminClient.post(
+      `/api/v1/organization/${org.name}/validateproxycache`,
+      {
         upstream_registry: 'quay.io',
         expiration_s: 86400,
         insecure: false,
         upstream_registry_username: 'dummyuser',
         upstream_registry_password: 'dummypassword',
-      });
+      },
+    );
+    // 202 means validation was accepted (may or may not connect)
+    expect(validateResp.status()).toBe(202);
 
-      // Get proxy cache config
-      const proxyCfg = await client.getProxyCacheConfig(org.name);
-      expect(proxyCfg).not.toBeNull();
-      expect(proxyCfg!.upstream_registry).toContain('quay.io');
-
-      // Delete proxy cache config
-      await client.deleteProxyCacheConfig(org.name);
-
-      // Verify deletion
-      const afterDelete = await client.getProxyCacheConfig(org.name);
-      expect(afterDelete).toBeNull();
+    // Create proxy cache config
+    const client = superuserApi.raw;
+    await client.createProxyCacheConfig(org.name, {
+      upstream_registry: 'quay.io',
+      expiration_s: 86400,
+      insecure: false,
+      upstream_registry_username: 'dummyuser',
+      upstream_registry_password: 'dummypassword',
     });
-  },
-);
+
+    // Get proxy cache config
+    const proxyCfg = await client.getProxyCacheConfig(org.name);
+    expect(proxyCfg).not.toBeNull();
+    expect(proxyCfg!.upstream_registry).toContain('quay.io');
+
+    // Delete proxy cache config
+    await client.deleteProxyCacheConfig(org.name);
+
+    // Verify deletion
+    const afterDelete = await client.getProxyCacheConfig(org.name);
+    expect(afterDelete).toBeNull();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Organization Quotas
@@ -159,12 +155,7 @@ test.describe(
       const client = superuserApi.raw;
 
       // Create quota limit
-      await client.createQuotaLimit(
-        org.name,
-        quota.quotaId,
-        'Reject',
-        98,
-      );
+      await client.createQuotaLimit(org.name, quota.quotaId, 'Reject', 98);
 
       // Get quota to verify limit
       const quotas = await client.getOrganizationQuota(org.name);
@@ -363,10 +354,10 @@ test.describe(
   {tag: ['@api', '@feature:AUTO_PRUNE']},
   () => {
     test('invalid payload returns 400', async ({adminClient}) => {
-      const resp = await adminClient.post(
-        '/api/v1/user/autoprunepolicy/',
-        {method: 'number_of_times', value: 6},
-      );
+      const resp = await adminClient.post('/api/v1/user/autoprunepolicy/', {
+        method: 'number_of_times',
+        value: 6,
+      });
       expect(resp.status()).toBe(400);
       const body = await resp.json();
       expect(body.detail).toBe('Invalid method provided');
@@ -385,15 +376,11 @@ test.describe(
 
       try {
         // Get all
-        const listResp = await adminClient.get(
-          '/api/v1/user/autoprunepolicy/',
-        );
+        const listResp = await adminClient.get('/api/v1/user/autoprunepolicy/');
         expect(listResp.status()).toBe(200);
         const policies = await listResp.json();
         expect(
-          policies.policies.some(
-            (p: {uuid: string}) => p.uuid === uuid,
-          ),
+          policies.policies.some((p: {uuid: string}) => p.uuid === uuid),
         ).toBe(true);
 
         // Get by UUID
@@ -502,9 +489,7 @@ test.describe('Logs', {tag: ['@api']}, () => {
   test('get organization logs', async ({superuserApi, adminClient}) => {
     const org = await superuserApi.organization('logs');
 
-    const resp = await adminClient.get(
-      `/api/v1/organization/${org.name}/logs`,
-    );
+    const resp = await adminClient.get(`/api/v1/organization/${org.name}/logs`);
     expect(resp.status()).toBe(200);
     const body = await resp.json();
     expect(body.logs).toBeDefined();
@@ -540,9 +525,7 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
 
   test('calculate and get registry size', async ({adminClient}) => {
     // Trigger calculation
-    const calcResp = await adminClient.post(
-      '/api/v1/superuser/registrysize/',
-    );
+    const calcResp = await adminClient.post('/api/v1/superuser/registrysize/');
     expect(calcResp.status()).toBe(201);
 
     // Poll until size is available (replaces cy.wait(180000))
@@ -669,9 +652,7 @@ test.describe('Service Keys', {tag: ['@api']}, () => {
     expect(updated.name).toBe('api_test_updated');
 
     // Get the service key
-    const getResp = await adminClient.get(
-      `/api/v1/superuser/keys/${key.kid}`,
-    );
+    const getResp = await adminClient.get(`/api/v1/superuser/keys/${key.kid}`);
     expect(getResp.status()).toBe(200);
     const fetched = await getResp.json();
     expect(fetched.name).toBe('api_test_updated');
