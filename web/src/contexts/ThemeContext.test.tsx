@@ -47,6 +47,7 @@ describe('ThemeContext', () => {
   let mockMql: ReturnType<typeof createMockMediaQueryList>;
 
   beforeEach(() => {
+    localStorage.clear();
     document.documentElement.classList.remove('pf-v6-theme-dark');
     mockMql = createMockMediaQueryList(false);
     vi.spyOn(window, 'matchMedia').mockReturnValue(
@@ -55,6 +56,7 @@ describe('ThemeContext', () => {
   });
 
   afterEach(() => {
+    localStorage.clear();
     document.documentElement.classList.remove('pf-v6-theme-dark');
   });
 
