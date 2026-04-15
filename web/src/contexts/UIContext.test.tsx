@@ -2,6 +2,7 @@ import {renderHook, act} from '@testing-library/react';
 import React from 'react';
 import {UIProvider, useUI, AlertVariant} from './UIContext';
 
+/** Wrapper component that provides UIContext for renderHook tests. */
 function wrapper({children}: {children: React.ReactNode}) {
   return <UIProvider>{children}</UIProvider>;
 }

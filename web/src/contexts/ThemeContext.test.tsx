@@ -29,6 +29,7 @@ function createMockMediaQueryList(prefersDark: boolean) {
     dispatchEvent: vi.fn(),
   };
 
+  /** Simulates a system theme change by invoking all registered listeners. */
   function triggerChange(newMatches: boolean) {
     mql.matches = newMatches;
     listeners.forEach((cb) => cb({matches: newMatches} as MediaQueryListEvent));
@@ -37,6 +38,7 @@ function createMockMediaQueryList(prefersDark: boolean) {
   return {mql, triggerChange};
 }
 
+/** Wrapper component that provides ThemeContext for renderHook tests. */
 function wrapper({children}: {children: React.ReactNode}) {
   return <ThemeProvider>{children}</ThemeProvider>;
 }
