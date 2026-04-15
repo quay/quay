@@ -1,0 +1,127 @@
+# Development Workflow
+
+End-to-end process for PROJQUAY/QUAYIO ticketed work: JIRA ticket to merged PR.
+
+## Lifecycle Phases
+
+```
+  /start          /code           /pr            /poll           /backport
+┌─────────┐   ┌─────────┐   ┌─────────┐   ┌──────────┐   ┌───────────┐
+│  JIRA   │──>│  Code   │──>│  Pull   │──>│  Review  │──>│ Backport  │
+│  Setup  │   │  & Test │   │ Request │   │  & Fix   │   │ (if needed│
+└─────────┘   └─────────┘   └─────────┘   └──────────┘   └───────────┘
+ ASSIGNED       ASSIGNED        POST          POST         POST/ON_QA
+```
+
+## JIRA Process
+
+### Ticket Lifecycle
+
+| JIRA Status | When | Triggered By |
+|-------------|------|--------------|
+| New | Ticket created | Reporter |
+| ASSIGNED | Work begins | `/start` or manual |
+| POST | PR created | openshift-ci-robot on PR creation |
+| MODIFIED | PR merged | openshift-ci-robot on merge |
+| ON_QA | In QA pipeline | QE team |
+| Verified | QA passed | QE team |
+| Closed | Released | Release manager |
+
+### Target Version & Backporting
+
+- **Target Version** (customfield_10855) indicates the release this fix targets
+- If set, backporting is **required** after merge to master
+- Map version to branch: `quay-v3.12.0` → `redhat-3.12`
+- Use `/backport <PR#> <branch>` after merge
+
+### Auth
+
+- All JIRA REST operations require `JIRA_API_TOKEN`
+- `JIRA_USER` defaults to `quay-devel@redhat.com`
+- If `acli` is installed, it is preferred and uses its own credentials
+- Instance: `https://redhat.atlassian.net`
+
+## PR Conventions
+
+### Title Format (CI-enforced)
+
+```
+^(?:\[redhat-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$
+```
+
+Examples:
+- `PROJQUAY-1234: fix(api): add pagination to tag listing`
+- `NO-ISSUE: chore: update dependencies`
+- `[redhat-3.12] PROJQUAY-1234: fix(api): backport tag pagination`
+
+### Commit Message Format
+
+```
+<subsystem>: <what changed> (PROJQUAY-####)
+
+<why this change was made>
+```
+
+### Branch Naming
+
+```
+PROJQUAY-<number>-<kebab-case-description>
+```
+
+## Bot Ecosystem
+
+Four bots interact with PRs. Understanding their roles helps respond correctly.
+
+| Bot | Role | Common Actions |
+|-----|------|----------------|
+| **openshift-ci-robot** | JIRA lifecycle plugin | Validates ticket refs, transitions status (ASSIGNED→POST→MODIFIED), supports `/cherrypick` for backports |
+| **coderabbitai[bot]** | AI code review | Runs 7 pre-merge checks with `chill` profile. Flags are generally valid — fix or reply with rationale |
+| **codecov[bot]** | Coverage reporting | Reports coverage diffs. Project baseline ~72% |
+| **github-actions[bot]** | CI results | Cypress/Playwright reports, Surge preview links |
+
+### CodeRabbit Pre-merge Checks
+
+| Check | What It Validates |
+|-------|-------------------|
+| Title check | PR title starts with PROJQUAY-XXXX or NO-ISSUE |
+| Description check | Description is relevant to changes |
+| Docstring Coverage | >= 80% on changed functions |
+| Migration Safety at Scale | No unsafe operations on large tables |
+| Migration Downgrade Exists | Every Alembic migration has a real `downgrade()` |
+| N+1 Query Prevention | No new loop-based query patterns |
+| Read Path Performance | No latency regressions on v2 registry read path |
+
+### CI Jobs & Common Fixes
+
+| CI Job | Common Fix |
+|--------|------------|
+| Format / Pre-commit | `pre-commit run --all-files` |
+| Unit tests | Run failing test locally, fix code |
+| Types (mypy) | Fix type annotations |
+| Registry tests | `make registry-test` locally |
+| Cypress/Playwright | `cd web && npm run test:e2e` |
+| PR Lint | Fix PR title to match regex |
+
+## Session Setup
+
+Install recommended Claude Code hooks on first use:
+
+```bash
+cp workflow/claude-settings-recommended.json .claude/settings.json
+```
+
+This activates:
+- **Embargo check**: Blocks pushes to embargo branches
+- **Pre-commit install guard**: Ensures pre-commit hooks are set up before commit
+- **PR title validation**: Validates title format before `gh pr create`
+
+If `.claude/settings.json` already exists, merge the `"hooks"` key instead of overwriting.
+
+## Backport Process
+
+After a PR merges to master, if the JIRA ticket has a Target Version:
+
+1. Post `/cherrypick <branch>` as a comment on the merged PR
+2. `openshift-cherrypick-robot` creates a new PR against the release branch
+3. The JIRA lifecycle plugin clones the parent ticket for the target release
+4. Monitor the backport PR for CI results
