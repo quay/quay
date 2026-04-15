@@ -20,6 +20,44 @@ import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {pushImage} from '../../utils/container';
 
+/** Expected fields on every log entry returned by the superuser logs API. */
+const LOG_ENTRY_FIELDS = ['kind', 'datetime', 'metadata'] as const;
+
+interface TagEntry {
+  name: string;
+  manifest_digest: string;
+}
+
+interface TagListClient {
+  get: (url: string) => Promise<{
+    status: () => number;
+    json: () => Promise<{tags: TagEntry[]}>;
+  }>;
+}
+
+/**
+ * Poll a tag-listing endpoint until at least one tag is present.
+ *
+ * Image pushes are eventually consistent in some environments, so accessing
+ * `tags[0]` immediately after a push can be flaky.
+ */
+async function waitForTags(
+  client: TagListClient,
+  tagUrl: string,
+  {retries = 10, delayMs = 500} = {},
+): Promise<{tags: TagEntry[]}> {
+  for (let i = 0; i < retries; i++) {
+    const resp = await client.get(tagUrl);
+    expect(resp.status()).toBe(200);
+    const body = await resp.json();
+    if (body.tags && body.tags.length > 0) {
+      return body;
+    }
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+  throw new Error(`Tags not populated at ${tagUrl} after ${retries} retries`);
+}
+
 // ---------------------------------------------------------------------------
 // Service key approval
 // ---------------------------------------------------------------------------
@@ -97,7 +135,12 @@ test.describe('Superuser Logs', {tag: ['@api', '@auth:Database']}, () => {
     const body = await resp.json();
     expect(body.start_time).toBeDefined();
     expect(body.end_time).toBeDefined();
-    expect(body.logs.length).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(body.logs)).toBe(true);
+    for (const entry of body.logs) {
+      for (const field of LOG_ENTRY_FIELDS) {
+        expect(entry[field]).toBeDefined();
+      }
+    }
   });
 });
 
@@ -140,12 +183,9 @@ test.describe(
         TEST_USERS.admin.password,
       );
 
-      // Get the manifest digest of the first push
-      const tagsResp1 = await adminClient.get(
-        `/api/v1/repository/${org.name}/${repo.name}/tag/`,
-      );
-      expect(tagsResp1.status()).toBe(200);
-      const tags1 = await tagsResp1.json();
+      // Get the manifest digest of the first push (poll until tag is visible)
+      const tagUrl = `/api/v1/repository/${org.name}/${repo.name}/tag/`;
+      const tags1 = await waitForTags(adminClient, tagUrl);
       const firstDigest = tags1.tags[0].manifest_digest;
       expect(firstDigest).toContain('sha256');
 
@@ -193,12 +233,9 @@ test.describe(
         TEST_USERS.admin.password,
       );
 
-      // Get the manifest digest
-      const tagsResp = await adminClient.get(
-        `/api/v1/repository/${org.name}/${repo.name}/tag/`,
-      );
-      expect(tagsResp.status()).toBe(200);
-      const tags = await tagsResp.json();
+      // Get the manifest digest (poll until tag is visible)
+      const tagUrl = `/api/v1/repository/${org.name}/${repo.name}/tag/`;
+      const tags = await waitForTags(adminClient, tagUrl);
       const digest = tags.tags[0].manifest_digest;
 
       // Create a new tag via PUT pointing to the same manifest
