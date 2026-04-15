@@ -1,4 +1,21 @@
 import {test, expect} from '../fixtures';
+import type {Page} from '@playwright/test';
+import {pushImage} from '../utils/container';
+import {TEST_USERS} from '../global-setup';
+
+async function assertChartLegend(
+  page: Page,
+  orgName: string,
+  legends: string[],
+  chartTestId = 'usage-logs-chart',
+): Promise<void> {
+  await page.goto(`/organization/${orgName}?tab=Logs`);
+  const chart = page.getByTestId(chartTestId);
+  await expect(chart).toBeVisible();
+  for (const text of legends) {
+    await expect(chart.getByText(text, {exact: true})).toBeVisible();
+  }
+}
 
 test.describe('Usage Logs', {tag: ['@logs']}, () => {
   test('displays organization usage logs with chart and table', async ({
@@ -162,6 +179,108 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     await expect(
       table.getByText(/skopeo: authentication required/),
     ).toBeVisible();
+  });
+
+  test.describe('chart log kind mapping', {tag: ['@PROJQUAY-11079']}, () => {
+    test(
+      'quota log kinds appear in the chart legend',
+      {tag: ['@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA']},
+      async ({superuserPage, superuserApi}) => {
+        const org = await superuserApi.organization('chartquota');
+        // org_create_quota
+        const quota = await superuserApi.quota(org.name, 100 * 1024 * 1024);
+        // org_change_quota
+        await superuserApi.raw.updateOrganizationQuota(
+          org.name,
+          quota.quotaId,
+          200 * 1024 * 1024,
+        );
+        // org_create_quota_limit
+        await superuserApi.raw.createQuotaLimit(
+          org.name,
+          quota.quotaId,
+          'Warning',
+          80,
+        );
+        // Fetch updated quota to get the new limit ID
+        const quotas = await superuserApi.raw.getOrganizationQuota(org.name);
+        const limitId = quotas[0].limits[0].id;
+        // org_change_quota_limit
+        await superuserApi.raw.changeOrganizationQuotaLimit(
+          org.name,
+          quota.quotaId,
+          limitId,
+          'Warning',
+          90,
+        );
+        // org_delete_quota_limit
+        await superuserApi.raw.deleteQuotaLimit(
+          org.name,
+          quota.quotaId,
+          limitId,
+        );
+        // org_delete_quota
+        await superuserApi.raw.deleteOrganizationQuota(org.name, quota.quotaId);
+
+        await assertChartLegend(superuserPage, org.name, [
+          'Create Organization Quota',
+          'Change Organization Quota',
+          'Create Organization Quota Limit',
+          'Change Organization Quota Limit',
+          'Delete Organization Quota Limit',
+          'Delete Organization Quota',
+        ]);
+      },
+    );
+
+    test('robot federation log kinds appear in the chart legend', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('chartfed');
+      const robot = await api.robot(org.name, 'chartfedbot');
+      // create_robot_federation
+      await api.raw.createRobotFederation(org.name, robot.shortname, [
+        {
+          issuer: 'https://token.actions.githubusercontent.com',
+          subject: 'repo:testorg/testrepo:ref:refs/heads/main',
+        },
+      ]);
+      // delete_robot_federation
+      // (federated_robot_token_exchange is not triggered here — it requires
+      // a real OIDC token exchange with an external issuer, which is not
+      // feasible in a CI environment)
+      await api.raw.deleteRobotFederation(org.name, robot.shortname);
+
+      await assertChartLegend(authenticatedPage, org.name, [
+        'Create Robot Federation',
+        'Delete Robot Federation',
+      ]);
+    });
+
+    test(
+      'change_tag_immutability appears in the chart legend',
+      {tag: ['@container']},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('chartimmut');
+        const repo = await api.repository(org.name, 'chartimmutrepo');
+
+        // Push an image to create a tag, then set it immutable
+        await pushImage(
+          org.name,
+          repo.name,
+          'v1.0.0',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        );
+        // change_tag_immutability
+        await api.raw.setTagImmutability(org.name, repo.name, 'v1.0.0', true);
+
+        await assertChartLegend(authenticatedPage, org.name, [
+          'Change tag immutability',
+        ]);
+      },
+    );
   });
 
   test('shows info alert when Splunk search is not configured', async ({
