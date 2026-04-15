@@ -2380,7 +2380,7 @@ export class ApiClient {
       },
     );
 
-    if (!response.ok() && response.status() !== 204) {
+    if (!response.ok() && response.status() !== 204 && response.status() !== 404) {
       const body = await response.text();
       throw new Error(
         `Failed to delete robot federation for ${orgName}+${robotShortname}: ${response.status()} - ${body}`,
