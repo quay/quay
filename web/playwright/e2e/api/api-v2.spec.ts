@@ -54,6 +54,28 @@ test.describe(
 
       // Push a test image so tags/manifests exist
       await pushImage(orgName, repoName, 'latest', username, password);
+
+      // Fetch the manifest digest up-front so all tests can use it
+      const scope = `repository:${orgName}/${repoName}:pull,push`;
+      const v2Token = await getV2Token(
+        userContext.request,
+        API_URL,
+        username,
+        password,
+        scope,
+      );
+      const r = await userContext.request.get(
+        `${API_URL}/v2/${orgName}/${repoName}/manifests/latest`,
+        {
+          headers: {
+            authorization: `Bearer ${v2Token}`,
+            Accept: DOCKER_MANIFEST_V2,
+          },
+        },
+      );
+      if (r.ok()) {
+        manifestDigest = r.headers()['docker-content-digest'];
+      }
     });
 
     test.afterAll(async ({userContext, cachedContainerAvailable}) => {
@@ -127,9 +149,8 @@ test.describe(
         const body = await r.json();
         expect(body.layers).toBeTruthy();
 
-        // Capture digest for subsequent tests
-        manifestDigest = r.headers()['docker-content-digest'];
-        expect(manifestDigest).toBeTruthy();
+        const digest = r.headers()['docker-content-digest'];
+        expect(digest).toBeTruthy();
       } finally {
         await request.dispose();
       }
