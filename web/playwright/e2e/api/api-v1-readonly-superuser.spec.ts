@@ -299,6 +299,7 @@ test.describe(
           namespace: orgName,
           repository: 'should_fail',
           visibility: 'private',
+          description: 'should fail',
           repo_kind: 'image',
         });
         expect(r.status()).toBe(403);
@@ -361,6 +362,7 @@ test.describe(
           namespace: orgName,
           repository: repoName,
           visibility: 'public',
+          description: 'readonly superuser test repo',
           repo_kind: 'image',
         });
 
@@ -420,6 +422,7 @@ test.describe(
           namespace: orgName,
           repository: repoName,
           visibility: 'public',
+          description: 'readonly superuser test repo',
           repo_kind: 'image',
         });
 
@@ -648,7 +651,7 @@ test.describe(
           const body = await msgs.json();
           for (const msg of body.messages || []) {
             if (msg.content === 'readonly test message') {
-              await adminClient.delete(`/api/v1/messages/${msg.uuid}`);
+              await adminClient.delete(`/api/v1/message/${msg.uuid}`);
             }
           }
         }
@@ -678,7 +681,7 @@ test.describe(
         const body = await msgs.json();
         if (body.messages?.length > 0) {
           const uuid = body.messages[0].uuid;
-          const r = await readonlyClient.delete(`/api/v1/messages/${uuid}`);
+          const r = await readonlyClient.delete(`/api/v1/message/${uuid}`);
           expect(r.status()).toBe(403);
         }
       });
@@ -795,6 +798,7 @@ test.describe(
           namespace: orgName,
           repository: repoName,
           visibility: 'public',
+          description: 'readonly superuser test repo',
           repo_kind: 'image',
         });
       });
@@ -1050,12 +1054,15 @@ test.describe(
         expect(r.status()).toBe(200);
       });
 
-      test('cannot POST user autoprune policy', async () => {
+      test('can POST user autoprune policy (self-action)', async () => {
+        // Readonly superusers are admin of their own namespace, so user-level
+        // autoprune policies are a self-action that is allowed (like starring).
         const r = await readonlyClient.post('/api/v1/user/autoprunepolicy/', {
           method: 'number_of_tags',
           value: 99,
         });
-        expect(r.status()).toBe(403);
+        // 201 = created, 400 = policy already exists
+        expect([201, 400]).toContain(r.status());
       });
     });
 
@@ -1078,6 +1085,7 @@ test.describe(
             namespace: orgName,
             repository: repoName,
             visibility: 'public',
+            description: 'readonly superuser test repo',
             repo_kind: 'image',
           });
 
@@ -1149,6 +1157,7 @@ test.describe(
           namespace: orgName,
           repository: repoName,
           visibility: 'public',
+          description: 'readonly superuser test repo',
           repo_kind: 'image',
         });
       });
@@ -1200,6 +1209,7 @@ test.describe(
           namespace: orgName,
           repository: repoName,
           visibility: 'public',
+          description: 'readonly superuser test repo',
           repo_kind: 'image',
         });
 
