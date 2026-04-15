@@ -3,7 +3,7 @@ Score 1: No JIRA ticket referenced. Ticket not assigned. No target version consi
 Score 2: Ticket referenced but not assigned to self. Target version ignored.
 Score 3: Ticket assigned and referenced in PR title. Target version not checked.
 Score 4: Ticket assigned, referenced correctly, target version set when applicable.
-Score 5: Full JIRA lifecycle: assigned, referenced in title and commits, target version set, status transitioned, backport triggered if fixVersion requires it.
+Score 5: Full JIRA lifecycle: assigned, referenced in title and commits, Target Version set, status transitioned, backport triggered if Target Version requires it.
 
 **Code Quality** (1-5)
 Score 1: Code committed without formatting or linting. Tests not run. Type errors present.

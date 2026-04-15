@@ -32,11 +32,11 @@ When given a JIRA ticket key (e.g., `PROJQUAY-1234`):
    bash scripts/jira-ops.sh assign PROJQUAY-1234
    ```
 
-3. **Check target version / fixVersion:**
+3. **Check Target Version:**
    ```bash
    bash scripts/jira-ops.sh check-version PROJQUAY-1234
    ```
-   - If `fixVersion` is set (e.g., `quay-v3.18.0` or `z-stream`), note that backporting will be required after merge.
+   - If "Target Version" is set (e.g., `quay-v3.18.0` or `z-stream`), note that backporting will be required after merge.
    - Save this context for the `/backport` phase.
 
 4. **Transition ticket to "In Progress":**
@@ -234,7 +234,7 @@ After PR creation, the **openshift-ci-robot** (JIRA Lifecycle Plugin) will:
 If the bot reports issues:
 - `/jira refresh` -- force re-check of JIRA reference
 - Fix the PR title if the format is wrong
-- Update the JIRA ticket's target version if needed
+- Update the JIRA ticket's "Target Version" if needed
 
 ---
 
@@ -335,7 +335,7 @@ This shows a summary table of all workflow runs and their status.
 
 After a PR is merged to `master`, check if backporting is needed:
 
-1. **Check fixVersion** on the JIRA ticket:
+1. **Check Target Version** on the JIRA ticket:
    ```bash
    bash scripts/jira-ops.sh check-version PROJQUAY-1234
    ```
@@ -484,6 +484,6 @@ Areas where the Quay project could benefit from additional automation:
 
 4. **Stale PR reminder** -- Scheduled workflow that comments on PRs older than 7 days without activity.
 
-5. **Auto-backport on merge** -- When a merged PR's JIRA ticket has `fixVersion` set, automatically trigger `/cherrypick` for the corresponding release branch.
+5. **Auto-backport on merge** -- When a merged PR's JIRA ticket has "Target Version" set, automatically trigger `/cherrypick` for the corresponding release branch.
 
 6. **Local pre-push hook** -- Run `make types-test` before pushing to catch mypy errors early rather than waiting for CI.

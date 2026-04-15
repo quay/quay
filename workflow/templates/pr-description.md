@@ -24,7 +24,7 @@
 https://issues.redhat.com/browse/PROJQUAY-XXXX
 
 ## Backport
-<!-- If fixVersion is set, note which branches need backporting -->
+<!-- If Target Version is set on the JIRA ticket, note which branches need backporting -->
 <!-- After merge, comment: /cherrypick redhat-X.Y -->
 - [ ] Backport required: <!-- branch name -->
 - [ ] No backport needed
