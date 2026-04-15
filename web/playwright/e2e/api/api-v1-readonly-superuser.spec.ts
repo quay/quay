@@ -172,10 +172,9 @@ test.describe(
       });
 
       test('cannot PUT (update) organization', async () => {
-        const r = await readonlyClient.put(
-          `/api/v1/organization/${orgName}`,
-          {email: 'hacked@example.com'},
-        );
+        const r = await readonlyClient.put(`/api/v1/organization/${orgName}`, {
+          email: 'hacked@example.com',
+        });
         expect(r.status()).toBe(403);
       });
 
@@ -208,7 +207,7 @@ test.describe(
     test.describe('Organization Application', () => {
       let appClientId: string;
 
-      test.beforeAll(async ({adminClient, userClient}) => {
+      test.beforeAll(async ({adminClient}) => {
         // Ensure org exists
         await adminClient.post('/api/v1/organization/', {
           name: orgName,
@@ -275,9 +274,7 @@ test.describe(
       });
 
       test.afterAll(async ({adminClient}) => {
-        await adminClient.delete(
-          `/api/v1/repository/${orgName}/${repoName}`,
-        );
+        await adminClient.delete(`/api/v1/repository/${orgName}/${repoName}`);
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
@@ -375,9 +372,7 @@ test.describe(
       });
 
       test.afterAll(async ({adminClient}) => {
-        await adminClient.delete(
-          `/api/v1/repository/${orgName}/${repoName}`,
-        );
+        await adminClient.delete(`/api/v1/repository/${orgName}/${repoName}`);
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
@@ -450,9 +445,7 @@ test.describe(
         await adminClient.delete(
           `/api/v1/organization/${orgName}/team/${teamName}`,
         );
-        await adminClient.delete(
-          `/api/v1/repository/${orgName}/${repoName}`,
-        );
+        await adminClient.delete(`/api/v1/repository/${orgName}/${repoName}`);
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
@@ -591,17 +584,14 @@ test.describe(
         );
 
         // Create default permission
-        await adminClient.post(
-          `/api/v1/organization/${orgName}/prototypes`,
-          {
-            delegate: {
-              name: `${orgName}+${robotShortname}`,
-              kind: 'user',
-              is_robot: true,
-            },
-            role: 'read',
+        await adminClient.post(`/api/v1/organization/${orgName}/prototypes`, {
+          delegate: {
+            name: `${orgName}+${robotShortname}`,
+            kind: 'user',
+            is_robot: true,
           },
-        );
+          role: 'read',
+        });
       });
 
       test.afterAll(async ({adminClient}) => {
@@ -639,8 +629,6 @@ test.describe(
     // ========================================================================
 
     test.describe('Global messages', () => {
-      let messageUuid: string;
-
       test.beforeAll(async ({adminClient}) => {
         // Create a global message as superuser
         const msgResp = await adminClient.post('/api/v1/messages', {
@@ -671,7 +659,6 @@ test.describe(
         expect(r.status()).toBe(200);
         const body = await r.json();
         expect(body.messages.length).toBeGreaterThanOrEqual(1);
-        messageUuid = body.messages[0].uuid;
       });
 
       test('cannot POST global message', async () => {
@@ -719,17 +706,13 @@ test.describe(
       });
 
       test('can GET registry status', async () => {
-        const r = await readonlyClient.get(
-          '/api/v1/superuser/registrystatus',
-        );
+        const r = await readonlyClient.get('/api/v1/superuser/registrystatus');
         // 200 = accessible, some deployments may return 404 if not k8s
         expect([200, 404]).toContain(r.status());
       });
 
       test('can GET registry size', async () => {
-        const r = await readonlyClient.get(
-          '/api/v1/superuser/registrysize/',
-        );
+        const r = await readonlyClient.get('/api/v1/superuser/registrysize/');
         // 200 if calculated, 404 if never triggered
         expect([200, 404]).toContain(r.status());
       });
@@ -763,9 +746,7 @@ test.describe(
 
       test.afterAll(async ({adminClient}) => {
         if (serviceKid) {
-          await adminClient.delete(
-            `/api/v1/superuser/keys/${serviceKid}`,
-          );
+          await adminClient.delete(`/api/v1/superuser/keys/${serviceKid}`);
         }
       });
 
@@ -819,9 +800,7 @@ test.describe(
       });
 
       test.afterAll(async ({adminClient}) => {
-        await adminClient.delete(
-          `/api/v1/repository/${orgName}/${repoName}`,
-        );
+        await adminClient.delete(`/api/v1/repository/${orgName}/${repoName}`);
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
@@ -884,9 +863,7 @@ test.describe(
 
       test.afterAll(async ({adminClient}) => {
         // Clean up proxy cache if it was created
-        await adminClient.delete(
-          `/api/v1/organization/${orgName}/proxycache`,
-        );
+        await adminClient.delete(`/api/v1/organization/${orgName}/proxycache`);
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
@@ -922,91 +899,87 @@ test.describe(
     // Section 16 -- Quotas
     // ========================================================================
 
-    test.describe(
-      'Quotas',
-      {tag: ['@feature:QUOTA_MANAGEMENT']},
-      () => {
-        let quotaId: string;
+    test.describe('Quotas', {tag: ['@feature:QUOTA_MANAGEMENT']}, () => {
+      let quotaId: string;
 
-        test.beforeAll(async ({adminClient}) => {
-          await adminClient.post('/api/v1/organization/', {
-            name: orgName,
-            email: `${orgName}@example.com`,
-          });
-
-          // Create a quota
-          const qResp = await adminClient.post(
-            `/api/v1/organization/${orgName}/quota`,
-            {limit_bytes: 1024000000},
-          );
-          expect(qResp.status()).toBe(201);
-
-          // Fetch quota ID
-          const listResp = await adminClient.get(
-            `/api/v1/organization/${orgName}/quota`,
-          );
-          const quotas = await listResp.json();
-          if (Array.isArray(quotas) && quotas.length > 0) {
-            quotaId = quotas[0].id;
-          }
+      test.beforeAll(async ({adminClient}) => {
+        await adminClient.post('/api/v1/organization/', {
+          name: orgName,
+          email: `${orgName}@example.com`,
         });
 
-        test.afterAll(async ({adminClient}) => {
-          if (quotaId) {
-            await adminClient.delete(
-              `/api/v1/organization/${orgName}/quota/${quotaId}`,
-            );
-          }
-          await adminClient.delete(`/api/v1/organization/${orgName}`);
-        });
+        // Create a quota
+        const qResp = await adminClient.post(
+          `/api/v1/organization/${orgName}/quota`,
+          {limit_bytes: 1024000000},
+        );
+        expect(qResp.status()).toBe(201);
 
-        test('can GET organization quota list', async () => {
-          const r = await readonlyClient.get(
-            `/api/v1/organization/${orgName}/quota`,
-          );
-          expect(r.status()).toBe(200);
-        });
+        // Fetch quota ID
+        const listResp = await adminClient.get(
+          `/api/v1/organization/${orgName}/quota`,
+        );
+        const quotas = await listResp.json();
+        if (Array.isArray(quotas) && quotas.length > 0) {
+          quotaId = quotas[0].id;
+        }
+      });
 
-        test('can GET organization quota by ID', async () => {
-          test.skip(!quotaId, 'No quota ID available');
-          const r = await readonlyClient.get(
+      test.afterAll(async ({adminClient}) => {
+        if (quotaId) {
+          await adminClient.delete(
             `/api/v1/organization/${orgName}/quota/${quotaId}`,
           );
-          expect(r.status()).toBe(200);
-        });
+        }
+        await adminClient.delete(`/api/v1/organization/${orgName}`);
+      });
 
-        test('cannot POST organization quota', async () => {
-          const r = await readonlyClient.post(
-            `/api/v1/organization/${orgName}/quota`,
-            {limit_bytes: 999999},
-          );
-          expect(r.status()).toBe(403);
-        });
+      test('can GET organization quota list', async () => {
+        const r = await readonlyClient.get(
+          `/api/v1/organization/${orgName}/quota`,
+        );
+        expect(r.status()).toBe(200);
+      });
 
-        test('cannot DELETE organization quota', async () => {
-          test.skip(!quotaId, 'No quota ID available');
-          const r = await readonlyClient.delete(
-            `/api/v1/organization/${orgName}/quota/${quotaId}`,
-          );
-          expect(r.status()).toBe(403);
-        });
+      test('can GET organization quota by ID', async () => {
+        test.skip(!quotaId, 'No quota ID available');
+        const r = await readonlyClient.get(
+          `/api/v1/organization/${orgName}/quota/${quotaId}`,
+        );
+        expect(r.status()).toBe(200);
+      });
 
-        test('can GET superuser organization quota', async () => {
-          const r = await readonlyClient.get(
-            `/api/v1/superuser/organization/${orgName}/quota`,
-          );
-          expect(r.status()).toBe(200);
-        });
+      test('cannot POST organization quota', async () => {
+        const r = await readonlyClient.post(
+          `/api/v1/organization/${orgName}/quota`,
+          {limit_bytes: 999999},
+        );
+        expect(r.status()).toBe(403);
+      });
 
-        test('cannot POST superuser organization quota', async () => {
-          const r = await readonlyClient.post(
-            `/api/v1/superuser/organization/${orgName}/quota`,
-            {limit_bytes: 999999},
-          );
-          expect(r.status()).toBe(403);
-        });
-      },
-    );
+      test('cannot DELETE organization quota', async () => {
+        test.skip(!quotaId, 'No quota ID available');
+        const r = await readonlyClient.delete(
+          `/api/v1/organization/${orgName}/quota/${quotaId}`,
+        );
+        expect(r.status()).toBe(403);
+      });
+
+      test('can GET superuser organization quota', async () => {
+        const r = await readonlyClient.get(
+          `/api/v1/superuser/organization/${orgName}/quota`,
+        );
+        expect(r.status()).toBe(200);
+      });
+
+      test('cannot POST superuser organization quota', async () => {
+        const r = await readonlyClient.post(
+          `/api/v1/superuser/organization/${orgName}/quota`,
+          {limit_bytes: 999999},
+        );
+        expect(r.status()).toBe(403);
+      });
+    });
 
     // ========================================================================
     // Section 17 -- Auto-prune policies
@@ -1125,9 +1098,7 @@ test.describe(
               `/api/v1/repository/${orgName}/${repoName}/autoprunepolicy/${repoPolicyUuid}`,
             );
           }
-          await adminClient.delete(
-            `/api/v1/repository/${orgName}/${repoName}`,
-          );
+          await adminClient.delete(`/api/v1/repository/${orgName}/${repoName}`);
           await adminClient.delete(`/api/v1/organization/${orgName}`);
         });
 
@@ -1183,9 +1154,7 @@ test.describe(
       });
 
       test.afterAll(async ({adminClient}) => {
-        await adminClient.delete(
-          `/api/v1/repository/${orgName}/${repoName}`,
-        );
+        await adminClient.delete(`/api/v1/repository/${orgName}/${repoName}`);
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
@@ -1263,9 +1232,7 @@ test.describe(
             `/api/v1/repository/${orgName}/${repoName}/notification/${notificationUuid}`,
           );
         }
-        await adminClient.delete(
-          `/api/v1/repository/${orgName}/${repoName}`,
-        );
+        await adminClient.delete(`/api/v1/repository/${orgName}/${repoName}`);
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       });
 
