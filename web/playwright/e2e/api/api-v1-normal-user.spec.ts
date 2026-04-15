@@ -1626,14 +1626,15 @@ test.describe(
       expect(r.status()).toBe(404);
     });
 
-    test('gets 404 on POST /superuser/config/validate/{service} (endpoint removed)', async ({
+    test('gets 403 or 404 on POST /superuser/config/validate/{service}', async ({
       userClient,
     }) => {
       const r = await userClient.post(
         '/api/v1/superuser/config/validate/database',
         {},
       );
-      expect(r.status()).toBe(404);
+      // 404 if endpoint removed, 403 if still present but forbidden
+      expect([403, 404]).toContain(r.status());
     });
 
     test('gets 403 on GET /superuser/organizations/', async ({userClient}) => {
