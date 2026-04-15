@@ -39,9 +39,9 @@ When given a JIRA ticket key (e.g., `PROJQUAY-1234`):
    - If "Target Version" is set (e.g., `quay-v3.18.0` or `z-stream`), note that backporting will be required after merge.
    - Save this context for the `/backport` phase.
 
-4. **Transition ticket to "In Progress":**
+4. **Transition ticket to "ASSIGNED":**
    ```bash
-   bash scripts/jira-ops.sh transition PROJQUAY-1234 "In Progress"
+   bash scripts/jira-ops.sh transition PROJQUAY-1234 "ASSIGNED"
    ```
 
 ### 1.2 Branch Setup
@@ -228,7 +228,7 @@ gh pr create \
 After PR creation, the **openshift-ci-robot** (JIRA Lifecycle Plugin) will:
 - Validate the JIRA reference in the PR title
 - Check that the ticket targets the correct version
-- Transition the ticket status from IN PROGRESS to POST
+- Transition the ticket status from ASSIGNED to POST
 - Apply labels like `jira/valid-reference`
 
 If the bot reports issues:
@@ -368,10 +368,12 @@ bash scripts/jira-ops.sh assign PROJQUAY-1234
 bash scripts/jira-ops.sh check-version PROJQUAY-1234
 bash scripts/jira-ops.sh set-version PROJQUAY-1234 "quay-v3.18.0"
 
-# Transition status
-bash scripts/jira-ops.sh transition PROJQUAY-1234 "In Progress"
-bash scripts/jira-ops.sh transition PROJQUAY-1234 "Code Review"
+# Transition status (valid: New, ASSIGNED, POST, ON_QA, Verified, Release Pending, Closed, MODIFIED)
+bash scripts/jira-ops.sh transition PROJQUAY-1234 "ASSIGNED"
+bash scripts/jira-ops.sh transition PROJQUAY-1234 "POST"
 ```
+
+**Note:** The `jira-ops.sh` script requires both `JIRA_USER` (email) and `JIRA_API_TOKEN` environment variables for write operations (assign, transition, set-version). Read-only operations (view, check-version) work without authentication on public projects.
 
 ---
 
