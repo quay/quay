@@ -546,6 +546,9 @@ test.describe(
       await expect(
         authenticatedPage.getByText(specificErrorMessage).first(),
       ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Request failed with status code 400'),
+      ).not.toBeVisible();
     });
 
     test('shows discovered repositories table when config exists', async ({
