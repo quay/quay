@@ -43,7 +43,7 @@ test.describe(
         );
         expect(get.status()).toBe(200);
         const body = await get.json();
-        expect(body.uuid).toContain(policy.uuid);
+        expect(body.uuid).toBe(policy.uuid);
       });
 
       test('update org immutability policy', async ({
@@ -61,6 +61,14 @@ test.describe(
           {tagPattern: 'nightly*', tagPatternMatches: true},
         );
         expect(update.status()).toBe(204);
+
+        const verify = await adminClient.get(
+          `/api/v1/organization/${org.name}/immutabilitypolicy/${policy.uuid}`,
+        );
+        expect(verify.status()).toBe(200);
+        const updated = await verify.json();
+        expect(updated.tagPattern).toBe('nightly*');
+        expect(updated.tagPatternMatches).toBe(true);
       });
 
       test('delete org immutability policy', async ({
@@ -78,7 +86,7 @@ test.describe(
         );
         expect(del.status()).toBe(200);
         const body = await del.json();
-        expect(body.uuid).toContain(policy.uuid);
+        expect(body.uuid).toBe(policy.uuid);
       });
     });
 
@@ -116,7 +124,7 @@ test.describe(
         );
         expect(get.status()).toBe(200);
         const body = await get.json();
-        expect(body.uuid).toContain(policy.uuid);
+        expect(body.uuid).toBe(policy.uuid);
       });
 
       test('update repo immutability policy', async ({
@@ -136,6 +144,14 @@ test.describe(
           {tagPattern: 'stable*', tagPatternMatches: true},
         );
         expect(update.status()).toBe(204);
+
+        const verify = await adminClient.get(
+          `/api/v1/repository/${repo.namespace}/${repo.name}/immutabilitypolicy/${policy.uuid}`,
+        );
+        expect(verify.status()).toBe(200);
+        const updated = await verify.json();
+        expect(updated.tagPattern).toBe('stable*');
+        expect(updated.tagPatternMatches).toBe(true);
       });
 
       test('delete repo immutability policy', async ({
@@ -155,7 +171,7 @@ test.describe(
         );
         expect(del.status()).toBe(200);
         const body = await del.json();
-        expect(body.uuid).toContain(policy.uuid);
+        expect(body.uuid).toBe(policy.uuid);
       });
     });
   },
