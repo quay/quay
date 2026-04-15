@@ -249,7 +249,7 @@ test.describe(
               subject: '93VEQl60c7JtJIV9r3gS0FCPTkcpwCDtfEUtD-lgdP4',
               isExpanded: true,
             },
-          ] as unknown as Record<string, unknown>,
+          ],
         );
         expect(resp.status()).toBe(400);
         const body = await resp.json();
@@ -273,7 +273,7 @@ test.describe(
               subject: '93VEQl60c7JtJIV9r3gS0FCPTkcpwCDtfEUtD-lgdP4',
               isExpanded: true,
             },
-          ] as unknown as Record<string, unknown>,
+          ],
         );
         expect(create.status()).toBe(200);
 
@@ -333,41 +333,45 @@ test.describe(
     // Repository State Changes
     // ========================================================================
 
-    test.describe('Repository State Changes', () => {
-      test('transition repo through MIRROR, READ_ONLY, and NORMAL states', async ({
-        superuserApi,
-        adminClient,
-      }) => {
-        const org = await superuserApi.organization();
-        const repo = await superuserApi.repository(org.name);
+    test.describe(
+      'Repository State Changes',
+      {tag: ['@feature:REPO_MIRROR']},
+      () => {
+        test('transition repo through MIRROR, READ_ONLY, and NORMAL states', async ({
+          superuserApi,
+          adminClient,
+        }) => {
+          const org = await superuserApi.organization();
+          const repo = await superuserApi.repository(org.name);
 
-        // Change to MIRROR
-        const toMirror = await adminClient.put(
-          `/api/v1/repository/${org.name}/${repo.name}/changestate`,
-          {state: 'MIRROR'},
-        );
-        expect(toMirror.status()).toBe(200);
-        const mirrorBody = await toMirror.json();
-        expect(mirrorBody.success).toBe(true);
+          // Change to MIRROR
+          const toMirror = await adminClient.put(
+            `/api/v1/repository/${org.name}/${repo.name}/changestate`,
+            {state: 'MIRROR'},
+          );
+          expect(toMirror.status()).toBe(200);
+          const mirrorBody = await toMirror.json();
+          expect(mirrorBody.success).toBe(true);
 
-        // Change to READ_ONLY
-        const toReadOnly = await adminClient.put(
-          `/api/v1/repository/${org.name}/${repo.name}/changestate`,
-          {state: 'READ_ONLY'},
-        );
-        expect(toReadOnly.status()).toBe(200);
-        const readOnlyBody = await toReadOnly.json();
-        expect(readOnlyBody.success).toBe(true);
+          // Change to READ_ONLY
+          const toReadOnly = await adminClient.put(
+            `/api/v1/repository/${org.name}/${repo.name}/changestate`,
+            {state: 'READ_ONLY'},
+          );
+          expect(toReadOnly.status()).toBe(200);
+          const readOnlyBody = await toReadOnly.json();
+          expect(readOnlyBody.success).toBe(true);
 
-        // Change back to NORMAL
-        const toNormal = await adminClient.put(
-          `/api/v1/repository/${org.name}/${repo.name}/changestate`,
-          {state: 'NORMAL'},
-        );
-        expect(toNormal.status()).toBe(200);
-        const normalBody = await toNormal.json();
-        expect(normalBody.success).toBe(true);
-      });
-    });
+          // Change back to NORMAL
+          const toNormal = await adminClient.put(
+            `/api/v1/repository/${org.name}/${repo.name}/changestate`,
+            {state: 'NORMAL'},
+          );
+          expect(toNormal.status()).toBe(200);
+          const normalBody = await toNormal.json();
+          expect(normalBody.success).toBe(true);
+        });
+      },
+    );
   },
 );
