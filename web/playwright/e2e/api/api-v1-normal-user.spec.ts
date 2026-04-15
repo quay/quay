@@ -868,6 +868,7 @@ test.describe(
         expect(getBody.upstream_registry).toContain('docker.io');
 
         // Delete proxy cache config
+        // NOTE: Backend returns 201 instead of 204 for DELETE - known issue
         const del = await userClient.delete(
           `/api/v1/organization/${orgName}/proxycache`,
         );
@@ -933,7 +934,7 @@ test.describe(
         );
         expect(list.status()).toBe(200);
         const listBody = await list.json();
-        expect(listBody.policies[0].uuid).toContain(uuid);
+        expect(listBody.policies[0].uuid).toBe(uuid);
 
         // Get by uuid
         const get = await userClient.get(
@@ -941,7 +942,7 @@ test.describe(
         );
         expect(get.status()).toBe(200);
         const getBody = await get.json();
-        expect(getBody.uuid).toContain(uuid);
+        expect(getBody.uuid).toBe(uuid);
 
         // Update
         const update = await userClient.put(
@@ -1137,7 +1138,7 @@ test.describe(
         );
         expect(get.status()).toBe(200);
         const getBody = await get.json();
-        expect(getBody.uuid).toContain(uuid);
+        expect(getBody.uuid).toBe(uuid);
 
         // Update
         const update = await userClient.put(
@@ -1453,10 +1454,7 @@ test.describe(
   'Normal User - Tags and Manifests',
   {tag: ['@api', '@auth:Database', '@container']},
   () => {
-    test('can list tags on own repo with pushed image', async ({
-      userClient,
-      api,
-    }) => {
+    test('can list tags on own repo', async ({userClient, api}) => {
       const org = await api.organization('usr_org');
       const repo = await api.repository(org.name, 'usr_repo', 'public');
 
@@ -1715,7 +1713,7 @@ test.describe(
   'Normal User - Sign In',
   {tag: ['@api', '@auth:Database']},
   () => {
-    test('can sign in as normal user', async ({userClient}) => {
+    test('can verify authentication as normal user', async ({userClient}) => {
       const r = await userClient.post('/api/v1/signin', {
         username: 'testuser',
         password: 'password',
