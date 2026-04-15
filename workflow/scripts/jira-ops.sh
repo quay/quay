@@ -42,7 +42,7 @@ get_jira_creds() {
   done
 
   [ -z "$token" ] && token="${JIRA_API_TOKEN:-}"
-  [ -z "$email" ] && email="${JIRA_USER:-}"
+  [ -z "$email" ] && email="${JIRA_USER:-quay-devel@redhat.com}"
 
   echo "${email}:${token}"
 }
