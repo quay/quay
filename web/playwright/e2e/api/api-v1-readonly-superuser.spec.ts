@@ -1,8 +1,8 @@
 /**
  * Readonly Superuser Role API Tests
  *
- * Validates that a user listed in GLOBAL_READONLY_SUPER_USERS can read
- * (GET) all API resources but cannot mutate (POST/PUT/DELETE) them.
+ * Validates that a user listed in GLOBAL_READONLY_SUPER_USERS can read (GET)
+ * all API resources but cannot mutate (POST/PUT/DELETE) them.
  *
  * Three client roles are used:
  *   - adminClient  : full superuser for setup and teardown
@@ -657,8 +657,21 @@ test.describe(
           },
         });
         expect(msgResp.status()).toBe(201);
-        const msgBody = await msgResp.json();
-        globalMessageUuid = msgBody.uuid;
+        const text = await msgResp.text();
+        if (text) {
+          const msgBody = JSON.parse(text);
+          globalMessageUuid = msgBody.uuid;
+        } else {
+          // Server returned 201 with empty body; look up the message via GET
+          const list = await adminClient.get('/api/v1/messages');
+          const listBody = await list.json();
+          const created = listBody.messages?.find(
+            (m: {content: string}) => m.content === 'readonly test message',
+          );
+          if (created) {
+            globalMessageUuid = created.uuid;
+          }
+        }
       });
 
       test.afterAll(async ({adminClient}) => {
