@@ -272,7 +272,10 @@ test.describe('Global Messages CRUD', {tag: ['@api', '@auth:Database']}, () => {
         const allBody = await allResp.json();
         for (const msg of allBody.messages) {
           if (contents.includes(msg.content)) {
-            await adminClient.delete(`/api/v1/message/${msg.uuid}`);
+            const deleteResp = await adminClient.delete(
+              `/api/v1/message/${msg.uuid}`,
+            );
+            expect([204, 404]).toContain(deleteResp.status());
           }
         }
       }
@@ -283,29 +286,44 @@ test.describe('Global Messages CRUD', {tag: ['@api', '@auth:Database']}, () => {
     adminClient,
   }) => {
     const content = `test message ${uniqueName('msg')}`;
-    const createResp = await adminClient.post('/api/v1/messages', {
-      message: {
-        media_type: 'text/markdown',
-        severity: 'info',
-        content,
-      },
-    });
-    expect(createResp.status()).toBe(201);
+    let createdUuid: string | undefined;
+    try {
+      const createResp = await adminClient.post('/api/v1/messages', {
+        message: {
+          media_type: 'text/markdown',
+          severity: 'info',
+          content,
+        },
+      });
+      expect(createResp.status()).toBe(201);
 
-    // Retrieve messages and find the one we just created by content
-    const getResp = await adminClient.get('/api/v1/messages');
-    expect(getResp.status()).toBe(200);
-    const getBody = await getResp.json();
-    const ourMessage = getBody.messages.find(
-      (m: {content: string}) => m.content === content,
-    );
-    expect(ourMessage).toBeTruthy();
+      // Retrieve messages and find the one we just created by content
+      const getResp = await adminClient.get('/api/v1/messages');
+      expect(getResp.status()).toBe(200);
+      const getBody = await getResp.json();
+      const ourMessage = getBody.messages.find(
+        (m: {content: string}) => m.content === content,
+      );
+      expect(ourMessage).toBeTruthy();
+      createdUuid = ourMessage.uuid;
 
-    // Delete the specific message we created
-    const deleteResp = await adminClient.delete(
-      `/api/v1/message/${ourMessage.uuid}`,
-    );
-    expect(deleteResp.status()).toBe(204);
+      // Delete the specific message we created
+      const deleteResp = await adminClient.delete(
+        `/api/v1/message/${createdUuid}`,
+      );
+      expect(deleteResp.status()).toBe(204);
+    } finally {
+      // Safety net: if assertion failed after creation but before deletion,
+      // ensure the message is cleaned up
+      if (createdUuid) {
+        // Attempt cleanup; ignore 404 if already deleted above
+        const cleanupResp = await adminClient.delete(
+          `/api/v1/message/${createdUuid}`,
+        );
+        // 204 = deleted now, 404 = already deleted in the try block
+        expect([204, 404]).toContain(cleanupResp.status());
+      }
+    }
   });
 });
 
