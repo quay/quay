@@ -5,9 +5,11 @@ import {TEST_USERS} from '../global-setup';
 
 async function assertChartLegend(
   page: Page,
+  orgName: string,
   legends: string[],
   chartTestId = 'usage-logs-chart',
 ): Promise<void> {
+  await page.goto(`/organization/${orgName}?tab=Logs`);
   const chart = page.getByTestId(chartTestId);
   await expect(chart).toBeVisible();
   for (const text of legends) {
@@ -181,44 +183,80 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
 
   test.describe('chart log kind mapping', {tag: ['@PROJQUAY-11079']}, () => {
     test(
-      'org_create_quota and org_change_quota appear in the chart legend',
+      'quota log kinds appear in the chart legend',
       {tag: ['@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA']},
       async ({superuserPage, superuserApi}) => {
         const org = await superuserApi.organization('chartquota');
-        // Create quota → logs org_create_quota (superuser-only operation)
+        // org_create_quota
         const quota = await superuserApi.quota(org.name, 100 * 1024 * 1024);
-        // Update quota → logs org_change_quota
+        // org_change_quota
         await superuserApi.raw.updateOrganizationQuota(
           org.name,
           quota.quotaId,
           200 * 1024 * 1024,
         );
+        // org_create_quota_limit
+        await superuserApi.raw.createQuotaLimit(
+          org.name,
+          quota.quotaId,
+          'Warning',
+          80,
+        );
+        // Fetch updated quota to get the new limit ID
+        const quotas = await superuserApi.raw.getOrganizationQuota(org.name);
+        const limitId = quotas[0].limits[0].id;
+        // org_change_quota_limit
+        await superuserApi.raw.changeOrganizationQuotaLimit(
+          org.name,
+          quota.quotaId,
+          limitId,
+          'Warning',
+          90,
+        );
+        // org_delete_quota_limit
+        await superuserApi.raw.deleteQuotaLimit(
+          org.name,
+          quota.quotaId,
+          limitId,
+        );
+        // org_delete_quota
+        await superuserApi.raw.deleteOrganizationQuota(org.name, quota.quotaId);
 
-        await superuserPage.goto(`/organization/${org.name}?tab=Logs`);
-        await assertChartLegend(superuserPage, [
+        await assertChartLegend(superuserPage, org.name, [
           'Create Organization Quota',
           'Change Organization Quota',
+          'Create Organization Quota Limit',
+          'Change Organization Quota Limit',
+          'Delete Organization Quota Limit',
+          'Delete Organization Quota',
         ]);
       },
     );
 
-    test('create_robot_federation appears in the chart legend', async ({
-      authenticatedPage,
-      api,
-    }) => {
-      const org = await api.organization('chartfed');
-      const robot = await api.robot(org.name, 'chartfedbot');
-      // Create robot federation → logs create_robot_federation
-      await api.raw.createRobotFederation(org.name, robot.shortname, [
-        {
-          issuer: 'https://token.actions.githubusercontent.com',
-          subject: 'repo:testorg/testrepo:ref:refs/heads/main',
-        },
-      ]);
+    test(
+      'robot federation log kinds appear in the chart legend',
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('chartfed');
+        const robot = await api.robot(org.name, 'chartfedbot');
+        // create_robot_federation
+        await api.raw.createRobotFederation(org.name, robot.shortname, [
+          {
+            issuer: 'https://token.actions.githubusercontent.com',
+            subject: 'repo:testorg/testrepo:ref:refs/heads/main',
+          },
+        ]);
+        // delete_robot_federation
+        // (federated_robot_token_exchange is not triggered here — it requires
+        // a real OIDC token exchange with an external issuer, which is not
+        // feasible in a CI environment)
+        await api.raw.deleteRobotFederation(org.name, robot.shortname);
 
-      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
-      await assertChartLegend(authenticatedPage, ['Create Robot Federation']);
-    });
+        await assertChartLegend(authenticatedPage, org.name, [
+          'Create Robot Federation',
+          'Delete Robot Federation',
+        ]);
+      },
+    );
 
     test(
       'change_tag_immutability appears in the chart legend',
@@ -235,11 +273,12 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
           TEST_USERS.user.username,
           TEST_USERS.user.password,
         );
-        // Set tag immutable → logs change_tag_immutability
+        // change_tag_immutability
         await api.raw.setTagImmutability(org.name, repo.name, 'v1.0.0', true);
 
-        await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
-        await assertChartLegend(authenticatedPage, ['Change tag immutability']);
+        await assertChartLegend(authenticatedPage, org.name, [
+          'Change tag immutability',
+        ]);
       },
     );
   });
