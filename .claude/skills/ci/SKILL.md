@@ -6,7 +6,7 @@ description: >
 argument-hint: PR_NUMBER
 disable-model-invocation: true
 allowed-tools:
-  - Bash(bash workflow/scripts/check-ci.sh *)
+  - Bash(bash .claude/scripts/check-ci.sh *)
   - Bash(gh *)
   - Read
   - Grep
@@ -19,7 +19,7 @@ Quick CI check for PR #$ARGUMENTS.
 ## Step 1: Check
 
 ```bash
-bash workflow/scripts/check-ci.sh $ARGUMENTS
+bash .claude/scripts/check-ci.sh $ARGUMENTS
 ```
 
 ## Step 2: Report

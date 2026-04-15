@@ -6,7 +6,7 @@ description: >
 argument-hint: PR_NUMBER [BRANCH]
 disable-model-invocation: true
 allowed-tools:
-  - Bash(bash workflow/scripts/jira-ops.sh *)
+  - Bash(bash .claude/scripts/jira-ops.sh *)
   - Bash(gh pr *)
   - Read
   - Grep
@@ -35,7 +35,7 @@ If `$ARGUMENTS[1]` is provided, use it as the target branch.
 Otherwise, extract the JIRA ticket key from the PR title and check Target Version:
 
 ```bash
-bash workflow/scripts/jira-ops.sh check-version <PROJQUAY-XXXX>
+bash .claude/scripts/jira-ops.sh check-version <PROJQUAY-XXXX>
 ```
 
 Map Target Version to release branch (e.g. `quay-v3.12.0` → `redhat-3.12`). Ask the user if the mapping is ambiguous.

@@ -7,7 +7,7 @@ description: >
 argument-hint: PROJQUAY-XXXX
 disable-model-invocation: true
 allowed-tools:
-  - Bash(bash workflow/scripts/jira-ops.sh *)
+  - Bash(bash .claude/scripts/jira-ops.sh *)
   - Bash(git checkout *)
   - Bash(git pull *)
   - Read
@@ -24,20 +24,20 @@ Begin work on JIRA ticket `$ARGUMENTS`.
 ## Step 1: View and Assign
 
 ```bash
-bash workflow/scripts/jira-ops.sh view $ARGUMENTS
+bash .claude/scripts/jira-ops.sh view $ARGUMENTS
 ```
 
 Review the ticket summary, status, and description. Then assign and transition:
 
 ```bash
-bash workflow/scripts/jira-ops.sh assign $ARGUMENTS
-bash workflow/scripts/jira-ops.sh transition $ARGUMENTS "ASSIGNED"
+bash .claude/scripts/jira-ops.sh assign $ARGUMENTS
+bash .claude/scripts/jira-ops.sh transition $ARGUMENTS "ASSIGNED"
 ```
 
 ## Step 2: Check Backport Requirement
 
 ```bash
-bash workflow/scripts/jira-ops.sh check-version $ARGUMENTS
+bash .claude/scripts/jira-ops.sh check-version $ARGUMENTS
 ```
 
 If Target Version is set, note that **backporting will be required** after merge.

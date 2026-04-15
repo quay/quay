@@ -7,7 +7,7 @@ description: >
 argument-hint: PROJQUAY-XXXX [action]
 disable-model-invocation: true
 allowed-tools:
-  - Bash(bash workflow/scripts/jira-ops.sh *)
+  - Bash(bash .claude/scripts/jira-ops.sh *)
   - Read
   - Grep
   - AskUserQuestion
@@ -25,13 +25,13 @@ Manage JIRA ticket `$ARGUMENTS[0]`.
 ### View (default)
 
 ```bash
-bash workflow/scripts/jira-ops.sh view $ARGUMENTS[0]
+bash .claude/scripts/jira-ops.sh view $ARGUMENTS[0]
 ```
 
 ### Assign
 
 ```bash
-bash workflow/scripts/jira-ops.sh assign $ARGUMENTS[0]
+bash .claude/scripts/jira-ops.sh assign $ARGUMENTS[0]
 ```
 
 Assigns to current user (requires `acli` or accountId).
@@ -39,7 +39,7 @@ Assigns to current user (requires `acli` or accountId).
 ### Transition
 
 ```bash
-bash workflow/scripts/jira-ops.sh transition $ARGUMENTS[0] "$ARGUMENTS[2]"
+bash .claude/scripts/jira-ops.sh transition $ARGUMENTS[0] "$ARGUMENTS[2]"
 ```
 
 Valid statuses: `New`, `ASSIGNED`, `POST`, `ON_QA`, `Verified`, `Release Pending`, `Closed`, `MODIFIED`
@@ -49,7 +49,7 @@ Example: `/jira PROJQUAY-1234 transition POST`
 ### Check Target Version
 
 ```bash
-bash workflow/scripts/jira-ops.sh check-version $ARGUMENTS[0]
+bash .claude/scripts/jira-ops.sh check-version $ARGUMENTS[0]
 ```
 
 Reports whether backporting is required.
@@ -57,7 +57,7 @@ Reports whether backporting is required.
 ### Set Target Version
 
 ```bash
-bash workflow/scripts/jira-ops.sh set-version $ARGUMENTS[0] "$ARGUMENTS[2]"
+bash .claude/scripts/jira-ops.sh set-version $ARGUMENTS[0] "$ARGUMENTS[2]"
 ```
 
 Example: `/jira PROJQUAY-1234 set-version quay-v3.18.0`

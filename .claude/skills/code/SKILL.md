@@ -6,7 +6,7 @@ description: >
   quality checks (pre-commit, tests), and commit with proper message format.
 disable-model-invocation: true
 allowed-tools:
-  - Bash(bash workflow/scripts/format-and-lint.sh *)
+  - Bash(bash .claude/scripts/format-and-lint.sh *)
   - Bash(git *)
   - Bash(make *)
   - Bash(pytest *)
@@ -51,8 +51,8 @@ Follow `AGENTS.md` conventions:
 Pre-commit hooks run automatically on `git commit`. To run manually:
 
 ```bash
-bash workflow/scripts/format-and-lint.sh            # staged files
-bash workflow/scripts/format-and-lint.sh --all-files # all files
+bash .claude/scripts/format-and-lint.sh            # staged files
+bash .claude/scripts/format-and-lint.sh --all-files # all files
 ```
 
 Run relevant tests:

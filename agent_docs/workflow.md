@@ -107,7 +107,7 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 Install recommended Claude Code hooks on first use:
 
 ```bash
-cp workflow/claude-settings-recommended.json .claude/settings.json
+cp .claude/claude-settings-recommended.json .claude/settings.json
 ```
 
 This activates:

@@ -6,7 +6,7 @@ description: >
   against the CI-enforced regex before creating.
 disable-model-invocation: true
 allowed-tools:
-  - Bash(bash workflow/scripts/validate-pr-title.sh *)
+  - Bash(bash .claude/scripts/validate-pr-title.sh *)
   - Bash(git *)
   - Bash(gh pr *)
   - Bash(cat *)
@@ -36,12 +36,12 @@ Examples:
 - `[redhat-3.12] PROJQUAY-1234: fix(api): backport tag pagination`
 
 ```bash
-bash workflow/scripts/validate-pr-title.sh "PROJQUAY-1234: fix(api): description here"
+bash .claude/scripts/validate-pr-title.sh "PROJQUAY-1234: fix(api): description here"
 ```
 
 ## Step 2: Build Description
 
-Read the template at `workflow/templates/pr-description.md`. Fill in:
+Read the template at `.claude/templates/pr-description.md`. Fill in:
 - **Summary**: What this PR does
 - **Root Cause / Rationale**: Why
 - **Changes**: What changed

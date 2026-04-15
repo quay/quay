@@ -7,8 +7,8 @@ description: >
 argument-hint: PR_NUMBER
 disable-model-invocation: true
 allowed-tools:
-  - Bash(bash workflow/scripts/poll-pr.sh *)
-  - Bash(bash workflow/scripts/format-and-lint.sh *)
+  - Bash(bash .claude/scripts/poll-pr.sh *)
+  - Bash(bash .claude/scripts/format-and-lint.sh *)
   - Bash(git *)
   - Bash(gh *)
   - Bash(make *)
@@ -30,7 +30,7 @@ Poll PR #$ARGUMENTS for CI, CodeRabbit, and human review status. Fix issues foun
 ## Step 1: Poll
 
 ```bash
-bash workflow/scripts/poll-pr.sh $ARGUMENTS
+bash .claude/scripts/poll-pr.sh $ARGUMENTS
 ```
 
 ## Step 2: Act on CI Failures
@@ -69,7 +69,7 @@ When flagged:
 ```bash
 git add -A && git commit -m "fix: address review feedback (PROJQUAY-XXXX)"
 git push
-bash workflow/scripts/poll-pr.sh $ARGUMENTS
+bash .claude/scripts/poll-pr.sh $ARGUMENTS
 ```
 
 Repeat until all CI passes, CodeRabbit passes, coverage holds, and human review approves.
