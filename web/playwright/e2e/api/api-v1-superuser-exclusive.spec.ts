@@ -303,6 +303,7 @@ test.describe('Export Action Logs', {tag: ['@api', '@auth:Database']}, () => {
 
     const resp = await adminClient.post(
       `/api/v1/repository/${org.name}/${repo.name}/exportlogs`,
+      {callback_email: 'test@example.com'},
     );
     // Export logs returns 200 (async job started)
     expect([200, 202]).toContain(resp.status());
@@ -316,12 +317,15 @@ test.describe('Export Action Logs', {tag: ['@api', '@auth:Database']}, () => {
 
     const resp = await adminClient.post(
       `/api/v1/organization/${org.name}/exportlogs`,
+      {callback_email: 'test@example.com'},
     );
     expect([200, 202]).toContain(resp.status());
   });
 
   test('superuser can export user logs', async ({adminClient}) => {
-    const resp = await adminClient.post('/api/v1/user/exportlogs');
+    const resp = await adminClient.post('/api/v1/user/exportlogs', {
+      callback_email: 'test@example.com',
+    });
     expect([200, 202]).toContain(resp.status());
   });
 });
