@@ -132,7 +132,7 @@ case "$ACTION" in
         DATA=$(jq -n --arg id "$ASSIGNEE" '{"fields":{"assignee":{"accountId":$id}}}')
         jira_rest PUT "issue/${ISSUE_KEY}" "$DATA"
       else
-        echo "Cannot auto-assign via REST without knowing your username. Use acli or pass username."
+        echo "Cannot auto-assign via REST without knowing your accountId. Use acli or pass accountId."
         exit 1
       fi
     fi
@@ -149,13 +149,14 @@ case "$ACTION" in
       }
     else
       TRANSITIONS=$(jira_rest GET "issue/${ISSUE_KEY}/transitions")
-      TRANSITION_ID=$(echo "$TRANSITIONS" | jq -r ".transitions[] | select(.name | ascii_downcase == (\"${STATUS}\" | ascii_downcase)) | .id" | head -1)
+      TRANSITION_ID=$(echo "$TRANSITIONS" | jq -r --arg status "$STATUS" '.transitions[] | select((.name | ascii_downcase) == ($status | ascii_downcase)) | .id' | head -1)
       if [ -n "$TRANSITION_ID" ]; then
         jira_rest POST "issue/${ISSUE_KEY}/transitions" "{\"transition\":{\"id\":\"${TRANSITION_ID}\"}}"
         echo "Transitioned to '${STATUS}'."
       else
-        echo "Transition '${STATUS}' not available. Available:"
-        echo "$TRANSITIONS" | jq -r '.transitions[].name' 2>/dev/null
+        echo "Transition '${STATUS}' not available. Available:" >&2
+        echo "$TRANSITIONS" | jq -r '.transitions[].name' 2>/dev/null >&2
+        exit 1
       fi
     fi
     ;;

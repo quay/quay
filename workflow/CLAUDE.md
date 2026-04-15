@@ -93,7 +93,7 @@ See `.github/CONTRIBUTING.md` for full commit message conventions.
 
 The PR title **must** match this regex (enforced by CI):
 
-```
+```text
 ^(?:\[redhat-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$
 ```
 
