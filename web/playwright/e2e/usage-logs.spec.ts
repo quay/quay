@@ -179,76 +179,70 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeVisible();
   });
 
-  test.describe(
-    'chart log kind mapping',
-    {tag: ['@PROJQUAY-11079']},
-    () => {
-      test(
-        'org_create_quota and org_change_quota appear in the chart legend',
-        {tag: ['@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA']},
-        async ({superuserPage, superuserApi}) => {
-          const org = await superuserApi.organization('chartquota');
-          // Create quota → logs org_create_quota (superuser-only operation)
-          const quota = await superuserApi.quota(org.name, 100 * 1024 * 1024);
-          // Update quota → logs org_change_quota
-          await superuserApi.raw.updateOrganizationQuota(
-            org.name,
-            quota.quotaId,
-            200 * 1024 * 1024,
-          );
+  test.describe('chart log kind mapping', {tag: ['@PROJQUAY-11079']}, () => {
+    test(
+      'org_create_quota and org_change_quota appear in the chart legend',
+      {tag: ['@feature:QUOTA_MANAGEMENT', '@feature:EDIT_QUOTA']},
+      async ({superuserPage, superuserApi}) => {
+        const org = await superuserApi.organization('chartquota');
+        // Create quota → logs org_create_quota (superuser-only operation)
+        const quota = await superuserApi.quota(org.name, 100 * 1024 * 1024);
+        // Update quota → logs org_change_quota
+        await superuserApi.raw.updateOrganizationQuota(
+          org.name,
+          quota.quotaId,
+          200 * 1024 * 1024,
+        );
 
-          await superuserPage.goto(`/organization/${org.name}?tab=Logs`);
-          await assertChartLegend(superuserPage, [
-            'Create Organization Quota',
-            'Change Organization Quota',
-          ]);
-        },
-      );
-
-      test('create_robot_federation appears in the chart legend', async ({
-        authenticatedPage,
-        api,
-      }) => {
-        const org = await api.organization('chartfed');
-        const robot = await api.robot(org.name, 'chartfedbot');
-        // Create robot federation → logs create_robot_federation
-        await api.raw.createRobotFederation(org.name, robot.shortname, [
-          {
-            issuer: 'https://token.actions.githubusercontent.com',
-            subject: 'repo:testorg/testrepo:ref:refs/heads/main',
-          },
+        await superuserPage.goto(`/organization/${org.name}?tab=Logs`);
+        await assertChartLegend(superuserPage, [
+          'Create Organization Quota',
+          'Change Organization Quota',
         ]);
+      },
+    );
+
+    test('create_robot_federation appears in the chart legend', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('chartfed');
+      const robot = await api.robot(org.name, 'chartfedbot');
+      // Create robot federation → logs create_robot_federation
+      await api.raw.createRobotFederation(org.name, robot.shortname, [
+        {
+          issuer: 'https://token.actions.githubusercontent.com',
+          subject: 'repo:testorg/testrepo:ref:refs/heads/main',
+        },
+      ]);
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+      await assertChartLegend(authenticatedPage, ['Create Robot Federation']);
+    });
+
+    test(
+      'change_tag_immutability appears in the chart legend',
+      {tag: ['@container']},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('chartimmut');
+        const repo = await api.repository(org.name, 'chartimmutrepo');
+
+        // Push an image to create a tag, then set it immutable
+        await pushImage(
+          org.name,
+          repo.name,
+          'v1.0.0',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        );
+        // Set tag immutable → logs change_tag_immutability
+        await api.raw.setTagImmutability(org.name, repo.name, 'v1.0.0', true);
 
         await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
-        await assertChartLegend(authenticatedPage, ['Create Robot Federation']);
-      });
-
-      test(
-        'change_tag_immutability appears in the chart legend',
-        {tag: ['@container']},
-        async ({authenticatedPage, api}) => {
-          const org = await api.organization('chartimmut');
-          const repo = await api.repository(org.name, 'chartimmutrepo');
-
-          // Push an image to create a tag, then set it immutable
-          await pushImage(
-            org.name,
-            repo.name,
-            'v1.0.0',
-            TEST_USERS.user.username,
-            TEST_USERS.user.password,
-          );
-          // Set tag immutable → logs change_tag_immutability
-          await api.raw.setTagImmutability(org.name, repo.name, 'v1.0.0', true);
-
-          await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
-          await assertChartLegend(authenticatedPage, [
-            'Change tag immutability',
-          ]);
-        },
-      );
-    },
-  );
+        await assertChartLegend(authenticatedPage, ['Change tag immutability']);
+      },
+    );
+  });
 
   test('shows info alert when Splunk search is not configured', async ({
     authenticatedPage,
