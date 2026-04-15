@@ -1,0 +1,42 @@
+{
+  "_comment": "Recommended .claude/settings.json for the Quay project. Copy to .claude/settings.json to activate hooks.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/scripts/check-embargo.sh",
+            "timeout": 30,
+            "_comment": "Block processing of embargoed JIRA tickets (existing Quay hook)"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/scripts/check-embargo.sh",
+            "timeout": 30,
+            "_comment": "Block JIRA commands on embargoed tickets (existing Quay hook)"
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\"); if echo \"$CMD\" | grep -qE \"^git commit\"; then echo \"[hook] Running format check before commit...\" >&2; if command -v black &>/dev/null; then CHANGED=$(git diff --cached --name-only --diff-filter=ACMR | grep \"\\.py$\" || true); if [ -n \"$CHANGED\" ]; then echo \"$CHANGED\" | xargs black --line-length=100 --target-version=py312 --check --quiet 2>&1 || { echo \"BLOCKED: Python files need formatting. Run: black --line-length=100 --target-version=py312 .\" >&2; exit 2; }; fi; fi; fi'",
+            "timeout": 30,
+            "_comment": "Validate Python formatting before git commit"
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\"); if echo \"$CMD\" | grep -qP \"gh pr create\"; then TITLE=$(echo \"$CMD\" | grep -oP \"--title \\x27\\K[^\\x27]+|--title \\\"\\K[^\\\"]+\" || true); if [ -n \"$TITLE\" ]; then PATTERN=\"^(\\\\[redhat-[0-9]+\\\\.[0-9]+\\\\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(\\\\([^)]+\\\\))?: .+$\"; if ! echo \"$TITLE\" | grep -qE \"$PATTERN\"; then echo \"BLOCKED: PR title does not match required format.\" >&2; echo \"Expected: PROJQUAY-XXXX: type(scope): description\" >&2; echo \"Got: $TITLE\" >&2; exit 2; fi; fi; fi'",
+            "timeout": 10,
+            "_comment": "Validate PR title format before gh pr create"
+          }
+        ]
+      }
+    ]
+  }
+}

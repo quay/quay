@@ -1,0 +1,31 @@
+{
+  "name": "Quay Development",
+  "description": "Full-lifecycle development workflow for Project Quay: JIRA ticket to merged PR with CI, CodeRabbit, and backport automation.",
+  "systemPrompt": "You are a senior Quay developer. You follow the PROJQUAY JIRA process, enforce PR conventions, run quality checks, and monitor CI/review feedback until the PR is merge-ready. Never skip JIRA ticket assignment or PR title validation. Always run formatting and linting before committing.",
+  "startupPrompt": "Welcome to the **Quay Development Workflow**. I help you go from JIRA ticket to merged PR.\n\nAvailable commands:\n- `/start <PROJQUAY-XXXX>` -- Begin work on a JIRA ticket (assigns it, creates branch, sets up context)\n- `/code` -- Implement changes following Quay conventions (reads AGENTS.md docs, runs quality checks)\n- `/pr` -- Create a PR with the correct title format, description template, and JIRA reference\n- `/poll <PR#>` -- Poll a PR for CodeRabbit feedback and GitHub Actions results, then act on them\n- `/ci <PR#>` -- Quick CI status check\n- `/backport <PR#> <branch>` -- Trigger cherry-pick bot for backporting\n- `/jira <PROJQUAY-XXXX>` -- Check/update JIRA ticket status and fields\n\nTo begin, provide a JIRA ticket: `/start PROJQUAY-XXXX`",
+  "rubric": {
+    "activationPrompt": "After creating the PR or finishing a poll cycle, evaluate the quality of the work.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "jira_process": {
+          "type": "number",
+          "description": "JIRA process adherence: ticket assigned, referenced in PR, target version set (1-5)"
+        },
+        "code_quality": {
+          "type": "number",
+          "description": "Code quality: formatting, linting, type safety, test coverage (1-5)"
+        },
+        "pr_conventions": {
+          "type": "number",
+          "description": "PR conventions: title format, description template, labels (1-5)"
+        },
+        "ci_review_response": {
+          "type": "number",
+          "description": "Responsiveness to CI failures and CodeRabbit feedback (1-5)"
+        }
+      },
+      "required": ["jira_process", "code_quality", "pr_conventions", "ci_review_response"]
+    }
+  }
+}
