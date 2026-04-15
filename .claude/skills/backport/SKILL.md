@@ -54,3 +54,35 @@ Report:
 - The `openshift-cherrypick-robot` will create a backport PR automatically
 - The JIRA lifecycle plugin clones the parent ticket for the target release
 - Monitor the backport PR for CI results
+
+
+## Manual Backport (if cherry-pick bot fails)
+
+The bot can fail due to merge conflicts or missing labels. When that happens, create the backport manually:
+
+```bash
+# Fetch latest and create backport branch
+git fetch origin
+git checkout -b <BRANCH>-backport-<PR_NUMBER> origin/<BRANCH>
+
+# Cherry-pick the merge commit (use -m 1 for the mainline parent)
+git cherry-pick -m 1 <MERGE_COMMIT_SHA>
+```
+
+If there are conflicts:
+1. Resolve each conflict manually
+2. `git add` the resolved files
+3. `git cherry-pick --continue`
+
+Then push and create the backport PR:
+
+```bash
+git push -u origin <BRANCH>-backport-<PR_NUMBER>
+gh pr create \
+  --title "[<BRANCH>] <ORIGINAL_PR_TITLE>" \
+  --body "Backport of #$ARGUMENTS[0]" \
+  --base <BRANCH>
+```
+
+The backport PR title must include the `[redhat-X.Y]` prefix to pass CI, e.g.:
+`[redhat-3.12] PROJQUAY-1234: fix(api): add pagination to tag listing`
