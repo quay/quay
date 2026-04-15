@@ -197,7 +197,7 @@ test.describe(
         password,
         'text/spdx',
         'producer=syft 0.63.0',
-        path.join(fixturesDir, 'referrer.spdx'),
+        path.join(fixturesDir, 'referrer.spdx.txt'),
       );
 
       orasAttach(
