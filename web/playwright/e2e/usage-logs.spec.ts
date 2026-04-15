@@ -164,6 +164,119 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeVisible();
   });
 
+  test.describe('chart log kind mapping', {tag: ['@PROJQUAY-11079']}, () => {
+    /**
+     * Mocks the aggregatelogs and logs endpoints for an org so we can control
+     * exactly which log kinds the chart receives, without needing real backend
+     * operations for every kind.
+     */
+    async function mockOrgLogs(page, orgName: string, kinds: string[]) {
+      const datetime = new Date().toISOString();
+      await page.route(
+        `**/api/v1/organization/${orgName}/aggregatelogs*`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              aggregated: kinds.map((kind) => ({kind, datetime, count: 1})),
+            }),
+          });
+        },
+      );
+      await page.route(
+        `**/api/v1/organization/${orgName}/logs*`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({logs: []}),
+          });
+        },
+      );
+    }
+
+    test(
+      'change_tag_immutability appears in the chart legend',
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('chartimmut');
+        await mockOrgLogs(authenticatedPage, org.name, [
+          'change_tag_immutability',
+        ]);
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+        const chart = authenticatedPage.getByTestId('usage-logs-chart');
+        await expect(chart).toBeVisible();
+        await expect(chart.getByText('Change tag immutability')).toBeVisible();
+      },
+    );
+
+    test(
+      'quota log kinds appear in the chart legend',
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('chartquota');
+        await mockOrgLogs(authenticatedPage, org.name, [
+          'org_create_quota',
+          'org_change_quota',
+          'org_delete_quota',
+          'org_create_quota_limit',
+          'org_change_quota_limit',
+          'org_delete_quota_limit',
+        ]);
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+        const chart = authenticatedPage.getByTestId('usage-logs-chart');
+        await expect(chart).toBeVisible();
+        await expect(
+          chart.getByText('Create Organization Quota'),
+        ).toBeVisible();
+        await expect(
+          chart.getByText('Change Organization Quota'),
+        ).toBeVisible();
+        await expect(
+          chart.getByText('Delete Organization Quota'),
+        ).toBeVisible();
+        await expect(
+          chart.getByText('Create Organization Quota Limit'),
+        ).toBeVisible();
+        await expect(
+          chart.getByText('Change Organization Quota Limit'),
+        ).toBeVisible();
+        await expect(
+          chart.getByText('Delete Organization Quota Limit'),
+        ).toBeVisible();
+      },
+    );
+
+    test(
+      'robot federation log kinds appear in the chart legend',
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('chartfed');
+        await mockOrgLogs(authenticatedPage, org.name, [
+          'create_robot_federation',
+          'delete_robot_federation',
+          'federated_robot_token_exchange',
+        ]);
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+        const chart = authenticatedPage.getByTestId('usage-logs-chart');
+        await expect(chart).toBeVisible();
+        await expect(
+          chart.getByText('Create Robot Federation'),
+        ).toBeVisible();
+        await expect(
+          chart.getByText('Delete Robot Federation'),
+        ).toBeVisible();
+        await expect(
+          chart.getByText('Federated Robot Token Exchange'),
+        ).toBeVisible();
+      },
+    );
+  });
+
   test('shows info alert when Splunk search is not configured', async ({
     authenticatedPage,
     api,
