@@ -54,7 +54,6 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   const {
     data: aggregateLogs,
     isError: errorFetchingLogs,
-    error: fetchError,
     isLoading: loadingAggregateLogs,
   } = useQuery({
     queryKey: [
