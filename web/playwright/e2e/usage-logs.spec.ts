@@ -197,25 +197,26 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         },
       );
 
-      test(
-        'create_robot_federation appears in the chart legend',
-        async ({authenticatedPage, api}) => {
-          const org = await api.organization('chartfed');
-          const robot = await api.robot(org.name, 'chartfedbot');
-          // Create robot federation → logs create_robot_federation
-          await api.raw.createRobotFederation(org.name, robot.shortname, [
-            {issuer: 'https://token.actions.githubusercontent.com', subject: 'repo:testorg/testrepo:ref:refs/heads/main'},
-          ]);
+      test('create_robot_federation appears in the chart legend', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('chartfed');
+        const robot = await api.robot(org.name, 'chartfedbot');
+        // Create robot federation → logs create_robot_federation
+        await api.raw.createRobotFederation(org.name, robot.shortname, [
+          {
+            issuer: 'https://token.actions.githubusercontent.com',
+            subject: 'repo:testorg/testrepo:ref:refs/heads/main',
+          },
+        ]);
 
-          await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
 
-          const chart = authenticatedPage.getByTestId('usage-logs-chart');
-          await expect(chart).toBeVisible();
-          await expect(
-            chart.getByText('Create Robot Federation'),
-          ).toBeVisible();
-        },
-      );
+        const chart = authenticatedPage.getByTestId('usage-logs-chart');
+        await expect(chart).toBeVisible();
+        await expect(chart.getByText('Create Robot Federation')).toBeVisible();
+      });
 
       test(
         'change_tag_immutability appears in the chart legend',
@@ -233,12 +234,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
             TEST_USERS.user.password,
           );
           // Set tag immutable → logs change_tag_immutability
-          await api.raw.setTagImmutability(
-            org.name,
-            repo.name,
-            'v1.0.0',
-            true,
-          );
+          await api.raw.setTagImmutability(org.name, repo.name, 'v1.0.0', true);
 
           await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
 
