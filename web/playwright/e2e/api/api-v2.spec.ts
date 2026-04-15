@@ -78,9 +78,9 @@ test.describe(
           },
         },
       );
-      if (r.ok()) {
-        manifestDigest = r.headers()['docker-content-digest'];
-      }
+      expect(r.status()).toBe(200);
+      manifestDigest = r.headers()['docker-content-digest'];
+      expect(manifestDigest).toBeTruthy();
     });
 
     test.afterAll(async ({userContext, cachedContainerAvailable}) => {
@@ -196,10 +196,10 @@ test.describe(
     });
 
     test('list referrers for manifest', async ({playwright}) => {
-      expect(manifestDigest).toBeTruthy();
-
       const orasAvailable = await isOrasAvailable();
       test.skip(!orasAvailable, 'oras CLI required for referrer tests');
+
+      expect(manifestDigest).toBeTruthy();
 
       const fixturesDir = path.resolve(__dirname, '../../fixtures/oras');
 
