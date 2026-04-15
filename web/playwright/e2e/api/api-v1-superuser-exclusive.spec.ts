@@ -23,103 +23,83 @@ import {pushImage} from '../../utils/container';
 // ---------------------------------------------------------------------------
 // Service key approval
 // ---------------------------------------------------------------------------
-test.describe(
-  'Service Key Approve',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('superuser can create and approve a service key', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const key = await superuserApi.serviceKey('quay', 'approve_test_key');
+test.describe('Service Key Approve', {tag: ['@api', '@auth:Database']}, () => {
+  test('superuser can create and approve a service key', async ({
+    superuserApi,
+    adminClient,
+  }) => {
+    const key = await superuserApi.serviceKey('quay', 'approve_test_key');
 
-      // Approve via POST /api/v1/superuser/approvedkeys/{kid}
-      const approveResp = await adminClient.post(
-        `/api/v1/superuser/approvedkeys/${key.kid}`,
-        {notes: 'approved by automation'},
-      );
-      expect(approveResp.status()).toBe(201);
-    });
-  },
-);
+    // Approve via POST /api/v1/superuser/approvedkeys/{kid}
+    const approveResp = await adminClient.post(
+      `/api/v1/superuser/approvedkeys/${key.kid}`,
+      {notes: 'approved by automation'},
+    );
+    expect(approveResp.status()).toBe(201);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Take ownership
 // ---------------------------------------------------------------------------
-test.describe(
-  'Take Ownership',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('superuser can take ownership of an organization', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      // Create an org owned by the superuser (simulating "another user's org")
-      const org = await superuserApi.organization('takeown');
+test.describe('Take Ownership', {tag: ['@api', '@auth:Database']}, () => {
+  test('superuser can take ownership of an organization', async ({
+    superuserApi,
+    adminClient,
+  }) => {
+    // Create an org owned by the superuser (simulating "another user's org")
+    const org = await superuserApi.organization('takeown');
 
-      // Take ownership via POST /api/v1/superuser/takeownership/{namespace}
-      const resp = await adminClient.post(
-        `/api/v1/superuser/takeownership/${org.name}`,
-      );
-      expect(resp.status()).toBe(200);
-      const body = await resp.json();
-      expect(body.namespace).toBe(org.name);
-    });
-  },
-);
+    // Take ownership via POST /api/v1/superuser/takeownership/{namespace}
+    const resp = await adminClient.post(
+      `/api/v1/superuser/takeownership/${org.name}`,
+    );
+    expect(resp.status()).toBe(200);
+    const body = await resp.json();
+    expect(body.namespace).toBe(org.name);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Create install user (server-generated password)
 // ---------------------------------------------------------------------------
-test.describe(
-  'Create Install User',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('superuser can create a user via superuser API and get generated password', async ({
-      superuserApi,
-    }) => {
-      const user = await superuserApi.user('install');
-      expect(user.username).toBeTruthy();
-      expect(user.email).toBeTruthy();
-      // The superuser API returns a server-generated password
-      expect(user.password).toBeTruthy();
-    });
-  },
-);
+test.describe('Create Install User', {tag: ['@api', '@auth:Database']}, () => {
+  test('superuser can create a user via superuser API and get generated password', async ({
+    superuserApi,
+  }) => {
+    const user = await superuserApi.user('install');
+    expect(user.username).toBeTruthy();
+    expect(user.email).toBeTruthy();
+    // The superuser API returns a server-generated password
+    expect(user.password).toBeTruthy();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Superuser changelog
 // ---------------------------------------------------------------------------
-test.describe(
-  'Superuser Changelog',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('superuser can read changelog', async ({adminClient}) => {
-      const resp = await adminClient.get('/api/v1/superuser/changelog/');
-      expect(resp.status()).toBe(200);
-      const body = await resp.json();
-      expect(body.log).toBeDefined();
-    });
-  },
-);
+test.describe('Superuser Changelog', {tag: ['@api', '@auth:Database']}, () => {
+  test('superuser can read changelog', async ({adminClient}) => {
+    const resp = await adminClient.get('/api/v1/superuser/changelog/');
+    expect(resp.status()).toBe(200);
+    const body = await resp.json();
+    expect(body.log).toBeDefined();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Superuser logs (all logs)
 // ---------------------------------------------------------------------------
-test.describe(
-  'Superuser Logs',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('superuser can list all logs', async ({adminClient}) => {
-      const resp = await adminClient.get('/api/v1/superuser/logs');
-      expect(resp.status()).toBe(200);
-      const body = await resp.json();
-      expect(body.start_time).toBeDefined();
-      expect(body.end_time).toBeDefined();
-      expect(body.logs.length).toBeGreaterThanOrEqual(1);
-    });
-  },
-);
+test.describe('Superuser Logs', {tag: ['@api', '@auth:Database']}, () => {
+  test('superuser can list all logs', async ({adminClient}) => {
+    const resp = await adminClient.get('/api/v1/superuser/logs');
+    expect(resp.status()).toBe(200);
+    const body = await resp.json();
+    expect(body.start_time).toBeDefined();
+    expect(body.end_time).toBeDefined();
+    expect(body.logs.length).toBeGreaterThanOrEqual(1);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Superuser aggregate logs
@@ -234,9 +214,7 @@ test.describe(
       );
       expect(tagsResp2.status()).toBe(200);
       const tags2 = await tagsResp2.json();
-      const newTag = tags2.tags.find(
-        (t: {name: string}) => t.name === 'v1.0',
-      );
+      const newTag = tags2.tags.find((t: {name: string}) => t.name === 'v1.0');
       expect(newTag).toBeDefined();
       expect(newTag.manifest_digest).toBe(digest);
     });
@@ -246,115 +224,107 @@ test.describe(
 // ---------------------------------------------------------------------------
 // Permission prototype full CRUD
 // ---------------------------------------------------------------------------
-test.describe(
-  'Prototypes Full CRUD',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('superuser can create, list, update, and delete a permission prototype', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('proto');
-      const robot = await superuserApi.robot(org.name, 'protobot');
+test.describe('Prototypes Full CRUD', {tag: ['@api', '@auth:Database']}, () => {
+  test('superuser can create, list, update, and delete a permission prototype', async ({
+    superuserApi,
+    adminClient,
+  }) => {
+    const org = await superuserApi.organization('proto');
+    const robot = await superuserApi.robot(org.name, 'protobot');
 
-      // CREATE prototype
-      const createResp = await adminClient.post(
-        `/api/v1/organization/${org.name}/prototypes`,
-        {
-          delegate: {
-            name: robot.fullName,
-            kind: 'user',
-            is_robot: true,
-            is_org_member: true,
-          },
-          role: 'read',
+    // CREATE prototype
+    const createResp = await adminClient.post(
+      `/api/v1/organization/${org.name}/prototypes`,
+      {
+        delegate: {
+          name: robot.fullName,
+          kind: 'user',
+          is_robot: true,
+          is_org_member: true,
         },
-      );
-      expect(createResp.status()).toBe(200);
-      const created = await createResp.json();
-      expect(created.delegate.name).toBe(robot.fullName);
-      const prototypeId = created.id;
+        role: 'read',
+      },
+    );
+    expect(createResp.status()).toBe(200);
+    const created = await createResp.json();
+    expect(created.delegate.name).toBe(robot.fullName);
+    const prototypeId = created.id;
 
-      // LIST prototypes
-      const listResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/prototypes`,
-      );
-      expect(listResp.status()).toBe(200);
-      const listed = await listResp.json();
-      expect(listed.prototypes.length).toBeGreaterThanOrEqual(1);
-      const found = listed.prototypes.find(
-        (p: {id: string}) => p.id === prototypeId,
-      );
-      expect(found).toBeDefined();
+    // LIST prototypes
+    const listResp = await adminClient.get(
+      `/api/v1/organization/${org.name}/prototypes`,
+    );
+    expect(listResp.status()).toBe(200);
+    const listed = await listResp.json();
+    expect(listed.prototypes.length).toBeGreaterThanOrEqual(1);
+    const found = listed.prototypes.find(
+      (p: {id: string}) => p.id === prototypeId,
+    );
+    expect(found).toBeDefined();
 
-      // UPDATE prototype role
-      const updateResp = await adminClient.put(
-        `/api/v1/organization/${org.name}/prototypes/${prototypeId}`,
-        {role: 'admin', id: prototypeId},
-      );
-      expect(updateResp.status()).toBe(200);
-      const updated = await updateResp.json();
-      expect(updated.role).toBe('admin');
+    // UPDATE prototype role
+    const updateResp = await adminClient.put(
+      `/api/v1/organization/${org.name}/prototypes/${prototypeId}`,
+      {role: 'admin', id: prototypeId},
+    );
+    expect(updateResp.status()).toBe(200);
+    const updated = await updateResp.json();
+    expect(updated.role).toBe('admin');
 
-      // DELETE prototype
-      const deleteResp = await adminClient.delete(
-        `/api/v1/organization/${org.name}/prototypes/${prototypeId}`,
-      );
-      expect(deleteResp.status()).toBe(204);
+    // DELETE prototype
+    const deleteResp = await adminClient.delete(
+      `/api/v1/organization/${org.name}/prototypes/${prototypeId}`,
+    );
+    expect(deleteResp.status()).toBe(204);
 
-      // Verify deletion
-      const listResp2 = await adminClient.get(
-        `/api/v1/organization/${org.name}/prototypes`,
-      );
-      expect(listResp2.status()).toBe(200);
-      const listed2 = await listResp2.json();
-      const notFound = listed2.prototypes.find(
-        (p: {id: string}) => p.id === prototypeId,
-      );
-      expect(notFound).toBeUndefined();
-    });
-  },
-);
+    // Verify deletion
+    const listResp2 = await adminClient.get(
+      `/api/v1/organization/${org.name}/prototypes`,
+    );
+    expect(listResp2.status()).toBe(200);
+    const listed2 = await listResp2.json();
+    const notFound = listed2.prototypes.find(
+      (p: {id: string}) => p.id === prototypeId,
+    );
+    expect(notFound).toBeUndefined();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Export action logs (repo, org, user)
 // ---------------------------------------------------------------------------
-test.describe(
-  'Export Action Logs',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('superuser can export repository logs', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('exportlogs');
-      const repo = await superuserApi.repository(org.name, 'repo');
+test.describe('Export Action Logs', {tag: ['@api', '@auth:Database']}, () => {
+  test('superuser can export repository logs', async ({
+    superuserApi,
+    adminClient,
+  }) => {
+    const org = await superuserApi.organization('exportlogs');
+    const repo = await superuserApi.repository(org.name, 'repo');
 
-      const resp = await adminClient.post(
-        `/api/v1/repository/${org.name}/${repo.name}/exportlogs`,
-      );
-      // Export logs returns 200 (async job started)
-      expect([200, 202]).toContain(resp.status());
-    });
+    const resp = await adminClient.post(
+      `/api/v1/repository/${org.name}/${repo.name}/exportlogs`,
+    );
+    // Export logs returns 200 (async job started)
+    expect([200, 202]).toContain(resp.status());
+  });
 
-    test('superuser can export organization logs', async ({
-      superuserApi,
-      adminClient,
-    }) => {
-      const org = await superuserApi.organization('exportorglogs');
+  test('superuser can export organization logs', async ({
+    superuserApi,
+    adminClient,
+  }) => {
+    const org = await superuserApi.organization('exportorglogs');
 
-      const resp = await adminClient.post(
-        `/api/v1/organization/${org.name}/exportlogs`,
-      );
-      expect([200, 202]).toContain(resp.status());
-    });
+    const resp = await adminClient.post(
+      `/api/v1/organization/${org.name}/exportlogs`,
+    );
+    expect([200, 202]).toContain(resp.status());
+  });
 
-    test('superuser can export user logs', async ({adminClient}) => {
-      const resp = await adminClient.post('/api/v1/user/exportlogs');
-      expect([200, 202]).toContain(resp.status());
-    });
-  },
-);
+  test('superuser can export user logs', async ({adminClient}) => {
+    const resp = await adminClient.post('/api/v1/user/exportlogs');
+    expect([200, 202]).toContain(resp.status());
+  });
+});
 
 // ---------------------------------------------------------------------------
 // User logs
