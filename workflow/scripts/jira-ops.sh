@@ -52,8 +52,9 @@ jira_rest() {
   local creds
   creds=$(get_jira_creds)
 
-  if [ -z "$creds" ] || [ "$creds" = ":" ]; then
-    echo "ERROR: No JIRA credentials found. Set up acli or JIRA_USER/JIRA_API_TOKEN env vars." >&2
+  local token="${creds#*:}"
+  if [ -z "$token" ]; then
+    echo "ERROR: No JIRA API token found. Set JIRA_API_TOKEN or configure acli token." >&2
     return 1
   fi
 
@@ -146,6 +147,7 @@ case "$ACTION" in
       acli jira workitem transition --key "$ISSUE_KEY" --status "$STATUS" --yes 2>/dev/null || {
         echo "Transition failed. Available transitions:"
         acli jira workitem transitions --key "$ISSUE_KEY" 2>/dev/null || echo "(could not list transitions)"
+        exit 1
       }
     else
       TRANSITIONS=$(jira_rest GET "issue/${ISSUE_KEY}/transitions")

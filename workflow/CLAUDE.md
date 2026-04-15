@@ -41,7 +41,7 @@ bash scripts/jira-ops.sh transition PROJQUAY-1234 "ASSIGNED"
 - If "Target Version" is set, note that backporting will be required after merge.
 - Valid transitions: `New`, `ASSIGNED`, `POST`, `ON_QA`, `Verified`, `Release Pending`, `Closed`, `MODIFIED`
 
-**Note:** Write operations (assign, transition, set-version) require `JIRA_USER` (email) and `JIRA_API_TOKEN` env vars. Read operations work without auth.
+**Note:** All REST operations require `JIRA_API_TOKEN`. `JIRA_USER` defaults to `quay-devel@redhat.com`. If `acli` is installed, it is preferred and uses its own credentials.
 
 ### 1.2 Branch Setup
 
