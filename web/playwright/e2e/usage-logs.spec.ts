@@ -13,7 +13,7 @@ async function assertChartLegend(
   const chart = page.getByTestId(chartTestId);
   await expect(chart).toBeVisible();
   for (const text of legends) {
-    await expect(chart.getByText(text)).toBeVisible();
+    await expect(chart.getByText(text, {exact: true})).toBeVisible();
   }
 }
 
