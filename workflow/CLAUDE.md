@@ -385,19 +385,21 @@ Git's pre-commit hooks run automatically on `git commit` if installed. This Clau
 
 ```json
 {
-  "PreToolUse": [
-    {
-      "matcher": "Bash",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "bash -c '...if git commit detected, ensure pre-commit install...'",
-          "timeout": 15,
-          "_comment": "pre-commit runs automatically on commit; this just ensures hooks are installed"
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '...if git commit detected, ensure pre-commit install...'",
+            "timeout": 15,
+            "_comment": "pre-commit runs automatically on commit; this just ensures hooks are installed"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 

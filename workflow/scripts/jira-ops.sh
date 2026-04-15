@@ -57,7 +57,7 @@ jira_rest() {
     return 1
   fi
 
-  local args=(-s -H "Content-Type: application/json" -u "$creds")
+  local args=(-sS -f -H "Content-Type: application/json" -u "$creds")
   if [ -n "$data" ]; then
     args+=(-X "$method" -d "$data")
   fi
