@@ -248,7 +248,7 @@ test.describe(
       expect(response.status()).toBe(200);
     });
 
-    test('get pull statistics for repository', async ({
+    test('get repository details with tags', async ({
       adminClient,
       superuserApi,
     }) => {
@@ -269,6 +269,10 @@ test.describe(
       expect(response.status()).toBe(200);
 
       const body = await response.json();
+      expect(body.name).toBe(repo.name);
+      expect(body.namespace).toBe(org.name);
+      expect(body.tags).toBeDefined();
+      expect(body.tags.latest).toBeDefined();
       expect(body.tags.latest.manifest_digest).toContain('sha256');
     });
   },
@@ -314,7 +318,7 @@ test.describe(
       expect(response.status()).toBe(200);
 
       const body = await response.json();
-      expect(body.digest).toContain('sha256');
+      expect(body.digest).toBe(manifestDigest);
     });
   },
 );
@@ -380,7 +384,7 @@ test.describe(
       const digest = repoBody.tags.latest.manifest_digest;
 
       // Add a label first
-      await adminClient.post(
+      const createResp = await adminClient.post(
         `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}/labels`,
         {
           media_type: 'text/plain',
@@ -388,6 +392,7 @@ test.describe(
           value: 'staging',
         },
       );
+      expect(createResp.status()).toBe(201);
 
       const response = await adminClient.get(
         `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}/labels`,
@@ -395,7 +400,13 @@ test.describe(
       expect(response.status()).toBe(200);
 
       const body = await response.json();
-      expect(body.labels).toBeTruthy();
+      expect(body.labels).toBeInstanceOf(Array);
+      expect(body.labels.length).toBeGreaterThan(0);
+      const found = body.labels.some(
+        (l: {key: string; value: string}) =>
+          l.key === 'env' && l.value === 'staging',
+      );
+      expect(found).toBe(true);
     });
 
     test('get specific label', async ({adminClient, superuserApi}) => {
@@ -563,7 +574,12 @@ test.describe('Search', {tag: ['@api', '@auth:Database']}, () => {
     expect(response.status()).toBe(200);
 
     const body = await response.json();
-    expect(body.results).toBeTruthy();
+    expect(body.results).toBeInstanceOf(Array);
+    expect(body.results.length).toBeGreaterThan(0);
+    const found = body.results.some(
+      (r: {name: string}) => r.name === repo.name,
+    );
+    expect(found).toBe(true);
   });
 
   test('search repositories', async ({adminClient, superuserApi}) => {
@@ -580,7 +596,12 @@ test.describe('Search', {tag: ['@api', '@auth:Database']}, () => {
     expect(response.status()).toBe(200);
 
     const body = await response.json();
-    expect(body.results).toBeTruthy();
+    expect(body.results).toBeInstanceOf(Array);
+    expect(body.results.length).toBeGreaterThan(0);
+    const found = body.results.some(
+      (r: {name: string}) => r.name === repo.name,
+    );
+    expect(found).toBe(true);
   });
 });
 
