@@ -7,7 +7,7 @@
  * and auto-cleanup via TestApi fixtures.
  */
 
-import {test, expect, uniqueName} from '../../fixtures';
+import {test, expect} from '../../fixtures';
 
 test.describe(
   'Repository Features API',
@@ -81,9 +81,7 @@ test.describe(
         expect(list.status()).toBe(200);
         const body = await list.json();
         expect(body.collaborators).toBeDefined();
-        const names = body.collaborators.map(
-          (c: {name: string}) => c.name,
-        );
+        const names = body.collaborators.map((c: {name: string}) => c.name);
         expect(names).toContain(user.username);
       });
     });
@@ -247,8 +245,7 @@ test.describe(
           `/api/v1/organization/${org.name}/robots/${robot.shortname}/federation`,
           [
             {
-              issuer:
-                'sts.windows.net/250926f3-c788-4a52-acfa-e3aac5386ac1',
+              issuer: 'sts.windows.net/250926f3-c788-4a52-acfa-e3aac5386ac1',
               subject: '93VEQl60c7JtJIV9r3gS0FCPTkcpwCDtfEUtD-lgdP4',
               isExpanded: true,
             },
