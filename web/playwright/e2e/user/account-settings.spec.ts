@@ -708,8 +708,9 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
         .click();
 
       // Should land on the USER's settings, not the org's
+      const escaped = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       await expect(authenticatedPage).toHaveURL(
-        new RegExp(`/(user|organization)/${username}.*tab=Settings`),
+        new RegExp(`/(user|organization)/${escaped}\\?.*\\btab=Settings\\b`),
       );
 
       // Verify the page shows the user's username, not the org name
