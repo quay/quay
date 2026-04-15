@@ -2341,6 +2341,36 @@ export class ApiClient {
   }
 
   /**
+   * Update an existing quota limit for an organization.
+   * PUT /api/v1/organization/{orgName}/quota/{quotaId}/limit/{limitId}
+   * Logs the org_change_quota_limit action. Superuser only.
+   */
+  async changeOrganizationQuotaLimit(
+    orgName: string,
+    quotaId: string,
+    limitId: string,
+    type: 'Warning' | 'Reject',
+    thresholdPercent: number,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+        data: {type, threshold_percent: thresholdPercent},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to change quota limit for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
    * Create a robot federation config.
    * POST /api/v1/organization/{orgName}/robots/{robotShortname}/federation
    * Logs the create_robot_federation action.
