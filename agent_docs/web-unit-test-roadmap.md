@@ -3,7 +3,7 @@
 Prioritized checklist of testable areas in `web/src/`, with effort estimates and implementation guidance.
 
 **Stack:** Vitest + React Testing Library + happy-dom
-**Current state:** 180 tests passing across 11 files. Phases 1-3 complete. Playwright covers E2E (58 tests).
+**Current state:** 239 tests passing across 14 files. Phases 1-4 complete. Playwright covers E2E (58 tests).
 **Target:** ~460 unit tests across 7 phases
 
 ## Completed: Framework Setup
@@ -53,17 +53,15 @@ Prioritized checklist of testable areas in `web/src/`, with effort estimates and
 
 ---
 
-## Phase 4: Complex Hooks (~60 tests)
+## Phase 4: Complex Hooks — COMPLETE (59 tests)
 
-These hooks have significant logic beyond "call API, return data." Highest ROI in the hooks layer.
+| File | Tests | Status |
+|------|-------|--------|
+| `src/hooks/usePaginatedSortableTable.ts` | 31 | **Done** — default state, initial config, string/hex/UUID/number sorting, sort interactions, filtering, pipeline, pagination, paginationProps |
+| `src/hooks/UseUsernameValidation.ts` | 12 | **Done** — state machine transitions (editing/confirming/confirmed/existing), dual API check, sequential validations. axios mocked via `vi.mock`. |
+| `src/hooks/UseQuotaManagement.ts` | 16 | **Done** — useFetchOrganizationQuota (null data, first quota, enabled logic), all 6 mutation hooks (success callbacks, error callbacks with addDisplayError). Resource functions mocked via `vi.mock`. |
 
-| File | Complexity | Est. Tests | Why |
-|------|-----------|-----------|-----|
-| `src/hooks/usePaginatedSortableTable.ts` | High (168 LOC) | ~30 | Pagination + sorting + filtering pipeline. Tests hex/UUID sort, locale-aware string sort, page boundary math. Pure state — no mocking needed. |
-| `src/hooks/UseUsernameValidation.ts` | High (60 LOC) | ~15 | State machine: editing -> confirming -> confirmed/existing/error. Dual async API check. Mock axios. |
-| `src/hooks/UseQuotaManagement.ts` | Medium (242 LOC) | ~15 | 6 hooks for quota CRUD. Standard React Query pattern but worth testing error callbacks. |
-
-**Effort:** ~2-3 days. `usePaginatedSortableTable` is the single highest-ROI test target in the codebase.
+**Notes:** `usePaginatedSortableTable` tests are pure state (no mocking). `UseUsernameValidation` and `UseQuotaManagement` use `QueryClientProvider` wrapper with `createTestQueryClient()` from `test-utils.tsx`. `waitFor` used for all async state transitions. The `onError` path in `UseUsernameValidation` is defensive/unreachable (internal try/catch absorbs all errors).
 
 ---
 
@@ -159,14 +157,14 @@ Leave these to Playwright E2E:
 | 1 | Pure utilities | 105 | 1-2 days | **Complete** |
 | 2 | Error handling + cookies | 31 | 1 day | **Complete** |
 | 3 | Contexts | 38 | 1 day | **Complete** |
-| 4 | Complex hooks | ~60 | 2-3 days | Pending |
+| 4 | Complex hooks | 59 | 2-3 days | **Complete** |
 | 5 | API resources | ~80 | 3-4 days | Pending |
 | 6 | Standard hooks | ~100 | 3-4 days | Pending |
 | 7 | Components | 6/~80 | 3-4 days | **In progress** — LoadingPage (6) done |
 
-**Current: 180 tests passing across 11 files | Target: ~460 tests**
+**Current: 239 tests passing across 14 files | Target: ~460 tests**
 
-Phases 1-3 are complete and deliver the most value per test written. Phase 4's `usePaginatedSortableTable` is the single highest-ROI target. Phases 5-7 are incremental and can be spread over sprints.
+Phases 1-4 are complete and deliver the most value per test written. Phases 5-7 are incremental and can be spread over sprints.
 
 ---
 
