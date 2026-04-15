@@ -2333,6 +2333,60 @@ export class ApiClient {
 
     return (await response.json()) as OAuthApp;
   }
+
+  /**
+   * Create a robot federation config.
+   * POST /api/v1/organization/{orgName}/robots/{robotShortname}/federation
+   * Logs the create_robot_federation action.
+   */
+  async createRobotFederation(
+    orgName: string,
+    robotShortname: string,
+    federations: {issuer: string; subject: string}[],
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/robots/${robotShortname}/federation`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+        data: federations,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create robot federation for ${orgName}+${robotShortname}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
+   * Delete a robot federation config.
+   * DELETE /api/v1/organization/{orgName}/robots/{robotShortname}/federation
+   * Logs the delete_robot_federation action.
+   */
+  async deleteRobotFederation(
+    orgName: string,
+    robotShortname: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/robots/${robotShortname}/federation`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+      },
+    );
+
+    if (!response.ok() && response.status() !== 204) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete robot federation for ${orgName}+${robotShortname}: ${response.status()} - ${body}`,
+      );
+    }
+  }
 }
 
 export interface OAuthApp {

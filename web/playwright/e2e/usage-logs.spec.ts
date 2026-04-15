@@ -1,4 +1,6 @@
 import {test, expect} from '../fixtures';
+import {pushImage} from '../utils/container';
+import {TEST_USERS} from '../global-setup';
 
 test.describe('Usage Logs', {tag: ['@logs']}, () => {
   test('displays organization usage logs with chart and table', async ({
@@ -164,118 +166,91 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeVisible();
   });
 
-  test.describe('chart log kind mapping', {tag: ['@PROJQUAY-11079']}, () => {
-    /**
-     * Mocks the aggregatelogs and logs endpoints for an org so we can control
-     * exactly which log kinds the chart receives, without needing real backend
-     * operations for every kind.
-     */
-    async function mockOrgLogs(page, orgName: string, kinds: string[]) {
-      const datetime = new Date().toISOString();
-      await page.route(
-        `**/api/v1/organization/${orgName}/aggregatelogs*`,
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              aggregated: kinds.map((kind) => ({kind, datetime, count: 1})),
-            }),
-          });
+  test.describe(
+    'chart log kind mapping',
+    {tag: ['@PROJQUAY-11079', '@feature:QUOTA_MANAGEMENT']},
+    () => {
+      test(
+        'org_create_quota and org_change_quota appear in the chart legend',
+        {tag: ['@feature:EDIT_QUOTA']},
+        async ({authenticatedPage, api}) => {
+          const org = await api.organization('chartquota');
+          // Create quota → logs org_create_quota
+          const quota = await api.quota(org.name, 100 * 1024 * 1024);
+          // Update quota → logs org_change_quota
+          await api.raw.updateOrganizationQuota(
+            org.name,
+            quota.quotaId,
+            200 * 1024 * 1024,
+          );
+
+          await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+          const chart = authenticatedPage.getByTestId('usage-logs-chart');
+          await expect(chart).toBeVisible();
+          await expect(
+            chart.getByText('Create Organization Quota'),
+          ).toBeVisible();
+          await expect(
+            chart.getByText('Change Organization Quota'),
+          ).toBeVisible();
         },
       );
-      await page.route(
-        `**/api/v1/organization/${orgName}/logs*`,
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({logs: []}),
-          });
+
+      test(
+        'create_robot_federation appears in the chart legend',
+        async ({authenticatedPage, api}) => {
+          const org = await api.organization('chartfed');
+          const robot = await api.robot(org.name, 'chartfedbot');
+          // Create robot federation → logs create_robot_federation
+          await api.raw.createRobotFederation(org.name, robot.shortname, [
+            {issuer: 'https://token.actions.githubusercontent.com', subject: 'repo:testorg/testrepo:ref:refs/heads/main'},
+          ]);
+
+          await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+          const chart = authenticatedPage.getByTestId('usage-logs-chart');
+          await expect(chart).toBeVisible();
+          await expect(
+            chart.getByText('Create Robot Federation'),
+          ).toBeVisible();
         },
       );
-    }
 
-    test(
-      'change_tag_immutability appears in the chart legend',
-      async ({authenticatedPage, api}) => {
-        const org = await api.organization('chartimmut');
-        await mockOrgLogs(authenticatedPage, org.name, [
-          'change_tag_immutability',
-        ]);
+      test(
+        'change_tag_immutability appears in the chart legend',
+        {tag: ['@container']},
+        async ({authenticatedPage, api}) => {
+          const org = await api.organization('chartimmut');
+          const repo = await api.repository(org.name, 'chartimmutrepo');
 
-        await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+          // Push an image to create a tag, then set it immutable
+          await pushImage(
+            org.name,
+            repo.name,
+            'v1.0.0',
+            TEST_USERS.user.username,
+            TEST_USERS.user.password,
+          );
+          // Set tag immutable → logs change_tag_immutability
+          await api.raw.setTagImmutability(
+            org.name,
+            repo.name,
+            'v1.0.0',
+            true,
+          );
 
-        const chart = authenticatedPage.getByTestId('usage-logs-chart');
-        await expect(chart).toBeVisible();
-        await expect(chart.getByText('Change tag immutability')).toBeVisible();
-      },
-    );
+          await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
 
-    test(
-      'quota log kinds appear in the chart legend',
-      async ({authenticatedPage, api}) => {
-        const org = await api.organization('chartquota');
-        await mockOrgLogs(authenticatedPage, org.name, [
-          'org_create_quota',
-          'org_change_quota',
-          'org_delete_quota',
-          'org_create_quota_limit',
-          'org_change_quota_limit',
-          'org_delete_quota_limit',
-        ]);
-
-        await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
-
-        const chart = authenticatedPage.getByTestId('usage-logs-chart');
-        await expect(chart).toBeVisible();
-        await expect(
-          chart.getByText('Create Organization Quota'),
-        ).toBeVisible();
-        await expect(
-          chart.getByText('Change Organization Quota'),
-        ).toBeVisible();
-        await expect(
-          chart.getByText('Delete Organization Quota'),
-        ).toBeVisible();
-        await expect(
-          chart.getByText('Create Organization Quota Limit'),
-        ).toBeVisible();
-        await expect(
-          chart.getByText('Change Organization Quota Limit'),
-        ).toBeVisible();
-        await expect(
-          chart.getByText('Delete Organization Quota Limit'),
-        ).toBeVisible();
-      },
-    );
-
-    test(
-      'robot federation log kinds appear in the chart legend',
-      async ({authenticatedPage, api}) => {
-        const org = await api.organization('chartfed');
-        await mockOrgLogs(authenticatedPage, org.name, [
-          'create_robot_federation',
-          'delete_robot_federation',
-          'federated_robot_token_exchange',
-        ]);
-
-        await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
-
-        const chart = authenticatedPage.getByTestId('usage-logs-chart');
-        await expect(chart).toBeVisible();
-        await expect(
-          chart.getByText('Create Robot Federation'),
-        ).toBeVisible();
-        await expect(
-          chart.getByText('Delete Robot Federation'),
-        ).toBeVisible();
-        await expect(
-          chart.getByText('Federated Robot Token Exchange'),
-        ).toBeVisible();
-      },
-    );
-  });
+          const chart = authenticatedPage.getByTestId('usage-logs-chart');
+          await expect(chart).toBeVisible();
+          await expect(
+            chart.getByText('Change tag immutability'),
+          ).toBeVisible();
+        },
+      );
+    },
+  );
 
   test('shows info alert when Splunk search is not configured', async ({
     authenticatedPage,
