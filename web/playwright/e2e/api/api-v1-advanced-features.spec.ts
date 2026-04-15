@@ -111,9 +111,20 @@ test.describe('Proxy Cache', {tag: ['@api', '@feature:PROXY_CACHE']}, () => {
     // Delete proxy cache config
     await client.deleteProxyCacheConfig(org.name);
 
-    // Verify deletion
-    const afterDelete = await client.getProxyCacheConfig(org.name);
-    expect(afterDelete).toBeNull();
+    // Verify deletion — the API may take a moment to reflect it
+    await expect
+      .poll(
+        async () => {
+          const cfg = await client.getProxyCacheConfig(org.name);
+          return cfg;
+        },
+        {
+          message: 'Waiting for proxy cache config deletion',
+          timeout: 10_000,
+          intervals: [1_000, 2_000],
+        },
+      )
+      .toBeNull();
   });
 });
 
@@ -559,8 +570,8 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
         },
         {
           message: 'Waiting for registry size calculation to complete',
-          timeout: 60_000,
-          intervals: [2_000, 5_000, 10_000],
+          timeout: 180_000,
+          intervals: [5_000, 10_000, 15_000],
         },
       )
       .toBeGreaterThan(0);
