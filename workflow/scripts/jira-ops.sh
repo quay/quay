@@ -98,7 +98,7 @@ case "$ACTION" in
           priority: .fields.priority.name,
           target_version: $tv,
           labels: .fields.labels,
-          description: ((.fields.description // {}) | .. | .text? // empty | select(. != null)) | .[0:10] | join(" ")
+          description: ([.fields.description // {} | .. | .text? // empty] | .[0:10] | join(" "))
         }' 2>/dev/null || echo "$RESULT"
       }
     else
@@ -113,7 +113,7 @@ case "$ACTION" in
         priority: .fields.priority.name,
         target_version: $tv,
         labels: .fields.labels,
-        description: ((.fields.description // {}) | .. | .text? // empty | select(. != null)) | .[0:10] | join(" ")
+        description: ([.fields.description // {} | .. | .text? // empty] | .[0:10] | join(" "))
       }' 2>/dev/null || echo "$RESULT"
     fi
     ;;
