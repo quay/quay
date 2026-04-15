@@ -234,13 +234,15 @@ test.describe(
       const manifestDigest = repoBody.tags.latest.manifest_digest;
       expect(manifestDigest).toContain('sha256');
 
-      // Expire the tag (permanently delete)
+      // Expire the tag (permanently delete).  The tag we just pushed is
+      // still alive, so we must use is_alive: true so the API looks for an
+      // active tag rather than one already in the time-machine window.
       const response = await adminClient.post(
         `/api/v1/repository/${org.name}/${repo.name}/tag/latest/expire`,
         {
           manifest_digest: manifestDigest,
           include_submanifests: true,
-          is_alive: false,
+          is_alive: true,
         },
       );
       expect(response.status()).toBe(200);
