@@ -395,56 +395,52 @@ test.describe(
 // Teams
 // ---------------------------------------------------------------------------
 
-test.describe(
-  'Normal User - Teams',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('can create a team and add team permission to repo', async ({
-      userClient,
-    }) => {
-      const orgName = uniqueName('usr_org');
-      const repoName = uniqueName('usr_repo');
-      const teamName = uniqueName('usr_team').replace(/-/g, '_');
-      try {
-        await userClient.post('/api/v1/organization/', {
-          name: orgName,
-          email: `${orgName}@example.com`,
-        });
-        await userClient.post('/api/v1/repository', {
-          repo_kind: 'image',
-          namespace: orgName,
-          visibility: 'public',
-          repository: repoName,
-          description: 'test',
-        });
+test.describe('Normal User - Teams', {tag: ['@api', '@auth:Database']}, () => {
+  test('can create a team and add team permission to repo', async ({
+    userClient,
+  }) => {
+    const orgName = uniqueName('usr_org');
+    const repoName = uniqueName('usr_repo');
+    const teamName = uniqueName('usr_team').replace(/-/g, '_');
+    try {
+      await userClient.post('/api/v1/organization/', {
+        name: orgName,
+        email: `${orgName}@example.com`,
+      });
+      await userClient.post('/api/v1/repository', {
+        repo_kind: 'image',
+        namespace: orgName,
+        visibility: 'public',
+        repository: repoName,
+        description: 'test',
+      });
 
-        // Create team
-        const create = await userClient.put(
-          `/api/v1/organization/${orgName}/team/${teamName}`,
-          {name: teamName, role: 'member'},
-        );
-        expect(create.status()).toBe(200);
-        const body = await create.json();
-        expect(body.name).toContain(teamName);
+      // Create team
+      const create = await userClient.put(
+        `/api/v1/organization/${orgName}/team/${teamName}`,
+        {name: teamName, role: 'member'},
+      );
+      expect(create.status()).toBe(200);
+      const body = await create.json();
+      expect(body.name).toContain(teamName);
 
-        // Add team permission on repo
-        const perm = await userClient.put(
-          `/api/v1/repository/${orgName}/${repoName}/permissions/team/${teamName}`,
-          {role: 'write'},
-        );
-        expect(perm.status()).toBe(200);
+      // Add team permission on repo
+      const perm = await userClient.put(
+        `/api/v1/repository/${orgName}/${repoName}/permissions/team/${teamName}`,
+        {role: 'write'},
+      );
+      expect(perm.status()).toBe(200);
 
-        // Add team member
-        const member = await userClient.put(
-          `/api/v1/organization/${orgName}/team/${teamName}/members/testuser`,
-        );
-        expect(member.status()).toBe(200);
-      } finally {
-        await userClient.delete(`/api/v1/organization/${orgName}`);
-      }
-    });
-  },
-);
+      // Add team member
+      const member = await userClient.put(
+        `/api/v1/organization/${orgName}/team/${teamName}/members/testuser`,
+      );
+      expect(member.status()).toBe(200);
+    } finally {
+      await userClient.delete(`/api/v1/organization/${orgName}`);
+    }
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Notifications
@@ -1131,9 +1127,7 @@ test.describe(
         expect(list.status()).toBe(200);
         const listBody = await list.json();
         expect(
-          listBody.policies.some(
-            (p: {uuid: string}) => p.uuid === uuid,
-          ),
+          listBody.policies.some((p: {uuid: string}) => p.uuid === uuid),
         ).toBe(true);
 
         // Get by uuid
@@ -1277,117 +1271,111 @@ test.describe(
 // Logs
 // ---------------------------------------------------------------------------
 
-test.describe(
-  'Normal User - Logs',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('can get user logs', async ({userClient}) => {
-      const r = await userClient.get('/api/v1/user/logs');
+test.describe('Normal User - Logs', {tag: ['@api', '@auth:Database']}, () => {
+  test('can get user logs', async ({userClient}) => {
+    const r = await userClient.get('/api/v1/user/logs');
+    expect(r.status()).toBe(200);
+    const body = await r.json();
+    expect(body.logs).toBeDefined();
+  });
+
+  test('can get user aggregate logs', async ({userClient}) => {
+    const r = await userClient.get('/api/v1/user/aggregatelogs');
+    expect(r.status()).toBe(200);
+    const body = await r.json();
+    expect(body.logs).toBeDefined();
+  });
+
+  test('can get repository logs', async ({userClient}) => {
+    const orgName = uniqueName('usr_org');
+    const repoName = uniqueName('usr_repo');
+    try {
+      await userClient.post('/api/v1/organization/', {
+        name: orgName,
+        email: `${orgName}@example.com`,
+      });
+      await userClient.post('/api/v1/repository', {
+        repo_kind: 'image',
+        namespace: orgName,
+        visibility: 'public',
+        repository: repoName,
+        description: 'test',
+      });
+
+      const r = await userClient.get(
+        `/api/v1/repository/${orgName}/${repoName}/logs`,
+      );
       expect(r.status()).toBe(200);
       const body = await r.json();
       expect(body.logs).toBeDefined();
-    });
+    } finally {
+      await userClient.delete(`/api/v1/organization/${orgName}`);
+    }
+  });
 
-    test('can get user aggregate logs', async ({userClient}) => {
-      const r = await userClient.get('/api/v1/user/aggregatelogs');
+  test('can get organization logs', async ({userClient}) => {
+    const orgName = uniqueName('usr_org');
+    try {
+      await userClient.post('/api/v1/organization/', {
+        name: orgName,
+        email: `${orgName}@example.com`,
+      });
+
+      const r = await userClient.get(`/api/v1/organization/${orgName}/logs`);
       expect(r.status()).toBe(200);
       const body = await r.json();
       expect(body.logs).toBeDefined();
-    });
+    } finally {
+      await userClient.delete(`/api/v1/organization/${orgName}`);
+    }
+  });
 
-    test('can get repository logs', async ({userClient}) => {
-      const orgName = uniqueName('usr_org');
-      const repoName = uniqueName('usr_repo');
-      try {
-        await userClient.post('/api/v1/organization/', {
-          name: orgName,
-          email: `${orgName}@example.com`,
-        });
-        await userClient.post('/api/v1/repository', {
-          repo_kind: 'image',
-          namespace: orgName,
-          visibility: 'public',
-          repository: repoName,
-          description: 'test',
-        });
+  test('can get repository aggregate logs', async ({userClient}) => {
+    const orgName = uniqueName('usr_org');
+    const repoName = uniqueName('usr_repo');
+    try {
+      await userClient.post('/api/v1/organization/', {
+        name: orgName,
+        email: `${orgName}@example.com`,
+      });
+      await userClient.post('/api/v1/repository', {
+        repo_kind: 'image',
+        namespace: orgName,
+        visibility: 'public',
+        repository: repoName,
+        description: 'test',
+      });
 
-        const r = await userClient.get(
-          `/api/v1/repository/${orgName}/${repoName}/logs`,
-        );
-        expect(r.status()).toBe(200);
-        const body = await r.json();
-        expect(body.logs).toBeDefined();
-      } finally {
-        await userClient.delete(`/api/v1/organization/${orgName}`);
-      }
-    });
+      const r = await userClient.get(
+        `/api/v1/repository/${orgName}/${repoName}/aggregatelogs`,
+      );
+      expect(r.status()).toBe(200);
+      const body = await r.json();
+      expect(body.logs).toBeDefined();
+    } finally {
+      await userClient.delete(`/api/v1/organization/${orgName}`);
+    }
+  });
 
-    test('can get organization logs', async ({userClient}) => {
-      const orgName = uniqueName('usr_org');
-      try {
-        await userClient.post('/api/v1/organization/', {
-          name: orgName,
-          email: `${orgName}@example.com`,
-        });
+  test('can get organization aggregate logs', async ({userClient}) => {
+    const orgName = uniqueName('usr_org');
+    try {
+      await userClient.post('/api/v1/organization/', {
+        name: orgName,
+        email: `${orgName}@example.com`,
+      });
 
-        const r = await userClient.get(
-          `/api/v1/organization/${orgName}/logs`,
-        );
-        expect(r.status()).toBe(200);
-        const body = await r.json();
-        expect(body.logs).toBeDefined();
-      } finally {
-        await userClient.delete(`/api/v1/organization/${orgName}`);
-      }
-    });
-
-    test('can get repository aggregate logs', async ({userClient}) => {
-      const orgName = uniqueName('usr_org');
-      const repoName = uniqueName('usr_repo');
-      try {
-        await userClient.post('/api/v1/organization/', {
-          name: orgName,
-          email: `${orgName}@example.com`,
-        });
-        await userClient.post('/api/v1/repository', {
-          repo_kind: 'image',
-          namespace: orgName,
-          visibility: 'public',
-          repository: repoName,
-          description: 'test',
-        });
-
-        const r = await userClient.get(
-          `/api/v1/repository/${orgName}/${repoName}/aggregatelogs`,
-        );
-        expect(r.status()).toBe(200);
-        const body = await r.json();
-        expect(body.logs).toBeDefined();
-      } finally {
-        await userClient.delete(`/api/v1/organization/${orgName}`);
-      }
-    });
-
-    test('can get organization aggregate logs', async ({userClient}) => {
-      const orgName = uniqueName('usr_org');
-      try {
-        await userClient.post('/api/v1/organization/', {
-          name: orgName,
-          email: `${orgName}@example.com`,
-        });
-
-        const r = await userClient.get(
-          `/api/v1/organization/${orgName}/aggregatelogs`,
-        );
-        expect(r.status()).toBe(200);
-        const body = await r.json();
-        expect(body.logs).toBeDefined();
-      } finally {
-        await userClient.delete(`/api/v1/organization/${orgName}`);
-      }
-    });
-  },
-);
+      const r = await userClient.get(
+        `/api/v1/organization/${orgName}/aggregatelogs`,
+      );
+      expect(r.status()).toBe(200);
+      const body = await r.json();
+      expect(body.logs).toBeDefined();
+    } finally {
+      await userClient.delete(`/api/v1/organization/${orgName}`);
+    }
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Export Logs
@@ -1575,9 +1563,7 @@ test.describe(
         expect(found).toBeTruthy();
 
         // Get
-        const get = await userClient.get(
-          `/api/v1/user/apptoken/${tokenUuid}`,
-        );
+        const get = await userClient.get(`/api/v1/user/apptoken/${tokenUuid}`);
         expect(get.status()).toBe(200);
         const getBody = await get.json();
         expect(getBody.token.title).toBe('test_apptoken');
@@ -1613,9 +1599,7 @@ test.describe(
       expect(r.status()).toBe(403);
     });
 
-    test('gets 403 on DELETE /superuser/users/{user}', async ({
-      userClient,
-    }) => {
+    test('gets 403 on DELETE /superuser/users/{user}', async ({userClient}) => {
       const r = await userClient.delete('/api/v1/superuser/users/admin');
       expect(r.status()).toBe(403);
     });
@@ -1669,9 +1653,7 @@ test.describe(
     });
 
     test('gets 403 on user quota via superuser API', async ({userClient}) => {
-      const r = await userClient.get(
-        '/api/v1/superuser/users/testuser/quota',
-      );
+      const r = await userClient.get('/api/v1/superuser/users/testuser/quota');
       expect(r.status()).toBe(403);
     });
   },
@@ -1714,9 +1696,7 @@ test.describe(
   'Normal User - Security Scanner',
   {tag: ['@api', '@auth:Database']},
   () => {
-    test('can check security scanner backfill status', async ({
-      userClient,
-    }) => {
+    test('can check security scanner backfill status', async ({userClient}) => {
       const r = await userClient.get('/secscan/_backfill_status');
       expect(r.status()).toBe(200);
     });
