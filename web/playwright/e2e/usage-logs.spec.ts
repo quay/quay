@@ -173,20 +173,20 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
       test(
         'org_create_quota and org_change_quota appear in the chart legend',
         {tag: ['@feature:EDIT_QUOTA']},
-        async ({authenticatedPage, api}) => {
-          const org = await api.organization('chartquota');
-          // Create quota → logs org_create_quota
-          const quota = await api.quota(org.name, 100 * 1024 * 1024);
+        async ({superuserPage, superuserApi}) => {
+          const org = await superuserApi.organization('chartquota');
+          // Create quota → logs org_create_quota (superuser-only operation)
+          const quota = await superuserApi.quota(org.name, 100 * 1024 * 1024);
           // Update quota → logs org_change_quota
-          await api.raw.updateOrganizationQuota(
+          await superuserApi.raw.updateOrganizationQuota(
             org.name,
             quota.quotaId,
             200 * 1024 * 1024,
           );
 
-          await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+          await superuserPage.goto(`/organization/${org.name}?tab=Logs`);
 
-          const chart = authenticatedPage.getByTestId('usage-logs-chart');
+          const chart = superuserPage.getByTestId('usage-logs-chart');
           await expect(chart).toBeVisible();
           await expect(
             chart.getByText('Create Organization Quota'),
