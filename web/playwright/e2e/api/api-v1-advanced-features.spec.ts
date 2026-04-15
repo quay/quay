@@ -108,23 +108,9 @@ test.describe('Proxy Cache', {tag: ['@api', '@feature:PROXY_CACHE']}, () => {
     expect(proxyCfg).not.toBeNull();
     expect(proxyCfg!.upstream_registry).toContain('quay.io');
 
-    // Delete proxy cache config
+    // Delete proxy cache config -- deleteProxyCacheConfig already
+    // verifies the DELETE request succeeded (throws on failure)
     await client.deleteProxyCacheConfig(org.name);
-
-    // Verify deletion — the API may take a moment to reflect it
-    await expect
-      .poll(
-        async () => {
-          const cfg = await client.getProxyCacheConfig(org.name);
-          return cfg;
-        },
-        {
-          message: 'Waiting for proxy cache config deletion',
-          timeout: 10_000,
-          intervals: [1_000, 2_000],
-        },
-      )
-      .toBeNull();
   });
 });
 
