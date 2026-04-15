@@ -6,7 +6,7 @@
  * organization and repository levels.
  */
 
-import {test, expect, uniqueName} from '../../fixtures';
+import {test, expect} from '../../fixtures';
 
 test.describe(
   'Immutability Policies',
