@@ -115,7 +115,8 @@
       "minimatch": "^9.0.4"
     },
     "axios": "^1.13.5",
-    "immutable": "^5.1.5"
+    "immutable": "^5.1.5",
+    "svgo": "4.0.1"
   },
   "optionalDependencies": {
     "cypress": "^13.13.2"
