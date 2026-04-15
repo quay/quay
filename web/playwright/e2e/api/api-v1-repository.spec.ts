@@ -16,161 +16,149 @@ import {pushImage} from '../../utils/container';
 // Repository CRUD
 // ---------------------------------------------------------------------------
 
-test.describe(
-  'Repository CRUD',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('create new repository under organization', async ({
-      adminClient,
-      superuserApi,
-    }) => {
-      const org = await superuserApi.organization('repo');
-      const repoName = uniqueName('repo');
+test.describe('Repository CRUD', {tag: ['@api', '@auth:Database']}, () => {
+  test('create new repository under organization', async ({
+    adminClient,
+    superuserApi,
+  }) => {
+    const org = await superuserApi.organization('repo');
+    const repoName = uniqueName('repo');
 
-      const response = await adminClient.post('/api/v1/repository', {
-        repo_kind: 'image',
-        namespace: org.name,
-        visibility: 'public',
-        repository: repoName,
-        description: 'repo for API automation testing',
-      });
-      expect(response.status()).toBe(201);
-
-      const body = await response.json();
-      expect(body.name).toBe(repoName);
-      expect(body.namespace).toBe(org.name);
+    const response = await adminClient.post('/api/v1/repository', {
+      repo_kind: 'image',
+      namespace: org.name,
+      visibility: 'public',
+      repository: repoName,
+      description: 'repo for API automation testing',
     });
+    expect(response.status()).toBe(201);
 
-    test('create 2nd repository under the same organization', async ({
-      adminClient,
-      superuserApi,
-    }) => {
-      const org = await superuserApi.organization('repo');
-      const repo1 = uniqueName('repo1');
-      const repo2 = uniqueName('repo2');
+    const body = await response.json();
+    expect(body.name).toBe(repoName);
+    expect(body.namespace).toBe(org.name);
+  });
 
-      const r1 = await adminClient.post('/api/v1/repository', {
-        repo_kind: 'image',
-        namespace: org.name,
-        visibility: 'public',
-        repository: repo1,
-        description: 'first repo',
-      });
-      expect(r1.status()).toBe(201);
+  test('create 2nd repository under the same organization', async ({
+    adminClient,
+    superuserApi,
+  }) => {
+    const org = await superuserApi.organization('repo');
+    const repo1 = uniqueName('repo1');
+    const repo2 = uniqueName('repo2');
 
-      const r2 = await adminClient.post('/api/v1/repository', {
-        repo_kind: 'image',
-        namespace: org.name,
-        visibility: 'public',
-        repository: repo2,
-        description: 'second repo',
-      });
-      expect(r2.status()).toBe(201);
-
-      const body = await r2.json();
-      expect(body.name).toBe(repo2);
-      expect(body.namespace).toBe(org.name);
+    const r1 = await adminClient.post('/api/v1/repository', {
+      repo_kind: 'image',
+      namespace: org.name,
+      visibility: 'public',
+      repository: repo1,
+      description: 'first repo',
     });
+    expect(r1.status()).toBe(201);
 
-    test('get existing repository', async ({adminClient, superuserApi}) => {
-      const org = await superuserApi.organization('repo');
-      const repo = await superuserApi.repository(org.name);
-
-      const response = await adminClient.get(
-        `/api/v1/repository/${org.name}/${repo.name}`,
-      );
-      expect(response.status()).toBe(200);
-
-      const body = await response.json();
-      expect(body.name).toBe(repo.name);
-      expect(body.namespace).toBe(org.name);
+    const r2 = await adminClient.post('/api/v1/repository', {
+      repo_kind: 'image',
+      namespace: org.name,
+      visibility: 'public',
+      repository: repo2,
+      description: 'second repo',
     });
+    expect(r2.status()).toBe(201);
 
-    test('update repository visibility', async ({
-      adminClient,
-      superuserApi,
-    }) => {
-      const org = await superuserApi.organization('repo');
-      const repo = await superuserApi.repository(org.name);
+    const body = await r2.json();
+    expect(body.name).toBe(repo2);
+    expect(body.namespace).toBe(org.name);
+  });
 
-      const response = await adminClient.post(
-        `/api/v1/repository/${org.name}/${repo.name}/changevisibility`,
-        {
-          visibility: 'private',
-        },
-      );
-      expect(response.status()).toBe(200);
+  test('get existing repository', async ({adminClient, superuserApi}) => {
+    const org = await superuserApi.organization('repo');
+    const repo = await superuserApi.repository(org.name);
 
-      const body = await response.json();
-      expect(body.success).toBe(true);
-    });
+    const response = await adminClient.get(
+      `/api/v1/repository/${org.name}/${repo.name}`,
+    );
+    expect(response.status()).toBe(200);
 
-    test('update repository description', async ({
-      adminClient,
-      superuserApi,
-    }) => {
-      const org = await superuserApi.organization('repo');
-      const repo = await superuserApi.repository(org.name);
+    const body = await response.json();
+    expect(body.name).toBe(repo.name);
+    expect(body.namespace).toBe(org.name);
+  });
 
-      const response = await adminClient.put(
-        `/api/v1/repository/${org.name}/${repo.name}`,
-        {
-          description: 'updated description',
-        },
-      );
-      expect(response.status()).toBe(200);
+  test('update repository visibility', async ({adminClient, superuserApi}) => {
+    const org = await superuserApi.organization('repo');
+    const repo = await superuserApi.repository(org.name);
 
-      const body = await response.json();
-      expect(body.success).toBe(true);
-    });
-
-    test('delete repository', async ({adminClient, superuserApi}) => {
-      const org = await superuserApi.organization('repo');
-      const repoName = uniqueName('delrepo');
-
-      // Create repo directly (not via superuserApi to avoid double-delete)
-      const create = await adminClient.post('/api/v1/repository', {
-        repo_kind: 'image',
-        namespace: org.name,
-        visibility: 'public',
-        repository: repoName,
-        description: 'repo to delete',
-      });
-      expect(create.status()).toBe(201);
-
-      const response = await adminClient.delete(
-        `/api/v1/repository/${org.name}/${repoName}`,
-      );
-      expect(response.status()).toBe(204);
-    });
-
-    test('create repository under user namespace', async ({
-      adminClient,
-      superuserApi,
-    }) => {
-      const repoName = uniqueName('userrepo');
-      const username = TEST_USERS.admin.username;
-
-      const response = await adminClient.post('/api/v1/repository', {
-        repo_kind: 'image',
-        namespace: username,
+    const response = await adminClient.post(
+      `/api/v1/repository/${org.name}/${repo.name}/changevisibility`,
+      {
         visibility: 'private',
-        repository: repoName,
-        description: 'repo under user namespace',
-      });
-      expect(response.status()).toBe(201);
+      },
+    );
+    expect(response.status()).toBe(200);
 
-      const body = await response.json();
-      expect(body.name).toBe(repoName);
-      expect(body.namespace).toBe(username);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+  });
 
-      // Cleanup
-      await adminClient.delete(
-        `/api/v1/repository/${username}/${repoName}`,
-      );
+  test('update repository description', async ({adminClient, superuserApi}) => {
+    const org = await superuserApi.organization('repo');
+    const repo = await superuserApi.repository(org.name);
+
+    const response = await adminClient.put(
+      `/api/v1/repository/${org.name}/${repo.name}`,
+      {
+        description: 'updated description',
+      },
+    );
+    expect(response.status()).toBe(200);
+
+    const body = await response.json();
+    expect(body.success).toBe(true);
+  });
+
+  test('delete repository', async ({adminClient, superuserApi}) => {
+    const org = await superuserApi.organization('repo');
+    const repoName = uniqueName('delrepo');
+
+    // Create repo directly (not via superuserApi to avoid double-delete)
+    const create = await adminClient.post('/api/v1/repository', {
+      repo_kind: 'image',
+      namespace: org.name,
+      visibility: 'public',
+      repository: repoName,
+      description: 'repo to delete',
     });
-  },
-);
+    expect(create.status()).toBe(201);
+
+    const response = await adminClient.delete(
+      `/api/v1/repository/${org.name}/${repoName}`,
+    );
+    expect(response.status()).toBe(204);
+  });
+
+  test('create repository under user namespace', async ({
+    adminClient,
+    superuserApi,
+  }) => {
+    const repoName = uniqueName('userrepo');
+    const username = TEST_USERS.admin.username;
+
+    const response = await adminClient.post('/api/v1/repository', {
+      repo_kind: 'image',
+      namespace: username,
+      visibility: 'private',
+      repository: repoName,
+      description: 'repo under user namespace',
+    });
+    expect(response.status()).toBe(201);
+
+    const body = await response.json();
+    expect(body.name).toBe(repoName);
+    expect(body.namespace).toBe(username);
+
+    // Cleanup
+    await adminClient.delete(`/api/v1/repository/${username}/${repoName}`);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Tags
@@ -339,11 +327,7 @@ test.describe(
   () => {
     test('add label to manifest', async ({adminClient, superuserApi}) => {
       const org = await superuserApi.organization('label');
-      const repo = await superuserApi.repository(
-        org.name,
-        'label',
-        'public',
-      );
+      const repo = await superuserApi.repository(org.name, 'label', 'public');
 
       await pushImage(
         org.name,
@@ -377,11 +361,7 @@ test.describe(
 
     test('list labels on manifest', async ({adminClient, superuserApi}) => {
       const org = await superuserApi.organization('label');
-      const repo = await superuserApi.repository(
-        org.name,
-        'label',
-        'public',
-      );
+      const repo = await superuserApi.repository(org.name, 'label', 'public');
 
       await pushImage(
         org.name,
@@ -418,11 +398,7 @@ test.describe(
 
     test('get specific label', async ({adminClient, superuserApi}) => {
       const org = await superuserApi.organization('label');
-      const repo = await superuserApi.repository(
-        org.name,
-        'label',
-        'public',
-      );
+      const repo = await superuserApi.repository(org.name, 'label', 'public');
 
       await pushImage(
         org.name,
@@ -461,16 +437,9 @@ test.describe(
       expect(body.id).toBe(labelId);
     });
 
-    test('delete label from manifest', async ({
-      adminClient,
-      superuserApi,
-    }) => {
+    test('delete label from manifest', async ({adminClient, superuserApi}) => {
       const org = await superuserApi.organization('label');
-      const repo = await superuserApi.repository(
-        org.name,
-        'label',
-        'public',
-      );
+      const repo = await superuserApi.repository(org.name, 'label', 'public');
 
       await pushImage(
         org.name,
@@ -510,92 +479,75 @@ test.describe(
 // Starred Repositories
 // ---------------------------------------------------------------------------
 
-test.describe(
-  'Starred Repositories',
-  {tag: ['@api', '@auth:Database']},
-  () => {
-    test('add star to repository', async ({adminClient, superuserApi}) => {
-      const org = await superuserApi.organization('star');
-      const repo = await superuserApi.repository(org.name, 'star', 'public');
+test.describe('Starred Repositories', {tag: ['@api', '@auth:Database']}, () => {
+  test('add star to repository', async ({adminClient, superuserApi}) => {
+    const org = await superuserApi.organization('star');
+    const repo = await superuserApi.repository(org.name, 'star', 'public');
 
-      const response = await adminClient.post('/api/v1/user/starred', {
-        namespace: org.name,
-        repository: repo.name,
-      });
-      expect(response.status()).toBe(201);
+    const response = await adminClient.post('/api/v1/user/starred', {
+      namespace: org.name,
+      repository: repo.name,
+    });
+    expect(response.status()).toBe(201);
 
-      const body = await response.json();
-      expect(body.namespace).toContain(org.name);
-      expect(body.repository).toContain(repo.name);
+    const body = await response.json();
+    expect(body.namespace).toContain(org.name);
+    expect(body.repository).toContain(repo.name);
 
-      // Cleanup: remove star
-      await adminClient.delete(
-        `/api/v1/user/starred/${org.name}/${repo.name}`,
-      );
+    // Cleanup: remove star
+    await adminClient.delete(`/api/v1/user/starred/${org.name}/${repo.name}`);
+  });
+
+  test('list starred repositories', async ({adminClient, superuserApi}) => {
+    const org = await superuserApi.organization('star');
+    const repo = await superuserApi.repository(org.name, 'star', 'public');
+
+    // Star the repo
+    await adminClient.post('/api/v1/user/starred', {
+      namespace: org.name,
+      repository: repo.name,
     });
 
-    test('list starred repositories', async ({
-      adminClient,
-      superuserApi,
-    }) => {
-      const org = await superuserApi.organization('star');
-      const repo = await superuserApi.repository(org.name, 'star', 'public');
+    const response = await adminClient.get('/api/v1/user/starred');
+    expect(response.status()).toBe(200);
 
-      // Star the repo
-      await adminClient.post('/api/v1/user/starred', {
-        namespace: org.name,
-        repository: repo.name,
-      });
+    const body = await response.json();
+    expect(body.repositories).toBeTruthy();
+    expect(body.repositories.length).toBeGreaterThanOrEqual(1);
 
-      const response = await adminClient.get('/api/v1/user/starred');
-      expect(response.status()).toBe(200);
+    const found = body.repositories.some(
+      (r: {name: string}) => r.name === repo.name,
+    );
+    expect(found).toBe(true);
 
-      const body = await response.json();
-      expect(body.repositories).toBeTruthy();
-      expect(body.repositories.length).toBeGreaterThanOrEqual(1);
+    // Cleanup: remove star
+    await adminClient.delete(`/api/v1/user/starred/${org.name}/${repo.name}`);
+  });
 
-      const found = body.repositories.some(
-        (r: {name: string}) => r.name === repo.name,
-      );
-      expect(found).toBe(true);
+  test('remove star from repository', async ({adminClient, superuserApi}) => {
+    const org = await superuserApi.organization('star');
+    const repo = await superuserApi.repository(org.name, 'star', 'public');
 
-      // Cleanup: remove star
-      await adminClient.delete(
-        `/api/v1/user/starred/${org.name}/${repo.name}`,
-      );
+    // Star it first
+    await adminClient.post('/api/v1/user/starred', {
+      namespace: org.name,
+      repository: repo.name,
     });
 
-    test('remove star from repository', async ({
-      adminClient,
-      superuserApi,
-    }) => {
-      const org = await superuserApi.organization('star');
-      const repo = await superuserApi.repository(org.name, 'star', 'public');
-
-      // Star it first
-      await adminClient.post('/api/v1/user/starred', {
-        namespace: org.name,
-        repository: repo.name,
-      });
-
-      // Remove the star
-      const response = await adminClient.delete(
-        `/api/v1/user/starred/${org.name}/${repo.name}`,
-      );
-      expect(response.status()).toBe(204);
-    });
-  },
-);
+    // Remove the star
+    const response = await adminClient.delete(
+      `/api/v1/user/starred/${org.name}/${repo.name}`,
+    );
+    expect(response.status()).toBe(204);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Search
 // ---------------------------------------------------------------------------
 
 test.describe('Search', {tag: ['@api', '@auth:Database']}, () => {
-  test('search all registry context', async ({
-    adminClient,
-    superuserApi,
-  }) => {
+  test('search all registry context', async ({adminClient, superuserApi}) => {
     const org = await superuserApi.organization('search');
     const repo = await superuserApi.repository(
       org.name,
