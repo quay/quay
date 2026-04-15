@@ -233,30 +233,30 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
       },
     );
 
-    test(
-      'robot federation log kinds appear in the chart legend',
-      async ({authenticatedPage, api}) => {
-        const org = await api.organization('chartfed');
-        const robot = await api.robot(org.name, 'chartfedbot');
-        // create_robot_federation
-        await api.raw.createRobotFederation(org.name, robot.shortname, [
-          {
-            issuer: 'https://token.actions.githubusercontent.com',
-            subject: 'repo:testorg/testrepo:ref:refs/heads/main',
-          },
-        ]);
-        // delete_robot_federation
-        // (federated_robot_token_exchange is not triggered here — it requires
-        // a real OIDC token exchange with an external issuer, which is not
-        // feasible in a CI environment)
-        await api.raw.deleteRobotFederation(org.name, robot.shortname);
+    test('robot federation log kinds appear in the chart legend', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('chartfed');
+      const robot = await api.robot(org.name, 'chartfedbot');
+      // create_robot_federation
+      await api.raw.createRobotFederation(org.name, robot.shortname, [
+        {
+          issuer: 'https://token.actions.githubusercontent.com',
+          subject: 'repo:testorg/testrepo:ref:refs/heads/main',
+        },
+      ]);
+      // delete_robot_federation
+      // (federated_robot_token_exchange is not triggered here — it requires
+      // a real OIDC token exchange with an external issuer, which is not
+      // feasible in a CI environment)
+      await api.raw.deleteRobotFederation(org.name, robot.shortname);
 
-        await assertChartLegend(authenticatedPage, org.name, [
-          'Create Robot Federation',
-          'Delete Robot Federation',
-        ]);
-      },
-    );
+      await assertChartLegend(authenticatedPage, org.name, [
+        'Create Robot Federation',
+        'Delete Robot Federation',
+      ]);
+    });
 
     test(
       'change_tag_immutability appears in the chart legend',
