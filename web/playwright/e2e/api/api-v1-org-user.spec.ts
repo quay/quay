@@ -38,11 +38,15 @@ test.describe('User CRUD', {tag: ['@api', '@auth:Database']}, () => {
     const username = uniqueName('user');
     const email = `${username}@example.com`;
     try {
-      // Create user first
-      await adminClient.post('/api/v1/superuser/users/', {
+      // Create user -- the superuser endpoint returns the generated password
+      const createResp = await adminClient.post('/api/v1/superuser/users/', {
         username,
         email,
       });
+      expect(createResp.status()).toBe(200);
+      const createBody = await createResp.json();
+      const password = createBody.password;
+      expect(password).toBeTruthy();
 
       // Sign in as the new user using a separate request context
       const request = await playwright.request.newContext({
@@ -53,15 +57,14 @@ test.describe('User CRUD', {tag: ['@api', '@auth:Database']}, () => {
         const {API_URL} = await import('../../utils/config');
         const newUserClient = new RawApiClient(request, API_URL);
 
-        // The superuser create-user endpoint returns a generated password,
-        // but we don't know it here. Instead we test that the signin
-        // endpoint responds correctly with wrong creds (user exists).
-        const csrf = await newUserClient.fetchCsrfToken();
-        // Just verify the user endpoint recognises the username
-        const check = await newUserClient.get(`/api/v1/users/${username}`);
-        expect(check.status()).toBe(200);
-        const checkBody = await check.json();
-        expect(checkBody.username).toBe(username);
+        // Actually sign in with the new user's credentials
+        await newUserClient.signIn(username, password);
+
+        // Verify the session belongs to the new user
+        const whoami = await newUserClient.get('/api/v1/user/');
+        expect(whoami.status()).toBe(200);
+        const whoamiBody = await whoami.json();
+        expect(whoamiBody.username).toBe(username);
       } finally {
         await request.dispose();
       }
@@ -224,11 +227,12 @@ test.describe('Global Messages CRUD', {tag: ['@api', '@auth:Database']}, () => {
     adminClient,
   }) => {
     const severities = ['info', 'warning', 'error'] as const;
-    const createdUuids: string[] = [];
+    const contents: string[] = [];
 
     try {
       for (const severity of severities) {
         const content = `test global ${severity} message ${uniqueName('msg')}`;
+        contents.push(content);
         const response = await adminClient.post('/api/v1/messages', {
           message: {
             media_type: 'text/markdown',
@@ -245,14 +249,23 @@ test.describe('Global Messages CRUD', {tag: ['@api', '@auth:Database']}, () => {
       const getBody = await getResp.json();
       expect(getBody.messages.length).toBeGreaterThanOrEqual(3);
 
-      // Collect UUIDs for cleanup
-      for (const msg of getBody.messages) {
-        createdUuids.push(msg.uuid);
+      // Verify our messages are present
+      for (const content of contents) {
+        const found = getBody.messages.find(
+          (m: {content: string}) => m.content === content,
+        );
+        expect(found).toBeTruthy();
       }
     } finally {
-      // Delete all messages we found
-      for (const uuid of createdUuids) {
-        await adminClient.delete(`/api/v1/message/${uuid}`);
+      // Delete only the messages created by this test
+      const allResp = await adminClient.get('/api/v1/messages');
+      if (allResp.status() === 200) {
+        const allBody = await allResp.json();
+        for (const msg of allBody.messages) {
+          if (contents.includes(msg.content)) {
+            await adminClient.delete(`/api/v1/message/${msg.uuid}`);
+          }
+        }
       }
     }
   });
@@ -270,15 +283,19 @@ test.describe('Global Messages CRUD', {tag: ['@api', '@auth:Database']}, () => {
     });
     expect(createResp.status()).toBe(201);
 
-    // Retrieve messages and find ours
+    // Retrieve messages and find the one we just created by content
     const getResp = await adminClient.get('/api/v1/messages');
     expect(getResp.status()).toBe(200);
     const getBody = await getResp.json();
-    expect(getBody.messages.length).toBeGreaterThanOrEqual(1);
+    const ourMessage = getBody.messages.find(
+      (m: {content: string}) => m.content === content,
+    );
+    expect(ourMessage).toBeTruthy();
 
-    // Delete the first message (most recently created)
-    const uuid = getBody.messages[0].uuid;
-    const deleteResp = await adminClient.delete(`/api/v1/message/${uuid}`);
+    // Delete the specific message we created
+    const deleteResp = await adminClient.delete(
+      `/api/v1/message/${ourMessage.uuid}`,
+    );
     expect(deleteResp.status()).toBe(204);
   });
 });
