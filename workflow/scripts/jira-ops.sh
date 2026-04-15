@@ -129,7 +129,8 @@ case "$ACTION" in
       fi
     else
       if [ -n "$ASSIGNEE" ]; then
-        jira_rest PUT "issue/${ISSUE_KEY}" "{\"fields\":{\"assignee\":{\"name\":\"${ASSIGNEE}\"}}}"
+        DATA=$(jq -n --arg name "$ASSIGNEE" '{"fields":{"assignee":{"name":$name}}}')
+        jira_rest PUT "issue/${ISSUE_KEY}" "$DATA"
       else
         echo "Cannot auto-assign via REST without knowing your username. Use acli or pass username."
         exit 1
@@ -175,7 +176,8 @@ case "$ACTION" in
   set-version)
     VERSION="${1:?Usage: jira-ops.sh set-version <ISSUE_KEY> <version>}"
     echo "Setting Target Version on ${ISSUE_KEY} to '${VERSION}'..."
-    jira_rest PUT "issue/${ISSUE_KEY}" "{\"fields\":{\"${TV_FIELD}\":[{\"name\":$(echo "$VERSION" | jq -Rs .)}]}}"
+    DATA=$(jq -n --arg ver "$VERSION" --arg field "$TV_FIELD" '{fields: {($field): [{"name": $ver}]}}')
+    jira_rest PUT "issue/${ISSUE_KEY}" "$DATA"
     echo "Target Version set to '${VERSION}'."
     ;;
 
