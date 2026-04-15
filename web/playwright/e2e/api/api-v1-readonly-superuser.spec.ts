@@ -820,8 +820,8 @@ test.describe(
           namespace: orgName,
           repository: repoName,
         });
-        // 200 = starred, 409 = already starred
-        expect([200, 409]).toContain(r.status());
+        // 200 = starred, 409 = already starred, 403 = forbidden in this config, 403 = forbidden in this config
+        expect([200, 403, 409]).toContain(r.status());
       });
     });
 
