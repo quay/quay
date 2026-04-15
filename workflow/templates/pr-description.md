@@ -21,7 +21,7 @@
 
 ## JIRA
 <!-- Link to the JIRA ticket -->
-https://issues.redhat.com/browse/PROJQUAY-XXXX
+https://redhat.atlassian.net/browse/PROJQUAY-XXXX
 
 ## Backport
 <!-- If Target Version is set on the JIRA ticket, note which branches need backporting -->

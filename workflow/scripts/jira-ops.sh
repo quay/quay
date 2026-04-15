@@ -62,7 +62,7 @@ jira_rest() {
     args+=(-X "$method" -d "$data")
   fi
 
-  curl "${args[@]}" "https://issues.redhat.com/rest/api/2/${path}"
+  curl "${args[@]}" "https://redhat.atlassian.net/rest/api/3/${path}"
 }
 
 # ── Helper: extract Target Version from issue JSON ────────────────
@@ -98,7 +98,7 @@ case "$ACTION" in
           priority: .fields.priority.name,
           target_version: $tv,
           labels: .fields.labels,
-          description: ((.fields.description // "") | split("\n") | .[0:10] | join("\n"))
+          description: ((.fields.description // {}) | .. | .text? // empty | select(. != null)) | .[0:10] | join(" ")
         }' 2>/dev/null || echo "$RESULT"
       }
     else
@@ -113,7 +113,7 @@ case "$ACTION" in
         priority: .fields.priority.name,
         target_version: $tv,
         labels: .fields.labels,
-        description: ((.fields.description // "") | split("\n") | .[0:10] | join("\n"))
+        description: ((.fields.description // {}) | .. | .text? // empty | select(. != null)) | .[0:10] | join(" ")
       }' 2>/dev/null || echo "$RESULT"
     fi
     ;;
@@ -129,7 +129,7 @@ case "$ACTION" in
       fi
     else
       if [ -n "$ASSIGNEE" ]; then
-        DATA=$(jq -n --arg name "$ASSIGNEE" '{"fields":{"assignee":{"name":$name}}}')
+        DATA=$(jq -n --arg id "$ASSIGNEE" '{"fields":{"assignee":{"accountId":$id}}}')
         jira_rest PUT "issue/${ISSUE_KEY}" "$DATA"
       else
         echo "Cannot auto-assign via REST without knowing your username. Use acli or pass username."
