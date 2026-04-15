@@ -175,10 +175,7 @@ test.describe(
       const orasAvailable = await isOrasAvailable();
       test.skip(!orasAvailable, 'oras CLI required for referrer tests');
 
-      const fixturesDir = path.resolve(
-        __dirname,
-        '../../fixtures/oras',
-      );
+      const fixturesDir = path.resolve(__dirname, '../../fixtures/oras');
 
       // Attach three different artifact types
       orasAttach(
