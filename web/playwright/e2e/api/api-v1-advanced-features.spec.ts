@@ -173,6 +173,13 @@ test.describe(
       superuserApi,
       adminClient,
     }) => {
+      // Skip when SUPER_USERS feature is disabled (403 from superuser endpoints)
+      const probe = await adminClient.get('/api/v1/superuser/registrystatus');
+      if (probe.status() === 403 || probe.status() === 404) {
+        test.skip();
+        return;
+      }
+
       const org = await superuserApi.organization('suquota');
 
       // Create quota via superuser API
@@ -515,26 +522,40 @@ test.describe(
 test.describe('Registry Status & Size', {tag: ['@api']}, () => {
   test('check superuser registry status', async ({adminClient}) => {
     const resp = await adminClient.get('/api/v1/superuser/registrystatus');
+    // Skip when SUPER_USERS feature is disabled
+    if (resp.status() === 403 || resp.status() === 404) {
+      test.skip();
+      return;
+    }
     expect(resp.status()).toBe(200);
     const body = await resp.json();
-    expect(body.status).toContain('ready');
+    expect(body.status).toBe('ready');
   });
 
   test('calculate and get registry size', async ({adminClient}) => {
-    // Trigger calculation
-    const calcResp = await adminClient.post('/api/v1/superuser/registrysize/');
-    expect(calcResp.status()).toBe(201);
+    // Skip when SUPER_USERS feature is disabled
+    const probe = await adminClient.get('/api/v1/superuser/registrystatus');
+    if (probe.status() === 403 || probe.status() === 404) {
+      test.skip();
+      return;
+    }
 
-    // Poll until size is available (replaces cy.wait(180000))
+    // Trigger calculation (201 = created, 202 = already queued)
+    const calcResp = await adminClient.post('/api/v1/superuser/registrysize/');
+    expect([201, 202]).toContain(calcResp.status());
+
+    // Poll until size is available (replaces cy.wait(180000)).
+    // Return null for not-ready so the assertion cannot pass prematurely.
     await expect
       .poll(
         async () => {
           const sizeResp = await adminClient.get(
             '/api/v1/superuser/registrysize/',
           );
-          if (sizeResp.status() !== 200) return 0;
+          if (sizeResp.status() !== 200) return null;
           const body = await sizeResp.json();
-          return body.size_bytes ?? 0;
+          const bytes = body.size_bytes;
+          return typeof bytes === 'number' && bytes > 0 ? bytes : null;
         },
         {
           message: 'Waiting for registry size calculation to complete',
@@ -542,7 +563,7 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
           intervals: [2_000, 5_000, 10_000],
         },
       )
-      .toBeGreaterThanOrEqual(0);
+      .toBeGreaterThan(0);
   });
 });
 
@@ -612,8 +633,8 @@ test.describe('Config Dump', {tag: ['@api']}, () => {
 test.describe('App Tokens Superuser', {tag: ['@api']}, () => {
   test('superuser can list app tokens', async ({adminClient}) => {
     const resp = await adminClient.get('/api/v1/superuser/apptokens');
-    // Skip if endpoint not supported (pre-3.16)
-    if (resp.status() === 404) {
+    // Skip if endpoint not supported (pre-3.16) or SUPER_USERS disabled
+    if (resp.status() === 404 || resp.status() === 403) {
       test.skip();
       return;
     }
@@ -628,6 +649,13 @@ test.describe('App Tokens Superuser', {tag: ['@api']}, () => {
 // ---------------------------------------------------------------------------
 test.describe('Service Keys', {tag: ['@api']}, () => {
   test('CRUD service key', async ({superuserApi, adminClient}) => {
+    // Skip when SUPER_USERS feature is disabled
+    const probe = await adminClient.get('/api/v1/superuser/keys');
+    if (probe.status() === 403 || probe.status() === 404) {
+      test.skip();
+      return;
+    }
+
     const key = await superuserApi.serviceKey('quay', 'api_test_key');
 
     // List all service keys
@@ -729,11 +757,13 @@ test.describe(
       const reposResp = await adminClient.get(
         `/api/v1/organization/${org.name}/mirror/repositories`,
       );
-      // May fail if connection can't be established; just check 200 or known error
+      // May fail if connection can't be established; assert known statuses
       if (reposResp.status() === 200) {
         const reposBody = await reposResp.json();
         expect(reposBody).toHaveProperty('repositories');
         expect(Array.isArray(reposBody.repositories)).toBe(true);
+      } else {
+        expect([400, 403, 404, 502]).toContain(reposResp.status());
       }
 
       // Delete org mirror config
