@@ -46,19 +46,31 @@ test.describe(
           users.readonly.username,
           users.readonly.password,
         );
-      } catch {
-        // Skip only when the readonly user is not configured
-        test.skip(true, 'Readonly superuser is not configured');
-        return;
+      } catch (err: unknown) {
+        // Skip when the readonly user is genuinely not configured (auth
+        // rejection), but let infrastructure errors (5xx, network) fail loudly.
+        const status =
+          err != null &&
+          typeof err === 'object' &&
+          'status' in err &&
+          typeof (err as {status: unknown}).status === 'number'
+            ? (err as {status: number}).status
+            : undefined;
+        if (status === 401 || status === 403) {
+          test.skip(true, 'Readonly superuser is not configured');
+          return;
+        }
+        throw err;
       }
 
       // Verify readonly user actually has superuser privileges
       // (GET /api/v1/superuser/users/ requires superuser access)
       const suCheck = await readonlyClient.get('/api/v1/superuser/users/');
-      if (suCheck.status() !== 200) {
+      if (suCheck.status() === 401 || suCheck.status() === 403) {
         test.skip(true, 'Readonly user does not have superuser privileges');
         return;
       }
+      expect(suCheck.status()).toBe(200);
 
       // Prepare unique names
       orgName = uniqueName('roorg');
@@ -633,6 +645,8 @@ test.describe(
     // ========================================================================
 
     test.describe('Global messages', () => {
+      let globalMessageUuid: string;
+
       test.beforeAll(async ({adminClient}) => {
         // Create a global message as superuser
         const msgResp = await adminClient.post('/api/v1/messages', {
@@ -643,18 +657,14 @@ test.describe(
           },
         });
         expect(msgResp.status()).toBe(201);
+        const msgBody = await msgResp.json();
+        globalMessageUuid = msgBody.uuid;
       });
 
       test.afterAll(async ({adminClient}) => {
-        // Clean up all test messages
-        const msgs = await adminClient.get('/api/v1/messages');
-        if (msgs.status() === 200) {
-          const body = await msgs.json();
-          for (const msg of body.messages || []) {
-            if (msg.content === 'readonly test message') {
-              await adminClient.delete(`/api/v1/message/${msg.uuid}`);
-            }
-          }
+        // Clean up the specific message we created
+        if (globalMessageUuid) {
+          await adminClient.delete(`/api/v1/message/${globalMessageUuid}`);
         }
       });
 
@@ -1236,10 +1246,10 @@ test.describe(
             title: 'ro_test_notification',
           },
         );
-        if (notifResp.status() === 201) {
-          const notifBody = await notifResp.json();
-          notificationUuid = notifBody.uuid;
-        }
+        expect(notifResp.status()).toBe(201);
+        const notifBody = await notifResp.json();
+        expect(notifBody.uuid).toBeTruthy();
+        notificationUuid = notifBody.uuid;
       });
 
       test.afterAll(async ({adminClient}) => {
@@ -1276,6 +1286,17 @@ test.describe(
     // ========================================================================
 
     test.describe('App tokens', () => {
+      let createdTokenCode: string | undefined;
+
+      test.afterAll(async () => {
+        // Revoke the token we created during the test
+        if (createdTokenCode) {
+          await readonlyClient.delete(
+            `/api/v1/user/apptoken/${createdTokenCode}`,
+          );
+        }
+      });
+
       test('can GET own app tokens', async () => {
         const r = await readonlyClient.get('/api/v1/user/apptoken');
         expect(r.status()).toBe(200);
@@ -1287,6 +1308,10 @@ test.describe(
         });
         // Creating a token for one's own account is a self-action, not a write
         expect(r.status()).toBe(200);
+        const body = await r.json();
+        if (body.token?.uuid) {
+          createdTokenCode = body.token.uuid;
+        }
       });
     });
 
