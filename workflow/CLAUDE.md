@@ -375,9 +375,27 @@ bash scripts/jira-ops.sh transition PROJQUAY-1234 "Code Review"
 
 ---
 
-## Hook Recommendations
+## Session Setup
 
-These Claude Code hooks can be configured in `.claude/settings.json` to automate quality enforcement. See `claude-settings-recommended.json` for the full config.
+On first use, install the recommended Claude Code hooks to enable automatic quality enforcement:
+
+```bash
+# Copy the recommended hooks into the project's Claude settings
+cp workflow/claude-settings-recommended.json .claude/settings.json
+```
+
+This activates:
+- **Embargo check** -- blocks processing of embargoed JIRA tickets (UserPromptSubmit + PreToolUse)
+- **Pre-commit install guard** -- ensures git pre-commit hooks are installed before every `git commit`
+- **PR title validation** -- blocks `gh pr create` if the title doesn't match the required regex
+
+If `.claude/settings.json` already exists, merge the `"hooks"` key from `claude-settings-recommended.json` into the existing file instead of overwriting.
+
+---
+
+## Hook Details
+
+The hooks in `claude-settings-recommended.json` provide the following enforcement:
 
 ### Pre-commit Hook (ensures hooks are installed before commit)
 
