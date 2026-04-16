@@ -7,7 +7,7 @@
  * and auto-cleanup via TestApi fixtures.
  */
 
-import {test, expect, skipUnlessFeature} from '../../fixtures';
+import {test, expect} from '../../fixtures';
 
 test.describe(
   'Repository Features API',
@@ -340,10 +340,7 @@ test.describe(
         test('transition repo through MIRROR, READ_ONLY, and NORMAL states', async ({
           superuserApi,
           adminClient,
-          quayConfig,
         }) => {
-          test.skip(...skipUnlessFeature(quayConfig, 'REPO_MIRROR'));
-
           const org = await superuserApi.organization();
           const repo = await superuserApi.repository(org.name);
 
