@@ -1454,17 +1454,20 @@ test.describe(
   'Normal User - Tags and Manifests',
   {tag: ['@api', '@auth:Database', '@container']},
   () => {
-    test('can list tags on own repo', async ({userClient, api}) => {
+    test('can list tags for an empty repository (returns 200 with no tags)', async ({
+      userClient,
+      api,
+    }) => {
       const org = await api.organization('usr_org');
       const repo = await api.repository(org.name, 'usr_repo', 'public');
 
-      // Push an image using podman/docker (tags: latest)
-      // This relies on a container runtime being available
       const tagR = await userClient.get(
         `/api/v1/repository/${org.name}/${repo.name}/tag/`,
       );
-      // Empty repo has 200 with empty tags list
+      // Empty repository returns 200 with an empty tags list
       expect(tagR.status()).toBe(200);
+      const body = await tagR.json();
+      expect(Array.isArray(body.tags ?? [])).toBe(true);
     });
   },
 );
