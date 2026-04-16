@@ -20,10 +20,25 @@ shift 2
 # "Target Version" custom field ID (multi-version picker)
 TV_FIELD="customfield_10855"
 
-# ── Detect JIRA CLI tool ──────────────────────────────────────────
+# ── Detect or install JIRA CLI tool ──────────────────────────────
+install_acli() {
+  local install_dir="${HOME}/.local/bin"
+  mkdir -p "$install_dir"
+  echo "Installing acli to ${install_dir}..."
+  curl -sSL -o "${install_dir}/acli" "https://acli.atlassian.com/linux/latest/acli_linux_amd64/acli"
+  chmod +x "${install_dir}/acli"
+  export PATH="${install_dir}:${PATH}"
+  echo "acli installed."
+}
+
 JIRA_CLI=""
 if command -v acli &>/dev/null; then
   JIRA_CLI="acli"
+elif [ "${ACLI_AUTO_INSTALL:-1}" != "0" ]; then
+  install_acli
+  if command -v acli &>/dev/null; then
+    JIRA_CLI="acli"
+  fi
 fi
 
 # ── Helper: extract JIRA credentials for REST API ─────────────────
