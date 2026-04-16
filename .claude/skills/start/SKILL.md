@@ -7,6 +7,7 @@ description: >
 argument-hint: PROJQUAY-XXXX
 disable-model-invocation: true
 allowed-tools:
+  - Bash(bash .claude/scripts/session-setup.sh)
   - Bash(bash .claude/scripts/jira-ops.sh *)
   - Bash(git checkout *)
   - Bash(git pull *)
@@ -20,6 +21,14 @@ allowed-tools:
 # Start Work on JIRA Ticket
 
 Begin work on JIRA ticket `$ARGUMENTS`.
+
+## Step 0: Session Bootstrap
+
+```bash
+bash .claude/scripts/session-setup.sh
+```
+
+Handles acli install+auth, recommended hooks, pre-commit, and gh auth check. Runs once per session (skips on subsequent calls).
 
 ## Step 1: View and Assign
 

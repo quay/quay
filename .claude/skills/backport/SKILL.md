@@ -40,6 +40,8 @@ bash .claude/scripts/jira-ops.sh check-version <PROJQUAY-XXXX>
 
 Map Target Version to release branch (e.g. `quay-v3.12.0` → `redhat-3.12`). Ask the user if the mapping is ambiguous.
 
+**Important:** `redhat-3.18` is synced with `master` — do NOT cherry-pick to it. Only target branches older than the current development release.
+
 ## Step 3: Trigger Cherry-Pick
 
 ```bash

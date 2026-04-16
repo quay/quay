@@ -34,6 +34,13 @@ End-to-end process for PROJQUAY/QUAYIO ticketed work: JIRA ticket to merged PR.
 - Map version to branch: `quay-v3.12.0` → `redhat-3.12`
 - Use `/backport <PR#> <branch>` after merge
 
+### Release Branch Model
+
+- `redhat-3.18` is synced with `master` — do **not** cherry-pick to it
+- Actively maintained branches: `redhat-3.15` through `redhat-3.17`
+- Older branches (`redhat-3.12` through `redhat-3.14`) receive critical/security fixes only
+- When backporting, skip `redhat-3.18` and target only the branches older than master
+
 ### Auth
 
 - All JIRA REST operations require `JIRA_API_TOKEN`
@@ -116,6 +123,12 @@ This activates:
 - **PR title validation**: Validates title format before `gh pr create`
 
 If `.claude/settings.json` already exists, merge the `"hooks"` key instead of overwriting.
+
+## GitHub CLI Notes
+
+- `gh pr edit` may fail with `read:org` scope errors on restricted tokens
+- Fallback: use `gh api repos/{owner}/{repo}/pulls/{number} -X PATCH -f title="..." -f body="..."`
+- Always verify `gh auth status` at session start
 
 ## Backport Process
 
