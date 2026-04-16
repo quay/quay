@@ -65,6 +65,9 @@ RUN set -ex\
 WORKDIR /build
 RUN python3.12 -m ensurepip --upgrade
 COPY requirements.txt .
+# pyroscope-io build requires setuptools>=82 which removes pkg_resources
+# needed by pbr, keystoneclient, etc. Pyroscope is optional profiling.
+RUN sed -i '/^pyroscope-io/d' requirements.txt
 # Note that it installs into /opt/app-root because of the '--prefix' flag.
 
 # When cross-compiling the container, cargo uncontrollably consumes memory and
