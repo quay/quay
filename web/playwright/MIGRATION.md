@@ -730,7 +730,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `default-permissions.cy.ts` | `organization/default-permissions.spec.ts` | |
 | ✅ | `external-login.cy.ts` | `auth/external-login.spec.ts` | @auth:OIDC, consolidated 6→3 tests, Cypress file deleted |
 | ✅ | `external-scripts.cy.ts` | `ui/external-scripts.spec.ts` | @feature:BILLING |
-| ⬚ | `footer.cy.ts` | | |
+| ✅ | `footer.cy.ts` | `ui/footer.spec.ts` | @ui, consolidated 9→4 tests, no mocks - uses quayConfig fixture for config-conditional assertions |
 | ✅ | `fresh-login-oidc.cy.ts` | `auth/fresh-login-oidc.spec.ts` | @auth:OIDC, consolidated 4→2 tests, Cypress file deleted |
 | ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
 | ✅ | `manage-team-members.cy.ts` | `organization/team-members.spec.ts` | @organization, 7 tests preserved |
