@@ -172,7 +172,16 @@ poll_once() {
 if [ "$WAIT" = true ]; then
   echo "Polling PR #${PR_NUMBER} (Ctrl+C to stop)..."
   while true; do
-    poll_once || true
+    poll_once
+    rc=$?
+    if [ $rc -eq 0 ]; then
+      echo "All checks passed."
+      break
+    elif [ $rc -eq 1 ]; then
+      echo "Failures detected. Stopping."
+      break
+    fi
+    # rc=2 means pending — keep polling
     echo ""
     echo "Next poll in 60 seconds..."
     sleep 60

@@ -72,8 +72,10 @@ Examples:
 ### Branch Naming
 
 ```
-PROJQUAY-<number>-<kebab-case-description>
+<type>/projquay-<number>-<kebab-case-description>
 ```
+
+Where `<type>` matches the PR type: `fix`, `feat`, `test`, `refactor`, `docs`, `chore`.
 
 ## Bot Ecosystem
 
@@ -135,6 +137,6 @@ If `.claude/settings.json` already exists, merge the `"hooks"` key instead of ov
 After a PR merges to master, if the JIRA ticket has a Target Version:
 
 1. Post `/cherrypick <branch>` as a comment on the merged PR
-2. `openshift-cherrypick-robot` creates a new PR against the release branch
+2. `openshift-ci-robot` (via the cherrypick plugin) creates a new PR against the release branch
 3. The JIRA lifecycle plugin clones the parent ticket for the target release
 4. Monitor the backport PR for CI results

@@ -23,7 +23,7 @@ Backport merged PR #$ARGUMENTS[0] to a release branch.
 ## Step 1: Verify Merged
 
 ```bash
-gh pr view $ARGUMENTS[0] --json state,mergedAt,title
+gh pr view "$ARGUMENTS[0]" --json state,mergedAt,title
 ```
 
 The PR must be merged. If not, inform the user and stop.
@@ -45,7 +45,7 @@ Map Target Version to release branch (e.g. `quay-v3.12.0` → `redhat-3.12`). As
 ## Step 3: Trigger Cherry-Pick
 
 ```bash
-gh pr comment $ARGUMENTS[0] --body "/cherrypick <BRANCH>"
+gh pr comment "$ARGUMENTS[0]" --body "/cherrypick <BRANCH>"
 ```
 
 ## Step 4: Confirm

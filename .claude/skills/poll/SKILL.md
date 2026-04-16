@@ -14,6 +14,7 @@ allowed-tools:
   - Bash(make *)
   - Bash(pytest *)
   - Bash(pre-commit *)
+  - Bash(npm *)
   - Read
   - Write
   - Edit
@@ -67,7 +68,7 @@ When flagged:
 ## Step 4: Push and Re-poll
 
 ```bash
-git add -A && git commit -m "fix: address review feedback (PROJQUAY-XXXX)"
+git add -A && git commit -m "<subsystem>: <what changed> (PROJQUAY-XXXX)"
 git push
 bash .claude/scripts/poll-pr.sh $ARGUMENTS
 ```

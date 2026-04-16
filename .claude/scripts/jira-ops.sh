@@ -25,7 +25,7 @@ install_acli() {
   local install_dir="${HOME}/.local/bin"
   mkdir -p "$install_dir"
   echo "Installing acli to ${install_dir}..."
-  curl -sSL -o "${install_dir}/acli" "https://acli.atlassian.com/linux/latest/acli_linux_amd64/acli"
+  curl -fsSL -o "${install_dir}/acli" "https://acli.atlassian.com/linux/latest/acli_linux_amd64/acli" || { echo "ERROR: Failed to download acli." >&2; return 1; }
   chmod +x "${install_dir}/acli"
   export PATH="${install_dir}:${PATH}"
 

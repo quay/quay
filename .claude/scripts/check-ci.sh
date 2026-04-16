@@ -15,10 +15,7 @@ fi
 echo "CI Status for PR #${PR_NUMBER} (${REPO})"
 echo "──────────────────────────────────────────"
 
-gh pr checks "$PR_NUMBER" --repo "$REPO" 2>/dev/null || {
-  echo "No checks found or PR does not exist."
-  exit 1
-}
+gh pr checks "$PR_NUMBER" --repo "$REPO" 2>/dev/null || true
 
 echo ""
 echo "── Summary ──"

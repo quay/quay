@@ -4,7 +4,7 @@
 # Usage:
 #   bash scripts/format-and-lint.sh              # Run on staged files (default)
 #   bash scripts/format-and-lint.sh --all-files  # Run on all files
-#   bash scripts/format-and-lint.sh --hook <id>  # Run a specific hook
+#   bash scripts/format-and-lint.sh <hook-id>    # Run a specific hook
 #
 # Wraps the project's .pre-commit-config.yaml which includes:
 #   gitleaks, black, isort, config-files-check, no-new-cypress-tests,
@@ -19,7 +19,7 @@ ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --all-files) ARGS+=(--all-files); shift ;;
-    --hook)      ARGS+=(--hook "$2"); shift 2 ;;
+    --hook)      ARGS+=("$2"); shift 2 ;;
     *)           ARGS+=("$1"); shift ;;
   esac
 done
