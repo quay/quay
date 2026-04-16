@@ -34,7 +34,7 @@ spec:
   timeouts:
     pipeline: 3h
   taskRunSpecs:
-    - pipelineTaskName: build-container
+    - pipelineTaskName: build-images
       stepSpecs:
         - name: build
           computeResources:
