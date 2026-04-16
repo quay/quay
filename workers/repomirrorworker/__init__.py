@@ -239,7 +239,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     else:
         verbose_logs = False
 
-    mirror = claim_mirror(mirror)  # type: ignore
+    mirror = claim_mirror(mirror)
     if not mirror:
         raise PreemptedException
 
