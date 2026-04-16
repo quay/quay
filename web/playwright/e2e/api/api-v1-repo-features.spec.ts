@@ -284,6 +284,7 @@ test.describe(
         expect(getFed.status()).toBe(200);
         const fedBody = await getFed.json();
         expect(Array.isArray(fedBody)).toBe(true);
+        expect(fedBody.length).toBeGreaterThan(0);
         expect(fedBody[0].issuer).toContain(
           'sts.windows.net/250926f3-c788-4a52-acfa-e3aac5386ac1',
         );
@@ -304,13 +305,14 @@ test.describe(
     // ========================================================================
 
     test.describe('Default Permissions (Prototypes)', () => {
-      test('create default permission for robot account', async ({
+      test('create, list, update, and delete default permission for robot account', async ({
         superuserApi,
         adminClient,
       }) => {
         const org = await superuserApi.organization();
         const robot = await superuserApi.robot(org.name);
 
+        // Create
         const resp = await adminClient.post(
           `/api/v1/organization/${org.name}/prototypes`,
           {
@@ -326,6 +328,33 @@ test.describe(
         expect(resp.status()).toBe(200);
         const body = await resp.json();
         expect(body.delegate.name).toBe(robot.fullName);
+        const prototypeId = body.id;
+
+        // List
+        const list = await adminClient.get(
+          `/api/v1/organization/${org.name}/prototypes`,
+        );
+        expect(list.status()).toBe(200);
+        const listBody = await list.json();
+        const found = listBody.prototypes.find(
+          (p: {id: string}) => p.id === prototypeId,
+        );
+        expect(found).toBeTruthy();
+
+        // Update role from read to write
+        const update = await adminClient.put(
+          `/api/v1/organization/${org.name}/prototypes/${prototypeId}`,
+          {role: 'write'},
+        );
+        expect(update.status()).toBe(200);
+        const updateBody = await update.json();
+        expect(updateBody.role).toBe('write');
+
+        // Delete
+        const del = await adminClient.delete(
+          `/api/v1/organization/${org.name}/prototypes/${prototypeId}`,
+        );
+        expect(del.status()).toBe(204);
       });
     });
 
