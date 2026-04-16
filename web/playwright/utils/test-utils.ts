@@ -7,7 +7,10 @@
  * Uses timestamp + random suffix to avoid collisions across parallel workers.
  */
 export function uniqueName(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random()
-    .toString(36)
-    .substring(2, 8)}`;
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  const rand = Array.from(bytes, (b) => b.toString(36))
+    .join('')
+    .substring(0, 8);
+  return `${prefix}-${Date.now()}-${rand}`;
 }
