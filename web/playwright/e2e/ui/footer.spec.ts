@@ -7,9 +7,7 @@ test.describe('Footer', {tag: ['@ui']}, () => {
   }) => {
     await authenticatedPage.goto('/organization');
 
-    const footer = authenticatedPage.locator('#quay-footer');
-    await footer.scrollIntoView();
-    await expect(footer).toBeVisible();
+    await expect(authenticatedPage.locator('#quay-footer')).toBeVisible();
     await expect(
       authenticatedPage.locator('.quay-footer-container'),
     ).toBeVisible();
@@ -37,14 +35,10 @@ test.describe('Footer', {tag: ['@ui']}, () => {
 
   test('footer is visible on multiple pages', async ({authenticatedPage}) => {
     await authenticatedPage.goto('/organization');
-    const footer = authenticatedPage.locator('#quay-footer');
-    await footer.scrollIntoView();
-    await expect(footer).toBeVisible();
+    await expect(authenticatedPage.locator('#quay-footer')).toBeVisible();
 
     await authenticatedPage.goto('/repository');
-    const footerOnRepo = authenticatedPage.locator('#quay-footer');
-    await footerOnRepo.scrollIntoView();
-    await expect(footerOnRepo).toBeVisible();
+    await expect(authenticatedPage.locator('#quay-footer')).toBeVisible();
   });
 
   test('quay.io: TrustArc and consent elements are present', async ({
@@ -59,14 +53,16 @@ test.describe('Footer', {tag: ['@ui']}, () => {
     test.skip(!isQuayIO, 'Only applies to quay.io / stage.quay.io deployments');
 
     await authenticatedPage.goto('/organization');
-    await authenticatedPage.locator('#quay-footer').scrollIntoView();
 
     // #consent_blackbar renders for any quay.io deployment
-    await expect(authenticatedPage.locator('#consent_blackbar')).toBeVisible();
+    await expect(
+      authenticatedPage.locator('#consent_blackbar'),
+    ).toBeVisible();
 
-    // TrustArc widget renders only when BILLING is also enabled
+    // TrustArc widget renders only when BILLING is also enabled;
+    // use toHaveCount to avoid flaking on async external script load
     if (quayConfig?.features?.BILLING) {
-      await expect(authenticatedPage.locator('#teconsent')).toBeVisible();
+      await expect(authenticatedPage.locator('#teconsent')).toHaveCount(1);
     }
   });
 
@@ -82,7 +78,6 @@ test.describe('Footer', {tag: ['@ui']}, () => {
     test.skip(isQuayIO, 'Only applies to non-quay.io deployments');
 
     await authenticatedPage.goto('/organization');
-    await authenticatedPage.locator('#quay-footer').scrollIntoView();
 
     await expect(
       authenticatedPage.locator('.service-status-icon'),
