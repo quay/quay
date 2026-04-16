@@ -472,7 +472,6 @@ setuptools==78.1.1 \
     #   pyasn1_modules
     #   pyhanko-certvalidator
     #   pyrsistent
-    #   python-dateutil
     #   pyyaml
     #   reportlab
     #   resumablesha256
