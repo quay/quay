@@ -86,7 +86,10 @@ from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
 from image.docker.schema2.config import DockerSchema2Config
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci import OCI_CONTENT_TYPES
+from image.oci.config import OCIConfig
+from image.oci.manifest import OCIManifestBuilder
 from storage.basestorage import StoragePaths
+from util.bytes import Bytes
 from workers import repositoryactioncounter
 
 logger = logging.getLogger(__name__)
@@ -220,7 +223,7 @@ def __create_manifest_and_tags(
         )
 
 
-def create_schema2_manifest_for_testing(repo, structure, tag_map):
+def create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map, schema_type="docker"):
     """
     Creates a Docker v2 schema 2 manifest with the given structure.
     TODO: Consider reimporting the function after resolving persistency problem. Schema 2 validation
@@ -237,6 +240,7 @@ def create_schema2_manifest_for_testing(repo, structure, tag_map):
 
     config_json = {
         "architecture": "amd64",
+        "os": "linux",
         "config": {},
         "rootfs": {
             "type": "layers",
@@ -248,7 +252,10 @@ def create_schema2_manifest_for_testing(repo, structure, tag_map):
     layer_data = []
 
     for layer_index in range(num_layers):
-        content = "schema2-layer-%s-%s" % (layer_index, get_epoch_timestamp_ms())
+        if schema_type == "oci":
+            content = "oci-layer-%s-%s" % (layer_index, get_epoch_timestamp_ms())
+        else:
+            content = "schema2-layer-%s-%s" % (layer_index, get_epoch_timestamp_ms())
         content_bytes = content.encode("ascii")
         blob, digest = _populate_blob(repo, content_bytes)
 
@@ -286,8 +293,13 @@ def create_schema2_manifest_for_testing(repo, structure, tag_map):
             adjusted_tag_name = tag_name[1:]
             now = now - timedelta(seconds=1)
 
-        builder = DockerSchema2ManifestBuilder()
-        builder.set_config_digest(config_digest, len(config_bytes))
+        if schema_type == "oci":
+            builder = OCIManifestBuilder()
+            oci_config = OCIConfig(Bytes.for_string_or_unicode(config_bytes))
+            builder.set_config(oci_config)
+        else:
+            builder = DockerSchema2ManifestBuilder()
+            builder.set_config_digest(config_digest, len(config_bytes))
 
         for digest, size in layer_data:
             builder.add_layer(digest, size)
@@ -322,7 +334,7 @@ def __generate_repository(
             __create_manifest_and_tags(repo, leaf, user_obj.username, tag_map)
     else:
         if use_schema2:
-            create_schema2_manifest_for_testing(repo, structure, tag_map)
+            create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map)
         else:
             __create_manifest_and_tags(repo, structure, user_obj.username, tag_map)
 
