@@ -22,7 +22,6 @@ metadata:
         || "rust-builddeps/***".pathChanged()
         || ".tekton/quay-hermetic-pull-request.yaml".pathChanged()
       )
-    pipelinesascode.tekton.dev/pipeline: "https://github.com/quay/quay-konflux-configs/blob/main/pipelines/quayio-build-pipeline.yaml"
     pipelinesascode.tekton.dev/target-namespace: "quay-eng-tenant"
   creationTimestamp: null
   labels:
@@ -71,7 +70,7 @@ spec:
         {"type": "cargo", "path": "./rust-builddeps"}
       ]
   pipelineRef:
-    name: quayio-build-pipeline
+    name: build-quay-image
   taskRunTemplate:
     serviceAccountName: build-pipeline-quay-hermetic
   workspaces:
