@@ -15,14 +15,14 @@ metadata:
         || "requirements-build.txt".pathChanged()
       )
     pipelinesascode.tekton.dev/pipeline: "https://github.com/quay/quay-konflux-configs/blob/main/pipelines/quayio-build-pipeline.yaml"
-    pipelinesascode.tekton.dev/target-namespace: "quayio-tenant"
+    pipelinesascode.tekton.dev/target-namespace: "quay-eng-tenant"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: quay-hermetic
     appstudio.openshift.io/component: quay-hermetic
     pipelines.appstudio.openshift.io/type: build
   name: quay-hermetic-on-push
-  namespace: quayio-tenant
+  namespace: quay-eng-tenant
 spec:
   timeouts:
     pipeline: 3h
@@ -43,7 +43,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/quayio-tenant/quay-hermetic/quay-hermetic:{{revision}}
+    value: quay.io/redhat-user-workloads/quay-eng-tenant/quay-hermetic/quay-hermetic:{{revision}}
   - name: dockerfile
     value: Dockerfile.downstream
   - name: path-context
