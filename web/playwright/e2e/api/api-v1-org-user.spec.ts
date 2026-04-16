@@ -204,11 +204,10 @@ test.describe('App Tokens CRUD', {tag: ['@api', '@auth:Database']}, () => {
       const getBody = await getResp.json();
       expect(getBody.token.title).toBe(tokenTitle);
     } finally {
-      // Revoke
-      const revokeResp = await adminClient.delete(
-        `/api/v1/user/apptoken/${tokenUuid}`,
-      );
-      expect(revokeResp.status()).toBe(204);
+      // Best-effort cleanup — don't mask original test failures
+      if (tokenUuid) {
+        await adminClient.delete(`/api/v1/user/apptoken/${tokenUuid}`);
+      }
     }
   });
 });
@@ -313,15 +312,19 @@ test.describe('Global Messages CRUD', {tag: ['@api', '@auth:Database']}, () => {
       );
       expect(deleteResp.status()).toBe(204);
     } finally {
-      // Safety net: if assertion failed after creation but before deletion,
-      // ensure the message is cleaned up
+      // Best-effort cleanup — don't mask original test failures
       if (createdUuid) {
-        // Attempt cleanup; ignore 404 if already deleted above
-        const cleanupResp = await adminClient.delete(
-          `/api/v1/message/${createdUuid}`,
+        await adminClient.delete(`/api/v1/message/${createdUuid}`);
+      } else {
+        // UUID was never captured — try to find and clean up by content
+        const list = await adminClient.get('/api/v1/messages');
+        const listBody = await list.json();
+        const leaked = listBody.messages?.find(
+          (m: {content: string}) => m.content === content,
         );
-        // 204 = deleted now, 404 = already deleted in the try block
-        expect([204, 404]).toContain(cleanupResp.status());
+        if (leaked) {
+          await adminClient.delete(`/api/v1/message/${leaked.uuid}`);
+        }
       }
     }
   });
@@ -493,7 +496,7 @@ test.describe('Superuser User Info', {tag: ['@api', '@auth:Database']}, () => {
 
     // Verify admin user is in the list and is a superuser
     const adminUser = body.users.find(
-      (u: {name: string}) => u.name === TEST_USERS.admin.username,
+      (u: {username: string}) => u.username === TEST_USERS.admin.username,
     );
     expect(adminUser).toBeTruthy();
     expect(adminUser.super_user).toBe(true);
