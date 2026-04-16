@@ -1713,8 +1713,9 @@ test.describe(
   'Normal User - Sign In',
   {tag: ['@api', '@auth:Database']},
   () => {
-    test('can verify authentication as normal user', async ({userClient}) => {
-      const r = await userClient.post('/api/v1/signin', {
+    test('can verify authentication as normal user', async ({anonClient}) => {
+      // Use unauthenticated client to verify credential-based sign-in works
+      const r = await anonClient.post('/api/v1/signin', {
         username: 'testuser',
         password: 'password',
       });
