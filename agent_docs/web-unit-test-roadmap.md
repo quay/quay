@@ -3,7 +3,7 @@
 Prioritized checklist of testable areas in `web/src/`, with effort estimates and implementation guidance.
 
 **Stack:** Vitest + React Testing Library + happy-dom
-**Current state:** 111 tests passing across 6 files. Phase 1 complete. Playwright covers E2E (58 tests).
+**Current state:** 180 tests passing across 11 files. Phases 1-3 complete. Playwright covers E2E (58 tests).
 **Target:** ~460 unit tests across 7 phases
 
 ## Completed: Framework Setup
@@ -30,28 +30,26 @@ Prioritized checklist of testable areas in `web/src/`, with effort estimates and
 
 ---
 
-## Phase 2: Error Handling + Cookie Utils (~25 tests)
+## Phase 2: Error Handling + Cookie Utils — COMPLETE (31 tests)
 
-| File | Functions | Est. Tests | Notes |
-|------|-----------|-----------|-------|
-| `src/resources/ErrorHandling.ts` | 8 exported + 2 classes | ~15 | `BulkOperationError`, `getErrorMessage` (priority chain from AxiosError), `addDisplayError`. Used by every resource — high ROI. |
-| `src/libs/cookieUtils.ts` | 3 exported | ~5 | `getCookie`/`setCookie`/`deleteCookie`. happy-dom provides `document.cookie`. |
-| `src/libs/quotaUtils.tsx` | 1 exported (JSX) | ~3 | `renderQuotaConsumed()` — first JSX unit test after `LoadingPage` seed test |
+| File | Tests | Status |
+|------|-------|--------|
+| `src/resources/ErrorHandling.ts` | 20 | **Done** — `BulkOperationError`, `ResourceError`, `throwIfError`, `addDisplayError`, `getErrorMessage` (priority chain, 5xx security, network errors, fallback), `assertHttpCode`, `isErrorString`, `getErrorMessageFromUnknown`. 100% statement/branch/function coverage. |
+| `src/libs/cookieUtils.ts` | 6 | **Done** — `getCookie`, `setCookie`, `setPermanentCookie`, `deleteCookie`. 100% statement/function coverage. |
+| `src/libs/quotaUtils.tsx` | 5 | **Done** — `renderQuotaConsumed` with null input, percentage/total display, zero bytes edge case, backfill status, null quota_bytes. 95% statement, 100% function coverage. |
 
-**Effort:** ~1 day. ErrorHandling needs `AxiosError` mock construction.
+**Notes:** Real `AxiosError` instances used (not mocks) to satisfy `instanceof` checks. Cookie tests use happy-dom's `document.cookie` with `beforeEach` cleanup. `quotaUtils` tests use `customRender` from `test-utils.tsx` for PatternFly Tooltip support.
 
 ---
 
-## Phase 3: Contexts (~35 tests)
+## Phase 3: Contexts — COMPLETE (38 tests)
 
-Small surface area, high value — these are used everywhere.
+| File | Tests | Status |
+|------|-------|--------|
+| `src/contexts/UIContext.tsx` | 15 | **Done** — sidebar toggle + localStorage persistence, alert add/remove/clear with key generation, `useUI()` outside provider throws |
+| `src/contexts/ThemeContext.tsx` | 23 | **Done** — LIGHT/DARK/AUTO switching, localStorage persistence + invalid fallback, `matchMedia` listener lifecycle (register/respond/cleanup/unmount), DOM class toggle (`pf-v6-theme-dark`), default context without provider |
 
-| File | What to Test | Est. Tests |
-|------|-------------|-----------|
-| `src/contexts/UIContext.tsx` | Sidebar toggle + localStorage persistence, alert add/remove/clear, `useUI()` outside provider throws | ~15 |
-| `src/contexts/ThemeContext.tsx` | Dark/light/auto theme switching, localStorage persistence, `matchMedia` listener, DOM class updates | ~20 |
-
-**Effort:** ~1 day. Uses `renderHook` with provider wrapper.
+**Notes:** First use of `renderHook` in the codebase. ThemeContext tests use a `createMockMediaQueryList` helper returning a stable object with `_triggerChange` for simulating system theme changes. Per-test `vi.spyOn(window, 'matchMedia')` overrides the global mock; `restoreMocks: true` handles cleanup. DOM class cleanup in `afterEach` since `vitest.setup.ts` only clears localStorage.
 
 ---
 
@@ -159,16 +157,16 @@ Leave these to Playwright E2E:
 | Phase | Scope | Tests | Effort | Status |
 |-------|-------|-------|--------|--------|
 | 1 | Pure utilities | 105 | 1-2 days | **Complete** |
-| 2 | Error handling + cookies | ~25 | 1 day | Pending |
-| 3 | Contexts | ~35 | 1 day | Pending |
+| 2 | Error handling + cookies | 31 | 1 day | **Complete** |
+| 3 | Contexts | 38 | 1 day | **Complete** |
 | 4 | Complex hooks | ~60 | 2-3 days | Pending |
 | 5 | API resources | ~80 | 3-4 days | Pending |
 | 6 | Standard hooks | ~100 | 3-4 days | Pending |
 | 7 | Components | 6/~80 | 3-4 days | **In progress** — LoadingPage (6) done |
 
-**Current: 111 tests passing across 6 files | Target: ~460 tests**
+**Current: 180 tests passing across 11 files | Target: ~460 tests**
 
-Phases 1-3 deliver the most value per test written. Phase 4's `usePaginatedSortableTable` is the single highest-ROI target. Phases 5-7 are incremental and can be spread over sprints.
+Phases 1-3 are complete and deliver the most value per test written. Phase 4's `usePaginatedSortableTable` is the single highest-ROI target. Phases 5-7 are incremental and can be spread over sprints.
 
 ---
 
@@ -176,7 +174,7 @@ Phases 1-3 deliver the most value per test written. Phase 4's `usePaginatedSorta
 
 1. [x] **`createTestQueryClient()`** — Fresh QueryClient per render, in `src/test-utils.tsx`
 2. [x] **`customRender()`** — Wraps in RecoilRoot + UIProvider + QueryClientProvider, in `src/test-utils.tsx`
-3. [ ] **`createMockAxios()`** — Factory for axios-mock-adapter setup (Phase 2)
+3. [ ] **`createMockAxios()`** — Factory for axios-mock-adapter setup (Phase 5)
 4. [ ] **Mock data factories** — e.g., `createMockOrg()`, `createMockRepo()`, `createMockTag()` (Phase 5)
 5. [ ] **`renderWithRoute()`** — MemoryRouter wrapper for components using `useNavigate`/`useParams` (Phase 7, if needed)
 
@@ -187,6 +185,6 @@ Phases 1-3 deliver the most value per test written. Phase 4's `usePaginatedSorta
 Coverage is collected via V8 (`@vitest/coverage-v8`). No enforcement thresholds initially.
 
 **Ratchet-up plan:**
-1. After Phase 3 (~140 tests): measure baseline, set thresholds 5% below current
+1. After Phase 3 (~175 tests): measure baseline, set thresholds 5% below current
 2. Increase thresholds by 5% each quarter
 3. Target: 80% on `src/libs/`, 60% on `src/hooks/`, 40% overall

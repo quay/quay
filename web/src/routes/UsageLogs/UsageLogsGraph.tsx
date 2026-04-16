@@ -54,7 +54,6 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   const {
     data: aggregateLogs,
     isError: errorFetchingLogs,
-    error: fetchError,
     isLoading: loadingAggregateLogs,
   } = useQuery({
     queryKey: [
@@ -150,7 +149,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     // tslint:disable-next-line:curly
   } else
     return (
-      <Flex grow={{default: 'grow'}}>
+      <Flex grow={{default: 'grow'}} data-testid="usage-logs-chart">
         <FlexItem>
           <Chart
             key={props.starttime + props.endtime}
