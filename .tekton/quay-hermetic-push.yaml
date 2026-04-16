@@ -49,7 +49,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/quay-eng-tenant/quay-hermetic/quay-hermetic:{{revision}}
+    value: quay.io/redhat-user-workloads/quay-eng-tenant/quay-hermetic:{{revision}}
   - name: dockerfile
     value: Dockerfile.downstream
   - name: path-context
