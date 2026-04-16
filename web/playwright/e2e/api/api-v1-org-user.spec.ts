@@ -313,18 +313,24 @@ test.describe('Global Messages CRUD', {tag: ['@api', '@auth:Database']}, () => {
       expect(deleteResp.status()).toBe(204);
     } finally {
       // Best-effort cleanup — don't mask original test failures
-      if (createdUuid) {
-        await adminClient.delete(`/api/v1/message/${createdUuid}`);
-      } else {
-        // UUID was never captured — try to find and clean up by content
-        const list = await adminClient.get('/api/v1/messages');
-        const listBody = await list.json();
-        const leaked = listBody.messages?.find(
-          (m: {content: string}) => m.content === content,
-        );
-        if (leaked) {
-          await adminClient.delete(`/api/v1/message/${leaked.uuid}`);
+      try {
+        if (createdUuid) {
+          await adminClient.delete(`/api/v1/message/${createdUuid}`);
+        } else {
+          // UUID was never captured — try to find and clean up by content
+          const list = await adminClient.get('/api/v1/messages');
+          if (list.status() === 200) {
+            const listBody = await list.json();
+            const leaked = listBody.messages?.find(
+              (m: {content: string}) => m.content === content,
+            );
+            if (leaked) {
+              await adminClient.delete(`/api/v1/message/${leaked.uuid}`);
+            }
+          }
         }
+      } catch {
+        // Ignore cleanup errors
       }
     }
   });
