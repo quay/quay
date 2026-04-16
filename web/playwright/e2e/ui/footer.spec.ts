@@ -55,9 +55,7 @@ test.describe('Footer', {tag: ['@ui']}, () => {
     await authenticatedPage.goto('/organization');
 
     // #consent_blackbar renders for any quay.io deployment
-    await expect(
-      authenticatedPage.locator('#consent_blackbar'),
-    ).toBeVisible();
+    await expect(authenticatedPage.locator('#consent_blackbar')).toBeVisible();
 
     // TrustArc widget renders only when BILLING is also enabled;
     // use toHaveCount to avoid flaking on async external script load
