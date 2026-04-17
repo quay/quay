@@ -173,9 +173,12 @@ do_poll() {
   local checks_map
   checks_map=$(echo "$checks_json" | jq '[.[] | {(.name): .state}] | add // {}' 2>/dev/null || echo '{}')
 
-  local cr_state cr_at
+  local cr_state cr_at cr_review_commit cr_is_current
   cr_state=$(jq_str "$cr_review" '.state' 'NONE')
   cr_at=$(jq_str "$cr_review" '.submitted_at' '')
+  cr_review_commit=$(jq_str "$cr_review" '.commit_id' '')
+  cr_is_current=false
+  [ -n "$cr_review_commit" ] && [ "$cr_review_commit" = "$head_sha" ] && cr_is_current=true
 
   # ── Compute deltas vs previous state ───────────────────────────────────
   local prev_checks prev_cr_state prev_cr_count prev_human
