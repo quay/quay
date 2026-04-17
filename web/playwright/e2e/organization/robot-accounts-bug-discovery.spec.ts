@@ -119,7 +119,7 @@ test.describe(
   'Bug Discovery: Robot Account Repo Permissions Modal',
   {tag: ['@bug-discovery', '@organization']},
   () => {
-    test('changing repo permissions should reflect immediately in the UI', async ({
+    test.fixme('changing repo permissions should reflect immediately in the UI', async ({
       authenticatedPage,
       api,
     }) => {

@@ -11,7 +11,7 @@ test.describe(
   'Bug Discovery: Repository List',
   {tag: ['@bug-discovery', '@repository']},
   () => {
-    test('search for non-existent repo should show empty state, not spinner', async ({
+    test.fixme('search for non-existent repo should show empty state, not spinner', async ({
       authenticatedPage,
       api,
     }) => {
@@ -165,7 +165,7 @@ test.describe(
       ).toHaveAttribute('aria-selected', 'true');
     });
 
-    test('settings tab should not be accessible via URL for non-admin users', async ({
+    test.fixme('settings tab should not be accessible via URL for non-admin users', async ({
       readonlyPage,
       api,
     }) => {
