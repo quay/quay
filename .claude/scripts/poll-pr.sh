@@ -109,6 +109,10 @@ do_poll() {
   # ── Fetch from GitHub ───────────────────────────────────────────────────
   local pr_meta checks_json cr_review cr_inline_count walkthrough_body codecov_body human_reviews_json jira_body
 
+  local head_sha
+  head_sha=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
+    --json headRefOid --jq '.headRefOid' 2>/dev/null || echo '')
+
   pr_meta=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
     --json title,state,isDraft,mergeable,labels,reviewDecision \
     --jq '{title,state,draft:.isDraft,mergeable,
@@ -169,6 +173,16 @@ do_poll() {
 
   local has_changes=false
   local -a delta_lines=()
+
+  # Detect new commit — reset check snapshot to avoid false regressions
+  local prev_head_sha sha_changed=false
+  prev_head_sha=$(jq_str "$prev" '.head_sha' '')
+  if [ -n "$head_sha" ] && [ -n "$prev_head_sha" ] && [ "$head_sha" != "$prev_head_sha" ]; then
+    sha_changed=true
+    has_changes=true
+    prev_checks='{}'  # discard stale per-commit check states
+    delta_lines+=("  NEW COMMIT: ${prev_head_sha:0:7} -> ${head_sha:0:7} (check history reset)")
+  fi
 
   # CI check state changes
   local check_names_raw
@@ -241,10 +255,12 @@ do_poll() {
     --arg     cr_at    "$cr_at" \
     --argjson cr_count "$cr_inline_count" \
     --argjson human    "$human_reviews_json" \
+    --arg     head_sha  "$head_sha" \
     --argjson unchanged "$new_unchanged" \
     --argjson sleep     "$next_sleep" \
     '{
       pr_number:                   $pr,
+      head_sha:                    $head_sha,
       first_polled_at:             $first,
       last_polled_at:              $last,
       poll_count:                  $count,
