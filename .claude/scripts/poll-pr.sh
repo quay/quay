@@ -541,6 +541,9 @@ do_poll() {
         "$pass" "$total" "$cr_state" "$cr_inline_count" "$human_inline_count")
       notify_for_review "$ci_summary"
       review_notified_at="$now"
+      # Persist immediately so subsequent polls skip the notify guard
+      local _tmp
+      _tmp=$(mktemp) && jq --arg v "$review_notified_at" '.review_notified_at = $v'         "$STATE_FILE" > "$_tmp" && mv "$_tmp" "$STATE_FILE"
     else
       review_notified_at="${prev_review_notified_at:-}"
     fi
