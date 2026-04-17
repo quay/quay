@@ -65,8 +65,13 @@ jq_str() {
   echo "$_v"
 }
 
-# Safe jq numeric read with fallback
-jq_int() { echo "$1" | jq "${2}" 2>/dev/null || echo "${3:-0}"; }
+# Safe jq numeric read with fallback (treats jq errors AND literal "null" as missing)
+jq_int() {
+  local _v
+  _v=$(echo "$1" | jq "${2}" 2>/dev/null) || { echo "${3:-0}"; return; }
+  [ "$_v" = "null" ] && _v="${3:-0}"
+  echo "$_v"
+}
 
 # Compute adaptive sleep based on pending checks and stability of state
 adaptive_sleep() {
@@ -74,7 +79,9 @@ adaptive_sleep() {
   if [ "$pending" -eq 0 ]; then
     echo 0       # Nothing pending — don't sleep, something is actionable
   elif [ "$unchanged" -ge 2 ]; then
-    local next=$(( prev_sleep * 2 ))
+    local base=$prev_sleep
+    [ "$base" -lt 120 ] && base=120
+    local next=$(( base * 2 ))
     [ "$next" -gt 600 ] && next=600
     echo "$next" # Backing off: nothing changed across multiple polls
   elif [ "$pending" -gt 3 ]; then
@@ -123,39 +130,37 @@ do_poll() {
   checks_json=$(gh pr checks "$PR_NUMBER" --repo "$REPO" --json name,state \
     2>/dev/null || echo '[]')
 
-  cr_review=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
-    --jq '[.[] | select(.user.login == "coderabbitai[bot]")] | last // {}' \
-    2>/dev/null || echo '{}')
+  cr_review=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
+    --jq '[.[] | select(.user.login == "coderabbitai[bot]")]' \
+    2>/dev/null | jq -s 'flatten | last // {}' || echo '{}')
 
-  cr_inline_count=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
+  cr_inline_count=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
     --jq '[.[] | select(.user.login == "coderabbitai[bot]")] | length' \
-    2>/dev/null || echo '0')
+    2>/dev/null | jq -s 'add // 0' || echo '0')
 
-  human_inline_count=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
+  human_inline_count=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
     --jq '[.[] | select(
             .user.login != "coderabbitai[bot]" and
             (.user.login | endswith("[bot]") | not) and
             .user.login != "openshift-ci-robot"
           )] | length' \
-    2>/dev/null || echo '0')
+    2>/dev/null | jq -s 'add // 0' || echo '0')
 
-  walkthrough_body=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-    --jq '[.[] | select(.user.login == "coderabbitai[bot]")] | last | .body // ""' \
-    2>/dev/null || echo '')
+  walkthrough_body=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+    --jq '[.[] | select(.user.login == "coderabbitai[bot]")]' \
+    2>/dev/null | jq -rs 'flatten | last | .body // ""' || echo '')
 
-  codecov_body=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-    --jq '[.[] | select(.user.login == "codecov[bot]")] | last | .body // ""' \
-    2>/dev/null || echo '')
+  codecov_body=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+    --jq '[.[] | select(.user.login == "codecov[bot]")]' \
+    2>/dev/null | jq -rs 'flatten | last | .body // ""' || echo '')
 
-  human_reviews_json=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
-    --jq '[.[] | select(.user.login != "coderabbitai[bot]" and .user.login != "github-actions[bot]")]
-          | map({(.user.login): .state}) | add // {}' \
-    2>/dev/null || echo '{}')
+  human_reviews_json=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
+    --jq '[.[] | select(.user.login != "coderabbitai[bot]" and .user.login != "github-actions[bot]")]' \
+    2>/dev/null | jq -s 'flatten | map({(.user.login): .state}) | add // {}' || echo '{}')
 
-  jira_body=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-    --jq '[.[] | select(.user.login == "openshift-ci[bot]" or .user.login == "openshift-ci-robot")]
-          | last | .body // ""' \
-    2>/dev/null || echo '')
+  jira_body=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+    --jq '[.[] | select(.user.login == "openshift-ci[bot]" or .user.login == "openshift-ci-robot")]' \
+    2>/dev/null | jq -rs 'flatten | last | .body // ""' || echo '')
 
   # ── Compute check summary ───────────────────────────────────────────────
   local total pass fail pending
@@ -497,6 +502,8 @@ while true; do
     2|4)
       # Still pending (2) or awaiting human review (4) — keep polling
       SLEEP_SECS=$(jq -r '.next_sleep_seconds // 120' "$STATE_FILE" 2>/dev/null || echo 120)
+      # Floor: exit 4 (no pending checks, just waiting on humans) must not spin at 0s
+      [ "$SLEEP_SECS" -le 0 ] && SLEEP_SECS=300
       printf "\nSleeping %ss (adaptive backoff)... Ctrl+C to stop.\n\n" "$SLEEP_SECS"
       sleep "$SLEEP_SECS"
       ;;
