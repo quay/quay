@@ -90,16 +90,28 @@ adaptive_sleep() {
   fi
 }
 
-# Post a "ready for review" comment and request reviewers (idempotent via state)
+# Post a "ready for review" comment and request reviewers (idempotent: checks GitHub API)
 notify_for_review() {
   local summary="$1"
   echo "  Notifying reviewers..."
-  # Post PR comment
+
+  # Idempotency: check GitHub API for an existing ready-for-review comment regardless of state file
+  local existing_id
+  existing_id=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+    --jq '[.[] | select(.body | startswith("## Ready for Review"))] | last | .id // empty' \
+    2>/dev/null || true)
+  if [ -n "$existing_id" ]; then
+    echo "  Ready-for-review comment already posted (id: ${existing_id}). Skipping."
+    return 0
+  fi
+
+  # Post PR comment — use printf so \n expands to real newlines
   local body
-  body="## \U0001F7E2 Ready for Review\n\nCI is green and all review threads are resolved.\n\n${summary}\n\ncc $(printf '@%s ' "${REVIEWERS[@]:-}" "${TEAM_REVIEWERS[@]:-}" | sed 's/@ //g; s/ $//')"
+  body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s' "$summary")
   gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
     -X POST -f body="$body" > /dev/null 2>&1 || true
-  # Request individual reviewers
+
+  # Request individual and team reviewers
   local reviewer_args=()
   for r in "${REVIEWERS[@]:-}"; do
     [ -n "$r" ] && reviewer_args+=(-f "reviewers[]=$r")
