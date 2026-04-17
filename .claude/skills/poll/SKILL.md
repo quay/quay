@@ -2,9 +2,9 @@
 name: poll
 description: >
   Stateful PR poller: tracks GitHub Actions CI, CodeRabbit, Codecov, and human
-  reviews across polls. Loops with adaptive backoff by default; use --once for
-  a single status snapshot. Exits with a specific code so the agent knows
-  exactly what action to take next.
+  reviews across polls. Always run with --once so the agent drives the loop and
+  can act on each exit code immediately. Use CronCreate for async re-polling
+  while CI is pending.
 argument-hint: PR_NUMBER
 disable-model-invocation: false
 allowed-tools:
@@ -23,15 +23,21 @@ allowed-tools:
   - Grep
   - Agent
   - AskUserQuestion
+  - CronCreate
+  - CronDelete
+  - CronList
 ---
 
 # Poll PR and Act on Feedback
 
 Poll PR #$ARGUMENTS for CI, CodeRabbit, and human review status, then fix what's broken.
 
-The script manages its own state in `.claude/poll-state/pr-$ARGUMENTS.json` and loops
-with adaptive backoff. It shows a full report on the first run, then delta-only on
-subsequent polls so only new events surface.
+**Always run with `--once`** — this lets the agent see the exit code immediately and
+act on it. Never run without `--once` or in the background (`&`); the internal loop
+blocks the agent and swallows exit codes.
+
+The script manages its own state in `.claude/poll-state/pr-$ARGUMENTS.json`.
+It shows a full report on the first run, then delta-only on subsequent polls.
 
 ## Exit codes
 
@@ -39,53 +45,51 @@ subsequent polls so only new events surface.
 |------|---------|--------|
 | 0 | All checks pass | Ready to merge |
 | 1 | CI failures | Fix code, push, re-run |
-| 2 | Checks pending | Script is still looping; wait |
-| 3 | CodeRabbit inline comments | Address comments, push, re-run |
-| 4 | Awaiting human review | Reviewers notified; schedule a re-poll cron |
+| 2 | Checks pending | CronCreate to re-poll; exit this session |
+| 3 | Inline review comments | Address comments, push, re-run |
+| 4 | Awaiting human review | Reviewers notified; CronCreate to re-poll |
 
-## Step 1: Start polling
-
-Specify reviewers to notify when CI is clean and the PR is ready:
+## Step 1: First poll
 
 ```bash
-bash .claude/scripts/poll-pr.sh $ARGUMENTS --reviewer jbpratt
+bash .claude/scripts/poll-pr.sh $ARGUMENTS --once --team-reviewer downstream-team
 ```
 
-For a team (once the team exists):
-
-```bash
-bash .claude/scripts/poll-pr.sh $ARGUMENTS --team-reviewer downstream-team
-```
-
-The script loops with adaptive backoff (120-600s) while CI is pending, then exits when action is needed:
-- **Exit 0**: Everything passes — done.
-- **Exit 1**: CI failures — needs a fix.
-- **Exit 3**: Inline review comments — needs your attention.
-- **Exit 4**: Awaiting human review — reviewers notified.
-
-For a single snapshot without looping (e.g. to check status mid-fix):
-
-```bash
-bash .claude/scripts/poll-pr.sh $ARGUMENTS --once
-```
-
-For a complete report instead of delta-only output:
+Read the exit code and act on it per the table above. For a complete report:
 
 ```bash
 bash .claude/scripts/poll-pr.sh $ARGUMENTS --once --full
 ```
 
-## Step 1b: If exit 4 — schedule a re-poll cron
+## Step 2: Exit 2 — CI still pending
 
-When the script exits 4 (awaiting review), it has already posted a comment and requested reviewers. Use CronCreate to check back automatically:
+Read the suggested sleep interval from the state file:
+
+```bash
+jq .next_sleep_seconds .claude/poll-state/pr-$ARGUMENTS.json
+```
+
+Create a cron to re-run the skill automatically after that interval:
 
 ```
-CronCreate: every 2 hours, run: bash .claude/scripts/poll-pr.sh $ARGUMENTS --reviewer jbpratt
+CronCreate: in <next_sleep_seconds> seconds, /poll $ARGUMENTS
 ```
 
-Delete the cron (CronDelete) once the PR is merged or approved.
+Then exit. The cron fires a new session which continues from the saved state.
+Delete the cron (CronDelete) if you need to cancel.
 
-## Step 2: Act on CI Failures (exit code 1)
+## Step 3: Exit 4 — awaiting human review
+
+The script has already posted a comment and requested reviewers.
+Create a cron to check back periodically:
+
+```
+CronCreate: every 2 hours, /poll $ARGUMENTS
+```
+
+Delete the cron (CronDelete) once the PR is approved or merged.
+
+## Step 4: Exit 1 — CI failures
 
 | CI Job | Fix |
 |--------|-----|
@@ -96,7 +100,7 @@ Delete the cron (CronDelete) once the PR is merged or approved.
 | Cypress/Playwright | `cd web && npm run test:e2e` |
 | PR Lint | Fix PR title regex |
 
-## Step 3: Act on CodeRabbit Feedback (exit code 3)
+## Step 5: Exit 3 — inline review comments
 
 CodeRabbit (`chill` profile) runs 7 pre-merge checks:
 
@@ -111,19 +115,19 @@ CodeRabbit (`chill` profile) runs 7 pre-merge checks:
 | Read Path Performance | No latency regressions on v2 read path |
 
 When flagged:
-1. Run `--once --full` to see all inline comments
+1. Run `--once --full` to see all inline comments with reply/resolve commands
 2. Assess each: in `chill` mode, flags are generally valid
-3. Fix the code or reply with rationale
-4. Push and restart polling
+3. Fix the code or reply with rationale, then resolve the thread
+4. Push and re-run `--once`
 
-## Step 4: Push and re-poll
+## Step 6: Push and re-poll
 
 ```bash
-git add -A && git commit -m "type(scope): address feedback (PROJQUAY-XXXX)"
-git push
-bash .claude/scripts/poll-pr.sh $ARGUMENTS
+git add -A && git commit -m "type(scope): address feedback"
+git push fork <branch>
+bash .claude/scripts/poll-pr.sh $ARGUMENTS --once
 ```
 
-State is preserved across runs -- the next poll will show only what changed since the last run.
+State is preserved across runs — the next poll shows only what changed.
 
 Repeat until exit 0.
