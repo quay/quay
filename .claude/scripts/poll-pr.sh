@@ -541,6 +541,13 @@ do_poll() {
     printf "  ACTION REQUIRED: Address inline review comments: %s\n" "$_msg"
     exit_code=3
 
+  elif [ "$human_comment_delta" -gt 0 ]; then
+    printf "  ACTION REQUIRED: %s new comment(s) — read and respond before continuing\n" "$human_comment_delta"
+    echo "$human_comments_json" | jq -r --argjson last_id "$prev_human_comment_last_id" \
+      '[.[] | select(.id > $last_id)] | .[] |
+       "  \(.login): \(.body | split("\n") | .[0:2] | join(" "))"' 2>/dev/null || true
+    exit_code=3
+
   elif ! $cr_is_current && [ "$cr_state" != "NONE" ] && [ "$pending" -eq 0 ]; then
     echo "  WAITING: CodeRabbit re-review pending for ${head_sha:0:7}"
     exit_code=2
