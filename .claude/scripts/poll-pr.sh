@@ -96,10 +96,15 @@ notify_for_review() {
   echo "  Notifying reviewers..."
 
   # Idempotency: check GitHub API for an existing ready-for-review comment regardless of state file
-  local existing_id
+  # Treat API failures as "skip posting" to avoid duplicate comments on transient errors
+  local existing_id api_ok=true
   existing_id=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
     --jq '[.[] | select(.body | startswith("## Ready for Review"))] | last | .id // empty' \
-    2>/dev/null || true)
+    2>/dev/null) || api_ok=false
+  if ! $api_ok; then
+    echo "  WARN: could not verify existing ready-for-review comment; skipping post to avoid duplicates."
+    return 0
+  fi
   if [ -n "$existing_id" ]; then
     echo "  Ready-for-review comment already posted (id: ${existing_id}). Skipping."
     return 0
@@ -128,13 +133,23 @@ notify_for_review() {
 # Fetch all CodeRabbit review threads via GraphQL (includes resolved/outdated status)
 fetch_review_threads() {
   local owner="${REPO%%/*}" rname="${REPO##*/}"
-  gh api graphql \
+  local result
+  result=$(gh api graphql \
     -f query='query($owner:String!,$repo:String!,$pr:Int!){
-      repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100){nodes{
-        id isResolved isOutdated
-        comments(first:3){nodes{databaseId author{login __typename} body path line originalLine}}
-      }}}}}'  \
-    -f owner="$owner" -f repo="$rname" -F pr="$PR_NUMBER" 2>/dev/null || echo '{}'
+      repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100){
+        pageInfo{hasNextPage}
+        nodes{
+          id isResolved isOutdated
+          comments(first:3){nodes{databaseId author{login __typename} body path line originalLine}}
+        }
+      }}}}'  \
+    -f owner="$owner" -f repo="$rname" -F pr="$PR_NUMBER" 2>/dev/null) || { echo '{}'; return; }
+  local has_next
+  has_next=$(echo "$result" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage // false' 2>/dev/null)
+  if [ "$has_next" = "true" ]; then
+    echo "  WARN: PR has >100 review threads; results are truncated — counts may be understated." >&2
+  fi
+  echo "$result"
 }
 
 # ── Core poll ────────────────────────────────────────────────────────────────
@@ -229,8 +244,6 @@ do_poll() {
   cr_review_commit=$(jq_str "$cr_review" '.commit_id' '')
   cr_is_current=false
   [ -n "$cr_review_commit" ] && [ "$cr_review_commit" = "$head_sha" ] && cr_is_current=true
-  # Non-outdated unresolved threads mean CR has reviewed the current commit
-  [ "$cr_inline_count" -gt 0 ] && cr_is_current=true
 
   # ── Compute deltas vs previous state ───────────────────────────────────
   local prev_checks prev_cr_state prev_cr_count prev_human
@@ -495,10 +508,10 @@ do_poll() {
       2>/dev/null || true
     exit_code=1
 
-  elif [ "$human_inline_count" -gt 0 ] || ( [ "$cr_inline_count" -gt 0 ] && $cr_is_current ); then
+  elif [ "$human_inline_count" -gt 0 ] || [ "$cr_inline_count" -gt 0 ]; then
     local _msg=""
     [ "$human_inline_count" -gt 0 ] && _msg="${human_inline_count} human thread(s)"
-    ( [ "$cr_inline_count" -gt 0 ] && $cr_is_current ) && _msg="${_msg:+$_msg, }${cr_inline_count} CodeRabbit thread(s)"
+    [ "$cr_inline_count" -gt 0 ] && _msg="${_msg:+$_msg, }${cr_inline_count} CodeRabbit thread(s)"
     printf "  ACTION REQUIRED: Address inline review comments: %s\n" "$_msg"
     exit_code=3
 
@@ -585,8 +598,12 @@ while true; do
       sleep "$SLEEP_SECS"
       ;;
     4)
-      # Awaiting human review — reviewers notified, exit cleanly
-      echo "Reviewers notified. Re-run to check for approval: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
+      # Awaiting human review — exit cleanly
+      if [ "${#REVIEWERS[@]}" -gt 0 ] || [ "${#TEAM_REVIEWERS[@]}" -gt 0 ]; then
+        echo "Reviewers notified. Re-run to check for approval: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
+      else
+        echo "Awaiting human review. Re-run later or pass --reviewer/--team-reviewer to auto-notify: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
+      fi
       exit 4
       ;;
     *)
