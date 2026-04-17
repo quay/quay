@@ -18,7 +18,6 @@
 #
 # State file: .claude/poll-state/pr-<NUMBER>.json
 #   Tracks check states, review states, comment counts, adaptive sleep, and poll history.
-#   Added to .gitignore automatically on first run.
 
 set -euo pipefail
 
@@ -44,12 +43,6 @@ done
 STATE_DIR=".claude/poll-state"
 STATE_FILE="${STATE_DIR}/pr-${PR_NUMBER}.json"
 mkdir -p "$STATE_DIR"
-
-# Ensure state dir is gitignored (idempotent)
-GITIGNORE=".gitignore"
-if [ -f "$GITIGNORE" ] && ! grep -qF ".claude/poll-state" "$GITIGNORE" 2>/dev/null; then
-  printf '\n# poll-pr state (auto-generated, do not commit)\n.claude/poll-state/\n' >> "$GITIGNORE"
-fi
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
