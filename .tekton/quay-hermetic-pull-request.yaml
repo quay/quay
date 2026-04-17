@@ -67,7 +67,8 @@ spec:
         {"type": "npm", "path": "./web"},
         {"type": "npm", "path": "."},
         {"type": "rpm", "path": "."},
-        {"type": "cargo", "path": "./rust-builddeps"}
+        {"type": "cargo", "path": "./rust-builddeps"},
+        {"type": "generic", "path": "."}
       ]
   pipelineRef:
     name: build-quay-image

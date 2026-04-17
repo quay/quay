@@ -64,7 +64,8 @@ spec:
         {"type": "npm", "path": "./web"},
         {"type": "npm", "path": "."},
         {"type": "rpm", "path": "."},
-        {"type": "cargo", "path": "./rust-builddeps"}
+        {"type": "cargo", "path": "./rust-builddeps"},
+        {"type": "generic", "path": "."}
       ]
   - name: slack-notification-on-failure
     value: "true"
