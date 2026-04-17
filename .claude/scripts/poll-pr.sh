@@ -429,12 +429,10 @@ do_poll() {
     exit_code=1
 
   elif [ "$human_inline_count" -gt 0 ] || [ "$cr_inline_count" -gt 0 ]; then
-    local _action_parts=()
-    [ "$human_inline_count" -gt 0 ] && _action_parts+=("${human_inline_count} human comment(s)")
-    [ "$cr_inline_count" -gt 0 ]    && _action_parts+=("${cr_inline_count} CodeRabbit comment(s)")
-    local IFS=", "
-    printf "  ACTION REQUIRED: Address inline review comments: %s\n" "${_action_parts[*]}"
-    unset IFS
+    local _msg=""
+    [ "$human_inline_count" -gt 0 ] && _msg="${human_inline_count} human comment(s)"
+    [ "$cr_inline_count" -gt 0 ]    && _msg="${_msg:+$_msg, }${cr_inline_count} CodeRabbit comment(s)"
+    printf "  ACTION REQUIRED: Address inline review comments: %s\n" "$_msg"
     exit_code=3
 
   elif [ "$pending" -gt 0 ]; then
