@@ -556,7 +556,7 @@ do_poll() {
     printf "  ACTION REQUIRED: Address inline review comments: %s\n" "$_msg"
     exit_code=3
 
-  elif [ "$human_comment_delta" -gt 0 ]; then
+  elif ! $is_first && [ "$human_comment_delta" -gt 0 ]; then
     printf "  ACTION REQUIRED: %s new comment(s) — read and respond before continuing\n" "$human_comment_delta"
     echo "$human_comments_json" | jq -r --argjson last_id "$prev_human_comment_last_id" \
       '[.[] | select(.id > $last_id)] | .[] |
