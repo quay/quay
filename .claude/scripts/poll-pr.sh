@@ -324,17 +324,21 @@ do_poll() {
 
     echo "--- CodeRabbit Review ---"
     if [ "$cr_state" != "NONE" ] && [ -n "$cr_state" ]; then
-      echo "  State: ${cr_state}  (at: ${cr_at})"
+      printf "  State: %s  (at: %s)\n" "$cr_state" "$cr_at"
+      if ! $cr_is_current; then
+        echo "  NOTE: Review is for an older commit — waiting for CodeRabbit to re-review ${head_sha:0:7}"
+      fi
     else
       echo "  (no CodeRabbit review yet)"
     fi
     echo ""
 
-    echo "--- CodeRabbit Inline Comments: ${cr_inline_count} ---"
+    echo "--- CodeRabbit Inline Comments on current commit: ${cr_inline_count} ---"
     if [ "$cr_inline_count" -gt 0 ]; then
-      gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
-        --jq '[.[] | select(.user.login == "coderabbitai[bot]")] | .[-3:] | .[] |
-              "  \(.path):\(.line // .original_line // "?")\n  \(.body | split("\n") | .[0:3] | join("\n  "))\n"' \
+      gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
+        --jq --arg sha "$head_sha" \
+        '[.[] | select(.user.login == "coderabbitai[bot]" and .commit_id == $sha)] | .[-3:] | .[] |
+              "  \(.path):\(.line // .original_line // \"?\")\n  \(.body | split(\"\n\") | .[0:3] | join(\"\n  \"))\n"' \
         2>/dev/null || true
     fi
     echo ""
@@ -414,7 +418,9 @@ do_poll() {
 
   printf "  CI:         %s/%s passed, %s failed, %s pending\n" \
     "$pass" "$total" "$fail" "$pending"
-  printf "  CodeRabbit: %-26s inline comments: %s\n" "$cr_state" "$cr_inline_count"
+  local _cr_label="$cr_state"
+  ! $cr_is_current && [ "$cr_state" != "NONE" ] && _cr_label="${cr_state} (pending re-review)"
+  printf "  CodeRabbit: %-36s inline: %s\n" "$_cr_label" "$cr_inline_count"
   printf "  Human:      %s/%s approved  |  inline comments: %s\n" "$hr_approved" "$hr_count" "$human_inline_count"
   echo ""
 
@@ -428,12 +434,16 @@ do_poll() {
       2>/dev/null || true
     exit_code=1
 
-  elif [ "$human_inline_count" -gt 0 ] || [ "$cr_inline_count" -gt 0 ]; then
+  elif [ "$human_inline_count" -gt 0 ] || ( [ "$cr_inline_count" -gt 0 ] && $cr_is_current ); then
     local _msg=""
     [ "$human_inline_count" -gt 0 ] && _msg="${human_inline_count} human comment(s)"
-    [ "$cr_inline_count" -gt 0 ]    && _msg="${_msg:+$_msg, }${cr_inline_count} CodeRabbit comment(s)"
+    ( [ "$cr_inline_count" -gt 0 ] && $cr_is_current ) && _msg="${_msg:+$_msg, }${cr_inline_count} CodeRabbit comment(s)"
     printf "  ACTION REQUIRED: Address inline review comments: %s\n" "$_msg"
     exit_code=3
+
+  elif ! $cr_is_current && [ "$cr_state" != "NONE" ] && [ "$pending" -eq 0 ]; then
+    echo "  WAITING: CodeRabbit re-review pending for ${head_sha:0:7}"
+    exit_code=2
 
   elif [ "$pending" -gt 0 ]; then
     printf "  WAITING: %s check(s) still running" "$pending"
