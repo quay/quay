@@ -24,9 +24,6 @@ test.describe(
       const settingsUrl = `/repository/${org.name}/${repo.name}?tab=settings`;
       await authenticatedPage.goto(settingsUrl);
 
-      // Get the URL before clicking the dropdown
-      const urlBefore = authenticatedPage.url();
-
       // Click the permission dropdown to change role
       const teamRow = authenticatedPage.locator('tr', {hasText: team.name});
       await teamRow.getByText('read').click();
@@ -35,7 +32,7 @@ test.describe(
       await authenticatedPage.getByRole('menuitem', {name: 'Write'}).click();
 
       // Verify we stayed on the same page (no navigation occurred)
-      await expect(authenticatedPage).toHaveURL(new RegExp(settingsUrl));
+      await expect(authenticatedPage).toHaveURL(settingsUrl);
 
       // Verify the permission was actually updated
       await expect(teamRow.locator('[data-label="role"]')).toHaveText('write');
@@ -74,12 +71,10 @@ test.describe(
         .click();
 
       // Click a permission option — this is where Firefox would navigate away
-      await authenticatedPage
-        .getByTestId(`${robot.fullName}-WRITE`)
-        .click();
+      await authenticatedPage.getByTestId(`${robot.fullName}-WRITE`).click();
 
       // Verify we stayed on the same page
-      await expect(authenticatedPage).toHaveURL(new RegExp(defaultPermsUrl));
+      await expect(authenticatedPage).toHaveURL(defaultPermsUrl);
 
       // Verify success alert confirms the change worked
       await expect(
@@ -123,7 +118,7 @@ test.describe(
         .click();
 
       // Verify we stayed on the same page
-      await expect(authenticatedPage).toHaveURL(new RegExp(defaultPermsUrl));
+      await expect(authenticatedPage).toHaveURL(defaultPermsUrl);
 
       // Verify the dropdown shows the selected value
       await expect(
