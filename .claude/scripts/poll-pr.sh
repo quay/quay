@@ -35,6 +35,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo)
       [ $# -lt 2 ] && { echo "Missing value for --repo" >&2; exit 1; }
+      [[ "$2" == -* ]] && { echo "Invalid value for --repo: $2" >&2; exit 1; }
       REPO="$2"; shift 2 ;;
     --once)       ONCE=true; shift ;;
     --full)       FULL=true; shift ;;
