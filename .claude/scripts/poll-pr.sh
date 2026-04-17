@@ -347,12 +347,12 @@ do_poll() {
 
     echo "--- CodeRabbit Unresolved Threads: ${cr_inline_count} ---"
     if [ "$cr_inline_count" -gt 0 ]; then
-      echo "$threads_json" | jq -r \
-        '[.data.repository.pullRequest.reviewThreads.nodes[]? |
+      local _jq_cr='[.data.repository.pullRequest.reviewThreads.nodes[]? |
           select(.isResolved==false and .isOutdated==false) |
           select(.comments.nodes[0]?.author.__typename=="Bot" and (.comments.nodes[0]?.author.login | startswith("coderabbit")))][-5:] |
         .[] |
-        "  \(.comments.nodes[0].path):\(.comments.nodes[0].line // .comments.nodes[0].originalLine // "?")\n  \(.comments.nodes[0].body | split("\n") | .[0:3] | join("\n  "))\n  Thread: \(.id)  Comment: \(.comments.nodes[0].databaseId)\n"' \
+        "  \(.comments.nodes[0].path):\(.comments.nodes[0].line // .comments.nodes[0].originalLine // "?")\n  \(.comments.nodes[0].body | split("\n") | .[0:3] | join("\n  "))\n  1. Reply:   gh api repos/\($repo)/pulls/\($pr)/comments/\(.comments.nodes[0].databaseId)/replies -X POST -f body=\"...\"\n  2. Resolve: gh api graphql -f query=\"mutation{resolveReviewThread(input:{threadId:\\\"\(.id)\\\"}){thread{isResolved}}}\"\n"'
+      echo "$threads_json" | jq -r --arg repo "$REPO" --arg pr "$PR_NUMBER" "$_jq_cr" \
         2>/dev/null || true
     fi
     echo ""
@@ -386,12 +386,12 @@ do_poll() {
 
     echo "--- Human Unresolved Threads: ${human_inline_count} ---"
     if [ "$human_inline_count" -gt 0 ]; then
-      echo "$threads_json" | jq -r \
-        '[.data.repository.pullRequest.reviewThreads.nodes[]? |
+      local _jq_human='[.data.repository.pullRequest.reviewThreads.nodes[]? |
           select(.isResolved==false and .isOutdated==false) |
           select(.comments.nodes[0]?.author.__typename=="User")][-5:] |
         .[] |
-        "  \(.comments.nodes[0].author.login) on \(.comments.nodes[0].path):\(.comments.nodes[0].line // .comments.nodes[0].originalLine // "?")\n  \(.comments.nodes[0].body | split("\n") | .[0:3] | join("\n  "))\n  Thread: \(.id)\n"' \
+        "  \(.comments.nodes[0].author.login) on \(.comments.nodes[0].path):\(.comments.nodes[0].line // .comments.nodes[0].originalLine // "?")\n  \(.comments.nodes[0].body | split("\n") | .[0:3] | join("\n  "))\n  1. Reply:   gh api repos/\($repo)/pulls/\($pr)/comments/\(.comments.nodes[0].databaseId)/replies -X POST -f body=\"...\"\n  2. Resolve: gh api graphql -f query=\"mutation{resolveReviewThread(input:{threadId:\\\"\(.id)\\\"}){thread{isResolved}}}\"\n"'
+      echo "$threads_json" | jq -r --arg repo "$REPO" --arg pr "$PR_NUMBER" "$_jq_human" \
         2>/dev/null || true
     fi
     echo ""
