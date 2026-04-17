@@ -226,12 +226,13 @@ do_poll() {
     2>/dev/null | jq -rs 'flatten | last | .body // ""' || echo '')
 
   # Human PR comments (non-bot, non-our-own-account)
-  local human_comments_json
+  local human_comments_json self_login
+  self_login=$(gh api user --jq '.login' 2>/dev/null || echo '')
   human_comments_json=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-    --jq '[.[] | select(
+    --jq --arg self "$self_login" '[.[] | select(
       (.user.login | endswith("[bot]") | not) and
       .user.login != "openshift-ci-robot" and
-      .user.login != "quay-devel" and
+      ($self == "" or .user.login != $self) and
       (.body | startswith("## Ready for Review") | not)
     ) | {id: .id, login: .user.login, created_at: .created_at, body: .body}]' \
     2>/dev/null | jq -s 'flatten | sort_by(.id)' || echo '[]')
@@ -267,10 +268,9 @@ do_poll() {
   local -a delta_lines=()
 
   # Detect new commit — reset check snapshot to avoid false regressions
-  local prev_head_sha sha_changed=false
+  local prev_head_sha
   prev_head_sha=$(jq_str "$prev" '.head_sha' '')
   if [ -n "$head_sha" ] && [ -n "$prev_head_sha" ] && [ "$head_sha" != "$prev_head_sha" ]; then
-    sha_changed=true
     has_changes=true
     prev_checks='{}'  # discard stale per-commit check states
     delta_lines+=("  NEW COMMIT: ${prev_head_sha:0:7} -> ${head_sha:0:7} (check history reset)")
