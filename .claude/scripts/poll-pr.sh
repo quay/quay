@@ -22,6 +22,9 @@
 set -euo pipefail
 
 PR_NUMBER="${1:?Usage: poll-pr.sh <PR_NUMBER> [--repo OWNER/REPO] [--once] [--full] [--max-polls N]}"
+if ! [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+  echo "PR_NUMBER must be a positive integer: ${PR_NUMBER}" >&2; exit 1
+fi
 shift
 
 REPO="quay/quay"
@@ -37,6 +40,7 @@ while [[ $# -gt 0 ]]; do
     --full)       FULL=true; shift ;;
     --max-polls)
       [ $# -lt 2 ] && { echo "Missing value for --max-polls" >&2; exit 1; }
+      [[ "$2" =~ ^[0-9]+$ ]] || { echo "Invalid value for --max-polls: $2" >&2; exit 1; }
       MAX_POLLS="$2"; shift 2 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
@@ -186,6 +190,9 @@ do_poll() {
   # Keep the JSON for known check-state exits; only fall back on true command failure.
   if [ "$checks_rc" -ne 0 ] && [ "$checks_rc" -ne 1 ] && [ "$checks_rc" -ne 8 ]; then
     echo "  WARN: failed to fetch PR checks (rc=${checks_rc}); treating as pending." >&2
+    checks_json='[{"name":"gh pr checks","state":"PENDING","bucket":"pending"}]'
+  elif [ -z "$checks_json" ] && [ "$checks_rc" -ne 0 ]; then
+    echo "  WARN: gh pr checks returned rc=${checks_rc} with no output; treating as pending." >&2
     checks_json='[{"name":"gh pr checks","state":"PENDING","bucket":"pending"}]'
   elif [ -z "$checks_json" ]; then
     checks_json='[]'
@@ -629,6 +636,11 @@ while true; do
   set -e
 
   if $ONCE; then
+    exit "$RC"
+  fi
+
+  if [ "$MAX_POLLS" -gt 0 ] && [ "$iter" -ge "$MAX_POLLS" ]; then
+    echo "Max polls (${MAX_POLLS}) reached. Stopping." >&2
     exit "$RC"
   fi
 
