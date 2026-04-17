@@ -262,7 +262,6 @@ do_poll() {
     sha_changed=true
     has_changes=true
     prev_checks='{}'  # discard stale per-commit check states
-    prev_human_comment_last_id=0  # re-surface comments after each push
     delta_lines+=("  NEW COMMIT: ${prev_head_sha:0:7} -> ${head_sha:0:7} (check history reset)")
   fi
 
