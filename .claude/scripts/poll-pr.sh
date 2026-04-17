@@ -8,15 +8,13 @@
 #   --once                   Single poll; exit immediately (default: loop until done)
 #   --full                   Always print full report (default: delta-only on re-polls)
 #   --max-polls N            Stop after N total polls (default: unlimited)
-#   --reviewer USER          Request USER as reviewer when exiting 4 (repeatable)
-#   --team-reviewer TEAM     Request TEAM as reviewer when exiting 4 (repeatable)
 #
 # Exit codes:
 #   0  All checks pass — ready to merge
 #   1  CI failures — fix required
 #   2  Checks still pending — re-poll later
 #   3  Review comments to address
-#   4  Awaiting human review — notifies reviewers and exits
+#   4  Awaiting human review — posts @quay/downstream mention and exits
 #
 # State file: .claude/poll-state/pr-<NUMBER>.json
 #   Tracks check states, review states, comment counts, adaptive sleep, and poll history.
@@ -30,9 +28,6 @@ REPO="quay/quay"
 ONCE=false
 FULL=false
 MAX_POLLS=0  # 0 = unlimited
-REVIEWERS=()
-TEAM_REVIEWERS=()
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo)
@@ -43,12 +38,6 @@ while [[ $# -gt 0 ]]; do
     --max-polls)
       [ $# -lt 2 ] && { echo "Missing value for --max-polls" >&2; exit 1; }
       MAX_POLLS="$2"; shift 2 ;;
-    --reviewer)
-      [ $# -lt 2 ] && { echo "Missing value for --reviewer" >&2; exit 1; }
-      REVIEWERS+=("$2"); shift 2 ;;
-    --team-reviewer)
-      [ $# -lt 2 ] && { echo "Missing value for --team-reviewer" >&2; exit 1; }
-      TEAM_REVIEWERS+=("$2"); shift 2 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
@@ -98,10 +87,10 @@ adaptive_sleep() {
   fi
 }
 
-# Post a "ready for review" comment and request reviewers (idempotent: checks GitHub API)
+# Post a "ready for review" comment mentioning @quay/downstream (idempotent: checks GitHub API)
 notify_for_review() {
   local summary="$1"
-  echo "  Notifying reviewers..."
+  echo "  Posting ready-for-review comment..."
 
   # Idempotency: check GitHub API for an existing ready-for-review comment regardless of state file
   # Treat API failures as "skip posting" to avoid duplicate comments on transient errors
@@ -118,24 +107,11 @@ notify_for_review() {
     return 0
   fi
 
-  # Post PR comment — use printf so \n expands to real newlines
+  # Post PR comment with @quay/downstream mention — use printf so \n expands to real newlines
   local body
-  body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s' "$summary")
+  body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s\n\n@quay/downstream' "$summary")
   gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
     -X POST -f body="$body" > /dev/null 2>&1 || true
-
-  # Request individual and team reviewers
-  local reviewer_args=()
-  for r in "${REVIEWERS[@]:-}"; do
-    [ -n "$r" ] && reviewer_args+=(-f "reviewers[]=$r")
-  done
-  for t in "${TEAM_REVIEWERS[@]:-}"; do
-    [ -n "$t" ] && reviewer_args+=(-f "team_reviewers[]=$t")
-  done
-  if [ "${#reviewer_args[@]}" -gt 0 ]; then
-    gh api "repos/${REPO}/pulls/${PR_NUMBER}/requested_reviewers" \
-      -X POST "${reviewer_args[@]}" > /dev/null 2>&1 || true
-  fi
 }
 
 # Fetch all CodeRabbit review threads via GraphQL (includes resolved/outdated status)
@@ -543,7 +519,7 @@ do_poll() {
 
   elif [ "$hr_count" -eq 0 ] || [ "$hr_approved" -eq 0 ]; then
     echo "  WAITING: Awaiting human review approval"
-    if [ -z "$prev_review_notified_at" ] && ( [ "${#REVIEWERS[@]}" -gt 0 ] || [ "${#TEAM_REVIEWERS[@]}" -gt 0 ] ); then
+    if [ -z "$prev_review_notified_at" ]; then
       local ci_summary
       ci_summary=$(printf "CI: %s/%s passed | CodeRabbit: %s | Unresolved threads: CR=%s Human=%s" \
         "$pass" "$total" "$cr_state" "$cr_inline_count" "$human_inline_count")
@@ -609,12 +585,8 @@ while true; do
       sleep "$SLEEP_SECS"
       ;;
     4)
-      # Awaiting human review — exit cleanly
-      if [ "${#REVIEWERS[@]}" -gt 0 ] || [ "${#TEAM_REVIEWERS[@]}" -gt 0 ]; then
-        echo "Reviewers notified. Re-run to check for approval: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
-      else
-        echo "Awaiting human review. Re-run later or pass --reviewer/--team-reviewer to auto-notify: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
-      fi
+      # Awaiting human review — @quay/downstream notified, exit cleanly
+      echo "@quay/downstream notified. Re-run to check for approval: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
       exit 4
       ;;
     *)

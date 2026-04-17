@@ -46,7 +46,7 @@ see the full report and exit code, then act on it.
 
 ```bash
 # Bash tool call — set run_in_background: true
-bash .claude/scripts/poll-pr.sh $ARGUMENTS --team-reviewer downstream-team
+bash .claude/scripts/poll-pr.sh $ARGUMENTS
 ```
 
 The script sleeps and polls on its own. Do not interrupt it. When it exits, you will
@@ -60,7 +60,7 @@ be notified automatically.
 | 1 | CI failures | Fix code, push, re-run (background again) |
 | 2 | Checks pending | Should not exit 2 unless --max-polls hit; re-run |
 | 3 | Inline review comments | Address comments, push, re-run (background again) |
-| 4 | Awaiting human review | Reviewers notified; CronCreate to re-poll later |
+| 4 | Awaiting human review | @quay/downstream notified; CronCreate to re-poll later |
 
 ## Exit 4 — schedule a re-poll cron
 
@@ -72,6 +72,8 @@ CronCreate: every 2 hours, /poll $ARGUMENTS
 ```
 
 Delete the cron (CronDelete) once the PR is approved or merged.
+
+Note: the script automatically mentions `@quay/downstream` in the ready-for-review comment — no reviewer flags needed.
 
 ## Exit 1 — CI failures
 
