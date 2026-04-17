@@ -6,7 +6,7 @@ description: >
   a single status snapshot. Exits with a specific code so the agent knows
   exactly what action to take next.
 argument-hint: PR_NUMBER
-disable-model-invocation: true
+disable-model-invocation: false
 allowed-tools:
   - Bash(bash .claude/scripts/poll-pr.sh *)
   - Bash(bash .claude/scripts/format-and-lint.sh *)
