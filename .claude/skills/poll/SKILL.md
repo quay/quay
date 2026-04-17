@@ -1,9 +1,10 @@
 ---
 name: poll
 description: >
-  Poll a PR for GitHub Actions CI results, CodeRabbit review feedback, Codecov
-  coverage, and human reviews. Identifies failures and acts on them: fixes code,
-  responds to review comments, pushes, and re-polls until everything passes.
+  Stateful PR poller: tracks GitHub Actions CI, CodeRabbit, Codecov, and human
+  reviews across polls. Loops with adaptive backoff by default; use --once for
+  a single status snapshot. Exits with a specific code so the agent knows
+  exactly what action to take next.
 argument-hint: PR_NUMBER
 disable-model-invocation: true
 allowed-tools:
@@ -26,15 +27,47 @@ allowed-tools:
 
 # Poll PR and Act on Feedback
 
-Poll PR #$ARGUMENTS for CI, CodeRabbit, and human review status. Fix issues found.
+Poll PR #$ARGUMENTS for CI, CodeRabbit, and human review status, then fix what's broken.
 
-## Step 1: Poll
+The script manages its own state in `.claude/poll-state/pr-$ARGUMENTS.json` and loops
+with adaptive backoff. It shows a full report on the first run, then delta-only on
+subsequent polls so only new events surface.
+
+## Exit codes
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| 0 | All checks pass | Ready to merge |
+| 1 | CI failures | Fix code, push, re-run |
+| 2 | Checks pending | Script is still looping; wait |
+| 3 | CodeRabbit inline comments | Address comments, push, re-run |
+| 4 | Awaiting human review | Script is still looping; wait |
+
+## Step 1: Start polling (loops until action needed or all pass)
 
 ```bash
 bash .claude/scripts/poll-pr.sh $ARGUMENTS
 ```
 
-## Step 2: Act on CI Failures
+The script sleeps adaptively between polls (120-600s based on how long checks have been
+pending and whether state changed). It stops automatically when:
+- **Exit 0**: Everything passes -- done.
+- **Exit 1**: CI failures -- needs your fix.
+- **Exit 3**: CodeRabbit inline comments -- needs your review.
+
+For a single snapshot without looping (e.g. to check status mid-fix):
+
+```bash
+bash .claude/scripts/poll-pr.sh $ARGUMENTS --once
+```
+
+For a complete report instead of delta-only output:
+
+```bash
+bash .claude/scripts/poll-pr.sh $ARGUMENTS --once --full
+```
+
+## Step 2: Act on CI Failures (exit code 1)
 
 | CI Job | Fix |
 |--------|-----|
@@ -45,7 +78,7 @@ bash .claude/scripts/poll-pr.sh $ARGUMENTS
 | Cypress/Playwright | `cd web && npm run test:e2e` |
 | PR Lint | Fix PR title regex |
 
-## Step 3: Act on CodeRabbit Feedback
+## Step 3: Act on CodeRabbit Feedback (exit code 3)
 
 CodeRabbit (`chill` profile) runs 7 pre-merge checks:
 
@@ -60,17 +93,19 @@ CodeRabbit (`chill` profile) runs 7 pre-merge checks:
 | Read Path Performance | No latency regressions on v2 read path |
 
 When flagged:
-1. Read the specific comment
-2. Assess if actionable (in `chill` mode, flags are generally valid)
-3. Fix or reply with rationale
-4. Push and re-poll
+1. Run `--once --full` to see all inline comments
+2. Assess each: in `chill` mode, flags are generally valid
+3. Fix the code or reply with rationale
+4. Push and restart polling
 
-## Step 4: Push and Re-poll
+## Step 4: Push and re-poll
 
 ```bash
-git add -A && git commit -m "<subsystem>: <what changed> (PROJQUAY-XXXX)"
+git add -A && git commit -m "type(scope): address feedback (PROJQUAY-XXXX)"
 git push
 bash .claude/scripts/poll-pr.sh $ARGUMENTS
 ```
 
-Repeat until all CI passes, CodeRabbit passes, coverage holds, and human review approves.
+State is preserved across runs -- the next poll will show only what changed since the last run.
+
+Repeat until exit 0.
