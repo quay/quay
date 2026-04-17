@@ -652,9 +652,13 @@ while true; do
       sleep "$SLEEP_SECS"
       ;;
     4)
-      # Awaiting human review — @quay/downstream notified, exit cleanly
-      echo "@quay/downstream notified. Re-run to check for approval: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
-      exit 4
+      # Awaiting human review — keep polling at a slower cadence (5 min min)
+      SLEEP_SECS=300
+      printf "
+Awaiting human review — next check in %ss...
+
+" "$SLEEP_SECS"
+      sleep "$SLEEP_SECS"
       ;;
     *)
       echo "Unexpected exit code ${RC}. Stopping." >&2
