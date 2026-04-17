@@ -39,7 +39,7 @@ export default function RepoEventExpiry(props: RepoEventExpiryProps) {
       />
       <Conditional if={valid == ValidatedOptions.error}>
         <HelperText>
-          <HelperTextItem variant="error" hasIcon>
+          <HelperTextItem variant="error">
             number of days should be more than 0.
           </HelperTextItem>
         </HelperText>

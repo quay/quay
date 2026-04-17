@@ -177,6 +177,7 @@ export default function TypeAheadSelect(props: TypeAheadSelectProps) {
         <TextInputGroupUtilities>
           {!!props.value && (
             <Button
+              icon={<TimesIcon aria-hidden />}
               variant="plain"
               onClick={() => {
                 setSelected('');
@@ -185,9 +186,7 @@ export default function TypeAheadSelect(props: TypeAheadSelectProps) {
                 textInputRef?.current?.focus();
               }}
               aria-label="Clear input value"
-            >
-              <TimesIcon aria-hidden />
-            </Button>
+            />
           )}
         </TextInputGroupUtilities>
       </TextInputGroup>

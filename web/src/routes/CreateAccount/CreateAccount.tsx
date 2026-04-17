@@ -272,7 +272,7 @@ export function CreateAccount() {
             Already have an account?{' '}
             <Link
               to="/signin"
-              style={{color: 'var(--pf-v5-global--link--Color)'}}
+              style={{color: 'var(--pf-t--global--text--color--link--default)'}}
             >
               Sign in
             </Link>
@@ -285,7 +285,7 @@ export function CreateAccount() {
           Already have an account?{' '}
           <Link
             to="/signin"
-            style={{color: 'var(--pf-v5-global--link--Color)'}}
+            style={{color: 'var(--pf-t--global--text--color--link--default)'}}
           >
             Sign in
           </Link>

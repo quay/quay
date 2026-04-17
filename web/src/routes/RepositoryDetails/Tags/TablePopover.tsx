@@ -1,4 +1,4 @@
-import {Popover, ClipboardCopy, Text} from '@patternfly/react-core';
+import {Popover, ClipboardCopy, Content} from '@patternfly/react-core';
 import {useRecoilState} from 'recoil';
 import {currentOpenPopoverState} from 'src/atoms/TagListState';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -21,7 +21,9 @@ export default function TablePopover(props: TablePopoverProps) {
       headerContent={<div>Fetch Tag</div>}
       bodyContent={
         <div>
-          <Text style={{fontWeight: 'bold'}}>Podman Pull (By Tag)</Text>
+          <Content component="p" style={{fontWeight: 'bold'}}>
+            Podman Pull (By Tag)
+          </Content>
           <ClipboardCopy
             data-testid="copy-tag-podman"
             isReadOnly
@@ -31,7 +33,9 @@ export default function TablePopover(props: TablePopoverProps) {
             podman pull {domain}/{props.org}/{props.repo}:{props.tag}
           </ClipboardCopy>
           <br />
-          <Text style={{fontWeight: 'bold'}}>Podman Pull (By Digest)</Text>
+          <Content component="p" style={{fontWeight: 'bold'}}>
+            Podman Pull (By Digest)
+          </Content>
           <ClipboardCopy
             data-testid="copy-digest-podman"
             isReadOnly
@@ -41,7 +45,9 @@ export default function TablePopover(props: TablePopoverProps) {
             podman pull {domain}/{props.org}/{props.repo}@{props.digest}
           </ClipboardCopy>
           <br />
-          <Text style={{fontWeight: 'bold'}}>Docker Pull (By Tag)</Text>
+          <Content component="p" style={{fontWeight: 'bold'}}>
+            Docker Pull (By Tag)
+          </Content>
           <ClipboardCopy
             data-testid="copy-tag-docker"
             isReadOnly
@@ -51,7 +57,9 @@ export default function TablePopover(props: TablePopoverProps) {
             docker pull {domain}/{props.org}/{props.repo}:{props.tag}
           </ClipboardCopy>
           <br />
-          <Text style={{fontWeight: 'bold'}}>Docker Pull (By Digest)</Text>
+          <Content component="p" style={{fontWeight: 'bold'}}>
+            Docker Pull (By Digest)
+          </Content>
           <ClipboardCopy
             data-testid="copy-digest-docker"
             isReadOnly

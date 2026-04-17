@@ -4,19 +4,21 @@ import {
   Form,
   Flex,
   Button,
-  Text,
+  Content,
   Spinner,
   Alert,
   EmptyState,
-  EmptyStateIcon,
   EmptyStateBody,
   Divider,
   Dropdown,
   DropdownItem,
   DropdownList,
   MenuToggle,
-  Modal,
   Tooltip,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {EllipsisVIcon, KeyIcon} from '@patternfly/react-icons';
@@ -133,7 +135,7 @@ export const CliConfiguration = () => {
             direction={{default: 'column'}}
           >
             <FlexItem>
-              <Title headingLevel="h3" className="pf-v5-u-text-align-left">
+              <Title headingLevel="h3" className="pf-v6-u-text-align-left">
                 Docker CLI password
               </Title>
             </FlexItem>
@@ -178,7 +180,7 @@ export const CliConfiguration = () => {
             )}
           </Flex>
 
-          <Divider className="pf-v5-u-my-sm" />
+          <Divider className="pf-v6-u-my-sm" />
         </>
       )}
 
@@ -190,7 +192,7 @@ export const CliConfiguration = () => {
             direction={{default: 'column'}}
           >
             <FlexItem>
-              <Title headingLevel="h3" className="pf-v5-u-text-align-left">
+              <Title headingLevel="h3" className="pf-v6-u-text-align-left">
                 Docker CLI and other Application Tokens
               </Title>
             </FlexItem>
@@ -209,7 +211,7 @@ export const CliConfiguration = () => {
             </FlexItem>
           </Flex>
 
-          <Flex width={'70%'} className="pf-v5-u-mb-md">
+          <Flex width={'70%'} className="pf-v6-u-mb-md">
             <Button
               variant="secondary"
               onClick={() => setCreateTokenModalOpen(true)}
@@ -221,9 +223,11 @@ export const CliConfiguration = () => {
 
           {/* Application Tokens Table */}
           {isLoading && (
-            <div className="pf-v5-u-text-align-center pf-v5-u-p-lg">
+            <div className="pf-v6-u-text-align-center pf-v6-u-p-lg">
               <Spinner size="md" />
-              <Text className="pf-v5-u-mt-sm">Loading tokens...</Text>
+              <Content component="p" className="pf-v6-u-mt-sm">
+                Loading tokens...
+              </Content>
             </div>
           )}
 
@@ -236,11 +240,11 @@ export const CliConfiguration = () => {
           {!isLoading && !error && tokens && (
             <>
               {tokens.length === 0 ? (
-                <EmptyState>
-                  <EmptyStateIcon icon={KeyIcon} />
-                  <Title headingLevel="h4" size="lg">
-                    No application tokens
-                  </Title>
+                <EmptyState
+                  titleText="No application tokens"
+                  headingLevel="h4"
+                  icon={KeyIcon}
+                >
                   <EmptyStateBody>
                     You haven&apos;t created any application tokens yet. Create
                     one to use as an alternative to your password for CLI
@@ -279,7 +283,7 @@ export const CliConfiguration = () => {
                               variant="link"
                               isInline
                               onClick={() => handleViewToken(token)}
-                              className="pf-v5-u-p-0"
+                              className="pf-v6-u-p-0"
                             >
                               {token.title}
                             </Button>
@@ -385,39 +389,43 @@ export const CliConfiguration = () => {
           {isFetchingToken && (
             <Modal
               variant="small"
-              title="Loading Token"
               isOpen={viewTokenModalOpen}
               onClose={handleCloseViewModal}
             >
-              <div className="pf-v5-u-text-align-center pf-v5-u-p-lg">
-                <Spinner size="md" />
-                <Text className="pf-v5-u-mt-sm">
-                  Loading token credentials...
-                </Text>
-              </div>
+              <ModalHeader title="Loading Token" />
+              <ModalBody>
+                <div className="pf-v6-u-text-align-center pf-v6-u-p-lg">
+                  <Spinner size="md" />
+                  <Content component="p" className="pf-v6-u-mt-sm">
+                    Loading token credentials...
+                  </Content>
+                </div>
+              </ModalBody>
             </Modal>
           )}
 
           {fetchTokenError && (
             <Modal
               variant="small"
-              title="Error"
               isOpen={viewTokenModalOpen}
               onClose={handleCloseViewModal}
-              actions={[
+            >
+              <ModalHeader title="Error" />
+              <ModalBody>
+                <Alert variant="danger" isInline title="Error loading token">
+                  {(fetchTokenError as Error)?.message ||
+                    'Failed to load token credentials'}
+                </Alert>
+              </ModalBody>
+              <ModalFooter>
                 <Button
                   key="close"
                   variant="primary"
                   onClick={handleCloseViewModal}
                 >
                   Close
-                </Button>,
-              ]}
-            >
-              <Alert variant="danger" isInline title="Error loading token">
-                {(fetchTokenError as Error)?.message ||
-                  'Failed to load token credentials'}
-              </Alert>
+                </Button>
+              </ModalFooter>
             </Modal>
           )}
 
