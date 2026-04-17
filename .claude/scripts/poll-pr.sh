@@ -113,9 +113,10 @@ notify_for_review() {
     echo "  Ready-for-review comment already posted (id: ${existing_id})."
   fi
 
-  # Assign quay/downstream team as reviewer via API
+  # Assign quay/downstream team as reviewer via API (best-effort — team may not be a collaborator)
   gh api "repos/${REPO}/pulls/${PR_NUMBER}/requested_reviewers" \
-    -X POST -f "team_reviewers[]=downstream" > /dev/null 2>&1 || return 1
+    -X POST -f "team_reviewers[]=downstream" > /dev/null 2>&1 || \
+    echo "  NOTE: quay/downstream team assignment skipped (not a repo collaborator)."
 }
 
 # Fetch all CodeRabbit review threads via GraphQL (includes resolved/outdated status)
