@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from collections import namedtuple
 from datetime import datetime, timedelta
 
 import mock
@@ -21,6 +22,7 @@ from data.database import (
     db_transaction,
 )
 from data.registry_model import registry_model
+from data.registry_model.datatypes import ManifestLayer
 from data.secscan_model.datatypes import (
     NVD,
     CVSSv3,
@@ -39,9 +41,14 @@ from data.secscan_model.secscan_v4_model import (
     IndexReportState,
     SecurityInformationLookupResult,
     V4SecurityScanner,
+    _has_container_layers,
     features_for,
 )
-from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from image.docker.schema2 import (
+    DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
+    DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
+)
+from image.oci import OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE
 from test.fixtures import *
 from util.secscan.v4.api import APIRequestFailure
 
@@ -893,3 +900,151 @@ def test_vulns_to_cves(vulnerabilities, expected_output):
 )
 def test_vulns_to_base_scores(vulnerabilities, expected_output):
     assert vulns_to_base_scores(vulnerabilities) == expected_output
+
+
+def test_has_container_layers_with_oci_image_layers():
+    """
+    Test that OCI container image layers are correctly identified.
+    """
+
+    MockBlobLayer = namedtuple("MockBlobLayer", ["mediatype"])
+    MockInternalLayer = namedtuple("MockInternalLayer", ["blob_layer"])
+    MockLayerInfo = namedtuple("MockLayerInfo", ["internal_layer"])
+
+    blob_layer = MockBlobLayer(mediatype=OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE)
+    internal_layer = MockInternalLayer(blob_layer=blob_layer)
+    layer_info = MockLayerInfo(internal_layer=internal_layer)
+    layer = ManifestLayer(layer_info=layer_info, blob=None)
+
+    assert _has_container_layers([layer])
+
+
+def test_has_container_layers_with_docker_schema2_layers():
+    """
+    Test that Docker v2 schema 2 layers are correctly identified.
+    """
+
+    MockBlobLayer = namedtuple("MockBlobLayer", ["mediatype"])
+    MockInternalLayer = namedtuple("MockInternalLayer", ["blob_layer"])
+    MockLayerInfo = namedtuple("MockLayerInfo", ["internal_layer"])
+
+    blob_layer = MockBlobLayer(mediatype=DOCKER_SCHEMA2_LAYER_CONTENT_TYPE)
+    internal_layer = MockInternalLayer(blob_layer=blob_layer)
+    layer_info = MockLayerInfo(internal_layer=internal_layer)
+    layer = ManifestLayer(layer_info=layer_info, blob=None)
+
+    assert _has_container_layers([layer])
+
+
+def test_has_container_layers_with_non_container_artifact():
+    """
+    Tests whether non-image layers are correctly identified.
+    """
+
+    MockBlobLayer = namedtuple("MockBlobLayer", ["mediatype"])
+    MockInternalLayer = namedtuple("MockInternalLayer", ["blob_layer"])
+    MockLayerInfo = namedtuple("MockLayerInfo", ["internal_layer"])
+
+    # Use helm chart layer type
+    blob_layer = MockBlobLayer(mediatype="application/vnd.cncf.helm.chart.content.v1.tar+gzip")
+    internal_layer = MockInternalLayer(blob_layer=blob_layer)
+    layer_info = MockLayerInfo(internal_layer=internal_layer)
+    layer = ManifestLayer(layer_info=layer_info, blob=None)
+
+    assert not _has_container_layers([layer])
+
+
+def test_has_container_layers_empty_list():
+    """
+    Checks if manifests that do not contain layers (such as manifest lists) are properly detected.
+    """
+    assert not _has_container_layers([])
+
+
+def test_has_container_layers_no_internal_layers():
+    """
+    Tests whether the function returns false on layers that do not have the internal_layer attribute.
+    """
+    MockLayerInfoNoInternal = namedtuple("MockLayerInfoNoInternal", ["digest"])
+    layer_info = MockLayerInfoNoInternal(digest="sha256:abc123")
+    layer = ManifestLayer(layer_info=layer_info, blob=None)
+
+    assert not _has_container_layers([layer])
+
+
+def test_has_container_layers_no_blob_layer():
+    """
+    Tests whether layers without blob layer return False.
+    """
+    MockInternalLayerNoBlob = namedtuple("MockInternalLayerNoBlob", ["digest"])
+    MockLayerInfo = namedtuple("MockLayerInfo", ["internal_layer"])
+
+    internal_layer = MockInternalLayerNoBlob(digest="sha256:abc123")
+    layer_info = MockLayerInfo(internal_layer=internal_layer)
+    layer = ManifestLayer(layer_info=layer_info, blob=None)
+
+    assert not _has_container_layers([layer])
+
+
+def test_has_container_layers_no_media_type():
+    """
+    Tests if the function returns False for layers without a media type.
+    """
+    MockBlobLayerNoMediaType = namedtuple("MockBlobLayerNoMediaType", ["digest"])
+    MockInternalLayer = namedtuple("MockInternalLayer", ["blob_layer"])
+    MockLayerInfo = namedtuple("MockLayerInfo", ["internal_layer"])
+
+    blob_layer = MockBlobLayerNoMediaType(digest="sha256:abc123")
+    internal_layer = MockInternalLayer(blob_layer=blob_layer)
+    layer_info = MockLayerInfo(internal_layer=internal_layer)
+    layer = ManifestLayer(layer_info=layer_info, blob=None)
+
+    assert not _has_container_layers([layer])
+
+
+def test_perform_indexing_schema2_manifest(initialized_db, set_secscan_config):
+    """
+    Explicitly test the Docker v2 schema 2 manifest and repository.
+    """
+    from data import model
+    from data.registry_model.datatypes import RepositoryReference
+    from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+    from initdb import create_schema2_manifest_for_testing
+
+    # Create a temporary Schema2 repository for this test
+    user = model.user.get_user("devtable")
+    repo = model.repository.create_repository("devtable", "testschema2", user)
+    repo_ref = RepositoryReference.for_repo_obj(repo)
+
+    # Use the initdb helper to create a Schema2 manifest with proper storage
+    tag_map = {}
+    structure = (3, [], ["latest"])  # 3 layers, no subtrees, tag named "latest"
+    create_schema2_manifest_for_testing(repo, structure, tag_map)
+
+    # Now retrieve and test the manifest
+    tag = registry_model.get_repo_tag(repo_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+
+    assert manifest.media_type == DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+
+    layers = registry_model.list_manifest_layers(manifest, storage, True)
+    assert layers is not None
+    assert len(layers) > 0
+
+    assert _has_container_layers(layers)
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.return_value = (
+        {
+            "err": None,
+            "state": IndexReportState.Index_Finished,
+        },
+        "abc",
+    )
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
+
+    secscan.perform_indexing()
+    mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
+    assert mss.index_status == IndexStatus.COMPLETED
