@@ -57,8 +57,13 @@ load_state() {
   if [ -f "$STATE_FILE" ]; then cat "$STATE_FILE"; else echo '{}'; fi
 }
 
-# Safe jq string read with fallback
-jq_str() { echo "$1" | jq -r "${2}" 2>/dev/null || echo "${3:-}"; }
+# Safe jq string read with fallback (normalises JSON null to the fallback value)
+jq_str() {
+  local _v
+  _v=$(echo "$1" | jq -r "${2}" 2>/dev/null) || { echo "${3:-}"; return; }
+  [ "$_v" = "null" ] && _v="${3:-}"
+  echo "$_v"
+}
 
 # Safe jq numeric read with fallback
 jq_int() { echo "$1" | jq "${2}" 2>/dev/null || echo "${3:-0}"; }
