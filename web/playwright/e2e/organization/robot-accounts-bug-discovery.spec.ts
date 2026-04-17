@@ -119,10 +119,12 @@ test.describe(
   'Bug Discovery: Robot Account Repo Permissions Modal',
   {tag: ['@bug-discovery', '@organization']},
   () => {
-    test.fixme('changing repo permissions should reflect immediately in the UI', async ({
+    test('changing repo permissions should reflect immediately in the UI', async ({
       authenticatedPage,
       api,
     }) => {
+      // BUG CONFIRMED: test.fixme() — state mutation prevents immediate UI update
+      test.fixme();
       // Bug: AddToRepository.tsx:149-151
       // When updating robot account repository permissions outside the wizard,
       // the code performs a direct state mutation:

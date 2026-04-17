@@ -11,10 +11,12 @@ test.describe(
   'Bug Discovery: Repository List',
   {tag: ['@bug-discovery', '@repository']},
   () => {
-    test.fixme('search for non-existent repo should show empty state, not spinner', async ({
+    test('search for non-existent repo should show empty state, not spinner', async ({
       authenticatedPage,
       api,
     }) => {
+      // BUG CONFIRMED: test.fixme() — spinner shown instead of empty state
+      test.fixme();
       // Bug: RepositoriesList.tsx:400-406
       // When filteredRepos.length === 0 (search returns no matches),
       // the code unconditionally renders a Spinner instead of an empty state.
@@ -165,10 +167,12 @@ test.describe(
       ).toHaveAttribute('aria-selected', 'true');
     });
 
-    test.fixme('settings tab should not be accessible via URL for non-admin users', async ({
+    test('settings tab should not be accessible via URL for non-admin users', async ({
       readonlyPage,
       api,
     }) => {
+      // BUG CONFIRMED: test.fixme() — Settings tab visible to non-admin via URL
+      test.fixme();
       // Bug: RepositoryDetails.tsx:142-145 + 349
       // The tab param is applied via setState during render WITHOUT checking
       // if the target tab is hidden. The Settings tab has isHidden={!can_admin},
