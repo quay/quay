@@ -67,7 +67,7 @@ be notified automatically.
 When the script exits 4, it has already posted a comment and requested reviewers.
 Use CronCreate to check back automatically:
 
-```
+```text
 CronCreate: every 2 hours, /poll $ARGUMENTS
 ```
 
