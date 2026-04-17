@@ -153,7 +153,9 @@ test.describe(
       ).toHaveAttribute('aria-selected', 'true');
 
       // Navigate back to Information tab
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=information`);
+      await authenticatedPage.goto(
+        `/repository/${repo.fullName}?tab=information`,
+      );
       await expect(
         authenticatedPage.getByRole('tab', {name: 'Information'}),
       ).toHaveAttribute('aria-selected', 'true');
