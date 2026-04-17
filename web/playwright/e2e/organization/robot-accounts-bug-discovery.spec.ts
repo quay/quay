@@ -53,9 +53,7 @@ test.describe(
       // Click "Set repository permissions" — this triggers onSelect which calls
       // document.getElementById().focus() without null check
       await authenticatedPage
-        .getByTestId(
-          `${org.name}+${robot.shortname}-set-repo-perms-btn`,
-        )
+        .getByTestId(`${org.name}+${robot.shortname}-set-repo-perms-btn`)
         .click();
 
       // The page should not crash — verify we're still on the same page
@@ -153,9 +151,7 @@ test.describe(
       );
       await kebab.click();
       await authenticatedPage
-        .getByTestId(
-          `${org.name}+${robot.shortname}-set-repo-perms-btn`,
-        )
+        .getByTestId(`${org.name}+${robot.shortname}-set-repo-perms-btn`)
         .click();
 
       // Wait for the "Add to repository" modal/panel to appear
@@ -173,12 +169,8 @@ test.describe(
       await repoCheckbox.locator('input[type="checkbox"]').check();
 
       // Open the bulk permissions kebab and set permission to "Write"
-      await authenticatedPage
-        .locator('#toggle-bulk-perms-kebab')
-        .click();
-      await authenticatedPage
-        .getByRole('menuitem', {name: 'Write'})
-        .click();
+      await authenticatedPage.locator('#toggle-bulk-perms-kebab').click();
+      await authenticatedPage.getByRole('menuitem', {name: 'Write'}).click();
 
       // The permission dropdown for this repo should now show "Write"
       // Due to the state mutation bug, this might not update immediately

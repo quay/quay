@@ -76,8 +76,7 @@ test.describe(
       ).toBeVisible();
 
       // Type special regex characters that would crash RegExp constructor
-      const searchInput =
-        authenticatedPage.getByPlaceholder(/search by name/i);
+      const searchInput = authenticatedPage.getByPlaceholder(/search by name/i);
       await searchInput.fill('[invalid(regex');
 
       // The page should not crash — no unhandled error
@@ -136,33 +135,25 @@ test.describe(
       const repo = await api.repository(undefined, 'tabsyncbug');
 
       // Navigate to Tags tab via URL
-      await authenticatedPage.goto(
-        `/repository/${repo.fullName}?tab=tags`,
-      );
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
       await expect(
         authenticatedPage.getByRole('tab', {name: 'Tags'}),
       ).toHaveAttribute('aria-selected', 'true');
 
       // Navigate to Tag history tab via URL
-      await authenticatedPage.goto(
-        `/repository/${repo.fullName}?tab=history`,
-      );
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=history`);
       await expect(
         authenticatedPage.getByRole('tab', {name: 'Tag history'}),
       ).toHaveAttribute('aria-selected', 'true');
 
       // Navigate to Settings tab via URL (as owner/admin)
-      await authenticatedPage.goto(
-        `/repository/${repo.fullName}?tab=settings`,
-      );
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=settings`);
       await expect(
         authenticatedPage.getByRole('tab', {name: 'Settings'}),
       ).toHaveAttribute('aria-selected', 'true');
 
       // Navigate back to Information tab
-      await authenticatedPage.goto(
-        `/repository/${repo.fullName}?tab=information`,
-      );
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=information`);
       await expect(
         authenticatedPage.getByRole('tab', {name: 'Information'}),
       ).toHaveAttribute('aria-selected', 'true');
@@ -188,9 +179,7 @@ test.describe(
       const repo = await api.repository(org.name, 'pubrepo', 'public');
 
       // Navigate as readonly user to the repo with ?tab=settings
-      await readonlyPage.goto(
-        `/repository/${repo.fullName}?tab=settings`,
-      );
+      await readonlyPage.goto(`/repository/${repo.fullName}?tab=settings`);
 
       // The Settings tab should NOT be selected since readonly user is not admin
       const settingsTab = readonlyPage.getByRole('tab', {name: 'Settings'});

@@ -27,9 +27,7 @@ test.describe(
       const org = await api.organization('logsbug');
 
       // Navigate to org page and go to Logs tab
-      await authenticatedPage.goto(
-        `/organization/${org.name}?tab=Logs`,
-      );
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
 
       // Wait for usage logs section to load
       const chartToggle = authenticatedPage.getByTestId(
@@ -83,9 +81,7 @@ test.describe(
       const repo = await api.repository(undefined, 'logsgraph');
 
       // Navigate to repository details, Logs tab
-      await authenticatedPage.goto(
-        `/repository/${repo.fullName}?tab=logs`,
-      );
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
 
       // Verify the usage logs section renders
       const chartToggle = authenticatedPage.getByTestId(
@@ -107,9 +103,7 @@ test.describe(
       await expect(chartToggle).toContainText('Hide Chart');
 
       // Page should remain functional (no React error boundary)
-      await expect(
-        authenticatedPage.getByText('Unable to'),
-      ).not.toBeVisible();
+      await expect(authenticatedPage.getByText('Unable to')).not.toBeVisible();
     });
   },
 );
