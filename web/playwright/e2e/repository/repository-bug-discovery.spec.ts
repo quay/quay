@@ -70,6 +70,9 @@ test.describe(
 
       const repo = await api.repository(undefined, 'regexbug');
 
+      const pageErrors: Error[] = [];
+      authenticatedPage.on('pageerror', (err) => pageErrors.push(err));
+
       await authenticatedPage.goto('/repository');
       await expect(
         authenticatedPage.getByTestId('repository-list-table'),
@@ -83,6 +86,7 @@ test.describe(
       await expect(
         authenticatedPage.getByTestId('repository-list-table'),
       ).toBeVisible();
+      expect(pageErrors).toHaveLength(0);
 
       // Clear search and verify repos are visible again
       await searchInput.fill('');
@@ -182,6 +186,11 @@ test.describe(
 
       // Navigate as readonly user to the repo with ?tab=settings
       await readonlyPage.goto(`/repository/${repo.fullName}?tab=settings`);
+
+      // Verify page loaded successfully before checking tab state
+      await expect(
+        readonlyPage.getByRole('tab', {name: 'Information'}),
+      ).toBeVisible();
 
       // The Settings tab should NOT be selected since readonly user is not admin
       const settingsTab = readonlyPage.getByRole('tab', {name: 'Settings'});
