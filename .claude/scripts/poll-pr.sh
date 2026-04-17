@@ -14,7 +14,7 @@
 #   1  CI failures — fix required
 #   2  Checks still pending — re-poll later
 #   3  Review comments to address
-#   4  Awaiting human review — posts @quay/downstream mention and exits
+#   4  Awaiting human review — posts @quay/downstream mention; loops (--once: exits)
 #
 # State file: .claude/poll-state/pr-<NUMBER>.json
 #   Tracks check states, review states, comment counts, adaptive sleep, and poll history.
@@ -111,7 +111,7 @@ notify_for_review() {
   # Post PR comment if not already present — use printf so \n expands to real newlines
   if [ -z "$existing_id" ]; then
     local body
-    body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s' "$summary")
+    body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s\n\ncc `@quay/downstream`' "$summary")
     gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
       -X POST -f body="$body" > /dev/null 2>&1 || return 1
   else
