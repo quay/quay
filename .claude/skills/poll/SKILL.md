@@ -57,29 +57,11 @@ For a team (once the team exists):
 bash .claude/scripts/poll-pr.sh $ARGUMENTS --team-reviewer downstream-team
 ```
 
-The script loops while CI is pending, then exits when action is needed.
-
-## Step 1b: If exit 4 — schedule a re-poll cron
-
-When the script exits 4 (awaiting review), it has already posted a comment and requested reviewers. Use CronCreate to check back automatically:
-
-```
-CronCreate: every 2 hours, run: bash .claude/scripts/poll-pr.sh $ARGUMENTS --reviewer jbpratt
-```
-
-Delete the cron (CronDelete) once the PR is merged or approved.
-
-## Step 2: Start polling (original step — loops until action needed or all pass)
-
-```bash
-bash .claude/scripts/poll-pr.sh $ARGUMENTS
-```
-
-The script sleeps adaptively between polls (120-600s based on how long checks have been
-pending and whether state changed). It stops automatically when:
-- **Exit 0**: Everything passes -- done.
-- **Exit 1**: CI failures -- needs your fix.
-- **Exit 3**: CodeRabbit inline comments -- needs your review.
+The script loops with adaptive backoff (120-600s) while CI is pending, then exits when action is needed:
+- **Exit 0**: Everything passes — done.
+- **Exit 1**: CI failures — needs a fix.
+- **Exit 3**: Inline review comments — needs your attention.
+- **Exit 4**: Awaiting human review — reviewers notified.
 
 For a single snapshot without looping (e.g. to check status mid-fix):
 
@@ -92,6 +74,16 @@ For a complete report instead of delta-only output:
 ```bash
 bash .claude/scripts/poll-pr.sh $ARGUMENTS --once --full
 ```
+
+## Step 1b: If exit 4 — schedule a re-poll cron
+
+When the script exits 4 (awaiting review), it has already posted a comment and requested reviewers. Use CronCreate to check back automatically:
+
+```
+CronCreate: every 2 hours, run: bash .claude/scripts/poll-pr.sh $ARGUMENTS --reviewer jbpratt
+```
+
+Delete the cron (CronDelete) once the PR is merged or approved.
 
 ## Step 2: Act on CI Failures (exit code 1)
 
