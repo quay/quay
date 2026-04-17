@@ -35,12 +35,20 @@ TEAM_REVIEWERS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --repo)       REPO="$2"; shift 2 ;;
+    --repo)
+      [ $# -lt 2 ] && { echo "Missing value for --repo" >&2; exit 1; }
+      REPO="$2"; shift 2 ;;
     --once)       ONCE=true; shift ;;
     --full)       FULL=true; shift ;;
-    --max-polls)         MAX_POLLS="$2"; shift 2 ;;
-    --reviewer)          REVIEWERS+=("$2"); shift 2 ;;
-    --team-reviewer)     TEAM_REVIEWERS+=("$2"); shift 2 ;;
+    --max-polls)
+      [ $# -lt 2 ] && { echo "Missing value for --max-polls" >&2; exit 1; }
+      MAX_POLLS="$2"; shift 2 ;;
+    --reviewer)
+      [ $# -lt 2 ] && { echo "Missing value for --reviewer" >&2; exit 1; }
+      REVIEWERS+=("$2"); shift 2 ;;
+    --team-reviewer)
+      [ $# -lt 2 ] && { echo "Missing value for --team-reviewer" >&2; exit 1; }
+      TEAM_REVIEWERS+=("$2"); shift 2 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
@@ -519,6 +527,11 @@ do_poll() {
     echo "  WAITING: CodeRabbit re-review pending for ${head_sha:0:7}"
     exit_code=2
 
+  elif [ "$hr_count" -gt 0 ] && [ "$(echo "$human_reviews_json" | jq '[to_entries[] | select(.value == "CHANGES_REQUESTED")] | length')" -gt 0 ]; then
+    echo "  ACTION REQUIRED: Reviewer(s) requested changes"
+    echo "$human_reviews_json" | jq -r 'to_entries[] | select(.value == "CHANGES_REQUESTED") | "    - \(.key)"' 2>/dev/null || true
+    exit_code=3
+
   elif [ "$pending" -gt 0 ]; then
     printf "  WAITING: %s check(s) still running" "$pending"
     if ! $ONCE && [ "$next_sleep" -gt 0 ]; then
@@ -527,11 +540,6 @@ do_poll() {
       echo ""
     fi
     exit_code=2
-
-  elif [ "$hr_count" -gt 0 ] &&        [ "$(echo "$human_reviews_json" | jq '[to_entries[] | select(.value == "CHANGES_REQUESTED")] | length')" -gt 0 ]; then
-    echo "  ACTION REQUIRED: Reviewer(s) requested changes"
-    echo "$human_reviews_json" | jq -r 'to_entries[] | select(.value == "CHANGES_REQUESTED") | "    - \(.key)"' 2>/dev/null || true
-    exit_code=3
 
   elif [ "$hr_count" -eq 0 ] || [ "$hr_approved" -eq 0 ]; then
     echo "  WAITING: Awaiting human review approval"
@@ -590,7 +598,7 @@ while true; do
       exit 1
       ;;
     3)
-      echo "CodeRabbit comments require attention — address and re-run: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
+      echo "Review feedback requires attention — address and re-run: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
       exit 3
       ;;
     2)
