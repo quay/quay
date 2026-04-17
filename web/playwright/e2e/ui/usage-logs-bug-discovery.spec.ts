@@ -10,18 +10,16 @@ test.describe(
   'Bug Discovery: Usage Logs',
   {tag: ['@bug-discovery', '@logs']},
   () => {
-    test('chart toggle should not break date picker state', {
-      tag: ['@repository'],
-    }, async ({authenticatedPage, api}) => {
+    test('chart toggle should not break date picker state', async ({
+      authenticatedPage,
+      api,
+    }) => {
       // Bug: UsageLogs.tsx:38-41
       // The minDate and maxDate variables are recreated on every render using
       // new Date(). When the user toggles chart visibility, the component
       // re-renders and new Date objects are created. This means the date
       // validators reference fresh dates each render, which could cause
       // inconsistent validation near midnight.
-      //
-      // Additional concern: the useEffect at line 52-63 that invalidates
-      // queries on date change is missing queryClient from its dependency array.
       //
       // Expected behavior: toggling chart does not affect date picker values
       // Actual behavior: dates should remain stable across re-renders
@@ -40,9 +38,9 @@ test.describe(
       await expect(chartToggle).toBeVisible();
 
       // Capture the initial date values from the date pickers
-      // PatternFly DatePicker renders an input with the date value
+      // PatternFly DatePicker uses placeholder "YYYY-MM-DD" (uppercase)
       const datePickers = authenticatedPage.locator(
-        'input[placeholder*="yyyy"]',
+        'input[placeholder*="YYYY" i]',
       );
 
       // There should be two date pickers (start and end)
@@ -70,20 +68,17 @@ test.describe(
       await expect(datePickers.nth(1)).toHaveValue(endDate);
     });
 
-    test('usage logs should load without errors for repository view', {
-      tag: ['@repository'],
-    }, async ({authenticatedPage, api}) => {
+    test('usage logs should load without errors for repository view', async ({
+      authenticatedPage,
+      api,
+    }) => {
       // Bug: UsageLogsGraph.tsx:194-197
       // Chart bars use array index as key: key={index}
-      // If log kinds appear in different order across re-renders (e.g., due
-      // to Object.keys() ordering changing when new log types appear), React
+      // If log kinds appear in different order across re-renders, React
       // will associate the wrong style/data with the wrong bar component.
       //
       // This test validates that the usage logs page loads without errors
       // and renders the chart toggle and date pickers correctly.
-      //
-      // Expected behavior: usage logs render with chart and table
-      // Actual behavior: should work, but chart bars may animate incorrectly
 
       const repo = await api.repository(undefined, 'logsgraph');
 
@@ -100,7 +95,7 @@ test.describe(
 
       // Verify date pickers are present
       const datePickers = authenticatedPage.locator(
-        'input[placeholder*="yyyy"]',
+        'input[placeholder*="YYYY" i]',
       );
       await expect(datePickers.nth(0)).toBeVisible();
       await expect(datePickers.nth(1)).toBeVisible();
@@ -112,7 +107,9 @@ test.describe(
       await expect(chartToggle).toContainText('Hide Chart');
 
       // Page should remain functional (no React error boundary)
-      await expect(authenticatedPage.getByText('Unable to')).not.toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Unable to'),
+      ).not.toBeVisible();
     });
   },
 );

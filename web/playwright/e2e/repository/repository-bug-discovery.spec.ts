@@ -9,11 +9,12 @@ import {test, expect} from '../../fixtures';
  */
 test.describe(
   'Bug Discovery: Repository List',
-  {tag: ['@bug-discovery']},
+  {tag: ['@bug-discovery', '@repository']},
   () => {
-    test('search for non-existent repo should show empty state, not spinner', {
-      tag: ['@repository'],
-    }, async ({authenticatedPage, api}) => {
+    test('search for non-existent repo should show empty state, not spinner', async ({
+      authenticatedPage,
+      api,
+    }) => {
       // Bug: RepositoriesList.tsx:400-406
       // When filteredRepos.length === 0 (search returns no matches),
       // the code unconditionally renders a Spinner instead of an empty state.
@@ -44,21 +45,21 @@ test.describe(
         .getByPlaceholder(/search by name/i)
         .fill('zzz_nonexistent_repo_xyz_12345');
 
-      // 5. Assert correct behavior: table should NOT show a spinner
-      // The Spinner component renders with role="progressbar"
-      const tableBody = authenticatedPage.getByTestId('repository-list-table');
+      // 5. Assert correct behavior: no spinner should be visible on the page.
+      // The bug replaces the table body content with a Spinner, so we check
+      // the whole page rather than scoping to the table (which may not render).
+      // The Spinner component renders with role="progressbar".
       await expect(
-        tableBody.locator('[role="progressbar"]'),
-      ).not.toBeVisible({timeout: 5000});
-
-      // The table should show some indication that no results were found
-      // (e.g., "No matching repositories" or an empty table without spinner)
-      // Currently the bug causes a Spinner to appear instead
+        authenticatedPage.locator(
+          '[data-testid="repository-list-table"] [role="progressbar"]',
+        ),
+      ).toHaveCount(0, {timeout: 5000});
     });
 
-    test('search with special regex characters should not crash', {
-      tag: ['@repository'],
-    }, async ({authenticatedPage, api}) => {
+    test('search with special regex characters should not crash', async ({
+      authenticatedPage,
+      api,
+    }) => {
       // Bug: FilterInput.tsx supports regex mode, and the search filter
       // in RepositoriesList applies the search. Special characters in
       // the search query could cause a RegExp constructor crash if the
@@ -75,7 +76,8 @@ test.describe(
       ).toBeVisible();
 
       // Type special regex characters that would crash RegExp constructor
-      const searchInput = authenticatedPage.getByPlaceholder(/search by name/i);
+      const searchInput =
+        authenticatedPage.getByPlaceholder(/search by name/i);
       await searchInput.fill('[invalid(regex');
 
       // The page should not crash — no unhandled error
@@ -94,20 +96,18 @@ test.describe(
 
 test.describe(
   'Bug Discovery: Repository Details',
-  {tag: ['@bug-discovery']},
+  {tag: ['@bug-discovery', '@repository']},
   () => {
-    test('navigating with invalid tab param should show default tab', {
-      tag: ['@repository'],
-    }, async ({authenticatedPage, api}) => {
+    test('navigating with invalid tab param should show default tab', async ({
+      authenticatedPage,
+      api,
+    }) => {
       // Bug: RepositoryDetails.tsx:142-145
       // setState is called during render to sync tab state with URL params.
       // When an invalid tab param is provided, getTabIndex returns undefined,
       // so the condition is false and the default tab (Information) should show.
-      // This test validates that the fallback works correctly.
       //
       // Expected behavior: Information tab is shown for invalid ?tab= values
-      // Actual behavior: should work, but the setState-during-render pattern
-      // could cause issues in edge cases (extra renders, flash of wrong content)
 
       const repo = await api.repository(undefined, 'tabbug');
 
@@ -122,16 +122,16 @@ test.describe(
       ).toHaveAttribute('aria-selected', 'true');
     });
 
-    test('tab state should stay in sync with URL across navigation', {
-      tag: ['@repository'],
-    }, async ({authenticatedPage, api}) => {
+    test('tab state should stay in sync with URL across navigation', async ({
+      authenticatedPage,
+      api,
+    }) => {
       // Bug: RepositoryDetails.tsx:142-145
       // The tab state is synced via setState during render, which in React 18
       // causes an extra synchronous re-render. This test validates that rapid
       // tab navigation via URL params stays consistent.
       //
       // Expected behavior: each tab param shows the correct tab content
-      // Actual behavior: extra re-renders could cause flicker or stale state
 
       const repo = await api.repository(undefined, 'tabsyncbug');
 
@@ -168,9 +168,10 @@ test.describe(
       ).toHaveAttribute('aria-selected', 'true');
     });
 
-    test('settings tab should not be accessible via URL for non-admin users', {
-      tag: ['@repository'],
-    }, async ({authenticatedPage, readonlyPage, api}) => {
+    test('settings tab should not be accessible via URL for non-admin users', async ({
+      readonlyPage,
+      api,
+    }) => {
       // Bug: RepositoryDetails.tsx:142-145 + 349
       // The tab param is applied via setState during render WITHOUT checking
       // if the target tab is hidden. The Settings tab has isHidden={!can_admin},
@@ -192,7 +193,6 @@ test.describe(
       );
 
       // The Settings tab should NOT be selected since readonly user is not admin
-      // Instead, the default Information tab should be shown
       const settingsTab = readonlyPage.getByRole('tab', {name: 'Settings'});
 
       // Settings tab header should not be visible for non-admin

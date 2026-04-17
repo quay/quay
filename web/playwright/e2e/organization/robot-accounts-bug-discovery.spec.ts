@@ -10,18 +10,15 @@ test.describe(
   'Bug Discovery: Robot Account Permissions',
   {tag: ['@bug-discovery', '@organization']},
   () => {
-    test('robot account kebab menu should not throw on select', {
-      tag: ['@robot-accounts'],
-    }, async ({authenticatedPage, api}) => {
+    test('robot account kebab menu should not throw on select', async ({
+      authenticatedPage,
+      api,
+    }) => {
       // Bug: RobotAccountKebab.tsx:17-20
       // The onSelect handler calls document.getElementById() to find the
       // kebab toggle element and calls .focus() on it WITHOUT a null check.
       // If the element is not found (e.g., DOM not ready, element removed),
-      // this throws a TypeError: Cannot read properties of null (reading 'focus')
-      //
-      // Additionally, the Dropdown component already has shouldFocusToggleOnSelect
-      // which handles focus internally, making the manual focus call redundant
-      // and potentially problematic.
+      // this throws a TypeError: Cannot read properties of null
       //
       // Expected behavior: kebab menu closes and returns focus cleanly
       // Actual behavior: potential null dereference crash
@@ -34,9 +31,9 @@ test.describe(
         `/organization/${org.name}?tab=Robotaccounts`,
       );
 
-      // Wait for robot account to appear
+      // Wait for robot account to appear — use fullName for unambiguous match
       const robotRow = authenticatedPage.locator('tr', {
-        hasText: robot.shortname,
+        hasText: robot.fullName,
       });
       await expect(robotRow).toBeVisible();
 
@@ -55,9 +52,11 @@ test.describe(
 
       // Click "Set repository permissions" — this triggers onSelect which calls
       // document.getElementById().focus() without null check
-      await authenticatedPage.getByTestId(
-        `${org.name}+${robot.shortname}-set-repo-perms-btn`,
-      ).click();
+      await authenticatedPage
+        .getByTestId(
+          `${org.name}+${robot.shortname}-set-repo-perms-btn`,
+        )
+        .click();
 
       // The page should not crash — verify we're still on the same page
       await expect(
@@ -65,14 +64,15 @@ test.describe(
       ).toBeVisible();
     });
 
-    test('permissions kebab should not throw when deleting permission', {
-      tag: ['@repository'],
-    }, async ({authenticatedPage, api}) => {
+    test('permissions kebab should not throw when deleting permission', async ({
+      authenticatedPage,
+      api,
+    }) => {
       // Bug: PermissionsKebab.tsx:27-28
       // Same pattern as RobotAccountKebab: document.getElementById().focus()
       // without null check in onSelect handler.
       //
-      // Expected behavior: kebab closes cleanly after selecting "Delete Permission"
+      // Expected behavior: kebab closes cleanly after selecting action
       // Actual behavior: potential null dereference crash
 
       const org = await api.organization('permkebab');
@@ -93,9 +93,9 @@ test.describe(
         `/repository/${org.name}/${repo.name}?tab=settings`,
       );
 
-      // Find the permission row for the robot
+      // Find the permission row for the robot — use fullName for unambiguous match
       const robotRow = authenticatedPage.locator('tr', {
-        hasText: robot.shortname,
+        hasText: robot.fullName,
       });
       await expect(robotRow).toBeVisible();
 
@@ -112,7 +112,6 @@ test.describe(
         .click();
 
       // The page should not crash and the permission should be removed
-      // Wait for the row to disappear (successful deletion)
       await expect(robotRow).not.toBeVisible({timeout: 10000});
     });
   },
@@ -122,31 +121,21 @@ test.describe(
   'Bug Discovery: Robot Account Repo Permissions Modal',
   {tag: ['@bug-discovery', '@organization']},
   () => {
-    test('changing repo permissions should reflect immediately in the UI', {
-      tag: ['@robot-accounts'],
-    }, async ({authenticatedPage, api}) => {
+    test('changing repo permissions should reflect immediately in the UI', async ({
+      authenticatedPage,
+      api,
+    }) => {
       // Bug: AddToRepository.tsx:149-151
       // When updating robot account repository permissions outside the wizard,
       // the code performs a direct state mutation:
       //   const tempItem = updatedRepoPerms;   // alias, NOT copy
       //   delete tempItem[repoName];           // mutates state directly
-      //   setUpdatedRepoPerms(tempItem);        // same reference → React may skip re-render
+      //   setUpdatedRepoPerms(tempItem);       // same reference, React may skip
       //
-      // React's useState setter uses Object.is to compare old and new state.
-      // Since tempItem IS updatedRepoPerms (same object), React may bail out
-      // of re-rendering, causing the permission change to not appear in the UI.
+      // Additional bug at line 53: props.repos.sort() mutates parent state.
+      // Additional bug at line 216: updateRobotAccountsList() called in render.
       //
-      // The bug is partially masked by updateRobotAccountsList() which uses
-      // setTimeout to trigger parent state updates, causing a delayed re-render.
-      //
-      // Additional bug at line 53: props.repos.sort() mutates the parent's
-      // state during render, violating React's immutability rules.
-      //
-      // Additional bug at line 216: updateRobotAccountsList() is called in
-      // the render body (not in useEffect), creating multiple setTimeout
-      // callbacks on every render.
-      //
-      // Expected behavior: permission changes reflect immediately in the dropdown
+      // Expected behavior: permission changes reflect immediately in dropdown
       // Actual behavior: may require extra render cycles or show stale values
 
       const org = await api.organization('robotperms');
@@ -163,9 +152,11 @@ test.describe(
         `${org.name}+${robot.shortname}-toggle-kebab`,
       );
       await kebab.click();
-      await authenticatedPage.getByTestId(
-        `${org.name}+${robot.shortname}-set-repo-perms-btn`,
-      ).click();
+      await authenticatedPage
+        .getByTestId(
+          `${org.name}+${robot.shortname}-set-repo-perms-btn`,
+        )
+        .click();
 
       // Wait for the "Add to repository" modal/panel to appear
       await expect(
