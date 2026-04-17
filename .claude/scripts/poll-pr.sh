@@ -136,7 +136,7 @@ fetch_review_threads() {
           comments(first:3){nodes{databaseId author{login __typename} body path line originalLine}}
         }
       }}}}'  \
-    -f owner="$owner" -f repo="$rname" -F pr="$PR_NUMBER" 2>/dev/null) || { echo '{}'; return; }
+    -f owner="$owner" -f repo="$rname" -F pr="$PR_NUMBER" 2>/dev/null) || return 1
   local has_next
   has_next=$(echo "$result" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage // false' 2>/dev/null)
   if [ "$has_next" = "true" ]; then
@@ -202,8 +202,8 @@ do_poll() {
     --jq '[.[] | select(.user.login == "coderabbitai[bot]")]' \
     2>/dev/null | jq -s 'flatten | last // {}' || echo '{}')
 
-  local threads_json
-  threads_json=$(fetch_review_threads)
+  local threads_json threads_ok=true
+  threads_json=$(fetch_review_threads) || { threads_ok=false; threads_json='{}'; echo "  WARN: GraphQL review-thread fetch failed; treating as indeterminate." >&2; }
   cr_inline_count=$(echo "$threads_json" | jq \
     '[.data.repository.pullRequest.reviewThreads.nodes[]? |
       select(.isResolved==false and .isOutdated==false) |
@@ -233,16 +233,21 @@ do_poll() {
     2>/dev/null | jq -rs 'flatten | last | .body // ""' || echo '')
 
   # Human PR comments (non-bot, non-our-own-account)
-  local human_comments_json self_login
+  # Note: gh api does not support --arg for jq variables; filter in a separate jq call
+  local human_comments_json self_login _comments_raw
   self_login=$(gh api user --jq '.login' 2>/dev/null || echo '')
-  human_comments_json=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-    --jq --arg self "$self_login" '[.[] | select(
-      (.user.login | endswith("[bot]") | not) and
-      .user.login != "openshift-ci-robot" and
-      ($self == "" or .user.login != $self) and
-      (.body | startswith("## Ready for Review") | not)
-    ) | {id: .id, login: .user.login, created_at: .created_at, body: .body}]' \
-    2>/dev/null | jq -s 'flatten | sort_by(.id)' || echo '[]')
+  if _comments_raw=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" 2>/dev/null); then
+    human_comments_json=$(printf '%s' "$_comments_raw" | jq -s --arg self "$self_login" \
+      'flatten | [.[] | select(
+        (.user.login | endswith("[bot]") | not) and
+        .user.login != "openshift-ci-robot" and
+        ($self == "" or .user.login != $self) and
+        (.body | startswith("## Ready for Review") | not)
+      ) | {id: .id, login: .user.login, created_at: .created_at, body: .body}] | sort_by(.id)' \
+      2>/dev/null) || human_comments_json='[]'
+  else
+    human_comments_json='[]'
+  fi
   local human_comment_count human_comment_last_id
   human_comment_count=$(echo "$human_comments_json" | jq 'length')
   human_comment_last_id=$(echo "$human_comments_json" | jq '.[-1].id // 0')
@@ -312,7 +317,7 @@ do_poll() {
     delta_lines+=("  CodeRabbit: +${cr_delta} new unresolved thread(s) (total: ${cr_inline_count})")
   elif [ "$cr_delta" -lt 0 ]; then
     has_changes=true
-    delta_lines+=("  CodeRabbit: ${cr_delta} thread(s) resolved (total: ${cr_inline_count})")
+    delta_lines+=("  CodeRabbit: $(( -cr_delta )) thread(s) resolved (total: ${cr_inline_count})")
   fi
 
   # Human inline comment count change
@@ -324,7 +329,7 @@ do_poll() {
     delta_lines+=("  Human: +${human_inline_delta} new unresolved thread(s) (total: ${human_inline_count})")
   elif [ "$human_inline_delta" -lt 0 ]; then
     has_changes=true
-    delta_lines+=("  Human: ${human_inline_delta} thread(s) resolved (total: ${human_inline_count})")
+    delta_lines+=("  Human: $(( -human_inline_delta )) thread(s) resolved (total: ${human_inline_count})")
   fi
 
   # Human review changes
@@ -586,6 +591,10 @@ do_poll() {
     else
       echo ""
     fi
+    exit_code=2
+
+  elif ! $threads_ok; then
+    echo "  WAITING: review-thread fetch failed — will retry next poll"
     exit_code=2
 
   elif [ "$hr_count" -eq 0 ] || [ "$hr_approved" -eq 0 ]; then
