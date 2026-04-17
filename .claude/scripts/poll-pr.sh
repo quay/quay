@@ -98,7 +98,7 @@ fetch_review_threads() {
     -f query='query($owner:String!,$repo:String!,$pr:Int!){
       repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100){nodes{
         id isResolved isOutdated
-        comments(first:3){nodes{databaseId author{login} body path line originalLine}}
+        comments(first:3){nodes{databaseId author{login __typename} body path line originalLine}}
       }}}}}'  \
     -f owner="$owner" -f repo="$rname" -F pr="$PR_NUMBER" 2>/dev/null || echo '{}'
 }
@@ -151,16 +151,13 @@ do_poll() {
   cr_inline_count=$(echo "$threads_json" | jq \
     '[.data.repository.pullRequest.reviewThreads.nodes[]? |
       select(.isResolved==false and .isOutdated==false) |
-      select(.comments.nodes[0]?.author.login=="coderabbitai[bot]")] | length' \
+      select(.comments.nodes[0]?.author.__typename=="Bot" and (.comments.nodes[0]?.author.login | startswith("coderabbit")))] | length' \
     2>/dev/null || echo '0')
 
   human_inline_count=$(echo "$threads_json" | jq \
     '[.data.repository.pullRequest.reviewThreads.nodes[]? |
       select(.isResolved==false and .isOutdated==false) |
-      select(
-        (.comments.nodes[0]?.author.login | (endswith("[bot]") | not)) and
-        .comments.nodes[0]?.author.login != "openshift-ci-robot"
-      )] | length' \
+      select(.comments.nodes[0]?.author.__typename=="User")] | length' \
     2>/dev/null || echo '0')
 
   walkthrough_body=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
@@ -360,7 +357,7 @@ do_poll() {
       echo "$threads_json" | jq -r \
         '[.data.repository.pullRequest.reviewThreads.nodes[]? |
           select(.isResolved==false and .isOutdated==false) |
-          select(.comments.nodes[0]?.author.login=="coderabbitai[bot]")][-5:] |
+          select(.comments.nodes[0]?.author.__typename=="Bot" and (.comments.nodes[0]?.author.login | startswith("coderabbit")))][-5:] |
         .[] |
         "  \(.comments.nodes[0].path):\(.comments.nodes[0].line // .comments.nodes[0].originalLine // "?")\n  \(.comments.nodes[0].body | split("\n") | .[0:3] | join("\n  "))\n  Thread: \(.id)  Comment: \(.comments.nodes[0].databaseId)\n"' \
         2>/dev/null || true
@@ -399,10 +396,7 @@ do_poll() {
       echo "$threads_json" | jq -r \
         '[.data.repository.pullRequest.reviewThreads.nodes[]? |
           select(.isResolved==false and .isOutdated==false) |
-          select(
-            (.comments.nodes[0]?.author.login | (endswith("[bot]") | not)) and
-            .comments.nodes[0]?.author.login != "openshift-ci-robot"
-          )][-5:] |
+          select(.comments.nodes[0]?.author.__typename=="User")][-5:] |
         .[] |
         "  \(.comments.nodes[0].author.login) on \(.comments.nodes[0].path):\(.comments.nodes[0].line // .comments.nodes[0].originalLine // "?")\n  \(.comments.nodes[0].body | split("\n") | .[0:3] | join("\n  "))\n  Thread: \(.id)\n"' \
         2>/dev/null || true
