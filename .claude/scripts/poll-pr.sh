@@ -220,7 +220,8 @@ do_poll() {
   human_comments_json=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
     --jq '[.[] | select(
       (.user.login | endswith("[bot]") | not) and
-      .user.login != "openshift-ci-robot"
+      .user.login != "openshift-ci-robot" and
+      .user.login != "quay-devel"
     ) | {id: .id, login: .user.login, created_at: .created_at, body: .body}]' \
     2>/dev/null | jq -s 'flatten | sort_by(.id)' || echo '[]')
   local human_comment_count human_comment_last_id
