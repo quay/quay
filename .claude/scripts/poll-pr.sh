@@ -8,6 +8,8 @@
 #   --once              Single poll; exit immediately (default: loop until done)
 #   --full              Always print full report (default: delta-only on re-polls)
 #   --max-polls N       Stop after N total polls (default: unlimited)
+#   --resolve-thread ID Resolve a CodeRabbit review thread (GraphQL node ID)
+#   --reply-thread ID MSG Reply to a CodeRabbit inline comment (comment database ID)
 #
 # Exit codes:
 #   0  All checks pass — ready to merge
@@ -29,16 +31,40 @@ REPO="quay/quay"
 ONCE=false
 FULL=false
 MAX_POLLS=0  # 0 = unlimited
+RESOLVE_THREAD=""
+REPLY_COMMENT_ID=""
+REPLY_MESSAGE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo)       REPO="$2"; shift 2 ;;
     --once)       ONCE=true; shift ;;
     --full)       FULL=true; shift ;;
-    --max-polls)  MAX_POLLS="$2"; shift 2 ;;
+    --max-polls)      MAX_POLLS="$2"; shift 2 ;;
+    --resolve-thread) RESOLVE_THREAD="$2"; shift 2 ;;
+    --reply-thread)   REPLY_COMMENT_ID="$2"; REPLY_MESSAGE="$3"; shift 3 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
+
+# ── Subcommand dispatch ──────────────────────────────────────────────────────
+
+if [ -n "$RESOLVE_THREAD" ]; then
+  echo "Resolving thread ${RESOLVE_THREAD}..."
+  gh api graphql \
+    -f query="mutation{resolveReviewThread(input:{threadId:\"${RESOLVE_THREAD}\"}){thread{isResolved}}}" \
+    --jq '.data.resolveReviewThread.thread.isResolved' 2>/dev/null \
+    && echo "Thread resolved." || { echo "Failed to resolve thread." >&2; exit 1; }
+  exit 0
+fi
+
+if [ -n "$REPLY_COMMENT_ID" ]; then
+  echo "Posting reply to comment ${REPLY_COMMENT_ID}..."
+  gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments/${REPLY_COMMENT_ID}/replies" \
+    -X POST -f body="${REPLY_MESSAGE}" --jq '.id' > /dev/null 2>&1 \
+    && echo "Reply posted." || { echo "Failed to post reply." >&2; exit 1; }
+  exit 0
+fi
 
 # ── State file setup ─────────────────────────────────────────────────────────
 STATE_DIR=".claude/poll-state"
@@ -91,6 +117,18 @@ adaptive_sleep() {
   fi
 }
 
+# Fetch all CodeRabbit review threads via GraphQL (includes resolved/outdated status)
+fetch_cr_threads() {
+  local owner="${REPO%%/*}" rname="${REPO##*/}"
+  gh api graphql \
+    -f query='query($owner:String!,$repo:String!,$pr:Int!){
+      repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100){nodes{
+        id isResolved isOutdated
+        comments(first:3){nodes{databaseId author{login} body path line originalLine}}
+      }}}}}'  \
+    -f owner="$owner" -f repo="$rname" -F pr="$PR_NUMBER" 2>/dev/null || echo '{}'
+}
+
 # ── Core poll ────────────────────────────────────────────────────────────────
 
 do_poll() {
@@ -134,9 +172,13 @@ do_poll() {
     --jq '[.[] | select(.user.login == "coderabbitai[bot]")]' \
     2>/dev/null | jq -s 'flatten | last // {}' || echo '{}')
 
-  cr_inline_count=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
-    --jq '[.[] | select(.user.login == "coderabbitai[bot]")] | length' \
-    2>/dev/null | jq -s 'add // 0' || echo '0')
+  local cr_threads_json
+  cr_threads_json=$(fetch_cr_threads)
+  cr_inline_count=$(echo "$cr_threads_json" | jq \
+    '[.data.repository.pullRequest.reviewThreads.nodes[]? |
+      select(.isResolved==false and .isOutdated==false) |
+      select(.comments.nodes[0]?.author.login=="coderabbitai[bot]")] | length' \
+    2>/dev/null || echo '0')
 
   human_inline_count=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
     --jq '[.[] | select(
@@ -179,6 +221,8 @@ do_poll() {
   cr_review_commit=$(jq_str "$cr_review" '.commit_id' '')
   cr_is_current=false
   [ -n "$cr_review_commit" ] && [ "$cr_review_commit" = "$head_sha" ] && cr_is_current=true
+  # Non-outdated unresolved threads mean CR has reviewed the current commit
+  [ "$cr_inline_count" -gt 0 ] && cr_is_current=true
 
   # ── Compute deltas vs previous state ───────────────────────────────────
   local prev_checks prev_cr_state prev_cr_count prev_human
@@ -336,12 +380,14 @@ do_poll() {
     fi
     echo ""
 
-    echo "--- CodeRabbit Inline Comments on current commit: ${cr_inline_count} ---"
+    echo "--- CodeRabbit Unresolved Threads: ${cr_inline_count} ---"
     if [ "$cr_inline_count" -gt 0 ]; then
-      gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
-        --jq --arg sha "$head_sha" \
-        '[.[] | select(.user.login == "coderabbitai[bot]" and .commit_id == $sha)] | .[-3:] | .[] |
-              "  \(.path):\(.line // .original_line // \"?\")\n  \(.body | split(\"\n\") | .[0:3] | join(\"\n  \"))\n"' \
+      echo "$cr_threads_json" | jq -r \
+        '[.data.repository.pullRequest.reviewThreads.nodes[]? |
+          select(.isResolved==false and .isOutdated==false) |
+          select(.comments.nodes[0]?.author.login=="coderabbitai[bot]")][-5:] |
+        .[] |
+        "  \(.comments.nodes[0].path):\(.comments.nodes[0].line // .comments.nodes[0].originalLine // "?")\n  \(.comments.nodes[0].body | split("\n") | .[0:3] | join("\n  "))\n  Thread: \(.id)  Comment: \(.comments.nodes[0].databaseId)\n"' \
         2>/dev/null || true
     fi
     echo ""
@@ -440,8 +486,19 @@ do_poll() {
   elif [ "$human_inline_count" -gt 0 ] || ( [ "$cr_inline_count" -gt 0 ] && $cr_is_current ); then
     local _msg=""
     [ "$human_inline_count" -gt 0 ] && _msg="${human_inline_count} human comment(s)"
-    ( [ "$cr_inline_count" -gt 0 ] && $cr_is_current ) && _msg="${_msg:+$_msg, }${cr_inline_count} CodeRabbit comment(s)"
+    ( [ "$cr_inline_count" -gt 0 ] && $cr_is_current ) && _msg="${_msg:+$_msg, }${cr_inline_count} CodeRabbit thread(s)"
     printf "  ACTION REQUIRED: Address inline review comments: %s\n" "$_msg"
+    if $cr_is_current && [ "$cr_inline_count" -gt 0 ]; then
+      echo "  After fixing, resolve each thread:"
+      echo "$cr_threads_json" | jq -r \
+        --arg pr "$PR_NUMBER" \
+        '[.data.repository.pullRequest.reviewThreads.nodes[]? |
+          select(.isResolved==false and .isOutdated==false) |
+          select(.comments.nodes[0]?.author.login=="coderabbitai[bot]")] |
+        .[] |
+        "    bash .claude/scripts/poll-pr.sh \($pr) --reply-thread \(.comments.nodes[0].databaseId) \"Fixed\" && bash .claude/scripts/poll-pr.sh \($pr) --resolve-thread \(.id)"' \
+        2>/dev/null || true
+    fi
     exit_code=3
 
   elif ! $cr_is_current && [ "$cr_state" != "NONE" ] && [ "$pending" -eq 0 ]; then
