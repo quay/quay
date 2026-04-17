@@ -99,23 +99,23 @@ notify_for_review() {
     --jq '[.[] | select(.body | startswith("## Ready for Review"))] | .[-1].id // empty' \
     2>/dev/null) || api_ok=false
   if ! $api_ok; then
-    echo "  WARN: could not verify existing ready-for-review comment; skipping post to avoid duplicates."
-    return 0
-  fi
-  if [ -n "$existing_id" ]; then
-    echo "  Ready-for-review comment already posted (id: ${existing_id}). Skipping."
-    return 0
+    echo "  WARN: could not verify existing ready-for-review comment; will retry next poll."
+    return 1
   fi
 
-  # Post PR comment — use printf so \n expands to real newlines
-  local body
-  body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s' "$summary")
-  gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-    -X POST -f body="$body" > /dev/null 2>&1 || true
+  # Post PR comment if not already present — use printf so \n expands to real newlines
+  if [ -z "$existing_id" ]; then
+    local body
+    body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s' "$summary")
+    gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+      -X POST -f body="$body" > /dev/null 2>&1 || return 1
+  else
+    echo "  Ready-for-review comment already posted (id: ${existing_id})."
+  fi
 
   # Assign quay/downstream team as reviewer via API
   gh api "repos/${REPO}/pulls/${PR_NUMBER}/requested_reviewers" \
-    -X POST -f "team_reviewers[]=downstream" > /dev/null 2>&1 || true
+    -X POST -f "team_reviewers[]=downstream" > /dev/null 2>&1 || return 1
 }
 
 # Fetch all CodeRabbit review threads via GraphQL (includes resolved/outdated status)
@@ -178,8 +178,17 @@ do_poll() {
            labels:([.labels[].name]|join(","))}' \
     2>/dev/null || echo '{}')
 
-  checks_json=$(gh pr checks "$PR_NUMBER" --repo "$REPO" --json name,state \
-    2>/dev/null || echo '[]')
+  local checks_rc=0
+  checks_json=$(gh pr checks "$PR_NUMBER" --repo "$REPO" --json name,state,bucket \
+    2>/dev/null) || checks_rc=$?
+  # gh pr checks exits non-zero for pending (8) and failure (1) — not API errors.
+  # Keep the JSON for known check-state exits; only fall back on true command failure.
+  if [ "$checks_rc" -ne 0 ] && [ "$checks_rc" -ne 1 ] && [ "$checks_rc" -ne 8 ]; then
+    echo "  WARN: failed to fetch PR checks (rc=${checks_rc}); treating as pending." >&2
+    checks_json='[{"name":"gh pr checks","state":"PENDING","bucket":"pending"}]'
+  elif [ -z "$checks_json" ]; then
+    checks_json='[]'
+  fi
 
   cr_review=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
     --jq '[.[] | select(.user.login == "coderabbitai[bot]")]' \
@@ -221,7 +230,8 @@ do_poll() {
     --jq '[.[] | select(
       (.user.login | endswith("[bot]") | not) and
       .user.login != "openshift-ci-robot" and
-      .user.login != "quay-devel"
+      .user.login != "quay-devel" and
+      (.body | startswith("## Ready for Review") | not)
     ) | {id: .id, login: .user.login, created_at: .created_at, body: .body}]' \
     2>/dev/null | jq -s 'flatten | sort_by(.id)' || echo '[]')
   local human_comment_count human_comment_last_id
@@ -231,10 +241,9 @@ do_poll() {
   # ── Compute check summary ───────────────────────────────────────────────
   local total pass fail pending
   total=$(jq_int "$checks_json" 'length')
-  pass=$(jq_int "$checks_json" '[.[] | select(.state == "SUCCESS")] | length')
-  fail=$(jq_int "$checks_json" '[.[] | select(.state == "FAILURE" or .state == "ERROR")] | length')
-  pending=$(jq_int "$checks_json" \
-    '[.[] | select(.state == "PENDING" or .state == "QUEUED" or .state == "IN_PROGRESS" or .state == "WAITING")] | length')
+  pass=$(jq_int "$checks_json" '[.[] | select(.bucket == "pass")] | length')
+  fail=$(jq_int "$checks_json" '[.[] | select(.bucket == "fail" or .bucket == "cancel")] | length')
+  pending=$(jq_int "$checks_json" '[.[] | select(.bucket == "pending")] | length')
 
   local checks_map
   checks_map=$(echo "$checks_json" | jq '[.[] | {(.name): .state}] | add // {}' 2>/dev/null || echo '{}')
@@ -535,7 +544,7 @@ do_poll() {
   if [ "$fail" -gt 0 ]; then
     echo "  ACTION REQUIRED: Fix CI failures:"
     echo "$checks_json" | \
-      jq -r '.[] | select(.state == "FAILURE" or .state == "ERROR") | "    - \(.name)"' \
+      jq -r '.[] | select(.bucket == "fail" or .bucket == "cancel") | "    - \(.name)"' \
       2>/dev/null || true
     exit_code=1
 
@@ -553,14 +562,14 @@ do_poll() {
        "  \(.login): \(.body | split("\n") | .[0:2] | join(" "))"' 2>/dev/null || true
     exit_code=3
 
-  elif ! $cr_is_current && [ "$cr_state" != "NONE" ] && [ "$pending" -eq 0 ]; then
-    echo "  WAITING: CodeRabbit re-review pending for ${head_sha:0:7}"
-    exit_code=2
-
   elif [ "$hr_count" -gt 0 ] && [ "$(echo "$human_reviews_json" | jq '[to_entries[] | select(.value == "CHANGES_REQUESTED")] | length')" -gt 0 ]; then
     echo "  ACTION REQUIRED: Reviewer(s) requested changes"
     echo "$human_reviews_json" | jq -r 'to_entries[] | select(.value == "CHANGES_REQUESTED") | "    - \(.key)"' 2>/dev/null || true
     exit_code=3
+
+  elif ! $cr_is_current && [ "$cr_state" != "NONE" ] && [ "$pending" -eq 0 ]; then
+    echo "  WAITING: CodeRabbit re-review pending for ${head_sha:0:7}"
+    exit_code=2
 
   elif [ "$pending" -gt 0 ]; then
     printf "  WAITING: %s check(s) still running" "$pending"
@@ -577,11 +586,15 @@ do_poll() {
       local ci_summary
       ci_summary=$(printf "CI: %s/%s passed | CodeRabbit: %s | Unresolved threads: CR=%s Human=%s" \
         "$pass" "$total" "$cr_state" "$cr_inline_count" "$human_inline_count")
-      notify_for_review "$ci_summary"
-      review_notified_at="$now"
-      # Persist immediately so subsequent polls skip the notify guard
-      local _tmp
-      _tmp=$(mktemp) && jq --arg v "$review_notified_at" '.review_notified_at = $v'         "$STATE_FILE" > "$_tmp" && mv "$_tmp" "$STATE_FILE"
+      if notify_for_review "$ci_summary"; then
+        review_notified_at="$now"
+        # Persist immediately so subsequent polls skip the notify guard
+        local _tmp
+        _tmp=$(mktemp) && jq --arg v "$review_notified_at" '.review_notified_at = $v' \
+          "$STATE_FILE" > "$_tmp" && mv "$_tmp" "$STATE_FILE"
+      else
+        echo "  WARN: reviewer notification incomplete — will retry on next poll."
+      fi
     else
       review_notified_at="${prev_review_notified_at:-}"
     fi
