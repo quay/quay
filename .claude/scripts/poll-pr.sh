@@ -211,6 +211,18 @@ do_poll() {
     --jq '[.[] | select(.user.login == "openshift-ci[bot]" or .user.login == "openshift-ci-robot")]' \
     2>/dev/null | jq -rs 'flatten | last | .body // ""' || echo '')
 
+  # Human PR comments (non-bot, non-our-own-account)
+  local human_comments_json
+  human_comments_json=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+    --jq '[.[] | select(
+      (.user.login | endswith("[bot]") | not) and
+      .user.login != "openshift-ci-robot"
+    ) | {id: .id, login: .user.login, created_at: .created_at, body: .body}]' \
+    2>/dev/null | jq -s 'flatten | sort_by(.id)' || echo '[]')
+  local human_comment_count human_comment_last_id
+  human_comment_count=$(echo "$human_comments_json" | jq 'length')
+  human_comment_last_id=$(echo "$human_comments_json" | jq 'last | .id // 0')
+
   # ── Compute check summary ───────────────────────────────────────────────
   local total pass fail pending
   total=$(jq_int "$checks_json" 'length')
@@ -309,6 +321,21 @@ do_poll() {
     done <<< "$human_names_raw"
   fi
 
+  # Human PR comment delta
+  local prev_human_comment_count prev_human_comment_last_id
+  prev_human_comment_count=$(jq_int "$prev" '.human_comment_count // 0')
+  prev_human_comment_last_id=$(jq_int "$prev" '.human_comment_last_id // 0')
+  local human_comment_delta=$(( human_comment_count - prev_human_comment_count ))
+  if [ "$human_comment_delta" -gt 0 ]; then
+    has_changes=true
+    # List authors of the new comments
+    local new_authors
+    new_authors=$(echo "$human_comments_json" | \
+      jq -r --argjson last_id "$prev_human_comment_last_id" \
+      '[.[] | select(.id > $last_id) | .login] | unique | join(", ")' 2>/dev/null || echo "unknown")
+    delta_lines+=("  Comment: +${human_comment_delta} new comment(s) from: ${new_authors}")
+  fi
+
   # Consecutive unchanged poll counter
   local new_unchanged
   if $has_changes || $is_first; then
@@ -336,6 +363,8 @@ do_poll() {
     --argjson cr_count "$cr_inline_count" \
     --argjson human          "$human_reviews_json" \
     --argjson human_inline   "$human_inline_count" \
+    --argjson human_comment_count  "$human_comment_count" \
+    --argjson human_comment_last_id "$human_comment_last_id" \
     --arg     head_sha        "$head_sha" \
     --arg     review_notified "$review_notified_at" \
     --argjson unchanged "$new_unchanged" \
@@ -352,6 +381,8 @@ do_poll() {
       coderabbit_inline_count:     $cr_count,
       human_reviews:               $human,
       human_inline_count:          $human_inline,
+      human_comment_count:         $human_comment_count,
+      human_comment_last_id:       $human_comment_last_id,
       consecutive_unchanged_polls: $unchanged,
       next_sleep_seconds:          $sleep,
       review_notified_at:          $review_notified
@@ -438,6 +469,17 @@ do_poll() {
         "  \(.comments.nodes[0].author.login) on \(.comments.nodes[0].path):\(.comments.nodes[0].line // .comments.nodes[0].originalLine // "?")\n  \(.comments.nodes[0].body | split("\n") | .[0:3] | join("\n  "))\n  1. Reply:   gh api repos/\($repo)/pulls/\($pr)/comments/\(.comments.nodes[0].databaseId)/replies -X POST -f body=\"...\"\n  2. Resolve: gh api graphql -f query=\"mutation{resolveReviewThread(input:{threadId:\\\"\(.id)\\\"}){thread{isResolved}}}\"\n"'
       echo "$threads_json" | jq -r --arg repo "$REPO" --arg pr "$PR_NUMBER" "$_jq_human" \
         2>/dev/null || true
+    fi
+    echo ""
+
+    echo "--- Human Comments: ${human_comment_count} ---"
+    if [ "$human_comment_count" -gt 0 ]; then
+      echo "$human_comments_json" | jq -r '
+        .[-3:] | .[] |
+        "  \(.login) (\(.created_at | split("T")[0])): \(.body | split("\n") | .[0:2] | join(" "))"' \
+        2>/dev/null || true
+    else
+      echo "  (none)"
     fi
     echo ""
 
