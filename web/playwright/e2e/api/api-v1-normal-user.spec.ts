@@ -1534,20 +1534,17 @@ test.describe(
       const tags: Array<{name: string; manifest_digest: string}> =
         listBody.tags ?? [];
       const latestTag = tags.find((t) => t.name === 'latest');
-      expect(latestTag).toBeDefined();
-      const digest = latestTag!.manifest_digest;
+      if (!latestTag) throw new Error('Expected latest tag not found');
+      const digest = latestTag.manifest_digest;
 
       const putR = await userClient.put(
         `/api/v1/repository/${org.name}/${repo.name}/tag/newtag`,
-        {data: {manifest_digest: digest}},
+        {manifest_digest: digest},
       );
       expect(putR.status()).toBe(201);
     });
 
-    test('can restore a deleted tag on own repo', async ({
-      userClient,
-      api,
-    }) => {
+    test('can restore a deleted tag on own repo', async ({userClient, api}) => {
       const org = await api.organization('usr_org');
       const repo = await api.repository(org.name, 'usr_repo', 'public');
 
@@ -1567,8 +1564,8 @@ test.describe(
       const tags: Array<{name: string; manifest_digest: string}> =
         listBody.tags ?? [];
       const tag = tags.find((t) => t.name === 'restoretag');
-      expect(tag).toBeDefined();
-      const digest = tag!.manifest_digest;
+      if (!tag) throw new Error('Expected restoretag not found');
+      const digest = tag.manifest_digest;
 
       const delR = await userClient.delete(
         `/api/v1/repository/${org.name}/${repo.name}/tag/restoretag`,
@@ -1577,7 +1574,7 @@ test.describe(
 
       const restoreR = await userClient.put(
         `/api/v1/repository/${org.name}/${repo.name}/tag/restoretag`,
-        {data: {manifest_digest: digest}},
+        {manifest_digest: digest},
       );
       expect(restoreR.status()).toBe(201);
 
@@ -1613,20 +1610,17 @@ test.describe(
       const tags: Array<{name: string; manifest_digest: string}> =
         listBody.tags ?? [];
       const tag = tags.find((t) => t.name === 'expiretag');
-      expect(tag).toBeDefined();
-      const digest = tag!.manifest_digest;
+      if (!tag) throw new Error('Expected expiretag not found');
+      const digest = tag.manifest_digest;
 
       const expireR = await userClient.post(
-        `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}/labels`,
+        `/api/v1/repository/${org.name}/${repo.name}/tag/expiretag/expire`,
         {
-          data: {
-            manifest_digest: digest,
-            include_submanifests: true,
-            is_alive: true,
-          },
+          manifest_digest: digest,
+          include_submanifests: true,
+          is_alive: true,
         },
       );
-      // The expire endpoint returns 200 on success
       expect([200, 201]).toContain(expireR.status());
     });
   },
@@ -1660,8 +1654,8 @@ test.describe(
       const tags: Array<{name: string; manifest_digest: string}> =
         listBody.tags ?? [];
       const tag = tags.find((t) => t.name === 'latest');
-      expect(tag).toBeDefined();
-      const digest = tag!.manifest_digest;
+      if (!tag) throw new Error('Expected latest tag not found');
+      const digest = tag.manifest_digest;
 
       const manifestR = await userClient.get(
         `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}`,
@@ -1704,13 +1698,13 @@ test.describe(
       const tags: Array<{name: string; manifest_digest: string}> =
         listBody.tags ?? [];
       const tag = tags.find((t) => t.name === 'latest');
-      expect(tag).toBeDefined();
-      const digest = tag!.manifest_digest;
+      if (!tag) throw new Error('Expected latest tag not found');
+      const digest = tag.manifest_digest;
 
       // Add label
       const addR = await userClient.post(
         `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}/labels`,
-        {data: {key: 'env', value: 'prod', media_type: 'text/plain'}},
+        {key: 'env', value: 'prod', media_type: 'text/plain'},
       );
       expect(addR.status()).toBe(201);
 
@@ -1722,11 +1716,9 @@ test.describe(
       const labelsBody = await listLabelsR.json();
       const labels: Array<{id: string; key: string; value: string}> =
         labelsBody.labels ?? [];
-      const label = labels.find(
-        (l) => l.key === 'env' && l.value === 'prod',
-      );
-      expect(label).toBeDefined();
-      const labelId = label!.id;
+      const label = labels.find((l) => l.key === 'env' && l.value === 'prod');
+      if (!label) throw new Error('Expected label not found');
+      const labelId = label.id;
 
       // Get by id
       const getR = await userClient.get(
@@ -1787,8 +1779,8 @@ test.describe(
       const tags: Array<{name: string; manifest_digest: string}> =
         listBody.tags ?? [];
       const tag = tags.find((t) => t.name === 'latest');
-      expect(tag).toBeDefined();
-      const digest = tag!.manifest_digest;
+      if (!tag) throw new Error('Expected latest tag not found');
+      const digest = tag.manifest_digest;
 
       await expect
         .poll(
