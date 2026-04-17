@@ -107,11 +107,15 @@ notify_for_review() {
     return 0
   fi
 
-  # Post PR comment with @quay/downstream mention — use printf so \n expands to real newlines
+  # Post PR comment — use printf so \n expands to real newlines
   local body
-  body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s\n\n@quay/downstream' "$summary")
+  body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s' "$summary")
   gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
     -X POST -f body="$body" > /dev/null 2>&1 || true
+
+  # Assign quay/downstream team as reviewer via API
+  gh api "repos/${REPO}/pulls/${PR_NUMBER}/requested_reviewers" \
+    -X POST -f "team_reviewers[]=downstream" > /dev/null 2>&1 || true
 }
 
 # Fetch all CodeRabbit review threads via GraphQL (includes resolved/outdated status)
@@ -258,6 +262,7 @@ do_poll() {
     sha_changed=true
     has_changes=true
     prev_checks='{}'  # discard stale per-commit check states
+    prev_human_comment_last_id=0  # re-surface comments after each push
     delta_lines+=("  NEW COMMIT: ${prev_head_sha:0:7} -> ${head_sha:0:7} (check history reset)")
   fi
 
