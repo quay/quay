@@ -96,7 +96,7 @@ notify_for_review() {
   # Treat API failures as "skip posting" to avoid duplicate comments on transient errors
   local existing_id api_ok=true
   existing_id=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-    --jq '[.[] | select(.body | startswith("## Ready for Review"))] | last | .id // empty' \
+    --jq '[.[] | select(.body | startswith("## Ready for Review"))] | .[-1].id // empty' \
     2>/dev/null) || api_ok=false
   if ! $api_ok; then
     echo "  WARN: could not verify existing ready-for-review comment; skipping post to avoid duplicates."
@@ -225,7 +225,7 @@ do_poll() {
     2>/dev/null | jq -s 'flatten | sort_by(.id)' || echo '[]')
   local human_comment_count human_comment_last_id
   human_comment_count=$(echo "$human_comments_json" | jq 'length')
-  human_comment_last_id=$(echo "$human_comments_json" | jq 'last | .id // 0')
+  human_comment_last_id=$(echo "$human_comments_json" | jq '.[-1].id // 0')
 
   # ── Compute check summary ───────────────────────────────────────────────
   local total pass fail pending
