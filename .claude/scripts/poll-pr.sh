@@ -107,7 +107,7 @@ do_poll() {
   local poll_num=$(( prev_count + 1 ))
 
   # ── Fetch from GitHub ───────────────────────────────────────────────────
-  local pr_meta checks_json cr_review cr_inline_count walkthrough_body codecov_body human_reviews_json jira_body
+  local pr_meta checks_json cr_review cr_inline_count human_inline_count walkthrough_body codecov_body human_reviews_json jira_body
 
   local head_sha
   head_sha=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
@@ -129,6 +129,14 @@ do_poll() {
 
   cr_inline_count=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
     --jq '[.[] | select(.user.login == "coderabbitai[bot]")] | length' \
+    2>/dev/null || echo '0')
+
+  human_inline_count=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
+    --jq '[.[] | select(
+            .user.login != "coderabbitai[bot]" and
+            (.user.login | endswith("[bot]") | not) and
+            .user.login != "openshift-ci-robot"
+          )] | length' \
     2>/dev/null || echo '0')
 
   walkthrough_body=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
@@ -216,6 +224,18 @@ do_poll() {
     delta_lines+=("  CodeRabbit: ${cr_delta} comment(s) resolved (total: ${cr_inline_count})")
   fi
 
+  # Human inline comment count change
+  local prev_human_inline human_inline_delta
+  prev_human_inline=$(jq_int "$prev" '.human_inline_count // 0')
+  human_inline_delta=$(( human_inline_count - prev_human_inline ))
+  if [ "$human_inline_delta" -gt 0 ]; then
+    has_changes=true
+    delta_lines+=("  Human: +${human_inline_delta} new inline comment(s) (total: ${human_inline_count})")
+  elif [ "$human_inline_delta" -lt 0 ]; then
+    has_changes=true
+    delta_lines+=("  Human: ${human_inline_delta} inline comment(s) resolved (total: ${human_inline_count})")
+  fi
+
   # Human review changes
   local human_names_raw
   human_names_raw=$(echo "$human_reviews_json" | jq -r 'keys[]' 2>/dev/null || true)
@@ -254,8 +274,9 @@ do_poll() {
     --arg     cr_state "$cr_state" \
     --arg     cr_at    "$cr_at" \
     --argjson cr_count "$cr_inline_count" \
-    --argjson human    "$human_reviews_json" \
-    --arg     head_sha  "$head_sha" \
+    --argjson human          "$human_reviews_json" \
+    --argjson human_inline   "$human_inline_count" \
+    --arg     head_sha        "$head_sha" \
     --argjson unchanged "$new_unchanged" \
     --argjson sleep     "$next_sleep" \
     '{
@@ -269,6 +290,7 @@ do_poll() {
       coderabbit_review_at:        $cr_at,
       coderabbit_inline_count:     $cr_count,
       human_reviews:               $human,
+      human_inline_count:          $human_inline,
       consecutive_unchanged_polls: $unchanged,
       next_sleep_seconds:          $sleep
     }' > "$STATE_FILE"
@@ -339,6 +361,19 @@ do_poll() {
     fi
     echo ""
 
+    echo "--- Human Inline Comments: ${human_inline_count} ---"
+    if [ "$human_inline_count" -gt 0 ]; then
+      gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
+        --jq '[.[] | select(
+                .user.login != "coderabbitai[bot]" and
+                (.user.login | endswith("[bot]") | not) and
+                .user.login != "openshift-ci-robot"
+              )] | .[-5:] | .[] |
+              "  \(.user.login) on \(.path):\(.line // .original_line // "?")\n  \(.body | split("\n") | .[0:3] | join("\n  "))\n"' \
+        2>/dev/null || true
+    fi
+    echo ""
+
     echo "--- JIRA Bot ---"
     if [ -n "$jira_body" ] && [ "$jira_body" != "null" ]; then
       echo "$jira_body" | head -10
@@ -375,7 +410,7 @@ do_poll() {
   printf "  CI:         %s/%s passed, %s failed, %s pending\n" \
     "$pass" "$total" "$fail" "$pending"
   printf "  CodeRabbit: %-26s inline comments: %s\n" "$cr_state" "$cr_inline_count"
-  printf "  Human:      %s/%s approved\n" "$hr_approved" "$hr_count"
+  printf "  Human:      %s/%s approved  |  inline comments: %s\n" "$hr_approved" "$hr_count" "$human_inline_count"
   echo ""
 
   # Determine exit code and action message
@@ -388,8 +423,13 @@ do_poll() {
       2>/dev/null || true
     exit_code=1
 
-  elif [ "$cr_inline_count" -gt 0 ]; then
-    printf "  ACTION REQUIRED: Address %s CodeRabbit inline comment(s)\n" "$cr_inline_count"
+  elif [ "$human_inline_count" -gt 0 ] || [ "$cr_inline_count" -gt 0 ]; then
+    local _action_parts=()
+    [ "$human_inline_count" -gt 0 ] && _action_parts+=("${human_inline_count} human comment(s)")
+    [ "$cr_inline_count" -gt 0 ]    && _action_parts+=("${cr_inline_count} CodeRabbit comment(s)")
+    local IFS=", "
+    printf "  ACTION REQUIRED: Address inline review comments: %s\n" "${_action_parts[*]}"
+    unset IFS
     exit_code=3
 
   elif [ "$pending" -gt 0 ]; then
@@ -400,6 +440,11 @@ do_poll() {
       echo ""
     fi
     exit_code=2
+
+  elif [ "$hr_count" -gt 0 ] &&        [ "$(echo "$human_reviews_json" | jq '[to_entries[] | select(.value == "CHANGES_REQUESTED")] | length')" -gt 0 ]; then
+    echo "  ACTION REQUIRED: Reviewer(s) requested changes"
+    echo "$human_reviews_json" | jq -r 'to_entries[] | select(.value == "CHANGES_REQUESTED") | "    - \(.key)"' 2>/dev/null || true
+    exit_code=3
 
   elif [ "$hr_count" -eq 0 ] || [ "$hr_approved" -eq 0 ]; then
     echo "  WAITING: Awaiting human review approval"
