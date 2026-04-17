@@ -41,9 +41,35 @@ subsequent polls so only new events surface.
 | 1 | CI failures | Fix code, push, re-run |
 | 2 | Checks pending | Script is still looping; wait |
 | 3 | CodeRabbit inline comments | Address comments, push, re-run |
-| 4 | Awaiting human review | Script is still looping; wait |
+| 4 | Awaiting human review | Reviewers notified; schedule a re-poll cron |
 
-## Step 1: Start polling (loops until action needed or all pass)
+## Step 1: Start polling
+
+Specify reviewers to notify when CI is clean and the PR is ready:
+
+```bash
+bash .claude/scripts/poll-pr.sh $ARGUMENTS --reviewer jbpratt
+```
+
+For a team (once the team exists):
+
+```bash
+bash .claude/scripts/poll-pr.sh $ARGUMENTS --team-reviewer downstream-team
+```
+
+The script loops while CI is pending, then exits when action is needed.
+
+## Step 1b: If exit 4 — schedule a re-poll cron
+
+When the script exits 4 (awaiting review), it has already posted a comment and requested reviewers. Use CronCreate to check back automatically:
+
+```
+CronCreate: every 2 hours, run: bash .claude/scripts/poll-pr.sh $ARGUMENTS --reviewer jbpratt
+```
+
+Delete the cron (CronDelete) once the PR is merged or approved.
+
+## Step 2: Start polling (original step — loops until action needed or all pass)
 
 ```bash
 bash .claude/scripts/poll-pr.sh $ARGUMENTS

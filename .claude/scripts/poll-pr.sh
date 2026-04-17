@@ -4,17 +4,19 @@
 # Usage: bash .claude/scripts/poll-pr.sh <PR_NUMBER> [OPTIONS]
 #
 # Options:
-#   --repo OWNER/REPO   Repository (default: quay/quay)
-#   --once              Single poll; exit immediately (default: loop until done)
-#   --full              Always print full report (default: delta-only on re-polls)
-#   --max-polls N       Stop after N total polls (default: unlimited)
+#   --repo OWNER/REPO        Repository (default: quay/quay)
+#   --once                   Single poll; exit immediately (default: loop until done)
+#   --full                   Always print full report (default: delta-only on re-polls)
+#   --max-polls N            Stop after N total polls (default: unlimited)
+#   --reviewer USER          Request USER as reviewer when exiting 4 (repeatable)
+#   --team-reviewer TEAM     Request TEAM as reviewer when exiting 4 (repeatable)
 #
 # Exit codes:
 #   0  All checks pass — ready to merge
 #   1  CI failures — fix required
 #   2  Checks still pending — re-poll later
-#   3  CodeRabbit inline comments — address required
-#   4  Awaiting human review — nothing actionable yet
+#   3  Review comments to address
+#   4  Awaiting human review — notifies reviewers and exits
 #
 # State file: .claude/poll-state/pr-<NUMBER>.json
 #   Tracks check states, review states, comment counts, adaptive sleep, and poll history.
@@ -28,13 +30,17 @@ REPO="quay/quay"
 ONCE=false
 FULL=false
 MAX_POLLS=0  # 0 = unlimited
+REVIEWERS=()
+TEAM_REVIEWERS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo)       REPO="$2"; shift 2 ;;
     --once)       ONCE=true; shift ;;
     --full)       FULL=true; shift ;;
-    --max-polls)      MAX_POLLS="$2"; shift 2 ;;
+    --max-polls)         MAX_POLLS="$2"; shift 2 ;;
+    --reviewer)          REVIEWERS+=("$2"); shift 2 ;;
+    --team-reviewer)     TEAM_REVIEWERS+=("$2"); shift 2 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
@@ -84,6 +90,29 @@ adaptive_sleep() {
   fi
 }
 
+# Post a "ready for review" comment and request reviewers (idempotent via state)
+notify_for_review() {
+  local summary="$1"
+  echo "  Notifying reviewers..."
+  # Post PR comment
+  local body
+  body="## \U0001F7E2 Ready for Review\n\nCI is green and all review threads are resolved.\n\n${summary}\n\ncc $(printf '@%s ' "${REVIEWERS[@]:-}" "${TEAM_REVIEWERS[@]:-}" | sed 's/@ //g; s/ $//')"
+  gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+    -X POST -f body="$body" > /dev/null 2>&1 || true
+  # Request individual reviewers
+  local reviewer_args=()
+  for r in "${REVIEWERS[@]:-}"; do
+    [ -n "$r" ] && reviewer_args+=(-f "reviewers[]=$r")
+  done
+  for t in "${TEAM_REVIEWERS[@]:-}"; do
+    [ -n "$t" ] && reviewer_args+=(-f "team_reviewers[]=$t")
+  done
+  if [ "${#reviewer_args[@]}" -gt 0 ]; then
+    gh api "repos/${REPO}/pulls/${PR_NUMBER}/requested_reviewers" \
+      -X POST "${reviewer_args[@]}" > /dev/null 2>&1 || true
+  fi
+}
+
 # Fetch all CodeRabbit review threads via GraphQL (includes resolved/outdated status)
 fetch_review_threads() {
   local owner="${REPO%%/*}" rname="${REPO##*/}"
@@ -114,6 +143,8 @@ do_poll() {
   prev_sleep=$(jq_int "$prev" '.next_sleep_seconds // 120')
   prev_unchanged=$(jq_int "$prev" '.consecutive_unchanged_polls // 0')
   first_polled_at=$(jq_str "$prev" '.first_polled_at' "$now")
+  local prev_review_notified_at
+  prev_review_notified_at=$(jq_str "$prev" '.review_notified_at' '')
   $is_first && first_polled_at="$now"
 
   local poll_num=$(( prev_count + 1 ))
@@ -281,6 +312,9 @@ do_poll() {
   local next_sleep
   next_sleep=$(adaptive_sleep "$pending" "$new_unchanged" "$prev_sleep")
 
+  # review_notified_at is set inside the exit-4 branch; default to preserving prev value
+  local review_notified_at="${prev_review_notified_at:-}"
+
   # ── Persist state ───────────────────────────────────────────────────────
   jq -n \
     --argjson pr      "$PR_NUMBER" \
@@ -294,6 +328,7 @@ do_poll() {
     --argjson human          "$human_reviews_json" \
     --argjson human_inline   "$human_inline_count" \
     --arg     head_sha        "$head_sha" \
+    --arg     review_notified "$review_notified_at" \
     --argjson unchanged "$new_unchanged" \
     --argjson sleep     "$next_sleep" \
     '{
@@ -309,7 +344,8 @@ do_poll() {
       human_reviews:               $human,
       human_inline_count:          $human_inline,
       consecutive_unchanged_polls: $unchanged,
-      next_sleep_seconds:          $sleep
+      next_sleep_seconds:          $sleep,
+      review_notified_at:          $review_notified
     }' > "$STATE_FILE"
 
   # ── Header ──────────────────────────────────────────────────────────────
@@ -474,6 +510,15 @@ do_poll() {
 
   elif [ "$hr_count" -eq 0 ] || [ "$hr_approved" -eq 0 ]; then
     echo "  WAITING: Awaiting human review approval"
+    if [ -z "$prev_review_notified_at" ] && ( [ "${#REVIEWERS[@]}" -gt 0 ] || [ "${#TEAM_REVIEWERS[@]}" -gt 0 ] ); then
+      local ci_summary
+      ci_summary=$(printf "CI: %s/%s passed | CodeRabbit: %s | Unresolved threads: CR=%s Human=%s" \
+        "$pass" "$total" "$cr_state" "$cr_inline_count" "$human_inline_count")
+      notify_for_review "$ci_summary"
+      review_notified_at="$now"
+    else
+      review_notified_at="${prev_review_notified_at:-}"
+    fi
     exit_code=4
 
   else
@@ -520,13 +565,17 @@ while true; do
       echo "CodeRabbit comments require attention — address and re-run: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
       exit 3
       ;;
-    2|4)
-      # Still pending (2) or awaiting human review (4) — keep polling
+    2)
+      # CI/checks still pending — keep polling
       SLEEP_SECS=$(jq -r '.next_sleep_seconds // 120' "$STATE_FILE" 2>/dev/null || echo 120)
-      # Floor: exit 4 (no pending checks, just waiting on humans) must not spin at 0s
-      [ "$SLEEP_SECS" -le 0 ] && SLEEP_SECS=300
+      [ "$SLEEP_SECS" -le 0 ] && SLEEP_SECS=120
       printf "\nSleeping %ss (adaptive backoff)... Ctrl+C to stop.\n\n" "$SLEEP_SECS"
       sleep "$SLEEP_SECS"
+      ;;
+    4)
+      # Awaiting human review — reviewers notified, exit cleanly
+      echo "Reviewers notified. Re-run to check for approval: bash .claude/scripts/poll-pr.sh ${PR_NUMBER}"
+      exit 4
       ;;
     *)
       echo "Unexpected exit code ${RC}. Stopping." >&2
