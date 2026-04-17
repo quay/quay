@@ -71,7 +71,7 @@ export class RawApiClient {
    */
   async post(
     path: string,
-    data?: Record<string, unknown>,
+    data?: Record<string, unknown> | unknown[],
   ): Promise<APIResponse> {
     const token = await this.fetchCsrfToken();
     return this.request.post(`${this.baseUrl}${path}`, {
