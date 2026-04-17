@@ -106,10 +106,23 @@ CodeRabbit (`chill` profile) runs 7 pre-merge checks:
 | N+1 Query Prevention | No loop-based query patterns |
 | Read Path Performance | No latency regressions on v2 read path |
 
+**Evaluate each comment critically — CodeRabbit is often right but not always.**
+Read the full context, understand what it's flagging, and make a genuine judgment call:
+
+- **Valid**: fix the code, then reply explaining what you changed before resolving
+- **Invalid or inapplicable**: reply with your reasoning (e.g. "this pattern is
+  intentional because X"), then resolve — don't silently dismiss
+- **Unclear**: reply asking CodeRabbit to clarify or expand. It can engage in
+  follow-up discussion and often provides more detail or reconsiders when pushed
+
+The goal is a real conversation, not rubber-stamping. A well-reasoned "won't fix"
+reply is better than a blind fix or a silent resolve.
+
 Steps:
 1. Read all inline comments (reply command + resolve command shown per thread)
-2. Fix the code or reply with rationale, then resolve the thread via GraphQL
-3. Push and re-run the script via Bash with `run_in_background: true`
+2. Evaluate: fix, reply with rationale, or ask a follow-up question
+3. Once settled, resolve the thread via GraphQL
+4. Push and re-run the script via Bash with `run_in_background: true`
 
 ## Push and re-run
 
