@@ -271,11 +271,17 @@ do_poll() {
   [ -n "$cr_review_commit" ] && [ "$cr_review_commit" = "$head_sha" ] && cr_is_current=true
 
   # ── Compute deltas vs previous state ───────────────────────────────────
-  local prev_checks prev_cr_state prev_cr_count prev_human
+  local prev_checks prev_cr_state prev_cr_count prev_human prev_human_inline
   prev_checks=$(echo "$prev" | jq '.checks // {}' 2>/dev/null || echo '{}')
   prev_cr_state=$(jq_str "$prev" '.coderabbit_review_state' 'NONE')
   prev_cr_count=$(jq_int "$prev" '.coderabbit_inline_count // 0')
   prev_human=$(echo "$prev" | jq '.human_reviews // {}' 2>/dev/null || echo '{}')
+  prev_human_inline=$(jq_int "$prev" '.human_inline_count // 0')
+  # On thread-fetch failure, preserve previous counts to avoid false deltas
+  if ! $threads_ok; then
+    cr_inline_count="$prev_cr_count"
+    human_inline_count="$prev_human_inline"
+  fi
 
   local has_changes=false
   local -a delta_lines=()
@@ -322,8 +328,7 @@ do_poll() {
   fi
 
   # Human inline comment count change
-  local prev_human_inline human_inline_delta
-  prev_human_inline=$(jq_int "$prev" '.human_inline_count // 0')
+  local human_inline_delta
   human_inline_delta=$(( human_inline_count - prev_human_inline ))
   if [ "$human_inline_delta" -gt 0 ]; then
     has_changes=true
@@ -539,10 +544,11 @@ do_poll() {
   echo "  SUMMARY"
   echo "============================================================"
 
-  local hr_count hr_approved
+  local hr_count hr_approved review_decision
   hr_count=$(echo "$human_reviews_json" | jq 'length')
   hr_approved=$(echo "$human_reviews_json" | \
     jq '[to_entries[] | select(.value == "APPROVED")] | length')
+  review_decision=$(jq_str "$pr_meta" '.review_decision' '')
 
   printf "  CI:         %s/%s passed, %s failed, %s pending\n" \
     "$pass" "$total" "$fail" "$pending"
@@ -576,7 +582,8 @@ do_poll() {
        "  \(.login): \(.body | split("\n") | .[0:2] | join(" "))"' 2>/dev/null || true
     exit_code=3
 
-  elif [ "$hr_count" -gt 0 ] && [ "$(echo "$human_reviews_json" | jq '[to_entries[] | select(.value == "CHANGES_REQUESTED")] | length')" -gt 0 ]; then
+  elif [ "$review_decision" = "REVIEW_CHANGES_REQUESTED" ] || \
+       { [ "$hr_count" -gt 0 ] && [ "$(echo "$human_reviews_json" | jq '[to_entries[] | select(.value == "CHANGES_REQUESTED")] | length')" -gt 0 ]; }; then
     echo "  ACTION REQUIRED: Reviewer(s) requested changes"
     echo "$human_reviews_json" | jq -r 'to_entries[] | select(.value == "CHANGES_REQUESTED") | "    - \(.key)"' 2>/dev/null || true
     exit_code=3
@@ -598,7 +605,7 @@ do_poll() {
     echo "  WAITING: review-thread fetch failed — will retry next poll"
     exit_code=2
 
-  elif [ "$hr_count" -eq 0 ] || [ "$hr_approved" -eq 0 ]; then
+  elif [ "$review_decision" != "REVIEW_APPROVED" ] && { [ "$hr_count" -eq 0 ] || [ "$hr_approved" -eq 0 ]; }; then
     echo "  WAITING: Awaiting human review approval"
     if [ -z "$prev_review_notified_at" ]; then
       local ci_summary
