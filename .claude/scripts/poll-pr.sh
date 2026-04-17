@@ -111,7 +111,7 @@ notify_for_review() {
   # Post PR comment if not already present — use printf so \n expands to real newlines
   if [ -z "$existing_id" ]; then
     local body
-    body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s\n\ncc `@quay/downstream`' "$summary")
+    body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s\n\ncc @quay/downstream' "$summary")
     gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
       -X POST -f body="$body" > /dev/null 2>&1 || return 1
   else
@@ -235,7 +235,7 @@ do_poll() {
 
   # Human PR comments (non-bot, non-our-own-account)
   # Note: gh api does not support --arg for jq variables; filter in a separate jq call
-  local human_comments_json self_login _comments_raw
+  local human_comments_json self_login _comments_raw comments_ok=true
   self_login=$(gh api user --jq '.login' 2>/dev/null || echo '')
   if _comments_raw=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" 2>/dev/null); then
     human_comments_json=$(printf '%s' "$_comments_raw" | jq -s --arg self "$self_login" \
@@ -247,11 +247,17 @@ do_poll() {
       ) | {id: .id, login: .user.login, created_at: .created_at, body: .body}] | sort_by(.id)' \
       2>/dev/null) || human_comments_json='[]'
   else
+    comments_ok=false
     human_comments_json='[]'
   fi
   local human_comment_count human_comment_last_id
-  human_comment_count=$(echo "$human_comments_json" | jq 'length')
-  human_comment_last_id=$(echo "$human_comments_json" | jq '.[-1].id // 0')
+  if $comments_ok; then
+    human_comment_count=$(echo "$human_comments_json" | jq 'length')
+    human_comment_last_id=$(echo "$human_comments_json" | jq '.[-1].id // 0')
+  else
+    human_comment_count=$(jq_int "$prev" '.human_comment_count // 0')
+    human_comment_last_id=$(jq_int "$prev" '.human_comment_last_id // 0')
+  fi
 
   # ── Compute check summary ───────────────────────────────────────────────
   local total pass fail pending
