@@ -482,10 +482,21 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
       // Submit
       await authenticatedPage.getByTestId('create-token-submit').click();
 
+      // Creating tokens requires @require_fresh_login (FRESH_LOGIN_TIMEOUT = 10m).
+      // Long-running test suites may trigger the "Please Verify" re-auth modal.
+      // Handle it by entering the known test password before proceeding.
+      const credentialsModal = authenticatedPage.getByTestId('credentials-modal');
+      const freshPasswordInput = authenticatedPage.locator('#fresh-password');
+      await expect(credentialsModal.or(freshPasswordInput)).toBeVisible({
+        timeout: 15_000,
+      });
+      if (await freshPasswordInput.isVisible()) {
+        await freshPasswordInput.fill(password);
+        await authenticatedPage.getByRole('button', {name: 'Verify'}).click();
+      }
+
       // Credentials modal should show with success
-      await expect(
-        authenticatedPage.getByTestId('credentials-modal'),
-      ).toBeVisible();
+      await expect(credentialsModal).toBeVisible({timeout: 15_000});
       await expect(
         authenticatedPage.getByText('Token Created Successfully'),
       ).toBeVisible();
