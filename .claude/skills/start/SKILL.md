@@ -5,7 +5,6 @@ description: >
   checks if backporting is needed, and loads the relevant agent_docs/ for the
   ticket's area. Use at the start of any PROJQUAY or QUAYIO ticketed work.
 argument-hint: PROJQUAY-XXXX
-disable-model-invocation: true
 allowed-tools:
   - Bash(bash .claude/scripts/session-setup.sh)
   - Bash(bash .claude/scripts/jira-ops.sh *)

@@ -5,7 +5,6 @@ description: >
   view, assign, transition, check-version, and set-version operations.
   Uses redhat.atlassian.net REST API.
 argument-hint: PROJQUAY-XXXX|QUAYIO-XXXX [action]
-disable-model-invocation: true
 allowed-tools:
   - Bash(bash .claude/scripts/jira-ops.sh *)
   - Read

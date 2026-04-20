@@ -4,7 +4,6 @@ description: >
   Implement changes following Quay conventions. Reads the relevant AGENTS.md
   and agent_docs/ for the area being worked on, then guides implementation,
   quality checks (pre-commit, tests), and commit with proper message format.
-disable-model-invocation: true
 allowed-tools:
   - Bash(bash .claude/scripts/format-and-lint.sh *)
   - Bash(git *)

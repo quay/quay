@@ -4,7 +4,6 @@ description: >
   Quick CI status check for a pull request. Shows pass/fail/pending status
   for all GitHub Actions jobs, Prow, and Konflux checks.
 argument-hint: PR_NUMBER
-disable-model-invocation: true
 allowed-tools:
   - Bash(bash .claude/scripts/check-ci.sh *)
   - Bash(gh *)
