@@ -304,13 +304,21 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
         <div ref={loadMoreRef} style={{height: '20px'}} />
 
         {/* Load More button and loading indicator */}
-        {hasNextPage && (
+        {(hasNextPage || isFetchingNextPage) && (
           <FlexItem>
             <div style={{textAlign: 'center', margin: '20px'}}>
               {isFetchingNextPage ? (
-                <Spinner size="lg" />
+                <Spinner
+                  size="lg"
+                  aria-label="Loading more logs"
+                  data-testid="load-more-spinner"
+                />
               ) : (
-                <Button variant="secondary" onClick={() => fetchNextPage()}>
+                <Button
+                  variant="secondary"
+                  onClick={() => fetchNextPage()}
+                  data-testid="load-more-button"
+                >
                   Load More Logs
                 </Button>
               )}

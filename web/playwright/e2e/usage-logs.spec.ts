@@ -332,3 +332,76 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeVisible();
   });
 });
+
+test.describe(
+  'Usage Logs Load More button behavior',
+  {tag: ['@logs', '@PROJQUAY-10795']},
+  () => {
+    test('shows Load More button when additional pages are available', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('loadmore');
+
+      // Create 21 repos to generate 21 log entries — enough to trigger pagination (page size: 20)
+      await Promise.all(
+        Array.from({length: 21}, (_, i) =>
+          api.repository(org.name, `repo${i}`),
+        ),
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+      const table = authenticatedPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
+
+      // With 21 log entries, the API returns a next_page token
+      await expect(
+        authenticatedPage.getByTestId('load-more-button'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('load-more-spinner'),
+      ).not.toBeVisible();
+    });
+
+    test('shows spinner when Load More is clicked', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('loadmorespinner');
+
+      // Create 21 repos to generate 21 real log entries
+      await Promise.all(
+        Array.from({length: 21}, (_, i) =>
+          api.repository(org.name, `repo${i}`),
+        ),
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+      const table = authenticatedPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
+
+      // Load More button is visible because there are more than 20 logs
+      const loadMoreBtn = authenticatedPage.getByTestId('load-more-button');
+      await expect(loadMoreBtn).toBeVisible();
+
+      // Delay the next-page response so the spinner stays visible long enough
+      // to assert on. route.continue() passes through to the real API — no mocking.
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/logs*`,
+        async (route) => {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await route.continue();
+        },
+      );
+
+      // Click Load More — spinner should appear while fetching the next page
+      await loadMoreBtn.click();
+
+      await expect(
+        authenticatedPage.getByTestId('load-more-spinner'),
+      ).toBeVisible();
+      await expect(loadMoreBtn).not.toBeVisible();
+    });
+  },
+);
