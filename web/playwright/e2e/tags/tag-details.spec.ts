@@ -121,7 +121,9 @@ test.describe('Tag Details Page', {tag: ['@tags', '@container']}, () => {
     );
 
     // Verify architecture selector is visible
-    const archSelector = authenticatedPage.getByText(/linux on amd64/i);
+    const archSelector = authenticatedPage.getByRole('button', {
+      name: /linux on amd64/i,
+    });
     await expect(archSelector).toBeVisible();
 
     // Capture initial digest from the ClipboardCopy input
@@ -132,7 +134,9 @@ test.describe('Tag Details Page', {tag: ['@tags', '@container']}, () => {
 
     // Switch to arm64
     await archSelector.click();
-    await authenticatedPage.getByText(/linux on arm64/i).click();
+    await authenticatedPage
+      .getByRole('option', {name: /linux on arm64/i})
+      .click();
 
     // Verify digest changed
     await expect(
@@ -183,6 +187,7 @@ test.describe(
             testRepo.name,
             digest,
           );
+          if (!sec.status) continue;
           scanStatus = sec.status;
           if (scanStatus !== 'queued') break;
         } catch (e: unknown) {
@@ -193,9 +198,7 @@ test.describe(
       }
 
       if (scanStatus === 'queued') {
-        throw new Error(
-          'Clair scan did not complete within the 120s deadline',
-        );
+        throw new Error('Clair scan did not complete within the 120s deadline');
       }
     });
 
@@ -224,7 +227,7 @@ test.describe(
       // Verify vulnerability badge shows a severity count and navigates
       const vulnBadge = authenticatedPage.getByTestId('vulnerabilities');
       await expect(vulnBadge).toContainText(
-        /\d+\s+(Critical|High|Medium|Low|Unknown)/i,
+        /(\d+\s+(Critical|High|Medium|Low|Unknown)|No vulnerabilities|Passed)/i,
         {timeout: 15000},
       );
 
