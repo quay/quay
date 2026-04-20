@@ -109,6 +109,15 @@ describe('NotificationResource', () => {
       await expect(
         bulkDeleteNotifications('org', 'repo', ['u1', 'u2']),
       ).resolves.toBeUndefined();
+      expect(axios.delete).toHaveBeenCalledTimes(2);
+      expect(axios.delete).toHaveBeenNthCalledWith(
+        1,
+        '/api/v1/repository/org/repo/notification/u1',
+      );
+      expect(axios.delete).toHaveBeenNthCalledWith(
+        2,
+        '/api/v1/repository/org/repo/notification/u2',
+      );
     });
   });
 
@@ -151,6 +160,15 @@ describe('NotificationResource', () => {
       await expect(
         bulkEnableNotifications('org', 'repo', ['u1', 'u2']),
       ).resolves.toBeUndefined();
+      expect(axios.post).toHaveBeenCalledTimes(2);
+      expect(axios.post).toHaveBeenNthCalledWith(
+        1,
+        '/api/v1/repository/org/repo/notification/u1',
+      );
+      expect(axios.post).toHaveBeenNthCalledWith(
+        2,
+        '/api/v1/repository/org/repo/notification/u2',
+      );
     });
   });
 

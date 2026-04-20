@@ -108,6 +108,7 @@ describe('TagResource', () => {
           host: 'localhost',
         },
         writable: true,
+        configurable: true,
       });
       vi.mocked(axios.get).mockResolvedValueOnce(
         mockResponse({page: 1, has_additional: false, tags: []}),
