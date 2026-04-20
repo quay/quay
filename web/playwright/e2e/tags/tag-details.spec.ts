@@ -62,11 +62,15 @@ test.describe('Tag Details Page', {tag: ['@tags', '@container']}, () => {
 
     // Verify details tab fields
     await expect(authenticatedPage.getByTestId('name')).toContainText('latest');
-    await expect(authenticatedPage.getByTestId('creation')).not.toBeEmpty();
+    await expect(authenticatedPage.getByTestId('creation')).toContainText(
+      /\d{4}/,
+    );
     await expect(authenticatedPage.getByTestId('repository')).toContainText(
       testRepo.name,
     );
-    await expect(authenticatedPage.getByTestId('modified')).not.toBeEmpty();
+    await expect(authenticatedPage.getByTestId('modified')).toContainText(
+      /\d{4}/,
+    );
     // digest-clipboardcopy uses variant="inline-compact" which renders a
     // <span>, not an <input> — use toContainText instead of toHaveValue
     await expect(
@@ -174,7 +178,9 @@ test.describe(
       );
 
       // Wait for Clair to scan the image (poll until status != queued)
-      const tags = await api.getTags(testRepo.namespace, testRepo.name);
+      const tags = await api.getTags(testRepo.namespace, testRepo.name, {
+        specificTag: 'latest',
+      });
       expect(tags.tags.length).toBeGreaterThan(0);
       const digest = tags.tags[0].manifest_digest;
       const deadline = Date.now() + 120000;
