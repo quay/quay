@@ -4,7 +4,6 @@ description: >
   Create a pull request with the correct PROJQUAY/QUAYIO/NO-ISSUE title format,
   filled-in description template, and JIRA reference. Validates the PR title
   against the CI-enforced regex before creating.
-disable-model-invocation: true
 allowed-tools:
   - Bash(bash .claude/scripts/validate-pr-title.sh *)
   - Bash(git *)

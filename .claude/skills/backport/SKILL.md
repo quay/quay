@@ -4,7 +4,6 @@ description: >
   Trigger the openshift-cherrypick-robot to backport a merged PR to a release
   branch. Checks Target Version from JIRA if no branch is specified.
 argument-hint: PR_NUMBER [BRANCH]
-disable-model-invocation: true
 allowed-tools:
   - Bash(bash .claude/scripts/jira-ops.sh *)
   - Bash(gh pr *)
