@@ -109,6 +109,12 @@ repo_mirror_sync_duration_seconds = Histogram(
     buckets=(30, 60, 120, 300, 600, 1200, 1800, 3600, 7200, float("inf")),
 )
 
+repo_mirror_workers_active = Gauge(
+    "quay_repository_mirror_workers_active",
+    "Number of repository mirror worker processes reporting from this Quay process (1 while a "
+    "RepoMirrorWorker is running; scrape all mirror worker targets and sum for cluster total)",
+)
+
 unmirrored_org_repositories = Gauge(
     "quay_org_mirror_repositories_unmirrored",
     "number of org-level mirror repositories in the database that have not yet been mirrored",

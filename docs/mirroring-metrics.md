@@ -27,7 +27,7 @@ All metrics are exposed via the standard Quay metrics endpoint (typically availa
 quay_repository_mirror_pending_tags{namespace="org1",repository="repo1"} 5
 ```
 
-**Type:** Gauge  
+**Type:** Gauge
 **Labels:**
 - `namespace`: Organization or user namespace
 - `repository`: Repository name
@@ -48,7 +48,7 @@ quay_repository_mirror_last_sync_status{namespace="org1",repository="repo1",last
 quay_repository_mirror_last_sync_status{namespace="org2",repository="repo2",last_error_reason="auth_failed"} 0
 ```
 
-**Type:** Gauge  
+**Type:** Gauge
 **Labels:**
 - `namespace`: Organization or user namespace
 - `repository`: Repository name
@@ -97,7 +97,7 @@ quay_repository_mirror_sync_complete{namespace="org1",repository="repo1"} 1
 quay_repository_mirror_sync_complete{namespace="org2",repository="repo2"} 0
 ```
 
-**Type:** Gauge  
+**Type:** Gauge
 **Labels:**
 - `namespace`: Organization or user namespace
 - `repository`: Repository name
@@ -122,7 +122,7 @@ quay_repository_mirror_sync_failures_total{namespace="org1",repository="repo1",r
 quay_repository_mirror_sync_failures_total{namespace="org2",repository="repo2",reason="auth_failed"} 7
 ```
 
-**Type:** Counter  
+**Type:** Counter
 **Labels:**
 - `namespace`: Organization or user namespace
 - `repository`: Repository name
@@ -158,8 +158,8 @@ topk(5, sum by (reason) (quay_repository_mirror_sync_failures_total))
 quay_repository_mirror_workers_active 5
 ```
 
-**Type:** Gauge  
-**Description:** Number of currently active mirror worker processes.
+**Type:** Gauge
+**Description:** Set to **1** in each Quay process while a `RepoMirrorWorker` is running (see `workers/repomirrorworker/repomirrorworker.py`). Prometheus should scrape every mirror worker target; **`sum(quay_repository_mirror_workers_active)`** across those targets approximates the number of active worker processes.
 
 **Use Cases:**
 - Verify worker processes are running
@@ -174,7 +174,7 @@ quay_repository_mirror_workers_active 5
 quay_repository_mirror_last_sync_timestamp{namespace="org1",repository="repo1"} 1697385600
 ```
 
-**Type:** Gauge  
+**Type:** Gauge
 **Labels:**
 - `namespace`: Organization or user namespace
 - `repository`: Repository name
@@ -202,7 +202,7 @@ quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository=
 quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository="repo1",le="+Inf"} 100
 ```
 
-**Type:** Histogram  
+**Type:** Histogram
 **Labels:**
 - `namespace`: Organization or user namespace
 - `repository`: Repository name
@@ -223,7 +223,7 @@ quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository=
 histogram_quantile(0.95, rate(quay_repository_mirror_sync_duration_seconds_bucket[5m]))
 
 # Average sync duration per repository
-rate(quay_repository_mirror_sync_duration_seconds_sum[5m]) / 
+rate(quay_repository_mirror_sync_duration_seconds_sum[5m]) /
 rate(quay_repository_mirror_sync_duration_seconds_count[5m])
 ```
 
@@ -237,7 +237,7 @@ rate(quay_repository_mirror_sync_duration_seconds_count[5m])
 quay_repository_rows_unmirrored 42
 ```
 
-**Type:** Gauge  
+**Type:** Gauge
 **Description:** Number of repositories in the database that have not yet been mirrored. This metric is maintained for backward compatibility.
 
 ---
@@ -246,9 +246,9 @@ quay_repository_rows_unmirrored 42
 
 ### Endpoint Details
 
-**Path:** `/v1/repository/mirror/health`  
-**Method:** GET  
-**Authentication:** Required (fresh login)  
+**Path:** `/v1/repository/mirror/health`
+**Method:** GET
+**Authentication:** Required (fresh login)
 **Response Format:** JSON
 
 ### HTTP Status Codes
@@ -268,6 +268,8 @@ quay_repository_rows_unmirrored 42
 
 The JSON field `tags_pending` is the sum of `quay_repository_mirror_pending_tags` samples in **this** process’s Prometheus registry. On typical deployments the API does not run the mirror worker, so that sum is often `0` unless metrics are shared with the worker process.
 
+The `workers.active` field is `quay_repository_mirror_workers_active` from **this** process’s registry (again often `0` on API-only pods). `workers.configured` is **`REPO_MIRROR_WORKER_REPLICAS`** when that config is set; otherwise it mirrors `workers.active` (both from the same in-process gauge). When `REPO_MIRROR_WORKER_REPLICAS` is set and exceeds `workers.active` while at least one enabled mirror exists, the response includes a warning issue and `healthy` may be `false` (HTTP **503**).
+
 All `repositories` totals (`total`, `syncing`, `completed`, `failed`, `never_run`) and the optional `repositories.details` list include **enabled** mirror configurations only; disabled mirrors are omitted.
 
 ### Response Schema
@@ -278,6 +280,8 @@ All `repositories` totals (`total`, `syncing`, `completed`, `failed`, `never_run
 {
   "healthy": true,
   "workers": {
+    "active": 1,
+    "configured": 1,
     "status": "healthy"
   },
   "repositories": {
@@ -299,6 +303,8 @@ All `repositories` totals (`total`, `syncing`, `completed`, `failed`, `never_run
 {
   "healthy": false,
   "workers": {
+    "active": 3,
+    "configured": 5,
     "status": "degraded"
   },
   "repositories": {
@@ -336,12 +342,14 @@ When `detailed=true` is specified:
 
 Each `repositories.details[]` item includes `last_sync`, which is either an ISO-8601 UTC timestamp string ending in `Z` or **`null`**. The API reads `quay_repository_mirror_last_sync_timestamp` from the in-process Prometheus registry in `endpoints/api/mirrorhealth.py`; when that metric has no sample for the repo in this process (typical when the mirror worker runs elsewhere), `last_sync` is `null`. Clients must treat the field as nullable.
 
-The `workers.status` field summarizes **repository mirror** health (derived from mirror row state), not mirror worker process counts.
+The `workers.status` field reflects aggregate health: repository mirror row state plus optional replica mismatch when `REPO_MIRROR_WORKER_REPLICAS` is configured.
 
 ```json
 {
   "healthy": true,
   "workers": {
+    "active": 1,
+    "configured": 1,
     "status": "healthy"
   },
   "repositories": {
@@ -555,7 +563,7 @@ histogram_quantile(0.95, rate(quay_repository_mirror_sync_duration_seconds_bucke
 histogram_quantile(0.99, rate(quay_repository_mirror_sync_duration_seconds_bucket[5m]))
 
 # Average duration by repository
-rate(quay_repository_mirror_sync_duration_seconds_sum{namespace="myorg"}[5m]) / 
+rate(quay_repository_mirror_sync_duration_seconds_sum{namespace="myorg"}[5m]) /
 rate(quay_repository_mirror_sync_duration_seconds_count{namespace="myorg"}[5m])
 ```
 

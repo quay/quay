@@ -8,12 +8,13 @@ Provides health status and monitoring information for repository mirroring opera
 import logging
 from datetime import datetime, timedelta, timezone
 
+from peewee import Case, fn
+from prometheus_client import REGISTRY
+
 import features
+from app import app
 from auth.auth_context import get_authenticated_user
-from auth.permissions import (
-    OrganizationMemberPermission,
-    UserAdminPermission,
-)
+from auth.permissions import OrganizationMemberPermission, UserAdminPermission
 from data import model
 from data.database import (
     RepoMirrorConfig,
@@ -34,9 +35,7 @@ from endpoints.api import (
     show_if,
 )
 from endpoints.exception import NotFound, Unauthorized
-from peewee import Case, fn
 from util.parsing import truthy_bool
-from prometheus_client import REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +102,27 @@ def _get_pending_tags_total(namespace=None):
     except Exception as ex:
         logger.debug("Unable to read pending tags from registry: %s", ex)
     return int(total) if total == int(total) else total
+
+
+def _get_mirror_workers_active_value():
+    """
+    Read quay_repository_mirror_workers_active from this process's Prometheus registry.
+
+    The repository mirror worker sets this to 1 while RepoMirrorWorker is running; API
+    processes typically report 0 unless they embed the worker.
+    """
+    try:
+        for metric in REGISTRY.collect():
+            if metric.name != "quay_repository_mirror_workers_active":
+                continue
+            for sample in metric.samples:
+                if sample.name != "quay_repository_mirror_workers_active":
+                    continue
+                return int(sample.value)
+            break
+    except Exception as ex:
+        logger.debug("Unable to read mirror workers active gauge from registry: %s", ex)
+    return 0
 
 
 def _mirror_rows_query(namespace=None):
@@ -328,12 +348,33 @@ def get_mirror_health_data(
                 },
             )
 
-    # Summarizes repository mirror health only; not mirror worker process counts.
+    replicas = app.config.get("REPO_MIRROR_WORKER_REPLICAS")
+    active_workers = _get_mirror_workers_active_value()
+    configured_workers = replicas if replicas is not None else active_workers
+
+    if replicas is not None and total_repos > 0 and active_workers < replicas:
+        healthy = False
+        issues.insert(
+            0,
+            {
+                "severity": "warning",
+                "message": (
+                    f"{replicas - active_workers} mirror worker(s) are not reporting in this "
+                    f"process (REPO_MIRROR_WORKER_REPLICAS={replicas}, "
+                    f"quay_repository_mirror_workers_active={active_workers})"
+                ),
+                "timestamp": _utc_z_timestamp(now),
+            },
+        )
+
+    # workers.status: aggregate health (repository states and optional replica mismatch).
     workers_status = "healthy" if healthy else "degraded"
 
     result = {
         "healthy": healthy,
         "workers": {
+            "active": active_workers,
+            "configured": configured_workers,
             "status": workers_status,
         },
         "repositories": {
