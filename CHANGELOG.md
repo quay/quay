@@ -3,8 +3,23 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.12/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.12.17"></a>
+## [v3.12.17] - 2026-04-16
+### NO-ISSUE: Chore(Deps)
+- [33de94ec](https://github.com/quay/quay/commit/33de94ece5afdb5b2746139ca89625113a913770): Regenerate requirements-build.txt for redhat-3.12 ([#5781](https://github.com/quay/quay/issues/5781))
+### PROJQUAY-11007: Deps
+- [c007b344](https://github.com/quay/quay/commit/c007b344c3f8dcaf98eb7af862075491d01b7f17): Bump pgx to v5 [quay-3.12] ([#5713](https://github.com/quay/quay/issues/5713))
+### [Redhat-3.12] PROJQUAY-11210
+- [7ebe2a73](https://github.com/quay/quay/commit/7ebe2a73e2389c908c487be7ab283ed065ee7509): fix CVE-2026-29074 ([#5759](https://github.com/quay/quay/issues/5759))
+### [Redhat-3.12] PROJQUAY-11317: Deps
+- [458355e0](https://github.com/quay/quay/commit/458355e0874744a83c15a0bfe72ee1e6f31f51f9): updated pyOpenSSL to 26.0.0 ([#5720](https://github.com/quay/quay/issues/5720))
+### [Redhat-3.12] PROJQUAY-11338: Fix(Config-Tool)
+- [f109ae4a](https://github.com/quay/quay/commit/f109ae4a62f2042835f2f797bdcdba920d7f7337): remove malformed struct tag space on DistributedStorageArgs.Signature ([#5776](https://github.com/quay/quay/issues/5776))
+
 <a name="v3.12.16"></a>
-## [v3.12.16] - 2026-03-31
+## [v3.12.16] - 2026-04-03
+### PROJQUAY-10805
+- [245f4b29](https://github.com/quay/quay/commit/245f4b293881e89ef379f75dac521d2d4efa352d): add callback URL validation to export action logs ([#5672](https://github.com/quay/quay/issues/5672))
 ### PROJQUAY-10995: Chore
 - [dd306523](https://github.com/quay/quay/commit/dd30652308b3387f312c6090b14720a3b3b62bab): fix CVE-2026-30922 in pyasn1 ([#5577](https://github.com/quay/quay/issues/5577))
 ### [Redhat-3.12] Deps
@@ -13,6 +28,8 @@
 - [a1c99231](https://github.com/quay/quay/commit/a1c99231ecce31a847d61ae0bf129080929c604c): upgrade of jsrsasign to 11.1.1 (PROJQUAY-11046) ([#5559](https://github.com/quay/quay/issues/5559))
 ### [Redhat-3.12] PROJQUAY-10946: Chore(Deps)
 - [ffab4b46](https://github.com/quay/quay/commit/ffab4b461deaad8614ef03283db003d9b9994579): bump authlib from 1.6.7 to 1.6.9 ([#5432](https://github.com/quay/quay/issues/5432))
+### [Redhat-3.12] PROJQUAY-11082: Deps
+- [64bc2760](https://github.com/quay/quay/commit/64bc27600a5622ab8a505b9fb1d110d934361adf): updated immutable version to 5.1.5 ([#5642](https://github.com/quay/quay/issues/5642))
 
 <a name="v3.12.15"></a>
 ## [v3.12.15] - 2026-03-11
@@ -720,6 +737,17 @@
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
 
+<a name="v3.10.20"></a>
+## [v3.10.20] - 2026-04-02
+### PROJQUAY-10994: Chore
+- [0d6087a3](https://github.com/quay/quay/commit/0d6087a3a1a59c1ff25b90090f067c18f1d0bf7e): fix CVE-2026-30922 in pyasn1 ([#5578](https://github.com/quay/quay/issues/5578))
+### [Redhat-3.10] Deps
+- [0e4baa1f](https://github.com/quay/quay/commit/0e4baa1f47909b63d597df2cf4dbced9fd3e8160): regenerate requirements-build.txt (PROJQUAY-10910) ([#5622](https://github.com/quay/quay/issues/5622))
+- [4f411672](https://github.com/quay/quay/commit/4f41167230120f4f7de116327463ca778871d659): upgrade of PyJWT to 2.12.0 (PROJQUAY-10910) ([#5570](https://github.com/quay/quay/issues/5570))
+- [65cb071a](https://github.com/quay/quay/commit/65cb071ad2a59871a62c13c3fc9b67bc87094a68): upgrade of jsrsasign to 11.1.1 (PROJQUAY-11041) ([#5560](https://github.com/quay/quay/issues/5560))
+### [Redhat-3.10] PROJQUAY-10811
+- [4b8c0f01](https://github.com/quay/quay/commit/4b8c0f01f696e4a9c83ade8b790f920d4006e083): add callback URL validation to export action logs ([#5675](https://github.com/quay/quay/issues/5675))
+
 <a name="v3.10.19"></a>
 ## [v3.10.19] - 2026-03-20
 ### [Redhat-3.10] Chore
@@ -1284,6 +1312,19 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.20"></a>
+## [v3.9.20] - 2026-04-02
+### PROJQUAY-11160: Chore
+- [0a7e2651](https://github.com/quay/quay/commit/0a7e265172bc30532254f152b72ddea6823609b8): fix CVE-2026-30922 in pyasn1 ([#5612](https://github.com/quay/quay/issues/5612))
+### [Redhat-3.9] Deps
+- [ec0e22e6](https://github.com/quay/quay/commit/ec0e22e63b4b855ad8a13d8fe643ff4505b0b0f3): regenerate requirements-build.txt (PROJQUAY-10916) ([#5649](https://github.com/quay/quay/issues/5649))
+- [ac49c5b1](https://github.com/quay/quay/commit/ac49c5b1f3473fa2f4ff191db2a74187bcda9b71): upgrade of PyJWT to 2.12.0 (PROJQUAY-10916) ([#5571](https://github.com/quay/quay/issues/5571))
+- [188954a0](https://github.com/quay/quay/commit/188954a0240afc75e695fdd35e0bdddbf5a41d06): upgrade of jsrsasign to 11.1.1 (PROJQUAY-11068) ([#5553](https://github.com/quay/quay/issues/5553))
+### [Redhat-3.9] PROJQUAY-10812
+- [313892d2](https://github.com/quay/quay/commit/313892d23e6977a0dcaf1e222372808712466c2b): add callback URL validation to export action logs ([#5676](https://github.com/quay/quay/issues/5676))
+### [Redhat-3.9] PROJQUAY-10946: Chore(Deps)
+- [98fddb62](https://github.com/quay/quay/commit/98fddb62acd98dfc2b998e4a89b54ff2a5741ee3): bump authlib from 1.6.7 to 1.6.9 ([#5434](https://github.com/quay/quay/issues/5434))
 
 <a name="v3.9.19"></a>
 ## [v3.9.19] - 2026-03-11
@@ -2937,7 +2978,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.16...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.17...HEAD
+[v3.12.17]: https://github.com/quay/quay/compare/v3.12.16...v3.12.17
 [v3.12.16]: https://github.com/quay/quay/compare/v3.12.15...v3.12.16
 [v3.12.15]: https://github.com/quay/quay/compare/v3.12.14...v3.12.15
 [v3.12.14]: https://github.com/quay/quay/compare/v3.12.13...v3.12.14
@@ -2968,7 +3010,8 @@
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.19...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.20...v3.11.0
+[v3.10.20]: https://github.com/quay/quay/compare/v3.10.19...v3.10.20
 [v3.10.19]: https://github.com/quay/quay/compare/v3.10.18...v3.10.19
 [v3.10.18]: https://github.com/quay/quay/compare/v3.10.17...v3.10.18
 [v3.10.17]: https://github.com/quay/quay/compare/v3.10.16...v3.10.17
@@ -2988,7 +3031,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.19...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.20...v3.10.0
+[v3.9.20]: https://github.com/quay/quay/compare/v3.9.19...v3.9.20
 [v3.9.19]: https://github.com/quay/quay/compare/v3.9.18...v3.9.19
 [v3.9.18]: https://github.com/quay/quay/compare/v3.9.17...v3.9.18
 [v3.9.17]: https://github.com/quay/quay/compare/v3.9.16...v3.9.17
