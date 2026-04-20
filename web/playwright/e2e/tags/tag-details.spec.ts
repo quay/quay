@@ -41,6 +41,7 @@ test.describe('Tag Details Page', {tag: ['@tags', '@container']}, () => {
     const tags = await api.getTags(testRepo.namespace, testRepo.name, {
       specificTag: 'latest',
     });
+    expect(tags.tags.length).toBeGreaterThan(0);
     latestDigest = tags.tags[0].manifest_digest;
   });
 
@@ -67,8 +68,8 @@ test.describe('Tag Details Page', {tag: ['@tags', '@container']}, () => {
     );
     await expect(authenticatedPage.getByTestId('modified')).not.toBeEmpty();
     await expect(
-      authenticatedPage.getByTestId('digest-clipboardcopy'),
-    ).toContainText(latestDigest);
+      authenticatedPage.getByTestId('digest-clipboardcopy').locator('input'),
+    ).toHaveValue(latestDigest);
     await expect(authenticatedPage.getByTestId('size')).toHaveText(
       /[\d.]+\s*[kKMG]?B/,
     );
@@ -123,11 +124,11 @@ test.describe('Tag Details Page', {tag: ['@tags', '@container']}, () => {
     const archSelector = authenticatedPage.getByText(/linux on amd64/i);
     await expect(archSelector).toBeVisible();
 
-    // Capture initial digest
-    const initialDigest =
-      (await authenticatedPage
-        .getByTestId('digest-clipboardcopy')
-        .textContent()) ?? '';
+    // Capture initial digest from the ClipboardCopy input
+    const initialDigest = await authenticatedPage
+      .getByTestId('digest-clipboardcopy')
+      .locator('input')
+      .inputValue();
 
     // Switch to arm64
     await archSelector.click();
@@ -135,8 +136,8 @@ test.describe('Tag Details Page', {tag: ['@tags', '@container']}, () => {
 
     // Verify digest changed
     await expect(
-      authenticatedPage.getByTestId('digest-clipboardcopy'),
-    ).not.toHaveText(initialDigest);
+      authenticatedPage.getByTestId('digest-clipboardcopy').locator('input'),
+    ).not.toHaveValue(initialDigest);
   });
 });
 
@@ -145,6 +146,7 @@ test.describe(
   {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
   () => {
     let testRepo: {namespace: string; name: string; fullName: string};
+    let scanStatus = 'queued';
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
       test.setTimeout(180000);
@@ -171,6 +173,7 @@ test.describe(
 
       // Wait for Clair to scan the image (poll until status != queued)
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
+      expect(tags.tags.length).toBeGreaterThan(0);
       const digest = tags.tags[0].manifest_digest;
       const deadline = Date.now() + 120000;
       while (Date.now() < deadline) {
@@ -180,12 +183,19 @@ test.describe(
             testRepo.name,
             digest,
           );
-          if (sec.status !== 'queued') break;
+          scanStatus = sec.status;
+          if (scanStatus !== 'queued') break;
         } catch (e: unknown) {
           // 404 expected until Clair indexes the manifest; rethrow others
           if (e instanceof Error && !e.message.includes('404')) throw e;
         }
         await new Promise((r) => setTimeout(r, 5000));
+      }
+
+      if (scanStatus === 'queued') {
+        throw new Error(
+          'Clair scan did not complete within the 120s deadline',
+        );
       }
     });
 
@@ -202,6 +212,11 @@ test.describe(
     test('vulnerability badge navigates to security report tab', async ({
       authenticatedPage,
     }) => {
+      test.skip(
+        scanStatus !== 'scanned',
+        `Clair scan status is "${scanStatus}", cannot test vulnerability badge`,
+      );
+
       await authenticatedPage.goto(
         `/repository/${testRepo.fullName}/tag/latest`,
       );
