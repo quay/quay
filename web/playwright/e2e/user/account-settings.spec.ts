@@ -485,7 +485,8 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
       // Creating tokens requires @require_fresh_login (FRESH_LOGIN_TIMEOUT = 10m).
       // Long-running test suites may trigger the "Please Verify" re-auth modal.
       // Handle it by entering the known test password before proceeding.
-      const credentialsModal = authenticatedPage.getByTestId('credentials-modal');
+      const credentialsModal =
+        authenticatedPage.getByTestId('credentials-modal');
       const freshPasswordInput = authenticatedPage.locator('#fresh-password');
       await expect(credentialsModal.or(freshPasswordInput)).toBeVisible({
         timeout: 15_000,
