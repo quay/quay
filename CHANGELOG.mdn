@@ -3,13 +3,33 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.21"></a>
+## [v3.9.21] - 2026-04-16
+### NO-ISSUE: Chore(Deps)
+- [edf0a7a7](https://github.com/quay/quay/commit/edf0a7a7d1e0719f4c6d3e8f4b2349166e72ae57): Regenerate requirements-build.txt for redhat-3.9 ([#5783](https://github.com/quay/quay/issues/5783))
+### [Quay-3.9] Deps
+- [49e8359f](https://github.com/quay/quay/commit/49e8359f5726911b820a13adb31657bd1aed13bf): Bump pgx to v5 (PROJQUAY-11071) ([#5719](https://github.com/quay/quay/issues/5719))
+### [Redhat-3.9] Chore
+- [366ae10c](https://github.com/quay/quay/commit/366ae10c74c0d0cec2f404af408cb1f193553de8): remove unused jwt image ([#5718](https://github.com/quay/quay/issues/5718))
+### [Redhat-3.9] Deps
+- [1a8f9267](https://github.com/quay/quay/commit/1a8f9267c5ebad787cb7ebbd671ac8988e30770f): updated pyOpenSSL to 26.0.0 (PROJQUAY-11032) ([#5723](https://github.com/quay/quay/issues/5723))
+### [Redhat-3.9] PROJQUAY-10929
+- [439287c3](https://github.com/quay/quay/commit/439287c3d62740da74286ee2384290c275cc0ee7): fix CVE-2026-29074 ([#5761](https://github.com/quay/quay/issues/5761))
+### [Redhat-3.9] PROJQUAY-11087: Deps
+- [383f3239](https://github.com/quay/quay/commit/383f3239156f4d242ab43781c8c43a65030a0274): updated immutable version to 5.1.5  ([#5644](https://github.com/quay/quay/issues/5644))
+### [Redhat-3.9] PROJQUAY-11350: Fix(Config-Tool)
+- [76ecf255](https://github.com/quay/quay/commit/76ecf255b3476460978852611451ba67cf8bee21): remove malformed struct tag space on DistributedStorageArgs.Signature ([#5787](https://github.com/quay/quay/issues/5787))
+
 <a name="v3.9.20"></a>
-## [v3.9.20] - 2026-03-30
+## [v3.9.20] - 2026-04-02
 ### PROJQUAY-11160: Chore
 - [0a7e2651](https://github.com/quay/quay/commit/0a7e265172bc30532254f152b72ddea6823609b8): fix CVE-2026-30922 in pyasn1 ([#5612](https://github.com/quay/quay/issues/5612))
 ### [Redhat-3.9] Deps
+- [ec0e22e6](https://github.com/quay/quay/commit/ec0e22e63b4b855ad8a13d8fe643ff4505b0b0f3): regenerate requirements-build.txt (PROJQUAY-10916) ([#5649](https://github.com/quay/quay/issues/5649))
 - [ac49c5b1](https://github.com/quay/quay/commit/ac49c5b1f3473fa2f4ff191db2a74187bcda9b71): upgrade of PyJWT to 2.12.0 (PROJQUAY-10916) ([#5571](https://github.com/quay/quay/issues/5571))
 - [188954a0](https://github.com/quay/quay/commit/188954a0240afc75e695fdd35e0bdddbf5a41d06): upgrade of jsrsasign to 11.1.1 (PROJQUAY-11068) ([#5553](https://github.com/quay/quay/issues/5553))
+### [Redhat-3.9] PROJQUAY-10812
+- [313892d2](https://github.com/quay/quay/commit/313892d23e6977a0dcaf1e222372808712466c2b): add callback URL validation to export action logs ([#5676](https://github.com/quay/quay/issues/5676))
 ### [Redhat-3.9] PROJQUAY-10946: Chore(Deps)
 - [98fddb62](https://github.com/quay/quay/commit/98fddb62acd98dfc2b998e4a89b54ff2a5741ee3): bump authlib from 1.6.7 to 1.6.9 ([#5434](https://github.com/quay/quay/issues/5434))
 
@@ -1665,7 +1685,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.20...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.21...HEAD
+[v3.9.21]: https://github.com/quay/quay/compare/v3.9.20...v3.9.21
 [v3.9.20]: https://github.com/quay/quay/compare/v3.9.19...v3.9.20
 [v3.9.19]: https://github.com/quay/quay/compare/v3.9.18...v3.9.19
 [v3.9.18]: https://github.com/quay/quay/compare/v3.9.17...v3.9.18
