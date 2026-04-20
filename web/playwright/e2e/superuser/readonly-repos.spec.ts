@@ -15,7 +15,20 @@ test.describe(
       // Navigate to top-level Repositories page as readonly superuser
       await readonlyPage.goto('/repository');
 
-      // Assert: repo from other user's org is visible
+      // Wait for the search input to appear (signals the page is ready), then
+      // filter by org name so we assert against a single-org subset rather
+      // than the full cross-registry list.  In parallel CI runs many other
+      // workers create repos simultaneously, making the global list large
+      // enough to paginate our newly-created repo off the first visible page
+      // within the 15 s assertion timeout.  Filtering by the unique org name
+      // (generated with uniqueName()) guarantees only one org's repos remain.
+      // The search filter on /repository matches "namespace/name", so the org
+      // name prefix is sufficient (see RepositoryState.ts searchReposFilterState).
+      const searchInput = readonlyPage.getByPlaceholder(/Search by name/i);
+      await expect(searchInput).toBeVisible({timeout: 15000});
+      await searchInput.fill(org.name);
+
+      // Assert: repo from other user's org is visible in the filtered results
       await expect(readonlyPage.getByText(repo.fullName)).toBeVisible({
         timeout: 15000,
       });

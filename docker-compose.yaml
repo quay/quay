@@ -48,6 +48,10 @@ services:
     user: nobody
     container_name: quay-redis
     image: docker.io/library/redis:latest
+    # Disable RDB persistence: the default image runs as 'nobody' which cannot
+    # write snapshot files to /data, causing stop-writes-on-bgsave-error to
+    # block all writes and break the /health/endtoend check.
+    command: ["redis-server", "--save", ""]
     ports:
       - "6379:6379"
 
