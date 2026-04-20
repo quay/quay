@@ -319,9 +319,9 @@ poetry-core==2.3.2 \
     # via
     #   qrcode
     #   rsa
-pybind11==3.0.3 \
-    --hash=sha256:00471cdb816882c484708bc5dde80815c8c11cea540ab2cc6410f5ddea434755 \
-    --hash=sha256:fb5f8e4a64946b4dcc0451c83a8c384f803bc0a62dd1ba02f199e97dbc9aad4c
+pybind11==3.0.4 \
+    --hash=sha256:3286b59c8a774b9ee650169302dd5a4eedc30a8617905a0560dd8ee44775130c \
+    --hash=sha256:961720ee652da51d531b7b2451a6bd2bc042b0106e6d9baa48ecb7d58034ce63
     # via pillow
 pycparser==2.21 \
     --hash=sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9 \
