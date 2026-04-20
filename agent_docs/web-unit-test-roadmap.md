@@ -3,7 +3,7 @@
 Prioritized checklist of testable areas in `web/src/`, with effort estimates and implementation guidance.
 
 **Stack:** Vitest + React Testing Library + happy-dom
-**Current state:** 239 tests passing across 14 files. Phases 1-4 complete. Playwright covers E2E (58 tests).
+**Current state:** 530 tests passing across 41 files. Phases 1-5 complete. Playwright covers E2E (58 tests).
 **Target:** ~620 unit tests across 7 phases
 
 ## Completed: Framework Setup
@@ -65,37 +65,53 @@ Prioritized checklist of testable areas in `web/src/`, with effort estimates and
 
 ---
 
-## Phase 5: API Resource Layer (~110 tests)
+## Phase 5: API Resource Layer — COMPLETE (291 tests)
 
-29 untested resource files (~346 exported functions). Most follow the same pattern: thin axios wrapper with optional data transformation. Create a shared mock factory and template tests.
+27 resource files tested. All use `vi.mock('src/libs/axios')` module-level mocking with a shared `mockResponse()` helper per file.
 
-**High priority (test first):**
+**High priority (4 files, 120 tests):**
 
-| File | Est. Tests | Notes |
-|------|-----------|-------|
-| `src/resources/RepositoryResource.ts` | ~18 | Pagination recursion in `fetchAllRepos`, batching logic, `fetchAllReposAsSuperUser` truncation, `isNonNormalState` |
-| `src/resources/TagResource.ts` | ~20 | Many operations, sparse manifest handling, complex types |
-| `src/resources/OrganizationResource.ts` | ~18 | `OrgDeleteError` class, bulk operations, Promise.allSettled error aggregation |
-| `src/resources/UserResource.ts` | ~12 | Auth-related transforms, entity type enumeration |
+| File | Tests | Status |
+|------|-------|--------|
+| `src/resources/RepositoryResource.ts` | 38 | **Done** — `isNonNormalState`, pagination recursion, batching, superuser truncation, CRUD, bulk operations with `BulkOperationError`, permission type mapping, transitive permissions with 404 handling |
+| `src/resources/TagResource.ts` | 34 | **Done** — `getTags` with URL params, label CRUD, bulk delete with force mode, manifest retrieval, tag operations, pull statistics error paths |
+| `src/resources/OrganizationResource.ts` | 20 | **Done** — org CRUD, `OrgDeleteError`, superuser paths, bulk delete with `Promise.allSettled`, `updateOrgSettings` null key stripping |
+| `src/resources/UserResource.ts` | 28 | **Done** — `getEntityKind` enumeration, entity search with robot prefix stripping/filtering, user CRUD, `UserDeleteError`/`ApplicationTokenError` detail extraction, app token CRUD |
 
-**Medium priority (batch with template):**
+**Medium priority (9 files, 114 tests):**
 
-| File | Est. Tests | Notes |
-|------|-----------|-------|
-| `src/resources/QuotaResource.ts` | ~8 | Endpoint routing by viewMode, abort/cancel handling, 404/403 fallback |
-| `src/resources/AuthResource.ts` | ~4 | Auth state management |
-| `src/resources/RobotsResource.ts` | ~4 | Robot account CRUD |
-| `src/resources/BuildResource.ts` | ~4 | Build trigger/log operations |
-| `src/resources/MirroringResource.ts` | ~4 | Mirror config CRUD |
-| `src/resources/DefaultPermissionResource.ts` | ~3 | Permission CRUD |
-| `src/resources/MembersResource.ts` | ~3 | Member management |
-| `src/resources/NotificationResource.ts` | ~3 | Notification CRUD |
-| `src/resources/TeamResources.ts` | ~3 | Team management |
+| File | Tests | Status |
+|------|-------|--------|
+| `src/resources/QuotaResource.ts` | 21 | **Done** — viewMode-based URL routing (self/org/superuser), 404/403 fallback, `bytesToHumanReadable`/`humanReadableToBytes` conversions |
+| `src/resources/AuthResource.ts` | 10 | **Done** — `GlobalAuthState` management, login/logout, CSRF token |
+| `src/resources/RobotsResource.ts` | 14 | **Done** — Robot CRUD with org prefix stripping, federation config, bulk operations |
+| `src/resources/BuildResource.ts` | 17 | **Done** — Build CRUD, trigger management, `startBuild` ref type routing, `fetchBuildLogs` with archived redirect, parallel superuser log fetch |
+| `src/resources/MirroringResource.ts` | 11 | **Done** — Mirror config CRUD, `timestampToISO`/`timestampFromISO`, status labels |
+| `src/resources/DefaultPermissionResource.ts` | 10 | **Done** — Permission CRUD, `addRepoPermissionToTeam` with console.error (no throw), bulk delete |
+| `src/resources/MembersResource.ts` | 9 | **Done** — Member/collaborator CRUD, parallel fetch |
+| `src/resources/NotificationResource.ts` | 12 | **Done** — Notification CRUD with eventConfig transform, `isNotificationDisabled` (>=3 failures) |
+| `src/resources/TeamResources.ts` | 10 | **Done** — Team CRUD, `updateTeamRepoPerm` with role='none' delete path |
 
-**Low priority (1-2 tests per endpoint):**
-Remaining ~16 resources: `BillingResource`, `CapabilitiesResource`, `ChangeLogResource`, `GlobalMessagesResource`, `OAuthApplicationResource`, `ProxyCacheResource`, `RegistrySizeResource`, `ServiceKeysResource`, `TeamSyncResource`, `RepositoryAutoPruneResource`, `NamespaceAutoPruneResource`, `ImmutabilityPolicyResource`, `OrgMirrorResource`, `LabelsResource`, `QuayConfig`, `ExternalLoginResource`.
+**Low priority (14 files, 57 tests):**
 
-**Effort:** ~4-5 days. Create `createMockAxios()` utility once, reuse everywhere.
+| File | Tests | Status |
+|------|-------|--------|
+| `src/resources/BillingResource.ts` | 8 | **Done** |
+| `src/resources/OrgMirrorResource.ts` | 10 | **Done** |
+| `src/resources/ImmutabilityPolicyResource.ts` | 6 | **Done** |
+| `src/resources/OAuthApplicationResource.ts` | 5 | **Done** |
+| `src/resources/TeamSyncResource.ts` | 5 | **Done** |
+| `src/resources/ServiceKeysResource.ts` | 4 | **Done** |
+| `src/resources/NamespaceAutoPruneResource.ts` | 4 | **Done** |
+| `src/resources/RepositoryAutoPruneResource.ts` | 3 | **Done** |
+| `src/resources/ProxyCacheResource.ts` | 2 | **Done** |
+| `src/resources/RegistrySizeResource.ts` | 2 | **Done** |
+| `src/resources/GlobalMessagesResource.ts` | 4 | **Done** |
+| `src/resources/CapabilitiesResource.ts` | 1 | **Done** |
+| `src/resources/ChangeLogResource.ts` | 1 | **Done** |
+| `src/resources/QuayConfig.ts` | 1 | **Done** |
+
+**Notes:** `LabelsResource.ts` and `ExternalLoginResource.ts` do not exist in the resources directory. No shared `createMockAxios()` utility was needed — the per-file `vi.mock` + `mockResponse()` pattern is simple and self-contained.
 
 ---
 
@@ -202,13 +218,13 @@ Leave these to Playwright E2E:
 | 2 | Error handling + cookies | 31 | 1 day | **Complete** |
 | 3 | Contexts | 38 | 1 day | **Complete** |
 | 4 | Complex hooks | 59 | 2-3 days | **Complete** |
-| 5 | API resources (29 files) | ~110 | 4-5 days | Pending |
+| 5 | API resources (27 files) | 291 | 4-5 days | **Complete** |
 | 6 | Standard hooks (79 files) | ~140 | 4-5 days | Pending |
 | 7 | Components (100 files) | ~140 | 5-6 days | **In progress** — LoadingPage (6) done |
 
-**Current: 239 tests passing across 14 files | Target: ~620 tests**
+**Current: 530 tests passing across 41 files | Target: ~620 tests**
 
-Phases 1-4 are complete and deliver the most value per test written. Phases 5-7 are incremental and can be spread over sprints. Remaining effort: ~13-16 days.
+Phases 1-5 are complete. Phases 6-7 are incremental and can be spread over sprints. Remaining effort: ~9-11 days.
 
 ---
 
@@ -216,8 +232,8 @@ Phases 1-4 are complete and deliver the most value per test written. Phases 5-7 
 
 1. [x] **`createTestQueryClient()`** — Fresh QueryClient per render, in `src/test-utils.tsx`
 2. [x] **`customRender()`** — Wraps in RecoilRoot + UIProvider + QueryClientProvider, in `src/test-utils.tsx`
-3. [ ] **`createMockAxios()`** — Factory for axios-mock-adapter setup (Phase 5)
-4. [ ] **Mock data factories** — e.g., `createMockOrg()`, `createMockRepo()`, `createMockTag()` (Phase 5)
+3. [x] **Axios mocking pattern** — `vi.mock('src/libs/axios')` + per-file `mockResponse()` helper (Phase 5). No shared factory needed — pattern is simple and self-contained.
+4. [ ] **Mock data factories** — e.g., `createMockOrg()`, `createMockRepo()`, `createMockTag()` (Phase 6-7, if needed)
 5. [ ] **`renderWithRoute()`** — MemoryRouter wrapper for components using `useNavigate`/`useParams` (Phase 7, if needed)
 
 ---
@@ -226,11 +242,11 @@ Phases 1-4 are complete and deliver the most value per test written. Phases 5-7 
 
 Coverage is collected via V8 (`@vitest/coverage-v8`). No enforcement thresholds initially.
 
-**Baseline after Phase 4 (239 tests):** `src/libs/` 84%, `src/contexts/` 100%, `src/hooks/` 4%, `src/resources/` 6%, `src/components/` <1%, overall ~4%.
+**Baseline after Phase 5 (530 tests):** `src/libs/` 84%, `src/contexts/` 100%, `src/hooks/` 4%, `src/resources/` ~55-60%, `src/components/` <1%, overall ~8%.
 
 **Ratchet-up plan:**
 1. After Phase 4 (done): baseline measured. `src/libs/` and `src/contexts/` already meet targets.
-2. After Phase 5: `src/resources/` should reach ~55-60%
+2. After Phase 5 (done): `src/resources/` ~55-60%
 3. After Phase 6: `src/hooks/` should reach ~45-50%
 4. After Phase 7: `src/components/` should reach ~40-45%, overall ~50-55%
 5. Target: 80% on `src/libs/`, 60% on `src/hooks/`, 40% overall
