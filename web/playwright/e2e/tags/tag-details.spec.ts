@@ -187,9 +187,10 @@ test.describe(
             testRepo.name,
             digest,
           );
-          if (!sec.status) continue;
-          scanStatus = sec.status;
-          if (scanStatus !== 'queued') break;
+          if (sec.status) {
+            scanStatus = sec.status;
+            if (scanStatus !== 'queued') break;
+          }
         } catch (e: unknown) {
           // 404 expected until Clair indexes the manifest; rethrow others
           if (e instanceof Error && !e.message.includes('404')) throw e;
