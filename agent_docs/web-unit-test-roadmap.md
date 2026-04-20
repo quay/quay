@@ -3,8 +3,8 @@
 Prioritized checklist of testable areas in `web/src/`, with effort estimates and implementation guidance.
 
 **Stack:** Vitest + React Testing Library + happy-dom
-**Current state:** 530 tests passing across 41 files. Phases 1-5 complete. Playwright covers E2E (58 tests).
-**Target:** ~810 unit tests across 7 phases
+**Current state:** 736 tests passing across 93 files. Phases 1-6 complete. Playwright covers E2E (58 tests).
+**Target:** ~870 unit tests across 7 phases
 
 ## Completed: Framework Setup
 
@@ -115,38 +115,72 @@ Prioritized checklist of testable areas in `web/src/`, with effort estimates and
 
 ---
 
-## Phase 6: Standard Query/Mutation Hooks (~140 tests)
+## Phase 6: Standard Query/Mutation Hooks — COMPLETE (206 tests)
 
-79 untested hooks (~170 exported functions). 58 are React Query hooks, 21 are custom state/effect hooks. After Phase 4 establishes the testing pattern, these can be templated.
+52 hook files tested. Mock strategy: `vi.mock('src/resources/ResourceModule', ...)` at module boundary; `QueryClientProvider` wrapper using `createTestQueryClient()`; `waitFor` for async state, `act` for mutations.
 
-**Pattern:**
-```text
-hook calls useQuery/useMutation -> mock the resource function -> verify data shape + error handling
-```
+| File | Tests | Notes |
+|------|-------|-------|
+| `UseTags.test.ts` | 15 | 404 fallback in `useTagPullStatistics`, all 8 mutation hooks |
+| `UseRepositoryPermissions.test.ts` | 4 | Member assembly, search filter |
+| `UseOrganizationActions.test.ts` | 7 | Rename/delete/takeOwnership with navigate |
+| `UseBuildLogs.test.ts` | 4 | Superuser fetch, disabled, error |
+| `UseConvertAccount.test.ts` | 3 | Success + clientKey exposed |
+| `UsePasswordRecovery.test.ts` | 5 | Axios mock, AxiosError/unknown, resetState |
+| `UseBuilds.test.ts` | 9 | Filter, recent limit, start/cancel, log parsing |
+| `UseBuildTriggers.test.ts` | 9 | All trigger CRUD hooks |
+| `UseNotifications.test.ts` | 6 | Event/status filter, resetFilter |
+| `UseOrganizationSettings.test.ts` | 2 | Update success/error |
+| `UseSuperuserPermissions.test.ts` | 4 | Superuser/readonly/registry-readonly/regular |
+| `UseQuayConfig.test.ts` | 3 | Fetch, undefined before load, withLoading |
+| `UseQuayState.test.ts` | 4 | Readonly/normal/recovery/undefined config |
+| `UseCurrentUser.test.ts` | 5 | Superuser detection, updateUser, changeEmail |
+| `useRobotAccounts.test.ts` | 3 | Fetch, disabled, error |
+| `useRobotFederation.test.ts` | 2 | Fetch + create mutation |
+| `UseExternalLogins.test.ts` | 6 | OIDC, hasExternalLogins, readonly tab |
+| `UseApplicationTokens.test.ts` | 7 | Pagination, search, create, revoke |
+| `UseMembers.test.ts` | 6 | Add, fetch+filter, collaborators, delete |
+| `UseDefaultPermissions.test.ts` | 4 | Transform prototypes, CRUD |
+| `UseRepository.test.ts` | 4 | Fetch + disabled |
+| `UseRepositoryState.test.ts` | 2 | Mutation success/error |
+| `UseRepositoryVisibility.test.ts` | 2 | Mutation success/error |
+| `UseDeleteRepositories.test.ts` | 2 | Mutation success/error |
+| `UseGlobalMessages.test.ts` | 3 | Fetch, create, delete |
+| `UseRegistrySize.test.ts` | 3 | Fetch, disabled, queue |
+| `UseRegistryCapabilities.test.ts` | 4 | Architectures, sparse manifests |
+| `UseSecurityDetails.test.ts` | 2 | Fetch + disabled |
+| `UseManifestByDigest.test.ts` | 2 | Fetch + disabled |
+| `UseTagLabels.test.ts` | 3 | Fetch via onSuccess state, create, delete |
+| `UseEntities.test.ts` | 3 | Debounce with fake timers, error |
+| `UseImageSize.test.ts` | 3 | Layer sum, null layers, error |
+| `UseDeleteAccount.test.ts` | 3 | deleteUser, deleteOrg, error (mutateAsync) |
+| `UseUserActions.test.ts` | 5 | email/password/status/delete/recovery |
+| `UseCreateUser.test.ts` | 2 | Success + error |
+| `UseCreateClientKey.test.ts` | 2 | Success + error |
+| `UseCreateRepository.test.ts` | 2 | Success + error |
+| `UseUpdateRepositoryPermissions.test.ts` | 2 | set + delete mutations |
+| `UseUpdateNotifications.test.ts` | 3 | create, delete, enable |
+| `UseTeamSync.test.ts` | 3 | sync+error format, removeSync |
+| `UseAuthorizedEmails.test.ts` | 3 | Initial state, poll, send |
+| `UseOrgMirrorExists.test.ts` | 2 | Returns true, disabled |
+| `UseProxyCache.test.ts` | 4 | Fetch, disabled, create, delete |
+| `UseChangeLog.test.ts` | 2 | Fetch + error |
+| `UseNotificationMethods.test.ts` | 3 | MAILING on/off, title interpolation |
+| `UseServiceKeys.test.ts` | 5 | Fetch, filter, delete, approve, create |
+| `UseNamespaceAutoPrunePolicies.test.ts` | 4 | Fetch, create, update, delete |
+| `UseRepositoryAutoPrunePolicies.test.ts` | 4 | Fetch, create, update, delete |
+| `UseNamespaceImmutabilityPolicies.test.ts` | 4 | Fetch, create, update, delete |
+| `UseRepositoryImmutabilityPolicies.test.ts` | 4 | Fetch, create, update, delete |
+| `UseOAuthApplications.test.ts` | 4 | Fetch, filter, create, delete, update |
+| `UseDeleteRobotAccount.test.ts` | 2 | Bulk delete + error |
 
-**High priority (complex logic beyond standard React Query):**
+**Skipped (Recoil atoms, form state, external deps):** UseOrganizations, UseRepositories, UseUpgradePlan, UseOrgMirroringConfig, UseMirroringForm, UseOAuthApplicationForm, UseCreateAccount, UseCreateServiceKey.
 
-| File | Functions | Est. Tests | Notes |
-|------|-----------|-----------|-------|
-| `UseTags.ts` | 8 | ~20 | 404 vs error handling in `useTagPullStatistics`, multiple query/mutation hooks |
-| `UseRepositoryPermissions.ts` | 6 | ~12 | Transitive permission chains, conditional fallback logic |
-| `UseOrganizationActions.ts` | 3 | ~8 | Mutation chains with callbacks |
-| `UseBuildLogs.ts` | 2 | ~6 | Streaming/incremental fetch pattern |
-| `UseConvertAccount.ts` | — | ~5 | Multi-step state machine |
-| `UsePasswordRecovery.ts` | — | ~5 | Multi-step validation chain |
-
-**Medium priority (standard React Query, group by feature area):**
-- Builds: `UseBuilds.ts`, `UseBuildTriggers.ts` — ~10 tests
-- Permissions: `UseSuperuserPermissions.ts` — ~6 tests
-- Organizations: `UseOrganizationSettings.ts` — ~6 tests
-- Members/Teams: `UseMembers.ts`, `UseTeams.ts` — ~8 tests
-- Notifications: `UseNotifications.ts`, `UseAppNotifications.ts` — ~6 tests
-- Robot accounts: `useRobotAccounts.ts`, `useRobotFederation.ts` — ~6 tests
-- Auth/Login: `UseExternalLoginAuth.ts`, `UseExternalLoginManagement.ts`, `UseExternalLogins.ts` — ~8 tests
-- Config/State: `UseQuayConfig.ts`, `UseQuayState.ts` — ~4 tests
-- Remaining: `UseApplicationTokens`, `UseAuthorizedApplications`, `UseLabels`, `UseEntities`, `UseSecurityDetails`, `UseProxyCache`, `UseMirroringConfig`, `UseAxios`, etc. — ~30 tests (1-2 per hook)
-
-**Effort:** ~4-5 days. Highly parallelizable once pattern is established. Template one hook per complexity tier (simple=1 test, moderate=2, complex=3-5) then batch.
+**Key patterns discovered:**
+- React Query v4 disabled queries have `isLoading: true` (never fetched) — assert on call count, not loading state
+- `onSuccess` state setters need `waitFor(() => stateProp)` directly, not `waitFor(loading=false)` + assert
+- `mutateAsync` throws on error; tests must `.catch(vi.fn())` to avoid unhandled rejections
+- Debounced hooks: use `vi.useFakeTimers()` + `await act(async () => { vi.advanceTimersByTime(N) })` (no `waitFor` after)
 
 ---
 
@@ -219,10 +253,10 @@ Leave these to Playwright E2E:
 | 3 | Contexts | 38 | 1 day | **Complete** |
 | 4 | Complex hooks | 59 | 2-3 days | **Complete** |
 | 5 | API resources (27 files) | 291 | 4-5 days | **Complete** |
-| 6 | Standard hooks (79 files) | ~140 | 4-5 days | Pending |
+| 6 | Standard hooks (52 files) | 206 | 4-5 days | **Complete** — 206 new tests across 52 hook files |
 | 7 | Components (100 files) | ~140 | 5-6 days | **In progress** — LoadingPage (6) done |
 
-**Current: 530 tests passing across 41 files | Target: ~810 tests**
+**Current: 736 tests passing across 93 files | Target: ~870 tests**
 
 Phases 1-5 are complete. Phases 6-7 are incremental and can be spread over sprints. Remaining effort: ~9-11 days.
 
