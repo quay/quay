@@ -143,6 +143,15 @@ describe('DefaultPermissionResource', () => {
           {id: 'p2', createdBy: 'bob'},
         ] as any),
       ).resolves.toBeUndefined();
+      expect(axios.delete).toHaveBeenCalledTimes(2);
+      expect(axios.delete).toHaveBeenNthCalledWith(
+        1,
+        '/api/v1/organization/myorg/prototypes/p1',
+      );
+      expect(axios.delete).toHaveBeenNthCalledWith(
+        2,
+        '/api/v1/organization/myorg/prototypes/p2',
+      );
     });
   });
 });

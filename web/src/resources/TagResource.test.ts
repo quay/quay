@@ -46,12 +46,23 @@ function mockResponse(data: unknown, status = 200): AxiosResponse {
 }
 
 describe('TagResource', () => {
+  const originalLocation = window.location;
+
   beforeEach(() => {
     localStorage.clear();
     // Reset window.location.search for getTags tests
     Object.defineProperty(window, 'location', {
       value: {search: '', protocol: 'https:', host: 'localhost'},
       writable: true,
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', {
+      value: originalLocation,
+      writable: true,
+      configurable: true,
     });
   });
 

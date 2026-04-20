@@ -30,6 +30,7 @@ function mockResponse(data: unknown, status = 200): AxiosResponse {
 
 describe('OAuthApplicationResource', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     localStorage.clear();
   });
 

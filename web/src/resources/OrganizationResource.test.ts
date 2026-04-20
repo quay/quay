@@ -146,8 +146,12 @@ describe('OrganizationResource', () => {
         .mockResolvedValueOnce(mockResponse(null, 204));
 
       await bulkDeleteOrganizations(['org1', 'org2'], true);
-      expect(vi.mocked(axios.delete).mock.calls[0][0]).toContain('superuser');
-      expect(vi.mocked(axios.delete).mock.calls[1][0]).toContain('superuser');
+      expect(axios.delete).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/superuser/organizations/org1'),
+      );
+      expect(axios.delete).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/superuser/organizations/org2'),
+      );
     });
   });
 

@@ -4,7 +4,7 @@ Prioritized checklist of testable areas in `web/src/`, with effort estimates and
 
 **Stack:** Vitest + React Testing Library + happy-dom
 **Current state:** 530 tests passing across 41 files. Phases 1-5 complete. Playwright covers E2E (58 tests).
-**Target:** ~620 unit tests across 7 phases
+**Target:** ~810 unit tests across 7 phases
 
 ## Completed: Framework Setup
 
@@ -75,34 +75,34 @@ Prioritized checklist of testable areas in `web/src/`, with effort estimates and
 |------|-------|--------|
 | `src/resources/RepositoryResource.ts` | 38 | **Done** — `isNonNormalState`, pagination recursion, batching, superuser truncation, CRUD, bulk operations with `BulkOperationError`, permission type mapping, transitive permissions with 404 handling |
 | `src/resources/TagResource.ts` | 34 | **Done** — `getTags` with URL params, label CRUD, bulk delete with force mode, manifest retrieval, tag operations, pull statistics error paths |
-| `src/resources/OrganizationResource.ts` | 20 | **Done** — org CRUD, `OrgDeleteError`, superuser paths, bulk delete with `Promise.allSettled`, `updateOrgSettings` null key stripping |
-| `src/resources/UserResource.ts` | 28 | **Done** — `getEntityKind` enumeration, entity search with robot prefix stripping/filtering, user CRUD, `UserDeleteError`/`ApplicationTokenError` detail extraction, app token CRUD |
+| `src/resources/OrganizationResource.ts` | 16 | **Done** — org CRUD, `OrgDeleteError`, superuser paths, bulk delete with `Promise.allSettled`, `updateOrgSettings` null key stripping |
+| `src/resources/UserResource.ts` | 32 | **Done** — `getEntityKind` enumeration, entity search with robot prefix stripping/filtering, user CRUD, `UserDeleteError`/`ApplicationTokenError` detail extraction, app token CRUD |
 
-**Medium priority (9 files, 114 tests):**
+**Medium priority (9 files, 117 tests):**
 
 | File | Tests | Status |
 |------|-------|--------|
-| `src/resources/QuotaResource.ts` | 21 | **Done** — viewMode-based URL routing (self/org/superuser), 404/403 fallback, `bytesToHumanReadable`/`humanReadableToBytes` conversions |
+| `src/resources/QuotaResource.ts` | 26 | **Done** — viewMode-based URL routing (self/org/superuser), 404/403 fallback, `bytesToHumanReadable`/`humanReadableToBytes` conversions |
 | `src/resources/AuthResource.ts` | 10 | **Done** — `GlobalAuthState` management, login/logout, CSRF token |
 | `src/resources/RobotsResource.ts` | 14 | **Done** — Robot CRUD with org prefix stripping, federation config, bulk operations |
-| `src/resources/BuildResource.ts` | 17 | **Done** — Build CRUD, trigger management, `startBuild` ref type routing, `fetchBuildLogs` with archived redirect, parallel superuser log fetch |
-| `src/resources/MirroringResource.ts` | 11 | **Done** — Mirror config CRUD, `timestampToISO`/`timestampFromISO`, status labels |
-| `src/resources/DefaultPermissionResource.ts` | 10 | **Done** — Permission CRUD, `addRepoPermissionToTeam` with console.error (no throw), bulk delete |
-| `src/resources/MembersResource.ts` | 9 | **Done** — Member/collaborator CRUD, parallel fetch |
+| `src/resources/BuildResource.ts` | 16 | **Done** — Build CRUD, trigger management, `startBuild` ref type routing, `fetchBuildLogs` with archived redirect, parallel superuser log fetch |
+| `src/resources/MirroringResource.ts` | 10 | **Done** — Mirror config CRUD, `timestampToISO`/`timestampFromISO`, status labels |
+| `src/resources/DefaultPermissionResource.ts` | 9 | **Done** — Permission CRUD, `addRepoPermissionToTeam` with console.error (no throw), bulk delete |
+| `src/resources/MembersResource.ts` | 7 | **Done** — Member/collaborator CRUD, parallel fetch |
 | `src/resources/NotificationResource.ts` | 12 | **Done** — Notification CRUD with eventConfig transform, `isNotificationDisabled` (>=3 failures) |
-| `src/resources/TeamResources.ts` | 10 | **Done** — Team CRUD, `updateTeamRepoPerm` with role='none' delete path |
+| `src/resources/TeamResources.ts` | 13 | **Done** — Team CRUD, `updateTeamRepoPerm` with role='none' delete path |
 
 **Low priority (14 files, 57 tests):**
 
 | File | Tests | Status |
 |------|-------|--------|
-| `src/resources/BillingResource.ts` | 8 | **Done** |
-| `src/resources/OrgMirrorResource.ts` | 10 | **Done** |
+| `src/resources/BillingResource.ts` | 9 | **Done** |
+| `src/resources/OrgMirrorResource.ts` | 9 | **Done** |
 | `src/resources/ImmutabilityPolicyResource.ts` | 6 | **Done** |
 | `src/resources/OAuthApplicationResource.ts` | 5 | **Done** |
 | `src/resources/TeamSyncResource.ts` | 5 | **Done** |
 | `src/resources/ServiceKeysResource.ts` | 4 | **Done** |
-| `src/resources/NamespaceAutoPruneResource.ts` | 4 | **Done** |
+| `src/resources/NamespaceAutoPruneResource.ts` | 5 | **Done** |
 | `src/resources/RepositoryAutoPruneResource.ts` | 3 | **Done** |
 | `src/resources/ProxyCacheResource.ts` | 2 | **Done** |
 | `src/resources/RegistrySizeResource.ts` | 2 | **Done** |
@@ -222,7 +222,7 @@ Leave these to Playwright E2E:
 | 6 | Standard hooks (79 files) | ~140 | 4-5 days | Pending |
 | 7 | Components (100 files) | ~140 | 5-6 days | **In progress** — LoadingPage (6) done |
 
-**Current: 530 tests passing across 41 files | Target: ~620 tests**
+**Current: 530 tests passing across 41 files | Target: ~810 tests**
 
 Phases 1-5 are complete. Phases 6-7 are incremental and can be spread over sprints. Remaining effort: ~9-11 days.
 
