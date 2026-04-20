@@ -541,8 +541,10 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
     const calcResp = await adminClient.post('/api/v1/superuser/registrysize/');
     expect([201, 202]).toContain(calcResp.status());
 
-    // Poll until size is available (replaces cy.wait(180000)).
-    // Return null for not-ready so the assertion cannot pass prematurely.
+    // Poll until the calculation completes and size_bytes is a valid number.
+    // Do NOT require size_bytes > 0: CI only creates repos/orgs via API and
+    // never pushes image blobs, so the registry legitimately has 0 bytes.
+    // Asserting > 0 caused guaranteed 180 s timeouts on every clean CI run.
     await expect
       .poll(
         async () => {
@@ -552,7 +554,9 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
           if (sizeResp.status() !== 200) return null;
           const body = await sizeResp.json();
           const bytes = body.size_bytes;
-          return typeof bytes === 'number' && bytes > 0 ? bytes : null;
+          // Return the value only once the backend has finished calculating
+          // (size_bytes will be null/undefined until the async job completes).
+          return typeof bytes === 'number' ? bytes : null;
         },
         {
           message: 'Waiting for registry size calculation to complete',
@@ -560,7 +564,7 @@ test.describe('Registry Status & Size', {tag: ['@api']}, () => {
           intervals: [5_000, 10_000, 15_000],
         },
       )
-      .toBeGreaterThan(0);
+      .toBeGreaterThanOrEqual(0);
   });
 });
 
