@@ -766,7 +766,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `superuser-usage-logs.cy.ts` | `superuser/usage-logs.spec.ts` | Superuser required, Cypress file deleted |
 | ✅ | `superuser-user-management.cy.ts` | `superuser/user-management.spec.ts` | Superuser required, 29→10 tests consolidated |
 | ✅ | `system-status-banner.cy.ts` | `ui/system-status-banner.spec.ts` | Cypress file deleted |
-| ⬚ | `tag-details.cy.ts` | | |
+| ✅ | `tag-details.cy.ts` | `tags/tag-details.spec.ts` | @tags, @container; vuln badge: @feature:SECURITY_SCANNER, consolidated 6→3 tests, Cypress file deleted |
 | ✅ | `tag-history-deleted-tags.cy.ts` | | Coverage consolidated into other tag tests, Cypress file deleted |
 | ✅ | `tags-expanded-view.cy.ts` | `tags/expanded-view.spec.ts` | @container, consolidated 10→4 tests |
 | ✅ | `tags-signatures.cy.ts` | `tags/signatures.spec.ts` | @container, consolidated 4→1 tests |
