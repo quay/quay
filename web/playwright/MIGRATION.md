@@ -730,7 +730,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `default-permissions.cy.ts` | `organization/default-permissions.spec.ts` | |
 | ✅ | `external-login.cy.ts` | `auth/external-login.spec.ts` | @auth:OIDC, consolidated 6→3 tests, Cypress file deleted |
 | ✅ | `external-scripts.cy.ts` | `ui/external-scripts.spec.ts` | @feature:BILLING |
-| ⬚ | `footer.cy.ts` | | |
+| ✅ | `footer.cy.ts` | `ui/footer.spec.ts` | @ui, consolidated 9→4 tests, no mocks - uses quayConfig fixture for config-conditional assertions, Cypress file deleted |
 | ✅ | `fresh-login-oidc.cy.ts` | `auth/fresh-login-oidc.spec.ts` | @auth:OIDC, consolidated 4→2 tests, Cypress file deleted |
 | ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
 | ✅ | `manage-team-members.cy.ts` | `organization/team-members.spec.ts` | @organization, 7 tests preserved |
@@ -751,7 +751,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `repository-permissions.cy.ts` | `repository/permissions.spec.ts` | Consolidated 6→3 tests |
 | ✅ | `repository-shorthand-navigation.cy.ts` | `repository/shorthand-navigation.spec.ts` | consolidated 11 → 7 tests |
 | ✅ | `repository-state.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated into mirroring tests |
-| ⬚ | `repository-visibility.cy.ts` | | |
+| ✅ | `repository-visibility.cy.ts` | `repository/repository-visibility.spec.ts` | @repository, consolidated 5→2 tests (billing upgrade tests dropped — require Stripe mocking, incompatible with no-mocks policy; billing covered by @feature:BILLING in other specs), Cypress file deleted |
 | ✅ | `robot-accounts.cy.ts` | `organization/robot-accounts.spec.ts` | Consolidated 12→4 tests |
 | ✅ | `security-report.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 11→3 tests, Cypress file deleted |
 | ✅ | `security-scanner-feature-toggle.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 12→3 tests, Cypress file deleted |

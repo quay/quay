@@ -1,0 +1,47 @@
+name: Web Unit Tests
+on:
+  push:
+    branches:
+      - "*"
+      - "!dependabot/*"
+    paths:
+      - "web/**"
+      - ".github/workflows/web-unit-tests.yaml"
+  pull_request:
+    branches:
+      - "*"
+    paths:
+      - "web/**"
+      - ".github/workflows/web-unit-tests.yaml"
+
+jobs:
+  unit-tests:
+    name: Vitest Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js with npm caching
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: cd web && npm ci
+
+      - name: Run unit tests
+        run: cd web && npm test
+
+      - name: Run coverage
+        run: cd web && npm run test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: web/coverage/
+          retention-days: 7

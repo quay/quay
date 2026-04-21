@@ -62,23 +62,21 @@ npm start                # Dev server on http://localhost:9000 (hot-reload)
 MOCK_API=true npm start  # Mock API (no backend required)
 npm run format           # Prettier formatting
 
-# Testing
-npm test                 # Unit tests (watch mode)
-npm run test:integration # Cypress e2e tests (requires app on :9000)
-npm run start:integration # Serve production build for testing
+# Unit Testing (Vitest + React Testing Library)
+npm test                 # Run all unit tests
+npm run test:watch       # Watch mode for development
+npm run test:coverage    # Run with coverage report
+npx vitest run src/libs/utils.test.ts  # Single test file
+
+# E2E Testing (Playwright)
+npm run test:e2e         # Run all Playwright e2e tests
+npm run test:e2e:ui      # Playwright UI mode
+npm run test:api         # API-only tests
 
 # Building
 npm run build            # Production build → dist/
 npm run build-plugin     # OpenShift Console plugin build
 npm run start-plugin     # Plugin dev server
-
-# Database Seeding (for integration tests)
-npm run quay:dump        # Dump current DB state
-npm run quay:seed        # Seed test DB + storage
-
-# Single Test
-npx cypress run --spec "cypress/e2e/test-name.cy.ts"
-npm test -- --testPathPattern=ComponentName
 ```
 
 ## Quay-Specific Patterns
@@ -209,15 +207,28 @@ import type { Repository } from 'src/types/Repository';
 
 ### Testing
 
-**Unit Tests:** Jest + React Testing Library
-- Co-located with source files
-- Mock API calls with `axios-mock-adapter`
+**Unit Tests:** Vitest + React Testing Library + happy-dom
+- Co-located with source files: `Component.test.tsx` next to `Component.tsx`
+- Config: `vitest.config.ts`, setup: `vitest.setup.ts`
+- Custom render wrapper: `src/test-utils.tsx` (provides QueryClient, RecoilRoot, UIProvider)
+- Mock API calls with `axios-mock-adapter` (already in devDependencies)
+- Use `getByRole` queries for accessibility-focused testing
+- See `agent_docs/web-unit-test-roadmap.md` for coverage roadmap
 
-**Integration Tests:** Cypress e2e
-- Located in `cypress/e2e/`
-- Requires running app on `:9000`
-- Backend at `:8080` with seeded test data
-- Base URL configurable in `cypress.config.ts`
+**What to unit test (priority order):**
+1. Pure utility functions (`src/libs/`)
+2. Data transformation logic (`src/resources/` helpers)
+3. Custom hooks (`src/hooks/`) with `renderHook`
+4. Components with branching/validation logic
+
+**What NOT to unit test (use Playwright E2E instead):**
+- Routing, page layouts, auth flows, CSS
+
+**E2E Tests:** Playwright
+- Located in `playwright/e2e/`
+- Config: `playwright.config.ts`
+- Fixtures: `playwright/fixtures.ts`
+- Requires running Quay stack (see CI workflow)
 
 ### Environment Variables
 
