@@ -12,6 +12,8 @@
  */
 
 import {test, expect, uniqueName} from '../../fixtures';
+import {pushImage} from '../../utils/container';
+import {TEST_USERS} from '../../global-setup';
 
 // ---------------------------------------------------------------------------
 // Organization CRUD
@@ -868,6 +870,7 @@ test.describe(
         expect(getBody.upstream_registry).toContain('docker.io');
 
         // Delete proxy cache config
+        // NOTE: Backend returns 201 instead of 204 for DELETE - known issue
         const del = await userClient.delete(
           `/api/v1/organization/${orgName}/proxycache`,
         );
@@ -933,7 +936,7 @@ test.describe(
         );
         expect(list.status()).toBe(200);
         const listBody = await list.json();
-        expect(listBody.policies[0].uuid).toContain(uuid);
+        expect(listBody.policies[0].uuid).toBe(uuid);
 
         // Get by uuid
         const get = await userClient.get(
@@ -941,7 +944,7 @@ test.describe(
         );
         expect(get.status()).toBe(200);
         const getBody = await get.json();
-        expect(getBody.uuid).toContain(uuid);
+        expect(getBody.uuid).toBe(uuid);
 
         // Update
         const update = await userClient.put(
@@ -1137,7 +1140,7 @@ test.describe(
         );
         expect(get.status()).toBe(200);
         const getBody = await get.json();
-        expect(getBody.uuid).toContain(uuid);
+        expect(getBody.uuid).toBe(uuid);
 
         // Update
         const update = await userClient.put(
@@ -1453,6 +1456,22 @@ test.describe(
   'Normal User - Tags and Manifests',
   {tag: ['@api', '@auth:Database', '@container']},
   () => {
+    test('can list tags for an empty repository (returns 200 with no tags)', async ({
+      userClient,
+      api,
+    }) => {
+      const org = await api.organization('usr_org');
+      const repo = await api.repository(org.name, 'usr_repo', 'public');
+
+      const tagR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/`,
+      );
+      // Empty repository returns 200 with an empty tags list
+      expect(tagR.status()).toBe(200);
+      const body = await tagR.json();
+      expect(Array.isArray(body.tags ?? [])).toBe(true);
+    });
+
     test('can list tags on own repo with pushed image', async ({
       userClient,
       api,
@@ -1460,13 +1479,320 @@ test.describe(
       const org = await api.organization('usr_org');
       const repo = await api.repository(org.name, 'usr_repo', 'public');
 
-      // Push an image using podman/docker (tags: latest)
-      // This relies on a container runtime being available
+      await pushImage(
+        org.name,
+        repo.name,
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
       const tagR = await userClient.get(
         `/api/v1/repository/${org.name}/${repo.name}/tag/`,
       );
-      // Empty repo has 200 with empty tags list
       expect(tagR.status()).toBe(200);
+      const body = await tagR.json();
+      const tags: Array<{name: string}> = body.tags ?? [];
+      expect(tags.some((t) => t.name === 'latest')).toBe(true);
+    });
+
+    test('can delete tag on own repo', async ({userClient, api}) => {
+      const org = await api.organization('usr_org');
+      const repo = await api.repository(org.name, 'usr_repo', 'public');
+
+      await pushImage(
+        org.name,
+        repo.name,
+        'deltag',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      const delR = await userClient.delete(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/deltag`,
+      );
+      expect(delR.status()).toBe(204);
+    });
+
+    test('can create (add) a tag on own repo', async ({userClient, api}) => {
+      const org = await api.organization('usr_org');
+      const repo = await api.repository(org.name, 'usr_repo', 'public');
+
+      await pushImage(
+        org.name,
+        repo.name,
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      const listR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/?includeTags=true`,
+      );
+      expect(listR.status()).toBe(200);
+      const listBody = await listR.json();
+      const tags: Array<{name: string; manifest_digest: string}> =
+        listBody.tags ?? [];
+      const latestTag = tags.find((t) => t.name === 'latest');
+      if (!latestTag) throw new Error('Expected latest tag not found');
+      const digest = latestTag.manifest_digest;
+
+      const putR = await userClient.put(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/newtag`,
+        {manifest_digest: digest},
+      );
+      expect(putR.status()).toBe(201);
+    });
+
+    test('can restore a deleted tag on own repo', async ({userClient, api}) => {
+      const org = await api.organization('usr_org');
+      const repo = await api.repository(org.name, 'usr_repo', 'public');
+
+      await pushImage(
+        org.name,
+        repo.name,
+        'restoretag',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      const listR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/?includeTags=true`,
+      );
+      expect(listR.status()).toBe(200);
+      const listBody = await listR.json();
+      const tags: Array<{name: string; manifest_digest: string}> =
+        listBody.tags ?? [];
+      const tag = tags.find((t) => t.name === 'restoretag');
+      if (!tag) throw new Error('Expected restoretag not found');
+      const digest = tag.manifest_digest;
+
+      const delR = await userClient.delete(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/restoretag`,
+      );
+      expect(delR.status()).toBe(204);
+
+      const restoreR = await userClient.post(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/restoretag/restore`,
+        {manifest_digest: digest},
+      );
+      expect(restoreR.status()).toBe(200);
+
+      const verifyR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/`,
+      );
+      expect(verifyR.status()).toBe(200);
+      const verifyBody = await verifyR.json();
+      const restored: Array<{name: string}> = verifyBody.tags ?? [];
+      expect(restored.some((t) => t.name === 'restoretag')).toBe(true);
+    });
+
+    test('can permanently delete (expire) a tag on own repo', async ({
+      userClient,
+      api,
+    }) => {
+      const org = await api.organization('usr_org');
+      const repo = await api.repository(org.name, 'usr_repo', 'public');
+
+      await pushImage(
+        org.name,
+        repo.name,
+        'expiretag',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      const listR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/?includeTags=true`,
+      );
+      expect(listR.status()).toBe(200);
+      const listBody = await listR.json();
+      const tags: Array<{name: string; manifest_digest: string}> =
+        listBody.tags ?? [];
+      const tag = tags.find((t) => t.name === 'expiretag');
+      if (!tag) throw new Error('Expected expiretag not found');
+      const digest = tag.manifest_digest;
+
+      const expireR = await userClient.post(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/expiretag/expire`,
+        {
+          manifest_digest: digest,
+          include_submanifests: true,
+          is_alive: true,
+        },
+      );
+      expect([200, 201]).toContain(expireR.status());
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Manifests
+// ---------------------------------------------------------------------------
+
+test.describe(
+  'Normal User - Manifests',
+  {tag: ['@api', '@auth:Database', '@container']},
+  () => {
+    test('can get manifest digest on own repo', async ({userClient, api}) => {
+      const org = await api.organization('usr_org');
+      const repo = await api.repository(org.name, 'usr_repo', 'public');
+
+      await pushImage(
+        org.name,
+        repo.name,
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      const listR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/?includeTags=true`,
+      );
+      expect(listR.status()).toBe(200);
+      const listBody = await listR.json();
+      const tags: Array<{name: string; manifest_digest: string}> =
+        listBody.tags ?? [];
+      const tag = tags.find((t) => t.name === 'latest');
+      if (!tag) throw new Error('Expected latest tag not found');
+      const digest = tag.manifest_digest;
+
+      const manifestR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}`,
+      );
+      expect(manifestR.status()).toBe(200);
+      const manifestBody = await manifestR.json();
+      expect(manifestBody.digest).toBe(digest);
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Manifest Labels
+// ---------------------------------------------------------------------------
+
+test.describe(
+  'Normal User - Manifest Labels',
+  {tag: ['@api', '@auth:Database', '@container']},
+  () => {
+    test('can add, list, get, and delete labels on own manifest', async ({
+      userClient,
+      api,
+    }) => {
+      const org = await api.organization('usr_org');
+      const repo = await api.repository(org.name, 'usr_repo', 'public');
+
+      await pushImage(
+        org.name,
+        repo.name,
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      const listR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/?includeTags=true`,
+      );
+      expect(listR.status()).toBe(200);
+      const listBody = await listR.json();
+      const tags: Array<{name: string; manifest_digest: string}> =
+        listBody.tags ?? [];
+      const tag = tags.find((t) => t.name === 'latest');
+      if (!tag) throw new Error('Expected latest tag not found');
+      const digest = tag.manifest_digest;
+
+      // Add label
+      const addR = await userClient.post(
+        `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}/labels`,
+        {key: 'env', value: 'prod', media_type: 'text/plain'},
+      );
+      expect(addR.status()).toBe(201);
+
+      // List labels
+      const listLabelsR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}/labels`,
+      );
+      expect(listLabelsR.status()).toBe(200);
+      const labelsBody = await listLabelsR.json();
+      const labels: Array<{id: string; key: string; value: string}> =
+        labelsBody.labels ?? [];
+      const label = labels.find((l) => l.key === 'env' && l.value === 'prod');
+      if (!label) throw new Error('Expected label not found');
+      const labelId = label.id;
+
+      // Get by id
+      const getR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}/labels/${labelId}`,
+      );
+      expect(getR.status()).toBe(200);
+      const getBody = await getR.json();
+      expect(getBody.key).toBe('env');
+      expect(getBody.value).toBe('prod');
+      expect(getBody.id).toBe(labelId);
+
+      // Delete label
+      const deleteR = await userClient.delete(
+        `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}/labels/${labelId}`,
+      );
+      expect(deleteR.status()).toBe(204);
+
+      // Verify deleted
+      const verifyR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}/labels`,
+      );
+      expect(verifyR.status()).toBe(200);
+      const verifyBody = await verifyR.json();
+      const remaining: Array<{id: string}> = verifyBody.labels ?? [];
+      expect(remaining.some((l) => l.id === labelId)).toBe(false);
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Vulnerability Scanning
+// ---------------------------------------------------------------------------
+
+test.describe(
+  'Normal User - Vulnerability Scanning',
+  {tag: ['@api', '@auth:Database', '@container', '@feature:SECURITY_SCANNER']},
+  () => {
+    test('can get security scan status for own manifest', async ({
+      userClient,
+      api,
+    }) => {
+      const org = await api.organization('usr_org');
+      const repo = await api.repository(org.name, 'usr_repo', 'public');
+
+      await pushImage(
+        org.name,
+        repo.name,
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      const listR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/?includeTags=true`,
+      );
+      expect(listR.status()).toBe(200);
+      const listBody = await listR.json();
+      const tags: Array<{name: string; manifest_digest: string}> =
+        listBody.tags ?? [];
+      const tag = tags.find((t) => t.name === 'latest');
+      if (!tag) throw new Error('Expected latest tag not found');
+      const digest = tag.manifest_digest;
+
+      // Verify the security endpoint is accessible and returns a valid status.
+      // In CI without a live Clair instance the scan stays 'queued'; we only
+      // assert that the endpoint responds and the status field is present.
+      const secR = await userClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/manifest/${digest}/security?vulnerabilities=true`,
+      );
+      expect(secR.status()).toBe(200);
+      const secBody = await secR.json();
+      expect(
+        ['queued', 'scanned', 'failed', 'unsupported'].includes(secBody.status),
+      ).toBe(true);
     });
   },
 );
@@ -1715,8 +2041,9 @@ test.describe(
   'Normal User - Sign In',
   {tag: ['@api', '@auth:Database']},
   () => {
-    test('can sign in as normal user', async ({userClient}) => {
-      const r = await userClient.post('/api/v1/signin', {
+    test('can verify authentication as normal user', async ({anonClient}) => {
+      // Use unauthenticated client to verify credential-based sign-in works
+      const r = await anonClient.post('/api/v1/signin', {
         username: 'testuser',
         password: 'password',
       });
