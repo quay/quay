@@ -1139,10 +1139,8 @@ def release_org_mirror_config(
     Release an org mirror config after discovery and update its status.
 
     Calculates next sync_start_date based on sync_interval.
-    Decrements retries on failure, resets on success.
-
-    If discovery is cancelled, the job will not be attempted until manual
-    sync-now is triggered by the user.
+    Decrements retries on failure, resets on success or cancel.
+    Cancel is transitioned to SUCCESS after scheduling the next sync.
 
     Args:
         org_mirror_config: The OrgMirrorConfig to release
@@ -1159,9 +1157,11 @@ def release_org_mirror_config(
     if sync_status == OrgMirrorStatus.FAIL:
         retries = max(0, retries - 1)
 
-    # On success or exhausted retries, schedule next sync
-    if sync_status == OrgMirrorStatus.SUCCESS or (
-        sync_status == OrgMirrorStatus.FAIL and retries < 1
+    # On success, cancel, or exhausted retries, schedule next sync
+    if (
+        sync_status == OrgMirrorStatus.SUCCESS
+        or sync_status == OrgMirrorStatus.CANCEL
+        or (sync_status == OrgMirrorStatus.FAIL and retries < 1)
     ):
         now = datetime.utcnow()
         if org_mirror_config.sync_start_date:
@@ -1177,10 +1177,10 @@ def release_org_mirror_config(
     else:
         next_start_date = org_mirror_config.sync_start_date
 
-    # If cancelled, stop syncing until user triggers sync-now again
+    # After cancel is processed, transition to SUCCESS so the next scheduled
+    # sync proceeds with normal discovery instead of re-entering cancel (PROJQUAY-11027).
     if sync_status == OrgMirrorStatus.CANCEL:
-        next_start_date = None
-        retries = 0
+        sync_status = OrgMirrorStatus.SUCCESS
 
     query = OrgMirrorConfig.update(
         sync_transaction_id=uuid_generator(),
@@ -1363,6 +1363,9 @@ def update_sync_status_to_cancel(org_mirror_config: OrgMirrorConfig) -> Optional
     (ignores transaction ID) since we need to interrupt an active worker.
     This allows cancellation from any status except when already CANCEL.
 
+    Only the current sync is cancelled; sync_start_date is preserved so
+    future scheduled syncs continue normally.
+
     Note: This only updates the config status. The worker will propagate
     CANCEL to associated OrgMirrorRepository entries when it picks up
     the config.
@@ -1380,11 +1383,11 @@ def update_sync_status_to_cancel(org_mirror_config: OrgMirrorConfig) -> Optional
     # Force cancel the config (ignore transaction_id for interrupt).
     # sync_expiration_date is set to now to signal "needs processing" — the worker
     # clears it after propagating CANCEL to repos, preventing re-pickup.
+    # sync_start_date is preserved so that future syncs remain scheduled (PROJQUAY-11027).
     now = datetime.utcnow()
     config_query = OrgMirrorConfig.update(
         sync_transaction_id=uuid_generator(),
         sync_status=OrgMirrorStatus.CANCEL,
-        sync_start_date=None,
         sync_expiration_date=now,
         sync_retries_remaining=0,
     ).where(OrgMirrorConfig.id == org_mirror_config.id)
