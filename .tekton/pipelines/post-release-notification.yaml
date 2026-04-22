@@ -1,0 +1,78 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: post-release-notification
+  labels:
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: release
+spec:
+  description: >-
+    Post-release notification pipeline. Runs as a finalPipeline after the
+    managed release (RPA) stage completes. Sends a Slack notification when
+    the release has failed.
+  params:
+    - name: release
+      type: string
+      description: The namespaced name (namespace/name) of the Release
+    - name: releasePlan
+      type: string
+      description: The namespaced name (namespace/name) of the ReleasePlan
+    - name: snapshot
+      type: string
+      description: The namespaced name (namespace/name) of the Snapshot
+  tasks:
+    - name: check-release-status
+      taskSpec:
+        results:
+          - name: status
+            description: The release status (Succeeded or Failed)
+        params:
+          - name: release
+            type: string
+        steps:
+          - name: get-status
+            image: quay.io/konflux-ci/release-service-utils:e633d51cd41d73e4b3310face21bb980af7a662f
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+
+              RELEASE_NAME="${1##*/}"
+              RELEASE_NS="${1%%/*}"
+
+              STATUS=$(kubectl get release.appstudio.redhat.com "${RELEASE_NAME}" -n "${RELEASE_NS}" \
+                -o jsonpath='{.status.conditions[?(@.type=="Released")].reason}')
+
+              if [ -z "${STATUS}" ]; then
+                STATUS="Unknown"
+              fi
+
+              echo -n "${STATUS}" | tee "$(results.status.path)"
+            args:
+              - "$(params.release)"
+      params:
+        - name: release
+          value: "$(params.release)"
+    - name: slack-webhook-notification
+      params:
+        - name: message
+          value: "Release failed: $(params.release) (ReleasePlan: $(params.releasePlan), Snapshot: $(params.snapshot))"
+        - name: secret-name
+          value: slack-quay-oncall
+        - name: key-name
+          value: quay-team
+      taskRef:
+        params:
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1@sha256:3eff579c511d6c5e846175920e8f184a87337e142bbc4c30107e76bda4a325cb
+          - name: name
+            value: slack-webhook-notification
+          - name: kind
+            value: task
+        resolver: bundles
+      when:
+        - input: "$(tasks.check-release-status.results.status)"
+          operator: notin
+          values: ["Succeeded"]
