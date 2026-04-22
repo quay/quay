@@ -81,6 +81,46 @@ test.describe(
       ).toBeVisible();
     });
 
+    test('supports nested repository names', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('nestedorg');
+      const repo = await api.repositoryWithName(org.name, 'nested/path/myrepo');
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}`);
+
+      // Verify we landed on the correct repo page
+      await expect(
+        authenticatedPage.getByRole('tab', {
+          name: 'Information',
+          selected: true,
+        }),
+      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Pull Commands')).toBeVisible();
+    });
+
+    test('supports repository name containing "build"', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('buildnameorg');
+      const repo = await api.repositoryWithName(
+        org.name,
+        'images/build/release',
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}`);
+
+      await expect(
+        authenticatedPage.getByRole('tab', {
+          name: 'Information',
+          selected: true,
+        }),
+      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Pull Commands')).toBeVisible();
+    });
+
     test(
       'non-writable repo hides tag actions',
       {tag: ['@container']},
