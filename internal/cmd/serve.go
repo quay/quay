@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -25,6 +26,8 @@ import (
 	"github.com/quay/quay/internal/registry"
 )
 
+const defaultHostname = "localhost"
+
 func runServe(args []string) int {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	configPath := fs.String("config", "", "path to config.yaml (default: $QUAY_CONFIG or ./config.yaml)")
@@ -44,14 +47,15 @@ func runServe(args []string) int {
 	}
 
 	// Resolve storage path from config.
-	storagePath, err := resolveStoragePath(cfg)
+	resolvedConfig := resolveConfigPath(*configPath)
+	storagePath, err := resolveStoragePath(cfg, resolvedConfig)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
 
 	// Open SQLite for auth queries.
-	dbPath, err := loadDBPath(resolveConfigPath(*configPath))
+	dbPath, err := loadDBPath(resolvedConfig)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
@@ -62,32 +66,14 @@ func runServe(args []string) int {
 		fmt.Fprintf(os.Stderr, "error opening database: %v\n", err)
 		return 1
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Build distribution config.
-	distCfg := &configuration.Configuration{
-		Storage: configuration.Storage{
-			"filesystem": configuration.Parameters{
-				"rootdirectory": storagePath,
-			},
-			"delete": configuration.Parameters{
-				"enabled": true,
-			},
-		},
-		Auth: configuration.Auth{
-			"quaydb": configuration.Parameters{
-				"realm": cfg.ServerHostname,
-				"db":    db,
-			},
-		},
-	}
-
-	// Resolve listen address.
 	listenAddr := ":8443"
 	if *addr != "" {
 		listenAddr = *addr
 	}
-	distCfg.HTTP.Addr = listenAddr
+	distCfg := buildDistConfig(storagePath, cfg, db, listenAddr)
 
 	// Root context canceled on SIGINT/SIGTERM.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -104,28 +90,61 @@ func runServe(args []string) int {
 
 	// TLS setup.
 	useHTTPS := cfg.PreferredURLScheme == "https"
-	var certPath, keyPath string
-
-	if useHTTPS {
-		certDir := filepath.Dir(dbPath)
-		certPath = filepath.Join(certDir, "ssl.cert")
-		keyPath = filepath.Join(certDir, "ssl.key")
-
-		if !registry.CertFilesExist(certPath, keyPath) {
-			hostname := cfg.ServerHostname
-			if hostname == "" {
-				hostname = "localhost"
-			}
-			fmt.Fprintf(os.Stderr, "generating self-signed certificate for %s\n", hostname)
-			if err := registry.GenerateSelfSignedCert(hostname, certPath, keyPath); err != nil {
-				fmt.Fprintf(os.Stderr, "error generating certificate: %v\n", err)
-				return 1
-			}
-		}
-
-		srv.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	certPath, keyPath, err := ensureServeTLS(cfg, dbPath, useHTTPS, srv)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
 	}
 
+	return startAndWait(ctx, stop, srv, useHTTPS, certPath, keyPath, listenAddr, storagePath, dbPath)
+}
+
+func buildDistConfig(storagePath string, cfg *config.Config, db *sql.DB, listenAddr string) *configuration.Configuration {
+	distCfg := &configuration.Configuration{
+		Storage: configuration.Storage{
+			"filesystem": configuration.Parameters{
+				"rootdirectory": storagePath,
+			},
+			"delete": configuration.Parameters{
+				"enabled": true,
+			},
+		},
+		Auth: configuration.Auth{
+			"quaydb": configuration.Parameters{
+				"realm": cfg.ServerHostname,
+				"db":    db,
+			},
+		},
+	}
+	distCfg.HTTP.Addr = listenAddr
+	return distCfg
+}
+
+func ensureServeTLS(cfg *config.Config, dbPath string, useHTTPS bool, srv *http.Server) (certPath, keyPath string, err error) {
+	if !useHTTPS {
+		return "", "", nil
+	}
+
+	certDir := filepath.Dir(dbPath)
+	certPath = filepath.Join(certDir, "ssl.cert")
+	keyPath = filepath.Join(certDir, "ssl.key")
+
+	if !registry.CertFilesExist(certPath, keyPath) {
+		hostname := cfg.ServerHostname
+		if hostname == "" {
+			hostname = defaultHostname
+		}
+		fmt.Fprintf(os.Stderr, "generating self-signed certificate for %s\n", hostname)
+		if err = registry.GenerateSelfSignedCert(hostname, certPath, keyPath); err != nil {
+			return "", "", fmt.Errorf("generating certificate: %w", err)
+		}
+	}
+
+	srv.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	return certPath, keyPath, nil
+}
+
+func startAndWait(ctx context.Context, stop context.CancelFunc, srv *http.Server, useHTTPS bool, certPath, keyPath, listenAddr, storagePath, dbPath string) int {
 	errCh := make(chan error, 1)
 	go func() {
 		scheme := "http"
@@ -169,8 +188,9 @@ func runServe(args []string) int {
 }
 
 // resolveStoragePath extracts the filesystem storage path from config.
+// Relative paths are resolved against the config file's directory.
 // Only one storage location is supported (multi-location is a full Quay feature).
-func resolveStoragePath(cfg *config.Config) (string, error) {
+func resolveStoragePath(cfg *config.Config, configPath string) (string, error) {
 	if len(cfg.DistributedStorageConfig) == 0 {
 		return "", fmt.Errorf("DISTRIBUTED_STORAGE_CONFIG is not set")
 	}
@@ -182,6 +202,9 @@ func resolveStoragePath(cfg *config.Config) (string, error) {
 		path, ok := entry.Params["storage_path"].(string)
 		if !ok || path == "" {
 			return "", fmt.Errorf("DISTRIBUTED_STORAGE_CONFIG.%s: missing storage_path", id)
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(filepath.Dir(configPath), path)
 		}
 		return path, nil
 	}
