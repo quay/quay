@@ -169,12 +169,15 @@ func runServe(args []string) int {
 }
 
 // resolveStoragePath extracts the filesystem storage path from config.
+// Only one storage location is supported (multi-location is a full Quay feature).
 func resolveStoragePath(cfg *config.Config) (string, error) {
 	if len(cfg.DistributedStorageConfig) == 0 {
 		return "", fmt.Errorf("DISTRIBUTED_STORAGE_CONFIG is not set")
 	}
+	if len(cfg.DistributedStorageConfig) > 1 {
+		return "", fmt.Errorf("multiple storage locations not supported; use a single entry in DISTRIBUTED_STORAGE_CONFIG")
+	}
 
-	// Use the first storage entry.
 	for id, entry := range cfg.DistributedStorageConfig {
 		path, ok := entry.Params["storage_path"].(string)
 		if !ok || path == "" {

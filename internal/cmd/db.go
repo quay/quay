@@ -172,15 +172,25 @@ func runDBUpgrade(args []string) int {
 		return 1
 	}
 
-	// TODO: When migration files exist in dbcore/migrations/, walk the chain
-	// from current version to target. For now, report that the schema is current.
+	// Check if the database is already at the target version.
+	if ver == dbcore.TargetVersion {
+		if *dryRun {
+			fmt.Fprintf(os.Stdout, "Current version: %s\nNo pending migrations.\n", ver)
+		} else {
+			fmt.Fprintf(os.Stdout, "Schema version: %s (up to date)\n", ver)
+		}
+		return 0
+	}
+
+	// Version mismatch — database needs upgrading.
 	if *dryRun {
-		fmt.Fprintf(os.Stdout, "Current version: %s\nNo pending migrations.\n", ver)
+		fmt.Fprintf(os.Stdout, "Current version: %s\nTarget version:  %s\n", ver, dbcore.TargetVersion)
+		// TODO: List pending migration files when they exist.
 		return 0
 	}
 
 	// Backup before any upgrade attempt.
-	backupPath, err := dbcore.BackupDatabase(dbPath)
+	backupPath, err := dbcore.BackupDatabase(db, dbPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating backup: %v\n", err)
 		return 1
@@ -194,10 +204,12 @@ func runDBUpgrade(args []string) int {
 	}
 
 	// TODO: Apply migration chain here once migration files are generated.
-	fmt.Fprintf(os.Stdout, "Schema version: %s (up to date)\n", ver)
+	// For now, fail if the version doesn't match — migrations are not yet available.
+	fmt.Fprintf(os.Stderr, "error: database version %s does not match binary version %s\n", ver, dbcore.TargetVersion)
+	fmt.Fprintln(os.Stderr, "migration files not yet available for this version transition")
 
 	// Clean old backups, keep last 3.
 	dbcore.CleanOldBackups(dbPath, 3)
 
-	return 0
+	return 1
 }

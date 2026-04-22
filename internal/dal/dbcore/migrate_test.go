@@ -32,9 +32,11 @@ func TestInitDatabase(t *testing.T) {
 
 	// Verify tables were created.
 	var tableCount int
-	db.QueryRowContext(ctx,
+	if err := db.QueryRowContext(ctx,
 		"SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
-	).Scan(&tableCount)
+	).Scan(&tableCount); err != nil {
+		t.Fatalf("count tables: %v", err)
+	}
 
 	if tableCount < 100 {
 		t.Errorf("expected 100+ tables, got %d", tableCount)
@@ -115,14 +117,18 @@ func TestBackupAndClean(t *testing.T) {
 	dbPath := filepath.Join(dir, "test.db")
 
 	// Create the file to back up.
-	os.WriteFile(dbPath, []byte("test"), 0o644)
+	if err := os.WriteFile(dbPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write db: %v", err)
+	}
 
 	// Create 4 backups with distinct names (timestamps within the same second
 	// would collide, so we create them manually).
 	var paths []string
 	for i := 0; i < 4; i++ {
 		p := filepath.Join(dir, fmt.Sprintf("test.db.backup-2026010%dT120000Z", i))
-		os.WriteFile(p, []byte("backup"), 0o644)
+		if err := os.WriteFile(p, []byte("backup"), 0o644); err != nil {
+			t.Fatalf("write backup %d: %v", i, err)
+		}
 		paths = append(paths, p)
 	}
 
