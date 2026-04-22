@@ -5,12 +5,34 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 )
 
+// runDBPublic handles the user-facing "quay db" subcommand (version only).
+func runDBPublic(args []string) int {
+	if len(args) == 0 {
+		dbPublicUsage()
+		return 1
+	}
+
+	switch args[0] {
+	case versionLiteral:
+		return runDBVersion(args[1:])
+	case helpLiteral, "-h", helpFlag:
+		dbPublicUsage()
+		return 0
+	default:
+		fmt.Fprintf(os.Stderr, "unknown db command: %s\n", args[0])
+		dbPublicUsage()
+		return 1
+	}
+}
+
+// runDB handles the internal "_db" subcommand (init, version, upgrade).
 func runDB(args []string) int {
 	if len(args) == 0 {
 		dbUsage()
@@ -20,11 +42,11 @@ func runDB(args []string) int {
 	switch args[0] {
 	case "init":
 		return runDBInit(args[1:])
-	case "version":
+	case versionLiteral:
 		return runDBVersion(args[1:])
 	case "upgrade":
 		return runDBUpgrade(args[1:])
-	case "help", "-h", "--help":
+	case helpLiteral, "-h", helpFlag:
 		dbUsage()
 		return 0
 	default:
@@ -34,8 +56,15 @@ func runDB(args []string) int {
 	}
 }
 
-func dbUsage() {
+func dbPublicUsage() {
 	fmt.Fprintln(os.Stderr, `usage: quay db <command> [flags]
+
+commands:
+  version           Print the current schema version`)
+}
+
+func dbUsage() {
+	fmt.Fprintln(os.Stderr, `usage: quay _db <command> [flags]
 
 commands:
   init              Create a fresh SQLite database with schema and seed data
@@ -44,6 +73,9 @@ commands:
 }
 
 // loadDBPath reads the config and extracts the SQLite file path from DB_URI.
+// Relative paths are resolved against the config file's directory so the same
+// config works inside the container (/data/config.yaml → /data/quay.db) and
+// on the host (/var/lib/quay/config.yaml → /var/lib/quay/quay.db).
 func loadDBPath(configPath string) (string, error) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
@@ -58,8 +90,13 @@ func loadDBPath(configPath string) (string, error) {
 		return "", fmt.Errorf("DB_URI must start with sqlite:/// for db commands (got %s)", cfg.DBURI)
 	}
 
-	// sqlite:///path/to/db → /path/to/db
-	return strings.TrimPrefix(cfg.DBURI, "sqlite:///"), nil
+	dbPath := strings.TrimPrefix(cfg.DBURI, "sqlite:///")
+
+	if !filepath.IsAbs(dbPath) {
+		dbPath = filepath.Join(filepath.Dir(configPath), dbPath)
+	}
+
+	return dbPath, nil
 }
 
 // resolveConfigPath returns the config path from the flag, QUAY_CONFIG env, or default.
@@ -91,7 +128,7 @@ func runDBInit(args []string) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 	if err := dbcore.InitDatabase(ctx, db, os.Stdout); err != nil {
@@ -121,7 +158,7 @@ func runDBVersion(args []string) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ver, err := dbcore.SchemaVersion(context.Background(), db)
 	if err != nil {
@@ -157,7 +194,7 @@ func runDBUpgrade(args []string) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -190,7 +227,7 @@ func runDBUpgrade(args []string) int {
 	}
 
 	// Backup before any upgrade attempt.
-	backupPath, err := dbcore.BackupDatabase(db, dbPath)
+	backupPath, err := dbcore.BackupDatabase(ctx, db, dbPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating backup: %v\n", err)
 		return 1
@@ -209,7 +246,7 @@ func runDBUpgrade(args []string) int {
 	fmt.Fprintln(os.Stderr, "migration files not yet available for this version transition")
 
 	// Clean old backups, keep last 3.
-	dbcore.CleanOldBackups(dbPath, 3)
+	_ = dbcore.CleanOldBackups(dbPath, 3)
 
 	return 1
 }

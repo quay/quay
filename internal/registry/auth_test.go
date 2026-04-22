@@ -1,7 +1,10 @@
 package registry
 
 import (
+	"context"
 	"database/sql"
+	"errors"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -17,9 +20,12 @@ func setupTestDB(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
+	db.SetMaxOpenConns(1)
+
+	ctx := context.Background()
 
 	// Create minimal user table matching Quay schema.
-	_, err = db.Exec(`CREATE TABLE "user" (
+	_, err = db.ExecContext(ctx, `CREATE TABLE "user" (
 		id INTEGER PRIMARY KEY,
 		uuid VARCHAR(36),
 		username VARCHAR(255) NOT NULL,
@@ -40,14 +46,14 @@ func setupTestDB(t *testing.T) *sql.DB {
 	}
 
 	// Active user.
-	_, err = db.Exec(`INSERT INTO "user" (uuid, username, password_hash, email, verified, organization, robot, enabled)
+	_, err = db.ExecContext(ctx, `INSERT INTO "user" (uuid, username, password_hash, email, verified, organization, robot, enabled)
 		VALUES ('u1', 'admin', ?, 'admin@test.com', 1, 0, 0, 1)`, string(hash))
 	if err != nil {
 		t.Fatalf("insert admin: %v", err)
 	}
 
 	// Disabled user.
-	_, err = db.Exec(`INSERT INTO "user" (uuid, username, password_hash, email, verified, organization, robot, enabled)
+	_, err = db.ExecContext(ctx, `INSERT INTO "user" (uuid, username, password_hash, email, verified, organization, robot, enabled)
 		VALUES ('u2', 'disabled', ?, 'disabled@test.com', 1, 0, 0, 0)`, string(hash))
 	if err != nil {
 		t.Fatalf("insert disabled: %v", err)
@@ -73,7 +79,7 @@ func TestAuthorized_ValidCredentials(t *testing.T) {
 	defer db.Close()
 	ac := newTestController(t, db)
 
-	req := httptest.NewRequest("GET", "/v2/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/v2/", http.NoBody)
 	req.SetBasicAuth("admin", "correct-password")
 
 	grant, err := ac.Authorized(req)
@@ -90,7 +96,7 @@ func TestAuthorized_WrongPassword(t *testing.T) {
 	defer db.Close()
 	ac := newTestController(t, db)
 
-	req := httptest.NewRequest("GET", "/v2/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/v2/", http.NoBody)
 	req.SetBasicAuth("admin", "wrong-password")
 
 	_, err := ac.Authorized(req)
@@ -105,7 +111,7 @@ func TestAuthorized_UnknownUser(t *testing.T) {
 	defer db.Close()
 	ac := newTestController(t, db)
 
-	req := httptest.NewRequest("GET", "/v2/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/v2/", http.NoBody)
 	req.SetBasicAuth("nobody", "password")
 
 	_, err := ac.Authorized(req)
@@ -120,7 +126,7 @@ func TestAuthorized_DisabledUser(t *testing.T) {
 	defer db.Close()
 	ac := newTestController(t, db)
 
-	req := httptest.NewRequest("GET", "/v2/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/v2/", http.NoBody)
 	req.SetBasicAuth("disabled", "correct-password")
 
 	_, err := ac.Authorized(req)
@@ -135,15 +141,15 @@ func TestAuthorized_NoAuthHeader(t *testing.T) {
 	defer db.Close()
 	ac := newTestController(t, db)
 
-	req := httptest.NewRequest("GET", "/v2/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/v2/", http.NoBody)
 	// No BasicAuth set.
 
 	_, err := ac.Authorized(req)
 	if err == nil {
 		t.Fatal("expected error for missing auth")
 	}
-	ch, ok := err.(auth.Challenge)
-	if !ok {
+	var ch auth.Challenge
+	if !errors.As(err, &ch) {
 		t.Fatalf("expected Challenge error, got %T", err)
 	}
 	// Verify the challenge sets WWW-Authenticate header.
@@ -156,7 +162,8 @@ func TestAuthorized_NoAuthHeader(t *testing.T) {
 
 func assertChallenge(t *testing.T, err error) {
 	t.Helper()
-	if _, ok := err.(auth.Challenge); !ok {
+	var ch auth.Challenge
+	if !errors.As(err, &ch) {
 		t.Errorf("expected Challenge error, got %T: %v", err, err)
 	}
 }

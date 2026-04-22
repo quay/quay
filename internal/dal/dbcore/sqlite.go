@@ -2,6 +2,7 @@
 package dbcore
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -48,8 +49,8 @@ func OpenSQLite(dbPath string) (*sql.DB, error) {
 	db.SetMaxOpenConns(1)
 
 	// Verify the connection works and PRAGMAs took effect.
-	if err := db.Ping(); err != nil {
-		db.Close()
+	if err := db.PingContext(context.Background()); err != nil {
+		_ = db.Close()
 		return nil, fmt.Errorf("ping %s: %w", dbPath, err)
 	}
 

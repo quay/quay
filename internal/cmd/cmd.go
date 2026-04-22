@@ -6,6 +6,12 @@ import (
 	"os"
 )
 
+const (
+	helpFlag       = "--help"
+	helpLiteral    = "help"
+	versionLiteral = "version"
+)
+
 // Run is the CLI entry point. It dispatches to subcommands based on os.Args
 // and returns the process exit code.
 func Run(args []string) int {
@@ -20,14 +26,16 @@ func Run(args []string) int {
 	case "install":
 		return runInstall(args[2:])
 	case "db":
+		return runDBPublic(args[2:])
+	case "_db":
 		return runDB(args[2:])
 	case "serve":
 		return runServe(args[2:])
 	case "upgrade":
 		return runUpgrade(args[2:])
-	case "version":
+	case versionLiteral:
 		return runVersion()
-	case "help", "-h", "--help":
+	case helpLiteral, "-h", helpFlag:
 		usage()
 		return 0
 	default:
@@ -43,8 +51,8 @@ func usage() {
 commands:
   install           Set up registry (database, certs, user, Quadlet service)
   upgrade           Upgrade registry to a new version
+  db version        Print the current database schema version
   config            Configuration tools (validate)
-  db                Database lifecycle (init, version, upgrade)
   serve             Start the OCI container registry
   version           Print version information`)
 }
