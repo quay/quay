@@ -17,6 +17,7 @@ on:
       - 'sqlc.yaml'
       - 'Makefile'
       - 'tools/schema_fingerprint.py'
+      - 'requirements.txt'
       - '!config-tool/**'
   pull_request:
     paths:
@@ -33,6 +34,7 @@ on:
       - 'sqlc.yaml'
       - 'Makefile'
       - 'tools/schema_fingerprint.py'
+      - 'requirements.txt'
       - '!config-tool/**'
 
 jobs:

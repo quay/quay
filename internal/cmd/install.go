@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"database/sql"
 	"flag"
@@ -41,9 +42,25 @@ func runInstall(args []string) int {
 		return 1
 	}
 
-	if *hostname == "" || *adminPass == "" {
-		fmt.Fprintln(os.Stderr, "error: --hostname and --admin-password are required")
+	if *hostname == "" {
+		fmt.Fprintln(os.Stderr, "error: --hostname is required")
 		fs.Usage()
+		return 1
+	}
+
+	passwordGenerated := false
+	if *adminPass == "" {
+		generated, err := generatePassword(32)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error generating password: %v\n", err)
+			return 1
+		}
+		*adminPass = generated
+		passwordGenerated = true
+	}
+
+	if (*sslCert == "") != (*sslKey == "") {
+		fmt.Fprintln(os.Stderr, "error: --ssl-cert and --ssl-key must both be provided together")
 		return 1
 	}
 
@@ -169,13 +186,17 @@ DEFAULT_TAG_EXPIRATION: 2w
 	// Health check.
 	fmt.Fprintln(os.Stderr, "waiting for registry to start...")
 	if err := waitForHealth(fmt.Sprintf("https://%s:8443/v2/", *hostname), 30*time.Second); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: health check failed: %v\n", err)
-		fmt.Fprintln(os.Stderr, "the registry may still be starting — check: systemctl status quay")
-	} else {
-		fmt.Fprintf(os.Stderr, "\nregistry running at https://%s:8443\n", *hostname)
+		fmt.Fprintf(os.Stderr, "error: health check failed: %v\n", err)
+		fmt.Fprintln(os.Stderr, "check: systemctl status quay")
+		return 1
 	}
 
-	fmt.Fprintf(os.Stderr, "admin credentials: %s / <password>\n", *adminUser)
+	fmt.Fprintf(os.Stderr, "\nregistry running at https://%s:8443\n", *hostname)
+	if passwordGenerated {
+		fmt.Fprintf(os.Stderr, "admin credentials: %s / %s\n", *adminUser, *adminPass)
+	} else {
+		fmt.Fprintf(os.Stderr, "admin user: %s\n", *adminUser)
+	}
 	return 0
 }
 
@@ -276,4 +297,29 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, data, 0o600)
+}
+
+// generatePassword creates a random password of the given length.
+func generatePassword(length int) (string, error) {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	for i := range b {
+		b[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(b), nil
+}
+
+// generateUUID creates a UUID v4 using crypto/rand.
+func generateUUID() (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	b[6] = (b[6] & 0x0f) | 0x40 // version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // variant 10
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16]), nil
 }

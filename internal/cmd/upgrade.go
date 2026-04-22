@@ -83,12 +83,12 @@ func runUpgrade(args []string) int {
 
 	fmt.Fprintln(os.Stderr, "waiting for registry...")
 	if err := waitForHealthCheck(healthURL, 30*time.Second); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: health check failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: health check failed: %v\n", err)
 		fmt.Fprintln(os.Stderr, "check: systemctl status quay")
-	} else {
-		fmt.Fprintf(os.Stderr, "upgrade complete — registry running at https://%s:8443\n", hostname)
+		return 1
 	}
 
+	fmt.Fprintf(os.Stderr, "upgrade complete — registry running at https://%s:8443\n", hostname)
 	return 0
 }
 
