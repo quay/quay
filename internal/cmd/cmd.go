@@ -25,8 +25,6 @@ func Run(args []string) int {
 		return runServe(args[2:])
 	case "upgrade":
 		return runUpgrade(args[2:])
-	case "user":
-		return runUser(args[2:])
 	case "version":
 		return runVersion()
 	case "help", "-h", "--help":
@@ -48,6 +46,5 @@ commands:
   config            Configuration tools (validate)
   db                Database lifecycle (init, version, upgrade)
   serve             Start the OCI container registry
-  user              User management (create)
   version           Print version information`)
 }

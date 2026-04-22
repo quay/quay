@@ -14,6 +14,10 @@ import (
 	"github.com/quay/quay/internal/dal/schema"
 )
 
+// TargetVersion is the alembic HEAD revision this binary was built against.
+// Updated by make go-schema when schema changes.
+const TargetVersion = "c3d4e5f6a7b8"
+
 // InitDatabase creates a fresh SQLite database by executing the embedded DDL
 // and seed data. It returns an error if the database file already contains
 // tables (use Upgrade for existing databases).
@@ -116,7 +120,12 @@ func SchemaVersion(ctx context.Context, db *sql.DB) (string, error) {
 
 // BackupDatabase creates a timestamped copy of the SQLite database file.
 // Returns the backup file path.
-func BackupDatabase(dbPath string) (string, error) {
+func BackupDatabase(db *sql.DB, dbPath string) (string, error) {
+	// Flush WAL to main database file so the backup is complete.
+	if _, err := db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		return "", fmt.Errorf("wal checkpoint: %w", err)
+	}
+
 	ts := time.Now().UTC().Format("20060102T150405Z")
 	backupPath := fmt.Sprintf("%s.backup-%s", dbPath, ts)
 
