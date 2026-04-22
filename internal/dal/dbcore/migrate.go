@@ -3,6 +3,7 @@ package dbcore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -34,18 +35,19 @@ func InitDatabase(ctx context.Context, db *sql.DB, w io.Writer) error {
 		return fmt.Errorf("database already contains %d tables; use 'quay db upgrade' instead", tableCount)
 	}
 
+	// Disable FK checks during schema creation (some CREATE TABLE statements
+	// reference tables defined later in the DDL). PRAGMA foreign_keys must be
+	// set outside a transaction — SQLite ignores it inside BEGIN/COMMIT.
+	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+		return fmt.Errorf("disable foreign keys: %w", err)
+	}
+
 	// Execute DDL in a transaction.
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback()
-
-	// Disable FK checks during schema creation (some CREATE TABLE statements
-	// reference tables defined later in the DDL).
-	if _, err := tx.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
-		return fmt.Errorf("disable foreign keys: %w", err)
-	}
+	defer tx.Rollback() //nolint:errcheck // no-op after commit
 
 	if _, err := tx.ExecContext(ctx, schema.QuaySchemaSQL); err != nil {
 		return fmt.Errorf("execute schema DDL: %w", err)
@@ -59,29 +61,34 @@ func InitDatabase(ctx context.Context, db *sql.DB, w io.Writer) error {
 		}
 	}
 
-	// Re-enable FK checks and verify.
-	if _, err := tx.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
-		return fmt.Errorf("re-enable foreign keys: %w", err)
-	}
-
-	rows, err := tx.QueryContext(ctx, "PRAGMA foreign_key_check")
-	if err != nil {
-		return fmt.Errorf("foreign key check: %w", err)
-	}
-	defer rows.Close()
-	if rows.Next() {
-		var table, rowid, parent, fkid string
-		rows.Scan(&table, &rowid, &parent, &fkid)
-		return fmt.Errorf("foreign key violation: table=%s rowid=%s parent=%s", table, rowid, parent)
-	}
-
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
 
+	// Re-enable FK checks and verify referential integrity.
+	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
+		return fmt.Errorf("re-enable foreign keys: %w", err)
+	}
+
+	rows, err := db.QueryContext(ctx, "PRAGMA foreign_key_check")
+	if err != nil {
+		return fmt.Errorf("foreign key check: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	if rows.Next() {
+		var table, rowid, parent, fkid string
+		if err := rows.Scan(&table, &rowid, &parent, &fkid); err != nil {
+			return fmt.Errorf("scan FK violation: %w", err)
+		}
+		return fmt.Errorf("foreign key violation: table=%s rowid=%s parent=%s", table, rowid, parent)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("foreign key check iteration: %w", err)
+	}
+
 	// Count tables and seed rows for summary.
 	var tables int
-	db.QueryRowContext(ctx,
+	_ = db.QueryRowContext(ctx,
 		"SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
 	).Scan(&tables)
 
@@ -93,7 +100,7 @@ func InitDatabase(ctx context.Context, db *sql.DB, w io.Writer) error {
 		"imagestoragelocation", "imagestoragetransformation", "imagestoragesignaturekind", "labelsourcetype"}
 	for _, t := range seedTables {
 		var n int
-		db.QueryRowContext(ctx, fmt.Sprintf("SELECT count(*) FROM \"%s\"", t)).Scan(&n)
+		_ = db.QueryRowContext(ctx, fmt.Sprintf("SELECT count(*) FROM %q", t)).Scan(&n)
 		seedRows += n
 	}
 
@@ -110,7 +117,7 @@ func SchemaVersion(ctx context.Context, db *sql.DB) (string, error) {
 		if strings.Contains(err.Error(), "no such table") {
 			return "", nil
 		}
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return "", nil
 		}
 		return "", fmt.Errorf("query alembic_version: %w", err)
@@ -120,26 +127,26 @@ func SchemaVersion(ctx context.Context, db *sql.DB) (string, error) {
 
 // BackupDatabase creates a timestamped copy of the SQLite database file.
 // Returns the backup file path.
-func BackupDatabase(db *sql.DB, dbPath string) (string, error) {
+func BackupDatabase(ctx context.Context, db *sql.DB, dbPath string) (string, error) {
 	// Flush WAL to main database file so the backup is complete.
-	if _, err := db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+	if _, err := db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
 		return "", fmt.Errorf("wal checkpoint: %w", err)
 	}
 
 	ts := time.Now().UTC().Format("20060102T150405Z")
 	backupPath := fmt.Sprintf("%s.backup-%s", dbPath, ts)
 
-	src, err := os.Open(dbPath)
+	src, err := os.Open(dbPath) //nolint:gosec // path from caller, not user input
 	if err != nil {
 		return "", fmt.Errorf("open source: %w", err)
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
-	dst, err := os.Create(backupPath)
+	dst, err := os.Create(backupPath) //nolint:gosec // path derived from dbPath
 	if err != nil {
 		return "", fmt.Errorf("create backup: %w", err)
 	}
-	defer dst.Close()
+	defer func() { _ = dst.Close() }()
 
 	if _, err := io.Copy(dst, src); err != nil {
 		return "", fmt.Errorf("copy: %w", err)
@@ -185,7 +192,7 @@ func CleanOldBackups(dbPath string, keep int) error {
 	}
 
 	for _, b := range backups[:len(backups)-keep] {
-		os.Remove(b)
+		_ = os.Remove(b)
 	}
 
 	return nil
@@ -193,8 +200,8 @@ func CleanOldBackups(dbPath string, keep int) error {
 
 // splitStatements splits a SQL script on semicolons, trimming whitespace
 // and discarding empty entries.
-func splitStatements(sql string) []string {
-	raw := strings.Split(sql, ";")
+func splitStatements(rawSQL string) []string {
+	raw := strings.Split(rawSQL, ";")
 	stmts := make([]string, 0, len(raw))
 	for _, s := range raw {
 		s = strings.TrimSpace(s)

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -25,33 +26,26 @@ func runUpgrade(args []string) int {
 	isRoot := os.Getuid() == 0
 	svcArgs := systemctlArgs(isRoot)
 
-	// 1. Stop the service.
+	// 1. Load or pull the new image BEFORE stopping the service,
+	// so a network/archive failure doesn't leave the registry offline.
+	resolvedImage, err := loadOrPullImage(*imageArchive, *image)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+
+	// 2. Stop the service.
 	fmt.Fprintln(os.Stderr, "stopping registry...")
 	if err := runCmd("systemctl", append(svcArgs, "stop", quadletServiceName)...); err != nil {
 		fmt.Fprintf(os.Stderr, "error stopping service: %v\n", err)
 		return 1
 	}
 
-	// 2. Load or pull the new image.
-	if *imageArchive != "" {
-		fmt.Fprintf(os.Stderr, "loading image from %s\n", *imageArchive)
-		if err := runCmd("podman", "load", "-i", *imageArchive); err != nil {
-			fmt.Fprintf(os.Stderr, "error loading image: %v\n", err)
-			return 1
-		}
-	} else {
-		fmt.Fprintf(os.Stderr, "pulling image %s\n", *image)
-		if err := runCmd("podman", "pull", *image); err != nil {
-			fmt.Fprintf(os.Stderr, "error pulling image: %v\n", err)
-			return 1
-		}
-	}
-
 	// 3. Run db upgrade using the new image.
 	fmt.Fprintln(os.Stderr, "upgrading database...")
 	if err := runCmd("podman", "run", "--rm",
-		"-v", *dataDir+":/data",
-		*image,
+		"-v", *dataDir+":/data:Z",
+		resolvedImage,
 		"db", "upgrade", "--config", "/data/config.yaml",
 	); err != nil {
 		fmt.Fprintf(os.Stderr, "error upgrading database: %v\n", err)
@@ -61,7 +55,7 @@ func runUpgrade(args []string) int {
 
 	// 4. Update Quadlet file with new image.
 	quadletPath := resolveQuadletPath(isRoot)
-	if err := updateQuadletImage(quadletPath, *image); err != nil {
+	if err := updateQuadletImage(quadletPath, resolvedImage); err != nil {
 		fmt.Fprintf(os.Stderr, "error updating quadlet: %v\n", err)
 		return 1
 	}
@@ -103,41 +97,52 @@ func resolveQuadletPath(isRoot bool) string {
 	if isRoot {
 		return "/etc/containers/systemd/quay.container"
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config/containers/systemd/quay.container")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(".", ".config", "containers", "systemd", "quay.container")
+	}
+	return filepath.Join(home, ".config", "containers", "systemd", "quay.container")
 }
 
 func updateQuadletImage(quadletPath, newImage string) error {
-	data, err := os.ReadFile(quadletPath)
+	data, err := os.ReadFile(quadletPath) //nolint:gosec // path from known quadlet location
 	if err != nil {
 		return fmt.Errorf("read quadlet: %w", err)
 	}
 
 	var updated []string
+	found := false
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "Image=") {
 			updated = append(updated, "Image="+newImage)
+			found = true
 		} else {
 			updated = append(updated, line)
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("scan quadlet: %w", err)
+	}
+	if !found {
+		return fmt.Errorf("no Image= directive found in %s", quadletPath)
+	}
 
-	return os.WriteFile(quadletPath, []byte(strings.Join(updated, "\n")+"\n"), 0o644)
+	return os.WriteFile(quadletPath, []byte(strings.Join(updated, "\n")+"\n"), 0o600) //nolint:gosec // quadlet path is known
 }
 
 func readHostnameFromConfig(configPath string) string {
-	data, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(configPath) //nolint:gosec // path from known data dir
 	if err != nil {
-		return "localhost"
+		return defaultHostname
 	}
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasPrefix(line, "SERVER_HOSTNAME:") {
 			return strings.TrimSpace(strings.TrimPrefix(line, "SERVER_HOSTNAME:"))
 		}
 	}
-	return "localhost"
+	return defaultHostname
 }
 
 func waitForHealthCheck(url string, timeout time.Duration) error {
@@ -147,11 +152,16 @@ func waitForHealthCheck(url string, timeout time.Duration) error {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // self-signed cert
 		},
 	}
+	ctx := context.Background()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		resp, err := client.Get(url)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+		if err != nil {
+			return fmt.Errorf("create request: %w", err)
+		}
+		resp, err := client.Do(req) //nolint:gosec // health check against local self-signed cert
 		if err == nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusUnauthorized {
 				return nil
 			}

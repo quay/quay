@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -32,7 +33,7 @@ func runInstall(args []string) int {
 	dataDir := fs.String("data-dir", "/var/lib/quay", "directory for database, storage, and certs")
 	adminUser := fs.String("admin-username", "admin", "admin username")
 	adminEmail := fs.String("admin-email", "", "admin email (default: admin@<hostname>)")
-	adminPass := fs.String("admin-password", "", "admin password (required)")
+	adminPass := fs.String("admin-password", "", "admin password (auto-generated if empty)")
 	sslCert := fs.String("ssl-cert", "", "path to custom TLS certificate")
 	sslKey := fs.String("ssl-key", "", "path to custom TLS key")
 	imageArchive := fs.String("image-archive", "", "path to container image tar (offline mode)")
@@ -42,9 +43,8 @@ func runInstall(args []string) int {
 		return 1
 	}
 
-	if *hostname == "" {
-		fmt.Fprintln(os.Stderr, "error: --hostname is required")
-		fs.Usage()
+	if err := validateInstallFlags(fs, *hostname, *sslCert, *sslKey); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
 
@@ -57,11 +57,6 @@ func runInstall(args []string) int {
 		}
 		*adminPass = generated
 		passwordGenerated = true
-	}
-
-	if (*sslCert == "") != (*sslKey == "") {
-		fmt.Fprintln(os.Stderr, "error: --ssl-cert and --ssl-key must both be provided together")
-		return 1
 	}
 
 	if *adminEmail == "" {
@@ -77,108 +72,46 @@ func runInstall(args []string) int {
 		}
 	}
 
-	// Load or pull container image.
-	if *imageArchive != "" {
-		fmt.Fprintf(os.Stderr, "loading container image from %s\n", *imageArchive)
-		if err := runCmd("podman", "load", "-i", *imageArchive); err != nil {
-			fmt.Fprintf(os.Stderr, "error loading image: %v\n", err)
-			return 1
-		}
-	} else {
-		fmt.Fprintf(os.Stderr, "pulling container image %s\n", *image)
-		if err := runCmd("podman", "pull", *image); err != nil {
-			fmt.Fprintf(os.Stderr, "error pulling image: %v\n", err)
-			return 1
-		}
+	// Load or pull container image. Use the resolved reference for the Quadlet
+	// since podman load may produce a different name:tag than --image.
+	resolvedImage, err := loadOrPullImage(*imageArchive, *image)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
 	}
 
-	// Generate config.yaml.
+	// Generate config, init DB, create admin user.
 	dbPath := filepath.Join(*dataDir, "quay.db")
 	configPath := filepath.Join(*dataDir, "config.yaml")
 	certPath := filepath.Join(*dataDir, "ssl.cert")
 	keyPath := filepath.Join(*dataDir, "ssl.key")
 
-	configContent := fmt.Sprintf(`SERVER_HOSTNAME: %s
-PREFERRED_URL_SCHEME: https
-DB_URI: sqlite:////data/quay.db
-DISTRIBUTED_STORAGE_CONFIG:
-  default:
-    - LocalStorage
-    - storage_path: /data/storage
-DEFAULT_TAG_EXPIRATION: 2w
-`, *hostname)
-
-	if err := os.WriteFile(configPath, []byte(configContent), 0o640); err != nil {
+	if err := writeConfig(configPath, *hostname); err != nil {
 		fmt.Fprintf(os.Stderr, "error writing config: %v\n", err)
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "config: %s\n", configPath)
 
-	// Initialize database.
-	db, err := dbcore.OpenSQLite(dbPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error opening database: %v\n", err)
-		return 1
-	}
-
-	ctx := context.Background()
-	if err := dbcore.InitDatabase(ctx, db, os.Stderr); err != nil {
-		fmt.Fprintf(os.Stderr, "error initializing database: %v\n", err)
-		db.Close()
+	if err := initDBAndUser(dbPath, *adminUser, *adminEmail, *adminPass); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "database: %s\n", dbPath)
-
-	// Create admin user.
-	hash, err := bcrypt.GenerateFromPassword([]byte(*adminPass), bcrypt.DefaultCost)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error hashing password: %v\n", err)
-		db.Close()
-		return 1
-	}
-
-	uuid, err := generateUUID()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error generating UUID: %v\n", err)
-		db.Close()
-		return 1
-	}
-
-	queries := daldb.New(db)
-	if _, err := queries.CreateAdminUser(ctx, daldb.CreateAdminUserParams{
-		Uuid:         sql.NullString{String: uuid, Valid: true},
-		Username:     *adminUser,
-		PasswordHash: sql.NullString{String: string(hash), Valid: true},
-		Email:        *adminEmail,
-	}); err != nil {
-		fmt.Fprintf(os.Stderr, "error creating admin user: %v\n", err)
-		db.Close()
-		return 1
-	}
-	db.Close()
 	fmt.Fprintf(os.Stderr, "admin user: %s\n", *adminUser)
 
+	// Show generated credentials immediately so they aren't lost if a later step fails.
+	if passwordGenerated {
+		fmt.Fprintf(os.Stderr, "admin credentials: %s / %s\n", *adminUser, *adminPass)
+	}
+
 	// TLS certificates.
-	if *sslCert != "" && *sslKey != "" {
-		if err := copyFile(*sslCert, certPath); err != nil {
-			fmt.Fprintf(os.Stderr, "error copying cert: %v\n", err)
-			return 1
-		}
-		if err := copyFile(*sslKey, keyPath); err != nil {
-			fmt.Fprintf(os.Stderr, "error copying key: %v\n", err)
-			return 1
-		}
-		fmt.Fprintln(os.Stderr, "tls: copied user-provided certificate")
-	} else {
-		if err := registry.GenerateSelfSignedCert(*hostname, certPath, keyPath); err != nil {
-			fmt.Fprintf(os.Stderr, "error generating certificate: %v\n", err)
-			return 1
-		}
-		fmt.Fprintf(os.Stderr, "tls: generated self-signed certificate for %s\n", *hostname)
+	if err := setupCertificates(*sslCert, *sslKey, certPath, keyPath, *hostname); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
 	}
 
 	// Write Quadlet file and start service.
-	if err := installQuadlet(*image, *dataDir); err != nil {
+	if err := installQuadlet(resolvedImage, *dataDir); err != nil {
 		fmt.Fprintf(os.Stderr, "error installing service: %v\n", err)
 		return 1
 	}
@@ -192,12 +125,130 @@ DEFAULT_TAG_EXPIRATION: 2w
 	}
 
 	fmt.Fprintf(os.Stderr, "\nregistry running at https://%s:8443\n", *hostname)
-	if passwordGenerated {
-		fmt.Fprintf(os.Stderr, "admin credentials: %s / %s\n", *adminUser, *adminPass)
-	} else {
-		fmt.Fprintf(os.Stderr, "admin user: %s\n", *adminUser)
-	}
 	return 0
+}
+
+func validateInstallFlags(fs *flag.FlagSet, hostname, sslCert, sslKey string) error {
+	if hostname == "" {
+		fs.Usage()
+		return fmt.Errorf("--hostname is required")
+	}
+	if (sslCert == "") != (sslKey == "") {
+		return fmt.Errorf("--ssl-cert and --ssl-key must both be provided together")
+	}
+	return nil
+}
+
+func loadOrPullImage(imageArchive, image string) (string, error) {
+	if imageArchive != "" {
+		fmt.Fprintf(os.Stderr, "loading container image from %s\n", imageArchive)
+		ref, err := runCmdOutput("podman", "load", "-i", imageArchive)
+		if err != nil {
+			return "", fmt.Errorf("loading image: %w", err)
+		}
+		loaded := parseLoadedImageRef(ref)
+		if loaded == "" {
+			return "", fmt.Errorf("could not determine image reference from podman load output")
+		}
+		fmt.Fprintf(os.Stderr, "loaded image: %s\n", loaded)
+		return loaded, nil
+	}
+	fmt.Fprintf(os.Stderr, "pulling container image %s\n", image)
+	if err := runCmd("podman", "pull", image); err != nil {
+		return "", fmt.Errorf("pulling image: %w", err)
+	}
+	return image, nil
+}
+
+func runCmdOutput(name string, args ...string) (string, error) {
+	cmd := exec.CommandContext(context.Background(), name, args...) //nolint:gosec // CLI tool, args from flags
+	cmd.Stderr = os.Stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// parseLoadedImageRef extracts the image reference from podman load output.
+// podman load prints "Loaded image: <ref>" or "Loaded image(s): <ref>".
+func parseLoadedImageRef(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "Loaded image") {
+			if idx := strings.Index(line, ": "); idx >= 0 {
+				return strings.TrimSpace(line[idx+2:])
+			}
+		}
+	}
+	return ""
+}
+
+func writeConfig(configPath, hostname string) error {
+	configContent := fmt.Sprintf(`SERVER_HOSTNAME: %s
+PREFERRED_URL_SCHEME: https
+DB_URI: sqlite:////data/quay.db
+DISTRIBUTED_STORAGE_CONFIG:
+  default:
+    - LocalStorage
+    - storage_path: /data/storage
+DEFAULT_TAG_EXPIRATION: 2w
+`, hostname)
+
+	return os.WriteFile(configPath, []byte(configContent), 0o600)
+}
+
+func initDBAndUser(dbPath, adminUser, adminEmail, adminPass string) error {
+	db, err := dbcore.OpenSQLite(dbPath)
+	if err != nil {
+		return fmt.Errorf("opening database: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := dbcore.InitDatabase(ctx, db, os.Stderr); err != nil {
+		return fmt.Errorf("initializing database: %w", err)
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(adminPass), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hashing password: %w", err)
+	}
+
+	uuid, err := generateUUID()
+	if err != nil {
+		return fmt.Errorf("generating UUID: %w", err)
+	}
+
+	queries := daldb.New(db)
+	if _, err := queries.CreateAdminUser(ctx, daldb.CreateAdminUserParams{
+		Uuid:         sql.NullString{String: uuid, Valid: true},
+		Username:     adminUser,
+		PasswordHash: sql.NullString{String: string(hash), Valid: true},
+		Email:        adminEmail,
+	}); err != nil {
+		return fmt.Errorf("creating admin user: %w", err)
+	}
+
+	return nil
+}
+
+func setupCertificates(sslCert, sslKey, certPath, keyPath, hostname string) error {
+	if sslCert != "" && sslKey != "" {
+		if err := copyFile(sslCert, certPath); err != nil {
+			return fmt.Errorf("copying cert: %w", err)
+		}
+		if err := copyFile(sslKey, keyPath); err != nil {
+			return fmt.Errorf("copying key: %w", err)
+		}
+		fmt.Fprintln(os.Stderr, "tls: copied user-provided certificate")
+	} else {
+		if err := registry.GenerateSelfSignedCert(hostname, certPath, keyPath); err != nil {
+			return fmt.Errorf("generating certificate: %w", err)
+		}
+		fmt.Fprintf(os.Stderr, "tls: generated self-signed certificate for %s\n", hostname)
+	}
+	return nil
 }
 
 func installQuadlet(image, dataDir string) error {
@@ -211,10 +262,10 @@ func installQuadlet(image, dataDir string) error {
 		if err != nil {
 			return fmt.Errorf("get home dir: %w", err)
 		}
-		quadletDir = filepath.Join(home, ".config/containers/systemd")
+		quadletDir = filepath.Join(home, ".config", "containers", "systemd")
 	}
 
-	if err := os.MkdirAll(quadletDir, 0o755); err != nil {
+	if err := os.MkdirAll(quadletDir, 0o750); err != nil {
 		return fmt.Errorf("create quadlet dir: %w", err)
 	}
 
@@ -224,7 +275,7 @@ After=network-online.target
 
 [Container]
 Image=%s
-Volume=%s:/data
+Volume=%s:/data:Z
 PublishPort=8443:8443
 Exec=serve --config /data/config.yaml
 
@@ -233,7 +284,7 @@ WantedBy=default.target
 `, image, dataDir)
 
 	quadletPath := filepath.Join(quadletDir, "quay.container")
-	if err := os.WriteFile(quadletPath, []byte(quadletContent), 0o644); err != nil {
+	if err := os.WriteFile(quadletPath, []byte(quadletContent), 0o600); err != nil {
 		return fmt.Errorf("write quadlet: %w", err)
 	}
 	fmt.Fprintf(os.Stderr, "quadlet: %s\n", quadletPath)
@@ -270,11 +321,16 @@ func waitForHealth(url string, timeout time.Duration) error {
 		},
 	}
 
+	ctx := context.Background()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		resp, err := client.Get(url)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+		if err != nil {
+			return fmt.Errorf("create request: %w", err)
+		}
+		resp, err := client.Do(req) //nolint:gosec // health check against local self-signed cert
 		if err == nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusUnauthorized {
 				return nil
 			}
@@ -285,18 +341,18 @@ func waitForHealth(url string, timeout time.Duration) error {
 }
 
 func runCmd(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(context.Background(), name, args...) //nolint:gosec // CLI tool, args from flags
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
 func copyFile(src, dst string) error {
-	data, err := os.ReadFile(src)
+	data, err := os.ReadFile(src) //nolint:gosec // CLI tool, path from caller
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dst, data, 0o600)
+	return os.WriteFile(dst, data, 0o600) //nolint:gosec // data from known source file
 }
 
 // generatePassword creates a random password of the given length.

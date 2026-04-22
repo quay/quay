@@ -6,6 +6,11 @@ import (
 	"os"
 )
 
+const (
+	helpFlag    = "--help"
+	helpLiteral = "help"
+)
+
 // Run is the CLI entry point. It dispatches to subcommands based on os.Args
 // and returns the process exit code.
 func Run(args []string) int {
@@ -27,7 +32,7 @@ func Run(args []string) int {
 		return runUpgrade(args[2:])
 	case "version":
 		return runVersion()
-	case "help", "-h", "--help":
+	case helpLiteral, "-h", helpFlag:
 		usage()
 		return 0
 	default:

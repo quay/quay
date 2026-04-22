@@ -48,11 +48,11 @@ func GenerateSelfSignedCert(hostname, certPath, keyPath string) error {
 		return fmt.Errorf("create certificate: %w", err)
 	}
 
-	certFile, err := os.Create(certPath)
+	certFile, err := os.Create(certPath) //nolint:gosec // path from caller
 	if err != nil {
 		return fmt.Errorf("create cert file: %w", err)
 	}
-	defer certFile.Close()
+	defer func() { _ = certFile.Close() }()
 
 	if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}); err != nil {
 		return fmt.Errorf("write cert: %w", err)
@@ -63,11 +63,11 @@ func GenerateSelfSignedCert(hostname, certPath, keyPath string) error {
 		return fmt.Errorf("marshal key: %w", err)
 	}
 
-	keyFile, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	keyFile, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) //nolint:gosec // path from caller
 	if err != nil {
 		return fmt.Errorf("create key file: %w", err)
 	}
-	defer keyFile.Close()
+	defer func() { _ = keyFile.Close() }()
 
 	if err := pem.Encode(keyFile, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}); err != nil {
 		return fmt.Errorf("write key: %w", err)

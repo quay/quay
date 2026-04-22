@@ -24,7 +24,7 @@ func runDB(args []string) int {
 		return runDBVersion(args[1:])
 	case "upgrade":
 		return runDBUpgrade(args[1:])
-	case "help", "-h", "--help":
+	case helpLiteral, "-h", helpFlag:
 		dbUsage()
 		return 0
 	default:
@@ -91,7 +91,7 @@ func runDBInit(args []string) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 	if err := dbcore.InitDatabase(ctx, db, os.Stdout); err != nil {
@@ -121,7 +121,7 @@ func runDBVersion(args []string) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ver, err := dbcore.SchemaVersion(context.Background(), db)
 	if err != nil {
@@ -157,7 +157,7 @@ func runDBUpgrade(args []string) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -190,7 +190,7 @@ func runDBUpgrade(args []string) int {
 	}
 
 	// Backup before any upgrade attempt.
-	backupPath, err := dbcore.BackupDatabase(db, dbPath)
+	backupPath, err := dbcore.BackupDatabase(ctx, db, dbPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating backup: %v\n", err)
 		return 1
@@ -209,7 +209,7 @@ func runDBUpgrade(args []string) int {
 	fmt.Fprintln(os.Stderr, "migration files not yet available for this version transition")
 
 	// Clean old backups, keep last 3.
-	dbcore.CleanOldBackups(dbPath, 3)
+	_ = dbcore.CleanOldBackups(dbPath, 3)
 
 	return 1
 }

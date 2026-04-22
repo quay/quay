@@ -118,7 +118,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Install sqlc
-        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
 
       - name: Check schema drift
         run: make go-schema-check
