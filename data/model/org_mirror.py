@@ -330,6 +330,8 @@ def delete_org_mirror_config(config):
     """
     Delete the organization-level mirror configuration and all associated discovered repositories.
 
+    Resets all mirrored repositories back to NORMAL state so they can be used as regular repos.
+
     Args:
         config: The OrgMirrorConfig instance to delete.
 
@@ -337,7 +339,27 @@ def delete_org_mirror_config(config):
         True if the configuration was deleted.
     """
     with db_transaction():
-        # Delete all associated discovered repositories first
+        # Find all Repository records linked to this mirror config
+        # and reset their state from ORG_MIRROR to NORMAL
+        mirrored_repo_ids = list(
+            OrgMirrorRepository.select(OrgMirrorRepository.repository)
+            .where(
+                (OrgMirrorRepository.org_mirror_config == config)
+                & (OrgMirrorRepository.repository.is_null(False))
+            )
+            .tuples()
+        )
+
+        if mirrored_repo_ids:
+            # Flatten the list of tuples
+            repo_ids = [repo_id[0] for repo_id in mirrored_repo_ids]
+
+            # Reset state to NORMAL for all previously-mirrored repositories
+            Repository.update(state=RepositoryState.NORMAL).where(
+                Repository.id << repo_ids
+            ).execute()
+
+        # Delete all associated discovered repositories
         OrgMirrorRepository.delete().where(
             OrgMirrorRepository.org_mirror_config == config
         ).execute()

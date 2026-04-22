@@ -611,6 +611,66 @@ class TestDeleteOrgMirrorConfig:
         assert config2.external_registry_url == "https://quay.io"
         assert config2.external_namespace == "project2"
 
+    def test_delete_org_mirror_config_resets_repository_state(self, initialized_db):
+        """
+        Deleting a config should reset all previously-mirrored repositories from
+        ORG_MIRROR state back to NORMAL state so they can be used as regular repos.
+
+        Regression test for PROJQUAY-11382.
+        """
+        org, robot = _create_org_and_robot("delete_test_state_reset")
+        config = _create_org_mirror_config(org, robot)
+
+        # Create actual Repository records and link them to OrgMirrorRepository
+        repo1 = model.repository.create_repository(
+            org.username, "mirrored-repo1", robot, visibility="private"
+        )
+        repo1.state = RepositoryState.ORG_MIRROR
+        repo1.save()
+
+        repo2 = model.repository.create_repository(
+            org.username, "mirrored-repo2", robot, visibility="private"
+        )
+        repo2.state = RepositoryState.ORG_MIRROR
+        repo2.save()
+
+        # Create OrgMirrorRepository entries linked to actual repos
+        org_mirror_repo1 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="mirrored-repo1",
+            repository=repo1,
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+
+        org_mirror_repo2 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="mirrored-repo2",
+            repository=repo2,
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+        )
+
+        # Verify repos are in ORG_MIRROR state
+        assert Repository.get_by_id(repo1.id).state == RepositoryState.ORG_MIRROR
+        assert Repository.get_by_id(repo2.id).state == RepositoryState.ORG_MIRROR
+
+        # Delete the config
+        result = delete_org_mirror_config(config)
+
+        assert result is True
+        assert get_org_mirror_config(org) is None
+
+        # Verify OrgMirrorRepository records are deleted
+        assert (
+            OrgMirrorRepository.select()
+            .where(OrgMirrorRepository.org_mirror_config == config)
+            .count()
+            == 0
+        )
+
+        # Verify repositories are reset to NORMAL state
+        assert Repository.get_by_id(repo1.id).state == RepositoryState.NORMAL
+        assert Repository.get_by_id(repo2.id).state == RepositoryState.NORMAL
+
 
 class TestUpdateOrgMirrorConfig:
     """Tests for update_org_mirror_config function."""
