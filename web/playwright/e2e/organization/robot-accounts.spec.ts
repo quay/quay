@@ -651,6 +651,51 @@ test.describe(
       ).toContainText('Read');
     });
 
+    test('bulk delete multiple robot accounts', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('bulkdelrobotorg');
+      await api.robot(org.name, 'bulkrobot1', 'First robot');
+      await api.robot(org.name, 'bulkrobot2', 'Second robot');
+      await api.robot(org.name, 'bulkrobot3', 'Third robot');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Robotaccounts`,
+      );
+      await expect(
+        authenticatedPage.getByTestId('robot-accounts-table'),
+      ).toBeVisible();
+
+      // Select all robots via header checkbox
+      await authenticatedPage
+        .locator('thead input[type="checkbox"]')
+        .first()
+        .check();
+
+      // Click the bulk delete action in the toolbar
+      await authenticatedPage
+        .getByRole('button', {name: /[Dd]elete/})
+        .first()
+        .click();
+
+      // Confirm bulk deletion
+      await authenticatedPage
+        .getByTestId('delete-confirmation-input')
+        .fill('confirm');
+      await authenticatedPage.getByTestId('bulk-delete-confirm-btn').click();
+
+      // Verify success alert
+      await expect(
+        authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
+      ).toContainText('Successfully deleted robot account');
+
+      // Verify empty state
+      await expect(
+        authenticatedPage.getByText('There are no viewable robot accounts'),
+      ).toBeVisible({timeout: 15000});
+    });
+
     test.describe(
       'with ROBOTS_DISALLOW enabled',
       {tag: '@config:ROBOTS_DISALLOW'},
