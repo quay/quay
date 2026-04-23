@@ -341,12 +341,9 @@ def delete_org_mirror_config(config):
     with db_transaction():
         # Reset state to NORMAL for all repositories currently in ORG_MIRROR state
         # that are linked to this mirror config. Uses a subquery for efficiency.
-        mirrored_repo_subquery = (
-            OrgMirrorRepository.select(OrgMirrorRepository.repository)
-            .where(
-                (OrgMirrorRepository.org_mirror_config == config)
-                & (OrgMirrorRepository.repository.is_null(False))
-            )
+        mirrored_repo_subquery = OrgMirrorRepository.select(OrgMirrorRepository.repository).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository.is_null(False))
         )
 
         Repository.update(state=RepositoryState.NORMAL).where(
