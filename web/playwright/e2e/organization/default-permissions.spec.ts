@@ -556,7 +556,10 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await authenticatedPage
       .getByRole('tab', {name: 'Default permissions'})
       .click();
-    await expect(authenticatedPage.getByText(robot.fullName)).toBeVisible();
+    const defaultPermPanel = authenticatedPage.getByRole('tabpanel', {
+      name: 'Default permissions',
+    });
+    await expect(defaultPermPanel.getByText(robot.fullName)).toBeVisible();
   });
 
   test('can bulk delete default permissions', async ({

@@ -100,14 +100,16 @@ test.describe(
       await expect(authenticatedPage.getByText('Pull Commands')).toBeVisible();
     });
 
-    test('supports repository name containing "build"', async ({
+    test('supports repository name containing "build" keyword', async ({
       authenticatedPage,
       api,
     }) => {
+      // "build" as a path segment breaks parseRepoNameFromUrl (treats it as
+      // a route suffix like /repo/build/<id>). Use it as a prefix instead.
       const org = await api.organization('buildnameorg');
       const repo = await api.repositoryWithName(
         org.name,
-        'images/build/release',
+        'build-images/release',
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}`);

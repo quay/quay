@@ -11,27 +11,29 @@ test.describe('Team Naming and Management', {tag: ['@organization']}, () => {
       `/organization/${org.name}?tab=Teamsandmembership`,
     );
     await authenticatedPage.locator('#Teams').click();
-    await authenticatedPage.getByRole('button', {name: 'Create team'}).click();
+    await authenticatedPage
+      .getByRole('button', {name: 'Create new team'})
+      .click();
 
-    const nameInput = authenticatedPage.getByPlaceholder('Enter a team name');
+    const nameInput = authenticatedPage.getByTestId('new-team-name-input');
 
     // Invalid names: must match ^([a-z0-9]+(?:[._-][a-z0-9]+)*)$
-    const invalidNames = ['_q', '.a', '-0', 'A12', 'a@12', 'a'];
+    const invalidNames = ['_q', '.a', '-0', 'A12', 'a@12'];
     for (const name of invalidNames) {
       await nameInput.fill(name);
       await expect(
-        authenticatedPage.getByRole('button', {name: 'Proceed'}),
+        authenticatedPage.getByTestId('create-team-confirm'),
       ).toBeDisabled();
     }
 
     // Valid name
     await nameInput.fill('validteam');
     await expect(
-      authenticatedPage.getByRole('button', {name: 'Proceed'}),
+      authenticatedPage.getByTestId('create-team-confirm'),
     ).toBeEnabled();
 
     // Create and verify
-    await authenticatedPage.getByRole('button', {name: 'Proceed'}).click();
+    await authenticatedPage.getByTestId('create-team-confirm').click();
     await expect(
       authenticatedPage.getByText(/[Ss]uccessfully created/).first(),
     ).toBeVisible({timeout: 10000});

@@ -35,10 +35,13 @@ test.describe('Empty States and Alert Messages', {tag: ['@ui']}, () => {
     ).toBeVisible();
   });
 
-  test('shows empty state on repositories list page when user has no repos', async ({
+  test('shows empty state in organization repositories tab when org has no repos', async ({
     authenticatedPage,
+    api,
   }) => {
-    await authenticatedPage.goto('/repository');
+    const org = await api.organization('emptyreposorg');
+
+    await authenticatedPage.goto(`/organization/${org.name}`);
 
     await expect(
       authenticatedPage.getByText('There are no viewable repositories'),
@@ -57,9 +60,12 @@ test.describe('Empty States and Alert Messages', {tag: ['@ui']}, () => {
 
     const orgName = `alertorg${Date.now()}`;
     await authenticatedPage.locator('#create-org-name-input').fill(orgName);
-    await authenticatedPage
-      .locator('#create-org-email-input')
-      .fill(`${orgName}@example.com`);
+
+    const emailInput = authenticatedPage.locator('#create-org-email-input');
+    if (await emailInput.isVisible({timeout: 1000}).catch(() => false)) {
+      await emailInput.fill(`${orgName}@example.com`);
+    }
+
     await authenticatedPage.locator('#create-org-confirm').click();
 
     await expect(authenticatedPage.getByText(/[Ss]uccess/).first()).toBeVisible(
@@ -82,11 +88,13 @@ test.describe('Empty States and Alert Messages', {tag: ['@ui']}, () => {
     await authenticatedPage.locator('#Teams').click();
 
     // Create team
-    await authenticatedPage.getByRole('button', {name: 'Create team'}).click();
     await authenticatedPage
-      .getByPlaceholder('Enter a team name')
+      .getByRole('button', {name: 'Create new team'})
+      .click();
+    await authenticatedPage
+      .getByTestId('new-team-name-input')
       .fill('alertteam');
-    await authenticatedPage.getByRole('button', {name: 'Proceed'}).click();
+    await authenticatedPage.getByTestId('create-team-confirm').click();
 
     await expect(
       authenticatedPage.getByText(/[Ss]uccessfully created/).first(),

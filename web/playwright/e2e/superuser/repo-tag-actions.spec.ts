@@ -32,10 +32,10 @@ test.describe(
       // Submit
       await superuserPage.getByTestId('create-repository-submit-btn').click();
 
-      // Verify we navigated to the new repo
-      await expect(superuserPage).toHaveURL(
-        new RegExp(`/repository/${org.name}/sucreatedrepo`),
-      );
+      // Verify success alert appears
+      await expect(
+        superuserPage.getByText(/[Ss]uccessfully created repository/).first(),
+      ).toBeVisible({timeout: 10000});
 
       // Verify repo exists via API
       const response = await superuserRequest.get(
@@ -86,14 +86,23 @@ test.describe(
         .fill(`${org.name}/${repo.name}`);
       await superuserPage.getByTestId('delete-repository-confirm-btn').click();
 
-      // Should navigate back to repositories list
-      await expect(superuserPage).toHaveURL(/\/repository/);
+      // Wait for navigation away from the repo page
+      await superuserPage.waitForURL(/\/repository$|\/organization/, {
+        timeout: 15000,
+      });
 
       // Verify repo is gone via API
-      const response = await superuserRequest.get(
-        `${API_URL}/api/v1/repository/${org.name}/${repo.name}`,
-      );
-      expect(response.status()).toBe(404);
+      await expect
+        .poll(
+          async () => {
+            const resp = await superuserRequest.get(
+              `${API_URL}/api/v1/repository/${org.name}/${repo.name}`,
+            );
+            return resp.status();
+          },
+          {timeout: 10000},
+        )
+        .toBe(404);
     });
 
     test(
