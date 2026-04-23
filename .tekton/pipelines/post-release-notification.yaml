@@ -34,7 +34,7 @@ spec:
             type: string
         steps:
           - name: get-status
-            image: quay.io/konflux-ci/release-service-utils:e633d51cd41d73e4b3310face21bb980af7a662f
+            image: quay.io/konflux-ci/release-service-utils:ffa0340
             script: |
               #!/usr/bin/env bash
               set -euo pipefail
@@ -68,7 +68,7 @@ spec:
       taskRef:
         params:
           - name: bundle
-            value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1@sha256:3eff579c511d6c5e846175920e8f184a87337e142bbc4c30107e76bda4a325cb
+            value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1@sha256:14766aebbf6f4739e1b7dde0406dcba2d1e300170d3b084f23df9fb074d87dc3
           - name: name
             value: slack-webhook-notification
           - name: kind
