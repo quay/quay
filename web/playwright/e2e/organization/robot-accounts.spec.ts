@@ -667,16 +667,14 @@ test.describe(
         authenticatedPage.getByTestId('robot-accounts-table'),
       ).toBeVisible();
 
-      // Select all robots via header checkbox
+      // Select all robots via toolbar checkbox
       await authenticatedPage
-        .locator('thead input[type="checkbox"]')
-        .first()
-        .check();
+        .getByRole('checkbox', {name: 'Select all'})
+        .check({force: true});
 
       // Click the bulk delete action in the toolbar
       await authenticatedPage
-        .getByRole('button', {name: /[Dd]elete/})
-        .first()
+        .getByRole('button', {name: 'Delete selected items'})
         .click();
 
       // Confirm bulk deletion
