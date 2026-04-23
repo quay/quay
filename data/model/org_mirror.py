@@ -4,10 +4,13 @@ Business logic for organization-level mirror configuration.
 """
 
 import fnmatch
+import logging
 from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
 
 from peewee import JOIN, IntegrityError, fn
+
+logger = logging.getLogger(__name__)
 
 import features
 from data.database import (
@@ -326,7 +329,7 @@ def update_org_mirror_config(
     return config
 
 
-def delete_org_mirror_config(config):
+def delete_org_mirror_config(config: OrgMirrorConfig) -> bool:
     """
     Delete the organization-level mirror configuration and all associated discovered repositories.
 
@@ -346,10 +349,22 @@ def delete_org_mirror_config(config):
             & (OrgMirrorRepository.repository.is_null(False))
         )
 
-        Repository.update(state=RepositoryState.NORMAL).where(
-            (Repository.id << mirrored_repo_subquery)
-            & (Repository.state == RepositoryState.ORG_MIRROR)
-        ).execute()
+        repos_updated = (
+            Repository.update(state=RepositoryState.NORMAL)
+            .where(
+                (Repository.id << mirrored_repo_subquery)
+                & (Repository.state == RepositoryState.ORG_MIRROR)
+            )
+            .execute()
+        )
+
+        if repos_updated > 0:
+            logger.info(
+                "Reset %d repositories to NORMAL state for org mirror config %s (org: %s)",
+                repos_updated,
+                config.id,
+                config.organization.username,
+            )
 
         # Delete all associated discovered repositories
         OrgMirrorRepository.delete().where(
