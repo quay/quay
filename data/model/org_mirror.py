@@ -4,10 +4,13 @@ Business logic for organization-level mirror configuration.
 """
 
 import fnmatch
+import logging
 from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
 
 from peewee import JOIN, IntegrityError, fn
+
+logger = logging.getLogger(__name__)
 
 import features
 from data.database import (
@@ -326,9 +329,11 @@ def update_org_mirror_config(
     return config
 
 
-def delete_org_mirror_config(config):
+def delete_org_mirror_config(config: OrgMirrorConfig) -> bool:
     """
     Delete the organization-level mirror configuration and all associated discovered repositories.
+
+    Resets all mirrored repositories back to NORMAL state so they can be used as regular repos.
 
     Args:
         config: The OrgMirrorConfig instance to delete.
@@ -337,7 +342,31 @@ def delete_org_mirror_config(config):
         True if the configuration was deleted.
     """
     with db_transaction():
-        # Delete all associated discovered repositories first
+        # Reset state to NORMAL for all repositories currently in ORG_MIRROR state
+        # that are linked to this mirror config. Uses a subquery for efficiency.
+        mirrored_repo_subquery = OrgMirrorRepository.select(OrgMirrorRepository.repository).where(
+            (OrgMirrorRepository.org_mirror_config == config)
+            & (OrgMirrorRepository.repository.is_null(False))
+        )
+
+        repos_updated = (
+            Repository.update(state=RepositoryState.NORMAL)
+            .where(
+                (Repository.id << mirrored_repo_subquery)
+                & (Repository.state == RepositoryState.ORG_MIRROR)
+            )
+            .execute()
+        )
+
+        if repos_updated > 0:
+            logger.info(
+                "Reset %d repositories to NORMAL state for org mirror config %s (org: %s)",
+                repos_updated,
+                config.id,
+                config.organization.username,
+            )
+
+        # Delete all associated discovered repositories
         OrgMirrorRepository.delete().where(
             OrgMirrorRepository.org_mirror_config == config
         ).execute()
