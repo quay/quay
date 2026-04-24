@@ -91,6 +91,9 @@ test.describe(
       await authenticatedPage.goto(`/repository/${repo.fullName}`);
 
       // Verify we landed on the correct repo page
+      await expect(authenticatedPage).toHaveURL(
+        new RegExp(`/repository/${repo.fullName}`),
+      );
       await expect(
         authenticatedPage.getByRole('tab', {
           name: 'Information',
@@ -114,6 +117,9 @@ test.describe(
 
       await authenticatedPage.goto(`/repository/${repo.fullName}`);
 
+      await expect(authenticatedPage).toHaveURL(
+        new RegExp(`/repository/${repo.fullName}`),
+      );
       await expect(
         authenticatedPage.getByRole('tab', {
           name: 'Information',

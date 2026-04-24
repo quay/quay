@@ -51,10 +51,14 @@ test.describe(
       // Pick a different option than the current one
       const firstOptionValue = await options.nth(0).getAttribute('value');
       const secondOptionValue = await options.nth(1).getAttribute('value');
+      if (!firstOptionValue || !secondOptionValue) {
+        test.fail(true, 'Option value attributes are missing');
+        return;
+      }
       const newValue =
         currentValue === firstOptionValue
-          ? secondOptionValue!
-          : firstOptionValue!;
+          ? secondOptionValue
+          : firstOptionValue;
 
       await picker.selectOption(newValue);
 
