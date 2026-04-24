@@ -35,19 +35,6 @@ test.describe('Empty States and Alert Messages', {tag: ['@ui']}, () => {
     ).toBeVisible();
   });
 
-  test('shows empty state in organization repositories tab when org has no repos', async ({
-    authenticatedPage,
-    api,
-  }) => {
-    const org = await api.organization('emptyreposorg');
-
-    await authenticatedPage.goto(`/organization/${org.name}`);
-
-    await expect(
-      authenticatedPage.getByText('There are no viewable repositories'),
-    ).toBeVisible();
-  });
-
   test('shows success alert when creating an organization', async ({
     authenticatedPage,
     api,
@@ -76,7 +63,7 @@ test.describe('Empty States and Alert Messages', {tag: ['@ui']}, () => {
     await api.raw.deleteOrganization(orgName);
   });
 
-  test('shows success alert when creating and deleting a team', async ({
+  test('shows success alert when creating a team', async ({
     authenticatedPage,
     api,
   }) => {

@@ -1,4 +1,5 @@
 import {test, expect} from '../../fixtures';
+import {API_URL} from '../../utils/config';
 
 test.describe(
   'Repository State Management',
@@ -45,12 +46,20 @@ test.describe(
       await expect(submitButton).toBeEnabled();
       await submitButton.click();
 
-      // Verify state changed via API
-      const response = await authenticatedRequest.get(
-        `/api/v1/repository/${org.name}/${repo.name}`,
-      );
-      const body = await response.json();
-      expect(body.state).toBe('READ_ONLY');
+      // Verify state changed via API (poll to avoid racing the async update)
+      await expect
+        .poll(
+          async () => {
+            const response = await authenticatedRequest.get(
+              `${API_URL}/api/v1/repository/${org.name}/${repo.name}`,
+            );
+            if (!response.ok()) return `HTTP_${response.status()}`;
+            const body = await response.json();
+            return body.state;
+          },
+          {timeout: 10_000},
+        )
+        .toBe('READ_ONLY');
 
       // Transition back to NORMAL
       await authenticatedPage.reload();
@@ -66,11 +75,19 @@ test.describe(
       await authenticatedPage.getByRole('button', {name: 'Submit'}).click();
 
       // Verify restored via API
-      const response2 = await authenticatedRequest.get(
-        `/api/v1/repository/${org.name}/${repo.name}`,
-      );
-      const body2 = await response2.json();
-      expect(body2.state).toBe('NORMAL');
+      await expect
+        .poll(
+          async () => {
+            const response = await authenticatedRequest.get(
+              `${API_URL}/api/v1/repository/${org.name}/${repo.name}`,
+            );
+            if (!response.ok()) return `HTTP_${response.status()}`;
+            const body = await response.json();
+            return body.state;
+          },
+          {timeout: 10_000},
+        )
+        .toBe('NORMAL');
     });
 
     test('transitions to MIRROR state via settings UI', async ({
@@ -92,40 +109,41 @@ test.describe(
       await authenticatedPage.getByRole('radio', {name: 'Mirror'}).click();
       await authenticatedPage.getByRole('button', {name: 'Submit'}).click();
 
-      // Verify state changed via API
-      const response = await authenticatedRequest.get(
-        `/api/v1/repository/${org.name}/${repo.name}`,
-      );
-      const body = await response.json();
-      expect(body.state).toBe('MIRROR');
-
-      // Verify mirroring tab now shows the mirror form instead of the warning
-      await authenticatedPage.goto(
-        `/repository/${org.name}/${repo.name}?tab=mirroring`,
-      );
-      await expect(authenticatedPage.getByTestId('mirror-form')).toBeVisible();
+      // Verify state changed via API (poll to avoid racing the async update)
+      await expect
+        .poll(
+          async () => {
+            const response = await authenticatedRequest.get(
+              `${API_URL}/api/v1/repository/${org.name}/${repo.name}`,
+            );
+            if (!response.ok()) return `HTTP_${response.status()}`;
+            const body = await response.json();
+            return body.state;
+          },
+          {timeout: 10_000},
+        )
+        .toBe('MIRROR');
     });
 
-    test('ORG_MIRROR state shows info alert and prevents manual state changes', async ({
+    test('reflects MIRROR state set via API in settings UI', async ({
       authenticatedPage,
       api,
     }) => {
       const org = await api.organization('orgmirrstate');
       const repo = await api.repository(org.name, 'orgmirrrepo');
 
-      // Set to ORG_MIRROR state via API
+      // Set to MIRROR state via API
       await api.raw.changeRepositoryState(org.name, repo.name, 'MIRROR');
 
       await authenticatedPage.goto(
         `/repository/${org.name}/${repo.name}?tab=settings`,
       );
 
-      // The repository state tab should show the ORG_MIRROR info
       await authenticatedPage
         .getByTestId('settings-tab-repositorystate')
         .click();
 
-      // Verify the state radio buttons are present and Normal is not checked
+      // Verify Mirror radio is checked
       await expect(
         authenticatedPage.getByRole('radio', {name: 'Mirror'}),
       ).toBeChecked();

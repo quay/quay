@@ -531,7 +531,7 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     );
   });
 
-  test('default permissions tab is visible to admin but not member-only users', async ({
+  test('default permissions tab is visible to org admin', async ({
     authenticatedPage,
     api,
   }) => {

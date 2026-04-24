@@ -65,7 +65,10 @@ test.describe('Team Naming and Management', {tag: ['@organization']}, () => {
     await expect(paginationInfo).toContainText('16');
   });
 
-  test('can invite a user to a team', async ({authenticatedPage, api}) => {
+  test('navigates to team manage members page', async ({
+    authenticatedPage,
+    api,
+  }) => {
     const org = await api.organization('inviteorg');
     const team = await api.team(org.name, 'inviteteam');
 
