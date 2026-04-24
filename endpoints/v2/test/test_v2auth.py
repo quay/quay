@@ -412,3 +412,29 @@ def test_generate_registry_jwt(
         assert (
             model.repository.get_repository("devtable", "visibility").visibility.name == visibility
         )
+
+
+def test_push_creates_public_repo_by_default(app, client):
+    """When CREATE_PRIVATE_REPO_ON_PUSH is not set, repos default to public."""
+    original_app.config.pop("CREATE_PRIVATE_REPO_ON_PUSH", None)
+
+    params = {
+        "service": original_app.config["SERVER_HOSTNAME"],
+        "scope": "repository:devtable/defaultvisibility:pull,push,*",
+    }
+    headers = {"Authorization": gen_basic_auth("devtable", "password")}
+
+    resp = conduct_call(
+        client,
+        "v2.generate_registry_jwt",
+        url_for,
+        "GET",
+        params,
+        {},
+        200,
+        headers=headers,
+    )
+
+    repo = model.repository.get_repository("devtable", "defaultvisibility")
+    assert repo is not None
+    assert repo.visibility.name == "public"

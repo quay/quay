@@ -379,7 +379,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                         logger.debug("Creating repository: %s/%s", namespace, reponame)
                         visibility = (
                             "private"
-                            if app.config.get("CREATE_PRIVATE_REPO_ON_PUSH", True)
+                            if app.config.get("CREATE_PRIVATE_REPO_ON_PUSH", False)
                             else "public"
                         )
                         found = model.repository.get_or_create_repository(

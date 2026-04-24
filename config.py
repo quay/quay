@@ -852,8 +852,8 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_MANIFEST_SIZE_BACKFILL = True
     FEATURE_MANIFEST_SUBJECT_BACKFILL = True
 
-    # Repos created by push default to private visibility
-    CREATE_PRIVATE_REPO_ON_PUSH = True
+    # Repos created by push default to public visibility
+    CREATE_PRIVATE_REPO_ON_PUSH = False
 
     # Create organization on push if it does not exist
     CREATE_NAMESPACE_ON_PUSH = False

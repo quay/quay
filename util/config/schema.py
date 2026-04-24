@@ -1477,8 +1477,8 @@ CONFIG_SCHEMA = {
         },
         "CREATE_PRIVATE_REPO_ON_PUSH": {
             "type": "boolean",
-            "description": "Whether new repositories created by push are set to private visibility. Defaults to True.",
-            "x-example": True,
+            "description": "Whether new repositories created by push are set to private visibility. Defaults to False.",
+            "x-example": False,
         },
         "CREATE_NAMESPACE_ON_PUSH": {
             "type": "boolean",
