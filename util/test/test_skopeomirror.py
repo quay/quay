@@ -12,22 +12,24 @@ from util.repomirror.skopeomirror import (
 
 
 def test_create_authfile_content():
+    registries = ["quay.io", "registry.redhat.io", "docker.io"]
     content = create_authfile_content(
         [
-            AuthContent("quay.io", "user1", "user1"),
-            AuthContent("registry.redhat.io", "user2", "user2"),
-            AuthContent("docker.io", "anonymous", ""),
+            AuthContent(registries[0], "user1", "user1"),
+            AuthContent(registries[1], "user2", "user2"),
+            # "anonymous" with no password: username passes the None/empty filter but
+            # wrap_anonymous returns "" for missing password → empty auth value.
+            AuthContent(registries[2], "anonymous", ""),
         ]
     )
-    assert content.get("auths").get("quay.io").get("auth") == base64.b64encode(
-        "user1:user1".encode("utf8")
-    ).decode("utf8")
-    assert content.get("auths").get("registry.redhat.io").get("auth") == base64.b64encode(
-        "user2:user2".encode("utf8")
-    ).decode("utf8")
-    # "anonymous" with no password: username passes the None/empty filter but
-    # wrap_anonymous returns "" for missing password → empty auth value.
-    assert content.get("auths").get("docker.io").get("auth") == ""
+    auths = content["auths"]
+    assert auths[registries[0]]["auth"] == base64.b64encode("user1:user1".encode("utf8")).decode(
+        "utf8"
+    )
+    assert auths[registries[1]]["auth"] == base64.b64encode("user2:user2".encode("utf8")).decode(
+        "utf8"
+    )
+    assert auths[registries[2]]["auth"] == ""
 
 
 def test_create_authfile_content_filters_none_username():
