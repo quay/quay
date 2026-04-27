@@ -898,7 +898,7 @@ def test_mirror_with_architecture_filter(run_skopeo_mock, push_manifest_mock, in
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            _assert_skopeo_args(args, skopeo_call["args"])
             return skopeo_call["results"]
         except Exception as e:
             skopeo_calls.append(skopeo_call)
@@ -967,7 +967,7 @@ def test_mirror_without_architecture_filter_uses_all(run_skopeo_mock, initialize
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            _assert_skopeo_args(args, skopeo_call["args"])
             return skopeo_call["results"]
         except Exception as e:
             skopeo_calls.append(skopeo_call)
@@ -1056,7 +1056,7 @@ def test_mirror_single_arch_image_with_matching_filter(run_skopeo_mock, initiali
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            _assert_skopeo_args(args, skopeo_call["args"])
             return skopeo_call["results"]
         except Exception as e:
             skopeo_calls.append(skopeo_call)
@@ -1119,7 +1119,7 @@ def test_mirror_single_arch_image_with_nonmatching_filter(run_skopeo_mock, initi
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            _assert_skopeo_args(args, skopeo_call["args"])
             return skopeo_call["results"]
         except Exception as e:
             skopeo_calls.append(skopeo_call)
@@ -1263,7 +1263,7 @@ def test_mirror_mixed_tags_with_architecture_filter(
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            _assert_skopeo_args(args, skopeo_call["args"])
             return skopeo_call["results"]
         except Exception as e:
             skopeo_calls.append(skopeo_call)
@@ -1325,7 +1325,7 @@ def test_mirror_no_matching_architectures(run_skopeo_mock, initialized_db, app):
     def skopeo_test(args, proxy, timeout=300):
         try:
             skopeo_call = skopeo_calls.pop(0)
-            assert args == skopeo_call["args"]
+            _assert_skopeo_args(args, skopeo_call["args"])
             return skopeo_call["results"]
         except Exception as e:
             skopeo_calls.append(skopeo_call)
@@ -2108,7 +2108,7 @@ def test_perform_mirror_empty_tags(run_skopeo_mock, initialized_db, app):
 
     def skopeo_test(args, _proxy, timeout=300):
         skopeo_call = skopeo_calls.pop(0)
-        assert args == skopeo_call["args"]
+        _assert_skopeo_args(args, skopeo_call["args"])
         return skopeo_call["results"]
 
     run_skopeo_mock.side_effect = skopeo_test
@@ -2162,7 +2162,7 @@ def test_perform_mirror_cancel_during_sync(mock_check_status, run_skopeo_mock, i
 
     def skopeo_test(args, _proxy, timeout=300):
         skopeo_call = skopeo_calls.pop(0)
-        assert args == skopeo_call["args"]
+        _assert_skopeo_args(args, skopeo_call["args"])
         return skopeo_call["results"]
 
     run_skopeo_mock.side_effect = skopeo_test
