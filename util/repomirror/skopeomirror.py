@@ -38,6 +38,7 @@ AuthContent = namedtuple("AuthContent", ["location", "username", "password"])
 
 
 def wrap_anonymous(user: Optional[str] = None, passwd: Optional[str] = None) -> str:
+    """Return 'user:passwd' for use in a Docker auth entry, or '' if either value is absent."""
     if user in ("", None):
         return ""
     if passwd in ("", None):
@@ -46,6 +47,11 @@ def wrap_anonymous(user: Optional[str] = None, passwd: Optional[str] = None) -> 
 
 
 def create_authfile_content(content: list) -> dict:
+    """Build a Docker-style auth.json dict from a list of AuthContent entries.
+
+    Entries with a None or empty username are excluded so the authfile only
+    contains registries that actually require authentication.
+    """
     return dict(
         auths=dict(
             map(
