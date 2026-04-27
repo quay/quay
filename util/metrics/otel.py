@@ -1,3 +1,5 @@
+import logging
+import threading
 from functools import wraps
 
 from opentelemetry import trace
@@ -9,8 +11,30 @@ from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 
 import features
 
+logger = logging.getLogger(__name__)
+
+
+def _patch_gevent_thread_cleanup():
+    """
+    Under gevent monkey-patching, BatchSpanProcessor's daemon thread becomes
+    a greenlet.  When it terminates, threading._delete() raises KeyError
+    because the greenlet ID was never registered in threading._active.
+    Patch Thread._delete to suppress that KeyError.
+    """
+    original = threading.Thread._delete
+
+    def _safe_delete(self):
+        try:
+            original(self)
+        except KeyError:
+            logger.debug("Suppressed KeyError in Thread._delete (likely gevent greenlet)")
+
+    threading.Thread._delete = _safe_delete
+
 
 def init_exporter(app_config):
+
+    _patch_gevent_thread_cleanup()
 
     otel_config = app_config.get("OTEL_CONFIG", {})
 
