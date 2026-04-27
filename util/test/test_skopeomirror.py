@@ -63,7 +63,9 @@ def test_registry_netloc_filesystem_transports_return_none():
 
 
 def test_registry_netloc_docker_daemon():
-    assert _registry_netloc("docker-daemon:registry.example.com/image:tag") == "registry.example.com"
+    assert (
+        _registry_netloc("docker-daemon:registry.example.com/image:tag") == "registry.example.com"
+    )
     assert _registry_netloc("docker-daemon:image") is None
 
 
