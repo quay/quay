@@ -58,6 +58,7 @@ describe('DropdownCheckbox', () => {
 
   it('does not show badge when no items are selected', () => {
     render(<DropdownCheckbox {...makeProps({selectedItems: []})} />);
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    // Badge renders selectedItems.length only when > 0; '0' must not appear
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 });

@@ -1,3 +1,4 @@
+import {fireEvent} from '@testing-library/react';
 import {render, screen, userEvent, waitFor} from 'src/test-utils';
 import ImmutabilityPolicyForm from './ImmutabilityPolicyForm';
 
@@ -33,7 +34,8 @@ describe('ImmutabilityPolicyForm', () => {
   it('shows error when pattern exceeds 256 characters', async () => {
     render(<ImmutabilityPolicyForm {...makeProps()} />);
     const input = screen.getByTestId('immutability-tag-pattern');
-    await userEvent.type(input, 'a'.repeat(257));
+    // Use fireEvent to avoid 257 individual keystroke events that can flake CI
+    fireEvent.change(input, {target: {value: 'a'.repeat(257)}});
     await userEvent.click(screen.getByTestId('save-immutability-policy-btn'));
     expect(
       screen.getByText('Tag pattern must be 256 characters or less'),
@@ -120,9 +122,9 @@ describe('ImmutabilityPolicyForm', () => {
   });
 
   it('renders inline (no card wrapper) when isInline is true', () => {
-    const {container} = render(
-      <ImmutabilityPolicyForm {...makeProps({isInline: true})} />,
-    );
-    expect(container.querySelector('.pf-v6-c-card')).not.toBeInTheDocument();
+    render(<ImmutabilityPolicyForm {...makeProps({isInline: true})} />);
+    expect(
+      screen.queryByTestId('immutability-card-wrapper'),
+    ).not.toBeInTheDocument();
   });
 });

@@ -274,7 +274,7 @@ export default function ImmutabilityPolicyForm(
 
   // Default: render form in card
   return (
-    <Card className="pf-v6-u-mb-md">
+    <Card className="pf-v6-u-mb-md" data-testid="immutability-card-wrapper">
       <CardBody>{formContent}</CardBody>
     </Card>
   );

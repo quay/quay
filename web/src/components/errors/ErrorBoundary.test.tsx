@@ -41,7 +41,7 @@ describe('ErrorBoundary', () => {
     expect(screen.getByRole('button', {name: 'Retry'})).toBeInTheDocument();
   });
 
-  it('renders nothing for children when hasError is false', () => {
+  it('renders children and not fallback when hasError is false', () => {
     const {container} = render(
       <ErrorBoundary fallback={<span>Fallback</span>} hasError={false}>
         <div>visible</div>

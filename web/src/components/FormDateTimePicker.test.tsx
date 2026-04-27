@@ -26,16 +26,13 @@ describe('FormDateTimePicker', () => {
 
   it('displays the timezone label helper text', () => {
     render(<FormDateTimePicker value="2024-06-15T10:30" onChange={vi.fn()} />);
-    // getTimezoneLabel always returns a non-empty string
-    const helper = document.querySelector('.pf-v6-c-helper-text__item');
-    expect(helper).toBeInTheDocument();
-    expect(helper.textContent).toMatch(/time/i);
+    expect(screen.getByText(/all times are shown in/i)).toBeInTheDocument();
   });
 
   it('renders with a pre-filled date value', () => {
+    // '2024-06-15T10:30' is treated as local time; 10:30 AM is safe across all populated timezones
     render(<FormDateTimePicker value="2024-06-15T10:30" onChange={vi.fn()} />);
-    // Date picker input should have a value
-    const dateInput = document.querySelector('input[aria-label="Select date"]');
+    const dateInput = screen.getByLabelText('Select date');
     expect(dateInput).toBeInTheDocument();
     expect(dateInput).toHaveValue('2024-06-15');
   });
