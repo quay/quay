@@ -15,8 +15,17 @@ vi.mock('src/resources/NotificationResource', () => ({
   isNotificationDisabled: vi.fn(),
   isNotificationEnabled: vi.fn(),
   NotificationEventType: {
-    repo_push: 'repo_push',
-    build_failure: 'build_failure',
+    repoPush: 'repo_push',
+    buildFailure: 'build_failure',
+    vulnFound: 'vulnerability_found',
+    buildQueued: 'build_queued',
+    buildStart: 'build_start',
+    buildSuccess: 'build_success',
+    buildCancelled: 'build_cancelled',
+    mirrorStarted: 'repo_mirror_sync_started',
+    mirrorSuccess: 'repo_mirror_sync_success',
+    mirrorFailed: 'repo_mirror_sync_failed',
+    imageExpiry: 'repo_image_expiry',
   },
 }));
 
@@ -64,7 +73,7 @@ describe('useNotifications', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     act(() => {
       result.current.setFilter({
-        event: [NotificationEventType.repo_push as any],
+        event: [NotificationEventType.repoPush],
         status: [],
       });
     });

@@ -159,19 +159,21 @@ describe('UseBuilds', () => {
     it('parses command/phase/error type log entries as top-level entries', async () => {
       vi.mocked(fetchBuildLogs).mockResolvedValueOnce({
         start: 0,
-        total: 3,
+        total: 4,
         logs: [
           {type: 'phase', message: 'Building'},
           {type: 'entry', message: 'sub log'},
           {type: 'command', message: 'RUN npm install'},
+          {type: 'error', message: 'boom'},
         ],
       } as any);
       const {result} = renderHook(() => useBuildLogs('myorg', 'myrepo', 'b1'), {
         wrapper,
       });
-      await waitFor(() => expect(result.current.logs).toHaveLength(2));
+      await waitFor(() => expect(result.current.logs).toHaveLength(3));
       expect(result.current.logs[0].type).toBe('phase');
       expect(result.current.logs[1].type).toBe('command');
+      expect(result.current.logs[2].type).toBe('error');
       // sub log goes into parent's logs array
       expect(result.current.logs[0].logs).toHaveLength(1);
     });

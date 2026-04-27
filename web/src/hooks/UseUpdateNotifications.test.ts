@@ -91,4 +91,35 @@ describe('useUpdateNotifications', () => {
       'uuid-2',
     ]);
   });
+
+  it('tests a notification and fires success', async () => {
+    vi.mocked(testNotification).mockResolvedValueOnce(undefined);
+    const {result} = renderHook(
+      () => useUpdateNotifications('myorg', 'myrepo'),
+      {wrapper},
+    );
+    act(() => {
+      result.current.test('uuid-1');
+    });
+    await waitFor(() =>
+      expect(result.current.successTestingNotification).toBe(true),
+    );
+    expect(testNotification).toHaveBeenCalledWith('myorg', 'myrepo', 'uuid-1');
+  });
+
+  it('test mutation reports error on failure', async () => {
+    vi.mocked(testNotification).mockRejectedValueOnce(
+      new Error('Test failed'),
+    );
+    const {result} = renderHook(
+      () => useUpdateNotifications('myorg', 'myrepo'),
+      {wrapper},
+    );
+    act(() => {
+      result.current.test('uuid-1');
+    });
+    await waitFor(() =>
+      expect(result.current.errorTestingNotification).toBe(true),
+    );
+  });
 });

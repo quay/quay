@@ -26,7 +26,7 @@ describe('useConvertAccount', () => {
   });
 
   it('calls convert and fires onSuccess', async () => {
-    vi.mocked(convert).mockResolvedValueOnce({client_key: 'abc123'} as any);
+    vi.mocked(convert).mockResolvedValueOnce(undefined);
     const onSuccess = vi.fn();
     const onError = vi.fn();
     const {result} = renderHook(() => useConvertAccount({onSuccess, onError}), {
@@ -58,8 +58,8 @@ describe('useConvertAccount', () => {
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
-  it('exposes client key from mutation result', async () => {
-    vi.mocked(convert).mockResolvedValueOnce({client_key: 'mykey'} as any);
+  it('clientKey is undefined since convert() returns void', async () => {
+    vi.mocked(convert).mockResolvedValueOnce(undefined);
     const onSuccess = vi.fn();
     const onError = vi.fn();
     const {result} = renderHook(() => useConvertAccount({onSuccess, onError}), {
@@ -68,7 +68,7 @@ describe('useConvertAccount', () => {
     act(() => {
       result.current.convert({adminUser: 'admin', adminPassword: 'pass'});
     });
-    await waitFor(() => expect(result.current.clientKey).toBeDefined());
-    expect(result.current.clientKey).toEqual({client_key: 'mykey'});
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    expect(result.current.clientKey).toBeUndefined();
   });
 });
