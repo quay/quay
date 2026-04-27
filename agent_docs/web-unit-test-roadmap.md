@@ -254,9 +254,9 @@ Leave these to Playwright E2E:
 | 4 | Complex hooks | 59 | 2-3 days | **Complete** |
 | 5 | API resources (27 files) | 291 | 4-5 days | **Complete** |
 | 6 | Standard hooks (52 files) | 206 | 4-5 days | **Complete** — 206 new tests across 52 hook files |
-| 7 | Components (100 files) | ~140 | 5-6 days | **In progress** — LoadingPage (6) done |
+| 7 | Components (100 files) | ~140 | 5-6 days | **Complete** — 157 tests across 31 files added |
 
-**Current: 736 tests passing across 93 files | Target: ~870 tests**
+**Current: 893 tests passing across 124 files | Target: ~870 tests**
 
 Phases 1-5 are complete. Phases 6-7 are incremental and can be spread over sprints. Remaining effort: ~9-11 days.
 
