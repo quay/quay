@@ -112,7 +112,9 @@ gangway_get() {
 }
 
 save_state() {
-    mkdir -p -m 700 "$STATE_DIR"
+    mkdir -p "$STATE_DIR"
+    chmod 700 "$STATE_DIR"
+    [[ -L "$STATE_DIR" ]] && die "Refusing to write through symlinked state dir: $STATE_DIR"
     [[ -L "$STATE_FILE" ]] && die "Refusing to write through symlinked state file: $STATE_FILE"
     jq -n \
         --arg eid "$1" \
@@ -128,10 +130,12 @@ save_state() {
 update_state_field() {
     local field="$1" value="$2"
     if [[ -f "$STATE_FILE" ]]; then
+        [[ -L "$STATE_DIR" ]] && die "Refusing to write through symlinked state dir: $STATE_DIR"
         [[ -L "$STATE_FILE" ]] && die "Refusing to write through symlinked state file: $STATE_FILE"
-        local tmp
-        tmp=$(jq --arg f "$field" --arg v "$value" '.[$f] = $v' "$STATE_FILE")
-        echo "$tmp" > "$STATE_FILE"
+        local tmpfile
+        tmpfile=$(mktemp "${STATE_DIR}/.state.XXXXXX")
+        jq --arg f "$field" --arg v "$value" '.[$f] = $v' "$STATE_FILE" > "$tmpfile"
+        mv "$tmpfile" "$STATE_FILE"
     fi
 }
 
@@ -149,6 +153,7 @@ try_download_kubeconfig() {
             continue
         fi
         if [[ "$http_code" == "200" ]] && [[ -s "$tmpfile" ]]; then
+            mkdir -p "$(dirname "$KUBECONFIG_OUT")"
             mv "$tmpfile" "$KUBECONFIG_OUT"
             chmod 600 "$KUBECONFIG_OUT"
             return 0
