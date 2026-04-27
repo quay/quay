@@ -663,6 +663,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
     ];
 
     let createdCount = 0;
+    const skippedEvents: string[] = [];
 
     for (const eventName of eventTypes) {
       await authenticatedPage
@@ -677,6 +678,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         name: eventName,
       });
       if (!(await menuItem.isVisible({timeout: 2000}).catch(() => false))) {
+        skippedEvents.push(eventName);
         await authenticatedPage.keyboard.press('Escape');
         await authenticatedPage.keyboard.press('Escape');
         continue;
@@ -705,6 +707,26 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       createdCount++;
     }
 
-    expect(createdCount).toBeGreaterThanOrEqual(1);
+    // Push to Repository should always be available regardless of feature flags
+    expect(
+      skippedEvents,
+      `Core event was unexpectedly unavailable: ${skippedEvents.join(', ')}`,
+    ).not.toContain('Push to Repository');
+
+    // Feature-gated events may be skipped, but nothing else
+    const featureGatedEvents = [
+      'Package Vulnerability Found',
+      'Image build queued',
+      'Image build started',
+      'Image build success',
+      'Image build failed',
+      'Image build cancelled',
+    ];
+    for (const skipped of skippedEvents) {
+      expect(
+        featureGatedEvents,
+        `Unexpected event skipped: ${skipped}`,
+      ).toContain(skipped);
+    }
   });
 });
