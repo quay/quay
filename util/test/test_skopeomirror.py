@@ -7,6 +7,7 @@ from util.repomirror.skopeomirror import (
     SKOPEO_TIMEOUT_SECONDS,
     AuthContent,
     SkopeoMirror,
+    _registry_netloc,
     create_authfile_content,
 )
 
@@ -39,8 +40,7 @@ def test_create_authfile_content_filters_none_username():
             AuthContent("quay.io", "user", "pass"),
         ]
     )
-    assert "registry.example.com" not in content.get("auths", {})
-    assert "quay.io" in content.get("auths", {})
+    assert set(content.get("auths", {}).keys()) == {"quay.io"}
 
 
 def test_create_authfile_content_empty_when_no_credentials():
@@ -48,6 +48,23 @@ def test_create_authfile_content_empty_when_no_credentials():
         [AuthContent("quay.io", None, None), AuthContent("docker.io", "", "")]
     )
     assert content == {"auths": {}}
+
+
+def test_registry_netloc_docker_transport():
+    assert _registry_netloc("docker://quay.io/repo:tag") == "quay.io"
+    assert _registry_netloc("docker://registry.example.com/repo:tag") == "registry.example.com"
+
+
+def test_registry_netloc_filesystem_transports_return_none():
+    assert _registry_netloc("oci-archive:/tmp/x.tar") is None
+    assert _registry_netloc("oci:/tmp/x") is None
+    assert _registry_netloc("dir:/tmp/x") is None
+    assert _registry_netloc("docker-archive:/tmp/x.tar") is None
+
+
+def test_registry_netloc_docker_daemon():
+    assert _registry_netloc("docker-daemon:registry.example.com/image:tag") == "registry.example.com"
+    assert _registry_netloc("docker-daemon:image") is None
 
 
 @pytest.mark.integration

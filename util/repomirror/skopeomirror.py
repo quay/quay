@@ -20,6 +20,24 @@ _SANITIZE_PATTERNS = [
 
 SKOPEO_TIMEOUT_SECONDS = 300
 
+_FILESYSTEM_TRANSPORTS = frozenset({"oci-archive", "oci", "dir", "docker-archive"})
+
+
+def _registry_netloc(image: str) -> Optional[str]:
+    """Return the registry hostname for an image URI, or None for filesystem transports.
+
+    Filesystem transports (oci-archive, dir, docker-archive, oci) have no registry
+    host; returning None prevents empty-string keys in the authfile.
+    """
+    transport = image.partition(":")[0].lower()
+    if transport in _FILESYSTEM_TRANSPORTS:
+        return None
+    if transport == "docker-daemon":
+        remainder = image.split(":", 1)[1].lstrip("/")
+        parts = remainder.split("/")
+        return parts[0] if len(parts) > 1 else None
+    return urllib.parse.urlparse(image).netloc or None
+
 
 def sanitize_skopeo_output(output: Optional[str]) -> Optional[str]:
     if not output:
@@ -49,8 +67,9 @@ def wrap_anonymous(user: Optional[str] = None, passwd: Optional[str] = None) -> 
 def create_authfile_content(content: list) -> dict:
     """Build a Docker-style auth.json dict from a list of AuthContent entries.
 
-    Entries with a None or empty username are excluded so the authfile only
-    contains registries that actually require authentication.
+    Entries with a None/empty username or a None/empty location are excluded so
+    the authfile only contains registries that actually require authentication
+    and have a resolvable registry hostname.
     """
     return dict(
         auths=dict(
@@ -63,7 +82,10 @@ def create_authfile_content(content: list) -> dict:
                         ).decode("utf8")
                     },
                 ),
-                filter(lambda y: y.username not in ("", None), content),
+                filter(
+                    lambda y: y.username not in ("", None) and y.location not in ("", None),
+                    content,
+                ),
             )
         )
     )
@@ -107,8 +129,8 @@ class SkopeoMirror(object):
         )
         content = create_authfile_content(
             [
-                AuthContent(urllib.parse.urlparse(src_image).netloc, src_username, src_password),
-                AuthContent(urllib.parse.urlparse(dest_image).netloc, dest_username, dest_password),
+                AuthContent(_registry_netloc(src_image), src_username, src_password),
+                AuthContent(_registry_netloc(dest_image), dest_username, dest_password),
             ]
         )
 
@@ -142,7 +164,7 @@ class SkopeoMirror(object):
         args = args + ["list-tags", "--tls-verify=%s" % verify_tls]
         content = create_authfile_content(
             [
-                AuthContent(urllib.parse.urlparse(repository).netloc, username, password),
+                AuthContent(_registry_netloc(repository), username, password),
             ]
         )
 
@@ -177,7 +199,7 @@ class SkopeoMirror(object):
             args = args + ["--debug"]
         args = args + ["inspect", "--raw", "--tls-verify=%s" % verify_tls]
         content = create_authfile_content(
-            [AuthContent(urllib.parse.urlparse(image).netloc, username, password)]
+            [AuthContent(_registry_netloc(image), username, password)]
         )
         with NamedTemporaryFile() as authfile:
             authfile.write(json.dumps(content).encode("utf8"))
@@ -206,7 +228,7 @@ class SkopeoMirror(object):
             args = args + ["--debug"]
         args = args + ["inspect", "--tls-verify=%s" % verify_tls]
         content = create_authfile_content(
-            [AuthContent(urllib.parse.urlparse(image).netloc, username, password)]
+            [AuthContent(_registry_netloc(image), username, password)]
         )
         with NamedTemporaryFile() as authfile:
             authfile.write(json.dumps(content).encode("utf8"))
@@ -248,12 +270,12 @@ class SkopeoMirror(object):
         content = create_authfile_content(
             [
                 AuthContent(
-                    urllib.parse.urlparse(src_image_with_digest).netloc,
+                    _registry_netloc(src_image_with_digest),
                     src_username,
                     src_password,
                 ),
                 AuthContent(
-                    urllib.parse.urlparse(dest_image_with_digest).netloc,
+                    _registry_netloc(dest_image_with_digest),
                     dest_username,
                     dest_password,
                 ),
