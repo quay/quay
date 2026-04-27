@@ -279,6 +279,7 @@ up() {
 }
 
 down() {
+    command -v jq >/dev/null 2>&1 || die "'jq' is required but not found on PATH"
     if [[ -f "$STATE_FILE" ]]; then
         [[ -L "$STATE_FILE" ]] && die "Refusing to read symlinked state file: $STATE_FILE"
         local kubeconfig_path
@@ -299,6 +300,7 @@ down() {
 }
 
 status() {
+    command -v jq >/dev/null 2>&1 || die "'jq' is required but not found on PATH"
     if [[ ! -f "$STATE_FILE" ]]; then
         echo "No active cluster provision."
         return 0
