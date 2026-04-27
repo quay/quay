@@ -114,16 +114,15 @@ gangway_get() {
 save_state() {
     mkdir -p -m 700 "$STATE_DIR"
     [[ -L "$STATE_FILE" ]] && die "Refusing to write through symlinked state file: $STATE_FILE"
-    cat > "$STATE_FILE" <<STATEEOF
-{
-  "execution_id": "$1",
-  "gcs_path": "$2",
-  "job_url": "$3",
-  "kubeconfig_path": "$4",
-  "started_at": "$5",
-  "status": "$6"
-}
-STATEEOF
+    jq -n \
+        --arg eid "$1" \
+        --arg gcs "$2" \
+        --arg url "$3" \
+        --arg kfg "$4" \
+        --arg sta "$5" \
+        --arg sts "$6" \
+        '{execution_id: $eid, gcs_path: $gcs, job_url: $url, kubeconfig_path: $kfg, started_at: $sta, status: $sts}' \
+        > "$STATE_FILE"
 }
 
 update_state_field() {
