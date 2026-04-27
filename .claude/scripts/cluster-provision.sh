@@ -12,7 +12,7 @@ OCP_VERSION="${3:-4.18}"
 
 GANGWAY_BASE="https://gangway-ci.apps.ci.l2s4.p1.openshiftapps.com"
 JOB_NAME="periodic-ci-quay-quay-master-claim-cluster-for-dev"
-STATE_DIR="/tmp/cluster-provision"
+STATE_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/cluster-provision-${UID}"
 STATE_FILE="${STATE_DIR}/state.json"
 
 POLL_INTERVAL_INITIAL=15
@@ -64,13 +64,17 @@ gangway_post() {
     local endpoint="$1" payload="$2"
     local http_code body tmpfile
     tmpfile=$(mktemp)
-    http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
+    if ! http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
         --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time "$CURL_MAX_TIME" \
         -X POST \
         -H "Authorization: Bearer ${GANGWAY_TOKEN}" \
         -H "Content-Type: application/json" \
         -d "$payload" \
-        "${GANGWAY_BASE}${endpoint}")
+        "${GANGWAY_BASE}${endpoint}"); then
+        body=$(cat "$tmpfile" 2>/dev/null || true)
+        rm -f "$tmpfile"
+        die "Gangway API POST ${endpoint} transport error: ${body}"
+    fi
     body=$(cat "$tmpfile")
     rm -f "$tmpfile"
 
@@ -87,10 +91,14 @@ gangway_get() {
     local endpoint="$1"
     local http_code body tmpfile
     tmpfile=$(mktemp)
-    http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
+    if ! http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
         --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time "$CURL_MAX_TIME" \
         -H "Authorization: Bearer ${GANGWAY_TOKEN}" \
-        "${GANGWAY_BASE}${endpoint}")
+        "${GANGWAY_BASE}${endpoint}"); then
+        body=$(cat "$tmpfile" 2>/dev/null || true)
+        rm -f "$tmpfile"
+        die "Gangway API GET ${endpoint} transport error: ${body}"
+    fi
     body=$(cat "$tmpfile")
     rm -f "$tmpfile"
 
@@ -104,7 +112,8 @@ gangway_get() {
 }
 
 save_state() {
-    mkdir -p "$STATE_DIR"
+    mkdir -p -m 700 "$STATE_DIR"
+    [[ -L "$STATE_FILE" ]] && die "Refusing to write through symlinked state file: $STATE_FILE"
     cat > "$STATE_FILE" <<STATEEOF
 {
   "execution_id": "$1",
@@ -120,6 +129,7 @@ STATEEOF
 update_state_field() {
     local field="$1" value="$2"
     if [[ -f "$STATE_FILE" ]]; then
+        [[ -L "$STATE_FILE" ]] && die "Refusing to write through symlinked state file: $STATE_FILE"
         local tmp
         tmp=$(jq --arg f "$field" --arg v "$value" '.[$f] = $v' "$STATE_FILE")
         echo "$tmp" > "$STATE_FILE"
@@ -133,9 +143,12 @@ try_download_kubeconfig() {
     for bucket in "${GCS_BUCKETS[@]}"; do
         url="${GCSWEB_BASE}/${bucket}/${gcs_path}/${ARTIFACT_SUBPATH}"
         tmpfile=$(mktemp)
-        http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
+        if ! http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
             --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time 60 \
-            "$url")
+            "$url"); then
+            rm -f "$tmpfile"
+            continue
+        fi
         if [[ "$http_code" == "200" ]] && [[ -s "$tmpfile" ]]; then
             mv "$tmpfile" "$KUBECONFIG_OUT"
             chmod 600 "$KUBECONFIG_OUT"
@@ -224,12 +237,14 @@ up() {
     check_prereqs
 
     if [[ -f "$STATE_FILE" ]]; then
+        [[ -L "$STATE_FILE" ]] && die "Refusing to read symlinked state file: $STATE_FILE"
         local existing_id existing_status
         existing_id=$(jq -r '.execution_id // empty' "$STATE_FILE")
         existing_status=$(jq -r '.status // empty' "$STATE_FILE")
 
         if [[ -n "$existing_id" && "$existing_status" != "FAILURE" && "$existing_status" != "ERROR" && "$existing_status" != "ABORTED" ]]; then
             info "Found existing execution ${existing_id} (status: ${existing_status}). Resuming..."
+            update_state_field "kubeconfig_path" "$KUBECONFIG_OUT"
             poll_and_download "$existing_id"
             return $?
         fi
@@ -265,6 +280,7 @@ up() {
 
 down() {
     if [[ -f "$STATE_FILE" ]]; then
+        [[ -L "$STATE_FILE" ]] && die "Refusing to read symlinked state file: $STATE_FILE"
         local kubeconfig_path
         kubeconfig_path=$(jq -r '.kubeconfig_path // empty' "$STATE_FILE")
         info "Cleaning up state..."
@@ -287,6 +303,8 @@ status() {
         echo "No active cluster provision."
         return 0
     fi
+
+    [[ -L "$STATE_FILE" ]] && die "Refusing to read symlinked state file: $STATE_FILE"
 
     local state exec_id started_at cur_status kubeconfig_path job_url gcs_path
     state=$(cat "$STATE_FILE")
