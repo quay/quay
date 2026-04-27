@@ -21,6 +21,7 @@ jobs:
         with:
           with-clair: true
           with-keycloak: true
+          with-jaeger: true
           extra-config: |
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
@@ -145,6 +146,22 @@ jobs:
           name: playwright-test-results
           path: web/test-results/
           retention-days: 30
+
+      - name: Export Jaeger traces
+        if: always()
+        run: |
+          mkdir -p jaeger-traces
+          curl -sf "http://localhost:16686/api/traces?service=quay&limit=1000" \
+            -o jaeger-traces/traces.json \
+            || echo "::warning::Could not export Jaeger traces"
+
+      - name: Upload Jaeger traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jaeger-traces
+          path: jaeger-traces/
+          retention-days: 7
 
       - name: Collect Quay logs on failure
         if: failure()

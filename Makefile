@@ -340,6 +340,37 @@ local-dev-up-with-keycloak: local-dev-up
 	@$(MAKE) enable-oidc
 	$(DOCKER_COMPOSE) restart quay
 
+.PHONY: enable-jaeger
+enable-jaeger:
+	@echo "Merging Jaeger tracing config into local-dev/stack/config.yaml..."
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@if ! $(DOCKER_COMPOSE) ps jaeger 2>/dev/null | grep -q "Up"; then \
+		echo "⚠ Warning: Jaeger container not running. Start with: docker compose up -d jaeger"; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/jaeger/jaeger-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+	@echo "✓ Jaeger tracing configuration merged"
+	@echo "  Backup: local-dev/stack/config.yaml.backup"
+	@echo "  Jaeger UI: http://localhost:16686"
+	@echo "  Apply changes: $(DOCKER_COMPOSE) restart quay"
+
+.PHONY: local-dev-up-with-jaeger
+local-dev-up-with-jaeger: local-dev-up
+	$(DOCKER_COMPOSE) up -d jaeger
+	@echo "Waiting for Jaeger to be ready..."
+	@curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+		http://localhost:16686/api/services > /dev/null \
+		|| { echo "Jaeger failed to start. Recent logs:"; $(DOCKER_COMPOSE) logs --tail 50 jaeger; exit 1; }
+	@echo "Jaeger is ready. Merging tracing config..."
+	@$(MAKE) enable-jaeger
+	$(DOCKER_COMPOSE) restart quay
+
 .PHONY: enable-splunk
 enable-splunk:
 	@echo "Setting up Splunk for local development..."
