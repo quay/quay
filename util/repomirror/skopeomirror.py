@@ -37,7 +37,7 @@ SkopeoResults = namedtuple("SkopeoResults", "success tags stdout stderr")
 AuthContent = namedtuple("AuthContent", ["location", "username", "password"])
 
 
-def wrap_anonymous(user: str = "", passwd: str = "") -> str:
+def wrap_anonymous(user: Optional[str] = None, passwd: Optional[str] = None) -> str:
     if user in ("", None):
         return ""
     if passwd in ("", None):
@@ -138,13 +138,13 @@ class SkopeoMirror(object):
                 AuthContent(urllib.parse.urlparse(repository).netloc, username, password),
             ]
         )
-        args = args + [repository]
 
         all_tags = []
         with NamedTemporaryFile() as authfile:
             authfile.write(json.dumps(content).encode("utf8"))
             authfile.flush()
             args.extend(["--authfile", authfile.name])
+            args = args + [repository]
             result = self.run_skopeo(args, proxy, timeout)
             if result.success:
                 all_tags = json.loads(result.stdout)["Tags"]
@@ -169,9 +169,15 @@ class SkopeoMirror(object):
         if verbose_logs:
             args = args + ["--debug"]
         args = args + ["inspect", "--raw", "--tls-verify=%s" % verify_tls]
-        args = args + self.external_registry_credentials("--creds", username, password)
-        args = args + [image]
-        return self.run_skopeo(args, proxy or {}, timeout)
+        content = create_authfile_content(
+            [AuthContent(urllib.parse.urlparse(image).netloc, username, password)]
+        )
+        with NamedTemporaryFile() as authfile:
+            authfile.write(json.dumps(content).encode("utf8"))
+            authfile.flush()
+            args.extend(["--authfile", authfile.name])
+            args = args + [image]
+            return self.run_skopeo(args, proxy or {}, timeout)
 
     def inspect(
         self,
@@ -192,9 +198,15 @@ class SkopeoMirror(object):
         if verbose_logs:
             args = args + ["--debug"]
         args = args + ["inspect", "--tls-verify=%s" % verify_tls]
-        args = args + self.external_registry_credentials("--creds", username, password)
-        args = args + [image]
-        return self.run_skopeo(args, proxy or {}, timeout)
+        content = create_authfile_content(
+            [AuthContent(urllib.parse.urlparse(image).netloc, username, password)]
+        )
+        with NamedTemporaryFile() as authfile:
+            authfile.write(json.dumps(content).encode("utf8"))
+            authfile.flush()
+            args.extend(["--authfile", authfile.name])
+            args = args + [image]
+            return self.run_skopeo(args, proxy or {}, timeout)
 
     def copy_by_digest(
         self,
@@ -226,12 +238,26 @@ class SkopeoMirror(object):
             "--src-tls-verify=%s" % src_tls_verify,
             "--dest-tls-verify=%s" % dest_tls_verify,
         ]
-        args = args + self.external_registry_credentials(
-            "--dest-creds", dest_username, dest_password
+        content = create_authfile_content(
+            [
+                AuthContent(
+                    urllib.parse.urlparse(src_image_with_digest).netloc,
+                    src_username,
+                    src_password,
+                ),
+                AuthContent(
+                    urllib.parse.urlparse(dest_image_with_digest).netloc,
+                    dest_username,
+                    dest_password,
+                ),
+            ]
         )
-        args = args + self.external_registry_credentials("--src-creds", src_username, src_password)
-        args = args + [quote(src_image_with_digest), quote(dest_image_with_digest)]
-        return self.run_skopeo(args, proxy or {}, timeout)
+        with NamedTemporaryFile() as authfile:
+            authfile.write(json.dumps(content).encode("utf8"))
+            authfile.flush()
+            args.extend(["--authfile", authfile.name])
+            args = args + [quote(src_image_with_digest), quote(dest_image_with_digest)]
+            return self.run_skopeo(args, proxy or {}, timeout)
 
     def external_registry_credentials(
         self, arg: str, username: Optional[str], password: Optional[str]
