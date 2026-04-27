@@ -23,7 +23,7 @@ Parse `$ARGUMENTS` into at most two values before invoking Bash:
 - **Arg 2**: OCP version (default: `4.18`)
 
 Set variables from `$ARGUMENTS`:
-```
+```text
 KUBECONFIG_PATH = first arg or /tmp/k
 OCP_VERSION = second arg or 4.18
 ```

@@ -23,6 +23,9 @@ GCS_BUCKETS=("test-platform-results" "origin-ci-test")
 GCSWEB_BASE="https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs"
 ARTIFACT_SUBPATH="artifacts/claim-cluster-for-dev/export-kubeconfig/kubeconfig"
 
+CURL_CONNECT_TIMEOUT=10
+CURL_MAX_TIME=30
+
 die() { echo "ERROR: $*" >&2; exit 1; }
 info() { echo "==> $*"; }
 
@@ -62,6 +65,7 @@ gangway_post() {
     local http_code body tmpfile
     tmpfile=$(mktemp)
     http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
+        --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time "$CURL_MAX_TIME" \
         -X POST \
         -H "Authorization: Bearer ${GANGWAY_TOKEN}" \
         -H "Content-Type: application/json" \
@@ -84,6 +88,7 @@ gangway_get() {
     local http_code body tmpfile
     tmpfile=$(mktemp)
     http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
+        --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time "$CURL_MAX_TIME" \
         -H "Authorization: Bearer ${GANGWAY_TOKEN}" \
         "${GANGWAY_BASE}${endpoint}")
     body=$(cat "$tmpfile")
@@ -128,7 +133,9 @@ try_download_kubeconfig() {
     for bucket in "${GCS_BUCKETS[@]}"; do
         url="${GCSWEB_BASE}/${bucket}/${gcs_path}/${ARTIFACT_SUBPATH}"
         tmpfile=$(mktemp)
-        http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" "$url")
+        http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
+            --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time 60 \
+            "$url")
         if [[ "$http_code" == "200" ]] && [[ -s "$tmpfile" ]]; then
             mv "$tmpfile" "$KUBECONFIG_OUT"
             chmod 600 "$KUBECONFIG_OUT"
@@ -233,8 +240,8 @@ up() {
     payload=$(jq -n '{
         job_name: $job,
         job_execution_type: "1",
-        pod_spec_options: { envs: {} }
-    }' --arg job "$JOB_NAME")
+        pod_spec_options: { envs: { OCP_VERSION: $ocp } }
+    }' --arg job "$JOB_NAME" --arg ocp "$OCP_VERSION")
 
     response=$(gangway_post "/v1/executions" "$payload")
 
