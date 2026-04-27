@@ -1,6 +1,15 @@
 import {render, screen} from 'src/test-utils';
 import PageLoadError from './PageLoadError';
 
+const originalLocation = window.location;
+
+afterEach(() => {
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: originalLocation,
+  });
+});
+
 describe('PageLoadError', () => {
   it('renders "Unable to reach server" heading', () => {
     render(<PageLoadError />);
@@ -13,13 +22,13 @@ describe('PageLoadError', () => {
   });
 
   it('renders a Retry button that triggers reload', () => {
-    const reloadSpy = vi
-      .spyOn(window.location, 'reload')
-      .mockImplementation(vi.fn());
+    const reload = vi.fn();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {...originalLocation, reload},
+    });
     render(<PageLoadError />);
-    const btn = screen.getByRole('button', {name: /retry/i});
-    btn.click();
-    expect(reloadSpy).toHaveBeenCalledTimes(1);
-    reloadSpy.mockRestore();
+    screen.getByRole('button', {name: /retry/i}).click();
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });
