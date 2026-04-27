@@ -13,30 +13,41 @@ test.describe('Teams CRUD', {tag: ['@organization']}, () => {
     );
 
     await authenticatedPage
-      .getByRole('button', {name: 'Create New Team'})
+      .getByRole('button', {name: 'Create new team'})
       .click();
 
-    // Fill team name
-    const nameInput = authenticatedPage.getByPlaceholder('Enter a team name');
-    await nameInput.fill(teamName);
+    // Fill team name via testid
+    await authenticatedPage.getByTestId('new-team-name-input').fill(teamName);
 
-    // Fill description
-    const descInput = authenticatedPage.getByPlaceholder('Enter a description');
+    // Fill description via testid
+    const descInput = authenticatedPage.getByTestId(
+      'new-team-description-input',
+    );
     if (await descInput.isVisible({timeout: 1000}).catch(() => false)) {
       await descInput.fill('Test team description');
     }
 
-    // Submit
+    // Submit — "Proceed" opens a 4-step wizard; team is created on step 1
     await authenticatedPage.getByRole('button', {name: 'Proceed'}).click();
 
-    // Wait for wizard or close modal
-    // Team should appear in the teams list after creation
+    // Wait for the wizard to appear (team is created on Proceed)
+    await expect(
+      authenticatedPage.getByText('Team name and description'),
+    ).toBeVisible();
+
+    // Close the wizard — remaining steps are optional
+    await authenticatedPage
+      .getByRole('dialog')
+      .getByRole('button', {name: 'Cancel'})
+      .click();
+
+    // Reload to verify team was created
     await authenticatedPage.goto(
       `/organization/${org.name}?tab=Teamsandmembership`,
     );
 
     await expect(
-      authenticatedPage.getByRole('cell', {name: teamName}),
+      authenticatedPage.getByRole('link', {name: teamName}),
     ).toBeVisible();
 
     // Cleanup
@@ -60,16 +71,13 @@ test.describe('Teams CRUD', {tag: ['@organization']}, () => {
     );
 
     await expect(
-      authenticatedPage.getByRole('cell', {name: team.name}),
+      authenticatedPage.getByRole('link', {name: team.name}),
     ).toBeVisible();
 
     // Click kebab for the team row
-    const teamRow = authenticatedPage
-      .getByRole('row')
-      .filter({hasText: team.name});
-    await teamRow.getByRole('button', {name: /actions|kebab/i}).click();
+    await authenticatedPage.getByTestId(`${team.name}-toggle-kebab`).click();
 
-    await authenticatedPage.getByText('Delete').click();
+    await authenticatedPage.getByTestId(`${team.name}-del-option`).click();
 
     // Confirm deletion in modal
     const deleteBtn = authenticatedPage.getByRole('button', {name: 'Delete'});
@@ -77,7 +85,7 @@ test.describe('Teams CRUD', {tag: ['@organization']}, () => {
 
     // Team should be removed
     await expect(
-      authenticatedPage.getByRole('cell', {name: team.name}),
+      authenticatedPage.getByRole('link', {name: team.name}),
     ).not.toBeVisible();
   });
 
@@ -102,19 +110,18 @@ test.describe('Teams CRUD', {tag: ['@organization']}, () => {
     api,
   }) => {
     const org = await api.organization('tmrepoperm');
-    await api.team(org.name, 'permteam');
+    const team = await api.team(org.name, 'permteam');
     await api.repository(org.name, 'permrepo');
 
     await authenticatedPage.goto(
       `/organization/${org.name}?tab=Teamsandmembership`,
     );
 
-    const teamRow = authenticatedPage
-      .getByRole('row')
-      .filter({hasText: 'permteam'});
-    await teamRow.getByRole('button', {name: /actions|kebab/i}).click();
+    await authenticatedPage.getByTestId(`${team.name}-toggle-kebab`).click();
 
-    await authenticatedPage.getByText('Set repository permissions').click();
+    await authenticatedPage
+      .getByTestId(`${team.name}-set-repo-perms-option`)
+      .click();
 
     await expect(
       authenticatedPage.getByText('Set repository permissions', {exact: false}),
@@ -126,20 +133,25 @@ test.describe('Teams CRUD', {tag: ['@organization']}, () => {
     api,
   }) => {
     const org = await api.organization('tmmanage');
-    await api.team(org.name, 'manageteam');
+    const team = await api.team(org.name, 'manageteam');
 
     await authenticatedPage.goto(
       `/organization/${org.name}?tab=Teamsandmembership`,
     );
 
     const teamLink = authenticatedPage.getByRole('link', {
-      name: 'manageteam',
+      name: team.name,
     });
     await expect(teamLink).toBeVisible();
     await teamLink.click();
 
     await expect(authenticatedPage).toHaveURL(
-      new RegExp(`/organization/${org.name}/teams/manageteam`),
+      new RegExp(
+        `/organization/${org.name}/teams/${team.name}`.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          '\\$&',
+        ),
+      ),
     );
   });
 });

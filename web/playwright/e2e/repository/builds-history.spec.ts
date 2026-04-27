@@ -20,7 +20,7 @@ test.describe(
         authenticatedPage.getByRole('heading', {name: 'Build History'}),
       ).toBeVisible();
 
-      const table = authenticatedPage.getByRole('table', {
+      const table = authenticatedPage.getByRole('grid', {
         name: 'Repository builds table',
       });
       await expect(table).toBeVisible();
@@ -157,10 +157,10 @@ test.describe(
       await expect(modal).toBeVisible();
       await expect(modal.getByText('Start Repository Build')).toBeVisible();
       await expect(
-        modal.getByRole('tab', {name: 'invoke build trigger tab'}),
+        modal.getByRole('tab', {name: 'Invoke Build Trigger'}),
       ).toBeVisible();
       await expect(
-        modal.getByRole('tab', {name: 'upload dockerfile tab'}),
+        modal.getByRole('tab', {name: 'Upload Dockerfile'}),
       ).toBeVisible();
 
       // No triggers → empty message

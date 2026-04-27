@@ -19,7 +19,11 @@ test.describe('About Page', {tag: ['@ui']}, () => {
   test('displays packages table', async ({authenticatedPage}) => {
     await authenticatedPage.goto('/about');
 
-    // PackagesTable renders a searchable, sortable table of dependencies
-    await expect(authenticatedPage.getByRole('table').first()).toBeVisible();
+    // PackagesTable renders as a PF grid with packages data
+    await expect(
+      authenticatedPage.getByRole('grid', {
+        name: 'Packages and projects table',
+      }),
+    ).toBeVisible();
   });
 });

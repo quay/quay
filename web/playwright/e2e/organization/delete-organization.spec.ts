@@ -1,6 +1,6 @@
 import {test, expect} from '../../fixtures';
 
-test.describe('Delete Organization', {tag: ['@organization']}, () => {
+test.describe('Delete organization', {tag: ['@organization']}, () => {
   test('delete option visible in settings for admin', async ({
     authenticatedPage,
     api,
@@ -10,7 +10,7 @@ test.describe('Delete Organization', {tag: ['@organization']}, () => {
     await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
 
     await expect(
-      authenticatedPage.getByText('Delete Organization'),
+      authenticatedPage.getByText('Delete organization'),
     ).toBeVisible();
   });
 
@@ -23,22 +23,22 @@ test.describe('Delete Organization', {tag: ['@organization']}, () => {
     await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
 
     await authenticatedPage
-      .getByRole('button', {name: 'Delete Organization'})
+      .getByRole('button', {name: 'Delete organization'})
       .click();
 
-    // Modal should open
+    // Modal should open with confirmation instructions
     await expect(
-      authenticatedPage.getByText('Are you sure', {exact: false}),
+      authenticatedPage.getByText('You must type', {exact: false}),
     ).toBeVisible();
 
     // Delete button should be disabled without confirmation text
-    const deleteBtn = authenticatedPage.getByRole('button', {
-      name: 'Delete',
-    });
+    const deleteBtn = authenticatedPage.getByTestId('delete-account-confirm');
     await expect(deleteBtn).toBeDisabled();
 
     // Type wrong name
-    const confirmInput = authenticatedPage.getByRole('textbox');
+    const confirmInput = authenticatedPage.locator(
+      '#delete-confirmation-input',
+    );
     await confirmInput.fill('wrongname');
     await expect(deleteBtn).toBeDisabled();
 
@@ -56,15 +56,20 @@ test.describe('Delete Organization', {tag: ['@organization']}, () => {
     await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
 
     await authenticatedPage
-      .getByRole('button', {name: 'Delete Organization'})
+      .getByRole('button', {name: 'Delete organization'})
       .click();
 
     await authenticatedPage.getByRole('button', {name: 'Cancel'}).click();
 
-    // Navigate to org page to verify it still exists
+    // Modal should be closed
+    await expect(
+      authenticatedPage.getByTestId('delete-account-modal'),
+    ).not.toBeVisible();
+
+    // Org page should still be accessible
     await authenticatedPage.goto(`/organization/${org.name}`);
     await expect(authenticatedPage).toHaveURL(
-      new RegExp(`/organization/${org.name}`),
+      new RegExp(`/organization/${org.name}$`),
     );
   });
 
@@ -77,15 +82,17 @@ test.describe('Delete Organization', {tag: ['@organization']}, () => {
     await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
 
     await authenticatedPage
-      .getByRole('button', {name: 'Delete Organization'})
+      .getByRole('button', {name: 'Delete organization'})
       .click();
 
-    const confirmInput = authenticatedPage.getByRole('textbox');
+    const confirmInput = authenticatedPage.locator(
+      '#delete-confirmation-input',
+    );
     await confirmInput.fill(org.name);
 
-    await authenticatedPage.getByRole('button', {name: 'Delete'}).click();
+    await authenticatedPage.getByTestId('delete-account-confirm').click();
 
-    // Should redirect to organization list
-    await expect(authenticatedPage).toHaveURL(/\/organization/);
+    // Should redirect to root/organization list, not stay on deleted org page
+    await expect(authenticatedPage).toHaveURL(/\/organization$/);
   });
 });
