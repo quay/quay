@@ -1,6 +1,15 @@
 import {render, screen} from 'src/test-utils';
 import RequestError from './RequestError';
 
+const originalLocation = window.location;
+
+afterEach(() => {
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: originalLocation,
+  });
+});
+
 describe('RequestError', () => {
   it('renders default title when none provided', () => {
     render(<RequestError message="Something failed" />);
@@ -23,12 +32,13 @@ describe('RequestError', () => {
   });
 
   it('renders Retry button that calls window.location.reload', () => {
-    const reloadSpy = vi
-      .spyOn(window.location, 'reload')
-      .mockImplementation(vi.fn());
+    const reload = vi.fn();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {...originalLocation, reload},
+    });
     render(<RequestError message="err" />);
     screen.getByRole('button', {name: /retry/i}).click();
-    expect(reloadSpy).toHaveBeenCalledTimes(1);
-    reloadSpy.mockRestore();
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });
