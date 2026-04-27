@@ -9,7 +9,7 @@ test.describe('Create Organization', {tag: ['@organization']}, () => {
       .click();
 
     await expect(
-      authenticatedPage.getByText('Create Organization'),
+      authenticatedPage.getByRole('heading', {name: 'Create Organization'}),
     ).toBeVisible();
     await expect(
       authenticatedPage.locator('#create-org-name-input'),
@@ -20,7 +20,10 @@ test.describe('Create Organization', {tag: ['@organization']}, () => {
     await expect(authenticatedPage.locator('#create-org-cancel')).toBeVisible();
   });
 
-  test('name validation rejects invalid input', async ({authenticatedPage}) => {
+  test('name validation rejects invalid input', async ({
+    authenticatedPage,
+    quayConfig,
+  }) => {
     await authenticatedPage.goto('/organization');
     await authenticatedPage
       .getByRole('button', {name: 'Create Organization'})
@@ -42,8 +45,13 @@ test.describe('Create Organization', {tag: ['@organization']}, () => {
     await nameInput.fill('MyOrg');
     await expect(createBtn).toBeDisabled();
 
-    // Valid name enables button
+    // Valid name — fill email too if MAILING is enabled (email is required)
     await nameInput.fill('validorg');
+    if (quayConfig?.features?.MAILING) {
+      await authenticatedPage
+        .locator('#create-org-email-input')
+        .fill('validorg@test.example.com');
+    }
     await expect(createBtn).toBeEnabled();
   });
 

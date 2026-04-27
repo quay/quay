@@ -2,7 +2,9 @@ import {test, expect} from '../../fixtures';
 
 test.describe(
   'Superuser User Management',
-  {tag: ['@superuser', '@feature:SUPERUSERS_FULL_ACCESS']},
+  {
+    tag: ['@superuser', '@feature:SUPERUSERS_FULL_ACCESS', '@auth:Database'],
+  },
   () => {
     test('superuser sees Create User button on org list', async ({
       superuserPage,
@@ -24,7 +26,7 @@ test.describe(
       ).not.toBeVisible();
     });
 
-    test('create user modal opens and validates input', async ({
+    test('create user modal opens with username and email fields', async ({
       superuserPage,
     }) => {
       await superuserPage.goto('/organization');
@@ -33,7 +35,7 @@ test.describe(
 
       // Modal should appear
       await expect(
-        superuserPage.getByText('Create User', {exact: false}),
+        superuserPage.getByRole('heading', {name: 'Create New User'}),
       ).toBeVisible();
 
       // Username field should be present
@@ -49,42 +51,37 @@ test.describe(
       await expect(emailInput).toBeVisible();
     });
 
-    test('superuser can create and delete a user', async ({
+    test('superuser can create a user via API and see it in list', async ({
       superuserPage,
       superuserApi,
     }) => {
-      const username = `testsu${Date.now()}`.substring(0, 20).toLowerCase();
-
-      // Create user via API
-      await superuserApi.user(username, `${username}@test.example.com`);
+      const user = await superuserApi.user('testsu');
 
       await superuserPage.goto('/organization');
 
-      // User should appear in the list
-      await expect(superuserPage.getByText(username)).toBeVisible();
+      // User should appear in the list (use first() since superuser view
+      // may show the same user in both org and user sections)
+      await expect(
+        superuserPage.getByRole('link', {name: user.username}).first(),
+      ).toBeVisible();
     });
 
     test('superuser sees user management actions in kebab menu', async ({
       superuserPage,
       superuserApi,
     }) => {
-      const username = `testmgmt${Date.now()}`.substring(0, 20).toLowerCase();
-      await superuserApi.user(username, `${username}@test.example.com`);
+      const user = await superuserApi.user('testmgmt');
 
       await superuserPage.goto('/organization');
 
-      // Find the row for the user and open kebab
-      const userRow = superuserPage
-        .getByRole('row')
-        .filter({hasText: username});
-      await userRow.getByRole('button', {name: /actions|kebab/i}).click();
+      // Open kebab for the user
+      await superuserPage
+        .getByTestId(`${user.username}-options-toggle`)
+        .click();
 
       // Should see management options
-      await expect(
-        superuserPage
-          .getByText('Disable User')
-          .or(superuserPage.getByText('Delete User')),
-      ).toBeVisible();
+      await expect(superuserPage.getByText('Disable User')).toBeVisible();
+      await expect(superuserPage.getByText('Delete User')).toBeVisible();
     });
   },
 );

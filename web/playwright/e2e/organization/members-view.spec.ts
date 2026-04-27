@@ -9,8 +9,8 @@ test.describe(
       api,
     }) => {
       const org = await api.organization('memview');
-      await api.team(org.name, 'testteam');
-      await api.teamMember(org.name, 'testteam', 'testuser');
+      const team = await api.team(org.name, 'testteam');
+      await api.teamMember(org.name, team.name, 'testuser');
 
       await authenticatedPage.goto(
         `/organization/${org.name}?tab=Teamsandmembership`,
@@ -73,7 +73,7 @@ test.describe(
       api,
     }) => {
       const org = await api.organization('memteamcol');
-      await api.team(org.name, 'viewteam');
+      const team = await api.team(org.name, 'viewteam');
 
       await authenticatedPage.goto(
         `/organization/${org.name}?tab=Teamsandmembership`,
@@ -92,9 +92,9 @@ test.describe(
         authenticatedPage.getByRole('columnheader', {name: 'Team role'}),
       ).toBeVisible();
 
-      // Created team should be listed
+      // Created team should be listed (rendered as a link)
       await expect(
-        authenticatedPage.getByRole('cell', {name: 'viewteam'}),
+        authenticatedPage.getByRole('link', {name: team.name}),
       ).toBeVisible();
     });
 
