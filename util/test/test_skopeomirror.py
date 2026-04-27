@@ -52,7 +52,7 @@ def test_create_authfile_content_empty_when_no_credentials():
 def test_skopeo_command_copy():
     result = SkopeoMirror().copy(
         "docker://quay.io/quay/busybox:latest",
-        "oci-archive://dev/null",
+        "oci-archive:/dev/null",
         proxy={"http_proxy": "", "https_proxy": "", "no_proxy": ""},
         timeout=SKOPEO_TIMEOUT_SECONDS,
     )
@@ -65,7 +65,7 @@ def test_skopeo_command_copy():
 def test_skopeo_command_authenticated():
     result = SkopeoMirror().copy(
         f"docker://{os.environ.get('src_image')}",
-        "oci-archive://dev/null",
+        "oci-archive:/dev/null",
         src_username=os.environ.get("user-to-authenticated"),
         src_password=os.environ.get("pass-to-authenticated"),
         proxy={"http_proxy": "", "https_proxy": "", "no_proxy": ""},

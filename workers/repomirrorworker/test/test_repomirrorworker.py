@@ -33,7 +33,7 @@ from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 
 
 def _assert_skopeo_args(actual_args, expected_args):
-    """Assert skopeo args match, ignoring the --authfile path (a tempfile changes each call)."""
+    """Assert skopeo args match expected, ignoring the transient --authfile <tmppath> pair."""
 
     def strip_authfile(args):
         a = list(args)

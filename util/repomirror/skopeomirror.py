@@ -88,6 +88,7 @@ class SkopeoMirror(object):
         verbose_logs=False,
         unsigned_images=False,
     ):
+        """Copy src_image to dest_image via skopeo, using a temporary authfile for credentials."""
         args = ["/usr/bin/skopeo"]
         if verbose_logs:
             args = args + ["--debug"]
