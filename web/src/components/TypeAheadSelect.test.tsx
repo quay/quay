@@ -4,7 +4,9 @@ import TypeAheadSelect from './TypeAheadSelect';
 const initialOptions = [
   {value: 'apple', children: 'apple'},
   {value: 'banana', children: 'banana'},
-  {value: 'cherry', children: 'cherry'},
+  // Distinct value so the onChange assertion proves the value prop is forwarded,
+  // not an index or auto-generated key
+  {value: 'cherry-key', children: 'cherry-key'},
 ];
 
 function makeProps(overrides = {}) {
@@ -28,7 +30,7 @@ describe('TypeAheadSelect', () => {
     await userEvent.click(screen.getByRole('button'));
     expect(screen.getByText('apple')).toBeInTheDocument();
     expect(screen.getByText('banana')).toBeInTheDocument();
-    expect(screen.getByText('cherry')).toBeInTheDocument();
+    expect(screen.getByText('cherry-key')).toBeInTheDocument();
   });
 
   it('filters options as user types', async () => {
@@ -43,6 +45,9 @@ describe('TypeAheadSelect', () => {
     render(<TypeAheadSelect {...makeProps()} />);
     const input = screen.getByPlaceholderText('Select a fruit');
     await userEvent.type(input, 'xyz');
+    // PF6 Select renders the option's `value` prop as display text; the placeholder
+    // option uses value='no results' (children contains the dynamic message but is
+    // not used for visible text in this PF6 Select variant)
     await waitFor(() =>
       expect(screen.getByText('no results')).toBeInTheDocument(),
     );
@@ -52,8 +57,8 @@ describe('TypeAheadSelect', () => {
     const onChange = vi.fn();
     render(<TypeAheadSelect {...makeProps({onChange})} />);
     await userEvent.click(screen.getByRole('button'));
-    await userEvent.click(screen.getByText('cherry'));
-    expect(onChange).toHaveBeenCalledWith('cherry');
+    await userEvent.click(screen.getByText('cherry-key'));
+    expect(onChange).toHaveBeenCalledWith('cherry-key');
   });
 
   it('shows clear button when value is non-empty and clears on click', async () => {

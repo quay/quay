@@ -53,14 +53,14 @@ describe('ActivityHeatmap', () => {
     const {container} = render(
       <ActivityHeatmap data={[makeData(100, 5)]} itemName="action" />,
     );
-    // Cells with count > 0 should have a blue fill, not the grey zero-count color
+    // count=100, max=100 → intensity=1.0 > 0.75 → blue-500 (highest tier)
     const cells = container.querySelectorAll('.activity-heatmap-cell');
     const highCountCell = Array.from(cells).find(
       (c) => (c as SVGElement).getAttribute('aria-label')?.includes('100'),
     );
     expect(highCountCell).toBeDefined();
-    expect((highCountCell as SVGElement).getAttribute('fill')).not.toBe(
-      'var(--pf-t--global--color--grey--50, #f4f4f4)',
+    expect((highCountCell as SVGElement).getAttribute('fill')).toBe(
+      'var(--pf-t--global--color--blue--500, #4682b4)',
     );
   });
 

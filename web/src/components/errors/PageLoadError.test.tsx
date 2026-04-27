@@ -12,7 +12,7 @@ describe('PageLoadError', () => {
     expect(screen.getByText('Page could not be loaded')).toBeInTheDocument();
   });
 
-  it('renders a Retry button that triggers reload', async () => {
+  it('renders a Retry button that triggers reload', () => {
     const reloadSpy = vi
       .spyOn(window.location, 'reload')
       .mockImplementation(vi.fn());
