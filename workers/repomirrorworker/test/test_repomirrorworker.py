@@ -33,16 +33,17 @@ from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 
 
 def _assert_skopeo_args(actual_args, expected_args):
-    """Assert skopeo args match expected, ignoring the transient --authfile <tmppath> pair."""
+    """Assert skopeo args match, stripping transient --authfile and legacy inline --*-creds pairs."""
 
-    def strip_authfile(args):
+    def strip_cred_flags(args):
         a = list(args)
-        if "--authfile" in a:
-            i = a.index("--authfile")
-            del a[i : i + 2]
+        for flag in ("--authfile", "--src-creds", "--dest-creds", "--creds"):
+            while flag in a:
+                i = a.index(flag)
+                del a[i : i + 2]
         return a
 
-    assert strip_authfile(actual_args) == strip_authfile(expected_args)
+    assert strip_cred_flags(actual_args) == strip_cred_flags(expected_args)
     assert "--authfile" in actual_args
 
 
