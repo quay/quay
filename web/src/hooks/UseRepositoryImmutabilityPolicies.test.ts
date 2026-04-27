@@ -109,6 +109,11 @@ describe('UseRepositoryImmutabilityPolicies', () => {
         result.current.updateRepoPolicy(policy);
       });
       await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+      expect(updateRepositoryImmutabilityPolicy).toHaveBeenCalledWith(
+        'myorg',
+        'myrepo',
+        policy,
+      );
     });
   });
 

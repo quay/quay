@@ -56,7 +56,10 @@ describe('UseGlobalMessages', () => {
         } as any);
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(createGlobalMessage).toHaveBeenCalled();
+      expect(createGlobalMessage).toHaveBeenCalledWith({
+        content: 'New message',
+        severity: 'info',
+      });
     });
   });
 

@@ -104,7 +104,9 @@ describe('UseMembers', () => {
       act(() => {
         result.current.setSearch({query: 'ali', field: 'username'});
       });
-      expect(result.current.filteredMembers).toHaveLength(1);
+      await waitFor(() => {
+        expect(result.current.filteredMembers).toHaveLength(1);
+      });
       expect(result.current.filteredMembers[0].name).toBe('alice');
     });
   });

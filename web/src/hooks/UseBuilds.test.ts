@@ -138,6 +138,7 @@ describe('UseBuilds', () => {
         result.current.cancelBuild(undefined);
       });
       await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+      expect(cancelBuild).toHaveBeenCalledWith('myorg', 'myrepo', 'b1');
     });
   });
 

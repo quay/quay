@@ -26,9 +26,7 @@ describe('useCreateClientKey', () => {
   });
 
   it('calls createClientKey with password and fires onSuccess', async () => {
-    vi.mocked(createClientKey).mockResolvedValueOnce({
-      key: 'clientkey123',
-    } as any);
+    vi.mocked(createClientKey).mockResolvedValueOnce('clientkey123');
     const onSuccess = vi.fn();
     const onError = vi.fn();
     const {result} = renderHook(
@@ -40,7 +38,7 @@ describe('useCreateClientKey', () => {
     });
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
     expect(createClientKey).toHaveBeenCalledWith('mypassword');
-    expect(result.current.clientKey).toEqual({key: 'clientkey123'});
+    expect(result.current.clientKey).toBe('clientkey123');
   });
 
   it('fires onError on failure', async () => {

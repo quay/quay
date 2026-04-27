@@ -83,9 +83,11 @@ describe('UseBuildTriggers', () => {
     });
 
     it('does not fetch when triggerUuid is null', () => {
-      renderHook(() => useFetchBuildTrigger('myorg', 'myrepo', null), {
-        wrapper,
-      });
+      renderHook(
+        () =>
+          useFetchBuildTrigger('myorg', 'myrepo', null as unknown as string),
+        {wrapper},
+      );
       expect(fetchBuildTrigger).not.toHaveBeenCalled();
     });
   });

@@ -109,6 +109,10 @@ describe('UseNamespaceImmutabilityPolicies', () => {
         result.current.updatePolicy(policy);
       });
       await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+      expect(updateNamespaceImmutabilityPolicy).toHaveBeenCalledWith(
+        'myorg',
+        policy,
+      );
     });
   });
 
