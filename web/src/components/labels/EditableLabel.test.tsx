@@ -1,3 +1,4 @@
+import {fireEvent} from '@testing-library/react';
 import {render, screen, userEvent} from 'src/test-utils';
 import EditableLabel from './EditableLabel';
 
@@ -38,8 +39,9 @@ describe('EditableLabel', () => {
       <EditableLabel value="" setValue={setValue} onEditComplete={vi.fn()} />,
     );
     await userEvent.click(screen.getByText('Add new label'));
-    await userEvent.type(screen.getByRole('textbox'), 'k=v');
-    expect(setValue).toHaveBeenCalled();
+    // fireEvent sends the full value at once; trim behavior is exercised by the whitespace
+    fireEvent.change(screen.getByRole('textbox'), {target: {value: ' k=v '}});
+    expect(setValue).toHaveBeenLastCalledWith('k=v');
   });
 
   it('shows error validation state when invalid is true', async () => {

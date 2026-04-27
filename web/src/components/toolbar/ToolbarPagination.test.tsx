@@ -21,7 +21,8 @@ describe('ToolbarPagination', () => {
         itemsList={Array.from({length: 25})}
       />,
     );
-    expect(screen.getAllByText(/1 - 10/).length).toBeGreaterThan(0);
+    // Asserts the derived total (25) is shown, proving itemsList.length is used
+    expect(screen.getAllByText(/25/).length).toBeGreaterThan(0);
   });
 
   it('calls setPage when next page button is clicked', async () => {

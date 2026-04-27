@@ -31,6 +31,7 @@ function makeProps(overrides = {}) {
 }
 
 beforeEach(() => {
+  mockUseEntities.mockReset();
   mockUseEntities.mockReturnValue(defaultHookReturn());
 });
 
@@ -110,6 +111,6 @@ describe('EntitySearch', () => {
         {...makeProps({includeTeams: false, includeRobots: true})}
       />,
     );
-    expect(mockUseEntities).toHaveBeenCalledWith('myorg', false, true);
+    expect(mockUseEntities).toHaveBeenLastCalledWith('myorg', false, true);
   });
 });

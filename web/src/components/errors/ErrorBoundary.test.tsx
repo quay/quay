@@ -27,13 +27,16 @@ describe('ErrorBoundary', () => {
       throw new Error('Test error');
     };
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn());
-    render(
-      <ErrorBoundary fallback={<span>Error fallback</span>}>
-        <ThrowingChild />
-      </ErrorBoundary>,
-    );
-    expect(screen.getByText('Error fallback')).toBeInTheDocument();
-    consoleSpy.mockRestore();
+    try {
+      render(
+        <ErrorBoundary fallback={<span>Error fallback</span>}>
+          <ThrowingChild />
+        </ErrorBoundary>,
+      );
+      expect(screen.getByText('Error fallback')).toBeInTheDocument();
+    } finally {
+      consoleSpy.mockRestore();
+    }
   });
 
   it('accepts JSX as fallback', () => {
