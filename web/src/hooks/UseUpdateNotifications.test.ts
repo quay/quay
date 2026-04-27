@@ -108,9 +108,7 @@ describe('useUpdateNotifications', () => {
   });
 
   it('test mutation reports error on failure', async () => {
-    vi.mocked(testNotification).mockRejectedValueOnce(
-      new Error('Test failed'),
-    );
+    vi.mocked(testNotification).mockRejectedValueOnce(new Error('Test failed'));
     const {result} = renderHook(
       () => useUpdateNotifications('myorg', 'myrepo'),
       {wrapper},
