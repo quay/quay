@@ -264,7 +264,9 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
       .getByRole('link', {name: team.name})
       .click();
 
-    await expect(authenticatedPage).toHaveURL(new RegExp(`teams/${team.name}`));
+    await expect(authenticatedPage).toHaveURL(
+      (url) => url.pathname === `/organization/${org.name}/teams/${team.name}`,
+    );
     await expect(authenticatedPage.getByTestId('teamname-title')).toContainText(
       team.name,
     );
