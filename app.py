@@ -383,4 +383,7 @@ if features.OTEL_TRACING:
         excluded_urls=app.config.get("OTEL_TRACING_EXCLUDED_URLS", None),
     )
     Psycopg2Instrumentor().instrument()
-    init_exporter(app.config)
+    # Detect if running under gunicorn with preload_app
+    # When QUAY_HOTRELOAD is false, gunicorn configs set preload_app=True
+    is_preload = os.getenv("QUAY_HOTRELOAD", "false") == "false"
+    init_exporter(app.config, is_gunicorn_preload=is_preload)

@@ -7,7 +7,12 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from util.metrics.otel import _patch_gevent_thread_cleanup, init_exporter
+import util.metrics.otel as otel_module
+from util.metrics.otel import (
+    _patch_gevent_thread_cleanup,
+    init_exporter,
+    post_fork_init,
+)
 
 
 @pytest.mark.parametrize(
@@ -133,6 +138,45 @@ class TestInitExporterProvider:
         provider = trace.get_tracer_provider()
         processors = provider._active_span_processor._span_processors
         assert any(isinstance(p, BatchSpanProcessor) for p in processors)
+
+
+class TestPreloadDeferral:
+    @pytest.fixture(autouse=True)
+    def reset(self, _reset_tracer_provider):
+        otel_module._IS_PRELOAD = False
+        otel_module._APP_CONFIG = None
+        yield
+        otel_module._IS_PRELOAD = False
+        otel_module._APP_CONFIG = None
+
+    @patch("util.metrics.otel.trace")
+    @patch("util.metrics.otel.BatchSpanProcessor")
+    @patch("util.metrics.otel.OTLPSpanExporter")
+    def test_preload_defers_initialization(self, mock_exporter, mock_processor, mock_trace):
+        config = {"OTEL_CONFIG": {"service_name": "test-quay"}}
+        init_exporter(config, is_gunicorn_preload=True)
+
+        mock_processor.assert_not_called()
+        mock_trace.set_tracer_provider.assert_not_called()
+        assert otel_module._APP_CONFIG is config
+
+    @patch("util.metrics.otel.trace")
+    @patch("util.metrics.otel.BatchSpanProcessor")
+    @patch("util.metrics.otel.OTLPSpanExporter")
+    def test_post_fork_init_creates_provider(self, mock_exporter, mock_processor, mock_trace):
+        config = {"OTEL_CONFIG": {"service_name": "test-quay"}}
+        init_exporter(config, is_gunicorn_preload=True)
+
+        mock_processor.assert_not_called()
+
+        post_fork_init()
+
+        mock_processor.assert_called_once()
+        mock_trace.set_tracer_provider.assert_called_once()
+
+    def test_post_fork_init_noop_without_config(self):
+        otel_module._APP_CONFIG = None
+        post_fork_init()
 
 
 class TestSpanExportPipeline:
