@@ -1816,6 +1816,16 @@ CONFIG_SCHEMA = {
                     "description": "token for dynatrace api",
                     "x-example": "sometoken",
                 },
+                "endpoint": {
+                    "type": "string",
+                    "description": "OTLP collector endpoint. Defaults to http://jaeger:4318/v1/traces.",
+                    "x-example": "http://jaeger:4318/v1/traces",
+                },
+                "sample_rate": {
+                    "type": "number",
+                    "description": "Fraction of traces to sample (0.0–1.0). Defaults to 0.001.",
+                    "x-example": 1.0,
+                },
             },
         },
         "OTEL_TRACING_EXCLUDED_URLS": {

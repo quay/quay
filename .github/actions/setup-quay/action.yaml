@@ -57,6 +57,11 @@ inputs:
     required: false
     default: 'false'
 
+  with-jaeger:
+    description: 'Start Jaeger and configure OTEL tracing'
+    required: false
+    default: 'false'
+
   with-mailpit:
     description: 'Start Mailpit email testing server'
     required: false
@@ -133,6 +138,19 @@ runs:
         mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
         echo "LDAP configuration merged"
 
+    - name: Configure Jaeger tracing
+      if: inputs.with-jaeger == 'true'
+      shell: bash
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        JAEGER_CONFIG="local-dev/jaeger/jaeger-config.yaml"
+
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${JAEGER_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "Jaeger tracing configuration merged"
+
     - name: Merge extra config file
       if: inputs.extra-config-file != ''
       shell: bash
@@ -190,6 +208,21 @@ runs:
         else
           echo "::error::Keycloak failed to start"
           docker logs quay-keycloak 2>&1 | tail -50
+          exit 1
+        fi
+
+    - name: Start Jaeger
+      if: inputs.with-jaeger == 'true'
+      shell: bash
+      run: |
+        docker compose up -d jaeger
+        echo "Waiting for Jaeger to be ready..."
+        if curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+            http://localhost:16686/api/services > /dev/null 2>&1; then
+          echo "Jaeger is ready!"
+        else
+          echo "::error::Jaeger failed to start"
+          docker logs quay-jaeger 2>&1 | tail -50
           exit 1
         fi
 

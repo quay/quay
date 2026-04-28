@@ -107,6 +107,20 @@ services:
       retries: 12
       start_period: 90s
 
+  # Jaeger all-in-one for distributed tracing (optional). Start via:
+  #   make local-dev-up-with-jaeger   (recommended — also merges OTEL config)
+  #   docker compose up -d jaeger     (manual, run make enable-jaeger separately)
+  # UI: http://localhost:16686. OTLP gRPC: 4317, OTLP HTTP: 4318.
+  jaeger:
+    container_name: quay-jaeger
+    image: docker.io/jaegertracing/all-in-one:latest
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Web UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+
   keycloak:
     container_name: quay-keycloak
     image: quay.io/keycloak/keycloak:26.2

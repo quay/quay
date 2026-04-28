@@ -1,0 +1,4 @@
+FEATURE_OTEL_TRACING: true
+OTEL_CONFIG:
+  service_name: quay
+  sample_rate: 1.0
