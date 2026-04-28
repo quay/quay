@@ -81,6 +81,54 @@ test.describe(
       ).toBeVisible();
     });
 
+    test('supports nested repository names', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('nestedorg');
+      const repo = await api.repositoryWithName(org.name, 'nested/path/myrepo');
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}`);
+
+      // Verify we landed on the correct repo page
+      await expect(authenticatedPage).toHaveURL(
+        new RegExp(`/repository/${repo.fullName}`),
+      );
+      await expect(
+        authenticatedPage.getByRole('tab', {
+          name: 'Information',
+          selected: true,
+        }),
+      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Pull Commands')).toBeVisible();
+    });
+
+    test('supports repository name containing "build" keyword', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // "build" as a path segment breaks parseRepoNameFromUrl (treats it as
+      // a route suffix like /repo/build/<id>). Use it as a prefix instead.
+      const org = await api.organization('buildnameorg');
+      const repo = await api.repositoryWithName(
+        org.name,
+        'build-images/release',
+      );
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}`);
+
+      await expect(authenticatedPage).toHaveURL(
+        new RegExp(`/repository/${repo.fullName}`),
+      );
+      await expect(
+        authenticatedPage.getByRole('tab', {
+          name: 'Information',
+          selected: true,
+        }),
+      ).toBeVisible();
+      await expect(authenticatedPage.getByText('Pull Commands')).toBeVisible();
+    });
+
     test(
       'non-writable repo hides tag actions',
       {tag: ['@container']},
