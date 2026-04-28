@@ -770,7 +770,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `tag-history-deleted-tags.cy.ts` | | Coverage consolidated into other tag tests, Cypress file deleted |
 | ✅ | `tags-expanded-view.cy.ts` | `tags/expanded-view.spec.ts` | @container, consolidated 10→4 tests |
 | ✅ | `tags-signatures.cy.ts` | `tags/signatures.spec.ts` | @container, consolidated 4→1 tests |
-| ✅ | `teams-and-membership.cy.ts` | `organization/teams-and-membership.spec.ts` | Cypress file deleted |
+| ✅ | `teams-and-membership.cy.ts` | `organization/teams-and-membership.spec.ts` | @organization, 9 tests (sync-icon and read-only-mock tests dropped — use cy.intercept, covered by team-sync.spec.ts and not feasible without mocks), Cypress file deleted |
 | ✅ | `team-sync.cy.ts` | `organization/team-sync.spec.ts` | @auth:OIDC, @feature:TEAM_SYNCING, consolidated 9→1 tests, Cypress file deleted |
 | ✅ | `theme-switcher.cy.ts` | `ui/theme-switcher.spec.ts` | |
 | ✅ | `update-user.cy.ts` | `user/update-user.spec.ts` | @feature:USER_METADATA, consolidated 7→3 tests (OAuth tests TODO) |
