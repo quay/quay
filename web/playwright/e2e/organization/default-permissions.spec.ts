@@ -531,6 +531,37 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     );
   });
 
+  test('default permissions tab is visible to org admin', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const org = await api.organization('rolevisorg');
+    const robot = await api.robot(org.name, 'visrobot');
+
+    // Create a default permission so the tab has content
+    await api.prototype(
+      org.name,
+      'read',
+      {name: 'owners', kind: 'team'},
+      {name: robot.fullName},
+    );
+
+    // As the org admin (creator), verify Default permissions tab is visible
+    await authenticatedPage.goto(`/organization/${org.name}`);
+    await expect(
+      authenticatedPage.getByRole('tab', {name: 'Default permissions'}),
+    ).toBeVisible();
+
+    // Navigate to defaults tab and verify content loads
+    await authenticatedPage
+      .getByRole('tab', {name: 'Default permissions'})
+      .click();
+    const defaultPermPanel = authenticatedPage.getByRole('tabpanel', {
+      name: 'Default permissions',
+    });
+    await expect(defaultPermPanel.getByText(robot.fullName)).toBeVisible();
+  });
+
   test('can bulk delete default permissions', async ({
     authenticatedPage,
     api,

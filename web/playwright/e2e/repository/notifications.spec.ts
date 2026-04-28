@@ -637,4 +637,96 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       authenticatedPage.getByTestId('notification-submit-btn'),
     ).toBeDisabled();
   });
+
+  test('creates notifications for each event type', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const org = await api.organization('eventnotif');
+    const repo = await api.repository(org.name, 'eventrepo');
+
+    await authenticatedPage.goto(
+      `/repository/${org.name}/${repo.name}?tab=settings`,
+    );
+    await authenticatedPage
+      .getByTestId('settings-tab-eventsandnotifications')
+      .click();
+
+    const eventTypes = [
+      'Push to Repository',
+      'Package Vulnerability Found',
+      'Image build queued',
+      'Image build started',
+      'Image build success',
+      'Image build failed',
+      'Image build cancelled',
+    ];
+
+    let createdCount = 0;
+    const skippedEvents: string[] = [];
+
+    for (const eventName of eventTypes) {
+      await authenticatedPage
+        .getByRole('button', {name: 'Create notification'})
+        .click();
+
+      await authenticatedPage
+        .getByTestId('notification-event-dropdown')
+        .click();
+
+      const menuItem = authenticatedPage.getByRole('menuitem', {
+        name: eventName,
+      });
+      if (!(await menuItem.isVisible({timeout: 2000}).catch(() => false))) {
+        skippedEvents.push(eventName);
+        await authenticatedPage.keyboard.press('Escape');
+        await authenticatedPage.keyboard.press('Escape');
+        continue;
+      }
+      await menuItem.click();
+
+      await authenticatedPage
+        .getByTestId('notification-method-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Webhook POST'})
+        .click();
+
+      await authenticatedPage
+        .getByTestId('webhook-url-field')
+        .fill('https://example.com/hook');
+
+      await authenticatedPage.getByTestId('notification-title').fill(eventName);
+
+      await authenticatedPage.getByTestId('notification-submit-btn').click();
+
+      await expect(
+        authenticatedPage.locator('tbody', {hasText: eventName}),
+      ).toBeVisible();
+
+      createdCount++;
+    }
+
+    // Push to Repository should always be available regardless of feature flags
+    expect(
+      skippedEvents,
+      `Core event was unexpectedly unavailable: ${skippedEvents.join(', ')}`,
+    ).not.toContain('Push to Repository');
+
+    // Feature-gated events may be skipped, but nothing else
+    const featureGatedEvents = [
+      'Package Vulnerability Found',
+      'Image build queued',
+      'Image build started',
+      'Image build success',
+      'Image build failed',
+      'Image build cancelled',
+    ];
+    for (const skipped of skippedEvents) {
+      expect(
+        featureGatedEvents,
+        `Unexpected event skipped: ${skipped}`,
+      ).toContain(skipped);
+    }
+  });
 });
