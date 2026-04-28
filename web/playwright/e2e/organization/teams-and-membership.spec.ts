@@ -242,7 +242,7 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
       .locator('[name="add-repository-bulk-select"]')
       .click();
     await authenticatedPage.locator('#toggle-bulk-perms-kebab').click();
-    await authenticatedPage.getByRole('menuitem', {name: /^Write/}).click();
+    await authenticatedPage.getByTestId('bulk-perm-Write').click();
     await authenticatedPage.locator('#update-team-repo-permissions').click();
 
     await expect(
