@@ -20,7 +20,21 @@ def _patch_gevent_thread_cleanup():
     a greenlet.  When it terminates, threading._delete() raises KeyError
     because the greenlet ID was never registered in threading._active.
     Patch Thread._delete to suppress that KeyError.
+
+    Guarded: only applies when gevent has monkey-patched threading.
+    Idempotent: a marker attribute prevents re-wrapping on repeated calls.
     """
+    if getattr(threading.Thread._delete, "_quay_gevent_patched", False):
+        return
+
+    try:
+        from gevent import monkey
+    except ImportError:
+        return
+
+    if not monkey.is_module_patched("threading"):
+        return
+
     original = threading.Thread._delete
 
     def _safe_delete(self):
@@ -29,6 +43,7 @@ def _patch_gevent_thread_cleanup():
         except KeyError:
             logger.debug("Suppressed KeyError in Thread._delete (likely gevent greenlet)")
 
+    _safe_delete._quay_gevent_patched = True
     threading.Thread._delete = _safe_delete
 
 
