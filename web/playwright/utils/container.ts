@@ -5,7 +5,7 @@
  * to the registry during e2e tests. Supports both podman and docker.
  */
 
-import {exec} from 'child_process';
+import {exec, execFileSync, execSync} from 'child_process';
 import {promisify} from 'util';
 import {API_URL} from './config';
 
@@ -117,4 +117,56 @@ export async function pushMultiArchImage(
   await execAsync(
     `skopeo copy --all docker://${sourceImage} docker://${targetImage} --dest-tls-verify=false --dest-creds=${username}:${password}`,
   );
+}
+
+/**
+ * Attach an OCI artifact to a repository using oras.
+ *
+ * @param namespace - Organization/namespace
+ * @param repo - Repository name
+ * @param tag - Tag to attach to
+ * @param username - Registry username
+ * @param password - Registry password
+ * @param artifactType - OCI artifact type
+ * @param annotation - Annotation key=value
+ * @param filePath - Path to the file to attach
+ */
+export function orasAttach(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+  artifactType: string,
+  annotation: string,
+  filePath: string,
+): void {
+  const ref = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
+
+  execFileSync(
+    'oras',
+    [
+      'attach',
+      ref,
+      '--insecure',
+      `--username=${username}`,
+      `--password=${password}`,
+      `--artifact-type=${artifactType}`,
+      `--annotation=${annotation}`,
+      filePath,
+    ],
+    {stdio: 'pipe', timeout: 60_000},
+  );
+}
+
+/**
+ * Check if oras CLI is available on the system.
+ */
+export async function isOrasAvailable(): Promise<boolean> {
+  try {
+    await execAsync('oras version');
+    return true;
+  } catch {
+    return false;
+  }
 }
