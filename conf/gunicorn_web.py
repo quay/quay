@@ -30,3 +30,17 @@ else:
 def when_ready(server):
     logger = logging.getLogger(__name__)
     logger.debug("Starting web gunicorn with %s workers and %s worker class", workers, worker_class)
+
+
+def post_fork(server, worker):
+    # Only relevant under preload_app — in reload mode each worker loads the
+    # app itself, so there's no pre-fork BatchSpanProcessor to reinitialize.
+    if os.getenv("QUAY_HOTRELOAD", "false") == "true":
+        return
+
+    import features
+
+    if features.OTEL_TRACING:
+        from util.metrics.otel import post_fork_init
+
+        post_fork_init()
