@@ -202,11 +202,12 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
       .click();
 
     // Search for repo in modal
-    await authenticatedPage
+    const repoPermissionsDialog = authenticatedPage.getByRole('dialog');
+    await repoPermissionsDialog
       .locator('#set-repo-perm-for-team-search')
       .fill(repo.name);
     await expect(
-      authenticatedPage.locator('.pf-v6-c-pagination__total-items').first(),
+      repoPermissionsDialog.locator('.pf-v6-c-pagination__total-items'),
     ).toContainText('1 - 1 of 1', {timeout: 15000});
 
     // Change permission to Write
