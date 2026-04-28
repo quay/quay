@@ -11,7 +11,7 @@
     "outDir": "dist",
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
-    "types": ["cypress", "node"]
+    "types": ["cypress", "node", "vitest/globals"]
   },
   "include": ["src", "**/*.ts"],
   "exclude": ["node_modules"]
