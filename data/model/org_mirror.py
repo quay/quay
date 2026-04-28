@@ -1168,10 +1168,8 @@ def release_org_mirror_config(
     Release an org mirror config after discovery and update its status.
 
     Calculates next sync_start_date based on sync_interval.
-    Decrements retries on failure, resets on success.
-
-    If discovery is cancelled, the job will not be attempted until manual
-    sync-now is triggered by the user.
+    Decrements retries on failure, resets on success or cancel.
+    Cancel is transitioned to SUCCESS after scheduling the next sync.
 
     Args:
         org_mirror_config: The OrgMirrorConfig to release
@@ -1188,9 +1186,11 @@ def release_org_mirror_config(
     if sync_status == OrgMirrorStatus.FAIL:
         retries = max(0, retries - 1)
 
-    # On success or exhausted retries, schedule next sync
-    if sync_status == OrgMirrorStatus.SUCCESS or (
-        sync_status == OrgMirrorStatus.FAIL and retries < 1
+    # On success, cancel, or exhausted retries, schedule next sync
+    if (
+        sync_status == OrgMirrorStatus.SUCCESS
+        or sync_status == OrgMirrorStatus.CANCEL
+        or (sync_status == OrgMirrorStatus.FAIL and retries < 1)
     ):
         now = datetime.utcnow()
         if org_mirror_config.sync_start_date:
@@ -1206,10 +1206,9 @@ def release_org_mirror_config(
     else:
         next_start_date = org_mirror_config.sync_start_date
 
-    # If cancelled, stop syncing until user triggers sync-now again
+    # Transition cancel to SUCCESS so the next pickup runs normal discovery (PROJQUAY-11027).
     if sync_status == OrgMirrorStatus.CANCEL:
-        next_start_date = None
-        retries = 0
+        sync_status = OrgMirrorStatus.SUCCESS
 
     query = OrgMirrorConfig.update(
         sync_transaction_id=uuid_generator(),
@@ -1256,9 +1255,9 @@ def expire_org_mirror_config(org_mirror_config: OrgMirrorConfig) -> Optional[Org
 
 def schedule_org_mirror_repos_for_sync(config: OrgMirrorConfig) -> int:
     """
-    Schedule all NEVER_RUN repos under a config for immediate sync.
+    Schedule repos under a config for immediate sync.
 
-    Called after discovery to trigger the repo-level sync phase.
+    Transitions NEVER_RUN and CANCEL repos to SYNC_NOW (PROJQUAY-11027).
 
     Args:
         config: The OrgMirrorConfig whose repos should be scheduled
@@ -1269,12 +1268,14 @@ def schedule_org_mirror_repos_for_sync(config: OrgMirrorConfig) -> int:
     now = datetime.utcnow()
 
     query = OrgMirrorRepository.update(
+        sync_status=OrgMirrorRepoStatus.SYNC_NOW,
         sync_start_date=now,
         sync_retries_remaining=MAX_SYNC_RETRIES,
     ).where(
         OrgMirrorRepository.org_mirror_config == config,
-        OrgMirrorRepository.sync_status == OrgMirrorRepoStatus.NEVER_RUN,
-        OrgMirrorRepository.sync_start_date >> None,  # Only if not already scheduled
+        OrgMirrorRepository.sync_status
+        << [OrgMirrorRepoStatus.NEVER_RUN, OrgMirrorRepoStatus.CANCEL],
+        OrgMirrorRepository.sync_start_date >> None,
     )
 
     return query.execute()
@@ -1392,6 +1393,9 @@ def update_sync_status_to_cancel(org_mirror_config: OrgMirrorConfig) -> Optional
     (ignores transaction ID) since we need to interrupt an active worker.
     This allows cancellation from any status except when already CANCEL.
 
+    Only the current sync is cancelled; sync_start_date is preserved so
+    future scheduled syncs continue normally.
+
     Note: This only updates the config status. The worker will propagate
     CANCEL to associated OrgMirrorRepository entries when it picks up
     the config.
@@ -1402,18 +1406,15 @@ def update_sync_status_to_cancel(org_mirror_config: OrgMirrorConfig) -> Optional
     Returns:
         Updated OrgMirrorConfig if successfully cancelled, None if already CANCEL
     """
-    # Only skip if already cancelled (idempotent)
     if org_mirror_config.sync_status == OrgMirrorStatus.CANCEL:
         return None
 
-    # Force cancel the config (ignore transaction_id for interrupt).
-    # sync_expiration_date is set to now to signal "needs processing" — the worker
-    # clears it after propagating CANCEL to repos, preventing re-pickup.
+    # Force cancel (ignore transaction_id for interrupt).
+    # sync_expiration_date signals "needs processing"; worker clears it after propagating.
     now = datetime.utcnow()
     config_query = OrgMirrorConfig.update(
         sync_transaction_id=uuid_generator(),
         sync_status=OrgMirrorStatus.CANCEL,
-        sync_start_date=None,
         sync_expiration_date=now,
         sync_retries_remaining=0,
     ).where(OrgMirrorConfig.id == org_mirror_config.id)

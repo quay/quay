@@ -48,8 +48,8 @@ export const OrgMirroringStatus: React.FC<OrgMirroringStatusProps> = ({
       >
         <ModalHeader title="Cancel sync" />
         <ModalBody>
-          Are you sure you want to cancel the current sync operation? All
-          in-progress and scheduled syncs will be stopped.
+          Are you sure you want to cancel the current sync operation? Future
+          scheduled syncs will continue as normal.
         </ModalBody>
         <ModalFooter>
           <Button
