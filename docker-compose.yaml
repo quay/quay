@@ -198,7 +198,7 @@ services:
       - "8443:8443"
     environment:
       QUAY_VERSION: local-dev
-      QUAY_HOTRELOAD: "true"
+      QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp
@@ -219,7 +219,7 @@ services:
       - "./local-dev/stack:/quay-registry/conf/stack"
     environment:
       QUAY_VERSION: local-dev
-      QUAY_HOTRELOAD: "true"
+      QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp
