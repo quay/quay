@@ -20,7 +20,10 @@ def init_exporter(app_config):
 
     resource = Resource.create(attributes={SERVICE_NAME: service_name})
 
-    sampler = TraceIdRatioBased(1 / 1000)
+    sample_rate = otel_config.get("sample_rate", 1 / 1000)
+    if not isinstance(sample_rate, (int, float)) or not 0.0 <= float(sample_rate) <= 1.0:
+        sample_rate = 1 / 1000
+    sampler = TraceIdRatioBased(float(sample_rate))
     tracerProvider = TracerProvider(resource=resource, sampler=sampler)
 
     if DT_API_URL is not None and DT_API_TOKEN is not None:
@@ -31,7 +34,8 @@ def init_exporter(app_config):
             )
         )
     else:
-        spanExporter = OTLPSpanExporter(endpoint="http://jaeger:4317")
+        endpoint = otel_config.get("endpoint", "http://jaeger:4318/v1/traces")
+        spanExporter = OTLPSpanExporter(endpoint=endpoint)
         processor = BatchSpanProcessor(spanExporter)
 
     tracerProvider.add_span_processor(processor)
