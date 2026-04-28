@@ -57,7 +57,7 @@ describe('GlobalMessages', () => {
     expect(screen.getByText('System maintenance tonight')).toBeInTheDocument();
   });
 
-  it('renders a warning message with warning icon', () => {
+  it('renders a warning message', () => {
     mockUseGlobalMessages.mockReturnValue({
       data: [
         {
