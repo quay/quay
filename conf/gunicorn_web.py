@@ -33,16 +33,11 @@ def when_ready(server):
 
 
 def post_fork(server, worker):
-    """
-    Called after a worker has been forked.
+    # Only relevant under preload_app — in reload mode each worker loads the
+    # app itself, so there's no pre-fork BatchSpanProcessor to reinitialize.
+    if os.getenv("QUAY_HOTRELOAD", "false") == "true":
+        return
 
-    Initialize OpenTelemetry in each worker to avoid fork-safety issues with
-    BatchSpanProcessor's background thread/greenlet.
-    """
-    logger = logging.getLogger(__name__)
-    logger.debug("Worker %s forked (PID: %s)", worker.pid, os.getpid())
-
-    # Import here to avoid importing before gevent monkey-patching
     import features
 
     if features.OTEL_TRACING:
