@@ -155,6 +155,15 @@ jobs:
             -o jaeger-traces/traces.json \
             || echo "::warning::Could not export Jaeger traces"
 
+      - name: Analyze Jaeger traces
+        if: always()
+        continue-on-error: true
+        run: bash .github/scripts/analyze-jaeger-traces.sh
+        env:
+          TRACES_FILE: jaeger-traces/traces.json
+          METRICS_FILE: jaeger-traces/trace-metrics.json
+          COMMIT_SHA: ${{ github.sha }}
+
       - name: Upload Jaeger traces
         if: always()
         uses: actions/upload-artifact@v4
