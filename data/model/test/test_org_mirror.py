@@ -1736,12 +1736,14 @@ class TestUpdateSyncStatusToCancel:
 
     def test_cancel_when_syncing(self, initialized_db):
         """
-        Should cancel when status is SYNCING.
+        Should cancel when status is SYNCING and preserve sync_start_date.
         """
         from data.model.org_mirror import update_sync_status_to_cancel
 
         org, robot = _create_org_and_robot("cancel_test1")
         config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        original_sync_start_date = config.sync_start_date
 
         # Set to SYNCING
         config.sync_status = OrgMirrorStatus.SYNCING
@@ -1753,7 +1755,7 @@ class TestUpdateSyncStatusToCancel:
         assert result is not None
         assert result.sync_status == OrgMirrorStatus.CANCEL
         assert result.sync_expiration_date is not None
-        assert result.sync_start_date is None
+        assert result.sync_start_date == original_sync_start_date
         assert result.sync_retries_remaining == 0
 
     def test_cancel_when_sync_now(self, initialized_db):
@@ -1906,12 +1908,382 @@ class TestUpdateSyncStatusToCancel:
         assert claimed is not None
         release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
 
-        # After release, config must NOT be eligible again
+        # After release, config must NOT be eligible again immediately
         config = OrgMirrorConfig.get_by_id(config.id)
         eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
         assert config.id not in eligible_ids
-        assert config.sync_status == OrgMirrorStatus.CANCEL
+        # Cancel transitions to SUCCESS after processing (PROJQUAY-11027)
+        assert config.sync_status == OrgMirrorStatus.SUCCESS
         assert config.sync_expiration_date is None
+
+    def test_cancel_preserves_sync_start_date(self, initialized_db):
+        """
+        Regression test for PROJQUAY-11027: cancelling a sync must preserve
+        sync_start_date so that future scheduled syncs continue.
+        """
+        from data.model.org_mirror import update_sync_status_to_cancel
+
+        org, robot = _create_org_and_robot("cancel_preserve_date")
+        future_date = datetime.utcnow() + timedelta(hours=2)
+        config = _create_org_mirror_config(org, robot, is_enabled=True, sync_start_date=future_date)
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        result = update_sync_status_to_cancel(config)
+
+        assert result is not None
+        assert result.sync_status == OrgMirrorStatus.CANCEL
+        assert result.sync_start_date is not None
+        assert result.sync_start_date == future_date
+
+    def test_cancel_release_schedules_next_sync(self, initialized_db):
+        """
+        Regression test for PROJQUAY-11027: after cancel is processed by the
+        worker, release_org_mirror_config must schedule the next sync instead
+        of clearing sync_start_date.
+        """
+        from data.model.org_mirror import (
+            MAX_SYNC_RETRIES,
+            claim_org_mirror_config,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_release_schedule")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        update_sync_status_to_cancel(config)
+
+        config = OrgMirrorConfig.get_by_id(config.id)
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+
+        released = release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        assert released is not None
+        assert released.sync_status == OrgMirrorStatus.SUCCESS
+        assert released.sync_start_date is not None
+        assert released.sync_start_date > datetime.utcnow()
+        assert released.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert released.sync_expiration_date is None
+
+    def test_cancel_release_with_no_sync_start_date(self, initialized_db):
+        """
+        Cover the else branch in release_org_mirror_config when sync_start_date
+        is None at cancel time — next sync should still be scheduled using
+        sync_interval from now.
+        """
+        from data.model.org_mirror import (
+            MAX_SYNC_RETRIES,
+            claim_org_mirror_config,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_release_no_start")
+        config = _create_org_mirror_config(org, robot, is_enabled=True, sync_start_date=None)
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        update_sync_status_to_cancel(config)
+
+        config = OrgMirrorConfig.get_by_id(config.id)
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+
+        before = datetime.utcnow()
+        released = release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        assert released is not None
+        assert released.sync_status == OrgMirrorStatus.SUCCESS
+        assert released.sync_start_date is not None
+        assert released.sync_start_date > before
+        assert released.sync_retries_remaining == MAX_SYNC_RETRIES
+
+    def test_cancel_full_flow_preserves_future_syncs(self, initialized_db):
+        """
+        Regression test for PROJQUAY-11027: end-to-end cancel flow.
+        After cancel → release, config must have a future sync_start_date
+        and must become eligible again once that date arrives.
+        """
+        from data.model.org_mirror import (
+            claim_org_mirror_config,
+            get_eligible_org_mirror_configs,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_full_flow")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        # User cancels
+        update_sync_status_to_cancel(config)
+
+        # Worker processes cancel
+        config = OrgMirrorConfig.get_by_id(config.id)
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+        released = release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        # Status transitions to SUCCESS so next pickup runs normal discovery
+        assert released.sync_status == OrgMirrorStatus.SUCCESS
+
+        # Not eligible immediately (sync_start_date is in the future)
+        eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
+        assert released.id not in eligible_ids
+
+        # Simulate time passing: set sync_start_date to the past
+        OrgMirrorConfig.update(sync_start_date=datetime.utcnow() - timedelta(seconds=1)).where(
+            OrgMirrorConfig.id == released.id
+        ).execute()
+
+        # Now the config should be eligible for syncing again
+        eligible_ids = [c.id for c in get_eligible_org_mirror_configs()]
+        assert released.id in eligible_ids
+
+    def test_cancel_does_not_create_recancel_loop(self, initialized_db):
+        """
+        Regression test for PROJQUAY-11027: after cancel is processed, the
+        config must NOT re-enter the cancel path on the next worker pickup.
+        The status must be SUCCESS so the worker runs normal discovery.
+        """
+        from data.model.org_mirror import (
+            claim_org_mirror_config,
+            get_eligible_org_mirror_configs,
+            release_org_mirror_config,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_no_loop")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        # Cancel and process
+        update_sync_status_to_cancel(config)
+        config = OrgMirrorConfig.get_by_id(config.id)
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+        release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        # Simulate time passing so config becomes eligible
+        OrgMirrorConfig.update(sync_start_date=datetime.utcnow() - timedelta(seconds=1)).where(
+            OrgMirrorConfig.id == config.id
+        ).execute()
+
+        # Config is eligible
+        eligible = list(get_eligible_org_mirror_configs())
+        matched = [c for c in eligible if c.id == config.id]
+        assert len(matched) == 1
+
+        # Worker picks it up — status must be SUCCESS, NOT CANCEL
+        picked_up = matched[0]
+        assert picked_up.sync_status == OrgMirrorStatus.SUCCESS
+
+    def test_cancel_repos_transition_to_sync_now_on_next_cycle(self, initialized_db):
+        """
+        Regression test for PROJQUAY-11027: after cancel is processed,
+        schedule_org_mirror_repos_for_sync must transition CANCEL repos
+        to SYNC_NOW so they rejoin the sync cycle. SKIP repos are untouched.
+        """
+        from data.model.org_mirror import (
+            MAX_SYNC_RETRIES,
+            claim_org_mirror_config,
+            propagate_status_to_repos,
+            release_org_mirror_config,
+            schedule_org_mirror_repos_for_sync,
+            update_sync_status_to_cancel,
+        )
+
+        org, robot = _create_org_and_robot("cancel_repo_sync_now")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        repo1 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-a",
+            sync_status=OrgMirrorRepoStatus.SYNCING,
+            sync_start_date=datetime.utcnow(),
+            sync_retries_remaining=MAX_SYNC_RETRIES,
+        )
+        repo2 = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-b",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+            sync_start_date=datetime.utcnow(),
+            sync_retries_remaining=MAX_SYNC_RETRIES,
+        )
+        repo_skip = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="repo-skip",
+            sync_status=OrgMirrorRepoStatus.SKIP,
+        )
+
+        config.sync_status = OrgMirrorStatus.SYNCING
+        config.sync_expiration_date = datetime.utcnow() + timedelta(hours=1)
+        config.save()
+
+        # Cancel and propagate to repos
+        update_sync_status_to_cancel(config)
+        config = OrgMirrorConfig.get_by_id(config.id)
+        propagate_status_to_repos(config, OrgMirrorRepoStatus.CANCEL)
+
+        # Repos are CANCEL with retries=0, sync_start_date=None
+        repo1 = OrgMirrorRepository.get_by_id(repo1.id)
+        repo2 = OrgMirrorRepository.get_by_id(repo2.id)
+        assert repo1.sync_status == OrgMirrorRepoStatus.CANCEL
+        assert repo1.sync_retries_remaining == 0
+        assert repo1.sync_start_date is None
+
+        # Worker releases config (cancel → success)
+        claimed = claim_org_mirror_config(config)
+        assert claimed is not None
+        release_org_mirror_config(claimed, OrgMirrorStatus.CANCEL)
+
+        # Repos stay CANCEL after release — no bulk reset
+        repo1 = OrgMirrorRepository.get_by_id(repo1.id)
+        repo2 = OrgMirrorRepository.get_by_id(repo2.id)
+        assert repo1.sync_status == OrgMirrorRepoStatus.CANCEL
+        assert repo2.sync_status == OrgMirrorRepoStatus.CANCEL
+
+        # Next discovery cycle: schedule picks up CANCEL repos → SYNC_NOW
+        config = OrgMirrorConfig.get_by_id(config.id)
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+        assert scheduled == 2
+
+        repo1 = OrgMirrorRepository.get_by_id(repo1.id)
+        repo2 = OrgMirrorRepository.get_by_id(repo2.id)
+        repo_skip = OrgMirrorRepository.get_by_id(repo_skip.id)
+        assert repo1.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert repo1.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert repo1.sync_start_date is not None
+        assert repo2.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert repo2.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert repo_skip.sync_status == OrgMirrorRepoStatus.SKIP
+
+
+class TestScheduleOrgMirrorReposForSync:
+    """Tests for schedule_org_mirror_repos_for_sync function."""
+
+    def test_schedules_never_run_repos(self, initialized_db):
+        """NEVER_RUN repos with no sync_start_date are transitioned to SYNC_NOW."""
+        from data.model.org_mirror import schedule_org_mirror_repos_for_sync
+
+        org, robot = _create_org_and_robot("schedule_never_run")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="never-run-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=None,
+            sync_retries_remaining=0,
+        )
+
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+
+        assert scheduled == 1
+        repo = OrgMirrorRepository.get_by_id(repo.id)
+        assert repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert repo.sync_start_date is not None
+        assert repo.sync_retries_remaining == MAX_SYNC_RETRIES
+
+    def test_skips_repos_with_existing_sync_start_date(self, initialized_db):
+        """Repos that already have a sync_start_date set are NOT rescheduled."""
+        from data.model.org_mirror import schedule_org_mirror_repos_for_sync
+
+        org, robot = _create_org_and_robot("schedule_skip_dated")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        # CANCEL repo with a sync_start_date already set — must not be picked up
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cancel-dated-repo",
+            sync_status=OrgMirrorRepoStatus.CANCEL,
+            sync_start_date=datetime.utcnow() + timedelta(hours=1),
+            sync_retries_remaining=MAX_SYNC_RETRIES,
+        )
+
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+
+        assert scheduled == 0
+        repo = OrgMirrorRepository.get_by_id(repo.id)
+        assert repo.sync_status == OrgMirrorRepoStatus.CANCEL  # unchanged
+
+    def test_returns_zero_when_no_eligible_repos(self, initialized_db):
+        """Returns 0 when no repos need scheduling (all SKIP/SUCCESS)."""
+        from data.model.org_mirror import schedule_org_mirror_repos_for_sync
+
+        org, robot = _create_org_and_robot("schedule_no_eligible")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="skip-repo",
+            sync_status=OrgMirrorRepoStatus.SKIP,
+        )
+        OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="success-repo",
+            sync_status=OrgMirrorRepoStatus.SUCCESS,
+            sync_start_date=datetime.utcnow(),
+        )
+
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+
+        assert scheduled == 0
+
+    def test_schedules_both_cancel_and_never_run(self, initialized_db):
+        """Both CANCEL and NEVER_RUN repos (with no sync_start_date) are scheduled together."""
+        from data.model.org_mirror import schedule_org_mirror_repos_for_sync
+
+        org, robot = _create_org_and_robot("schedule_mixed")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        cancel_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cancel-repo",
+            sync_status=OrgMirrorRepoStatus.CANCEL,
+            sync_start_date=None,
+            sync_retries_remaining=0,
+        )
+        never_run_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="never-run-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=None,
+            sync_retries_remaining=0,
+        )
+        skip_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="skip-repo",
+            sync_status=OrgMirrorRepoStatus.SKIP,
+        )
+
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+
+        assert scheduled == 2
+        cancel_repo = OrgMirrorRepository.get_by_id(cancel_repo.id)
+        never_run_repo = OrgMirrorRepository.get_by_id(never_run_repo.id)
+        skip_repo = OrgMirrorRepository.get_by_id(skip_repo.id)
+        assert cancel_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert cancel_repo.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert never_run_repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert never_run_repo.sync_retries_remaining == MAX_SYNC_RETRIES
+        assert skip_repo.sync_status == OrgMirrorRepoStatus.SKIP  # unchanged
 
 
 class TestPropagateStatusToRepos:
