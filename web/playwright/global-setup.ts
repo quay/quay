@@ -10,7 +10,7 @@
  * - readonly: User with read-only access (if applicable)
  */
 
-import {chromium, FullConfig} from '@playwright/test';
+import {chromium, FullConfig, request} from '@playwright/test';
 import {API_URL} from './utils/config';
 import {ApiClient} from './utils/api';
 import {mailpit} from './utils/mailpit';
@@ -65,10 +65,10 @@ async function globalSetup(config: FullConfig) {
     `[Global Setup] Starting with baseURL: ${baseURL}, apiURL: ${API_URL}`,
   );
 
-  let browser = null;
+  // Only launch browser if needed for email confirmation (rare path)
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
 
   try {
-    browser = await chromium.launch();
     // Track failures to report at the end
     const failures: string[] = [];
 
@@ -123,15 +123,15 @@ async function globalSetup(config: FullConfig) {
     }
 
     // Create test users (skip if they already exist)
-    // Each user creation requires a fresh context and CSRF token
+    // Each user creation requires a fresh request context and CSRF token
     for (const [role, user] of Object.entries(TEST_USERS)) {
-      // Create a fresh context for each user to avoid CSRF token issues
-      const userContext = await browser.newContext({ignoreHTTPSErrors: true});
-      const userRequest = userContext.request;
+      const requestContext = await request.newContext({
+        ignoreHTTPSErrors: true,
+      });
 
       try {
         console.log(`[Global Setup] Creating ${role} user: ${user.username}`);
-        const api = new ApiClient(userRequest);
+        const api = new ApiClient(requestContext);
         await api.createUser(user.username, user.password, user.email);
         console.log(`[Global Setup] Created ${role} user: ${user.username}`);
 
@@ -142,9 +142,17 @@ async function globalSetup(config: FullConfig) {
           );
           const confirmLink = await mailpit.waitForConfirmationLink(user.email);
           if (confirmLink) {
-            const page = await userContext.newPage();
+            // Email confirmation requires visiting a link — need a browser
+            if (!browser) {
+              browser = await chromium.launch();
+            }
+            const context = await browser.newContext({
+              ignoreHTTPSErrors: true,
+            });
+            const page = await context.newPage();
             await page.goto(confirmLink);
             await page.close();
+            await context.close();
             console.log(
               `[Global Setup] Email verified for ${role} user: ${user.username}`,
             );
@@ -169,7 +177,7 @@ async function globalSetup(config: FullConfig) {
           failures.push(`${role} (${user.username}): ${error}`);
         }
       } finally {
-        await userContext.close();
+        await requestContext.dispose();
       }
     }
 
