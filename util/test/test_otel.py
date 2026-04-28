@@ -15,6 +15,15 @@ from util.metrics.otel import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _restore_thread_delete():
+    original = threading.Thread._delete
+    otel_module._original_thread_delete = None
+    yield
+    threading.Thread._delete = original
+    otel_module._original_thread_delete = None
+
+
 @pytest.mark.parametrize(
     "sample_rate, expected",
     [
@@ -61,9 +70,15 @@ def test_init_exporter_custom_endpoint(mock_exporter, mock_processor, mock_trace
 
 @pytest.fixture()
 def _reset_tracer_provider():
+    provider = getattr(trace, "_TRACER_PROVIDER", None)
+    if provider and hasattr(provider, "shutdown"):
+        provider.shutdown()
     trace._TRACER_PROVIDER = None
     trace._TRACER_PROVIDER_SET_ONCE._done = False
     yield
+    provider = getattr(trace, "_TRACER_PROVIDER", None)
+    if provider and hasattr(provider, "shutdown"):
+        provider.shutdown()
     trace._TRACER_PROVIDER = None
     trace._TRACER_PROVIDER_SET_ONCE._done = False
 
@@ -92,7 +107,9 @@ class TestPatchGeventThreadCleanup:
 
     def test_patch_is_idempotent(self):
         _patch_gevent_thread_cleanup()
+        first_wrapped = threading.Thread._delete
         _patch_gevent_thread_cleanup()
+        assert threading.Thread._delete is first_wrapped
 
         t = threading.Thread(target=lambda: None)
         t.start()

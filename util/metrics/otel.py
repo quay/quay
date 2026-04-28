@@ -20,6 +20,9 @@ _IS_PRELOAD = False
 _APP_CONFIG = None
 
 
+_original_thread_delete = None
+
+
 def _patch_gevent_thread_cleanup():
     """
     Under gevent monkey-patching, BatchSpanProcessor's daemon thread becomes
@@ -27,11 +30,16 @@ def _patch_gevent_thread_cleanup():
     because the greenlet ID was never registered in threading._active.
     Patch Thread._delete to suppress that KeyError.
     """
-    original = threading.Thread._delete
+    global _original_thread_delete
+
+    if _original_thread_delete is not None:
+        return
+
+    _original_thread_delete = threading.Thread._delete
 
     def _safe_delete(self):
         try:
-            original(self)
+            _original_thread_delete(self)
         except KeyError:
             logger.debug("Suppressed KeyError in Thread._delete (likely gevent greenlet)")
 
@@ -113,8 +121,6 @@ def post_fork_init():
     This ensures the BatchSpanProcessor's background thread is created in the
     worker process, not inherited from the pre-forked master.
     """
-    global _APP_CONFIG
-
     if _APP_CONFIG is None:
         logger.warning("post_fork_init called but no app_config cached")
         return
