@@ -4,7 +4,7 @@ Unit tests for organization-level mirror API endpoints.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -1354,6 +1354,44 @@ class TestSyncCancel:
             conduct_api_call(cl, org_mirror.OrgMirrorSyncCancel, "POST", params, None, 400)
 
         # Clean up
+        _cleanup_org_mirror_config("buynlarge")
+
+    def test_sync_cancel_preserves_sync_start_date(self, app):
+        """
+        Regression test for PROJQUAY-11027: calling the sync-cancel endpoint
+        must NOT clear sync_start_date. Future scheduled syncs must be preserved.
+        """
+        from data.database import OrgMirrorStatus
+
+        _cleanup_org_mirror_config("buynlarge")
+
+        future_date = datetime.utcnow() + timedelta(hours=2)
+        org = model.organization.get_organization("buynlarge")
+        robot = model.user.lookup_robot("buynlarge+coolrobot")
+        config = OrgMirrorConfig.create(
+            organization=org,
+            internal_robot=robot,
+            external_registry_type=SourceRegistryType.HARBOR,
+            external_registry_url="https://harbor.example.com",
+            external_namespace="project",
+            visibility=Visibility.get(name="private"),
+            sync_interval=3600,
+            sync_start_date=future_date,
+            is_enabled=True,
+            sync_status=OrgMirrorStatus.SYNCING,
+            skopeo_timeout=300,
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"orgname": "buynlarge"}
+            conduct_api_call(cl, org_mirror.OrgMirrorSyncCancel, "POST", params, None, 204)
+
+        refreshed = model.org_mirror.get_org_mirror_config(org)
+        assert refreshed.sync_status == OrgMirrorStatus.CANCEL
+        assert refreshed.sync_start_date is not None
+        # Small tolerance to absorb DB datetime precision / round-trip drift.
+        assert abs((refreshed.sync_start_date - future_date).total_seconds()) < 2
+
         _cleanup_org_mirror_config("buynlarge")
 
 
