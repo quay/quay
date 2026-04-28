@@ -12,6 +12,8 @@ jobs:
   playwright:
     name: Playwright E2E Tests
     runs-on: quay-002-small-ubuntu-24-x64
+    env:
+      QUAY_HOTRELOAD: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -171,6 +173,41 @@ jobs:
           name: jaeger-traces
           path: jaeger-traces/
           retention-days: 7
+
+      - name: Scan Quay logs for crash-level errors
+        if: always()
+        continue-on-error: true
+        run: |
+          logs=$(docker logs quay-quay 2>&1)
+
+          # Crash signals from core serving processes only.
+          # - stderr tracebacks from gunicorn = process-level crashes (gevent, fork, etc.)
+          # - stdout tracebacks from gunicorn are normal Flask error handling, skip those
+          # - supervisord FATAL = process exceeded restart limit
+          # - Background workers (securityworker, *gcworker, etc.) have expected
+          #   transient failures (Clair not ready, queue empty) — exclude them.
+          crashes=$(echo "$logs" \
+            | grep -E "^(gunicorn-.* stderr|supervisord )" \
+            | grep -cE "Traceback|AssertionError|Segmentation fault|SIGABRT|core dumped|FATAL state|failed to boot" \
+            || true)
+
+          if [ "$crashes" -gt 0 ]; then
+            echo "::warning::Found $crashes crash-level error(s) in Quay core process logs"
+
+            {
+              echo "## Quay Runtime Error Report"
+              echo ""
+              echo "Found **$crashes** crash-level signal(s) in core serving process logs."
+              echo ""
+              echo '```'
+              echo "$logs" \
+                | grep -E "^(gunicorn-.* stderr|supervisord )" \
+                | grep -B2 -A3 "Traceback\|AssertionError\|Segmentation fault\|SIGABRT\|core dumped\|FATAL state\|failed to boot"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            exit 1
+          fi
 
       - name: Collect Quay logs on failure
         if: failure()

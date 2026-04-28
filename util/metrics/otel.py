@@ -1,3 +1,6 @@
+import logging
+import os
+import threading
 from functools import wraps
 
 from opentelemetry import trace
@@ -9,8 +12,49 @@ from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 
 import features
 
+logger = logging.getLogger(__name__)
 
-def init_exporter(app_config):
+# Global flag to track whether we're running under gunicorn with preload
+_IS_PRELOAD = False
+# Cache the config so post_fork can access it
+_APP_CONFIG = None
+
+
+_original_thread_delete = None
+
+
+def _patch_gevent_thread_cleanup():
+    """
+    Under gevent monkey-patching, BatchSpanProcessor's daemon thread becomes
+    a greenlet.  When it terminates, threading._delete() raises KeyError
+    because the greenlet ID was never registered in threading._active.
+    Patch Thread._delete to suppress that KeyError.
+    """
+    global _original_thread_delete
+
+    if _original_thread_delete is not None:
+        return
+
+    _original_thread_delete = threading.Thread._delete
+
+    def _safe_delete(self):
+        try:
+            _original_thread_delete(self)
+        except KeyError:
+            logger.debug("Suppressed KeyError in Thread._delete (likely gevent greenlet)")
+
+    threading.Thread._delete = _safe_delete
+
+
+def _init_tracer_provider(app_config):
+    """
+    Initialize the OpenTelemetry TracerProvider with BatchSpanProcessor.
+
+    IMPORTANT: This must be called AFTER fork when using gunicorn with preload_app.
+    The BatchSpanProcessor spawns a background thread/greenlet that does not survive
+    fork correctly, causing AssertionError in gevent's _notify_links.
+    """
+    _patch_gevent_thread_cleanup()
 
     otel_config = app_config.get("OTEL_CONFIG", {})
 
@@ -40,6 +84,49 @@ def init_exporter(app_config):
 
     tracerProvider.add_span_processor(processor)
     trace.set_tracer_provider(tracerProvider)
+    logger.debug("Initialized OpenTelemetry TracerProvider in PID %s", os.getpid())
+
+
+def init_exporter(app_config, is_gunicorn_preload=False):
+    """
+    Initialize OpenTelemetry exporter.
+
+    When running under gunicorn with preload_app=True, this defers actual
+    initialization to the post_fork hook to avoid fork-safety issues with
+    BatchSpanProcessor's background thread.
+
+    Args:
+        app_config: The application configuration dict
+        is_gunicorn_preload: Set to True when called from app.py under gunicorn preload
+    """
+    global _IS_PRELOAD, _APP_CONFIG
+
+    _APP_CONFIG = app_config
+
+    if is_gunicorn_preload:
+        # Running under gunicorn with preload_app=True
+        # Defer initialization to post_fork hook
+        _IS_PRELOAD = True
+        logger.debug("Deferring OpenTelemetry initialization to post_fork hook")
+        return
+
+    # Not using preload (hotreload mode or non-gunicorn) - initialize now
+    _init_tracer_provider(app_config)
+
+
+def post_fork_init():
+    """
+    Called from gunicorn's post_fork hook to initialize OpenTelemetry in each worker.
+
+    This ensures the BatchSpanProcessor's background thread is created in the
+    worker process, not inherited from the pre-forked master.
+    """
+    if _APP_CONFIG is None:
+        logger.warning("post_fork_init called but no app_config cached")
+        return
+
+    logger.debug("Initializing OpenTelemetry in worker PID %s", os.getpid())
+    _init_tracer_provider(_APP_CONFIG)
 
 
 def traced(span_name=None):
