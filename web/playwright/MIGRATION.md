@@ -730,7 +730,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `default-permissions.cy.ts` | `organization/default-permissions.spec.ts` | |
 | ✅ | `external-login.cy.ts` | `auth/external-login.spec.ts` | @auth:OIDC, consolidated 6→3 tests, Cypress file deleted |
 | ✅ | `external-scripts.cy.ts` | `ui/external-scripts.spec.ts` | @feature:BILLING |
-| ⬚ | `footer.cy.ts` | | |
+| ✅ | `footer.cy.ts` | `ui/footer.spec.ts` | @ui, consolidated 9→4 tests, no mocks - uses quayConfig fixture for config-conditional assertions, Cypress file deleted |
 | ✅ | `fresh-login-oidc.cy.ts` | `auth/fresh-login-oidc.spec.ts` | @auth:OIDC, consolidated 4→2 tests, Cypress file deleted |
 | ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
 | ✅ | `manage-team-members.cy.ts` | `organization/team-members.spec.ts` | @organization, 7 tests preserved |
@@ -751,7 +751,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `repository-permissions.cy.ts` | `repository/permissions.spec.ts` | Consolidated 6→3 tests |
 | ✅ | `repository-shorthand-navigation.cy.ts` | `repository/shorthand-navigation.spec.ts` | consolidated 11 → 7 tests |
 | ✅ | `repository-state.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated into mirroring tests |
-| ⬚ | `repository-visibility.cy.ts` | | |
+| ✅ | `repository-visibility.cy.ts` | `repository/repository-visibility.spec.ts` | @repository, consolidated 5→2 tests (billing upgrade tests dropped — require Stripe mocking, incompatible with no-mocks policy; billing covered by @feature:BILLING in other specs), Cypress file deleted |
 | ✅ | `robot-accounts.cy.ts` | `organization/robot-accounts.spec.ts` | Consolidated 12→4 tests |
 | ✅ | `security-report.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 11→3 tests, Cypress file deleted |
 | ✅ | `security-scanner-feature-toggle.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 12→3 tests, Cypress file deleted |
@@ -766,11 +766,11 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `superuser-usage-logs.cy.ts` | `superuser/usage-logs.spec.ts` | Superuser required, Cypress file deleted |
 | ✅ | `superuser-user-management.cy.ts` | `superuser/user-management.spec.ts` | Superuser required, 29→10 tests consolidated |
 | ✅ | `system-status-banner.cy.ts` | `ui/system-status-banner.spec.ts` | Cypress file deleted |
-| ⬚ | `tag-details.cy.ts` | | |
+| ✅ | `tag-details.cy.ts` | `tags/tag-details.spec.ts` | @tags, @container; vuln badge: @feature:SECURITY_SCANNER, consolidated 6→3 tests, Cypress file deleted |
 | ✅ | `tag-history-deleted-tags.cy.ts` | | Coverage consolidated into other tag tests, Cypress file deleted |
 | ✅ | `tags-expanded-view.cy.ts` | `tags/expanded-view.spec.ts` | @container, consolidated 10→4 tests |
 | ✅ | `tags-signatures.cy.ts` | `tags/signatures.spec.ts` | @container, consolidated 4→1 tests |
-| ✅ | `teams-and-membership.cy.ts` | `organization/teams-and-membership.spec.ts` | Cypress file deleted |
+| ✅ | `teams-and-membership.cy.ts` | `organization/teams-and-membership.spec.ts` | @organization, 9 tests (sync-icon and read-only-mock tests dropped — use cy.intercept, covered by team-sync.spec.ts and not feasible without mocks), Cypress file deleted |
 | ✅ | `team-sync.cy.ts` | `organization/team-sync.spec.ts` | @auth:OIDC, @feature:TEAM_SYNCING, consolidated 9→1 tests, Cypress file deleted |
 | ✅ | `theme-switcher.cy.ts` | `ui/theme-switcher.spec.ts` | |
 | ✅ | `update-user.cy.ts` | `user/update-user.spec.ts` | @feature:USER_METADATA, consolidated 7→3 tests (OAuth tests TODO) |

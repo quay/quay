@@ -60,6 +60,7 @@ export default function SetRepoPermissionsForTeamModalToolbar(
                 kebabItems={RepoPermissionDropdownItems.map((item) => (
                   <DropdownItem
                     key={item.name}
+                    data-testid={`bulk-perm-${item.name}`}
                     description={item.description}
                     onClick={() => dropdownOnSelect(item.name)}
                   >
