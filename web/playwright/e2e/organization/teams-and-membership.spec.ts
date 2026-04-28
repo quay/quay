@@ -27,7 +27,7 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
   test('member search filter', async ({authenticatedPage, api}) => {
     const org = await api.organization('tmorg');
     const memberTeam = await api.team(org.name, 'memberteam');
-    await api.teamMember(org.name, memberTeam.name, TEST_USERS.admin.username);
+    await api.teamMember(org.name, memberTeam.name, TEST_USERS.user.username);
 
     await authenticatedPage.goto(
       `/organization/${org.name}?tab=Teamsandmembership`,
@@ -36,7 +36,7 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
 
     await authenticatedPage
       .locator('#members-view-search')
-      .fill(TEST_USERS.admin.username);
+      .fill(TEST_USERS.user.username);
     await expect(
       authenticatedPage.locator('.pf-v6-c-pagination__total-items').first(),
     ).toContainText('1 - 1 of 1', {timeout: 15000});
@@ -102,7 +102,7 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
     // Wizard Step 3: Add team member
     await authenticatedPage.locator('#search-member-dropdown').click();
     await authenticatedPage
-      .locator('#search-member-dropdown-input')
+      .locator('#search-member-dropdown-input input')
       .fill(TEST_USERS.admin.username);
     await authenticatedPage.getByTestId(TEST_USERS.admin.username).click();
     await authenticatedPage.getByTestId('next-btn').click();
@@ -242,7 +242,7 @@ test.describe('Teams and Membership', {tag: ['@organization']}, () => {
       .locator('[name="add-repository-bulk-select"]')
       .click();
     await authenticatedPage.locator('#toggle-bulk-perms-kebab').click();
-    await authenticatedPage.getByRole('menuitem', {name: 'Write'}).click();
+    await authenticatedPage.getByRole('menuitem', {name: /^Write/}).click();
     await authenticatedPage.locator('#update-team-repo-permissions').click();
 
     await expect(
