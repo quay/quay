@@ -6,9 +6,10 @@ import re
 import subprocess
 import urllib.parse
 from collections import namedtuple
+from contextlib import contextmanager
 from shlex import quote
 from tempfile import NamedTemporaryFile, SpooledTemporaryFile
-from typing import Optional
+from typing import Iterator, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -71,24 +72,26 @@ def create_authfile_content(content: list) -> dict:
     the authfile only contains registries that actually require authentication
     and have a resolvable registry hostname.
     """
-    return dict(
-        auths=dict(
-            map(
-                lambda x: (
-                    x.location,
-                    {
-                        "auth": base64.b64encode(
-                            wrap_anonymous(x.username, x.password).encode("utf8")
-                        ).decode("utf8")
-                    },
-                ),
-                filter(
-                    lambda y: y.username not in ("", None) and y.location not in ("", None),
-                    content,
-                ),
-            )
-        )
-    )
+    return {
+        "auths": {
+            e.location: {
+                "auth": base64.b64encode(
+                    wrap_anonymous(e.username, e.password).encode("utf8")
+                ).decode("utf8")
+            }
+            for e in content
+            if e.username not in ("", None) and e.location not in ("", None)
+        }
+    }
+
+
+@contextmanager
+def _authfile(entries: list) -> Iterator[str]:
+    """Write a Docker auth.json for *entries* to a temp file and yield its path."""
+    with NamedTemporaryFile() as tmp:
+        tmp.write(json.dumps(create_authfile_content(entries)).encode("utf8"))
+        tmp.flush()
+        yield tmp.name
 
 
 class SkopeoMirror(object):
@@ -127,17 +130,13 @@ class SkopeoMirror(object):
         logger.debug(
             "Creating mirroring job: upstream image %s, local repository %s", src_image, dest_image
         )
-        content = create_authfile_content(
+        with _authfile(
             [
                 AuthContent(_registry_netloc(src_image), src_username, src_password),
                 AuthContent(_registry_netloc(dest_image), dest_username, dest_password),
             ]
-        )
-
-        with NamedTemporaryFile() as authfile:
-            authfile.write(json.dumps(content).encode("utf8"))
-            authfile.flush()
-            args.extend(["--authfile", authfile.name])
+        ) as authfile_path:
+            args.extend(["--authfile", authfile_path])
             args = args + [quote(src_image), quote(dest_image)]
             return self.run_skopeo(args, proxy, timeout)
 
@@ -162,17 +161,11 @@ class SkopeoMirror(object):
         if verbose_logs:
             args = args + ["--debug"]
         args = args + ["list-tags", "--tls-verify=%s" % verify_tls]
-        content = create_authfile_content(
-            [
-                AuthContent(_registry_netloc(repository), username, password),
-            ]
-        )
-
         all_tags = []
-        with NamedTemporaryFile() as authfile:
-            authfile.write(json.dumps(content).encode("utf8"))
-            authfile.flush()
-            args.extend(["--authfile", authfile.name])
+        with _authfile(
+            [AuthContent(_registry_netloc(repository), username, password)]
+        ) as authfile_path:
+            args.extend(["--authfile", authfile_path])
             args = args + [repository]
             result = self.run_skopeo(args, proxy, timeout)
             if result.success:
@@ -198,13 +191,8 @@ class SkopeoMirror(object):
         if verbose_logs:
             args = args + ["--debug"]
         args = args + ["inspect", "--raw", "--tls-verify=%s" % verify_tls]
-        content = create_authfile_content(
-            [AuthContent(_registry_netloc(image), username, password)]
-        )
-        with NamedTemporaryFile() as authfile:
-            authfile.write(json.dumps(content).encode("utf8"))
-            authfile.flush()
-            args.extend(["--authfile", authfile.name])
+        with _authfile([AuthContent(_registry_netloc(image), username, password)]) as authfile_path:
+            args.extend(["--authfile", authfile_path])
             args = args + [image]
             return self.run_skopeo(args, proxy or {}, timeout)
 
@@ -227,13 +215,8 @@ class SkopeoMirror(object):
         if verbose_logs:
             args = args + ["--debug"]
         args = args + ["inspect", "--tls-verify=%s" % verify_tls]
-        content = create_authfile_content(
-            [AuthContent(_registry_netloc(image), username, password)]
-        )
-        with NamedTemporaryFile() as authfile:
-            authfile.write(json.dumps(content).encode("utf8"))
-            authfile.flush()
-            args.extend(["--authfile", authfile.name])
+        with _authfile([AuthContent(_registry_netloc(image), username, password)]) as authfile_path:
+            args.extend(["--authfile", authfile_path])
             args = args + [image]
             return self.run_skopeo(args, proxy or {}, timeout)
 
@@ -267,7 +250,7 @@ class SkopeoMirror(object):
             "--src-tls-verify=%s" % src_tls_verify,
             "--dest-tls-verify=%s" % dest_tls_verify,
         ]
-        content = create_authfile_content(
+        with _authfile(
             [
                 AuthContent(
                     _registry_netloc(src_image_with_digest),
@@ -280,26 +263,10 @@ class SkopeoMirror(object):
                     dest_password,
                 ),
             ]
-        )
-        with NamedTemporaryFile() as authfile:
-            authfile.write(json.dumps(content).encode("utf8"))
-            authfile.flush()
-            args.extend(["--authfile", authfile.name])
+        ) as authfile_path:
+            args.extend(["--authfile", authfile_path])
             args = args + [quote(src_image_with_digest), quote(dest_image_with_digest)]
             return self.run_skopeo(args, proxy or {}, timeout)
-
-    def external_registry_credentials(
-        self, arg: str, username: Optional[str], password: Optional[str]
-    ) -> list[str]:
-        credentials = []
-        if username is not None and username != "":
-            if password is not None and password != "":
-                creds = "%s:%s" % (username, password)
-            else:
-                creds = "%s" % username
-            credentials = [arg, creds]
-
-        return credentials
 
     def setup_env(self, proxy):
         env = os.environ.copy()
