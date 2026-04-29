@@ -566,5 +566,60 @@ test.describe(
         authenticatedPage.getByTestId('architecture-filter-helper'),
       ).toContainText('s390x');
     });
+
+    test('completes a real sync using authfile credentials', async ({api}) => {
+      // This test waits up to 2 minutes for a real skopeo sync to complete.
+      test.setTimeout(180_000);
+      // Validates the authfile credential path end-to-end: if skopeomirror.py
+      // writes a malformed authfile or passes credentials on the CLI instead,
+      // the sync will fail or produce an error status here.
+      const org = await api.organization('syncauthfileorg');
+      const repo = await api.repository(org.name, 'syncauthfilerepo');
+      const robot = await api.robot(org.name, 'syncauthfilebot');
+      await api.setMirrorState(org.name, repo.name);
+
+      // Mirror a small, stable public image so the sync completes quickly.
+      // Push sync_start_date into the future so the scheduler won't fire
+      // independently; triggerMirrorSync() is the only driver.
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createMirrorConfig(org.name, repo.name, {
+        external_reference: 'quay.io/quay/busybox',
+        sync_interval: 86400,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        root_rule: {rule_kind: 'tag_glob_csv', rule_value: ['latest']},
+        robot_username: robot.fullName,
+        skopeo_timeout_interval: 300,
+        is_enabled: true,
+        verify_tls: true,
+      });
+
+      await api.raw.triggerMirrorSync(org.name, repo.name);
+
+      // Poll until the mirror worker finishes. Throw on FAIL so the test
+      // surfaces a clear message rather than timing out.
+      await expect
+        .poll(
+          async () => {
+            const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
+            const status = cfg?.sync_status ?? 'UNKNOWN';
+            if (status === 'FAIL') {
+              throw new Error(`Mirror sync failed with status: ${status}`);
+            }
+            return status;
+          },
+          {
+            timeout: 120_000,
+            intervals: [5_000, 10_000, 15_000],
+            message:
+              'Mirror sync did not complete successfully within 2 minutes',
+          },
+        )
+        .toBe('SUCCESS');
+
+      // Confirm the synced tag landed in the repository.
+      const tags = await api.raw.getTags(org.name, repo.name);
+      expect(tags.tags.some((t) => t.name === 'latest')).toBe(true);
+    });
   },
 );

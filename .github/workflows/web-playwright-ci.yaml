@@ -24,6 +24,7 @@ jobs:
           with-clair: true
           with-keycloak: true
           with-jaeger: true
+          with-repomirror: true
           extra-config: |
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
