@@ -568,6 +568,8 @@ test.describe(
     });
 
     test('completes a real sync using authfile credentials', async ({api}) => {
+      // This test waits up to 2 minutes for a real skopeo sync to complete.
+      test.setTimeout(180_000);
       // Validates the authfile credential path end-to-end: if skopeomirror.py
       // writes a malformed authfile or passes credentials on the CLI instead,
       // the sync will fail or produce an error status here.
