@@ -17,7 +17,9 @@ TARGET_VERSION=""
 if command -v "$ACLI" &>/dev/null; then
   RESULT=$(timeout 10 "$ACLI" jira workitem view "$TICKET" --fields 'customfield_10855' --json 2>/dev/null) || true
   TARGET_VERSION=$(echo "$RESULT" | jq -r '.fields.customfield_10855[0].name // empty' 2>/dev/null || true)
-elif [ -n "${JIRA_API_TOKEN:-}" ] && [ -n "${JIRA_USER:-}" ]; then
+fi
+
+if [ -z "$TARGET_VERSION" ] && [ -n "${JIRA_API_TOKEN:-}" ] && [ -n "${JIRA_USER:-}" ]; then
   RESULT=$(curl -s -u "${JIRA_USER}:${JIRA_API_TOKEN}" \
     "https://redhat.atlassian.net/rest/api/2/issue/${TICKET}?fields=customfield_10855" 2>/dev/null) || true
   TARGET_VERSION=$(echo "$RESULT" | jq -r '.fields.customfield_10855[0].name // empty' 2>/dev/null || true)

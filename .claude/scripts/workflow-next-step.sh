@@ -19,8 +19,14 @@ if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   exit 0
 fi
 
-# Check for unpushed commits
-UNPUSHED=$(git log "origin/${BRANCH}..HEAD" --oneline 2>/dev/null | head -1)
+# Check for unpushed commits (handle branches without upstream tracking)
+HAS_UPSTREAM=$(git rev-parse --verify "origin/${BRANCH}" 2>/dev/null && echo yes || echo no)
+if [ "$HAS_UPSTREAM" = "yes" ]; then
+  UNPUSHED=$(git log "origin/${BRANCH}..HEAD" --oneline 2>/dev/null | head -1)
+else
+  UNPUSHED=$(git log --oneline -1 2>/dev/null)
+fi
+
 if [ -n "$UNPUSHED" ]; then
   msg="You have unpushed commits on ${BRANCH}. Consider running /pr to open a pull request."
   jq -n --arg m "$msg" '{systemMessage:$m}'

@@ -9,7 +9,7 @@ PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty' 2>/dev/null)
 [ -z "$PROMPT" ] && exit 0
 
 # Skip if user is already invoking a JIRA-aware skill
-echo "$PROMPT" | grep -qP '^\s*/(jira|start|backport|implement-story|create-plan|estimate-issue|create-epic|create-stories)\s' && exit 0
+echo "$PROMPT" | grep -qP '^\s*/(jira|start|backport|implement-story|create-plan|estimate-issue|create-epic|create-stories)(\s|$)' && exit 0
 
 TICKETS=$(echo "$PROMPT" | grep -oP '(PROJQUAY|QUAYIO)-\d+' | sort -u | head -5)
 [ -z "$TICKETS" ] && exit 0

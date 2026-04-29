@@ -44,7 +44,7 @@
           },
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); TITLE=$(echo \"$INPUT\" | jq -r \".tool_input.command\" | grep -oP \"--title \\x27\\K[^\\x27]+|--title \\\"\\K[^\\\"]+\" || true); if [ -n \"$TITLE\" ]; then PATTERN=\"^(\\\\[redhat-[0-9]+\\\\.[0-9]+\\\\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(\\\\([^)]+\\\\))?: .+$\"; if ! echo \"$TITLE\" | grep -qE \"$PATTERN\"; then echo \"BLOCKED: PR title does not match required format.\" >&2; echo \"Expected: PROJQUAY-XXXX: type(scope): description\" >&2; echo \"Got: $TITLE\" >&2; exit 2; fi; fi'",
+            "command": "bash -c 'INPUT=$(cat); TITLE=$(echo \"$INPUT\" | jq -r \".tool_input.command\" | grep -oP \"--title[= ]\\\\x27\\\\K[^\\\\x27]+|--title[= ]\\\\\\\"\\\\K[^\\\\\\\"]+|--title=\\\\K[^ \\\\x27\\\\\\\"]+\\\" || true); if [ -n \"$TITLE\" ]; then PATTERN=\"^(\\\\\\\\[redhat-[0-9]+\\\\\\\\.[0-9]+\\\\\\\\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(\\\\\\\\([^)]+\\\\\\\\))?: .+$\"; if ! echo \"$TITLE\" | grep -qE \"$PATTERN\"; then echo \"BLOCKED: PR title does not match required format.\" >&2; echo \"Expected: PROJQUAY-XXXX: type(scope): description\" >&2; echo \"Got: $TITLE\" >&2; exit 2; fi; fi'",
             "if": "Bash(gh pr create *)",
             "timeout": 10
           },
