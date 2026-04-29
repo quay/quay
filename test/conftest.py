@@ -1,19 +1,51 @@
 import pytest
 
+INTEGRATION_FIXTURES = {"initialized_db", "app", "appconfig", "database_uri", "init_db_path"}
+
+# Tests that don't use standard DB fixtures but depend on the full app import chain
+INTEGRATION_FILES = {
+    "test_oidc.py",
+}
+
+LEGACY_FILES = {
+    "test_api_usage.py",
+    "test_endpoints.py",
+    "test_external_jwt_authn.py",
+    "test_external_oidc.py",
+    "test_keystone_auth.py",
+    "test_ldap.py",
+    "test_oauth_login.py",
+    "test_registry_jwt.py",
+    "test_v1_endpoint_security.py",
+    "test_v2_endpoint_security.py",
+}
+
 
 def pytest_collection_modifyitems(config, items):
     """
-    This adds a pytest marker that consistently shards all collected tests.
+    Classifies tests and adds shard markers for CI parallelization.
 
-    Use it like the following:
-    $ py.test -m shard_1_of_3
-    $ py.test -m shard_2_of_3
-    $ py.test -m shard_3_of_3
+    - ``legacy``: unittest.TestCase tests with SQLite locking issues under xdist
+    - ``integration``: tests that use database/Flask fixtures
+    - Remaining unmarked tests are true unit tests (no DB)
+
+    Sharding (unchanged from original):
+        $ py.test -m shard_1_of_3
+        $ py.test -m shard_2_of_3
+        $ py.test -m shard_3_of_3
 
     This code was originally adopted from the MIT-licensed ansible/molecule@9e7b79b:
     Copyright (c) 2015-2018 Cisco Systems, Inc.
     Copyright (c) 2018 Red Hat, Inc.
     """
+    for item in items:
+        if item.fspath.basename in LEGACY_FILES:
+            item.add_marker(pytest.mark.legacy)
+        elif item.fspath.basename in INTEGRATION_FILES or INTEGRATION_FIXTURES & set(
+            item.fixturenames
+        ):
+            item.add_marker(pytest.mark.integration)
+
     mark_opt = config.getoption("-m")
     if not mark_opt.startswith("shard_"):
         return

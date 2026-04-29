@@ -106,7 +106,38 @@ jobs:
 
     - name: tox
       run: |
-        tox -e py312-unit -- --cov=./ --cov-report=xml
+        tox -e py312-unit
+
+  sqlite:
+    name: SQLite Integration Test
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4.9.1
+      with:
+        python-version: 3.12
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          requirements-dev.txt
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox (parallel)
+      run: |
+        tox -e py312-sqlite -- --cov=./ --cov-report=xml
+
+    - name: tox (legacy sequential)
+      run: |
+        tox -e py312-sqlite-legacy
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
@@ -177,7 +208,7 @@ jobs:
         tox -e py312-e2e
 
   registry:
-    name: E2E Registry Tests
+    name: Registry Protocol Test
     runs-on: quay-001-large-ubuntu-24-x64
     steps:
 
@@ -204,8 +235,8 @@ jobs:
       run: |
         tox -e py312-registry
 
-  psql:
-    name: E2E Postgres Test
+  postgres:
+    name: PostgreSQL Integration Test
     runs-on: ubuntu-22.04
     steps:
 
