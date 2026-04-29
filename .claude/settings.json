@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/scripts/session-setup.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -7,6 +18,11 @@
             "type": "command",
             "command": ".claude/scripts/check-embargo.sh",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": ".claude/scripts/detect-jira-ticket.sh",
+            "timeout": 5
           }
         ]
       }
@@ -19,6 +35,65 @@
             "type": "command",
             "command": ".claude/scripts/check-embargo.sh",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'echo \"[hook] Ensuring pre-commit hooks are installed...\" >&2; if command -v pre-commit &>/dev/null; then pre-commit install --allow-missing-config 2>/dev/null; fi'",
+            "if": "Bash(git commit *)",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); TITLE=$(echo \"$INPUT\" | jq -r \".tool_input.command\" | grep -oP \"--title[= ]\\\\x27\\\\K[^\\\\x27]+|--title[= ]\\\\\\\"\\\\K[^\\\\\\\"]+|--title=\\\\K[^ \\\\x27\\\\\\\"]+\\\" || true); if [ -n \"$TITLE\" ]; then PATTERN=\"^(\\\\\\\\[redhat-[0-9]+\\\\\\\\.[0-9]+\\\\\\\\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(\\\\\\\\([^)]+\\\\\\\\))?: .+$\"; if ! echo \"$TITLE\" | grep -qE \"$PATTERN\"; then echo \"BLOCKED: PR title does not match required format.\" >&2; echo \"Expected: PROJQUAY-XXXX: type(scope): description\" >&2; echo \"Got: $TITLE\" >&2; exit 2; fi; fi'",
+            "if": "Bash(gh pr create *)",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); MSG=$(echo \"$INPUT\" | jq -r \".tool_input.command\" | grep -oP \"\\-m \\x27\\K[^\\x27]+|\\-m \\\"\\K[^\\\"]+\" || true); if [ -n \"$MSG\" ]; then FIRST_LINE=$(echo \"$MSG\" | head -1); if ! echo \"$FIRST_LINE\" | grep -qP \"^[\\w/.-]+: .+\"; then jq -n --arg line \"$FIRST_LINE\" \"{hookSpecificOutput:{hookEventName:\\\"PreToolUse\\\",additionalContext:(\\\"Commit message should follow format: <subsystem>: <what changed> (PROJQUAY-####). Got: \\\" + \\$line)}}\"; fi; fi'",
+            "if": "Bash(git commit *)",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); RESPONSE=$(echo \"$INPUT\" | jq -r \".tool_response.stdout // empty\"); PR_URL=$(echo \"$RESPONSE\" | grep -oP \"https://github.com/quay/quay/pull/\\d+\" | head -1 || true); if [ -n \"$PR_URL\" ]; then PR_NUM=$(echo \"$PR_URL\" | grep -oP \"\\d+$\"); jq -n --arg pr \"$PR_NUM\" \"{hookSpecificOutput:{hookEventName:\\\"PostToolUse\\\",additionalContext:(\\\"PR #\\\" + \\$pr + \\\" created. Run /poll \\\" + \\$pr + \\\" to monitor CI and reviews.\\\")}}\"; fi'",
+            "if": "Bash(gh pr create *)",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": ".claude/scripts/check-target-version.sh",
+            "if": "Bash(git push *)",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/scripts/save-session-state.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/scripts/workflow-next-step.sh",
+            "timeout": 15
           }
         ]
       }
