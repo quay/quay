@@ -596,25 +596,6 @@ test.describe(
 
       await api.raw.triggerMirrorSync(org.name, repo.name);
 
-      // Skip gracefully if the mirror worker is not running in this environment.
-      // The worker transitions SYNC_NOW -> SYNCING within a few seconds when present.
-      let workerRunning = false;
-      for (let i = 0; i < 6; i++) {
-        await new Promise((r) => setTimeout(r, 5_000));
-        const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
-        if (
-          cfg?.sync_status !== 'SYNC_NOW' &&
-          cfg?.sync_status !== 'NEVER_RUN'
-        ) {
-          workerRunning = true;
-          break;
-        }
-      }
-      test.skip(
-        !workerRunning,
-        'Mirror worker not running in this environment — skipping real-sync validation',
-      );
-
       // Poll until the mirror worker finishes. Throw on FAIL so the test
       // surfaces a clear message rather than timing out.
       await expect
