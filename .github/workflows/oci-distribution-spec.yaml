@@ -48,7 +48,6 @@ jobs:
     - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
       with:
         repository: opencontainers/distribution-spec
-        ref: v1.1.0-rc1
         path: dist-spec
 
     - name: Set up Go 1.18
