@@ -208,6 +208,97 @@ test.describe(
       );
       expect(deleteResp.status()).toBe(204);
     });
+
+    test('admin can get quota limits via sub-resource endpoints', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const org = await superuserApi.organization('qlimit');
+      const quota = await superuserApi.quota(org.name, 1024000000);
+
+      await superuserApi.raw.createQuotaLimit(
+        org.name,
+        quota.quotaId,
+        'Warning',
+        80,
+      );
+
+      const limitsResp = await adminClient.get(
+        `/api/v1/organization/${org.name}/quota/${quota.quotaId}/limit`,
+      );
+      expect(limitsResp.status()).toBe(200);
+      const limits = await limitsResp.json();
+      expect(Array.isArray(limits)).toBe(true);
+      expect(limits.length).toBeGreaterThan(0);
+      expect(limits[0].type).toBe('Warning');
+      expect(limits[0].limit_percent).toBe(80);
+      const limitId = limits[0].id;
+
+      const limitResp = await adminClient.get(
+        `/api/v1/organization/${org.name}/quota/${quota.quotaId}/limit/${limitId}`,
+      );
+      expect(limitResp.status()).toBe(200);
+      const limit = await limitResp.json();
+      expect(limit.id).toBe(limitId);
+      expect(limit.type).toBe('Warning');
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// User Quotas
+// ---------------------------------------------------------------------------
+test.describe(
+  'User Quotas',
+  {tag: ['@api', '@feature:QUOTA_MANAGEMENT']},
+  () => {
+    test('admin can get user quota by ID and list its limits', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const user = await superuserApi.user('quotauser');
+
+      await superuserApi.raw.createUserQuotaSuperuser(
+        user.username,
+        2048000000,
+      );
+
+      const quotasResp = await adminClient.get(
+        `/api/v1/superuser/users/${user.username}/quota`,
+      );
+      expect(quotasResp.status()).toBe(200);
+      const quotas = await quotasResp.json();
+      expect(quotas.length).toBeGreaterThan(0);
+      const quotaId = quotas[0].id;
+
+      try {
+        const quotaResp = await adminClient.get(
+          `/api/v1/user/quota/${quotaId}`,
+        );
+        expect([200, 404]).toContain(quotaResp.status());
+
+        const limitsResp = await adminClient.get(
+          `/api/v1/user/quota/${quotaId}/limit`,
+        );
+        expect([200, 404]).toContain(limitsResp.status());
+
+        const updateResp = await adminClient.put(
+          `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
+          {limit_bytes: 4096000000},
+        );
+        expect(updateResp.status()).toBe(200);
+
+        const verifyResp = await adminClient.get(
+          `/api/v1/superuser/users/${user.username}/quota`,
+        );
+        const verifiedQuotas = await verifyResp.json();
+        expect(verifiedQuotas[0].limit_bytes).toBe(4096000000);
+      } finally {
+        await adminClient.delete(
+          `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
+        );
+      }
+    });
   },
 );
 
