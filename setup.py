@@ -12,7 +12,7 @@ if os.path.isfile(requirementPath):
             if (
                 line
                 and not line.startswith("#")
-                and not line.startswith("git")
+                and not line.startswith("git+")
                 and "@" not in line
                 and line.split("==")[0] not in ("setuptools", "wheel")
             ):
