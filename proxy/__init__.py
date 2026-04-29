@@ -66,8 +66,10 @@ class Proxy:
         self.base_url = url
         self._session = requests.Session()
         self._repo = repository
-        self._authorize(self._credentials(), force_renewal=self._validation)
-        # flag used for validating Proxy cache config before saving to db
+        self._authorized = False
+        if self._validation:
+            self._authorize(self._credentials(), force_renewal=True)
+            self._authorized = True
 
     def get_manifest(
         self, image_ref: str, media_types: list[str] | None = None
@@ -107,6 +109,7 @@ class Proxy:
             },
             allow_redirects=True,
             stream=True,
+            timeout=(5, 120),
         )
         return resp
 
@@ -131,7 +134,13 @@ class Proxy:
         """
         return self._request(self._session.head, *args, **kwargs)
 
+    def _ensure_authorized(self):
+        if not self._authorized:
+            self._authorize(self._credentials())
+            self._authorized = True
+
     def _request(self, request_func, *args, **kwargs) -> requests.Response:
+        self._ensure_authorized()
         resp = self._safe_request(request_func, *args, **kwargs)
         if resp.status_code == 401:
             self._authorize(self._credentials(), force_renewal=True)
@@ -144,6 +153,8 @@ class Proxy:
         return resp
 
     def _safe_request(self, request_func, *args, **kwargs):
+        if "timeout" not in kwargs:
+            kwargs["timeout"] = (5, 30)
         try:
             return request_func(*args, **kwargs)
         except (RequestException, ConnectionError) as e:
