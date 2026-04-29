@@ -131,6 +131,34 @@ class LocalHealthCheck(HealthCheck):
         return ["LocalHealthCheck"]
 
 
+class LDAPHealthCheck(HealthCheck):
+    def __init__(self, app, config_provider, instance_keys):
+        super(LDAPHealthCheck, self).__init__(
+            app, config_provider, instance_keys, ["redis", "storage"]
+        )
+
+    @classmethod
+    def check_names(cls):
+        return ["LDAPHealthCheck"]
+
+    def calculate_overall_health(self, service_statuses, skip=None, notes=None):
+        # Delegate to the base implementation first.
+        data, retcode = super(LDAPHealthCheck, self).calculate_overall_health(
+            service_statuses, skip=skip, notes=notes
+        )
+
+        services = data.get("services", {}) or {}
+        failed_services = [name for name, status in services.items() if not status]
+
+        # If *only* auth is failing, keep the service marked as failed in the body
+        # but treat the overall health as OK (HTTP 200) so we don't reconcile on LDAP issues.
+        if retcode != 200 and failed_services and set(failed_services) == {"auth"}:
+            return data, 200
+
+        # For any other failure combination (or no failures), preserve the base behavior.
+        return data, retcode
+
+
 class RDSAwareHealthCheck(HealthCheck):
     def __init__(
         self,
