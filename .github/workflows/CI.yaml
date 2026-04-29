@@ -106,7 +106,13 @@ jobs:
 
     - name: tox
       run: |
-        tox -e py312-unit
+        tox -e py312-unit -- --cov=./ --cov-report=xml
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        flags: unit
 
   sqlite:
     name: SQLite Integration Test
@@ -137,7 +143,7 @@ jobs:
 
     - name: tox (legacy sequential)
       run: |
-        tox -e py312-sqlite-legacy
+        tox -e py312-sqlite-legacy -- --cov=./ --cov-report=xml --cov-append
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
