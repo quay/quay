@@ -14,6 +14,10 @@ import (
 
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry/handlers"
+	"github.com/distribution/distribution/v3/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	// Registers the filesystem storage driver with the distribution driver factory.
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/filesystem"
@@ -50,13 +54,25 @@ func runServe(args []string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Initialize OpenTelemetry tracing. Uses the standard OTEL_* environment
+	// variables for exporter configuration (e.g. OTEL_EXPORTER_OTLP_ENDPOINT).
+	if err := tracing.InitOpenTelemetry(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to initialize tracing: %v\n", err)
+	}
+
 	// NewApp wires up all OCI Distribution Spec endpoints (/v2/, manifests,
 	// blobs, uploads, tags, catalog). The context enables cancellation.
 	app := handlers.NewApp(ctx, cfg)
 
+	// Wrap with OpenTelemetry HTTP instrumentation to create per-request spans.
+	handler := otelhttp.NewHandler(app, "",
+		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+			return r.Method + " " + r.URL.Path
+		}))
+
 	srv := &http.Server{
 		Addr:              *addr,
-		Handler:           app,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 
 		// Derive request contexts from root so shutdown cancels in-flight requests.
@@ -89,6 +105,13 @@ func runServe(args []string) int {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		fmt.Fprintf(os.Stderr, "shutdown error: %v\n", err)
 		return 1
+	}
+
+	// Flush any buffered trace spans.
+	if tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider); ok {
+		if err := tp.Shutdown(shutdownCtx); err != nil {
+			fmt.Fprintf(os.Stderr, "trace shutdown error: %v\n", err)
+		}
 	}
 
 	fmt.Fprintln(os.Stderr, "stopped")
