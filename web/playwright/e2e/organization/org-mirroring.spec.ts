@@ -498,6 +498,65 @@ test.describe(
       ).toBeVisible();
     });
 
+    test('displays specific API error_message when enabling mirror on org with repositories', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrspecificerr');
+      const robot = await api.robot(org.name, 'specbot');
+
+      const specificErrorMessage =
+        'Cannot create organization mirror: the organization already contains repositories. Organization mirroring requires an empty organization.';
+
+      // Mock the 400 response that the API sends when the org has existing repos
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'POST') {
+            await route.fulfill({
+              status: 400,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error_message: specificErrorMessage,
+                error_type: 'invalid_request',
+                status: 400,
+              }),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      await fillRequiredFields(authenticatedPage, robot.fullName, {
+        namespace: 'testns',
+      });
+
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      // Wait for the error alert to appear
+      const errorAlert = authenticatedPage
+        .locator('.pf-v6-c-alert')
+        .filter({hasText: 'Error saving organization mirror configuration'})
+        .first();
+      await expect(errorAlert).toBeVisible({timeout: 10000});
+
+      // The alert message is in a collapsed expandable section; verify the
+      // specific API error text is present in the alert (not the generic HTTP error)
+      await expect(errorAlert).toContainText(specificErrorMessage);
+      await expect(errorAlert).not.toContainText(
+        'Request failed with status code 400',
+      );
+    });
+
     test('shows discovered repositories table when config exists', async ({
       authenticatedPage,
       api,
