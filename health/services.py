@@ -46,7 +46,7 @@ def _check_gunicorn(endpoint):
             return (okay, message)
         except Exception as ex:
             logger.exception("Exception when checking worker health: %s", registry_url)
-            return (False, "Exception when checking worker health: %s" % registry_url)
+            return (False, "Exception when checking worker health: %s: %s" % (registry_url, ex))
 
     return fn
 
