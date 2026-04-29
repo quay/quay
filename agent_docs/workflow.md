@@ -113,18 +113,23 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 
 ## Session Setup
 
-Install recommended Claude Code hooks on first use:
+All hooks are consolidated in `.claude/settings.json` — no manual setup required.
 
-```bash
-cp .claude/claude-settings-recommended.json .claude/settings.json
-```
+### Hooks by Event
 
-This activates:
-- **Embargo check**: Blocks pushes to embargo branches
-- **Pre-commit install guard**: Ensures pre-commit hooks are set up before commit
-- **PR title validation**: Validates title format before `gh pr create`
-
-If `.claude/settings.json` already exists, merge the `"hooks"` key instead of overwriting.
+| Event | Hook | Script/Command |
+|-------|------|----------------|
+| **SessionStart** | Bootstrap + state restore | `session-setup.sh` — acli, pre-commit, gh auth, restores previous session state |
+| **UserPromptSubmit** | Embargo check | `check-embargo.sh` — blocks embargoed JIRA tickets |
+| **UserPromptSubmit** | JIRA ticket detection | `detect-jira-ticket.sh` — detects PROJQUAY/QUAYIO refs, suggests `/jira` or `/start` |
+| **PreToolUse** (Bash) | Embargo check | `check-embargo.sh` — blocks JIRA commands on embargoed tickets |
+| **PreToolUse** (git commit) | Pre-commit guard | Ensures `pre-commit install` runs before commit |
+| **PreToolUse** (git commit) | Commit message hint | Warns if message doesn't match `<subsystem>: <what> (PROJQUAY-####)` |
+| **PreToolUse** (gh pr create) | PR title validation | Blocks if title doesn't match CI-enforced regex |
+| **PostToolUse** (gh pr create) | Poll reminder | Suggests `/poll <PR#>` after PR creation |
+| **PostToolUse** (git push) | Target Version check | `check-target-version.sh` — warns if JIRA ticket missing Target Version |
+| **PreCompact** | State save | `save-session-state.sh` — saves branch/ticket/PR to survive compaction |
+| **Stop** | Next-step reminder | `workflow-next-step.sh` — suggests `/pr`, `/poll`, or `/backport` based on state |
 
 ## GitHub CLI Notes
 

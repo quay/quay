@@ -1,8 +1,8 @@
 #!/bin/bash
 # session-setup.sh -- One-time session bootstrap for Quay development.
 #
-# Handles: acli install+auth, recommended hooks, pre-commit, gh auth check.
-# Called by /start skill as Step 0, or run manually.
+# Handles: session state restore, acli install+auth, pre-commit, gh auth check.
+# Runs automatically via SessionStart hook, or manually.
 #
 # Usage:
 #   bash .claude/scripts/session-setup.sh
@@ -20,9 +20,28 @@ fi
 
 echo "=== Quay Session Bootstrap ==="
 
-# ── 1. acli ──────────────────────────────────────────────────────
+# ── 1. Restore session state ────────────────────────────────────
+STATE_FILE="${REPO_ROOT}/.claude/session-state/current.json"
+CONTEXT=""
+if [ -f "$STATE_FILE" ]; then
+  echo "[1/4] Restoring previous session state..."
+  BRANCH=$(jq -r '.branch // empty' "$STATE_FILE" 2>/dev/null || true)
+  TICKET=$(jq -r '.ticket // empty' "$STATE_FILE" 2>/dev/null || true)
+  PR_NUM=$(jq -r '.pr_number // empty' "$STATE_FILE" 2>/dev/null || true)
+  SAVED_AT=$(jq -r '.saved_at // empty' "$STATE_FILE" 2>/dev/null || true)
+
+  CONTEXT="Previous session state (saved ${SAVED_AT}):"
+  [ -n "$BRANCH" ] && CONTEXT="${CONTEXT} branch=${BRANCH}"
+  [ -n "$TICKET" ] && CONTEXT="${CONTEXT}, ticket=${TICKET}"
+  [ -n "$PR_NUM" ] && CONTEXT="${CONTEXT}, PR=#${PR_NUM}"
+  echo "  ${CONTEXT}"
+else
+  echo "[1/4] No previous session state found."
+fi
+
+# ── 2. acli ──────────────────────────────────────────────────────
 if ! command -v acli &>/dev/null; then
-  echo "[1/4] Installing acli..."
+  echo "[2/4] Installing acli..."
   install_dir="${HOME}/.local/bin"
   mkdir -p "$install_dir"
   curl -sSL -o "${install_dir}/acli" "https://acli.atlassian.com/linux/latest/acli_linux_amd64/acli"
@@ -30,7 +49,7 @@ if ! command -v acli &>/dev/null; then
   export PATH="${install_dir}:${PATH}"
   echo "  Installed to ${install_dir}/acli"
 else
-  echo "[1/4] acli already installed."
+  echo "[2/4] acli already installed."
 fi
 
 # Auth acli if credentials available
@@ -39,28 +58,16 @@ if command -v acli &>/dev/null; then
     token="${JIRA_API_TOKEN:-}"
     email="${JIRA_USER:-quay-devel@redhat.com}"
     if [ -n "$token" ]; then
-      echo "$token" | acli jira auth login         --site "redhat.atlassian.net"         --email "$email" --token 2>/dev/null && echo "  acli authenticated as ${email}." ||         echo "  Warning: acli auth failed. Run manually: acli jira auth login --site redhat.atlassian.net --email ${email} --token"
+      echo "$token" | acli jira auth login \
+        --site "redhat.atlassian.net" \
+        --email "$email" --token 2>/dev/null && echo "  acli authenticated as ${email}." || \
+        echo "  Warning: acli auth failed. Run manually: acli jira auth login --site redhat.atlassian.net --email ${email} --token"
     else
       echo "  Warning: No JIRA_API_TOKEN set. Set it or run: acli jira auth login --site redhat.atlassian.net --email <email> --token"
     fi
   else
     echo "  acli already authenticated."
   fi
-fi
-
-# ── 2. Recommended hooks ────────────────────────────────────────
-echo "[2/4] Checking Claude Code hooks..."
-settings_src="${REPO_ROOT}/.claude/claude-settings-recommended.json"
-settings_dst="${REPO_ROOT}/.claude/settings.json"
-if [ -f "$settings_src" ]; then
-  if [ ! -f "$settings_dst" ]; then
-    cp "$settings_src" "$settings_dst"
-    echo "  Installed recommended hooks."
-  else
-    echo "  settings.json exists. Merge hooks manually if needed."
-  fi
-else
-  echo "  No recommended settings found at ${settings_src}."
 fi
 
 # ── 3. pre-commit ───────────────────────────────────────────────
@@ -90,3 +97,9 @@ fi
 # Mark complete
 touch "$SETUP_MARKER"
 echo "=== Bootstrap complete ==="
+
+# Inject restored context into the model
+if [ -n "$CONTEXT" ]; then
+  jq -n --arg ctx "$CONTEXT" \
+    '{hookSpecificOutput:{hookEventName:"SessionStart",additionalContext:$ctx}}'
+fi
