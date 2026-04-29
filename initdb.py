@@ -1562,6 +1562,8 @@ WHITELISTED_EMPTY_MODELS = [
     "NamespaceImmutabilityPolicy",
     "RepositoryImmutabilityPolicy",
     "OrganizationContactEmail",
+    "HelmChartMetadata",
+    "HelmRepoIndexConfig",
 ]
 
 

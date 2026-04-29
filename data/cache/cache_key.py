@@ -93,3 +93,11 @@ def for_manifest_referrers(repository_id, manifest_digest, cache_config):
     """
     cache_ttl = cache_config.get("manifest_referrers_cache_ttl", "60s")
     return CacheKey(f"manifest_referrers__{repository_id}_{manifest_digest}", cache_ttl)
+
+
+def for_helm_repo_index(repository_id, cache_config):
+    """
+    Returns a cache key for the generated Helm repository index (index.yaml).
+    """
+    cache_ttl = cache_config.get("helm_repo_index_cache_ttl", "300s")
+    return CacheKey(f"helm_repo_index__{repository_id}", cache_ttl)

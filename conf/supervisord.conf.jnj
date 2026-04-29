@@ -417,4 +417,28 @@ command={% if hotreload -%}
 autostart = {{ config['pullstatsredisflushworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+
+[program:helmchartworker]
+environment=
+  PYTHONPATH=%(ENV_PYTHONPATH)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/helmchartworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.helmchartworker.helmchartworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.helmchartworker.helmchartworker
+{% endif -%}
+autostart = {{ config['helmchartworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
+[program:helmchartbackfillworker]
+environment=
+  PYTHONPATH=%(ENV_PYTHONPATH)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/helmchartbackfillworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.helmchartworker.backfillworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.helmchartworker.backfillworker
+{% endif -%}
+autostart = {{ config['helmchartbackfillworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
 # EOF NO NEWLINE
