@@ -566,5 +566,51 @@ test.describe(
         authenticatedPage.getByTestId('architecture-filter-helper'),
       ).toContainText('s390x');
     });
+
+    test('completes a real sync using authfile credentials', async ({api}) => {
+      // Validates the authfile credential path end-to-end: if skopeomirror.py
+      // writes a malformed authfile or passes credentials on the CLI instead,
+      // the sync will fail or produce an error status here.
+      const org = await api.organization('syncauthfileorg');
+      const repo = await api.repository(org.name, 'syncauthfilerepo');
+      const robot = await api.robot(org.name, 'syncauthfilebot');
+      await api.setMirrorState(org.name, repo.name);
+
+      // Mirror a small, stable public image so the sync completes quickly.
+      const now = new Date();
+      await api.raw.createMirrorConfig(org.name, repo.name, {
+        external_reference: 'quay.io/quay/busybox',
+        sync_interval: 86400,
+        sync_start_date: now.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        root_rule: {rule_kind: 'tag_glob_csv', rule_value: ['latest']},
+        robot_username: robot.fullName,
+        skopeo_timeout_interval: 300,
+        is_enabled: true,
+        verify_tls: true,
+      });
+
+      await api.raw.triggerMirrorSync(org.name, repo.name);
+
+      // Poll until the mirror worker finishes (SUCCESS or FAILED).
+      const finalStatus = await expect
+        .poll(
+          async () => {
+            const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
+            return cfg?.sync_status ?? 'UNKNOWN';
+          },
+          {
+            timeout: 120_000,
+            intervals: [5_000, 10_000, 15_000],
+            message: 'Mirror sync did not finish within 2 minutes',
+          },
+        )
+        .toMatch(/^(SUCCESS|FAILED)$/);
+
+      expect(finalStatus).toBe('SUCCESS');
+
+      // Confirm the synced tag landed in the repository.
+      const tags = await api.raw.getTags(org.name, repo.name);
+      expect(tags.tags.some((t) => t.name === 'latest')).toBe(true);
+    });
   },
 );
