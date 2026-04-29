@@ -577,11 +577,14 @@ test.describe(
       await api.setMirrorState(org.name, repo.name);
 
       // Mirror a small, stable public image so the sync completes quickly.
-      const now = new Date();
+      // Push sync_start_date into the future so the scheduler won't fire
+      // independently; triggerMirrorSync() is the only driver.
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
       await api.raw.createMirrorConfig(org.name, repo.name, {
         external_reference: 'quay.io/quay/busybox',
         sync_interval: 86400,
-        sync_start_date: now.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
         root_rule: {rule_kind: 'tag_glob_csv', rule_value: ['latest']},
         robot_username: robot.fullName,
         skopeo_timeout_interval: 300,
