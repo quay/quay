@@ -1464,3 +1464,82 @@ test.describe(
     });
   },
 );
+
+test.describe(
+  'Robot User required field indicator',
+  {tag: ['@org-mirroring', '@PROJQUAY-10983']},
+  () => {
+    test('shows required asterisk on Robot User field in org mirror config', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrrreq');
+
+      // Navigate to mirroring tab in setup mode so the mirror form is displayed
+      // without an existing configuration (no button click required — the form
+      // renders immediately when setup=true is in the query string).
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      // Wait for the mirror configuration form to be visible
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // The Robot User FormGroup label should be present in the form
+      await expect(
+        authenticatedPage
+          .getByTestId('org-mirror-form')
+          .getByText('Robot User'),
+      ).toBeVisible();
+
+      // PatternFly renders the required asterisk as a <span> with class
+      // pf-v6-c-form__label-required (PF6) or pf-c-form__label-required (PF5).
+      // isRequired on the FormGroup wrapping the Robot User field causes this
+      // span to be inserted next to the label text.
+      await expect(
+        authenticatedPage
+          .getByTestId('org-mirror-form')
+          .locator('.pf-v6-c-form__label-required, .pf-c-form__label-required')
+          .first(),
+      ).toBeVisible();
+    });
+
+    test(
+      'shows required asterisk on Robot User field in repo mirror config',
+      {tag: '@feature:REPO_MIRROR'},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('repomirrrreq');
+        const repo = await api.repository(org.name, 'testrepo');
+
+        // Must set MIRROR state before the form renders
+        await api.setMirrorState(org.name, repo.name);
+
+        // Navigate to the repository mirroring configuration tab
+        await authenticatedPage.goto(
+          `/repository/${org.name}/${repo.name}?tab=mirroring`,
+        );
+
+        // Wait for the mirroring form to render
+        const form = authenticatedPage.getByTestId('mirror-form');
+        await expect(form).toBeVisible();
+
+        // The Robot User FormGroup label should be present
+        await expect(form.getByText('Robot User')).toBeVisible();
+
+        // PatternFly renders the required asterisk as a <span> with class
+        // pf-v6-c-form__label-required (PF6) or pf-c-form__label-required (PF5).
+        // isRequired on the FormGroup wrapping the Robot User field causes this
+        // span to be inserted next to the label text.
+        await expect(
+          form
+            .locator(
+              '.pf-v6-c-form__label-required, .pf-c-form__label-required',
+            )
+            .first(),
+        ).toBeVisible();
+      },
+    );
+  },
+);

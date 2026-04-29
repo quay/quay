@@ -383,7 +383,7 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
         </FormHelperText>
       </FormGroup>
 
-      <FormGroup label="Robot User" fieldId="robot_username" isStack>
+      <FormGroup label="Robot User" fieldId="robot_username" isStack isRequired>
         <Controller
           name="robotUsername"
           control={control}
