@@ -9,6 +9,8 @@
 
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
+import {RawApiClient} from '../../utils/api/raw-client';
+import {API_URL} from '../../utils/config';
 
 // ---------------------------------------------------------------------------
 // Repository Mirror
@@ -255,6 +257,7 @@ test.describe(
     test('admin can get user quota by ID and list its limits', async ({
       superuserApi,
       adminClient,
+      playwright,
     }) => {
       const user = await superuserApi.user('quotauser');
 
@@ -268,20 +271,33 @@ test.describe(
       );
       expect(quotasResp.status()).toBe(200);
       const quotas = await quotasResp.json();
-      expect(quotas.length).toBeGreaterThan(0);
-      const quotaId = quotas[0].id;
+      const quota = quotas.find(
+        (q: {limit_bytes: number}) => q.limit_bytes === 2048000000,
+      );
+      expect(quota).toBeTruthy();
+      const quotaId = quota.id;
 
+      // Sign in as the created user for user-scoped quota endpoints
+      const request = await playwright.request.newContext({
+        ignoreHTTPSErrors: true,
+      });
       try {
-        const quotaResp = await adminClient.get(
-          `/api/v1/user/quota/${quotaId}`,
-        );
-        expect([200, 404]).toContain(quotaResp.status());
+        const userClient = new RawApiClient(request, API_URL);
+        await userClient.signIn(user.username, user.password);
 
-        const limitsResp = await adminClient.get(
+        const quotaResp = await userClient.get(`/api/v1/user/quota/${quotaId}`);
+        expect(quotaResp.status()).toBe(200);
+
+        const limitsResp = await userClient.get(
           `/api/v1/user/quota/${quotaId}/limit`,
         );
-        expect([200, 404]).toContain(limitsResp.status());
+        expect(limitsResp.status()).toBe(200);
+      } finally {
+        await request.dispose();
+      }
 
+      // Superuser update and verify
+      try {
         const updateResp = await adminClient.put(
           `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,
           {limit_bytes: 4096000000},
@@ -292,7 +308,10 @@ test.describe(
           `/api/v1/superuser/users/${user.username}/quota`,
         );
         const verifiedQuotas = await verifyResp.json();
-        expect(verifiedQuotas[0].limit_bytes).toBe(4096000000);
+        const updated = verifiedQuotas.find(
+          (q: {id: number}) => q.id === quotaId,
+        );
+        expect(updated.limit_bytes).toBe(4096000000);
       } finally {
         await adminClient.delete(
           `/api/v1/superuser/users/${user.username}/quota/${quotaId}`,

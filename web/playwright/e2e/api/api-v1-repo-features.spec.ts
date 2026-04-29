@@ -437,16 +437,27 @@ test.describe(
       const email = `${uniqueName('invite')}@example.com`;
 
       const inviteResp = await adminClient.put(
-        `/api/v1/organization/${org.name}/team/${team.name}/invite/${email}`,
+        `/api/v1/organization/${org.name}/team/${
+          team.name
+        }/invite/${encodeURIComponent(email)}`,
       );
       if (inviteResp.status() === 400) {
-        test.skip(true, 'Email team invitations not enabled');
-        return;
+        const body = await inviteResp.json();
+        const msg = body.message || body.error_message || '';
+        if (
+          msg.toLowerCase().includes('not enabled') ||
+          msg.toLowerCase().includes('mailing')
+        ) {
+          test.skip(true, 'Email team invitations not enabled');
+          return;
+        }
       }
       expect(inviteResp.status()).toBe(200);
 
       const revokeResp = await adminClient.delete(
-        `/api/v1/organization/${org.name}/team/${team.name}/invite/${email}`,
+        `/api/v1/organization/${org.name}/team/${
+          team.name
+        }/invite/${encodeURIComponent(email)}`,
       );
       expect([204, 404]).toContain(revokeResp.status());
     });

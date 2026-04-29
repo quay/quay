@@ -535,19 +535,18 @@ test.describe(
 
           const location = startResp.headers()['location'] || '';
           const uuidMatch = location.match(/uploads\/([a-f0-9-]+)/);
-          if (uuidMatch) {
-            const uploadUuid = uuidMatch[1];
+          expect(uuidMatch).toBeTruthy();
+          const uploadUuid = uuidMatch![1];
 
-            const statusResp = await request.get(
-              `${API_URL}/v2/${orgName}/${repoName}/blobs/uploads/${uploadUuid}`,
-              {
-                headers: {
-                  authorization: `Bearer ${v2Token}`,
-                },
+          const statusResp = await request.get(
+            `${API_URL}/v2/${orgName}/${repoName}/blobs/uploads/${uploadUuid}`,
+            {
+              headers: {
+                authorization: `Bearer ${v2Token}`,
               },
-            );
-            expect([200, 204]).toContain(statusResp.status());
-          }
+            },
+          );
+          expect([200, 204]).toContain(statusResp.status());
         } finally {
           await request.dispose();
         }
