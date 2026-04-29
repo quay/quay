@@ -12,15 +12,9 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 SETUP_MARKER="${HOME}/.quay-session-setup-done"
 
-# Skip if already run this session
-if [ -f "$SETUP_MARKER" ]; then
-  echo "Session already bootstrapped. Delete ${SETUP_MARKER} to re-run."
-  exit 0
-fi
-
 echo "=== Quay Session Bootstrap ==="
 
-# ── 1. Restore session state ────────────────────────────────────
+# ── 1. Restore session state (always runs, even on re-entry) ────
 STATE_FILE="${REPO_ROOT}/.claude/session-state/current.json"
 CONTEXT=""
 if [ -f "$STATE_FILE" ]; then
@@ -37,6 +31,16 @@ if [ -f "$STATE_FILE" ]; then
   echo "  ${CONTEXT}"
 else
   echo "[1/4] No previous session state found."
+fi
+
+# Skip expensive bootstrap if already done this session
+if [ -f "$SETUP_MARKER" ]; then
+  echo "Session already bootstrapped. Delete ${SETUP_MARKER} to re-run."
+  if [ -n "$CONTEXT" ]; then
+    jq -n --arg ctx "$CONTEXT" \
+      '{hookSpecificOutput:{hookEventName:"SessionStart",additionalContext:$ctx}}'
+  fi
+  exit 0
 fi
 
 # ── 2. acli ──────────────────────────────────────────────────────

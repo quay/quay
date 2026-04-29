@@ -17,12 +17,14 @@ if command -v gh &>/dev/null && [ -n "$BRANCH" ] && [ "$BRANCH" != "master" ]; t
 fi
 
 SAVED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+TMP_STATE_FILE="${STATE_FILE}.tmp"
 jq -n \
   --arg branch "$BRANCH" \
   --arg ticket "$TICKET" \
   --arg pr_number "$PR_NUM" \
   --arg saved_at "$SAVED_AT" \
-  '{branch:$branch,ticket:$ticket,pr_number:$pr_number,saved_at:$saved_at}' > "$STATE_FILE"
+  '{branch:$branch,ticket:$ticket,pr_number:$pr_number,saved_at:$saved_at}' > "$TMP_STATE_FILE"
+mv "$TMP_STATE_FILE" "$STATE_FILE"
 
 CONTEXT="Session state saved before compaction. Branch: ${BRANCH:-master}"
 [ -n "$TICKET" ] && CONTEXT="${CONTEXT}, Ticket: ${TICKET}"
