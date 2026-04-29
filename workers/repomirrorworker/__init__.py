@@ -1160,7 +1160,7 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             org_name,
         )
     else:
-        # Normal scheduled sync: only schedule NEVER_RUN repos
+        # Normal scheduled sync: schedule NEVER_RUN and CANCEL repos
         scheduled_count = schedule_org_mirror_repos_for_sync(claimed_config)
         logger.info(
             "Scheduled %d repositories for sync for org mirror %s",
