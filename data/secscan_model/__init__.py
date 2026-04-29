@@ -11,25 +11,49 @@ from data.secscan_model.interface import (
 from data.secscan_model.secscan_v4_model import NoopV4SecurityScanner
 from data.secscan_model.secscan_v4_model import ScanToken as V4ScanToken
 from data.secscan_model.secscan_v4_model import V4SecurityScanner
+from data.secscan_model.secscan_v4_model_v2 import V4SecurityScanner2
 
 logger = logging.getLogger(__name__)
 
 
 class SecurityScannerModelProxy(SecurityScannerInterface):
     def configure(self, app, instance_keys, storage):
+        model_version = app.config.get("SECURITY_SCANNER_V4_MODEL_VERSION", 1)
+
+        # V2 requires PostgreSQL 9.5+ for SELECT FOR UPDATE SKIP LOCKED
+        if model_version == 2:
+            from sqlalchemy.engine.url import make_url
+
+            db_uri = app.config.get("DB_URI", "")
+            parsed_uri = make_url(db_uri)
+            db_driver = parsed_uri.drivername
+
+            # Only PostgreSQL is supported
+            if not db_driver.startswith("postgresql"):
+                logger.error(
+                    "SECURITY_SCANNER_V4_MODEL_VERSION=2 requires PostgreSQL 9.5+. "
+                    "Detected database driver '%s'. Falling back to model version 1.",
+                    db_driver,
+                )
+                model_version = 1
+
         try:
-            self._model = V4SecurityScanner(app, instance_keys, storage)
+            if model_version == 2:
+                self._model = V4SecurityScanner2(app, instance_keys, storage)
+            else:
+                self._model = V4SecurityScanner(app, instance_keys, storage)
         except InvalidConfigurationException:
             self._model = NoopV4SecurityScanner()
 
         logger.info("===============================")
-        logger.info("Using split secscan model: `%s`", [self._model])
+        logger.info("Using secscan model v%s: `%s`", model_version, [self._model])
         logger.info("===============================")
 
         return self
 
     def perform_indexing(self, next_token=None, batch_size=None):
-        if next_token is not None:
+        # V4SecurityScanner2 doesn't use ScanToken (returns None)
+        if next_token is not None and isinstance(self._model, V4SecurityScanner):
             assert isinstance(next_token, V4ScanToken)
             assert isinstance(next_token.min_id, int)
 
