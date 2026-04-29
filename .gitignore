@@ -134,3 +134,5 @@ bin/
 # claude
 .claude/plans
 .claude/implementation
+.claude/poll-state/
+.claude/session-state/
