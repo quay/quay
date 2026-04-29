@@ -203,16 +203,16 @@ ensure_oc() {
 
 validate_cluster() {
     ensure_oc
-    if command -v oc >/dev/null 2>&1; then
-        local server
-        server=$(oc --kubeconfig="$KUBECONFIG_OUT" whoami --show-server 2>/dev/null || true)
-        if [[ -n "$server" ]]; then
-            info "Cluster validated — server: ${server}"
-        else
-            echo "WARNING: Could not validate cluster connectivity. The kubeconfig was downloaded but 'oc whoami --show-server' failed."
-        fi
+    if ! command -v oc >/dev/null 2>&1; then
+        echo "WARNING: could not install 'oc' — skipping cluster validation."
+        return
+    fi
+    local server
+    server=$(oc --kubeconfig="$KUBECONFIG_OUT" whoami --show-server 2>/dev/null || true)
+    if [[ -n "$server" ]]; then
+        info "Cluster validated — server: ${server}"
     else
-        echo "WARNING: 'oc' not found on PATH. Skipping cluster validation. Install 'oc' to verify connectivity."
+        echo "WARNING: Could not validate cluster connectivity. The kubeconfig was downloaded but 'oc whoami --show-server' failed."
     fi
 }
 
@@ -396,19 +396,19 @@ status() {
         fi
     fi
 
-    if [[ -f "$kubeconfig_path" ]] && command -v oc >/dev/null 2>&1; then
-        echo ""
-        info "Testing cluster connectivity..."
-        local server
-        server=$(oc --kubeconfig="$kubeconfig_path" whoami --show-server 2>/dev/null || true)
-        if [[ -n "$server" ]]; then
-            echo "Cluster:       ${server} (reachable)"
-        else
-            echo "Cluster:       NOT reachable"
+    if [[ -f "$kubeconfig_path" ]]; then
+        ensure_oc
+        if command -v oc >/dev/null 2>&1; then
+            echo ""
+            info "Testing cluster connectivity..."
+            local server
+            server=$(oc --kubeconfig="$kubeconfig_path" whoami --show-server 2>/dev/null || true)
+            if [[ -n "$server" ]]; then
+                echo "Cluster:       ${server} (reachable)"
+            else
+                echo "Cluster:       NOT reachable"
+            fi
         fi
-    elif [[ -f "$kubeconfig_path" ]]; then
-        echo ""
-        echo "Kubeconfig exists but 'oc' is not on PATH — cannot test connectivity."
     fi
 }
 
