@@ -153,7 +153,7 @@ jobs:
         if: always()
         run: |
           mkdir -p jaeger-traces
-          curl -sf "http://localhost:16686/api/traces?service=quay&limit=10000&lookback=2h" \
+          curl -sf "http://localhost:16686/api/traces?service=quay&limit=50000&lookback=2h" \
             -o jaeger-traces/traces.json \
             || echo "::warning::Could not export Jaeger traces"
 

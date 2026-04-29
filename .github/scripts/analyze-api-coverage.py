@@ -24,6 +24,7 @@ TRACES_FILE = os.environ.get("TRACES_FILE", "jaeger-traces/traces.json")
 COVERAGE_FILE = os.environ.get("COVERAGE_FILE", "jaeger-traces/api-coverage.json")
 QUAY_API_URL = os.environ.get("QUAY_API_URL", "http://localhost:8080")
 COMMIT_SHA = os.environ.get("COMMIT_SHA", "unknown")
+TRACE_LIMIT = int(os.environ.get("TRACE_LIMIT", "50000"))
 
 # V2 registry routes — small, stable set defined in endpoints/v2/.
 # After normalization these become the canonical forms we compare against.
@@ -139,7 +140,7 @@ def categorize_route(route: str) -> str:
     return "other"
 
 
-def build_report(catalog: set, covered: set, status_matrix: dict) -> dict:
+def build_report(catalog: set, covered: set, status_matrix: dict, trace_count: int = 0) -> dict:
     """Build the coverage report structure."""
     categories = defaultdict(lambda: {"covered": 0, "total": 0})
 
@@ -168,6 +169,8 @@ def build_report(catalog: set, covered: set, status_matrix: dict) -> dict:
         "schema_version": 1,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "commit_sha": COMMIT_SHA,
+        "trace_count": trace_count,
+        "trace_limit_hit": trace_count >= TRACE_LIMIT,
         "summary": {
             "api_v1": dict(categories["api_v1"]),
             "v2_registry": dict(categories["v2_registry"]),
@@ -210,6 +213,13 @@ def write_step_summary(report: dict, status_matrix: dict) -> str:
 
     t = s["total"]
     lines.append(f"| **Total** | **{t['covered']}** | **{t['total']}** | **{t['pct']}%** |")
+
+    if report.get("trace_limit_hit"):
+        lines.append("")
+        lines.append(
+            f"> **Note:** Trace export hit the {TRACE_LIMIT} trace limit. "
+            "Coverage may be under-counted."
+        )
 
     uncovered = report["uncovered"]
     if uncovered:
@@ -267,6 +277,12 @@ def main():
     trace_count = len(probe.get("data", []))
     print(f"Parsing {trace_count} traces from {TRACES_FILE}")
 
+    if trace_count >= TRACE_LIMIT:
+        print(
+            f"::warning::Trace count ({trace_count}) hit the export limit ({TRACE_LIMIT}). "
+            "Coverage may be under-counted — some routes from later tests may be missing."
+        )
+
     covered, status_matrix = parse_traces(TRACES_FILE)
     print(f"Found {len(covered)} unique (method, route) pairs (excluding OPTIONS)")
 
@@ -283,7 +299,7 @@ def main():
         f"Route catalog: {len(api_v1_catalog)} API v1 + {len(v2_catalog)} V2 = {len(catalog)} total"
     )
 
-    report = build_report(catalog, covered, status_matrix)
+    report = build_report(catalog, covered, status_matrix, trace_count)
 
     os.makedirs(os.path.dirname(COVERAGE_FILE) or ".", exist_ok=True)
     with open(COVERAGE_FILE, "w") as f:
