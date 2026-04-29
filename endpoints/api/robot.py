@@ -448,6 +448,7 @@ class OrgRobotFederation(ApiResource):
     }
 
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("getOrgRobotFederation")
     def get(self, orgname, robot_shortname):
         permission = AdministerOrganizationPermission(orgname)
         # Global readonly superusers can always view, regular superusers need FULL_ACCESS
@@ -463,6 +464,7 @@ class OrgRobotFederation(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("createOrgRobotFederation")
     @validate_json_request("CreateRobotFederation", optional=False)
     def post(self, orgname, robot_shortname):
         permission = AdministerOrganizationPermission(orgname)
@@ -482,6 +484,7 @@ class OrgRobotFederation(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("deleteOrgRobotFederation")
     def delete(self, orgname, robot_shortname):
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser_with_full_access():

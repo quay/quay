@@ -154,7 +154,7 @@ jobs:
         if: always()
         run: |
           mkdir -p jaeger-traces
-          curl -sf "http://localhost:16686/api/traces?service=quay&limit=1000" \
+          curl -sf "http://localhost:16686/api/traces?service=quay&limit=50000&lookback=2h" \
             -o jaeger-traces/traces.json \
             || echo "::warning::Could not export Jaeger traces"
 
@@ -165,6 +165,16 @@ jobs:
         env:
           TRACES_FILE: jaeger-traces/traces.json
           METRICS_FILE: jaeger-traces/trace-metrics.json
+          COMMIT_SHA: ${{ github.sha }}
+
+      - name: Analyze API endpoint coverage
+        if: always()
+        continue-on-error: true
+        run: python3 .github/scripts/analyze-api-coverage.py
+        env:
+          TRACES_FILE: jaeger-traces/traces.json
+          COVERAGE_FILE: jaeger-traces/api-coverage.json
+          QUAY_API_URL: http://localhost:8080
           COMMIT_SHA: ${{ github.sha }}
 
       - name: Upload Jaeger traces
