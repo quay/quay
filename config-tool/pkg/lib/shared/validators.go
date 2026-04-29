@@ -907,6 +907,8 @@ func ValidateLDAPServer(opts Options, ldapUri, ldapAdminDn, ldapAdminPasswd, lda
 
 // ValidateOIDCServer validates that the provided oidc server is valid
 func ValidateOIDCServer(opts Options, oidcServer, clientID, clientSecret, serviceName string, loginScopes []interface{}, redirectURL, fgName string) (bool, ValidationError) {
+	const providerDiscoveryMaxAttempts = 4
+	const providerDiscoveryInitialBackoff = 250 * time.Millisecond
 
 	// Create http client
 	config, err := GetTlsConfig(opts)
@@ -920,12 +922,6 @@ func ValidateOIDCServer(opts Options, oidcServer, clientID, clientSecret, servic
 	tr := &http.Transport{TLSClientConfig: config}
 	client := &http.Client{Transport: tr, Timeout: 5 * time.Second}
 
-	// Try to ping database
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	ctx = goOIDC.ClientContext(ctx, client)
-
 	if !strings.HasSuffix(oidcServer, "/") {
 		return false, ValidationError{
 			Tags:       []string{"OIDC_SERVER"},
@@ -934,16 +930,39 @@ func ValidateOIDCServer(opts Options, oidcServer, clientID, clientSecret, servic
 		}
 	}
 
-	// Create provider
-	p, err := goOIDC.NewProvider(ctx, oidcServer)
-	if err != nil {
-		p, err = goOIDC.NewProvider(ctx, strings.TrimSuffix(oidcServer, "/"))
+	var p *goOIDC.Provider
+	for attempt := 1; attempt <= providerDiscoveryMaxAttempts; attempt++ {
+		discoveryCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		discoveryCtx = goOIDC.ClientContext(discoveryCtx, client)
+
+		p, err = goOIDC.NewProvider(discoveryCtx, oidcServer)
 		if err != nil {
-			return false, ValidationError{
-				Tags:       []string{"OIDC_SERVER"},
-				FieldGroup: fgName,
-				Message:    "Could not create provider for " + serviceName + ". Error: " + err.Error(),
-			}
+			p, err = goOIDC.NewProvider(discoveryCtx, strings.TrimSuffix(oidcServer, "/"))
+		}
+		cancel()
+
+		if err == nil {
+			break
+		}
+
+		if attempt < providerDiscoveryMaxAttempts {
+			backoff := providerDiscoveryInitialBackoff * time.Duration(1<<(attempt-1))
+			log.Warningf(
+				"OIDC provider discovery failed for %s (attempt %d/%d): %v. Retrying in %s",
+				serviceName,
+				attempt,
+				providerDiscoveryMaxAttempts,
+				err,
+				backoff,
+			)
+			time.Sleep(backoff)
+		}
+	}
+	if err != nil {
+		return false, ValidationError{
+			Tags:       []string{"OIDC_SERVER"},
+			FieldGroup: fgName,
+			Message:    "Could not create provider for " + serviceName + ". Error: " + err.Error(),
 		}
 	}
 
@@ -959,7 +978,11 @@ func ValidateOIDCServer(opts Options, oidcServer, clientID, clientSecret, servic
 		Scopes:       InterfaceArrayToStringArray(loginScopes),
 	}
 
-	_, err = oauth2Config.Exchange(ctx, "badcode")
+	exchangeCtx, exchangeCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer exchangeCancel()
+	exchangeCtx = goOIDC.ClientContext(exchangeCtx, client)
+
+	_, err = oauth2Config.Exchange(exchangeCtx, "badcode")
 	if err != nil {
 		if strings.Contains(err.Error(), "access_denied") {
 			return false, ValidationError{
