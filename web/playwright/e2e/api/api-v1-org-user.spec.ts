@@ -2,13 +2,16 @@
  * Organization & User API Tests
  *
  * Ported from Cypress quay-api-tests to Playwright.
- * Covers: user CRUD, error descriptions, app tokens, API discovery,
- * global messages, organization CRUD, organization applications,
- * and superuser user info.
+ * Covers: user CRUD, user robots, user self-delete, error descriptions,
+ * app tokens, API discovery, global messages, organization CRUD,
+ * organization members, organization applications, OAuth app info,
+ * user notifications, and superuser user info.
  */
 
 import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
+import {RawApiClient} from '../../utils/api/raw-client';
+import {API_URL} from '../../utils/config';
 
 // ============================================================================
 // User CRUD
@@ -53,8 +56,6 @@ test.describe('User CRUD', {tag: ['@api', '@auth:Database']}, () => {
         ignoreHTTPSErrors: true,
       });
       try {
-        const {RawApiClient} = await import('../../utils/api/raw-client');
-        const {API_URL} = await import('../../utils/config');
         const newUserClient = new RawApiClient(request, API_URL);
 
         try {
@@ -134,6 +135,90 @@ test.describe('User CRUD', {tag: ['@api', '@auth:Database']}, () => {
       `/api/v1/superuser/users/${username}`,
     );
     expect(response.status()).toBe(204);
+  });
+});
+
+// ============================================================================
+// User Robot CRUD
+// ============================================================================
+
+test.describe('User Robot CRUD', {tag: ['@api', '@auth:Database']}, () => {
+  test('user can create, get, list permissions, regenerate, and delete a user robot', async ({
+    userClient,
+  }) => {
+    const shortname = uniqueName('bot').replace(/-/g, '_');
+    const username = TEST_USERS.user.username;
+
+    try {
+      const createResp = await userClient.put(
+        `/api/v1/user/robots/${shortname}`,
+        {description: 'test user robot'},
+      );
+      expect(createResp.status()).toBe(201);
+      const created = await createResp.json();
+      expect(created.name).toContain(shortname);
+      expect(created.token).toBeTruthy();
+      const originalToken = created.token;
+
+      const getResp = await userClient.get(`/api/v1/user/robots/${shortname}`);
+      expect(getResp.status()).toBe(200);
+      const robot = await getResp.json();
+      expect(robot.name).toBe(`${username}+${shortname}`);
+
+      const permsResp = await userClient.get(
+        `/api/v1/user/robots/${shortname}/permissions`,
+      );
+      expect(permsResp.status()).toBe(200);
+      const perms = await permsResp.json();
+      expect(perms.permissions).toBeDefined();
+
+      const regenResp = await userClient.post(
+        `/api/v1/user/robots/${shortname}/regenerate`,
+      );
+      expect(regenResp.status()).toBe(200);
+      const regen = await regenResp.json();
+      expect(regen.token).toBeTruthy();
+      expect(regen.token).not.toBe(originalToken);
+    } finally {
+      const deleteResp = await userClient.delete(
+        `/api/v1/user/robots/${shortname}`,
+      );
+      expect([204, 404]).toContain(deleteResp.status());
+    }
+  });
+});
+
+// ============================================================================
+// User Self-Delete
+// ============================================================================
+
+test.describe('User Self-Delete', {tag: ['@api', '@auth:Database']}, () => {
+  test('user can delete their own account', async ({
+    superuserApi,
+    adminClient,
+    playwright,
+  }) => {
+    const tempUser = await superuserApi.user('delme');
+
+    // Verify the user's email via superuser API (auto_verify=True on the backend)
+    const verifyResp = await adminClient.put(
+      `/api/v1/superuser/users/${tempUser.username}`,
+      {email: tempUser.email},
+    );
+    expect(verifyResp.status()).toBe(200);
+
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      await client.signIn(tempUser.username, tempUser.password);
+
+      const deleteResp = await client.delete('/api/v1/user/');
+      expect(deleteResp.status()).toBe(204);
+    } finally {
+      await request.dispose();
+    }
   });
 });
 
@@ -417,6 +502,33 @@ test.describe('Organization CRUD', {tag: ['@api', '@auth:Database']}, () => {
 });
 
 // ============================================================================
+// Organization Member Details
+// ============================================================================
+
+test.describe(
+  'Organization Member Details',
+  {tag: ['@api', '@auth:Database']},
+  () => {
+    test('admin can get individual org member info', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const org = await superuserApi.organization('memberinfo');
+
+      // The creating user (admin) is automatically in the 'owners' team
+      const resp = await adminClient.get(
+        `/api/v1/organization/${org.name}/members/${TEST_USERS.admin.username}`,
+      );
+      expect(resp.status()).toBe(200);
+      const member = await resp.json();
+      expect(member.name).toBe(TEST_USERS.admin.username);
+      expect(member.kind).toBe('user');
+      expect(member.teams).toBeDefined();
+    });
+  },
+);
+
+// ============================================================================
 // Organization Applications CRUD
 // ============================================================================
 
@@ -483,6 +595,80 @@ test.describe(
         expect(deleteResp.status()).toBe(204);
       } finally {
         await adminClient.delete(`/api/v1/organization/${orgName}`);
+      }
+    });
+  },
+);
+
+// ============================================================================
+// OAuth Application Info
+// ============================================================================
+
+test.describe(
+  'OAuth Application Info',
+  {tag: ['@api', '@auth:Database']},
+  () => {
+    test('user can get OAuth application info by client_id', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const org = await superuserApi.organization('oauthapp');
+
+      const appName = uniqueName('app');
+      const createResp = await adminClient.post(
+        `/api/v1/organization/${org.name}/applications`,
+        {name: appName},
+      );
+      expect(createResp.status()).toBe(200);
+      const createBody = await createResp.json();
+      const clientId = createBody.client_id;
+
+      try {
+        const getResp = await adminClient.get(`/api/v1/app/${clientId}`);
+        expect(getResp.status()).toBe(200);
+        const appInfo = await getResp.json();
+        expect(appInfo.name).toBe(appName);
+      } finally {
+        await adminClient.delete(
+          `/api/v1/organization/${org.name}/applications/${clientId}`,
+        );
+      }
+    });
+  },
+);
+
+// ============================================================================
+// User Notifications
+// ============================================================================
+
+test.describe(
+  'User Notifications Individual',
+  {tag: ['@api', '@auth:Database']},
+  () => {
+    test('user can get an individual notification by UUID', async ({
+      adminClient,
+    }) => {
+      const listResp = await adminClient.get('/api/v1/user/notifications');
+      expect(listResp.status()).toBe(200);
+      const notifications = await listResp.json();
+
+      if (
+        notifications.notifications &&
+        notifications.notifications.length > 0
+      ) {
+        const uuid = notifications.notifications[0].id;
+
+        const getResp = await adminClient.get(
+          `/api/v1/user/notifications/${uuid}`,
+        );
+        expect(getResp.status()).toBe(200);
+        const notif = await getResp.json();
+        expect(notif.id).toBe(uuid);
+      } else {
+        const getResp = await adminClient.get(
+          '/api/v1/user/notifications/nonexistent-uuid',
+        );
+        expect([404, 400]).toContain(getResp.status());
       }
     });
   },
