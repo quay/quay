@@ -337,6 +337,7 @@ export default function CreatePermissionDrawer(
 
   const optionsForPermission = Object.keys(repoPermissions).map((key) => (
     <DropdownItem
+      component="button"
       data-testid={`repoPermissions-${key}`}
       key={repoPermissions[key]}
       value={repoPermissions[key]}
