@@ -2345,6 +2345,39 @@ class TestScheduleOrgMirrorReposForSync:
         assert never_run_repo.sync_retries_remaining == MAX_SYNC_RETRIES
         assert skip_repo.sync_status == OrgMirrorRepoStatus.SKIP  # unchanged
 
+    def test_clears_sync_expiration_date_on_cancel_repos(self, initialized_db):
+        """
+        Regression: CANCEL repos that had sync_expiration_date set (e.g. from
+        a SYNCING state) must have it cleared when transitioned to SYNC_NOW,
+        otherwise get_eligible_org_mirror_repos() will skip them.
+        """
+        from data.model.org_mirror import (
+            get_eligible_org_mirror_repos,
+            schedule_org_mirror_repos_for_sync,
+        )
+
+        org, robot = _create_org_and_robot("schedule_clear_exp")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cancel-with-expiry",
+            sync_status=OrgMirrorRepoStatus.CANCEL,
+            sync_start_date=None,
+            sync_retries_remaining=0,
+            sync_expiration_date=datetime.utcnow() - timedelta(minutes=5),
+        )
+
+        scheduled = schedule_org_mirror_repos_for_sync(config)
+
+        assert scheduled == 1
+        repo = OrgMirrorRepository.get_by_id(repo.id)
+        assert repo.sync_status == OrgMirrorRepoStatus.SYNC_NOW
+        assert repo.sync_expiration_date is None
+
+        eligible_ids = [r.id for r in get_eligible_org_mirror_repos()]
+        assert repo.id in eligible_ids
+
 
 class TestPropagateStatusToRepos:
     """Tests for propagate_status_to_repos function."""

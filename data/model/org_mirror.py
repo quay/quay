@@ -1270,6 +1270,7 @@ def schedule_org_mirror_repos_for_sync(config: OrgMirrorConfig) -> int:
     query = OrgMirrorRepository.update(
         sync_status=OrgMirrorRepoStatus.SYNC_NOW,
         sync_start_date=now,
+        sync_expiration_date=None,
         sync_retries_remaining=MAX_SYNC_RETRIES,
     ).where(
         OrgMirrorRepository.org_mirror_config == config,
