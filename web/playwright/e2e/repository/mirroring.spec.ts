@@ -606,7 +606,8 @@ test.describe(
           {
             timeout: 120_000,
             intervals: [5_000, 10_000, 15_000],
-            message: 'Mirror sync did not complete successfully within 2 minutes',
+            message:
+              'Mirror sync did not complete successfully within 2 minutes',
           },
         )
         .toBe('SUCCESS');
