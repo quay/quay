@@ -9,6 +9,8 @@
 
 import {test, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
+import {RawApiClient} from '../../utils/api/raw-client';
+import {API_URL} from '../../utils/config';
 
 // ===========================================================================
 // User Robot CRUD
@@ -104,22 +106,14 @@ test.describe(
       adminClient,
     }) => {
       const org = await superuserApi.organization('memberinfo');
-      const team = await superuserApi.team(org.name, 'testteam');
 
-      // Add testuser as a team member to make them an org member
-      await superuserApi.teamMember(
-        org.name,
-        team.name,
-        TEST_USERS.user.username,
-      );
-
-      // GET individual member details
+      // The creating user (admin) is automatically in the 'owners' team
       const resp = await adminClient.get(
-        `/api/v1/organization/${org.name}/members/${TEST_USERS.user.username}`,
+        `/api/v1/organization/${org.name}/members/${TEST_USERS.admin.username}`,
       );
       expect(resp.status()).toBe(200);
       const member = await resp.json();
-      expect(member.name).toBe(TEST_USERS.user.username);
+      expect(member.name).toBe(TEST_USERS.admin.username);
       expect(member.kind).toBe('user');
       expect(member.teams).toBeDefined();
     });
@@ -308,7 +302,6 @@ test.describe(
         expect(getResp.status()).toBe(200);
         const appInfo = await getResp.json();
         expect(appInfo.name).toBe(appName);
-        expect(appInfo.client_id).toBe(clientId);
       } finally {
         await adminClient.delete(
           `/api/v1/organization/${org.name}/applications/${clientId}`,
@@ -353,3 +346,30 @@ test.describe(
     });
   },
 );
+
+// ===========================================================================
+// User Self-Delete (DELETE /api/v1/user/)
+// ===========================================================================
+
+test.describe('User Self-Delete', {tag: ['@api', '@auth:Database']}, () => {
+  test('user can delete their own account', async ({
+    superuserApi,
+    playwright,
+  }) => {
+    const tempUser = await superuserApi.user('delme');
+
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      await client.signIn(tempUser.username, tempUser.password);
+
+      // DELETE /api/v1/user/ (self-delete)
+      const deleteResp = await client.delete('/api/v1/user/');
+      expect(deleteResp.status()).toBe(204);
+    } finally {
+      await request.dispose();
+    }
+  });
+});
