@@ -2,9 +2,23 @@ import pytest
 
 INTEGRATION_FIXTURES = {"initialized_db", "app", "appconfig", "database_uri", "init_db_path"}
 
-# Tests that don't use standard DB fixtures but depend on the full app import chain
+# Tests that don't use standard DB fixtures but import from app or data.users,
+# which triggers the full app import chain and can cause circular imports
+# when run in isolation from the rest of the test suite.
 INTEGRATION_FILES = {
+    "test_anon_checked.py",
+    "test_csrf.py",
+    "test_determine_auth_type.py",
+    "test_log_action_feature_flag.py",
+    "test_log_util.py",
+    "test_manifest.py",
+    "test_oci_tag.py",
     "test_oidc.py",
+    "test_reconciliationworker.py",
+    "test_request_redirect.py",
+    "test_schema1.py",
+    "test_secscan_v4_model.py",
+    "test_superusermanager.py",
 }
 
 LEGACY_FILES = {
