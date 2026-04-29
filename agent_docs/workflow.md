@@ -113,18 +113,15 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 
 ## Session Setup
 
-Install recommended Claude Code hooks on first use:
+Session bootstrap runs automatically via the `SessionStart` hook in `.claude/settings.json`.
+The script `.claude/scripts/session-setup.sh` handles acli install/auth, pre-commit setup, and gh auth verification.
+It is idempotent (uses a marker file) so repeated runs are instant.
 
-```bash
-cp .claude/claude-settings-recommended.json .claude/settings.json
-```
-
-This activates:
-- **Embargo check**: Blocks pushes to embargo branches
-- **Pre-commit install guard**: Ensures pre-commit hooks are set up before commit
+All hooks are consolidated in `.claude/settings.json`:
+- **SessionStart**: Runs `session-setup.sh` on every new session
+- **Embargo check**: Blocks work on embargoed JIRA tickets
+- **Pre-commit install guard**: Ensures pre-commit hooks are set up before `git commit`
 - **PR title validation**: Validates title format before `gh pr create`
-
-If `.claude/settings.json` already exists, merge the `"hooks"` key instead of overwriting.
 
 ## GitHub CLI Notes
 
