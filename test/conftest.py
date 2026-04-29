@@ -1,25 +1,13 @@
+import sys
+
 import pytest
 
 INTEGRATION_FIXTURES = {"initialized_db", "app", "appconfig", "database_uri", "init_db_path"}
 
-# Tests that don't use standard DB fixtures but import from app or data.users,
-# which triggers the full app import chain and can cause circular imports
-# when run in isolation from the rest of the test suite.
-INTEGRATION_FILES = {
-    "test_anon_checked.py",
-    "test_csrf.py",
-    "test_determine_auth_type.py",
-    "test_log_action_feature_flag.py",
-    "test_log_util.py",
-    "test_manifest.py",
-    "test_oci_tag.py",
-    "test_oidc.py",
-    "test_reconciliationworker.py",
-    "test_request_redirect.py",
-    "test_schema1.py",
-    "test_secscan_v4_model.py",
-    "test_superusermanager.py",
-}
+# Module prefixes that indicate a test depends on the app import chain.
+# Tests importing (directly or transitively) from these are auto-promoted
+# to integration so they don't run in the isolated unit job.
+_APP_MODULE_PREFIXES = ("app", "app.", "data.users", "data.users.")
 
 LEGACY_FILES = {
     "test_api_usage.py",
@@ -55,9 +43,38 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if item.fspath.basename in LEGACY_FILES:
             item.add_marker(pytest.mark.legacy)
-        elif item.fspath.basename in INTEGRATION_FILES or INTEGRATION_FIXTURES & set(
-            item.fixturenames
-        ):
+        elif INTEGRATION_FIXTURES & set(item.fixturenames):
+            item.add_marker(pytest.mark.integration)
+
+    # Auto-promote: catch unclassified tests whose module imports from the app
+    # tree. Checks both the __module__ of imported objects and the module's
+    # direct dependencies in sys.modules to handle transitive imports.
+    _seen_modules = {}
+    for item in items:
+        if item.get_closest_marker("integration") or item.get_closest_marker("legacy"):
+            continue
+        module = getattr(item, "module", None)
+        if module is None:
+            continue
+        mod_name = module.__name__
+        if mod_name not in _seen_modules:
+            has_app = False
+            for obj in module.__dict__.values():
+                obj_mod = getattr(obj, "__module__", None) or ""
+                if obj_mod.startswith(_APP_MODULE_PREFIXES):
+                    has_app = True
+                    break
+            if not has_app:
+                # Check if the module caused app-level modules to load by
+                # inspecting its direct imports via the module's global names.
+                for name, obj in module.__dict__.items():
+                    if isinstance(obj, type(sys)) and getattr(obj, "__name__", "").startswith(
+                        _APP_MODULE_PREFIXES
+                    ):
+                        has_app = True
+                        break
+            _seen_modules[mod_name] = has_app
+        if _seen_modules[mod_name]:
             item.add_marker(pytest.mark.integration)
 
     mark_opt = config.getoption("-m")
