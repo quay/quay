@@ -277,6 +277,13 @@ test.describe(
       expect(quota).toBeTruthy();
       const quotaId = quota.id;
 
+      // Verify the user's email via superuser API (auto_verify=True on the backend)
+      const verifyEmailResp = await adminClient.put(
+        `/api/v1/superuser/users/${user.username}`,
+        {email: user.email},
+      );
+      expect(verifyEmailResp.status()).toBe(200);
+
       // Sign in as the created user for user-scoped quota endpoints
       const request = await playwright.request.newContext({
         ignoreHTTPSErrors: true,
