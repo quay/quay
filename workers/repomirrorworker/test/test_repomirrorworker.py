@@ -45,6 +45,8 @@ def _assert_skopeo_args(actual_args, expected_args):
 
     assert strip_cred_flags(actual_args) == strip_cred_flags(expected_args)
     assert "--authfile" in actual_args
+    for legacy in ("--src-creds", "--dest-creds", "--creds"):
+        assert legacy not in actual_args
 
 
 def disable_existing_mirrors(func):

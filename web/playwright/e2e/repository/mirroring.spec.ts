@@ -591,22 +591,25 @@ test.describe(
 
       await api.raw.triggerMirrorSync(org.name, repo.name);
 
-      // Poll until the mirror worker finishes (SUCCESS or FAILED).
-      const finalStatus = await expect
+      // Poll until the mirror worker finishes. Throw on FAIL so the test
+      // surfaces a clear message rather than timing out.
+      await expect
         .poll(
           async () => {
             const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
-            return cfg?.sync_status ?? 'UNKNOWN';
+            const status = cfg?.sync_status ?? 'UNKNOWN';
+            if (status === 'FAIL') {
+              throw new Error(`Mirror sync failed with status: ${status}`);
+            }
+            return status;
           },
           {
             timeout: 120_000,
             intervals: [5_000, 10_000, 15_000],
-            message: 'Mirror sync did not finish within 2 minutes',
+            message: 'Mirror sync did not complete successfully within 2 minutes',
           },
         )
-        .toMatch(/^(SUCCESS|FAILED)$/);
-
-      expect(finalStatus).toBe('SUCCESS');
+        .toBe('SUCCESS');
 
       // Confirm the synced tag landed in the repository.
       const tags = await api.raw.getTags(org.name, repo.name);
