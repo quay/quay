@@ -262,7 +262,19 @@ class OCIManifest(ManifestInterface):
 
     @property
     def is_image_manifest(self):
-        return self.manifest_dict["config"]["mediaType"] == OCI_IMAGE_CONFIG_CONTENT_TYPE
+        # check config media type
+        if self.manifest_dict["config"]["mediaType"] == OCI_IMAGE_CONFIG_CONTENT_TYPE:
+            # Check if layers are filesystem layers and not attestations or artifacts.
+            # Attestation can have the same config media type but different layer mime type
+            layers = self._parsed.get(OCI_MANIFEST_LAYERS_KEY, [])
+            if not layers:
+                return True  # Empty manifest is valid
+            # Check if the first layer in the image is a normal filesystem layer.
+            # Manifests don't mix filesystem and non-filesystem layers so this is safe.
+            layer_mediatype = layers[0].get(OCI_MANIFEST_MEDIATYPE_KEY)
+            return layer_mediatype in OCI_IMAGE_LAYER_CONTENT_TYPES
+
+        return False
 
     @property
     def blob_digests(self):

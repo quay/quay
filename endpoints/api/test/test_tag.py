@@ -1,17 +1,29 @@
 import json
-from unittest.mock import patch
+import random
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 from playhouse.test_utils import assert_query_count
 
-from data.database import Manifest
-from data.model import DataModelException, ImmutableTagException
+from app import storage
+from data.database import ImageStorage, ImageStorageLocation, Manifest, ManifestBlob
+from data.model import DataModelException, ImmutableTagException, oci
+from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.tag import change_tag_expiration, set_tag_immutable
+from data.model.repository import create_repository
+from data.model.storage import get_layer_path
+from data.model.user import get_user
 from data.registry_model import registry_model
+from digest import digest_tools
 from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RestoreTag
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity, toggle_feature
+from image.docker.schema1 import DockerSchema1Manifest
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+from image.oci.manifest import OCIManifestBuilder
 from test.fixtures import *
+from util.bytes import Bytes
 
 
 @pytest.mark.parametrize(
@@ -94,12 +106,36 @@ def test_move_tag(manifest_exists, test_tag, expected_status, app):
 @pytest.mark.parametrize(
     "repo_namespace, repo_name, query_count",
     [
-        ("devtable", "simple", 5),  # +2 for converting object to and from json
-        ("devtable", "history", 5),  # +2 for converting object to and from json
-        ("devtable", "complex", 5),  # +2 for converting object to and from json
-        ("devtable", "gargantuan", 5),  # +2 for converting object to and from json
-        ("buynlarge", "orgrepo", 7),  # +2 for permissions checks (uses UNION).
-        ("buynlarge", "anotherorgrepo", 7),  # +2 for permissions checks (uses UNION).
+        (
+            "devtable",
+            "simple",
+            6,
+        ),  # +2 for converting object to and from json, +1 for config digest extraction
+        (
+            "devtable",
+            "history",
+            6,
+        ),  # +2 for converting object to and from json, +1 for config digest extraction
+        (
+            "devtable",
+            "complex",
+            6,
+        ),  # +2 for converting object to and from json, +1 for config digest extraction
+        (
+            "devtable",
+            "gargantuan",
+            6,
+        ),  # +2 for converting object to and from json, +1 for config digest extraction
+        (
+            "buynlarge",
+            "orgrepo",
+            8,
+        ),  # +2 for permissions checks (uses UNION), +1 for config digest extraction
+        (
+            "buynlarge",
+            "anotherorgrepo",
+            8,
+        ),  # +2 for permissions checks (uses UNION), +1 for config digest extraction
     ],
 )
 def test_list_repo_tags(repo_namespace, repo_name, query_count, app):
@@ -119,7 +155,11 @@ def test_list_repo_tags(repo_namespace, repo_name, query_count, app):
 @pytest.mark.parametrize(
     "repo_namespace, repo_name, query_count",
     [
-        ("devtable", "gargantuan", 5),  # +2 for converting object to and from json
+        (
+            "devtable",
+            "gargantuan",
+            6,
+        ),  # +2 for converting object to and from json, +1 for config digest extraction
     ],
 )
 def test_list_repo_tags_filter(repo_namespace, repo_name, query_count, app):
@@ -712,3 +752,284 @@ def test_set_tag_immutable_allowed_when_config_permits():
         # Clean up
         set_tag_immutable(repo_ref.id, "latest", False)
         change_tag_expiration(tag_ref.id, None)
+
+
+def test_tag_created_timestamp_schema1(app, initialized_db):
+    """
+    Verifies that the created timestamp can be extracted from the Docker v2 schema 1 manifest. The value
+    is embedded into the v1Compatibility field.
+    """
+    layer_bytes = random.randbytes(1024)
+    layer_digest = digest_tools.sha256_digest(layer_bytes)
+
+    user = get_user("devtable")
+    repo = create_repository("devtable", "test-image-built-schema1", user)
+    assert repo is not None
+
+    layer_blob = ImageStorage.create(
+        content_checksum=layer_digest,
+        image_size=len(layer_bytes),
+        compressed_size=len(layer_bytes),
+    )
+
+    location = ImageStorageLocation.get(name="local_us")
+    store_blob_record_and_temp_link(
+        "devtable",
+        "test-image-built-schema1",
+        layer_digest,
+        location,
+        len(layer_bytes),
+        120,
+    )
+
+    schema1_manifest_json = {
+        "schemaVersion": 1,
+        "name": "devtable/test-image-built-schema1",
+        "tag": "schema1-tag",
+        "architecture": "amd64",
+        "fsLayers": [
+            {
+                "blobSum": layer_digest,
+            },
+        ],
+        "history": [
+            {
+                "v1Compatibility": json.dumps(
+                    {
+                        "id": "abc123",
+                        "created": "2024-01-15T10:30:45.123456789Z",
+                        "container_config": {
+                            "Cmd": ["/bin/sh"],
+                        },
+                        "architecture": "amd64",
+                        "os": "linux",
+                    }
+                ),
+            },
+        ],
+    }
+    manifest_bytes = Bytes.for_string_or_unicode(json.dumps(schema1_manifest_json))
+
+    manifest = DockerSchema1Manifest(manifest_bytes)
+    created_manifest = oci.manifest.get_or_create_manifest(
+        repo.id,
+        manifest,
+        storage,
+    )
+
+    test_tag_name = "schema1-tag"
+    tag = oci.tag.retarget_tag(test_tag_name, created_manifest.manifest.id, raise_on_error=True)
+    assert tag is not None
+
+    # call the tag api and check if image_built is available
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/test-image-built-schema1",
+        }
+        result = conduct_api_call(cl, ListRepositoryTags, "GET", params, None, 200).json
+        test_tag = next((t for t in result["tags"] if t["name"] == test_tag_name), None)
+        assert test_tag is not None
+        assert "image_built" in test_tag
+        assert test_tag["image_built"] == "2024-01-15T10:30:45.123456789Z"
+
+
+def test_tag_created_timestamp_schema2(app, initialized_db):
+    """
+    Verifies that the created timestamp can be extracted from the Docker v2 schema 2 manifest. The value, if exists,
+    is part of the config blob.
+    """
+    user = get_user("devtable")
+    repo = create_repository("devtable", "test-image-built-schema2", user)
+    assert repo is not None
+
+    layer_bytes = random.randbytes(1024)
+    layer_digest = digest_tools.sha256_digest(layer_bytes)
+
+    config_json = {
+        "architecture": "amd64",
+        "os": "linux",
+        "created": "2024-02-20T14:25:30.987654321Z",
+        "config": {"Env": ["PATH=/usr/local/bin:/usr/bin"]},
+        "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+                layer_digest,
+            ],
+        },
+        "history": [
+            {
+                "created": "2024-02-20T14:25:30.987654321Z",
+                "created_by": '/bin/sh -c # (NOP) CMD ["sh"]',
+            },
+        ],
+    }
+
+    config_bytes = json.dumps(config_json).encode("utf-8")
+    config_digest = digest_tools.sha256_digest(config_bytes)
+    location = ImageStorageLocation.get(name="local_us")
+
+    # create blob records in the database
+    config_blob = store_blob_record_and_temp_link(
+        "devtable",
+        "test-image-built-schema2",
+        config_digest,
+        location,
+        len(config_bytes),
+        120,
+    )
+    layer_blob = store_blob_record_and_temp_link(
+        "devtable",
+        "test-image-built-schema2",
+        layer_digest,
+        location,
+        len(layer_bytes),
+        120,
+    )
+
+    # store created blobs
+    storage.put_content(
+        ["local_us"],
+        get_layer_path(config_blob),
+        config_bytes,
+    )
+    storage.put_content(
+        ["local_us"],
+        get_layer_path(layer_blob),
+        layer_bytes,
+    )
+
+    # build manifest
+    builder = DockerSchema2ManifestBuilder()
+    builder.set_config_digest(config_digest, len(config_bytes))
+    builder.add_layer(layer_digest, len(layer_bytes))
+    manifest_obj = builder.build()
+
+    # create manifest
+    created_manifest = oci.manifest.get_or_create_manifest(
+        repo.id,
+        manifest_obj,
+        storage,
+        raise_on_error=True,
+    )
+    assert created_manifest is not None
+
+    # create test tag based on provided manifest
+    test_tag_name = "schema2-created-tag"
+    tag = oci.tag.retarget_tag(
+        test_tag_name,
+        created_manifest.manifest.id,
+        raise_on_error=True,
+    )
+    assert tag is not None
+
+    # call API and verify that build timestamp can be read
+    params = {
+        "repository": "devtable/test-image-built-schema2",
+    }
+    with client_with_identity("devtable", app) as cl:
+        result = conduct_api_call(cl, ListRepositoryTags, "GET", params, None, 200).json
+        test_tag = next((t for t in result["tags"] if t["name"] == test_tag_name), None)
+        assert test_tag is not None
+        assert "image_built" in test_tag
+        assert test_tag["image_built"] == "2024-02-20T14:25:30.987654321Z"
+
+
+def test_tag_created_timestamp_oci_image(app, initialized_db):
+    """
+    Verifies that the created timestamp can be extracted from the OCI image manifest. The value, if exists,
+    is part of the config blob.
+    """
+    user = get_user("devtable")
+    repo = create_repository("devtable", "test-image-built-oci", user)
+    assert repo is not None
+
+    layer_bytes = random.randbytes(1024)
+    layer_digest = digest_tools.sha256_digest(layer_bytes)
+
+    config_json = {
+        "architecture": "amd64",
+        "os": "linux",
+        "created": "2024-02-20T14:25:30.987654321Z",
+        "config": {"Env": ["PATH=/usr/local/bin:/usr/bin"]},
+        "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+                layer_digest,
+            ],
+        },
+        "history": [
+            {
+                "created": "2024-02-20T14:25:30.987654321Z",
+                "created_by": '/bin/sh -c # (NOP) CMD ["sh"]',
+            },
+        ],
+    }
+
+    config_bytes = json.dumps(config_json).encode("utf-8")
+    config_digest = digest_tools.sha256_digest(config_bytes)
+    location = ImageStorageLocation.get(name="local_us")
+
+    # create blob records in the database
+    config_blob = store_blob_record_and_temp_link(
+        "devtable",
+        "test-image-built-oci",
+        config_digest,
+        location,
+        len(config_bytes),
+        120,
+    )
+    layer_blob = store_blob_record_and_temp_link(
+        "devtable",
+        "test-image-built-oci",
+        layer_digest,
+        location,
+        len(layer_bytes),
+        120,
+    )
+
+    # store created blobs
+    storage.put_content(
+        ["local_us"],
+        get_layer_path(config_blob),
+        config_bytes,
+    )
+    storage.put_content(
+        ["local_us"],
+        get_layer_path(layer_blob),
+        layer_bytes,
+    )
+
+    # build manifest
+    builder = OCIManifestBuilder()
+    builder.set_config_digest(config_digest, len(config_bytes))
+    builder.add_layer(layer_digest, len(layer_bytes))
+    manifest_obj = builder.build()
+
+    # create manifest
+    created_manifest = oci.manifest.get_or_create_manifest(
+        repo.id,
+        manifest_obj,
+        storage,
+        raise_on_error=True,
+    )
+    assert created_manifest is not None
+
+    # create test tag based on provided manifest
+    test_tag_name = "schema2-created-tag"
+    tag = oci.tag.retarget_tag(
+        test_tag_name,
+        created_manifest.manifest.id,
+        raise_on_error=True,
+    )
+    assert tag is not None
+
+    # call API and verify that build timestamp can be read
+    params = {
+        "repository": "devtable/test-image-built-oci",
+    }
+    with client_with_identity("devtable", app) as cl:
+        result = conduct_api_call(cl, ListRepositoryTags, "GET", params, None, 200).json
+        test_tag = next((t for t in result["tags"] if t["name"] == test_tag_name), None)
+        assert test_tag is not None
+        assert "image_built" in test_tag
+        assert test_tag["image_built"] == "2024-02-20T14:25:30.987654321Z"
