@@ -163,7 +163,46 @@ try_download_kubeconfig() {
     return 1
 }
 
+ensure_oc() {
+    if command -v oc >/dev/null 2>&1; then
+        return 0
+    fi
+    info "oc not found — installing..."
+    local arch tmpdir tarball
+    arch=$(uname -m)
+    case "$arch" in
+        x86_64)  arch="amd64" ;;
+        aarch64) arch="arm64" ;;
+        *)       echo "WARNING: unsupported arch $arch — skipping oc install"; return 1 ;;
+    esac
+    tmpdir=$(mktemp -d)
+    tarball="${tmpdir}/oc.tar.gz"
+    if curl -sL --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time 120 \
+        -o "$tarball" \
+        "https://mirror.openshift.com/pub/openshift-v4/${arch}/clients/ocp/stable/openshift-client-linux.tar.gz"; then
+        tar -xzf "$tarball" -C "$tmpdir" oc 2>/dev/null
+        if [[ -x "${tmpdir}/oc" ]]; then
+            mv "${tmpdir}/oc" /usr/local/bin/oc 2>/dev/null || mv "${tmpdir}/oc" "${HOME}/.local/bin/oc" 2>/dev/null || {
+                export PATH="${tmpdir}:${PATH}"
+                info "oc installed to ${tmpdir}/oc (added to PATH)"
+                return 0
+            }
+            info "oc installed to $(command -v oc)"
+        else
+            echo "WARNING: failed to extract oc from tarball"
+            rm -rf "$tmpdir"
+            return 1
+        fi
+    else
+        echo "WARNING: failed to download oc binary"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    rm -f "$tarball"
+}
+
 validate_cluster() {
+    ensure_oc
     if command -v oc >/dev/null 2>&1; then
         local server
         server=$(oc --kubeconfig="$KUBECONFIG_OUT" whoami --show-server 2>/dev/null || true)
