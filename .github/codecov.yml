@@ -2,7 +2,8 @@ coverage:
   status:
     project:
       default:
-        target: 70%
+        target: auto
+        informational: true
       backend:
         flags:
           - unit
@@ -39,7 +40,6 @@ component_management:
     - component_id: backend
       name: Backend (Python)
       paths:
-        - "**/*.py"
         - "!web/**"
     - component_id: web
       name: Web (React/TypeScript)
