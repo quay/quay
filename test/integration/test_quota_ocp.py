@@ -33,6 +33,9 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 # Suppress SSL warnings for test environments
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+# Request timeout to prevent tests from hanging (10 seconds)
+REQUEST_TIMEOUT = 10
+
 
 def get_ocp_env() -> dict:
     """Get OCP environment configuration."""
@@ -88,14 +91,14 @@ def create_test_organization(
         "email": f"{org_name}@test.local",
     }
 
-    response = requests.post(url, headers=headers, json=data, verify=not skip_tls)
+    response = requests.post(url, headers=headers, json=data, verify=not skip_tls, timeout=REQUEST_TIMEOUT)
 
     if response.status_code == 201:
         return org_name, response.json()
     elif response.status_code == 400 and "already exists" in response.text:
         # Organization already exists, get its details
         get_url = f"{quay_url}/api/v1/organization/{org_name}"
-        get_response = requests.get(get_url, headers=headers, verify=not skip_tls)
+        get_response = requests.get(get_url, headers=headers, verify=not skip_tls, timeout=REQUEST_TIMEOUT)
         if get_response.status_code == 200:
             return org_name, get_response.json()
 
@@ -138,7 +141,7 @@ def set_organization_quota(
         "quota_bytes": quota_bytes,
     }
 
-    response = requests.put(url, headers=headers, json=data, verify=not skip_tls)
+    response = requests.put(url, headers=headers, json=data, verify=not skip_tls, timeout=REQUEST_TIMEOUT)
 
     if response.status_code not in [200, 201]:
         raise Exception(f"Failed to set quota: {response.status_code} - {response.text}")
@@ -164,7 +167,7 @@ def delete_organization(
     url = f"{quay_url}/api/v1/organization/{org_name}"
     headers = get_auth_headers(token)
 
-    response = requests.delete(url, headers=headers, verify=not skip_tls)
+    response = requests.delete(url, headers=headers, verify=not skip_tls, timeout=REQUEST_TIMEOUT)
 
     if response.status_code not in [204, 404]:
         print(f"Warning: Failed to delete organization {org_name}: {response.status_code}")
@@ -204,7 +207,7 @@ def push_image_to_quay(
 
     # 1. Start blob upload
     upload_url = f"{v2_base}/{org_name}/{repo_name}/blobs/uploads/"
-    response = requests.post(upload_url, headers=headers, verify=not skip_tls)
+    response = requests.post(upload_url, headers=headers, verify=not skip_tls, timeout=REQUEST_TIMEOUT)
 
     if response.status_code != 202:
         return response.status_code, f"Failed to start upload: {response.text}"
@@ -228,6 +231,7 @@ def push_image_to_quay(
         headers=upload_headers,
         data=blob_data,
         verify=not skip_tls,
+        timeout=REQUEST_TIMEOUT,
     )
 
     if response.status_code != 201:
@@ -242,7 +246,7 @@ def push_image_to_quay(
 
     # Upload config blob
     upload_url = f"{v2_base}/{org_name}/{repo_name}/blobs/uploads/"
-    response = requests.post(upload_url, headers=headers, verify=not skip_tls)
+    response = requests.post(upload_url, headers=headers, verify=not skip_tls, timeout=REQUEST_TIMEOUT)
     upload_location = response.headers.get("Location")
     if not upload_location.startswith("http"):
         upload_location = f"{quay_url}{upload_location}"
@@ -253,6 +257,7 @@ def push_image_to_quay(
         headers=upload_headers,
         data=config_data,
         verify=not skip_tls,
+        timeout=REQUEST_TIMEOUT,
     )
 
     if response.status_code != 201:
@@ -287,6 +292,7 @@ def push_image_to_quay(
         headers=manifest_headers,
         data=json.dumps(manifest),
         verify=not skip_tls,
+        timeout=REQUEST_TIMEOUT,
     )
 
     return response.status_code, response.text
@@ -339,6 +345,7 @@ class TestOCPQuotaIntegration:
             upload_url,
             headers={"Authorization": f"Bearer {self.admin_token}"},
             verify=not self.skip_tls,
+            timeout=REQUEST_TIMEOUT,
         )
         assert response.status_code == 202, f"Failed to start blob upload: {response.text}"
 
@@ -356,6 +363,7 @@ class TestOCPQuotaIntegration:
             },
             data=blob_data,
             verify=not self.skip_tls,
+            timeout=REQUEST_TIMEOUT,
         )
         assert response.status_code == 201, f"Failed to upload blob: {response.text}"
 
@@ -431,6 +439,7 @@ class TestOCPQuotaIntegration:
             headers=manifest_headers,
             data=json.dumps(manifest),
             verify=not self.skip_tls,
+            timeout=REQUEST_TIMEOUT,
         )
 
         return response.status_code, response.text
@@ -466,6 +475,7 @@ class TestOCPQuotaIntegration:
             upload_url,
             headers={"Authorization": f"Bearer {self.admin_token}"},
             verify=not self.skip_tls,
+            timeout=REQUEST_TIMEOUT,
         )
 
         if response.status_code != 202:
@@ -490,6 +500,7 @@ class TestOCPQuotaIntegration:
                 },
                 data=chunk,
                 verify=not self.skip_tls,
+                timeout=REQUEST_TIMEOUT,
             )
 
             if patch_response.status_code != 202:
@@ -504,6 +515,7 @@ class TestOCPQuotaIntegration:
                 "Content-Type": "application/octet-stream",
             },
             verify=not self.skip_tls,
+            timeout=REQUEST_TIMEOUT,
         )
 
         if put_response.status_code != 201:
@@ -704,7 +716,7 @@ class TestOCPQuotaIntegration:
         # Get quota after first push
         quota_url = f"{self.quay_url}/api/v1/organization/{org_name}/quota"
         headers = get_auth_headers(self.admin_token)
-        response = requests.get(quota_url, headers=headers, verify=not self.skip_tls)
+        response = requests.get(quota_url, headers=headers, verify=not self.skip_tls, timeout=REQUEST_TIMEOUT)
         assert response.status_code == 200, f"Failed to get quota: {response.status_code}"
 
         quota_data = response.json()
@@ -731,7 +743,7 @@ class TestOCPQuotaIntegration:
         assert status_code == 201, f"Second push should succeed with deduplication: {response_text}"
 
         # Get quota after second push
-        response = requests.get(quota_url, headers=headers, verify=not self.skip_tls)
+        response = requests.get(quota_url, headers=headers, verify=not self.skip_tls, timeout=REQUEST_TIMEOUT)
         assert response.status_code == 200, f"Failed to get quota: {response.status_code}"
 
         quota_data = response.json()
