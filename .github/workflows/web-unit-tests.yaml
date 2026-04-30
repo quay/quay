@@ -32,13 +32,18 @@ jobs:
       - name: Install dependencies
         run: cd web && npm ci
 
-      - name: Run unit tests
-        run: cd web && npm test
-
-      - name: Run coverage
+      - name: Run unit tests with coverage
         run: cd web && npm run test:coverage
 
-      - name: Upload coverage report
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: web
+          files: ./web/coverage/lcov.info
+          disable_search: true
+
+      - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
