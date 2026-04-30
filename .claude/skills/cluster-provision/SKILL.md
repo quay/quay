@@ -2,8 +2,9 @@
 name: cluster-provision
 description: >
   Provision an ephemeral OpenShift cluster via the OpenShift CI Gangway API.
-  Claims a cluster from a Hive ClusterPool, downloads kubeconfig, and validates
-  connectivity. Clusters auto-expire after ~4 hours. Use when you need a real
+  Claims a cluster from a Hive ClusterPool, downloads and decrypts kubeconfig,
+  and validates connectivity. Requires GANGWAY_TOKEN and CLUSTER_PROVISION_KEY
+  env vars. Clusters auto-expire after ~4 hours. Use when you need a real
   OpenShift cluster for blackbox testing or integration work.
 argument-hint: "[KUBECONFIG_PATH] [OCP_VERSION]"
 allowed-tools:
@@ -74,7 +75,8 @@ Removes local state and kubeconfig. Clusters auto-expire after ~4 hours via Hive
 |-------|-----|
 | `GANGWAY_TOKEN is not set` | Run: `oc login https://api.ci.l2s4.p1.openshiftapps.com:6443 --web && export GANGWAY_TOKEN=$(oc whoami -t)` |
 | `HTTP 401` | Token expired — re-authenticate with `oc login` |
-| `HTTP 404` on trigger | ProwJob `periodic-ci-quay-quay-master-claim-cluster-for-dev` not configured in `openshift/release` |
+| `CLUSTER_PROVISION_KEY is not set` | Contact the Quay CI team for the decryption passphrase |
+| `HTTP 404` on trigger | ProwJob `periodic-ci-quay-quay-master-claim-claim-cluster` not configured in `openshift/release` |
 | Timeout after 40 min | Pool exhausted or job stuck — check the Prow job URL |
 | Kubeconfig download fails | GCS artifact path mismatch — download manually from the Prow job artifacts tab |
 | `oc whoami` fails | Cluster not fully ready or VPN required — wait and retry |

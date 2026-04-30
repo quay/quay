@@ -11,7 +11,7 @@ KUBECONFIG_OUT="${2:-/tmp/k}"
 OCP_VERSION="${3:-4.18}"
 
 GANGWAY_BASE="https://gangway-ci.apps.ci.l2s4.p1.openshiftapps.com"
-JOB_NAME="periodic-ci-quay-quay-master-claim-cluster-for-dev"
+JOB_NAME="periodic-ci-quay-quay-master-claim-claim-cluster"
 STATE_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/cluster-provision-${UID}"
 STATE_FILE="${STATE_DIR}/state.json"
 
@@ -19,9 +19,9 @@ POLL_INTERVAL_INITIAL=15
 POLL_INTERVAL_MAX=30
 POLL_TIMEOUT=2400  # 40 minutes
 
-GCS_BUCKETS=("test-platform-results" "origin-ci-test")
 GCSWEB_BASE="https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs"
-ARTIFACT_SUBPATH="artifacts/claim-cluster-for-dev/export-kubeconfig/kubeconfig"
+ARTIFACT_SUBPATH="artifacts/claim-cluster/export-kubeconfig/artifacts/kubeconfig.enc"
+ENCRYPTION_KEY="${CLUSTER_PROVISION_KEY:-}"
 
 CURL_CONNECT_TIMEOUT=10
 CURL_MAX_TIME=30
@@ -55,7 +55,14 @@ check_prereqs() {
         echo "For a permanent token, join the appropriate Rover group."
         exit 1
     fi
-    for cmd in curl jq; do
+    if [[ -z "${ENCRYPTION_KEY}" ]]; then
+        echo "CLUSTER_PROVISION_KEY is not set."
+        echo ""
+        echo "This is the passphrase used to decrypt the cluster kubeconfig."
+        echo "Contact the Quay CI team for access."
+        exit 1
+    fi
+    for cmd in curl jq openssl; do
         command -v "$cmd" >/dev/null 2>&1 || die "'$cmd' is required but not found on PATH"
     done
 }
@@ -139,27 +146,38 @@ update_state_field() {
     fi
 }
 
-try_download_kubeconfig() {
-    local gcs_path="$1"
-    local bucket url http_code tmpfile
+gcs_from_url() {
+    local job_url="$1"
+    echo "$job_url" | sed -n 's|.*/view/gs/||p'
+}
 
-    for bucket in "${GCS_BUCKETS[@]}"; do
-        url="${GCSWEB_BASE}/${bucket}/${gcs_path}/${ARTIFACT_SUBPATH}"
-        tmpfile=$(mktemp)
-        if ! http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
-            --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time 60 \
-            "$url"); then
-            rm -f "$tmpfile"
-            continue
-        fi
-        if [[ "$http_code" == "200" ]] && [[ -s "$tmpfile" ]]; then
-            mkdir -p "$(dirname "$KUBECONFIG_OUT")"
-            mv "$tmpfile" "$KUBECONFIG_OUT"
-            chmod 600 "$KUBECONFIG_OUT"
-            return 0
-        fi
+try_download_kubeconfig() {
+    local gcs_root="$1"
+    local url http_code tmpfile
+    url="${GCSWEB_BASE}/${gcs_root}/${ARTIFACT_SUBPATH}"
+    tmpfile=$(mktemp)
+    if ! http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
+        --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time 60 \
+        "$url"); then
         rm -f "$tmpfile"
-    done
+        return 1
+    fi
+    if [[ "$http_code" == "200" ]] && [[ -s "$tmpfile" ]]; then
+        mkdir -p "$(dirname "$KUBECONFIG_OUT")"
+        if openssl enc -d -aes-256-cbc -pbkdf2 \
+            -pass pass:"${ENCRYPTION_KEY}" \
+            -in "$tmpfile" \
+            -out "${KUBECONFIG_OUT}"; then
+            chmod 600 "$KUBECONFIG_OUT"
+            rm -f "$tmpfile"
+            return 0
+        else
+            echo "WARNING: Failed to decrypt kubeconfig. Wrong CLUSTER_PROVISION_KEY?" >&2
+            rm -f "$tmpfile"
+            return 1
+        fi
+    fi
+    rm -f "$tmpfile"
     return 1
 }
 
@@ -218,8 +236,10 @@ validate_cluster() {
 
 poll_and_download() {
     local exec_id="$1"
-    local start_epoch interval status gcs_path elapsed response
+    local job_url="$2"
+    local gcs_root start_epoch interval status elapsed response
 
+    gcs_root=$(gcs_from_url "$job_url")
     start_epoch=$(epoch_now)
     interval=$POLL_INTERVAL_INITIAL
 
@@ -228,47 +248,35 @@ poll_and_download() {
     while true; do
         elapsed=$(( $(epoch_now) - start_epoch ))
         if (( elapsed > POLL_TIMEOUT )); then
-            local job_url
-            job_url=$(jq -r '.job_url // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
             die "Timed out after ${POLL_TIMEOUT}s waiting for cluster. Check job: ${job_url}"
         fi
 
         response=$(gangway_get "/v1/executions/${exec_id}")
         status=$(echo "$response" | jq -r '.job_status // empty')
-        gcs_path=$(echo "$response" | jq -r '.gcs_path // empty')
 
         update_state_field "status" "$status"
-        if [[ -n "$gcs_path" ]]; then
-            update_state_field "gcs_path" "$gcs_path"
-        fi
 
         case "$status" in
             FAILURE|ERROR|ABORTED)
-                local job_url
-                job_url=$(echo "$response" | jq -r '.job_url // "unknown"')
                 die "Job ended with status ${status}. Check: ${job_url}"
                 ;;
         esac
 
-        if [[ -n "$gcs_path" ]]; then
-            if try_download_kubeconfig "$gcs_path"; then
-                update_state_field "status" "READY"
-                info "Kubeconfig downloaded to ${KUBECONFIG_OUT}"
-                validate_cluster
-                echo ""
-                echo "=== Cluster Ready ==="
-                echo "Kubeconfig: ${KUBECONFIG_OUT}"
-                echo "Usage:      export KUBECONFIG=${KUBECONFIG_OUT}"
-                echo "            oc whoami"
-                local job_url
-                job_url=$(jq -r '.job_url // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
-                echo "Job URL:    ${job_url}"
-                echo "Note:       Cluster auto-expires in ~4 hours"
-                return 0
-            fi
+        if [[ -n "$gcs_root" ]] && try_download_kubeconfig "$gcs_root"; then
+            update_state_field "status" "READY"
+            info "Kubeconfig downloaded to ${KUBECONFIG_OUT}"
+            validate_cluster
+            echo ""
+            echo "=== Cluster Ready ==="
+            echo "Kubeconfig: ${KUBECONFIG_OUT}"
+            echo "Usage:      export KUBECONFIG=${KUBECONFIG_OUT}"
+            echo "            oc whoami"
+            echo "Job URL:    ${job_url}"
+            echo "Note:       Cluster auto-expires in ~4 hours"
+            return 0
         fi
 
-        info "Status: ${status} | GCS path: ${gcs_path:-not yet available} | Elapsed: ${elapsed}s | Next check in ${interval}s"
+        info "Status: ${status} | Elapsed: ${elapsed}s | Next check in ${interval}s"
         sleep "$interval"
         if (( interval < POLL_INTERVAL_MAX )); then
             interval=$POLL_INTERVAL_MAX
@@ -281,14 +289,15 @@ up() {
 
     if [[ -f "$STATE_FILE" ]]; then
         [[ -L "$STATE_FILE" ]] && die "Refusing to read symlinked state file: $STATE_FILE"
-        local existing_id existing_status
+        local existing_id existing_status existing_job_url
         existing_id=$(jq -r '.execution_id // empty' "$STATE_FILE")
         existing_status=$(jq -r '.status // empty' "$STATE_FILE")
 
         if [[ -n "$existing_id" && "$existing_status" != "FAILURE" && "$existing_status" != "ERROR" && "$existing_status" != "ABORTED" ]]; then
             info "Found existing execution ${existing_id} (status: ${existing_status}). Resuming..."
+            existing_job_url=$(jq -r '.job_url // empty' "$STATE_FILE")
             update_state_field "kubeconfig_path" "$KUBECONFIG_OUT"
-            poll_and_download "$existing_id"
+            poll_and_download "$existing_id" "$existing_job_url"
             return $?
         fi
     fi
@@ -318,7 +327,7 @@ up() {
 
     save_state "$exec_id" "$gcs_path" "$job_url" "$KUBECONFIG_OUT" "$(iso_now)" "$job_status"
 
-    poll_and_download "$exec_id"
+    poll_and_download "$exec_id" "$job_url"
 }
 
 down() {
