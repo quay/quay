@@ -9,6 +9,7 @@ allowed-tools:
   - Bash(git *)
   - Bash(gh pr *)
   - Bash(cat *)
+  - Bash(echo $AGENTIC_SESSION_NAME)
   - Read
   - Write
   - Edit
@@ -48,25 +49,47 @@ Read the template at `.claude/templates/pr-description.md`. Fill in:
 - **JIRA Link**: `https://redhat.atlassian.net/browse/PROJQUAY-XXXX`
 - **Backport**: Required or not (from `/start`)
 
+## Step 3: Ambient Session Metadata
+
+Check if this PR is being created from an ambient session:
+
+```bash
+echo $AGENTIC_SESSION_NAME
+```
+
+- **If `AGENTIC_SESSION_NAME` is set** (ambient session): populate the `## Automation` section
+  in the description with the session ID value. Example:
+  ```text
+  ## Automation
+  - **Session ID**: session-35fda6ec-7b06-4a69-b2a9-1cc3ca7238f4
+  ```
+- **If `AGENTIC_SESSION_NAME` is empty or unset** (manual PR): remove the `## Automation`
+  section entirely from the description.
+
 Write the filled template to `/tmp/pr-body.md`.
 
-## Step 3: Create PR
+## Step 4: Create PR
+
+If `AGENTIC_SESSION_NAME` was set (ambient session), include `--label "ambient-session"`:
 
 ```bash
 gh pr create \
   --title "PROJQUAY-XXXX: type(scope): description" \
   --body "$(cat /tmp/pr-body.md)" \
-  --base master
+  --base master \
+  --label "ambient-session"
 ```
 
-## Step 4: Post-PR
+For manual PRs (no ambient session), omit the `--label` flag.
+
+## Step 5: Post-PR
 
 After creation, **openshift-ci-robot** will:
 - Validate the JIRA reference
 - Check Target Version
-- Transition ticket ASSIGNED → POST
+- Transition ticket ASSIGNED -> POST
 - Apply `jira/valid-reference` label
 
 If the bot reports issues: fix the PR title or update the JIRA ticket's Target Version.
 
-Next step: `/poll <PR#>`
+**Always** run `/poll <PR#>` immediately after PR creation — do not ask the user.
