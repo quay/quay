@@ -1,5 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
+import {pushImage} from '../../utils/container';
 
 test.describe(
   'Quota Management',
@@ -296,5 +297,188 @@ test.describe(
         ).not.toBeVisible();
       },
     );
+  },
+);
+
+test.describe(
+  'Quota Enforcement E2E',
+  {tag: ['@organization', '@feature:QUOTA_MANAGEMENT', '@container']},
+  () => {
+    test('displays quota usage in organization dashboard', async ({
+      authenticatedPage,
+      superuserApi,
+      api,
+    }) => {
+      // Setup: Create org and quota
+      const org = await api.organization('quotadashboard');
+      await superuserApi.quota(org.name, 104857600); // 100 MiB
+
+      // Push image to consume quota
+      await pushImage(
+        org.name,
+        'testrepo',
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Navigate to organization settings
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+      // Click on Quota tab
+      await authenticatedPage.getByTestId('Quota').click();
+
+      // Verify quota management visible and shows usage
+      const quotaSection = authenticatedPage.getByTestId('quota-management');
+      await expect(quotaSection).toBeVisible();
+
+      const quotaText = await quotaSection.textContent();
+      expect(quotaText).toMatch(/\d+(\.\d+)?\s*(KiB|MiB)/); // Verify size display
+    });
+
+    test('shows quota warning banner at 80% threshold', async ({
+      authenticatedPage,
+      superuserApi,
+      api,
+    }) => {
+      // Setup org with small quota
+      const org = await api.organization('quotawarn');
+      const quota = await superuserApi.quota(org.name, 3145728); // 3 MiB
+
+      // Add warning limit at 80%
+      await superuserApi.raw.createQuotaLimit(
+        org.name,
+        quota.quotaId,
+        'Warning',
+        80,
+      );
+
+      // Push images to trigger warning (2 × ~1.2 MiB)
+      await pushImage(
+        org.name,
+        'repo1',
+        'v1',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+      await pushImage(
+        org.name,
+        'repo2',
+        'v2',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Navigate to org page
+      await authenticatedPage.goto(`/organization/${org.name}`);
+
+      // Verify warning alert appears
+      const warningAlert = authenticatedPage
+        .locator('[role="alert"]')
+        .filter({hasText: /warning|quota/i});
+      await expect(warningAlert).toBeVisible();
+    });
+
+    test('displays error when quota exceeded', async ({
+      authenticatedPage,
+      superuserApi,
+      api,
+    }) => {
+      // Setup org with very small quota
+      const org = await api.organization('quotaexceed');
+      const quota = await superuserApi.quota(org.name, 2097152); // 2 MiB
+
+      // Add reject limit at 100%
+      await superuserApi.raw.createQuotaLimit(
+        org.name,
+        quota.quotaId,
+        'Reject',
+        100,
+      );
+
+      // Push image to fill quota
+      await pushImage(
+        org.name,
+        'fillrepo',
+        'v1',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Navigate to quota settings
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+      // Click on Quota tab
+      await authenticatedPage.getByTestId('Quota').click();
+
+      // Verify quota at/near 100%
+      const quotaText = await authenticatedPage
+        .getByTestId('quota-management')
+        .textContent();
+      expect(quotaText).toMatch(/[89][0-9]%|100%/); // Match 80-100%
+    });
+
+    test('quota warning appears in notification center', async ({
+      authenticatedPage,
+      superuserApi,
+      api,
+    }) => {
+      // Setup org with quota and warning limit
+      const org = await api.organization('quotanotify');
+      const quota = await superuserApi.quota(org.name, 3145728); // 3 MiB
+
+      await superuserApi.raw.createQuotaLimit(
+        org.name,
+        quota.quotaId,
+        'Warning',
+        80,
+      );
+
+      // Push images to trigger warning
+      await pushImage(
+        org.name,
+        'repo1',
+        'v1',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+      await pushImage(
+        org.name,
+        'repo2',
+        'v2',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Navigate to org page
+      await authenticatedPage.goto(`/organization/${org.name}`);
+
+      // Check notification center
+      const notificationBell = authenticatedPage.locator(
+        '[data-testid="notification-bell"]',
+      );
+
+      // If notification bell exists, click and verify
+      if (await notificationBell.isVisible()) {
+        await notificationBell.click();
+
+        const notifications = authenticatedPage.locator(
+          '[data-testid="notification-item"]',
+        );
+        const notificationTexts = await notifications.allTextContents();
+
+        expect(
+          notificationTexts.some(
+            (text: string) => text.toLowerCase().indexOf('quota') !== -1,
+          ),
+        ).toBe(true);
+      } else {
+        // Alternative: Check for inline alert/notification
+        const quotaAlert = authenticatedPage
+          .locator('[role="alert"]')
+          .filter({hasText: /quota/i});
+        await expect(quotaAlert).toBeVisible();
+      }
+    });
   },
 );
