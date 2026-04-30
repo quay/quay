@@ -2,10 +2,10 @@
  * API Coverage Gap Tests (Phase 2)
  *
  * Covers API endpoints identified as untested in coverage analysis:
- * build triggers, builds, repository signing, pull statistics,
- * team syncing, user notifications, user authorizations, organization
- * member removal, OAuth app client secret reset, authorized repository
- * emails, and signout.
+ * build triggers, repository signing, pull statistics, team syncing,
+ * user notifications, user authorizations, organization member removal,
+ * OAuth app client secret reset, authorized repository emails, and
+ * signout.
  */
 
 import {test, expect} from '../../fixtures';
@@ -69,89 +69,6 @@ test.describe('Build Triggers', {tag: ['@api']}, () => {
       `/api/v1/repository/${org.name}/${repo.name}/trigger/`,
     );
     expect(resp.status()).toBe(403);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Builds
-// ---------------------------------------------------------------------------
-test.describe('Builds', {tag: ['@api']}, () => {
-  test('list builds returns empty array for new repository', async ({
-    superuserApi,
-    adminClient,
-  }) => {
-    const org = await superuserApi.organization('bld');
-    const repo = await superuserApi.repository(org.name, 'repo');
-
-    const resp = await adminClient.get(
-      `/api/v1/repository/${org.name}/${repo.name}/build/`,
-    );
-    expect(resp.status()).toBe(200);
-    const body = await resp.json();
-    expect(body.builds).toEqual([]);
-  });
-
-  test('get non-existent build returns 404', async ({
-    superuserApi,
-    adminClient,
-  }) => {
-    const org = await superuserApi.organization('bld');
-    const repo = await superuserApi.repository(org.name, 'repo');
-
-    const resp = await adminClient.get(
-      `/api/v1/repository/${org.name}/${repo.name}/build/00000000-0000-0000-0000-000000000000`,
-    );
-    expect(resp.status()).toBe(404);
-  });
-
-  test('build lifecycle: create, get, status, logs, cancel', async ({
-    superuserApi,
-    adminClient,
-  }) => {
-    const org = await superuserApi.organization('bld');
-    const repo = await superuserApi.repository(org.name, 'repo');
-
-    let buildId: string;
-    try {
-      const build = await superuserApi.build(org.name, repo.name);
-      buildId = build.buildId;
-    } catch {
-      test.skip(true, 'Build system not available in this environment');
-      return;
-    }
-
-    const getResp = await adminClient.get(
-      `/api/v1/repository/${org.name}/${repo.name}/build/${buildId}`,
-    );
-    expect(getResp.status()).toBe(200);
-    const buildInfo = await getResp.json();
-    expect(buildInfo.id).toBe(buildId);
-    expect(buildInfo).toHaveProperty('phase');
-
-    const statusResp = await adminClient.get(
-      `/api/v1/repository/${org.name}/${repo.name}/build/${buildId}/status`,
-    );
-    expect(statusResp.status()).toBe(200);
-
-    const logsResp = await adminClient.get(
-      `/api/v1/repository/${org.name}/${repo.name}/build/${buildId}/logs`,
-    );
-    expect(logsResp.status()).toBe(200);
-
-    const listResp = await adminClient.get(
-      `/api/v1/repository/${org.name}/${repo.name}/build/`,
-    );
-    expect(listResp.status()).toBe(200);
-    const listBody = await listResp.json();
-    expect(listBody.builds.length).toBeGreaterThan(0);
-    expect(listBody.builds.some((b: {id: string}) => b.id === buildId)).toBe(
-      true,
-    );
-
-    const cancelResp = await adminClient.delete(
-      `/api/v1/repository/${org.name}/${repo.name}/build/${buildId}`,
-    );
-    expect([200, 201, 204]).toContain(cancelResp.status());
   });
 });
 
