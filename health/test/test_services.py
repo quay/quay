@@ -1,44 +1,14 @@
-"""
-Unit tests for health.services storage check logic.
+"""Unit tests for health.storage_engines.check_storage_engines."""
 
-Tests target _check_storage_engines, which contains the core logic and accepts the
-storage object explicitly — making it testable without the full Quay app import chain.
-"""
-
-import sys
 from unittest.mock import MagicMock
 
 import pytest
 
-# Stub out every module that health.services pulls in transitively before importing it.
-_STUBS = [
-    "app",
-    "flask_login",
-    "flask_principal",
-    "flask_mail",
-    "psutil",
-    "resumablesha256",
-    "data.database",
-    "data.model",
-    "data.model.health",
-    "health.models_pre_oci",
-]
-for _mod in _STUBS:
-    sys.modules.setdefault(_mod, MagicMock())
-
-# health.services uses `from app import ... storage` and
-# `from health.models_pre_oci import pre_oci_model as model`
-_app_stub = MagicMock()
-_app_stub.storage = MagicMock()
-sys.modules["app"] = _app_stub
-
-_models_stub = MagicMock()
-sys.modules["health.models_pre_oci"] = _models_stub
-
-from health.services import _check_storage_engines  # noqa: E402
+from health.storage_engines import check_storage_engines
 
 
 def _make_storage(locations, preferred_locations):
+    """Return a mock DistributedStorage with the given location lists."""
     s = MagicMock()
     s.locations = list(locations)
     s.preferred_locations = list(preferred_locations)
@@ -60,6 +30,7 @@ _HTTP_CLIENT = MagicMock()
     ],
 )
 def test_check_storage_engines(locations, preferred, failing, expected_ok, expect_warning):
+    """Parametrized: verify ok/warning/failure outcomes for all location combinations."""
     mock_storage = _make_storage(locations, preferred)
 
     def validate_side_effect(locs, client):
@@ -68,7 +39,7 @@ def test_check_storage_engines(locations, preferred, failing, expected_ok, expec
 
     mock_storage.validate.side_effect = validate_side_effect
 
-    ok, msg = _check_storage_engines(mock_storage, _HTTP_CLIENT)
+    ok, msg = check_storage_engines(mock_storage, _HTTP_CLIENT)
 
     assert ok == expected_ok
 
@@ -84,6 +55,7 @@ def test_check_storage_engines(locations, preferred, failing, expected_ok, expec
 
 
 def test_warning_includes_failing_location_name():
+    """Non-preferred location name must appear in the warning message."""
     mock_storage = _make_storage(["s3", "azure"], ["s3"])
 
     def validate_side_effect(locs, client):
@@ -92,7 +64,7 @@ def test_warning_includes_failing_location_name():
 
     mock_storage.validate.side_effect = validate_side_effect
 
-    ok, msg = _check_storage_engines(mock_storage, _HTTP_CLIENT)
+    ok, msg = check_storage_engines(mock_storage, _HTTP_CLIENT)
 
     assert ok is True
     assert "azure" in msg
@@ -103,7 +75,7 @@ def test_failure_message_includes_warning_info_when_both_fail():
     mock_storage = _make_storage(["s3", "azure"], ["s3"])
     mock_storage.validate.side_effect = Exception("unavailable")
 
-    ok, msg = _check_storage_engines(mock_storage, _HTTP_CLIENT)
+    ok, msg = check_storage_engines(mock_storage, _HTTP_CLIENT)
 
     assert ok is False
     assert "warnings" in msg
@@ -111,10 +83,21 @@ def test_failure_message_includes_warning_info_when_both_fail():
 
 
 def test_all_locations_are_checked():
-    """validate is called once per configured location."""
+    """validate is called exactly once per configured location."""
     mock_storage = _make_storage(["s3", "azure", "gcs"], ["s3"])
     mock_storage.validate.return_value = None
 
-    _check_storage_engines(mock_storage, _HTTP_CLIENT)
+    check_storage_engines(mock_storage, _HTTP_CLIENT)
 
     assert mock_storage.validate.call_count == 3
+
+
+def test_fail_closed_when_no_preferred_configured():
+    """With no preferred locations set, all failures are treated as critical."""
+    mock_storage = _make_storage(["s3", "azure"], [])
+    mock_storage.validate.side_effect = Exception("unavailable")
+
+    ok, msg = check_storage_engines(mock_storage, _HTTP_CLIENT)
+
+    assert ok is False
+    assert "s3" in msg or "azure" in msg

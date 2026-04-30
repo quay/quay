@@ -6,6 +6,7 @@ import psutil
 
 from app import authentication, build_logs, instance_keys, storage
 from health.models_pre_oci import pre_oci_model as model
+from health.storage_engines import check_storage_engines
 
 logger = logging.getLogger(__name__)
 
@@ -65,36 +66,6 @@ def _check_redis(app):
     return build_logs.check_health()
 
 
-def _check_storage_engines(stor, http_client):
-    """
-    Validates all configured storage engines and returns (ok, message).
-
-    Only fails if a preferred engine is unavailable; non-preferred failures are warnings.
-    """
-    preferred = set(stor.preferred_locations)
-    failures = []
-    warnings = []
-
-    for location in stor.locations:
-        try:
-            stor.validate([location], http_client)
-        except Exception as ex:
-            if location in preferred:
-                logger.exception("Preferred storage '%s' check failed: %s", location, ex)
-                failures.append("Preferred storage '%s' check failed: %s" % (location, ex))
-            else:
-                logger.warning("Non-preferred storage '%s' unavailable: %s", location, ex)
-                warnings.append("Non-preferred storage '%s' unavailable: %s" % (location, ex))
-
-    if failures:
-        msg = "; ".join(failures)
-        if warnings:
-            msg += " (warnings: %s)" % "; ".join(warnings)
-        return (False, msg)
-
-    return (True, "; ".join(warnings) if warnings else None)
-
-
 def _check_storage(app):
     """
     Returns the status of storage, as accessed from this instance.
@@ -105,7 +76,7 @@ def _check_storage(app):
     if app.config.get("REGISTRY_STATE", "normal") == "readonly":
         return (True, "Storage check disabled for readonly mode")
 
-    return _check_storage_engines(storage, app.config["HTTPCLIENT"])
+    return check_storage_engines(storage, app.config["HTTPCLIENT"])
 
 
 def _check_preferred_storage(app):
