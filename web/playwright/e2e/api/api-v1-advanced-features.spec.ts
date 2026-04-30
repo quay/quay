@@ -966,7 +966,17 @@ test.describe('Team Syncing', {tag: ['@api', '@feature:TEAM_SYNCING']}, () => {
     );
 
     if (enableResp.status() === 400 || enableResp.status() === 401) {
-      test.skip(true, 'Team sync requires specific auth configuration');
+      const body = await enableResp.json().catch(() => ({}));
+      const msg = (body.error_message || body.message || '').toLowerCase();
+      const backendMissing =
+        msg.includes('team syncing') ||
+        msg.includes('not supported') ||
+        msg.includes('ldap') ||
+        msg.includes('keystone');
+      test.skip(
+        backendMissing || enableResp.status() === 401,
+        `Team sync unavailable: ${msg || `HTTP ${enableResp.status()}`}`,
+      );
       return;
     }
     expect([200, 201]).toContain(enableResp.status());

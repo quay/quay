@@ -848,6 +848,10 @@ test.describe('Signout', {tag: ['@api', '@auth:Database']}, () => {
       // Sign out
       const signoutResp = await client.post('/api/v1/signout');
       expect([200, 204]).toContain(signoutResp.status());
+
+      // Verify session is invalidated
+      const afterResp = await client.get('/api/v1/user/');
+      expect(afterResp.status()).not.toBe(200);
     } finally {
       await request.dispose();
     }
