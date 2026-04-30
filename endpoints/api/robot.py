@@ -38,6 +38,7 @@ from endpoints.api import (
     query_param,
     related_user_resource,
     request_error,
+    require_fresh_login,
     require_scope,
     require_user_admin,
     resource,
@@ -151,6 +152,7 @@ class UserRobot(ApiResource):
         return robot.to_dict(include_metadata=True, include_token=True)
 
     @require_user_admin(disallow_for_restricted_users=True)
+    @require_fresh_login
     @nickname("createUserRobot")
     @max_json_size(ROBOT_MAX_SIZE)
     @validate_json_request("CreateRobot", optional=True)
@@ -182,6 +184,7 @@ class UserRobot(ApiResource):
         return robot.to_dict(include_metadata=True, include_token=True), 201
 
     @require_user_admin(disallow_for_restricted_users=True)
+    @require_fresh_login
     @nickname("deleteUserRobot")
     def delete(self, robot_shortname):
         """
@@ -282,6 +285,7 @@ class OrgRobot(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("createOrgRobot")
     @max_json_size(ROBOT_MAX_SIZE)
     @validate_json_request("CreateRobot", optional=True)
@@ -316,6 +320,7 @@ class OrgRobot(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("deleteOrgRobot")
     def delete(self, orgname, robot_shortname):
         """
@@ -398,6 +403,7 @@ class RegenerateUserRobot(ApiResource):
     """
 
     @require_user_admin(disallow_for_restricted_users=True)
+    @require_fresh_login
     @nickname("regenerateUserRobotToken")
     def post(self, robot_shortname):
         """
@@ -421,6 +427,7 @@ class RegenerateOrgRobot(ApiResource):
     """
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("regenerateOrgRobotToken")
     def post(self, orgname, robot_shortname):
         """
@@ -464,6 +471,7 @@ class OrgRobotFederation(ApiResource):
 
     @require_scope(scopes.ORG_ADMIN)
     @validate_json_request("CreateRobotFederation", optional=False)
+    @require_fresh_login
     def post(self, orgname, robot_shortname):
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser_with_full_access():
@@ -482,6 +490,7 @@ class OrgRobotFederation(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     def delete(self, orgname, robot_shortname):
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser_with_full_access():
