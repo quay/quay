@@ -1439,6 +1439,13 @@ def delete_user(user, queues):
         queue.delete_namespaced_items(user.username)
 
     # Delete any repositories under the user's namespace.
+    # Bulk-mark all repos for deletion in one UPDATE to avoid N individual
+    # per-repo saves inside purge_repository() that held long-duration locks.
+    Repository.update(state=RepositoryState.MARKED_FOR_DELETION).where(
+        Repository.namespace_user == user,
+        Repository.state != RepositoryState.MARKED_FOR_DELETION,
+    ).execute()
+
     while True:
         is_progressing = False
         repositories = list(Repository.select().where(Repository.namespace_user == user))
