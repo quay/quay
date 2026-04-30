@@ -50,7 +50,7 @@
           },
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); MSG=$(echo \"$INPUT\" | jq -r \".tool_input.command\" | grep -oP \"\\-m \\x27\\K[^\\x27]+|\\-m \\\"\\K[^\\\"]+\" || true); if [ -n \"$MSG\" ]; then FIRST_LINE=$(echo \"$MSG\" | head -1); if ! echo \"$FIRST_LINE\" | grep -qP \"^[\\w/.-]+: .+\"; then jq -n --arg line \"$FIRST_LINE\" \"{hookSpecificOutput:{hookEventName:\\\"PreToolUse\\\",additionalContext:(\\\"Commit message should follow format: <subsystem>: <what changed> (PROJQUAY-####). Got: \\\" + \\$line)}}\"; fi; fi'",
+            "command": ".claude/scripts/validate-commit-msg.sh",
             "if": "Bash(git commit *)",
             "timeout": 5
           }
