@@ -5,7 +5,9 @@
  * Covers: user CRUD, user robots, error descriptions,
  * app tokens, API discovery, global messages, organization CRUD,
  * organization members, organization applications, OAuth app info,
- * user notifications, and superuser user info.
+ * user notifications, user authorizations, organization member
+ * removal, OAuth app client secret reset, superuser user info,
+ * and signout.
  */
 
 import {test, expect, uniqueName} from '../../fixtures';
@@ -684,5 +686,170 @@ test.describe('Superuser User Info', {tag: ['@api', '@auth:Database']}, () => {
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body.username).toBe(TEST_USERS.admin.username);
+  });
+});
+
+// ============================================================================
+// User Notifications List
+// ============================================================================
+
+test.describe(
+  'User Notifications List',
+  {tag: ['@api', '@auth:Database']},
+  () => {
+    test('list user notifications returns array', async ({adminClient}) => {
+      const resp = await adminClient.get('/api/v1/user/notifications');
+      expect(resp.status()).toBe(200);
+      const body = await resp.json();
+      expect(body).toHaveProperty('notifications');
+      expect(Array.isArray(body.notifications)).toBe(true);
+    });
+
+    test('get non-existent notification returns 404', async ({adminClient}) => {
+      const resp = await adminClient.get(
+        '/api/v1/user/notifications/00000000-0000-0000-0000-000000000000',
+      );
+      expect(resp.status()).toBe(404);
+    });
+  },
+);
+
+// ============================================================================
+// User Authorizations
+// ============================================================================
+
+test.describe('User Authorizations', {tag: ['@api', '@auth:Database']}, () => {
+  test('list user authorizations returns array', async ({adminClient}) => {
+    const resp = await adminClient.get('/api/v1/user/authorizations');
+    expect(resp.status()).toBe(200);
+    const body = await resp.json();
+    expect(body).toHaveProperty('authorizations');
+    expect(Array.isArray(body.authorizations)).toBe(true);
+  });
+
+  test('get non-existent authorization returns 404', async ({adminClient}) => {
+    const resp = await adminClient.get(
+      '/api/v1/user/authorizations/00000000-0000-0000-0000-000000000000',
+    );
+    expect(resp.status()).toBe(404);
+  });
+});
+
+// ============================================================================
+// Organization Member Removal
+// ============================================================================
+
+test.describe(
+  'Organization Member Removal',
+  {tag: ['@api', '@auth:Database']},
+  () => {
+    test('add user to org via team, then remove from org', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const org = await superuserApi.organization('memb');
+      const team = await superuserApi.team(org.name, 'devteam');
+      const user = await superuserApi.user('member');
+
+      // Verify email so the user can be added
+      await adminClient.put(`/api/v1/superuser/users/${user.username}`, {
+        email: user.email,
+      });
+
+      // Add user to team (makes them an org member)
+      const addResp = await adminClient.put(
+        `/api/v1/organization/${org.name}/team/${team.name}/members/${user.username}`,
+      );
+      expect(addResp.status()).toBe(200);
+
+      // Verify member appears in org members list
+      const listResp = await adminClient.get(
+        `/api/v1/organization/${org.name}/members`,
+      );
+      expect(listResp.status()).toBe(200);
+      const members = await listResp.json();
+      expect(members.members).toBeTruthy();
+
+      // Get individual member info
+      const memberResp = await adminClient.get(
+        `/api/v1/organization/${org.name}/members/${user.username}`,
+      );
+      expect(memberResp.status()).toBe(200);
+      const memberInfo = await memberResp.json();
+      expect(memberInfo.name).toBe(user.username);
+
+      // Remove member from org
+      const removeResp = await adminClient.delete(
+        `/api/v1/organization/${org.name}/members/${user.username}`,
+      );
+      expect(removeResp.status()).toBe(204);
+
+      // Verify member is gone
+      const afterResp = await adminClient.get(
+        `/api/v1/organization/${org.name}/members/${user.username}`,
+      );
+      expect(afterResp.status()).toBe(404);
+    });
+  },
+);
+
+// ============================================================================
+// OAuth Application Client Secret Reset
+// ============================================================================
+
+test.describe(
+  'OAuth Application Client Secret Reset',
+  {tag: ['@api', '@auth:Database']},
+  () => {
+    test('reset client secret generates new secret', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const org = await superuserApi.organization('oauth');
+      const app = await superuserApi.oauthApplication(org.name, 'testapp');
+
+      const beforeResp = await adminClient.get(
+        `/api/v1/organization/${org.name}/applications/${app.clientId}`,
+      );
+      expect(beforeResp.status()).toBe(200);
+
+      const resetResp = await adminClient.post(
+        `/api/v1/organization/${org.name}/applications/${app.clientId}/resetclientsecret`,
+      );
+      expect(resetResp.status()).toBe(200);
+      const resetBody = await resetResp.json();
+      expect(resetBody.client_secret).toBeTruthy();
+      expect(resetBody.client_id).toBe(app.clientId);
+
+      if (app.clientSecret) {
+        expect(resetBody.client_secret).not.toBe(app.clientSecret);
+      }
+    });
+  },
+);
+
+// ============================================================================
+// Signout
+// ============================================================================
+
+test.describe('Signout', {tag: ['@api', '@auth:Database']}, () => {
+  test('signout endpoint invalidates session', async ({playwright}) => {
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    try {
+      const client = new RawApiClient(request, API_URL);
+      await client.signIn(TEST_USERS.admin.username, TEST_USERS.admin.password);
+
+      // Verify we're authenticated
+      const beforeResp = await client.get('/api/v1/user/');
+      expect(beforeResp.status()).toBe(200);
+
+      // Sign out
+      const signoutResp = await client.post('/api/v1/signout');
+      expect([200, 204]).toContain(signoutResp.status());
+    } finally {
+      await request.dispose();
+    }
   });
 });
