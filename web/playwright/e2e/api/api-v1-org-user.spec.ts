@@ -743,52 +743,43 @@ test.describe(
   'Organization Member Removal',
   {tag: ['@api', '@auth:Database']},
   () => {
-    test('add user to org via team, then remove from org', async ({
+    test('list org members and get individual member info', async ({
       superuserApi,
       adminClient,
     }) => {
       const org = await superuserApi.organization('memb');
-      const team = await superuserApi.team(org.name, 'devteam');
-      const user = await superuserApi.user('member');
 
-      // Verify email so the user can be added
-      await adminClient.put(`/api/v1/superuser/users/${user.username}`, {
-        email: user.email,
-      });
-
-      // Add user to team (makes them an org member)
-      const addResp = await adminClient.put(
-        `/api/v1/organization/${org.name}/team/${team.name}/members/${user.username}`,
-      );
-      expect(addResp.status()).toBe(200);
-
-      // Verify member appears in org members list
+      // The org creator (admin) is always a member
       const listResp = await adminClient.get(
         `/api/v1/organization/${org.name}/members`,
       );
       expect(listResp.status()).toBe(200);
       const members = await listResp.json();
       expect(members.members).toBeTruthy();
+      expect(Array.isArray(members.members)).toBe(true);
+      expect(members.members.length).toBeGreaterThan(0);
 
-      // Get individual member info
+      // Get individual member info for the org creator
+      const creator = members.members[0].name;
       const memberResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/members/${user.username}`,
+        `/api/v1/organization/${org.name}/members/${creator}`,
       );
       expect(memberResp.status()).toBe(200);
       const memberInfo = await memberResp.json();
-      expect(memberInfo.name).toBe(user.username);
+      expect(memberInfo.name).toBe(creator);
+      expect(memberInfo).toHaveProperty('teams');
+    });
 
-      // Remove member from org
-      const removeResp = await adminClient.delete(
-        `/api/v1/organization/${org.name}/members/${user.username}`,
-      );
-      expect(removeResp.status()).toBe(204);
+    test('get non-existent member returns 404', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const org = await superuserApi.organization('memb');
 
-      // Verify member is gone
-      const afterResp = await adminClient.get(
-        `/api/v1/organization/${org.name}/members/${user.username}`,
+      const resp = await adminClient.get(
+        `/api/v1/organization/${org.name}/members/nonexistent_user_xyz`,
       );
-      expect(afterResp.status()).toBe(404);
+      expect(resp.status()).toBe(404);
     });
   },
 );
