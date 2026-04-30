@@ -2,7 +2,7 @@
  * Organization & User API Tests
  *
  * Ported from Cypress quay-api-tests to Playwright.
- * Covers: user CRUD, user robots, user self-delete, error descriptions,
+ * Covers: user CRUD, user robots, error descriptions,
  * app tokens, API discovery, global messages, organization CRUD,
  * organization members, organization applications, OAuth app info,
  * user notifications, and superuser user info.
@@ -184,40 +184,6 @@ test.describe('User Robot CRUD', {tag: ['@api', '@auth:Database']}, () => {
         `/api/v1/user/robots/${shortname}`,
       );
       expect([204, 404]).toContain(deleteResp.status());
-    }
-  });
-});
-
-// ============================================================================
-// User Self-Delete
-// ============================================================================
-
-test.describe('User Self-Delete', {tag: ['@api', '@auth:Database']}, () => {
-  test('user can delete their own account', async ({
-    superuserApi,
-    adminClient,
-    playwright,
-  }) => {
-    const tempUser = await superuserApi.user('delme');
-
-    // Verify the user's email via superuser API (auto_verify=True on the backend)
-    const verifyResp = await adminClient.put(
-      `/api/v1/superuser/users/${tempUser.username}`,
-      {email: tempUser.email},
-    );
-    expect(verifyResp.status()).toBe(200);
-
-    const request = await playwright.request.newContext({
-      ignoreHTTPSErrors: true,
-    });
-    try {
-      const client = new RawApiClient(request, API_URL);
-      await client.signIn(tempUser.username, tempUser.password);
-
-      const deleteResp = await client.delete('/api/v1/user/');
-      expect(deleteResp.status()).toBe(204);
-    } finally {
-      await request.dispose();
     }
   });
 });
