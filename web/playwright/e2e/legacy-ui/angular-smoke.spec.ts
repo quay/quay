@@ -58,10 +58,13 @@ test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
     await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('html[ng-app="quay"]')).toBeAttached();
 
-    // The Angular repo list page renders with the quay-page class
-    await expect(page.locator('.page-content')).toBeVisible({
+    // Verify Angular routed to a page (ng-view has rendered content)
+    await expect(page.locator('[ng-view] > *')).toBeAttached({
       timeout: 15000,
     });
+
+    // Verify we weren't redirected away from the repo list
+    expect(page.url()).toContain('/repository');
   });
 
   test('about page loads', async ({page}) => {

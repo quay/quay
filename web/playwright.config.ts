@@ -58,6 +58,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /legacy-ui/,
       use: {...devices['Desktop Chrome'], channel: 'chromium'},
     },
     {
