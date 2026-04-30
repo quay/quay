@@ -25,22 +25,6 @@ from test.fixtures import *  # noqa: F401, F403
 from util.bytes import Bytes
 from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
-# Performance tracking for quota check overhead
-_quota_check_times = []
-
-
-def measure_quota_check(func):
-    """Decorator to measure quota check overhead."""
-
-    def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        result = func(*args, **kwargs)
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        _quota_check_times.append(elapsed_ms)
-        return result
-
-    return wrapper
-
 
 class TestQuotaEnforcementV2:
     """Integration tests for quota enforcement during V2 registry operations.
