@@ -7,6 +7,7 @@ coverage:
       backend:
         flags:
           - unit
+          - sqlite
         paths:
           - "!web/**"
         target: 70%
@@ -23,6 +24,10 @@ coverage:
 
 flags:
   unit:
+    paths:
+      - "!web/**"
+    carryforward: true
+  sqlite:
     paths:
       - "!web/**"
     carryforward: true
