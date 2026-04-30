@@ -25,26 +25,31 @@ test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
   test('repository list page loads after login', async ({page, request}) => {
     // Log in via API to get session cookies
     const csrfResponse = await request.get(`${API_URL}/csrf_token`);
+    expect(csrfResponse.ok()).toBeTruthy();
     const csrfData = await csrfResponse.json();
 
-    await request.post(`${API_URL}/api/v1/signin`, {
+    const signinResponse = await request.post(`${API_URL}/api/v1/signin`, {
       headers: {'X-CSRF-Token': csrfData.csrf_token},
       data: {
         username: TEST_USERS.admin.username,
         password: TEST_USERS.admin.password,
       },
     });
+    expect(signinResponse.ok()).toBeTruthy();
 
     // Transfer cookies from API context to the browser page
     const cookies = await request.storageState();
     await page.context().addCookies(cookies.cookies);
 
-    // Ensure Angular cookie is still set
+    // Derive domain from the baseURL so tests work in any environment
+    const baseUrl = new URL(
+      page.context().pages()[0]?.url() || 'http://localhost:8080',
+    );
     await page.context().addCookies([
       {
         name: 'defaultui',
         value: 'angular',
-        domain: 'localhost',
+        domain: baseUrl.hostname,
         path: '/',
       },
     ]);
