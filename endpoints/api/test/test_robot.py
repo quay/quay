@@ -269,6 +269,84 @@ def test_user_robot_federation_create(app):
         assert len(resp.json) == 0
 
 
+def test_user_robot_federation_multiple_configs(app):
+    with client_with_identity("devtable", app) as cl:
+        fed_config = [
+            {"issuer": "https://issuer1", "subject": "subject1"},
+            {"issuer": "https://issuer2", "subject": "subject2"},
+        ]
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            {"robot_shortname": "dtrobot"},
+            fed_config,
+            expected_code=200,
+        )
+
+        resp = conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "GET",
+            {"robot_shortname": "dtrobot"},
+            expected_code=200,
+        )
+
+        assert len(resp.json) == 2
+
+
+def test_user_robot_federation_invalid_issuer(app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            {"robot_shortname": "dtrobot"},
+            [{"issuer": "not-a-url", "subject": "subject1"}],
+            expected_code=400,
+        )
+
+
+def test_user_robot_federation_empty_config(app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            {"robot_shortname": "dtrobot"},
+            [{}],
+            expected_code=400,
+        )
+
+
+def test_org_robot_federation_unauthorized_reader(app):
+    with client_with_identity("reader", app) as cl:
+        conduct_api_call(
+            cl,
+            OrgRobotFederation,
+            "GET",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            expected_code=403,
+        )
+
+        conduct_api_call(
+            cl,
+            OrgRobotFederation,
+            "POST",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            [{"issuer": "https://issuer1", "subject": "subject1"}],
+            expected_code=403,
+        )
+
+        conduct_api_call(
+            cl,
+            OrgRobotFederation,
+            "DELETE",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            expected_code=403,
+        )
+
+
 @pytest.mark.parametrize(
     "fed_config, raises_error, error_message",
     [
