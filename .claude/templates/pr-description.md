@@ -28,3 +28,8 @@ https://redhat.atlassian.net/browse/PROJQUAY-XXXX
 <!-- After merge, comment: /cherrypick redhat-X.Y -->
 - [ ] Backport required: <!-- branch name -->
 - [ ] No backport needed
+
+## Automation
+<!-- Populated automatically when PR is created from an ambient session -->
+<!-- Remove this section entirely for manual PRs -->
+- **Session ID**: <!-- ambient session ID -->

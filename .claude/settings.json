@@ -72,6 +72,12 @@
             "command": ".claude/scripts/check-target-version.sh",
             "if": "Bash(git push *)",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'if [ -z \"${AGENTIC_SESSION_NAME:-}\" ]; then exit 0; fi; INPUT=$(cat); RESPONSE=$(echo \"$INPUT\" | jq -r \".tool_response.stdout // empty\"); PR_URL=$(echo \"$RESPONSE\" | grep -oP \"https://github.com/quay/quay/pull/\\d+\" | head -1 || true); if [ -n \"$PR_URL\" ]; then PR_NUM=$(echo \"$PR_URL\" | grep -oP \"\\d+$\"); gh pr edit \"$PR_NUM\" --repo quay/quay --add-label \"ambient-session\" 2>/dev/null || true; fi'",
+            "if": "Bash(gh pr create *)",
+            "timeout": 15
           }
         ]
       }
