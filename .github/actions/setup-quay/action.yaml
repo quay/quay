@@ -239,6 +239,8 @@ runs:
 
     - name: Build React static files for nginx
       shell: bash
+      env:
+        REACT_QUAY_APP_API_URL: http://localhost:8080
       run: |
         echo "Building React static files for nginx..."
         cd web && npm clean-install && npm run build
