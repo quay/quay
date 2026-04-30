@@ -282,7 +282,7 @@ describe('Service Keys Management', () => {
       // Form fields should be present
       cy.get('#service-name').should('exist');
       cy.get('#key-name').should('exist');
-      cy.get('#expiration').should('exist');
+      cy.get('input[aria-label="Expiration date"]').should('exist');
     });
 
     it('should create a new service key successfully', () => {
@@ -322,7 +322,11 @@ describe('Service Keys Management', () => {
       // Fill out required form fields
       cy.get('#service-name').type('new_service'); // Must match [a-z0-9_]+ pattern
       cy.get('#key-name').type('New Test Key');
-      cy.get('#expiration').type('2025-12-31T23:59'); // Required field
+      // Expiration uses DatePicker + TimePicker instead of datetime-local input
+      cy.get('input[aria-label="Expiration date"]').type('2027-12-31');
+      cy.get('input[aria-label="Expiration time"]')
+        .clear()
+        .type('11:59 PM{enter}');
 
       // Submit form
       cy.get('[data-testid="create-key-submit"]').click();
@@ -355,8 +359,11 @@ describe('Service Keys Management', () => {
       cy.get('#key-name').type('Test Key');
       cy.get('[data-testid="create-key-submit"]').should('be.disabled');
 
-      // Fill all required fields
-      cy.get('#expiration').type('2025-12-31T23:59');
+      // Fill all required fields - expiration uses DatePicker + TimePicker
+      cy.get('input[aria-label="Expiration date"]').type('2027-12-31');
+      cy.get('input[aria-label="Expiration time"]')
+        .clear()
+        .type('11:59 PM{enter}');
 
       // Submit button should now be enabled
       cy.get('[data-testid="create-key-submit"]').should('not.be.disabled');
@@ -382,7 +389,11 @@ describe('Service Keys Management', () => {
       cy.get('#create-service-key-button').click();
       cy.get('#service-name').type('existing_service'); // Must match [a-z0-9_]+ pattern
       cy.get('#key-name').type('Test Key');
-      cy.get('#expiration').type('2025-12-31T23:59'); // Required field
+      // Expiration uses DatePicker + TimePicker instead of datetime-local input
+      cy.get('input[aria-label="Expiration date"]').type('2027-12-31');
+      cy.get('input[aria-label="Expiration time"]')
+        .clear()
+        .type('11:59 PM{enter}');
 
       // Submit form
       cy.get('[data-testid="create-key-submit"]').click();
@@ -461,8 +472,8 @@ describe('Service Keys Management', () => {
       // Open action menu for first service key
       cy.get('[data-testid="test-key-1-actions-toggle"]').click();
 
-      // Click delete action
-      cy.contains('Delete Key').click();
+      // Click delete action (menu items render in a portal)
+      cy.contains('Delete Key').should('be.visible').click();
 
       // Confirm modal opens
       cy.get('[data-testid="delete-service-key-modal"]').should('be.visible');
@@ -513,8 +524,8 @@ describe('Service Keys Management', () => {
       // Open action menu for service key
       cy.get('[data-testid="test-key-1-actions-toggle"]').click();
 
-      // Click change expiration action
-      cy.contains('Change Expiration Time').click();
+      // Click change expiration action (menu items render in a portal)
+      cy.contains('Change Expiration Time').should('be.visible').click();
 
       // Confirm modal opens
       cy.get('[data-testid="change-expiration-modal"]').should('be.visible');
@@ -568,8 +579,8 @@ describe('Service Keys Management', () => {
       // Open action menu for service key
       cy.get('[data-testid="test-key-1-actions-toggle"]').click();
 
-      // Click set friendly name action
-      cy.contains('Set Friendly Name').click();
+      // Click set friendly name action (menu items render in a portal)
+      cy.contains('Set Friendly Name').should('be.visible').click();
 
       // Confirm modal opens
       cy.get('[data-testid="set-name-modal"]').should('be.visible');
@@ -618,10 +629,10 @@ describe('Service Keys Management', () => {
       cy.get('[data-testid="select-test-key-2"]').click();
 
       // Click the Actions button that appears when items are selected
-      cy.contains('button', 'Actions').click();
+      cy.contains('button', 'Actions').should('be.visible').click();
 
-      // Verify Delete Keys option appears in the dropdown
-      cy.get('[data-testid="bulk-delete-keys"] button').should('exist');
+      // Verify Delete Keys option appears in the dropdown (portal)
+      cy.get('[data-testid="bulk-delete-keys"]').should('exist');
     });
 
     it('should bulk delete selected service keys', () => {
@@ -642,11 +653,11 @@ describe('Service Keys Management', () => {
       cy.get('[name="service-keys-checkbox"]').click();
 
       // Click Actions button when it appears
-      cy.contains('button', 'Actions').click();
+      cy.contains('button', 'Actions').should('be.visible').click();
 
-      // Wait for dropdown to be visible and click Delete Keys
+      // Wait for dropdown to be visible and click Delete Keys (portal)
       cy.get('[data-testid="bulk-delete-keys"]').should('be.visible');
-      cy.get('[data-testid="bulk-delete-keys"] button').click();
+      cy.get('[data-testid="bulk-delete-keys"]').should('be.visible').click();
 
       // Verify bulk delete modal appears
       cy.get('[data-testid="bulk-delete-modal"]').should('be.visible');
@@ -746,12 +757,14 @@ describe('Service Keys Management', () => {
       cy.get('[data-testid="select-test-key-2"]').click();
 
       // Click Actions button
-      cy.contains('button', 'Actions').click();
+      cy.contains('button', 'Actions').should('be.visible').click();
 
-      // Delete Keys option should be disabled
-      cy.get('[data-testid="bulk-delete-keys"]')
-        .find('button')
-        .should('have.attr', 'aria-disabled', 'true');
+      // Delete Keys option should be disabled (portal)
+      cy.get('[data-testid="bulk-delete-keys"]').should(
+        'have.attr',
+        'aria-disabled',
+        'true',
+      );
     });
   });
 });

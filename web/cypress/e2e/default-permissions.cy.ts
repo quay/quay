@@ -31,9 +31,8 @@ describe('Default permissions page', () => {
     // Search for creator
     cy.get('#default-permissions-search').type(`${createdBy}`);
     cy.contains('1 - 1 of 1');
-    cy.get(`[data-testid="${createdBy}-permission-dropdown-toggle"]`)
-      .contains('Read')
-      .click();
+    cy.get(`[data-testid="${createdBy}-permission-dropdown-toggle"]`).click();
+    // Select options render in a portal outside the table row
     cy.get(`[data-testid="${createdBy}-WRITE"]`).click();
 
     // verify success alert
@@ -51,11 +50,11 @@ describe('Default permissions page', () => {
     cy.contains('1 - 1 of 1');
     cy.get('[data-testid="default-permissions-table"]').within(() => {
       cy.get(`[data-testid="${permissionToBeDeleted}-toggle-kebab"]`).click();
-
-      cy.get(`[data-testid="${permissionToBeDeleted}-del-option"]`)
-        .contains('Delete')
-        .click();
     });
+    // Kebab menu items render in a portal outside the table
+    cy.get(`[data-testid="${permissionToBeDeleted}-del-option"]`)
+      .contains('Delete')
+      .click();
 
     // verify success alert
     cy.get('.pf-v6-c-alert.pf-m-success')

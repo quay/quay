@@ -54,12 +54,17 @@ describe('Org List Page', () => {
 
     // Open and cancel modal
     cy.get('#create-organization-button').click();
+    // Modal renders in a PF6 portal; wait for it to be visible
+    cy.get('.pf-v6-c-modal-box').should('be.visible');
     cy.get('#create-org-cancel').click();
 
     // Create Org
     cy.get('#create-organization-button').click();
+    cy.get('.pf-v6-c-modal-box').should('be.visible');
     cy.get('#create-org-name-input').type('cypress');
-    cy.get('#create-org-email-input').type('cypress@redhat.com');
+    cy.get('#create-org-email-input')
+      .should('be.visible')
+      .type('cypress@redhat.com');
     cy.get('#create-org-confirm').click({timeout: 10000});
 
     cy.get('#orgslist-search-input').type('cypress');
@@ -67,6 +72,7 @@ describe('Org List Page', () => {
 
     // Validate all required fields are populated
     cy.get('#create-organization-button').click();
+    cy.get('.pf-v6-c-modal-box').should('be.visible');
     cy.get('#create-org-confirm').should('be.disabled');
 
     // Valid org name
@@ -74,7 +80,7 @@ describe('Org List Page', () => {
     cy.get('#create-org-confirm').should('be.disabled');
 
     // Valid email address
-    cy.get('#create-org-email-input').type('cypress');
+    cy.get('#create-org-email-input').should('be.visible').type('cypress');
     cy.get('#create-org-name-input').click();
     cy.contains('Enter a valid email: email@provider.com');
     cy.get('#create-org-confirm').should('be.disabled');
@@ -86,15 +92,21 @@ describe('Org List Page', () => {
 
     // First create an org
     cy.get('#create-organization-button').click();
+    cy.get('.pf-v6-c-modal-box').should('be.visible');
     cy.get('#create-org-name-input').type('duplicatetest');
-    cy.get('#create-org-email-input').type('duplicatetest@redhat.com');
+    cy.get('#create-org-email-input')
+      .should('be.visible')
+      .type('duplicatetest@redhat.com');
     cy.get('#create-org-confirm').click({timeout: 10000});
     cy.contains('Successfully created organization duplicatetest');
 
     // Try to create org with same name
     cy.get('#create-organization-button').click();
+    cy.get('.pf-v6-c-modal-box').should('be.visible');
     cy.get('#create-org-name-input').type('duplicatetest');
-    cy.get('#create-org-email-input').type('duplicatetest2@redhat.com');
+    cy.get('#create-org-email-input')
+      .should('be.visible')
+      .type('duplicatetest2@redhat.com');
     cy.get('#create-org-confirm').click({timeout: 10000});
 
     // Should show error, NOT success
@@ -157,8 +169,9 @@ describe('Org List Page', () => {
   it('Pagination', () => {
     cy.visit('/organization');
 
-    cy.contains('1 - 20 of 30').should('exist');
+    // Wait for the table data to fully load before checking pagination
     cy.get('td[data-label="Name"]').should('have.length', 20);
+    cy.contains('1 - 20 of 30').should('exist');
 
     // cycle through the pages
     cy.get('button[aria-label="Go to next page"]').first().click();
@@ -802,16 +815,22 @@ describe('Org List Page', () => {
 
     // Create two test organizations
     cy.get('#create-organization-button').click();
+    cy.get('.pf-v6-c-modal-box').should('be.visible');
     cy.get('#create-org-name-input').type('testorg_delete1');
-    cy.get('#create-org-email-input').type('testorg_delete1@redhat.com');
+    cy.get('#create-org-email-input')
+      .should('be.visible')
+      .type('testorg_delete1@redhat.com');
     cy.get('#create-org-confirm').click({timeout: 10000});
     cy.contains('Successfully created organization testorg_delete1', {
       timeout: 10000,
     });
 
     cy.get('#create-organization-button').click();
+    cy.get('.pf-v6-c-modal-box').should('be.visible');
     cy.get('#create-org-name-input').type('testorg_delete2');
-    cy.get('#create-org-email-input').type('testorg_delete2@redhat.com');
+    cy.get('#create-org-email-input')
+      .should('be.visible')
+      .type('testorg_delete2@redhat.com');
     cy.get('#create-org-confirm').click({timeout: 10000});
     cy.contains('Successfully created organization testorg_delete2', {
       timeout: 10000,

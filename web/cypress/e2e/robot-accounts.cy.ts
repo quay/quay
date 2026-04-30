@@ -67,8 +67,8 @@ describe('Robot Accounts Page', () => {
 
     // examine generated secret and verify it is scoped to the organization
     cy.get('div[id="step-2"]')
-      .get('button[aria-label="Show content"]')
-      .click({multiple: true});
+      .find('button[aria-label="Show content"]')
+      .click();
 
     cy.get('@serverHostname').then((serverHostname) => {
       cy.get('@testrobotToken').then((testrobotToken) => {
@@ -180,8 +180,9 @@ describe('Robot Accounts Page', () => {
     cy.get('#robot-account-search').type('testrobot2');
     cy.contains('1 - 1 of 1');
     cy.get('button[id="testorg+testrobot2-toggle-kebab"]').click();
-    cy.get('button[id="testorg+testrobot2-del-btn"]')
+    cy.get('[id="testorg+testrobot2-del-btn"]')
       .contains('Delete')
+      .should('be.visible')
       .click();
 
     cy.get('#delete-confirmation-input').type('confirm');
@@ -226,7 +227,9 @@ describe('Robot Accounts Page', () => {
 
     cy.visit('/organization/testorg?tab=Robotaccounts');
     cy.get(`[id="${robotAccnt}-toggle-kebab"]`).click();
-    cy.get(`[id="${robotAccnt}-set-repo-perms-btn"]`).click();
+    cy.get(`[id="${robotAccnt}-set-repo-perms-btn"]`)
+      .should('be.visible')
+      .click();
     cy.get('[name="add-repository-bulk-select"]').click();
     cy.get('#toggle-bulk-perms-kebab').click();
     cy.get('[role="menuitem"]').contains('Write').click();

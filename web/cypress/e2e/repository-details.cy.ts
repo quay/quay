@@ -218,7 +218,7 @@ describe('Repository Details Page', () => {
       .first()
       .within(() => cy.get('input').click());
     cy.contains('Actions').click();
-    cy.contains('Remove').click();
+    cy.contains('Remove').should('be.visible').click();
     cy.contains('Delete the following tag(s)?').should('exist');
     cy.contains('Cancel').should('exist');
     cy.get('button').contains('Delete').should('exist');
@@ -240,7 +240,7 @@ describe('Repository Details Page', () => {
       .first()
       .within(() => cy.get('input').click());
     cy.contains('Actions').click();
-    cy.contains('Permanently delete').click();
+    cy.contains('Permanently delete').should('be.visible').click();
     cy.contains('Permanently delete the following tag(s)?').should('exist');
     cy.contains(
       'Tags deleted cannot be restored within the time machine window and will be immediately eligible for garbage collection.',
@@ -305,9 +305,9 @@ describe('Repository Details Page', () => {
   it('bulk deletes tags', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('#toolbar-dropdown-checkbox').click();
-    cy.get('button').contains('Select page (2)').click();
+    cy.contains('Select page (2)').should('be.visible').click();
     cy.contains('Actions').click();
-    cy.contains('Remove').click();
+    cy.contains('Remove').should('be.visible').click();
     cy.contains('Delete the following tag(s)?').should('exist');
     cy.contains('Cancel').should('exist');
     cy.get('button').contains('Delete').should('exist');
@@ -325,18 +325,15 @@ describe('Repository Details Page', () => {
   it('renders pull popover', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // Find the first row that contains "latest" and trigger mouseover on the "Pull" column
+    // Hover over the Pull icon to trigger the popover
     cy.contains('tbody tr', 'latest')
       .first()
       .within(() => {
         cy.get('td[data-label="Pull"] svg').trigger('mouseover', {force: true});
       });
 
-    // Ensure popover appears
-    cy.get(
-      '[role="tooltip"], .popover, [data-testid="pull-popover"], [class*="popover"]',
-      {timeout: 5000},
-    ).should('exist');
+    // Ensure popover appears (rendered in a portal)
+    cy.get('[data-testid="pull-popover"]', {timeout: 5000}).should('exist');
 
     // Verify popover contents
     cy.get('[data-testid="pull-popover"]').within(() => {
@@ -481,7 +478,8 @@ describe('Repository Details Page', () => {
   it('search by manifest', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('#toolbar-dropdown-filter').click();
-    cy.get('span').contains('Digest').click();
+    // Dropdown items render in a portal
+    cy.contains('Digest').click();
     cy.get('#tagslist-search-input').type('f54a58bc1aac');
     cy.contains('latest').should('exist');
     cy.contains('manifestlist').should('not.exist');
@@ -598,10 +596,10 @@ describe('Repository Details Page', () => {
     });
     cy.contains('Edit labels').click();
     cy.get('#mutable-labels').within(() => {
-      cy.get('button').should('exist');
-      cy.get('button').then((buttons) => {
+      cy.get('.pf-v6-c-label__actions button').should('exist');
+      cy.get('.pf-v6-c-label__actions button').then((buttons) => {
         for (let i = 0; i < buttons.length; i++) {
-          cy.get('button').first().click();
+          cy.get('.pf-v6-c-label__actions button').first().click();
         }
       });
     });
@@ -638,10 +636,10 @@ describe('Repository Details Page', () => {
     });
     cy.contains('Edit labels').click();
     cy.get('#mutable-labels').within(() => {
-      cy.get('button').should('exist');
-      cy.get('button').then((buttons) => {
+      cy.get('.pf-v6-c-label__actions button').should('exist');
+      cy.get('.pf-v6-c-label__actions button').then((buttons) => {
         for (let i = 0; i < buttons.length; i++) {
-          cy.get('button').first().click();
+          cy.get('.pf-v6-c-label__actions button').first().click();
         }
       });
     });
@@ -852,9 +850,10 @@ describe('Repository Details Page', () => {
     // Start
     cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('#toolbar-dropdown-checkbox').click();
-    cy.get('button').contains('Select page (2)').click();
+    // Dropdown items render in a portal
+    cy.contains('Select page (2)').should('be.visible').click();
     cy.contains('Actions').click();
-    cy.contains('Set expiration').click();
+    cy.contains('Set expiration').should('be.visible').click();
     cy.get('#edit-expiration-tags')
       .first()
       .within(() => {
@@ -1128,7 +1127,7 @@ describe('Tag history Tab', () => {
     );
     cy.visit('/repository/user1/hello-world?tab=tags');
     cy.contains('Tag history').click();
-    cy.contains('Delete testdelete sha25612345e7ba2842c ').click(10, 10);
+    cy.get('td[data-label="permanently-delete-tag"] a').first().click();
     cy.contains('Permanently Delete Tag').should('exist');
     cy.contains(
       'The tag deleted cannot be restored within the time machine window and references to the tag will be removed from tag history. Any alive tags with the same name and digest will not be effected.',

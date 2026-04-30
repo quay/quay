@@ -59,7 +59,9 @@ describe('Repositories List Page', () => {
     cy.contains('Create Repository').click();
     cy.contains('Create Repository').should('exist');
     cy.get('[data-testid="selected-namespace-dropdown"]').click();
-    cy.get('[data-testid="user-user1"]').click();
+    cy.get('[data-testid="user-user1"]')
+      .should('be.visible')
+      .click({waitForAnimations: false});
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
       'This is a new public repository',
@@ -79,7 +81,9 @@ describe('Repositories List Page', () => {
     cy.contains('Create Repository').click();
     cy.contains('Create Repository').should('exist');
     cy.get('[data-testid="selected-namespace-dropdown"]').click();
-    cy.get('[data-testid="user-user1"]').click();
+    cy.get('[data-testid="user-user1"]')
+      .should('be.visible')
+      .click({waitForAnimations: false});
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
       'This is a new private repository',
@@ -117,9 +121,9 @@ describe('Repositories List Page', () => {
   it('deletes multiple repositories', () => {
     cy.visit('/organization/user1');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
-    cy.contains('Select all (2)').click();
+    cy.contains('Select all (2)').should('be.visible').click();
     cy.contains('Actions').click();
-    cy.contains('Delete').click();
+    cy.get('[role="menuitem"]').contains('Delete').click();
     cy.contains('Permanently delete repositories?');
     cy.contains(
       'This action deletes all repositories and cannot be recovered.',
@@ -151,9 +155,9 @@ describe('Repositories List Page', () => {
     cy.visit('/repository');
     cy.get('#repositorylist-search-input').type('user1');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
-    cy.contains('Select page (2)').click();
+    cy.contains('Select page (2)').should('be.visible').click();
     cy.contains('Actions').click();
-    cy.contains('Make public').click();
+    cy.contains('Make public').should('be.visible').click();
     cy.contains('Make repositories public');
     cy.contains(
       'Update 2 repositories visibility to be public so they are visible to all user, and may be pulled by all users.',
@@ -166,9 +170,9 @@ describe('Repositories List Page', () => {
     cy.visit('/repository');
     cy.get('#repositorylist-search-input').type('projectquay');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
-    cy.contains('Select page (20)').click();
+    cy.contains('Select page (20)').should('be.visible').click();
     cy.contains('Actions').click();
-    cy.contains('Make private').click();
+    cy.contains('Make private').should('be.visible').click();
     cy.contains('Make repositories private');
     cy.contains(
       'Update 20 repositories visibility to be private so they are only visible to certain users, and only may be pulled by certain users.',

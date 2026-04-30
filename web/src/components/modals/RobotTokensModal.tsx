@@ -310,6 +310,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               id="step-2"
               data-testid="step-2-secret"
               className="pf-v6-u-mb-sm"
+              toggleAriaLabel="Show content"
             >
               {getKubernetesContent().join('')}
             </ClipboardCopy>
@@ -350,6 +351,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               clickTip="Copied"
               variant={ClipboardCopyVariant.expansion}
               id="step-4"
+              toggleAriaLabel="Show content"
             >
               {getKubernetesConfiguration()}
             </ClipboardCopy>

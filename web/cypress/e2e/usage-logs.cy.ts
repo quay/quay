@@ -392,7 +392,10 @@ describe('Usage Logs', () => {
     cy.contains('button', 'Load More Logs').should('not.exist');
 
     // Verify we can access logs from second page through table pagination
-    cy.get('button[aria-label="Go to next page"]:visible').first().click();
+    cy.get('button[aria-label="Go to next page"]:visible')
+      .first()
+      .should('be.visible')
+      .click();
 
     // Should now show second page of client-side pagination
     cy.contains(/of\s+26/).should('be.visible');

@@ -194,7 +194,7 @@ describe('Superuser Organization Actions', () => {
       cy.get('[data-testid="testorg-options-toggle"]').click();
 
       // Click Rename Organization
-      cy.contains('Rename Organization').click();
+      cy.contains('Rename Organization').should('be.visible').click();
 
       // Should open rename modal
       cy.get('[role="dialog"]').should('exist');
@@ -225,21 +225,21 @@ describe('Superuser Organization Actions', () => {
       cy.get('[data-testid="testorg-options-toggle"]').click();
 
       // Click Rename Organization
-      cy.contains('Rename Organization').click();
+      cy.contains('Rename Organization').should('be.visible').click();
 
       // Should open rename modal
       cy.get('[role="dialog"]').should('exist');
 
       // OK button should be disabled when field is empty
-      cy.get('button').contains('OK').should('be.disabled');
+      cy.contains('button', 'OK').should('be.disabled');
 
       // Add text, button should be enabled
       cy.get('#new-organization-name').type('new-name');
-      cy.get('button').contains('OK').should('not.be.disabled');
+      cy.contains('button', 'OK').should('not.be.disabled');
 
       // Clear text, button should be disabled again
       cy.get('#new-organization-name').clear();
-      cy.get('button').contains('OK').should('be.disabled');
+      cy.contains('button', 'OK').should('be.disabled');
     });
 
     it('should show password verification when fresh login is required', () => {
@@ -262,7 +262,7 @@ describe('Superuser Organization Actions', () => {
       cy.get('[data-testid="testorg-options-toggle"]').click();
 
       // Click Rename Organization
-      cy.contains('Rename Organization').click();
+      cy.contains('Rename Organization').should('be.visible').click();
 
       // Should open rename modal
       cy.get('[role="dialog"]').should('exist');
@@ -390,7 +390,7 @@ describe('Superuser Organization Actions', () => {
       cy.get('[data-testid="testorg-options-toggle"]').click();
 
       // Click Delete Organization
-      cy.contains('Delete Organization').click();
+      cy.contains('Delete Organization').should('be.visible').click();
 
       // Should open delete confirmation modal
       cy.get('[role="dialog"]').should('exist');
@@ -429,7 +429,7 @@ describe('Superuser Organization Actions', () => {
       cy.get('[data-testid="testorg-options-toggle"]').click();
 
       // Click Delete Organization
-      cy.contains('Delete Organization').click();
+      cy.contains('Delete Organization').should('be.visible').click();
 
       // Should open delete confirmation modal
       cy.get('[role="dialog"]').should('exist');
@@ -554,7 +554,7 @@ describe('Superuser Organization Actions', () => {
       cy.get('[data-testid="testorg-options-toggle"]').click();
 
       // Click Take Ownership
-      cy.contains('Take Ownership').click();
+      cy.contains('Take Ownership').should('be.visible').click();
 
       // Should open take ownership modal
       cy.get('[role="dialog"]').should('exist');
@@ -589,7 +589,7 @@ describe('Superuser Organization Actions', () => {
       cy.get('[data-testid="testorg-options-toggle"]').click();
 
       // Click Take Ownership
-      cy.contains('Take Ownership').click();
+      cy.contains('Take Ownership').should('be.visible').click();
 
       // Should open take ownership modal
       cy.get('[role="dialog"]').should('exist');
@@ -711,7 +711,7 @@ describe('Superuser Organization Actions', () => {
       cy.get('[data-testid="testorg-options-toggle"]').click();
 
       // Click Configure Quota
-      cy.contains('Configure Quota').click();
+      cy.contains('Configure Quota').should('be.visible').click();
 
       // Modal should open with correct title
       cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
@@ -749,7 +749,7 @@ describe('Superuser Organization Actions', () => {
       cy.get('[data-testid="testorg-options-toggle"]').click();
 
       // Click Configure Quota
-      cy.contains('Configure Quota').click();
+      cy.contains('Configure Quota').should('be.visible').click();
 
       // Modal should open
       cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
