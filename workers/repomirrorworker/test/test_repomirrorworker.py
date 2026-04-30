@@ -588,8 +588,8 @@ def test_perform_mirror_releases_on_cleanup_error(run_skopeo_mock, initialized_d
 
     assert [] == skopeo_calls
 
-    mirror.reload()
-    assert mirror.sync_status == RepoMirrorStatus.FAIL
+    updated = RepoMirrorConfig.get_by_id(mirror.id)
+    assert updated.sync_status == RepoMirrorStatus.FAIL
 
 
 @disable_existing_mirrors

@@ -941,8 +941,8 @@ class TestPerformOrgMirrorRepo:
             result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
 
         assert result == OrgMirrorRepoStatus.FAIL
-        org_mirror_repo.reload()
-        assert org_mirror_repo.sync_status == OrgMirrorRepoStatus.FAIL
+        updated = OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+        assert updated.sync_status == OrgMirrorRepoStatus.FAIL
 
 
 class TestPerTagLogging:
