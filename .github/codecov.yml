@@ -2,4 +2,51 @@ coverage:
   status:
     project:
       default:
+        target: auto
+        informational: true
+      backend:
+        flags:
+          - unit
+          - sqlite
+        paths:
+          - "!web/**"
         target: 70%
+      web:
+        flags:
+          - web
+        paths:
+          - "web/src/**"
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: 60%
+
+flags:
+  unit:
+    paths:
+      - "!web/**"
+    carryforward: true
+  sqlite:
+    paths:
+      - "!web/**"
+    carryforward: true
+  web:
+    paths:
+      - "web/src/**"
+    carryforward: true
+
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+  individual_components:
+    - component_id: backend
+      name: Backend (Python)
+      paths:
+        - "!web/**"
+    - component_id: web
+      name: Web (React/TypeScript)
+      paths:
+        - "web/src/**"
