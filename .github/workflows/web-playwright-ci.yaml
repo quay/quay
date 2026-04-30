@@ -68,7 +68,13 @@ jobs:
       - name: Run Database auth tests
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
-        run: cd web && npx playwright test --grep-invert @auth:OIDC --reporter=blob
+        run: cd web && npx playwright test --project=chromium --grep-invert @auth:OIDC --reporter=blob
+
+      - name: Run legacy UI toggle and smoke tests
+        if: always()
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/legacy-ui
+        run: cd web && npx playwright test --project=legacy-ui --reporter=blob
 
       - name: Swap to OIDC authentication
         if: always()
@@ -104,7 +110,7 @@ jobs:
         if: always()
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
-        run: cd web && npx playwright test --grep @auth:OIDC --reporter=blob
+        run: cd web && npx playwright test --project=chromium --grep @auth:OIDC --reporter=blob
 
       - name: Merge test reports
         if: always()

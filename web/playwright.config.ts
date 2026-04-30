@@ -60,6 +60,16 @@ export default defineConfig({
       name: 'chromium',
       use: {...devices['Desktop Chrome'], channel: 'chromium'},
     },
+    {
+      name: 'legacy-ui',
+      testDir: './playwright/e2e/legacy-ui',
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chromium',
+        baseURL:
+          process.env.PLAYWRIGHT_LEGACY_BASE_URL || 'http://localhost:8080',
+      },
+    },
   ],
 
   // Configure web server for local development
