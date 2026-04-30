@@ -70,12 +70,17 @@ Write the filled template to `/tmp/pr-body.md`.
 
 ## Step 4: Create PR
 
+If `AGENTIC_SESSION_NAME` was set (ambient session), include `--label "ambient-session"`:
+
 ```bash
 gh pr create \
   --title "PROJQUAY-XXXX: type(scope): description" \
   --body "$(cat /tmp/pr-body.md)" \
-  --base master
+  --base master \
+  --label "ambient-session"
 ```
+
+For manual PRs (no ambient session), omit the `--label` flag.
 
 ## Step 5: Post-PR
 
