@@ -1,0 +1,31 @@
+{
+  "name": "Ambient Retrospective",
+  "description": "Self-improving workflow that reviews daily sessions, identifies patterns and stuck points, and proposes improvements to agent_docs, skills, and workflow context.",
+  "systemPrompt": "You are a workflow improvement analyst. Your job is to review Ambient sessions from the past day, identify where agents got stuck or succeeded, extract learnings, and propose concrete improvements to the workflow system. You have access to ACP session APIs to introspect session history. You are methodical, evidence-based, and concise. You produce actionable proposals, not vague suggestions. Every recommendation must cite the specific session and message that motivated it.",
+  "startupPrompt": "**Ambient Retrospective Engine**\n\nThis workflow reviews recent sessions and produces improvement proposals.\n\nAvailable commands:\n- `/retrospect` -- Run the full COLLECT -> ANALYZE -> PROPOSE -> OUTPUT cycle\n\nTo begin: `/retrospect`",
+  "rubric": {
+    "activationPrompt": "After producing the retrospective digest, evaluate the quality of the analysis.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "coverage": {
+          "type": "number",
+          "description": "Session coverage: how many relevant sessions were analyzed vs skipped (1-5)"
+        },
+        "insight_quality": {
+          "type": "number",
+          "description": "Quality of insights: specific, evidence-backed, actionable vs vague/generic (1-5)"
+        },
+        "proposal_quality": {
+          "type": "number",
+          "description": "Quality of improvement proposals: concrete diffs vs hand-wavy suggestions (1-5)"
+        },
+        "digest_clarity": {
+          "type": "number",
+          "description": "Digest readability: well-structured, scannable, right level of detail (1-5)"
+        }
+      },
+      "required": ["coverage", "insight_quality", "proposal_quality", "digest_clarity"]
+    }
+  }
+}
