@@ -59,7 +59,7 @@ test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
     await expect(page.locator('html[ng-app="quay"]')).toBeAttached();
 
     // Verify Angular routed to a page (ng-view has rendered content)
-    await expect(page.locator('[ng-view] > *')).toBeAttached({
+    await expect(page.locator('[ng-view] > *').first()).toBeAttached({
       timeout: 15000,
     });
 
