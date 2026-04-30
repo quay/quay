@@ -7,8 +7,8 @@ from endpoints.api.superuser import (
     SuperUserList,
     SuperUserManagement,
     SuperUserOrganizationList,
+    SuperUserRepositoryBuildResource,
 )
-from endpoints.api.superuser_models_pre_oci import PreOCIModel
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
@@ -111,18 +111,21 @@ def test_get_superuserdumpconfig(app):
 
 
 def test_get_repository_build_no_trigger(app):
-    """get_repository_build must not crash when a build has no associated trigger."""
-    pre_oci_model = PreOCIModel()
+    """Superuser build endpoint must not crash when a build has no associated trigger."""
     repo = model.repository.get_repository("devtable", "simple")
     access_token = model.token.create_access_token(repo, "read")
     build = model.build.create_repository_build(
         repo, access_token, {}, "someresourcekey", "manual build", trigger=None
     )
 
-    with client_with_identity("devtable", app) as _:
-        repo_build = pre_oci_model.get_repository_build(build.uuid)
+    with client_with_identity("devtable", app) as cl:
+        result = conduct_api_call(
+            cl,
+            SuperUserRepositoryBuildResource,
+            "GET",
+            {"build_uuid": build.uuid},
+            None,
+            200,
+        )
 
-    assert repo_build is not None
-    assert repo_build.trigger.trigger is None
-    assert repo_build.trigger.pull_robot is None
-    assert repo_build.to_dict()["trigger"] is None
+    assert result.json["trigger"] is None
