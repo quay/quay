@@ -59,7 +59,7 @@ echo $AGENTIC_SESSION_NAME
 
 - **If `AGENTIC_SESSION_NAME` is set** (ambient session): populate the `## Automation` section
   in the description with the session ID value. Example:
-  ```
+  ```text
   ## Automation
   - **Session ID**: session-35fda6ec-7b06-4a69-b2a9-1cc3ca7238f4
   ```

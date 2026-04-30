@@ -43,15 +43,19 @@ if [ -z "$MSG" ]; then
   fi
 fi
 
-# If we couldn't extract a message, allow the commit (don't block blindly)
+# If the command explicitly supplies a message, failing to extract it should block.
 if [ -z "$MSG" ]; then
+  if echo "$CMD" | grep -qE -- '(^|[[:space:]])(--message(=|[[:space:]])|-m([[:space:]]|$)|-F([[:space:]]|$)|--file(=|[[:space:]]))'; then
+    echo "BLOCKED: Could not parse the commit message for validation." >&2
+    exit 2
+  fi
   exit 0
 fi
 
 FIRST_LINE=$(echo "$MSG" | head -1)
 
 # Validate: <subsystem>: <what changed>
-if ! echo "$FIRST_LINE" | grep -qP '^[\w/.-]+: .+'; then
+if ! echo "$FIRST_LINE" | grep -qE '^[[:alnum:]_/.-]+: .+'; then
   echo "BLOCKED: Commit message does not match required format." >&2
   echo "Expected: <subsystem>: <what changed> (PROJQUAY-####|NO-ISSUE)" >&2
   echo "Got: $FIRST_LINE" >&2
