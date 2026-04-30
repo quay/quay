@@ -16,7 +16,7 @@ STATE_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/cluster-provision-${UID}"
 STATE_FILE="${STATE_DIR}/state.json"
 
 POLL_INTERVAL_INITIAL=15
-POLL_INTERVAL_MAX=30
+POLL_INTERVAL_MAX=60
 POLL_TIMEOUT=2400  # 40 minutes
 
 GCSWEB_BASE="https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs"
@@ -96,26 +96,35 @@ gangway_post() {
 
 gangway_get() {
     local endpoint="$1"
-    local http_code body tmpfile
-    tmpfile=$(mktemp)
-    if ! http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
-        --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time "$CURL_MAX_TIME" \
-        -H "Authorization: Bearer ${GANGWAY_TOKEN}" \
-        "${GANGWAY_BASE}${endpoint}"); then
-        body=$(cat "$tmpfile" 2>/dev/null || true)
+    local http_code body tmpfile attempt
+    for attempt in 1 2 3; do
+        tmpfile=$(mktemp)
+        if ! http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
+            --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time "$CURL_MAX_TIME" \
+            -H "Authorization: Bearer ${GANGWAY_TOKEN}" \
+            "${GANGWAY_BASE}${endpoint}"); then
+            body=$(cat "$tmpfile" 2>/dev/null || true)
+            rm -f "$tmpfile"
+            die "Gangway API GET ${endpoint} transport error: ${body}"
+        fi
+        body=$(cat "$tmpfile")
         rm -f "$tmpfile"
-        die "Gangway API GET ${endpoint} transport error: ${body}"
-    fi
-    body=$(cat "$tmpfile")
-    rm -f "$tmpfile"
 
-    if [[ "$http_code" == "401" ]]; then
-        die "Authentication failed (HTTP 401). Your GANGWAY_TOKEN may be expired. Re-run: oc login ... && export GANGWAY_TOKEN=\$(oc whoami -t)"
-    fi
-    if [[ "$http_code" -lt 200 || "$http_code" -ge 300 ]]; then
-        die "Gangway API GET ${endpoint} failed (HTTP ${http_code}): ${body}"
-    fi
-    echo "$body"
+        if [[ "$http_code" == "429" ]]; then
+            info "Gangway rate-limited (429) — backing off 90s (attempt ${attempt}/3)..."
+            sleep 90
+            continue
+        fi
+        if [[ "$http_code" == "401" ]]; then
+            die "Authentication failed (HTTP 401). Your GANGWAY_TOKEN may be expired. Re-run: oc login ... && export GANGWAY_TOKEN=\$(oc whoami -t)"
+        fi
+        if [[ "$http_code" -lt 200 || "$http_code" -ge 300 ]]; then
+            die "Gangway API GET ${endpoint} failed (HTTP ${http_code}): ${body}"
+        fi
+        echo "$body"
+        return 0
+    done
+    die "Gangway API GET ${endpoint} failed after 3 attempts (rate limited)"
 }
 
 save_state() {
@@ -153,16 +162,19 @@ gcs_from_url() {
 
 try_download_kubeconfig() {
     local gcs_root="$1"
-    local url http_code tmpfile
+    local url response_meta http_code content_type tmpfile
     url="${GCSWEB_BASE}/${gcs_root}/${ARTIFACT_SUBPATH}"
     tmpfile=$(mktemp)
-    if ! http_code=$(curl -s -w "%{http_code}" -o "$tmpfile" \
+    if ! response_meta=$(curl -s -w "%{http_code}|%{content_type}" -o "$tmpfile" \
         --connect-timeout "$CURL_CONNECT_TIMEOUT" --max-time 60 \
         "$url"); then
         rm -f "$tmpfile"
         return 1
     fi
-    if [[ "$http_code" == "200" ]] && [[ -s "$tmpfile" ]]; then
+    http_code="${response_meta%%|*}"
+    content_type="${response_meta#*|}"
+    # gcsweb returns 200+HTML for missing files; only proceed for binary content
+    if [[ "$http_code" == "200" ]] && [[ "$content_type" != *"text/html"* ]] && [[ -s "$tmpfile" ]]; then
         mkdir -p "$(dirname "$KUBECONFIG_OUT")"
         if openssl enc -d -aes-256-cbc -pbkdf2 \
             -pass pass:"${ENCRYPTION_KEY}" \
@@ -237,7 +249,7 @@ validate_cluster() {
 poll_and_download() {
     local exec_id="$1"
     local job_url="$2"
-    local gcs_root start_epoch interval status elapsed response
+    local gcs_root start_epoch interval status elapsed response live_url
 
     gcs_root=$(gcs_from_url "$job_url")
     start_epoch=$(epoch_now)
@@ -253,6 +265,17 @@ poll_and_download() {
 
         response=$(gangway_get "/v1/executions/${exec_id}")
         status=$(echo "$response" | jq -r '.job_status // empty')
+
+        # Gangway may not return job_url at trigger time; pick it up from poll responses
+        if [[ -z "$gcs_root" ]]; then
+            live_url=$(echo "$response" | jq -r '.job_url // empty')
+            if [[ -n "$live_url" ]]; then
+                job_url="$live_url"
+                gcs_root=$(gcs_from_url "$job_url")
+                update_state_field "job_url" "$job_url"
+                info "Job URL: ${job_url}"
+            fi
+        fi
 
         update_state_field "status" "$status"
 
