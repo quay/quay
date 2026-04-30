@@ -621,5 +621,91 @@ test.describe(
       const tags = await api.raw.getTags(org.name, repo.name);
       expect(tags.tags.some((t) => t.name === 'latest')).toBe(true);
     });
+
+    test('removes stale tags when upstream tags no longer match (PROJQUAY-11431)', async ({
+      api,
+    }) => {
+      // This test runs two real syncs: one to pull a tag, then another with
+      // a non-matching pattern to verify the stale tag is cleaned up.
+      test.setTimeout(300_000);
+
+      const org = await api.organization('tagcleanuporg');
+      const repo = await api.repository(org.name, 'tagcleanuprepo');
+      const robot = await api.robot(org.name, 'tagcleanupbot');
+      await api.setMirrorState(org.name, repo.name);
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createMirrorConfig(org.name, repo.name, {
+        external_reference: 'quay.io/quay/busybox',
+        sync_interval: 86400,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        root_rule: {rule_kind: 'tag_glob_csv', rule_value: ['latest']},
+        robot_username: robot.fullName,
+        skopeo_timeout_interval: 300,
+        is_enabled: true,
+        verify_tls: true,
+      });
+
+      // First sync: pull the 'latest' tag
+      await api.raw.triggerMirrorSync(org.name, repo.name);
+      await expect
+        .poll(
+          async () => {
+            const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
+            const status = cfg?.sync_status ?? 'UNKNOWN';
+            if (status === 'FAIL') {
+              throw new Error(`First mirror sync failed`);
+            }
+            return status;
+          },
+          {
+            timeout: 120_000,
+            intervals: [5_000, 10_000, 15_000],
+            message: 'First mirror sync did not complete within 2 minutes',
+          },
+        )
+        .toBe('SUCCESS');
+
+      // Verify tag exists after first sync
+      const tagsAfterFirstSync = await api.raw.getTags(org.name, repo.name);
+      expect(tagsAfterFirstSync.tags.some((t) => t.name === 'latest')).toBe(
+        true,
+      );
+
+      // Update pattern to something that won't match any upstream tag
+      await api.raw.updateMirrorConfig(org.name, repo.name, {
+        root_rule: {
+          rule_kind: 'tag_glob_csv',
+          rule_value: ['nonexistent-tag-pattern-*'],
+        },
+      });
+
+      // Second sync: no tags match, so the stale 'latest' should be removed
+      await api.raw.triggerMirrorSync(org.name, repo.name);
+      await expect
+        .poll(
+          async () => {
+            const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
+            const status = cfg?.sync_status ?? 'UNKNOWN';
+            if (status === 'FAIL') {
+              throw new Error(`Second mirror sync failed`);
+            }
+            return status;
+          },
+          {
+            timeout: 120_000,
+            intervals: [5_000, 10_000, 15_000],
+            message: 'Second mirror sync did not complete within 2 minutes',
+          },
+        )
+        .toBe('SUCCESS');
+
+      // Verify stale tag was cleaned up
+      const tagsAfterCleanup = await api.raw.getTags(org.name, repo.name);
+      expect(tagsAfterCleanup.tags.some((t) => t.name === 'latest')).toBe(
+        false,
+      );
+    });
   },
 );

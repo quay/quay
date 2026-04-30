@@ -221,6 +221,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         release_mirror(mirror, RepoMirrorStatus.FAIL)
         return
     if tags == []:
+        delete_obsolete_tags(mirror, tags)
         emit_log(
             mirror,
             "repo_mirror_sync_success",
@@ -540,15 +541,19 @@ def rollback(
             delete_tag(mirror.repository, tag.name)
 
 
-def delete_obsolete_tags(mirror, tags):
-    existing_tags, _ = lookup_alive_tags_shallow(mirror.repository.id)
-    obsolete_tags = list([tag for tag in existing_tags if tag.name not in tags])
+def _delete_obsolete_tags_for_repo(repository, tags):
+    existing_tags, _ = lookup_alive_tags_shallow(repository.id)
+    obsolete_tags = [tag for tag in existing_tags if tag.name not in tags]
 
     for tag in obsolete_tags:
-        logger.debug("Repo mirroring delete obsolete tag '%s'" % tag.name)
-        delete_tag(mirror.repository, tag.name)
+        logger.debug("Mirror: delete obsolete tag '%s'" % tag.name)
+        delete_tag(repository, tag.name)
 
     return obsolete_tags
+
+
+def delete_obsolete_tags(mirror, tags):
+    return _delete_obsolete_tags_for_repo(mirror.repository, tags)
 
 
 def _get_v2_bearer_token(server, scheme, namespace, repo_name, username, password, verify_tls):
@@ -1408,6 +1413,7 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         return OrgMirrorRepoStatus.FAIL
 
     if not tags:
+        _delete_obsolete_tags_for_repo(local_repo, [])
         emit_org_mirror_log(
             config,
             claimed_repo,
@@ -1497,6 +1503,8 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
                 logger.info("Org mirror: Source '%s' failed to sync.", src_image)
             else:
                 logger.info("Org mirror: Source '%s' successful sync.", src_image)
+
+        _delete_obsolete_tags_for_repo(local_repo, tags)
 
         if overall_status == OrgMirrorRepoStatus.FAIL:
             combined_stderr = "; ".join(f"[{t}]: {err}" for t, err in tag_errors.items() if err)

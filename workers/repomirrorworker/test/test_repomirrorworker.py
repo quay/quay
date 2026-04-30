@@ -494,6 +494,63 @@ def test_remove_obsolete_tags(initialized_db):
     assert [tag.name for tag in deleted_tags] == ["oldtag"]
 
 
+def test_remove_obsolete_tags_all_deleted_when_empty(initialized_db):
+    """
+    When upstream returns no matching tags, all existing local tags should be deleted.
+    """
+
+    mirror, repository = create_mirror_repo_robot(["updated", "created"], repo_name="all_removed")
+
+    _create_tag(repository, "tag_a")
+    _create_tag(repository, "tag_b")
+
+    deleted_tags = delete_obsolete_tags(mirror, [])
+
+    deleted_names = sorted([tag.name for tag in deleted_tags])
+    assert deleted_names == ["tag_a", "tag_b"]
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_perform_mirror_cleans_tags_on_empty_upstream(run_skopeo_mock, initialized_db, app):
+    """
+    When upstream returns no tags matching the pattern, perform_mirror should
+    delete previously-synced local tags (the bug from PROJQUAY-11431).
+    """
+    mirror, repo = create_mirror_repo_robot(["latest", "7.1"], repo_name="empty_upstream")
+
+    _create_tag(repo, "stale_tag")
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=True",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": []}', ""),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        skopeo_call = skopeo_calls.pop(0)
+        _assert_skopeo_args(args, skopeo_call["args"])
+        return skopeo_call["results"]
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    assert [] == skopeo_calls
+
+    from data.model.oci.tag import lookup_alive_tags_shallow
+
+    remaining_tags, _ = lookup_alive_tags_shallow(repo.id)
+    assert [tag.name for tag in remaining_tags] == []
+
+
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, monkeypatch):
