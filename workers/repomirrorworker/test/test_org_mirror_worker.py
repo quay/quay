@@ -1233,9 +1233,11 @@ class TestPerformOrgMirrorDiscoveryEdgeCases:
         assert len(cancel_calls) == 1
         assert "cancelled" in cancel_calls[0][1]["metadata"]["message"].lower()
 
-        # Verify config released with CANCEL status
+        # After cancel processing, status transitions to SUCCESS (PROJQUAY-11027)
         refreshed = OrgMirrorConfig.get_by_id(config.id)
-        assert refreshed.sync_status == OrgMirrorStatus.CANCEL
+        assert refreshed.sync_status == OrgMirrorStatus.SUCCESS
+        assert refreshed.sync_start_date is not None
+        assert refreshed.sync_start_date > datetime.utcnow()
 
     @disable_existing_org_mirrors
     @patch("workers.repomirrorworker.get_registry_adapter")
