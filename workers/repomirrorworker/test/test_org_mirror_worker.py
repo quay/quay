@@ -903,6 +903,47 @@ class TestPerformOrgMirrorRepo:
         remaining_tags, _ = lookup_alive_tags_shallow(local_repo.id)
         assert [tag.name for tag in remaining_tags] == []
 
+    @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    def test_sync_releases_on_cleanup_error(self, mock_token, _mock_logs, initialized_db, app):
+        """When tag cleanup raises in the empty-tags path, the repo should be
+        released with FAIL status instead of staying claimed."""
+        org, robot = _create_org_and_robot("sync_clerr1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        local_repo = model.repository.create_repository(
+            org.username, "cleanup-err-repo", robot, visibility="private"
+        )
+        repo_db = Repository.get(Repository.id == local_repo.id)
+        repo_db.state = RepositoryState.ORG_MIRROR
+        repo_db.save()
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cleanup-err-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            repository=repo_db,
+        )
+
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, [], "", "")
+        mock_token.return_value = "robot_token"
+
+        with patch(
+            "workers.repomirrorworker._delete_obsolete_tags_for_repo",
+            side_effect=Exception("db error"),
+        ):
+            result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.FAIL
+        org_mirror_repo.reload()
+        assert org_mirror_repo.sync_status == OrgMirrorRepoStatus.FAIL
+
 
 class TestPerTagLogging:
     """Tests for per-tag log emission in perform_org_mirror_repo."""

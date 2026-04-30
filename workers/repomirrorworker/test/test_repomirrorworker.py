@@ -553,6 +553,47 @@ def test_perform_mirror_cleans_tags_on_empty_upstream(run_skopeo_mock, initializ
 
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_perform_mirror_releases_on_cleanup_error(run_skopeo_mock, initialized_db, app):
+    """
+    When delete_obsolete_tags raises during the empty-tags path, the mirror
+    should be released with FAIL status instead of staying claimed.
+    """
+    mirror, repo = create_mirror_repo_robot(["latest", "7.1"], repo_name="cleanup_err")
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=True",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": []}', ""),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        skopeo_call = skopeo_calls.pop(0)
+        _assert_skopeo_args(args, skopeo_call["args"])
+        return skopeo_call["results"]
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    with mock.patch(
+        "workers.repomirrorworker.delete_obsolete_tags",
+        side_effect=Exception("db error"),
+    ):
+        worker = RepoMirrorWorker()
+        worker._process_mirrors()
+
+    assert [] == skopeo_calls
+
+    mirror.reload()
+    assert mirror.sync_status == RepoMirrorStatus.FAIL
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, monkeypatch):
     """
     Set REPO_MIRROR_SERVER_HOSTNAME to override SERVER_HOSTNAME config.
