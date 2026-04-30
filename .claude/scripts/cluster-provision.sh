@@ -21,7 +21,7 @@ POLL_TIMEOUT=2400  # 40 minutes
 
 GCSWEB_BASE="https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs"
 ARTIFACT_SUBPATH="artifacts/claim-cluster/export-kubeconfig/artifacts/kubeconfig.enc"
-ENCRYPTION_KEY="${CLUSTER_PROVISION_KEY:-}"
+ENCRYPTION_KEY="${KUBECONFIG_ENCRYPTION_KEY:-}"
 
 CURL_CONNECT_TIMEOUT=10
 CURL_MAX_TIME=30
@@ -56,7 +56,7 @@ check_prereqs() {
         exit 1
     fi
     if [[ -z "${ENCRYPTION_KEY}" ]]; then
-        echo "CLUSTER_PROVISION_KEY is not set."
+        echo "KUBECONFIG_ENCRYPTION_KEY is not set."
         echo ""
         echo "This is the passphrase used to decrypt the cluster kubeconfig."
         echo "Contact the Quay CI team for access."
@@ -172,7 +172,7 @@ try_download_kubeconfig() {
             rm -f "$tmpfile"
             return 0
         else
-            echo "WARNING: Failed to decrypt kubeconfig. Wrong CLUSTER_PROVISION_KEY?" >&2
+            echo "WARNING: Failed to decrypt kubeconfig. Wrong KUBECONFIG_ENCRYPTION_KEY?" >&2
             rm -f "$tmpfile"
             return 1
         fi
