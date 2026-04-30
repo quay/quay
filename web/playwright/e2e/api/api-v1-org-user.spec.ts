@@ -833,13 +833,25 @@ test.describe(
 // ============================================================================
 
 test.describe('Signout', {tag: ['@api', '@auth:Database']}, () => {
-  test('signout endpoint invalidates session', async ({playwright}) => {
+  // Uses a dedicated user because signout invalidates ALL sessions for that user
+  test('signout endpoint invalidates session', async ({
+    superuserApi,
+    adminClient,
+    playwright,
+  }) => {
+    const user = await superuserApi.user('signout');
+
+    // Verify email so the user can sign in
+    await adminClient.put(`/api/v1/superuser/users/${user.username}`, {
+      email: user.email,
+    });
+
     const request = await playwright.request.newContext({
       ignoreHTTPSErrors: true,
     });
     try {
       const client = new RawApiClient(request, API_URL);
-      await client.signIn(TEST_USERS.admin.username, TEST_USERS.admin.password);
+      await client.signIn(user.username, user.password);
 
       // Verify we're authenticated
       const beforeResp = await client.get('/api/v1/user/');

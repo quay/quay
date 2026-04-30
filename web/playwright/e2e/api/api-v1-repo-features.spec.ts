@@ -498,7 +498,7 @@ test.describe('Build Triggers', {tag: ['@api', '@auth:Database']}, () => {
     expect(resp.status()).toBe(404);
   });
 
-  test('list builds for non-existent trigger returns 404', async ({
+  test('list builds for non-existent trigger returns empty list', async ({
     superuserApi,
     adminClient,
   }) => {
@@ -508,7 +508,9 @@ test.describe('Build Triggers', {tag: ['@api', '@auth:Database']}, () => {
     const resp = await adminClient.get(
       `/api/v1/repository/${org.name}/${repo.name}/trigger/00000000-0000-0000-0000-000000000000/builds`,
     );
-    expect(resp.status()).toBe(404);
+    expect(resp.status()).toBe(200);
+    const body = await resp.json();
+    expect(body.builds).toEqual([]);
   });
 
   test('normal user without admin gets 403 on triggers', async ({
