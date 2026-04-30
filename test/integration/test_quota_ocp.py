@@ -319,6 +319,211 @@ class TestOCPQuotaIntegration:
             except Exception as e:
                 print(f"Failed to cleanup org {org_name}: {e}")
 
+    def _push_blob_separately(self, org_name: str, repo_name: str, blob_data: bytes) -> str:
+        """
+        Push a blob to the registry and return its digest.
+
+        Args:
+            org_name: Organization name
+            repo_name: Repository name
+            blob_data: Blob content bytes
+
+        Returns:
+            Blob digest (sha256:...)
+        """
+        blob_digest = "sha256:" + hashlib.sha256(blob_data).hexdigest()
+
+        # Start upload
+        upload_url = f"{self.quay_url}/v2/{org_name}/{repo_name}/blobs/uploads/"
+        response = requests.post(
+            upload_url,
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+            verify=not self.skip_tls,
+        )
+        assert response.status_code == 202, f"Failed to start blob upload: {response.text}"
+
+        # Upload blob with PUT
+        location = response.headers["Location"]
+        if not location.startswith("http"):
+            location = f"{self.quay_url}{location}"
+
+        put_url = f"{location}&digest={blob_digest}"
+        response = requests.put(
+            put_url,
+            headers={
+                "Authorization": f"Bearer {self.admin_token}",
+                "Content-Type": "application/octet-stream",
+            },
+            data=blob_data,
+            verify=not self.skip_tls,
+        )
+        assert response.status_code == 201, f"Failed to upload blob: {response.text}"
+
+        return blob_digest
+
+    def _push_config_blob(self, org_name: str, repo_name: str, config_data: dict) -> str:
+        """
+        Push a config blob and return its digest.
+
+        Args:
+            org_name: Organization name
+            repo_name: Repository name
+            config_data: Config dictionary
+
+        Returns:
+            Config digest (sha256:...)
+        """
+        config_bytes = json.dumps(config_data).encode("utf-8")
+        return self._push_blob_separately(org_name, repo_name, config_bytes)
+
+    def _push_manifest(
+        self,
+        org_name: str,
+        repo_name: str,
+        tag: str,
+        layer_digests: list,
+        config_digest: str,
+        config_size: int,
+        layer_sizes: list,
+    ) -> Tuple[int, str]:
+        """
+        Push a manifest referencing existing blobs.
+
+        Args:
+            org_name: Organization name
+            repo_name: Repository name
+            tag: Image tag
+            layer_digests: List of layer blob digests
+            config_digest: Config blob digest
+            config_size: Config blob size in bytes
+            layer_sizes: List of layer sizes in bytes
+
+        Returns:
+            Tuple of (status_code, response_text)
+        """
+        layers = []
+        for digest, size in zip(layer_digests, layer_sizes):
+            layers.append({
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": size,
+                "digest": digest,
+            })
+
+        manifest = {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+            "config": {
+                "mediaType": "application/vnd.docker.container.image.v1+json",
+                "size": config_size,
+                "digest": config_digest,
+            },
+            "layers": layers,
+        }
+
+        manifest_url = f"{self.quay_url}/v2/{org_name}/{repo_name}/manifests/{tag}"
+        manifest_headers = {
+            "Authorization": f"Bearer {self.admin_token}",
+            "Content-Type": "application/vnd.docker.distribution.manifest.v2+json",
+        }
+
+        response = requests.put(
+            manifest_url,
+            headers=manifest_headers,
+            data=json.dumps(manifest),
+            verify=not self.skip_tls,
+        )
+
+        return response.status_code, response.text
+
+    def _push_image_chunked(
+        self,
+        org_name: str,
+        repo_name: str,
+        tag: str,
+        blob_size_kb: int,
+        chunk_size_kb: int = 1,
+    ) -> Tuple[int, str]:
+        """
+        Push image using chunked upload protocol (POST→PATCH→PUT).
+
+        Args:
+            org_name: Organization name
+            repo_name: Repository name
+            tag: Image tag
+            blob_size_kb: Size of blob to push in KB
+            chunk_size_kb: Chunk size for PATCH requests in KB
+
+        Returns:
+            Tuple of (status_code, response_text)
+        """
+        # Create blob data
+        blob_data = b"y" * (blob_size_kb * 1024)
+        blob_digest = "sha256:" + hashlib.sha256(blob_data).hexdigest()
+
+        # 1. Start upload with POST
+        upload_url = f"{self.quay_url}/v2/{org_name}/{repo_name}/blobs/uploads/"
+        response = requests.post(
+            upload_url,
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+            verify=not self.skip_tls,
+        )
+
+        if response.status_code != 202:
+            return response.status_code, f"Failed to start upload: {response.text}"
+
+        location = response.headers["Location"]
+        if not location.startswith("http"):
+            location = f"{self.quay_url}{location}"
+
+        # 2. Upload chunks with PATCH
+        chunk_size = chunk_size_kb * 1024
+        for offset in range(0, len(blob_data), chunk_size):
+            end = min(offset + chunk_size, len(blob_data))
+            chunk = blob_data[offset:end]
+
+            patch_response = requests.patch(
+                location,
+                headers={
+                    "Authorization": f"Bearer {self.admin_token}",
+                    "Content-Type": "application/octet-stream",
+                    "Content-Range": f"{offset}-{end-1}",
+                },
+                data=chunk,
+                verify=not self.skip_tls,
+            )
+
+            if patch_response.status_code != 202:
+                return patch_response.status_code, f"PATCH failed: {patch_response.text}"
+
+        # 3. Finalize with PUT
+        put_url = f"{location}&digest={blob_digest}"
+        put_response = requests.put(
+            put_url,
+            headers={
+                "Authorization": f"Bearer {self.admin_token}",
+                "Content-Type": "application/octet-stream",
+            },
+            verify=not self.skip_tls,
+        )
+
+        if put_response.status_code != 201:
+            return put_response.status_code, f"PUT failed: {put_response.text}"
+
+        # 4. Push config and manifest
+        config_data = {"architecture": "amd64", "os": "linux"}
+        config_bytes = json.dumps(config_data).encode("utf-8")
+        config_digest = self._push_blob_separately(org_name, repo_name, config_bytes)
+
+        return self._push_manifest(
+            org_name,
+            repo_name,
+            tag,
+            [blob_digest],
+            config_digest,
+            len(config_bytes),
+            [len(blob_data)],
+        )
+
     def test_ocp_manifest_push_quota_rejection(self):
         """
         Test quota rejection in real OCP Quay instance.
@@ -390,9 +595,12 @@ class TestOCPQuotaIntegration:
         Test chunked upload quota enforcement in real OCP Quay.
 
         Tests that:
-        - Chunked upload succeeds when under quota
+        - True chunked upload (POST→PATCH→PUT) succeeds when under quota
         - Chunked upload is rejected when quota exceeded
-        - Per-chunk quota validation works correctly
+        - PATCH endpoint quota validation works correctly
+
+        This test now uses true chunked uploads with PATCH requests to properly
+        exercise the chunked upload code path in endpoints/v2/blob.py.
 
         JIRA Requirement: Nice-to-Have - OCP validation test 2
         """
@@ -414,35 +622,26 @@ class TestOCPQuotaIntegration:
             quota_bytes,
         )
 
-        # Push 4KB image via chunked upload (should succeed)
-        repo_name = "test-repo"
-        status_code, response_text = push_image_to_quay(
-            self.quay_url,
-            self.admin_token,
-            self.skip_tls,
-            org_name,
-            repo_name,
-            "first",
-            4,  # 4KB
-        )
+        repo_name = "chunked-test"
 
+        # First chunked push (4KB in 1KB chunks) - should succeed
+        status_code, response_text = self._push_image_chunked(
+            org_name, repo_name, "v1", blob_size_kb=4, chunk_size_kb=1
+        )
         assert status_code == 201, (
-            f"First chunked upload should succeed (4KB < 6KB quota), got {status_code}"
+            f"First chunked push should succeed: {response_text}"
         )
 
-        # Push another 4KB image (should fail - total would be 8KB > 6KB)
-        status_code, response_text = push_image_to_quay(
-            self.quay_url,
-            self.admin_token,
-            self.skip_tls,
-            org_name,
-            repo_name,
-            "second",
-            4,  # 4KB
+        # Second chunked push (4KB in 1KB chunks) - should be rejected
+        # Total would be 8KB > 6KB limit
+        status_code, response_text = self._push_image_chunked(
+            org_name, repo_name, "v2", blob_size_kb=4, chunk_size_kb=1
         )
-
         assert status_code == 403, (
-            f"Second chunked upload should be rejected, got {status_code}"
+            f"Second chunked push should be rejected (quota exceeded): {response_text}"
+        )
+        assert "quota" in response_text.lower(), (
+            "Rejection should mention quota"
         )
 
     def test_ocp_blob_deduplication_quota(self):
@@ -455,6 +654,11 @@ class TestOCPQuotaIntegration:
         - Distributed storage backend handles deduplication
         - Quota consistency across Quay replicas
 
+        Proper deduplication test:
+        1. Push image A with 5KB blob (digest X)
+        2. Push image B referencing SAME blob (digest X) but different config
+        3. Verify quota only increases by manifest/config size, not blob size
+
         JIRA Requirement: Nice-to-Have - OCP validation test 3
         """
         # Create test organization
@@ -465,8 +669,8 @@ class TestOCPQuotaIntegration:
         )
         self.test_orgs.append(org_name)
 
-        # Set 10KB quota
-        quota_bytes = 10 * 1024
+        # Set 7KB quota (enough for dedup case, too small without dedup)
+        quota_bytes = 7 * 1024
         set_organization_quota(
             self.quay_url,
             self.admin_token,
@@ -475,51 +679,73 @@ class TestOCPQuotaIntegration:
             quota_bytes,
         )
 
-        # NOTE: This is a simplified test
-        # Full blob deduplication testing requires pushing images that reference
-        # the same blob digest multiple times. The current push_image_to_quay
-        # helper creates unique blobs per push.
-        #
-        # To properly test deduplication:
-        # 1. Push image A with 5KB blob (digest X)
-        # 2. Push image B referencing same blob (digest X)
-        # 3. Verify quota only increases by manifest/config size, not blob size
-        #
-        # This requires more sophisticated image building which can be added
-        # in future iterations.
+        repo_name = "dedup-test"
 
-        # For now, verify basic quota tracking works
-        repo_name = "test-repo"
-        status_code, response_text = push_image_to_quay(
-            self.quay_url,
-            self.admin_token,
-            self.skip_tls,
+        # Push shared 5KB blob
+        shared_blob_data = b"x" * (5 * 1024)
+        shared_blob_digest = self._push_blob_separately(org_name, repo_name, shared_blob_data)
+
+        # Push first manifest referencing shared blob
+        config1_data = {"architecture": "amd64", "os": "linux", "tag": "v1"}
+        config1_bytes = json.dumps(config1_data).encode("utf-8")
+        config1_digest = self._push_blob_separately(org_name, repo_name, config1_bytes)
+
+        status_code, response_text = self._push_manifest(
             org_name,
             repo_name,
-            "image1",
-            5,  # 5KB
+            "v1",
+            [shared_blob_digest],
+            config1_digest,
+            len(config1_bytes),
+            [len(shared_blob_data)],
         )
+        assert status_code == 201, f"First manifest push should succeed: {response_text}"
 
-        assert status_code == 201, (
-            f"First push should succeed, got {status_code}: {response_text}"
-        )
-
-        # Get quota usage
+        # Get quota after first push
         quota_url = f"{self.quay_url}/api/v1/organization/{org_name}/quota"
         headers = get_auth_headers(self.admin_token)
         response = requests.get(quota_url, headers=headers, verify=not self.skip_tls)
-
-        assert response.status_code == 200, (
-            f"Failed to get quota: {response.status_code}"
-        )
+        assert response.status_code == 200, f"Failed to get quota: {response.status_code}"
 
         quota_data = response.json()
-        print(f"\nQuota data after first push: {json.dumps(quota_data, indent=2)}")
+        first_usage = quota_data.get("quota_bytes", 0)
+        print(f"\nQuota after first push: {first_usage} bytes ({first_usage / 1024:.2f}KB)")
 
-        # Verify quota is being tracked
-        # Note: Exact quota calculations depend on manifest structure
-        # Just verify quota > 0 and < limit
-        if "quota_bytes" in quota_data:
-            used_bytes = quota_data.get("quota_bytes", 0)
-            assert used_bytes > 0, "Quota should be tracking usage"
-            assert used_bytes < quota_bytes, "Quota should be under limit"
+        # Push second manifest referencing SAME blob but different config
+        config2_data = {"architecture": "amd64", "os": "linux", "tag": "v2"}
+        config2_bytes = json.dumps(config2_data).encode("utf-8")
+        config2_digest = self._push_blob_separately(org_name, repo_name, config2_bytes)
+
+        status_code, response_text = self._push_manifest(
+            org_name,
+            repo_name,
+            "v2",
+            [shared_blob_digest],  # Same blob!
+            config2_digest,
+            len(config2_bytes),
+            [len(shared_blob_data)],
+        )
+
+        # Should succeed (with dedup, total ~6KB < 7KB limit)
+        # Without dedup, would be ~10KB > 7KB limit
+        assert status_code == 201, f"Second push should succeed with deduplication: {response_text}"
+
+        # Get quota after second push
+        response = requests.get(quota_url, headers=headers, verify=not self.skip_tls)
+        assert response.status_code == 200, f"Failed to get quota: {response.status_code}"
+
+        quota_data = response.json()
+        second_usage = quota_data.get("quota_bytes", 0)
+        print(f"Quota after second push: {second_usage} bytes ({second_usage / 1024:.2f}KB)")
+
+        # Verify blob was deduplicated (only config added, not blob)
+        quota_delta = second_usage - first_usage
+        print(f"Quota delta: {quota_delta} bytes ({quota_delta / 1024:.2f}KB)")
+
+        assert quota_delta < 1024, (
+            f"Quota delta should be <1KB (config only), got {quota_delta} bytes. "
+            "This indicates blob deduplication is NOT working."
+        )
+        assert second_usage < quota_bytes, (
+            f"Total usage {second_usage} should be within quota limit {quota_bytes}"
+        )
