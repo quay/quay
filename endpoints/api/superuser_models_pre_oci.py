@@ -107,7 +107,7 @@ class PreOCIModel(SuperuserDataInterface):
             build.resource_key,
             BuildTrigger(
                 build.trigger,
-                _create_user(build.trigger.pull_robot),
+                _create_user(build.trigger.pull_robot if build.trigger else None),
                 can_read,
                 can_admin,
                 True,
