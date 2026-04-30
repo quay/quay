@@ -13,7 +13,7 @@ from app import app as realapp
 from app import instance_keys, storage
 from auth.auth_context_type import ValidatedAuthContext
 from data import model
-from data.database import ImageStorageLocation
+from data.database import ImageStorageLocation, Notification, NotificationKind
 from data.model import QuotaExceededException
 from data.model.storage import get_layer_path
 from data.registry_model import registry_model
@@ -796,14 +796,25 @@ class TestQuotaEnforcementV2:
             # Get organization admins (notifications are sent to admins, not the org itself)
             admins = model.organization.get_admin_users(namespace_user)
 
-            # Check for notifications on the admin users
+            # Check for notifications on the admin users (batch query to avoid N+1)
             warning_exists = False
-            for admin in admins:
-                if model.notification.notification_exists_with_metadata(
-                    admin, "quota_warning", namespace=org_name
-                ):
-                    warning_exists = True
-                    break
+            if admins:
+                kind_ref = NotificationKind.get(name="quota_warning")
+                # Batch query: get all quota_warning notifications for all admins in one query
+                admin_ids = [admin.id for admin in admins]
+                notifications = Notification.select().where(
+                    Notification.target.in_(admin_ids),
+                    Notification.kind == kind_ref
+                )
+                # Filter by metadata in Python (metadata is JSON, can't filter in SQL easily)
+                for notification in notifications:
+                    try:
+                        metadata = json.loads(notification.metadata_json)
+                        if metadata.get("namespace") == org_name:
+                            warning_exists = True
+                            break
+                    except:
+                        continue
 
             # If first manifest already exceeded 80%, skip this check
             if namespace_size_after_first >= 8 * 1024:
@@ -834,16 +845,31 @@ class TestQuotaEnforcementV2:
             ), f"Quota should still be under 10KB limit, got {namespace_size_after_second}"
 
             # Step 4: Verify warning notification WAS created (exceeded 80%)
-            # Check for notifications on the admin users
+            # Check for notifications on the admin users (batch query to avoid N+1)
             warning_exists_after = False
             warning_admin = None
-            for admin in admins:
-                if model.notification.notification_exists_with_metadata(
-                    admin, "quota_warning", namespace=org_name
-                ):
-                    warning_exists_after = True
-                    warning_admin = admin
-                    break
+            if admins:
+                kind_ref = NotificationKind.get(name="quota_warning")
+                # Batch query: get all quota_warning notifications for all admins in one query
+                admin_ids = [admin.id for admin in admins]
+                notifications = Notification.select().where(
+                    Notification.target.in_(admin_ids),
+                    Notification.kind == kind_ref
+                )
+                # Filter by metadata in Python (metadata is JSON, can't filter in SQL easily)
+                for notification in notifications:
+                    try:
+                        metadata = json.loads(notification.metadata_json)
+                        if metadata.get("namespace") == org_name:
+                            warning_exists_after = True
+                            # Find which admin received the notification
+                            warning_admin = next(
+                                (admin for admin in admins if admin.id == notification.target_id),
+                                None
+                            )
+                            break
+                    except:
+                        continue
 
             assert warning_exists_after, (
                 f"Warning notification should exist after quota exceeds 80% threshold. "
