@@ -11,7 +11,9 @@ from endpoints.api.robot import (
     OrgRobotFederation,
     OrgRobotList,
     UserRobot,
+    UserRobotFederation,
     UserRobotList,
+    _parse_federation_config,
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
@@ -225,6 +227,48 @@ def test_robot_federation_create(app):
         assert len(resp.json) == 0
 
 
+def test_user_robot_federation_create(app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "POST",
+            {"robot_shortname": "dtrobot"},
+            [{"issuer": "https://issuer1", "subject": "subject1"}],
+            expected_code=200,
+        )
+
+        resp = conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "GET",
+            {"robot_shortname": "dtrobot"},
+            expected_code=200,
+        )
+
+        assert len(resp.json) == 1
+        assert resp.json[0].get("issuer") == "https://issuer1"
+        assert resp.json[0].get("subject") == "subject1"
+
+        conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "DELETE",
+            {"robot_shortname": "dtrobot"},
+            expected_code=204,
+        )
+
+        resp = conduct_api_call(
+            cl,
+            UserRobotFederation,
+            "GET",
+            {"robot_shortname": "dtrobot"},
+            expected_code=200,
+        )
+
+        assert len(resp.json) == 0
+
+
 @pytest.mark.parametrize(
     "fed_config, raises_error, error_message",
     [
@@ -262,7 +306,7 @@ def test_parse_federation_config(app, fed_config, raises_error, error_message):
     with app.app_context():
         if raises_error:
             with pytest.raises(Exception) as ex:
-                parsed = OrgRobotFederation()._parse_federation_config(request)
+                parsed = _parse_federation_config(request)
             assert error_message in str(ex.value)
         else:
-            parsed = OrgRobotFederation()._parse_federation_config(request)
+            parsed = _parse_federation_config(request)
