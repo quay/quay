@@ -92,4 +92,4 @@ After creation, **openshift-ci-robot** will:
 
 If the bot reports issues: fix the PR title or update the JIRA ticket's Target Version.
 
-Next step: `/poll <PR#>`
+**Always** run `/poll <PR#>` immediately after PR creation — do not ask the user.

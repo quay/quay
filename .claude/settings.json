@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); RESPONSE=$(echo \"$INPUT\" | jq -r \".tool_response.stdout // empty\"); PR_URL=$(echo \"$RESPONSE\" | grep -oP \"https://github.com/quay/quay/pull/\\d+\" | head -1 || true); if [ -n \"$PR_URL\" ]; then PR_NUM=$(echo \"$PR_URL\" | grep -oP \"\\d+$\"); jq -n --arg pr \"$PR_NUM\" \"{hookSpecificOutput:{hookEventName:\\\"PostToolUse\\\",additionalContext:(\\\"PR #\\\" + \\$pr + \\\" created. Run /poll \\\" + \\$pr + \\\" to monitor CI and reviews.\\\")}}\"; fi'",
+            "command": "bash -c 'INPUT=$(cat); RESPONSE=$(echo \"$INPUT\" | jq -r \".tool_response.stdout // empty\"); PR_URL=$(echo \"$RESPONSE\" | grep -oP \"https://github.com/quay/quay/pull/\\d+\" | head -1 || true); if [ -n \"$PR_URL\" ]; then PR_NUM=$(echo \"$PR_URL\" | grep -oP \"\\d+$\"); jq -n --arg pr \"$PR_NUM\" \"{hookSpecificOutput:{hookEventName:\\\"PostToolUse\\\",additionalContext:(\\\"PR #\\\" + \\$pr + \\\" created. You MUST now run /poll \\\" + \\$pr + \\\" immediately.\\\")}}\"; fi'",
             "if": "Bash(gh pr create *)",
             "timeout": 10
           },
