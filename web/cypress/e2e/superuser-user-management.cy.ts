@@ -369,7 +369,7 @@ describe('Superuser User Management', () => {
       cy.wait('@getOrgs');
 
       // Wait for loading spinner to disappear
-      cy.get('.pf-v5-l-bullseye').should('not.exist');
+      cy.get('.pf-v6-l-bullseye').should('not.exist');
 
       cy.get('[data-testid="tom-options-toggle"]').click();
       cy.contains('Change E-mail Address').click();
@@ -800,7 +800,7 @@ describe('Superuser User Management', () => {
       cy.wait('@getOrgs');
 
       // Wait for loading spinner to disappear
-      cy.get('.pf-v5-l-bullseye').should('not.exist');
+      cy.get('.pf-v6-l-bullseye').should('not.exist');
 
       cy.get('[data-testid="tom-options-toggle"]').click();
       cy.contains('Change E-mail Address').click();

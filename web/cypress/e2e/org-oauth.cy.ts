@@ -1377,7 +1377,7 @@ describe('Organization OAuth Applications', () => {
       );
 
       // Verify token is displayed in the ClipboardCopy input
-      cy.get('.pf-v5-c-clipboard-copy input').should(
+      cy.get('.pf-v6-c-clipboard-copy input').should(
         'have.value',
         'test-generated-token-456',
       );

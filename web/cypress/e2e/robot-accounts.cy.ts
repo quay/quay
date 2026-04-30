@@ -58,7 +58,7 @@ describe('Robot Accounts Page', () => {
     cy.get('button:contains("Kubernetes")').click();
 
     // ensure default scope selection is correct
-    cy.get('#secret-scope-toggle > .pf-v5-c-menu-toggle__text').contains(
+    cy.get('#secret-scope-toggle > .pf-v6-c-menu-toggle__text').contains(
       'Organization',
     );
     cy.get('@serverHostname').then((serverHostname) => {
@@ -96,7 +96,7 @@ describe('Robot Accounts Page', () => {
     });
 
     // change scope to registry
-    cy.get('#secret-scope-toggle > .pf-v5-c-menu-toggle__controls').click();
+    cy.get('#secret-scope-toggle > .pf-v6-c-menu-toggle__controls').click();
     cy.get('#secret-scope-selector').contains('Registry').click();
     cy.get('@serverHostname').then((serverHostname) => {
       cy.get('#secret-scope').should('have.text', serverHostname);
@@ -152,7 +152,7 @@ describe('Robot Accounts Page', () => {
     cy.get('#create-robot-submit')
       .click()
       .then(() => {
-        cy.get('.pf-v5-c-alert.pf-m-success')
+        cy.get('.pf-v6-c-alert.pf-m-success')
           .contains(
             'Successfully created robot account with robot name: testorg+newtestrob',
           )
@@ -189,7 +189,7 @@ describe('Robot Accounts Page', () => {
     cy.get('[id="bulk-delete-modal"]')
       .within(() => cy.get('button:contains("Delete")').click())
       .then(() => {
-        cy.get('.pf-v5-c-alert.pf-m-success')
+        cy.get('.pf-v6-c-alert.pf-m-success')
           .contains('Successfully deleted robot account')
           .should('exist');
         cy.get('#robot-account-search').clear().type('testrobot2');
@@ -207,7 +207,7 @@ describe('Robot Accounts Page', () => {
       .find('button:contains("Save")')
       .click()
       .then(() => {
-        cy.get('.pf-v5-c-alert.pf-m-success')
+        cy.get('.pf-v6-c-alert.pf-m-success')
           .contains('Successfully updated repository permission')
           .should('exist');
         cy.get('footer').find('button:contains("Save")').should('not.exist');
@@ -234,7 +234,7 @@ describe('Robot Accounts Page', () => {
       .find('button:contains("Save")')
       .click()
       .then(() => {
-        cy.get('.pf-v5-c-alert.pf-m-success')
+        cy.get('.pf-v6-c-alert.pf-m-success')
           .contains('Successfully updated repository permission')
           .should('exist');
         cy.get('[data-label="Permissions"]').each(($item) => {
@@ -245,16 +245,16 @@ describe('Robot Accounts Page', () => {
 
   it('Create Robot Acct Wizard For Org', () => {
     cy.visit('/organization/testorg');
-    cy.get('.pf-v5-c-tabs').get('ul').contains('Robot accounts');
-    cy.get('.pf-v5-c-tabs').get('ul').contains('Robot accounts').click();
+    cy.get('.pf-v6-c-tabs').get('ul').contains('Robot accounts');
+    cy.get('.pf-v6-c-tabs').get('ul').contains('Robot accounts').click();
     cy.get('#create-robot-account-btn').click();
     cy.get('#create-robot-account-modal')
-      .get('.pf-v5-c-wizard__nav')
-      .get('.pf-v5-c-wizard__nav-item')
+      .get('.pf-v6-c-wizard__nav')
+      .get('.pf-v6-c-wizard__nav-item')
       .should('have.length', 5);
     cy.get('#create-robot-account-modal')
-      .get('.pf-v5-c-wizard__nav')
-      .get('.pf-v5-c-wizard__nav-item')
+      .get('.pf-v6-c-wizard__nav')
+      .get('.pf-v6-c-wizard__nav-item')
       .should((items) => {
         expect(items[0]).to.contain.text('Robot name and description');
         expect(items[1]).to.contain.text('Add to team (optional)');
@@ -263,18 +263,18 @@ describe('Robot Accounts Page', () => {
         expect(items[4]).to.contain.text('Review and Finish');
       });
     cy.get('#create-robot-account-modal')
-      .get('.pf-v5-c-wizard__nav')
-      .get('.pf-v5-c-wizard__nav-item')
+      .get('.pf-v6-c-wizard__nav')
+      .get('.pf-v6-c-wizard__nav-item')
       .contains('Review and Finish')
       .click();
-    cy.get('.pf-v5-c-wizard__main-body')
+    cy.get('.pf-v6-c-wizard__main-body')
       .find('form')
-      .find('.pf-v5-c-toggle-group')
+      .find('.pf-v6-c-toggle-group')
       .find('button')
       .should('have.length', 3);
-    cy.get('.pf-v5-c-wizard__main-body')
+    cy.get('.pf-v6-c-wizard__main-body')
       .find('form')
-      .find('.pf-v5-c-toggle-group__item')
+      .find('.pf-v6-c-toggle-group__item')
       .should((items) => {
         expect(items[0]).to.contain.text('Teams');
         expect(items[1]).to.contain.text('Repositories');
@@ -284,34 +284,34 @@ describe('Robot Accounts Page', () => {
 
   it('Create Robot Acct Wizard For User Namespace', () => {
     cy.visit('/organization/user1');
-    cy.get('.pf-v5-c-tabs').get('ul').contains('Robot accounts');
-    cy.get('.pf-v5-c-tabs').get('ul').contains('Robot accounts').click();
+    cy.get('.pf-v6-c-tabs').get('ul').contains('Robot accounts');
+    cy.get('.pf-v6-c-tabs').get('ul').contains('Robot accounts').click();
     cy.contains('button', 'Create robot account').click();
     cy.get('#create-robot-account-modal')
-      .get('.pf-v5-c-wizard__nav')
-      .get('.pf-v5-c-wizard__nav-item')
+      .get('.pf-v6-c-wizard__nav')
+      .get('.pf-v6-c-wizard__nav-item')
       .should('have.length', 3);
     cy.get('#create-robot-account-modal')
-      .get('.pf-v5-c-wizard__nav')
-      .get('.pf-v5-c-wizard__nav-item')
+      .get('.pf-v6-c-wizard__nav')
+      .get('.pf-v6-c-wizard__nav-item')
       .should((items) => {
         expect(items[0]).to.contain.text('Robot name and description');
         expect(items[1]).to.contain.text('Add to repository (optional)');
         expect(items[2]).to.contain.text('Review and Finish');
       });
     cy.get('#create-robot-account-modal')
-      .get('.pf-v5-c-wizard__nav')
-      .get('.pf-v5-c-wizard__nav-item')
+      .get('.pf-v6-c-wizard__nav')
+      .get('.pf-v6-c-wizard__nav-item')
       .contains('Review and Finish')
       .click();
-    cy.get('.pf-v5-c-wizard__main-body')
+    cy.get('.pf-v6-c-wizard__main-body')
       .find('form')
-      .find('.pf-v5-c-toggle-group')
+      .find('.pf-v6-c-toggle-group')
       .find('button')
       .should('have.length', 1);
-    cy.get('.pf-v5-c-wizard__main-body')
+    cy.get('.pf-v6-c-wizard__main-body')
       .find('form')
-      .find('.pf-v5-c-toggle-group__item')
+      .find('.pf-v6-c-toggle-group__item')
       .should((items) => {
         expect(items[0]).to.contain.text('Repositories');
       });
@@ -328,7 +328,7 @@ describe('Robot Accounts Page', () => {
     cy.get('#create-robot-submit')
       .click()
       .then(() => {
-        cy.get('.pf-v5-c-alert.pf-m-success')
+        cy.get('.pf-v6-c-alert.pf-m-success')
           .contains(
             'Successfully created robot account with robot name: user1+userrobot',
           )

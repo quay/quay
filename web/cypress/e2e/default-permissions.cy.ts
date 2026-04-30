@@ -37,7 +37,7 @@ describe('Default permissions page', () => {
     cy.get(`[data-testid="${createdBy}-WRITE"]`).click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Permission updated successfully to: owners`)
       .should('exist');
   });
@@ -58,7 +58,7 @@ describe('Default permissions page', () => {
     });
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(
         `Permission created by: ${permissionToBeDeleted} successfully deleted`,
       )
@@ -87,7 +87,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-permission-button"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(
         `Successfully created default permission for creator: ${createdBy}`,
       )
@@ -112,7 +112,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-permission-button"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully applied default permission to: ${appliedTo}`)
       .should('exist');
   });
@@ -140,7 +140,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-team-confirm"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully created new team: ${newTeam}`)
       .should('exist');
 
@@ -199,7 +199,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-permission-button"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success').should('exist');
+    cy.get('.pf-v6-c-alert.pf-m-success').should('exist');
   });
 
   it('Can create default permission applied to a new team along with creating new robot account from the drawer', () => {
@@ -227,7 +227,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-team-confirm"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully created new team: ${newTeam}`)
       .should('exist');
 
@@ -291,7 +291,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-permission-button"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success').should('exist');
+    cy.get('.pf-v6-c-alert.pf-m-success').should('exist');
   });
 
   it('Can create default permission for repository creator with new robot account', () => {
@@ -336,7 +336,7 @@ describe('Default permissions page', () => {
 
     // step - Review and Finish
     cy.get('[data-testid="review-and-finish-btn"]').click();
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(
         `Successfully created robot account with robot name: ${orgName}+${newRobotName}`,
       )
@@ -361,7 +361,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-permission-button"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(
         `Successfully created default permission for creator: ${orgName}+${newRobotName}`,
       )

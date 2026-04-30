@@ -203,7 +203,7 @@ describe('Service Keys Management', () => {
       cy.wait('@getManyServiceKeys');
 
       // Should show pagination controls (simplified check)
-      cy.get('.pf-v5-c-pagination').should('exist');
+      cy.get('.pf-v6-c-pagination').should('exist');
 
       // Verify correct number of service keys are displayed
       // Count rows that contain service key names (more reliable than counting all tr elements)

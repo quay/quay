@@ -101,7 +101,7 @@ describe('Manage team members page', () => {
     cy.get(`[data-testid="save-team-description-btn"]`).click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully updated team:${team} description`)
       .should('exist');
     cy.get(`[data-testid="team-description-text"]`).contains(
@@ -128,7 +128,7 @@ describe('Manage team members page', () => {
     cy.get(`[data-testid="${robotAccntToBeDeleted}-del-btn"]`).click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully deleted team member: ${robotAccntToBeDeleted}`)
       .should('exist');
   });
@@ -189,7 +189,7 @@ describe('Manage team members page', () => {
     cy.get('[data-testid="add-new-member-submit-btn"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully added "${orgName}+${newRobotName}" to team`)
       .should('exist');
     // verify table entry exists
@@ -226,7 +226,7 @@ describe('Manage team members page', () => {
     cy.get('[data-testid="add-new-member-submit-btn"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully added "${user}" to team`)
       .should('exist');
     // verify table entry exists

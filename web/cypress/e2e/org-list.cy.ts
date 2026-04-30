@@ -872,7 +872,7 @@ describe('Org List Page', () => {
 
     // Check that every entry has an avatar
     cy.get('td[data-label="Name"]').each(($nameCell) => {
-      cy.wrap($nameCell).parents('tr').find('.pf-v5-c-avatar').should('exist');
+      cy.wrap($nameCell).parents('tr').find('.pf-v6-c-avatar').should('exist');
     });
   });
 
@@ -929,14 +929,14 @@ describe('Org List Page', () => {
     cy.contains('button', 'Calculate').click();
 
     // Confirm the calculation in the modal
-    cy.get('.pf-v5-c-modal-box').within(() => {
+    cy.get('.pf-v6-c-modal-box').within(() => {
       cy.contains('button', 'Calculate').click();
     });
 
     cy.wait('@queueCalculation');
 
     // Verify the error modal shows correct title
-    cy.get('.pf-v5-c-modal-box').within(() => {
+    cy.get('.pf-v6-c-modal-box').within(() => {
       cy.contains('Registry calculation failed').should('exist');
       // Should NOT show "Org deletion failed"
       cy.contains('Org deletion failed').should('not.exist');

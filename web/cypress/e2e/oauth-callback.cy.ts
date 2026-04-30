@@ -36,7 +36,7 @@ describe('OAuth Callback', () => {
 
       // Verify minimal header is present (logo only, no user menu)
       cy.get('[data-testid="minimal-header"]').should('be.visible');
-      cy.get('.pf-v5-c-masthead__brand').should('be.visible');
+      cy.get('.pf-v6-c-masthead__brand').should('be.visible');
 
       // Verify error title with provider name
       cy.contains('GitHub Authentication Error').should('be.visible');
@@ -124,7 +124,7 @@ describe('OAuth Callback', () => {
       cy.wait('@getConfig');
 
       // Click the logo in minimal header
-      cy.get('.pf-v5-c-masthead__brand').click();
+      cy.get('.pf-v6-c-masthead__brand').click();
 
       // Should navigate to signin page
       cy.url().should('include', '/signin');
