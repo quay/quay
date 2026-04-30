@@ -221,7 +221,21 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         release_mirror(mirror, RepoMirrorStatus.FAIL)
         return
     if tags == []:
-        delete_obsolete_tags(mirror, tags)
+        try:
+            delete_obsolete_tags(mirror, tags)
+        except Exception:
+            emit_log(
+                mirror,
+                "repo_mirror_sync_failed",
+                "end",
+                "'%s' with tag pattern '%s': CLEANUP ERROR"
+                % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
+                tags="",
+                stdout="Not applicable",
+                stderr=traceback.format_exc(),
+            )
+            release_mirror(mirror, RepoMirrorStatus.FAIL)
+            return
         emit_log(
             mirror,
             "repo_mirror_sync_success",
@@ -543,7 +557,8 @@ def rollback(
 
 def _delete_obsolete_tags_for_repo(repository, tags):
     existing_tags, _ = lookup_alive_tags_shallow(repository.id)
-    obsolete_tags = [tag for tag in existing_tags if tag.name not in tags]
+    tags_set = set(tags)
+    obsolete_tags = [tag for tag in existing_tags if tag.name not in tags_set]
 
     for tag in obsolete_tags:
         logger.debug("Mirror: delete obsolete tag '%s'" % tag.name)
@@ -1413,7 +1428,22 @@ def perform_org_mirror_repo(skopeo: SkopeoMirror, org_mirror_repo: OrgMirrorRepo
         return OrgMirrorRepoStatus.FAIL
 
     if not tags:
-        _delete_obsolete_tags_for_repo(local_repo, [])
+        try:
+            _delete_obsolete_tags_for_repo(local_repo, [])
+        except Exception:
+            msg = f"Failed to cleanup obsolete tags for '{external_reference}'"
+            emit_org_mirror_log(
+                config,
+                claimed_repo,
+                "org_mirror_sync_failed",
+                "end",
+                msg,
+                stderr=traceback.format_exc(),
+            )
+            release_org_mirror_repo(claimed_repo, OrgMirrorRepoStatus.FAIL, status_message=msg)
+            org_mirror_repo_sync_total.labels(status="fail").inc()
+            org_mirror_repo_sync_duration_seconds.observe(time.monotonic() - repo_sync_start_time)
+            return OrgMirrorRepoStatus.FAIL
         emit_org_mirror_log(
             config,
             claimed_repo,
