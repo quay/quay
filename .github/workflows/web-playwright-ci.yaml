@@ -19,6 +19,7 @@ jobs:
         with:
           with-clair: true
           with-keycloak: true
+          with-ldap: true
           with-jaeger: true
           with-repomirror: true
           use-gha-cache: false
@@ -26,26 +27,6 @@ jobs:
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
             FEATURE_SECURITY_NOTIFICATIONS: true
-
-      - name: Start LDAP server (pre-initialize for later auth swap)
-        run: |
-          docker compose up -d ldap
-          echo "Waiting for LDAP to be ready..."
-          timeout=90
-          while [ $timeout -gt 0 ]; do
-            if docker exec quay-ldap ldapsearch -x -H ldap://localhost:3389 \
-                -b "dc=example,dc=org" -s base &>/dev/null; then
-              echo "LDAP is ready!"
-              break
-            fi
-            sleep 2
-            timeout=$((timeout - 2))
-          done
-          if [ $timeout -le 0 ]; then
-            echo "::error::LDAP failed to initialize within 90 seconds"
-            docker logs quay-ldap
-            exit 1
-          fi
 
       - name: Set up Node.js with npm caching
         uses: actions/setup-node@v6
