@@ -54,7 +54,7 @@ jobs:
           # backfills memberOf attributes on entries added before enablement.
           echo "Enabling memberOf plugin for team sync..."
           docker exec quay-ldap dsconf localhost plugin memberof enable
-          docker exec quay-ldap dsconf localhost plugin memberof set --type uniqueMember
+          docker exec quay-ldap dsconf localhost plugin memberof set --groupattr uniqueMember
           docker exec quay-ldap dsconf localhost plugin memberof set --scope "dc=example,dc=org"
           docker restart quay-ldap
           echo "Waiting for LDAP to be ready after restart..."
