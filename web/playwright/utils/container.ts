@@ -17,6 +17,13 @@ const REGISTRY_HOST = new URL(API_URL).host;
 // Cache the detected container runtime
 let containerRuntime: string | null = null;
 
+// Deduplicate the busybox pull — concurrent workers share one Promise
+let busyboxPullPromise: Promise<void> | null = null;
+
+// Track registries we've already logged into so each worker logs in only once.
+// Quay rate-limits concurrent logins (HTTP 429) when many workers fire at once.
+const loggedInRegistries = new Set<string>();
+
 /**
  * Detect available container runtime (podman or docker)
  *
@@ -78,16 +85,25 @@ export async function pushImage(
 
   const image = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
   const tlsFlag = runtime === 'podman' ? '--tls-verify=false' : '';
+  const loginKey = `${runtime}:${REGISTRY_HOST}:${username}`;
 
-  // Login to registry
-  await execAsync(
-    `${runtime} login ${REGISTRY_HOST} -u ${username} -p ${password} ${tlsFlag}`.trim(),
-  );
+  if (!loggedInRegistries.has(loginKey)) {
+    await execAsync(
+      `${runtime} login ${REGISTRY_HOST} -u ${username} -p ${password} ${tlsFlag}`.trim(),
+    );
+    loggedInRegistries.add(loginKey);
+  }
 
   const busyboxImage = 'quay.io/prometheus/busybox:latest';
 
-  // Pull busybox and tag it
-  await execAsync(`${runtime} pull ${busyboxImage}`);
+  // Pull busybox once per process; concurrent callers wait on the same Promise.
+  if (!busyboxPullPromise) {
+    busyboxPullPromise = execAsync(`${runtime} pull ${busyboxImage}`).then(
+      () => undefined,
+    );
+  }
+  await busyboxPullPromise;
+
   await execAsync(`${runtime} tag ${busyboxImage} ${image}`);
 
   // Push with retries — repo creation is async; the push can race against
