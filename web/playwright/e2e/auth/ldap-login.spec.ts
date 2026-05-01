@@ -1,5 +1,5 @@
 import {test, expect} from '../../fixtures';
-import {TEST_USERS} from '../../global-setup';
+import {TEST_USERS_LDAP} from '../../global-setup';
 
 test.describe('LDAP Login', {tag: ['@auth', '@auth:LDAP', '@critical']}, () => {
   test('logs in with LDAP credentials', async ({browser, quayConfig}) => {
@@ -15,8 +15,8 @@ test.describe('LDAP Login', {tag: ['@auth', '@auth:LDAP', '@critical']}, () => {
 
     await page
       .getByRole('textbox', {name: /username/i})
-      .fill(TEST_USERS.user.username);
-    await page.getByLabel(/password/i).fill(TEST_USERS.user.password);
+      .fill(TEST_USERS_LDAP.user.username);
+    await page.getByLabel(/password/i).fill(TEST_USERS_LDAP.user.password);
     await page.locator('button[type="submit"]').click();
 
     await expect(page).toHaveURL(/\/(organization|updateuser|repository)/, {
@@ -45,8 +45,8 @@ test.describe('LDAP Login', {tag: ['@auth', '@auth:LDAP', '@critical']}, () => {
 
     await page
       .getByRole('textbox', {name: /username/i})
-      .fill(TEST_USERS.admin.username);
-    await page.getByLabel(/password/i).fill(TEST_USERS.admin.password);
+      .fill(TEST_USERS_LDAP.admin.username);
+    await page.getByLabel(/password/i).fill(TEST_USERS_LDAP.admin.password);
     await page.locator('button[type="submit"]').click();
 
     await expect(page).toHaveURL(/\/(organization|updateuser|repository)/, {
