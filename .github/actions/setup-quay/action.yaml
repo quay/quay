@@ -237,6 +237,18 @@ runs:
         echo "Static files built successfully"
         ls -la static/build/ || echo "Warning: static/build/ directory not found"
 
+    - name: Build React static files for nginx
+      shell: bash
+      env:
+        REACT_QUAY_APP_API_URL: http://localhost:8080
+      run: |
+        echo "Building React static files for nginx..."
+        cd web && npm clean-install && npm run build
+        mkdir -p ../static/patternfly
+        cp -r dist/* ../static/patternfly/
+        echo "React files deployed to static/patternfly/"
+        ls ../static/patternfly/index.html
+
     - name: Start Quay container
       shell: bash
       run: |
