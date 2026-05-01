@@ -256,15 +256,17 @@ class TestPopenExecutor:
         executor = self._make_executor()
 
         def exists_side_effect(path):
-            return path == "/run/docker.sock"
+            return path == "/opt/docker.sock"
 
         with patch.dict("os.environ", {"DOCKER_HOST": "unix:///var/run/docker.sock"}):
             with patch("os.path.exists", side_effect=exists_side_effect):
                 with patch("os.path.realpath", return_value="/run/docker.sock"):
-                    executor.start_builder("token", "uuid")
+                    with patch("os.path.isdir", return_value=True):
+                        with patch("os.listdir", return_value=[]):
+                            executor.start_builder("token", "uuid")
 
         env = mock_popen.call_args[1]["env"]
-        assert env["DOCKER_HOST"] == "unix:///run/docker.sock"
+        assert env["DOCKER_HOST"] == "unix:///opt/docker.sock"
 
     def test_stop_builder_unknown_id_raises(self):
         executor = self._make_executor()

@@ -428,7 +428,7 @@ class PopenExecutor(BuilderExecutor):
                 os.listdir("/run") if os.path.isdir("/run") else "N/A",
             )
             if not exists:
-                for candidate in ["/run/docker.sock", "/var/run/docker.sock"]:
+                for candidate in ["/opt/docker.sock", "/run/docker.sock", "/var/run/docker.sock"]:
                     if os.path.exists(candidate):
                         logger.warning(
                             "Docker socket not at %s but found at %s, using that instead",
