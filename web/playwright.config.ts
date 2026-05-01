@@ -58,7 +58,18 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /legacy-ui/,
       use: {...devices['Desktop Chrome'], channel: 'chromium'},
+    },
+    {
+      name: 'legacy-ui',
+      testDir: './playwright/e2e/legacy-ui',
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chromium',
+        baseURL:
+          process.env.PLAYWRIGHT_LEGACY_BASE_URL || 'http://localhost:8080',
+      },
     },
   ],
 
