@@ -26,6 +26,7 @@ import TagsTable from './TagsTable';
 import {TagsToolbar} from './TagsToolbar';
 import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 import {enrichTagsWithCosignData, isCosignSignatureTag} from 'src/libs/cosign';
+import {toEpochOrZero} from 'src/libs/utils';
 
 export default function TagsList(props: TagsProps) {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -41,12 +42,6 @@ export default function TagsList(props: TagsProps) {
   const filteredTags = showSignatures
     ? tags
     : tags.filter((tag) => !isCosignSignatureTag(tag.name));
-
-  const toEpochOrZero = (value?: string): number => {
-    if (!value) return 0;
-    const ts = Date.parse(value);
-    return Number.isFinite(ts) ? ts : 0;
-  };
 
   // Use unified table hook for sorting, filtering, and pagination
   const {

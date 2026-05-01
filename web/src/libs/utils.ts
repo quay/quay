@@ -36,6 +36,12 @@ export function formatDate(
   });
 }
 
+export function toEpochOrZero(value?: string): number {
+  if (!value) return 0;
+  const ts = Date.parse(value);
+  return Number.isFinite(ts) ? ts : 0;
+}
+
 export function formatSize(sizeInBytes: number) {
   // Handle null/undefined but allow 0 as a valid value
   if (sizeInBytes === null || sizeInBytes === undefined) {

@@ -23,6 +23,9 @@ test.describe(
         fullName: `${TEST_USERS.user.username}/${repoName}`,
       };
 
+      const ensureDistinctTimestamp = () =>
+        new Promise((resolve) => setTimeout(resolve, 1100));
+
       await pushImage(
         repo.namespace,
         repo.name,
@@ -30,6 +33,7 @@ test.describe(
         TEST_USERS.user.username,
         TEST_USERS.user.password,
       );
+      await ensureDistinctTimestamp();
       await pushImage(
         repo.namespace,
         repo.name,
@@ -37,6 +41,7 @@ test.describe(
         TEST_USERS.user.username,
         TEST_USERS.user.password,
       );
+      await ensureDistinctTimestamp();
       await pushImage(
         repo.namespace,
         repo.name,
