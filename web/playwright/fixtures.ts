@@ -1120,10 +1120,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   api: async ({authenticatedRequest, quayConfig}, use) => {
     const client = new ApiClient(authenticatedRequest);
-    const users =
-      quayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
-        ? TEST_USERS_OIDC
-        : TEST_USERS;
+    const users = getTestUsers(quayConfig);
     const testApi = new TestApi(client, users.user.username);
     await use(testApi);
     await testApi.cleanup();
