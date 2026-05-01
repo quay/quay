@@ -13,9 +13,10 @@ export default defineConfig({
   // Maximum time one test can run for
   timeout: 60 * 1000,
 
-  // Run tests in parallel (auto-detect optimal worker count based on CPU cores)
+  // Run tests in parallel — fixed at 4 for CI so Quay isn't overwhelmed by
+  // more workers than it can sustain, regardless of runner CPU count.
   fullyParallel: true,
-  workers: undefined,
+  workers: process.env.CI ? 4 : undefined,
 
   // Fail the build on CI if you accidentally left test.only in the source code
   forbidOnly: !!process.env.CI,
