@@ -227,9 +227,15 @@ local-dev-extract-builder:
 
 .PHONY: enable-builds
 enable-builds: local-dev-extract-builder
-	~/.local/bin/yq eval-all 'select(fileIndex==0) * select(fileIndex==1)' \
-	    local-dev/stack/config.yaml local-dev/builds/builds-config.yaml > /tmp/merged-builds.yaml
-	yes | cp /tmp/merged-builds.yaml local-dev/stack/config.yaml
+	@if ! command -v yq &> /dev/null; then \
+		echo "Error: yq is not installed"; \
+		echo "Install from: https://github.com/mikefarah/yq/#install"; \
+		exit 1; \
+	fi
+	@cp local-dev/stack/config.yaml local-dev/stack/config.yaml.backup
+	@yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+		local-dev/stack/config.yaml local-dev/builds/builds-config.yaml > local-dev/stack/config.yaml.tmp
+	@mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
 	@echo "Build support enabled in local-dev/stack/config.yaml"
 
 

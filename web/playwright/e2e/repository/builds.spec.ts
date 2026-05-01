@@ -145,7 +145,7 @@ test.describe(
       authenticatedPage,
       api,
     }) => {
-      const org = await api.organization('nobilds');
+      const org = await api.organization('nobuilds');
       const repo = await api.repository(org.name, 'empty-builds');
 
       // Navigate to Builds tab
