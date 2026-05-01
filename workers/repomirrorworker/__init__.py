@@ -556,6 +556,10 @@ def rollback(
 
 
 def _delete_obsolete_tags_for_repo(repository, tags):
+    if not app.config.get("REPO_MIRROR_DELETE_STALE_TAGS", True):
+        logger.debug("Mirror: skipping stale tag cleanup (REPO_MIRROR_DELETE_STALE_TAGS=false)")
+        return []
+
     existing_tags, _ = lookup_alive_tags_shallow(repository.id)
     tags_set = set(tags)
     obsolete_tags = [tag for tag in existing_tags if tag.name not in tags_set]

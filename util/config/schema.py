@@ -1117,6 +1117,11 @@ CONFIG_SCHEMA = {
             "description": "Enables rolling repository back to previous state in the event the mirror fails. Defaults to false",
             "x-example": "true",
         },
+        "REPO_MIRROR_DELETE_STALE_TAGS": {
+            "type": "boolean",
+            "description": "When true, tags that no longer exist upstream are deleted from the local mirror during sync. Defaults to true",
+            "x-example": True,
+        },
         "REPO_MIRROR_MAX_MANIFEST_LIST_SIZE": {
             "type": "integer",
             "minimum": 1,

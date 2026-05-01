@@ -172,6 +172,7 @@ var knownUnmapped = map[string]bool{
 	"REPO_MIRROR_INTERVAL":               true,
 	"REPO_MIRROR_MAX_MANIFEST_ENTRIES":   true,
 	"REPO_MIRROR_MAX_MANIFEST_LIST_SIZE": true,
+	"REPO_MIRROR_DELETE_STALE_TAGS":       true,
 	"REPO_MIRROR_ROLLBACK":               true,
 	"REPO_MIRROR_SERVER_HOSTNAME":        true,
 	"REPO_MIRROR_TLS_VERIFY":             true,

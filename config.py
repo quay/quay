@@ -582,6 +582,9 @@ class DefaultConfig(ImmutableConfig):
     # Defaults to false, to allow partial mirroring of upstream repositories.
     REPO_MIRROR_ROLLBACK = False
 
+    # When true, tags that no longer exist upstream are deleted from the local mirror.
+    REPO_MIRROR_DELETE_STALE_TAGS = True
+
     # Maximum size in bytes of manifest list JSON to parse during mirroring.
     # Prevents DoS via oversized manifests from malicious registries.
     REPO_MIRROR_MAX_MANIFEST_LIST_SIZE = 10 * 1024 * 1024  # 10MB

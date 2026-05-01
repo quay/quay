@@ -510,6 +510,28 @@ def test_remove_obsolete_tags_all_deleted_when_empty(initialized_db):
     assert deleted_names == ["tag_a", "tag_b"]
 
 
+def test_remove_obsolete_tags_skipped_when_config_disabled(initialized_db, app):
+    """
+    When REPO_MIRROR_DELETE_STALE_TAGS is false, no tags should be deleted.
+    """
+
+    mirror, repository = create_mirror_repo_robot(["updated", "created"], repo_name="skip_delete")
+
+    _create_tag(repository, "tag_a")
+
+    app.config["REPO_MIRROR_DELETE_STALE_TAGS"] = False
+    try:
+        deleted_tags = delete_obsolete_tags(mirror, [])
+        assert deleted_tags == []
+
+        from data.model.oci.tag import lookup_alive_tags_shallow
+
+        remaining, _ = lookup_alive_tags_shallow(repository.id)
+        assert [t.name for t in remaining] == ["tag_a"]
+    finally:
+        app.config["REPO_MIRROR_DELETE_STALE_TAGS"] = True
+
+
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_perform_mirror_cleans_tags_on_empty_upstream(run_skopeo_mock, initialized_db, app):
