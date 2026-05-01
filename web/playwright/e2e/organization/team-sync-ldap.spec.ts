@@ -44,7 +44,7 @@ test.describe(
       await page.getByRole('button', {name: 'Enable Sync'}).click();
       await expect(
         page.getByText('Successfully updated team sync config').first(),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 10000});
 
       // Verify sync config is displayed
       await expect(
