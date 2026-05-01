@@ -52,10 +52,12 @@ export default function TagsList(props: TagsProps) {
     columns: {
       2: (item: Tag) => item.name, // Tag Name
       4: (item: Tag) => item.size || 0, // Size
-      5: (item: Tag) => item.last_modified, // Last Modified
-      6: (item: Tag) => item.expiration || '', // Expires
+      5: (item: Tag) => item.start_ts || 0, // Last Modified
+      6: (item: Tag) =>
+        item.expiration ? new Date(item.expiration).getTime() : 0, // Expires
       7: (item: Tag) => item.manifest_digest, // Manifest
-      8: (item: Tag) => item.last_pulled || '', // Last Pulled
+      8: (item: Tag) =>
+        item.last_pulled ? new Date(item.last_pulled).getTime() : 0, // Last Pulled
       9: (item: Tag) => item.pull_count || 0, // Pull Count
     },
     filter: searchFilter,

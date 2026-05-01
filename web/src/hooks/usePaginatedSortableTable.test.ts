@@ -456,4 +456,163 @@ describe('usePaginatedSortableTable', () => {
       expect(typeof props.setPerPage).toBe('function');
     });
   });
+
+  // Regression tests for PROJQUAY-11351: date columns must sort chronologically
+  describe('date sorting (PROJQUAY-11351)', () => {
+    interface TagLikeItem {
+      name: string;
+      last_modified: string;
+      start_ts: number;
+      expiration: string;
+      last_pulled: string;
+    }
+
+    // Realistic data matching the Jira screenshots. RFC 2822 strings start
+    // with the weekday name, so localeCompare sorts "Fri" < "Mon" < "Tue"
+    // instead of chronologically.
+    const tagItems: TagLikeItem[] = [
+      {
+        name: 'tag-apr13-1233',
+        last_modified: 'Mon, 13 Apr 2026 12:33:00 -0000',
+        start_ts: 1776076380,
+        expiration: 'Fri, 01 May 2026 00:00:00 -0000',
+        last_pulled: 'Mon, 13 Apr 2026 14:00:00 -0000',
+      },
+      {
+        name: 'tag-apr13-0921',
+        last_modified: 'Mon, 13 Apr 2026 09:21:00 -0000',
+        start_ts: 1776064860,
+        expiration: 'Wed, 29 Apr 2026 00:00:00 -0000',
+        last_pulled: 'Mon, 13 Apr 2026 10:00:00 -0000',
+      },
+      {
+        name: 'tag-apr10-1329',
+        last_modified: 'Fri, 10 Apr 2026 13:29:00 -0000',
+        start_ts: 1775829540,
+        expiration: 'Mon, 27 Apr 2026 00:00:00 -0000',
+        last_pulled: 'Fri, 10 Apr 2026 15:00:00 -0000',
+      },
+      {
+        name: 'tag-apr10-1150',
+        last_modified: 'Fri, 10 Apr 2026 11:50:00 -0000',
+        start_ts: 1775823600,
+        expiration: 'Sun, 26 Apr 2026 00:00:00 -0000',
+        last_pulled: 'Fri, 10 Apr 2026 12:00:00 -0000',
+      },
+      {
+        name: 'tag-apr07-1453',
+        last_modified: 'Tue, 07 Apr 2026 14:53:00 -0000',
+        start_ts: 1775588580,
+        expiration: 'Thu, 23 Apr 2026 00:00:00 -0000',
+        last_pulled: 'Tue, 07 Apr 2026 16:00:00 -0000',
+      },
+    ];
+
+    const CHRONOLOGICAL_ASC = [
+      'tag-apr07-1453',
+      'tag-apr10-1150',
+      'tag-apr10-1329',
+      'tag-apr13-0921',
+      'tag-apr13-1233',
+    ];
+    const CHRONOLOGICAL_DESC = [...CHRONOLOGICAL_ASC].reverse();
+
+    it('sorts Last Modified ascending chronologically using start_ts', () => {
+      const cols: Record<number, (item: TagLikeItem) => string | number> = {
+        0: (item) => item.start_ts || 0,
+      };
+      const {result} = renderHook(() =>
+        usePaginatedSortableTable(tagItems, {columns: cols}),
+      );
+      act(() => {
+        triggerSort(result, 0, 'asc');
+      });
+      const names = result.current.paginatedData.map((t) => t.name);
+      expect(names).toEqual(CHRONOLOGICAL_ASC);
+    });
+
+    it('sorts Last Modified descending chronologically using start_ts', () => {
+      const cols: Record<number, (item: TagLikeItem) => string | number> = {
+        0: (item) => item.start_ts || 0,
+      };
+      const {result} = renderHook(() =>
+        usePaginatedSortableTable(tagItems, {columns: cols}),
+      );
+      act(() => {
+        triggerSort(result, 0, 'desc');
+      });
+      const names = result.current.paginatedData.map((t) => t.name);
+      expect(names).toEqual(CHRONOLOGICAL_DESC);
+    });
+
+    it('sorts Expires ascending chronologically using parsed timestamp', () => {
+      const cols: Record<number, (item: TagLikeItem) => string | number> = {
+        0: (item) =>
+          item.expiration ? new Date(item.expiration).getTime() : 0,
+      };
+      const {result} = renderHook(() =>
+        usePaginatedSortableTable(tagItems, {columns: cols}),
+      );
+      act(() => {
+        triggerSort(result, 0, 'asc');
+      });
+      const names = result.current.paginatedData.map((t) => t.name);
+      expect(names).toEqual(CHRONOLOGICAL_ASC);
+    });
+
+    it('sorts Last Pulled descending chronologically using parsed timestamp', () => {
+      const cols: Record<number, (item: TagLikeItem) => string | number> = {
+        0: (item) =>
+          item.last_pulled ? new Date(item.last_pulled).getTime() : 0,
+      };
+      const {result} = renderHook(() =>
+        usePaginatedSortableTable(tagItems, {columns: cols}),
+      );
+      act(() => {
+        triggerSort(result, 0, 'desc');
+      });
+      const names = result.current.paginatedData.map((t) => t.name);
+      expect(names).toEqual(CHRONOLOGICAL_DESC);
+    });
+
+    it('sorts items with missing dates to the beginning', () => {
+      const itemsWithMissing: TagLikeItem[] = [
+        ...tagItems,
+        {
+          name: 'tag-no-dates',
+          last_modified: '',
+          start_ts: 0,
+          expiration: '',
+          last_pulled: '',
+        },
+      ];
+      const cols: Record<number, (item: TagLikeItem) => string | number> = {
+        0: (item) => item.start_ts || 0,
+      };
+      const {result} = renderHook(() =>
+        usePaginatedSortableTable(itemsWithMissing, {columns: cols}),
+      );
+      act(() => {
+        triggerSort(result, 0, 'asc');
+      });
+      expect(result.current.paginatedData[0].name).toBe('tag-no-dates');
+    });
+
+    it('RFC 2822 string sorting produces WRONG order (regression guard)', () => {
+      const buggyColumns: Record<
+        number,
+        (item: TagLikeItem) => string | number
+      > = {
+        0: (item) => item.last_modified,
+      };
+      const {result} = renderHook(() =>
+        usePaginatedSortableTable(tagItems, {columns: buggyColumns}),
+      );
+      act(() => {
+        triggerSort(result, 0, 'asc');
+      });
+      const names = result.current.paginatedData.map((t) => t.name);
+      expect(names).not.toEqual(CHRONOLOGICAL_ASC);
+    });
+  });
 });
