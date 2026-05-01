@@ -435,22 +435,119 @@ class RegenerateOrgRobot(ApiResource):
         raise Unauthorized()
 
 
+def _parse_federation_config(request):
+    """
+    Parse and validate federation configuration from the request body.
+
+    Expects a JSON array of objects with 'issuer' (a URL) and 'subject' fields.
+    Raises request_error on missing fields, invalid issuer URLs, or duplicates.
+    """
+    fed_config = list()
+    seen = set()
+    for item in request.json:
+        if not item:
+            raise request_error(message="Missing one or more required fields (issuer, subject)")
+        issuer = item.get("issuer")
+        subject = item.get("subject")
+        if not issuer or not subject:
+            raise request_error(message="Missing one or more required fields (issuer, subject)")
+        if not (issuer.startswith("http://") or issuer.startswith("https://")):
+            raise request_error(message="Issuer must be a URL (http:// or https://)")
+        entry = {"issuer": issuer, "subject": subject}
+
+        if (issuer, subject) in seen:
+            raise request_error(message="Duplicate federation config entry")
+
+        seen.add((issuer, subject))
+        fed_config.append(entry)
+
+    return list(fed_config)
+
+
+@resource("/v1/user/robots/<robot_shortname>/federation")
+@path_param(
+    "robot_shortname", "The short name for the robot, without any user or organization prefix"
+)
+class UserRobotFederation(ApiResource):
+    """
+    Resource for managing federation configuration of a user's robot account.
+    """
+
+    schemas = {
+        "CreateRobotFederation": CREATE_ROBOT_FEDERATION_SCHEMA,
+    }
+
+    @require_user_admin()
+    @nickname("getUserRobotFederation")
+    def get(self, robot_shortname):
+        """
+        Returns the federation configuration for the user's robot.
+        """
+        parent = get_authenticated_user()
+        robot_username = format_robot_username(parent.username, robot_shortname)
+        robot = lookup_robot(robot_username)
+        return get_robot_federation_config(robot)
+
+    @require_user_admin(disallow_for_restricted_users=True)
+    @nickname("createUserRobotFederation")
+    @validate_json_request("CreateRobotFederation", optional=False)
+    def post(self, robot_shortname):
+        """
+        Create or update federation configuration for the user's robot.
+        """
+        parent = get_authenticated_user()
+        fed_config = _parse_federation_config(request)
+
+        robot_username = format_robot_username(parent.username, robot_shortname)
+        robot = lookup_robot(robot_username)
+        create_robot_federation_config(robot, fed_config)
+        log_action(
+            "create_robot_federation",
+            parent.username,
+            {"config": fed_config, "robot": robot_shortname},
+        )
+        return fed_config
+
+    @require_user_admin(disallow_for_restricted_users=True)
+    @nickname("deleteUserRobotFederation")
+    def delete(self, robot_shortname):
+        """
+        Delete federation configuration for the user's robot.
+        """
+        parent = get_authenticated_user()
+        robot_username = format_robot_username(parent.username, robot_shortname)
+        robot = lookup_robot(robot_username)
+        delete_robot_federation_config(robot)
+        log_action(
+            "delete_robot_federation",
+            parent.username,
+            {"robot": robot_shortname},
+        )
+        return "", 204
+
+
 @resource("/v1/organization/<orgname>/robots/<robot_shortname>/federation")
 @path_param("orgname", "The name of the organization")
 @path_param(
     "robot_shortname", "The short name for the robot, without any user or organization prefix"
 )
-@related_user_resource(UserRobot)
+@related_user_resource(UserRobotFederation)
 class OrgRobotFederation(ApiResource):
+    """
+    Resource for managing federation configuration of an organization's robot account.
+    """
 
     schemas = {
         "CreateRobotFederation": CREATE_ROBOT_FEDERATION_SCHEMA,
     }
 
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("getOrgRobotFederation")
     def get(self, orgname, robot_shortname):
+        """
+        Returns the federation configuration for the organization's robot.
+        """
         permission = AdministerOrganizationPermission(orgname)
-        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
         if (
             permission.can()
             or allow_if_global_readonly_superuser()
@@ -463,11 +560,15 @@ class OrgRobotFederation(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("createOrgRobotFederation")
     @validate_json_request("CreateRobotFederation", optional=False)
     def post(self, orgname, robot_shortname):
+        """
+        Create or update federation configuration for the organization's robot.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser_with_full_access():
-            fed_config = self._parse_federation_config(request)
+            fed_config = _parse_federation_config(request)
 
             robot_username = format_robot_username(orgname, robot_shortname)
             robot = lookup_robot(robot_username)
@@ -482,7 +583,11 @@ class OrgRobotFederation(ApiResource):
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("deleteOrgRobotFederation")
     def delete(self, orgname, robot_shortname):
+        """
+        Delete federation configuration for the organization's robot.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser_with_full_access():
             robot_username = format_robot_username(orgname, robot_shortname)
@@ -495,25 +600,3 @@ class OrgRobotFederation(ApiResource):
             )
             return "", 204
         raise Unauthorized()
-
-    def _parse_federation_config(self, request):
-        fed_config = list()
-        seen = set()
-        for item in request.json:
-            if not item:
-                raise request_error(message="Missing one or more required fields (issuer, subject)")
-            issuer = item.get("issuer")
-            subject = item.get("subject")
-            if not issuer or not subject:
-                raise request_error(message="Missing one or more required fields (issuer, subject)")
-            if not (issuer.startswith("http://") or issuer.startswith("https://")):
-                raise request_error(message="Issuer must be a URL (http:// or https://)")
-            entry = {"issuer": issuer, "subject": subject}
-
-            if f"{issuer}:{subject}" in seen:
-                raise request_error(message="Duplicate federation config entry")
-
-            seen.add(f"{issuer}:{subject}")
-            fed_config.append(entry)
-
-        return list(fed_config)
