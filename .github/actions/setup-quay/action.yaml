@@ -286,9 +286,9 @@ runs:
         services:
           quay:
             volumes:
-              - "/var/run/docker.sock:/var/run/docker.sock"
+              - "/var/run/docker.sock:/run/docker.sock"
             environment:
-              DOCKER_HOST: "unix:///var/run/docker.sock"
+              DOCKER_HOST: "unix:///run/docker.sock"
         EOF
           sed -i 's/^        //' /tmp/docker-compose.builds.yaml
           echo "--- Build compose override ---"
@@ -325,7 +325,8 @@ runs:
         echo "=== Build Manager Diagnostics ==="
 
         echo "--- Docker socket inside container ---"
-        docker exec quay-quay ls -la /var/run/docker.sock 2>&1 || echo "Docker socket not found in container"
+        docker exec quay-quay ls -la /run/docker.sock /var/run/docker.sock 2>&1 || true
+        docker exec quay-quay bash -c 'readlink -f /var/run; stat /run/docker.sock' 2>&1 || echo "Docker socket not found"
 
         echo "--- quay-builder binary ---"
         docker exec quay-quay ls -la /quay-registry/local-dev/quay-builder 2>&1 || echo "quay-builder binary not found"

@@ -412,6 +412,31 @@ class PopenExecutor(BuilderExecutor):
         logger.debug("Forking quay-builder process for build %s", build_uuid)
 
         grpc_server_addr = self._get_grpc_server_addr()
+        docker_host = os.environ.get("DOCKER_HOST", "unix:///var/run/docker.sock")
+        socket_path = (
+            docker_host.replace("unix://", "") if docker_host.startswith("unix://") else None
+        )
+
+        if socket_path:
+            real_path = os.path.realpath(socket_path)
+            exists = os.path.exists(socket_path)
+            logger.debug(
+                "Docker socket check: path=%s, realpath=%s, exists=%s",
+                socket_path,
+                real_path,
+                exists,
+            )
+            if not exists:
+                for candidate in ["/run/docker.sock", "/var/run/docker.sock"]:
+                    if os.path.exists(candidate):
+                        logger.warning(
+                            "Docker socket not at %s but found at %s, using that instead",
+                            socket_path,
+                            candidate,
+                        )
+                        docker_host = "unix://%s" % candidate
+                        break
+
         builder_env = {
             "TOKEN": token,
             "BUILD_UUID": build_uuid,
@@ -420,7 +445,7 @@ class PopenExecutor(BuilderExecutor):
             "CONTAINER_RUNTIME": self.executor_config.get("CONTAINER_RUNTIME", "docker"),
             "BUILDAH_ISOLATION": self.executor_config.get("BUILDAH_ISOLATION", "chroot"),
             "INSECURE": str(self.executor_config.get("INSECURE", False)).lower(),
-            "DOCKER_HOST": os.environ.get("DOCKER_HOST", "unix:///var/run/docker.sock"),
+            "DOCKER_HOST": docker_host,
             "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         }
 

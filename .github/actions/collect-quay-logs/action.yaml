@@ -46,7 +46,7 @@ runs:
             > logs/quay-processes.log 2>&1 || true
 
           # Docker socket accessibility
-          docker exec quay-quay ls -la /var/run/docker.sock \
+          docker exec quay-quay bash -c 'ls -la /run/docker.sock /var/run/docker.sock 2>&1; readlink -f /var/run 2>&1; echo "DOCKER_HOST=$DOCKER_HOST"' \
             > logs/docker-socket-status.log 2>&1 || echo "Docker socket not mounted" > logs/docker-socket-status.log
 
           # Port listeners
