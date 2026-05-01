@@ -285,8 +285,9 @@ runs:
           quay:
             volumes:
               - "/var/run/docker.sock:/run/docker.sock"
+              - "/var/run/docker.sock:/var/run/docker.sock"
             environment:
-              DOCKER_HOST: "unix:///run/docker.sock"
+              DOCKER_HOST: "unix:///var/run/docker.sock"
         EOF
           sed -i 's/^        //' /tmp/docker-compose.builds.yaml
           echo "--- Build compose override ---"
