@@ -515,16 +515,17 @@ def test_remove_obsolete_tags_all_deleted_when_empty(initialized_db):
     assert [t.name for t in remaining] == []
 
 
-def test_remove_obsolete_tags_skipped_when_config_disabled(initialized_db, app):
+def test_remove_obsolete_tags_skipped_when_config_disabled(initialized_db):
     """
     When REPO_MIRROR_DELETE_STALE_TAGS is false, no tags should be deleted.
     """
+    from app import app as quay_app
 
     mirror, repository = create_mirror_repo_robot(["updated", "created"], repo_name="skip_delete")
 
     _create_tag(repository, "tag_a")
 
-    app.config["REPO_MIRROR_DELETE_STALE_TAGS"] = False
+    quay_app.config["REPO_MIRROR_DELETE_STALE_TAGS"] = False
     try:
         deleted_tags = delete_obsolete_tags(mirror, [])
         assert deleted_tags == []
@@ -534,7 +535,7 @@ def test_remove_obsolete_tags_skipped_when_config_disabled(initialized_db, app):
         remaining, _ = lookup_alive_tags_shallow(repository.id)
         assert [t.name for t in remaining] == ["tag_a"]
     finally:
-        app.config["REPO_MIRROR_DELETE_STALE_TAGS"] = True
+        quay_app.config["REPO_MIRROR_DELETE_STALE_TAGS"] = True
 
 
 @disable_existing_mirrors
