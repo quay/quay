@@ -50,6 +50,20 @@ async function detectContainerRuntime(): Promise<string | null> {
  * await pushImage('myorg', 'myrepo', 'latest', 'testuser', 'password');
  * ```
  */
+async function retryPush(cmd: string, maxAttempts = 5): Promise<void> {
+  let lastErr: unknown;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      await execAsync(cmd);
+      return;
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 500 * 2 ** i));
+    }
+  }
+  throw lastErr;
+}
+
 export async function pushImage(
   namespace: string,
   repo: string,
@@ -76,8 +90,9 @@ export async function pushImage(
   await execAsync(`${runtime} pull ${busyboxImage}`);
   await execAsync(`${runtime} tag ${busyboxImage} ${image}`);
 
-  // Push to registry
-  await execAsync(`${runtime} push ${image} ${tlsFlag}`.trim());
+  // Push with retries — repo creation is async; the push can race against
+  // Quay's backend committing the repo, especially with many parallel workers.
+  await retryPush(`${runtime} push ${image} ${tlsFlag}`.trim());
 
   // Cleanup local image
   await execAsync(`${runtime} rmi ${image}`);
@@ -112,9 +127,9 @@ export async function pushMultiArchImage(
   const targetImage = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
   const sourceImage = 'quay.io/prometheus/busybox:latest';
 
-  // Use skopeo to copy the entire multi-arch manifest list in one command
-  // --all flag copies all architectures and the manifest list
-  await execAsync(
+  // Use skopeo to copy the entire multi-arch manifest list in one command.
+  // Retry for the same repo-init race as pushImage.
+  await retryPush(
     `skopeo copy --all docker://${sourceImage} docker://${targetImage} --dest-tls-verify=false --dest-creds=${username}:${password}`,
   );
 }
