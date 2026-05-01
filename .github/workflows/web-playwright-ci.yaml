@@ -19,6 +19,7 @@ jobs:
         with:
           with-clair: true
           with-keycloak: true
+          with-ldap: true
           with-jaeger: true
           with-repomirror: true
           use-gha-cache: false
@@ -65,7 +66,7 @@ jobs:
       - name: Run Database auth tests
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
-        run: cd web && npx playwright test --project=chromium --grep-invert @auth:OIDC --reporter=blob
+        run: cd web && npx playwright test --project=chromium --grep-invert "@auth:OIDC|@auth:LDAP" --reporter=blob
 
       - name: Run legacy UI toggle and smoke tests
         if: always()
@@ -108,6 +109,41 @@ jobs:
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
         run: cd web && npx playwright test --project=chromium --grep @auth:OIDC --reporter=blob
+
+      - name: Swap to LDAP authentication
+        if: always()
+        run: |
+          pip install pyyaml -q
+          # Merge LDAP config (sets AUTHENTICATION_TYPE: LDAP + connection details)
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            local-dev/ldap/ldap-config.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Merge LDAP-specific feature flags
+          cat > /tmp/ldap-auth-overlay.yaml <<'EOF'
+          FEATURE_TEAM_SYNCING: true
+          FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP: true
+          SUPER_USERS:
+            - admin
+            - admin_ldap
+          EOF
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            /tmp/ldap-auth-overlay.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Restart Quay and wait for healthy
+          docker restart quay-quay
+          curl -sf --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:8080/health/instance > /dev/null
+          echo "Quay is ready with LDAP auth"
+
+      - name: Run LDAP auth tests
+        if: always()
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/ldap
+        run: cd web && npx playwright test --project=chromium --grep @auth:LDAP --reporter=blob
 
       - name: Merge test reports
         if: always()

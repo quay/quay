@@ -104,3 +104,15 @@ gecos: Test User
 loginShell: /bin/bash
 homeDirectory: /home/testuser
 mail: testuser@example.com
+
+# Organizational unit for groups (used by team syncing)
+dn: ou=groups,dc=example,dc=org
+objectClass: organizationalUnit
+ou: groups
+
+# Sample group for team sync testing
+dn: cn=test_ldap_group,ou=groups,dc=example,dc=org
+objectClass: groupOfUniqueNames
+cn: test_ldap_group
+uniqueMember: uid=testuser,ou=users,dc=example,dc=org
+uniqueMember: uid=admin,ou=users,dc=example,dc=org
