@@ -299,6 +299,19 @@ class OCIManifest(ManifestInterface):
         not support layers.
         """
         if not self.is_image_manifest:
+            for filesystem_layer in self.filesystem_layers:
+                yield ManifestImageLayer(
+                    layer_id=str(filesystem_layer.digest),
+                    compressed_size=filesystem_layer.compressed_size,
+                    is_remote=filesystem_layer.is_remote,
+                    urls=filesystem_layer.urls,
+                    command=None,
+                    blob_digest=str(filesystem_layer.digest),
+                    created_datetime=None,
+                    author=None,
+                    comment=None,
+                    internal_layer=filesystem_layer,
+                )
             return
 
         for image_layer in self._manifest_image_layers(content_retriever):
