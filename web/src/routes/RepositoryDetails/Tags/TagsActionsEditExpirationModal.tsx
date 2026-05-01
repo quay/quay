@@ -267,6 +267,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
                       dateParse={(date: string) => new Date(date)}
                       onChange={onDateChange}
                       validators={[rangeValidator]}
+                      appendTo={document.body}
                     />
                   </SplitItem>
                   <SplitItem>
