@@ -396,7 +396,12 @@ class PopenExecutor(BuilderExecutor):
         """Return the gRPC server address for the builder to connect to."""
         if self.executor_config.get("INSECURE", False):
             return "localhost:%s" % DEFAULT_GRPC_SERVER_PORT
-        return "%s:%s" % (self.manager_hostname, SECURE_GRPC_SERVER_PORT)
+        host = (
+            self.manager_hostname.rsplit(":", 1)[0]
+            if ":" in self.manager_hostname
+            else self.manager_hostname
+        )
+        return "%s:%s" % (host, SECURE_GRPC_SERVER_PORT)
 
     @property
     def running_builders_count(self):
@@ -461,10 +466,12 @@ class PopenExecutor(BuilderExecutor):
         logger.debug("Killing builder with id: %s", builder_id)
         spawned, logpipe = self._jobs[builder_id]
 
-        if spawned.poll() is None:
-            spawned.kill()
-        logpipe.close()
-        del self._jobs[builder_id]
+        try:
+            if spawned.poll() is None:
+                spawned.kill()
+        finally:
+            logpipe.close()
+            self._jobs.pop(builder_id, None)
 
 
 class KubernetesExecutor(BuilderExecutor):

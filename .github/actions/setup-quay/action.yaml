@@ -211,9 +211,13 @@ runs:
         mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
         echo "Build support configuration merged"
 
-        # Allow the Quay container (UID 1001) to access the Docker socket
-        sudo chmod 666 /var/run/docker.sock
-        echo "Docker socket permissions: $(ls -la /var/run/docker.sock)"
+        # Allow the Quay container (UID 1001, GID 0) to access the Docker socket
+        DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+        echo "Docker socket GID: ${DOCKER_GID}"
+        echo "Docker socket permissions before: $(ls -la /var/run/docker.sock)"
+        sudo chmod 660 /var/run/docker.sock
+        sudo chgrp 0 /var/run/docker.sock
+        echo "Docker socket permissions after: $(ls -la /var/run/docker.sock)"
 
     - name: Start database services
       shell: bash

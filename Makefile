@@ -217,7 +217,8 @@ QUAY_BUILDER_IMAGE ?= quay.io/projectquay/quay-builder:3.17-unstable
 local-dev-extract-builder:
 	@if [ ! -f ./local-dev/quay-builder ]; then \
 	  echo "Extracting quay-builder binary from $(QUAY_BUILDER_IMAGE)..."; \
-	  $(DOCKER) create --name quay-builder-extract $(QUAY_BUILDER_IMAGE) 2>/dev/null || true; \
+	  $(DOCKER) rm -f quay-builder-extract 2>/dev/null || true; \
+	  $(DOCKER) create --name quay-builder-extract $(QUAY_BUILDER_IMAGE); \
 	  $(DOCKER) cp quay-builder-extract:/usr/local/bin/quay-builder ./local-dev/quay-builder; \
 	  $(DOCKER) rm -f quay-builder-extract; \
 	  chmod +x ./local-dev/quay-builder; \
