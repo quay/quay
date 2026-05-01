@@ -14,6 +14,8 @@ allowed-tools:
   - Bash(gh api *)
   - Bash(git log *)
   - Bash(date *)
+  - Bash(bash .claude/scripts/jira-ops.sh *)
+  - Bash(curl *)
   - mcp__mcp-atlassian__jira_get_issue
   - mcp__mcp-atlassian__jira_search
   - mcp__mcp-atlassian__jira_batch_get_changelogs
@@ -30,6 +32,13 @@ input on subjective sections, and post the final comment to PROJQUAY-11352.
 
 **Tracking issue:** PROJQUAY-11352 ("Quay Agentic Tool Pilot")
 **Deadline:** June 30, 2026
+
+> **Prerequisite:** This skill uses Jira MCP tools
+> (`mcp__mcp-atlassian__jira_*`) which are configured at the Ambient
+> session level, not in the repo's `.mcp.json`. It must be run inside an
+> Ambient Code session with the Jira integration enabled. If running
+> locally, the skill falls back to the Jira REST API via curl using
+> credentials from `~/.atlassian/credentials` or environment variables.
 
 ---
 
@@ -111,7 +120,7 @@ For each repo, search for PRs using the GitHub CLI:
 
 **Merged PRs (last N days):**
 ```bash
-gh search prs --repo quay/<repo> --merged --merged-at ">={start_date}" --json number,title,author,mergedAt,url --limit 50
+gh search prs --repo quay/<repo> --merged --merged-at ">={start_date}" --json number,title,author,closedAt,url --limit 50
 ```
 
 **Open PRs (in progress):**
@@ -258,14 +267,29 @@ a new status). Do not repeat items across sections without new information.
 
 ## Phase 5: Post the Comment
 
-Post the confirmed comment to PROJQUAY-11352. Use the Bash tool to call:
+Post the confirmed comment to PROJQUAY-11352.
+
+**Method 1 — Jira MCP (preferred in Ambient sessions):**
+If `mcp__mcp-atlassian__jira_get_issue` is available, the Jira MCP
+integration is active. However, the MCP tools exposed in this skill do
+not include a comment-posting tool. Proceed to Method 2.
+
+**Method 2 — Jira REST API via curl:**
+Use the same credential helpers as `.claude/scripts/jira-ops.sh`. Source
+credentials from environment variables (`JIRA_EMAIL` / `JIRA_API_TOKEN`)
+or from `~/.atlassian/credentials` (INI format with `email` and `token`
+keys). Post the comment with:
 
 ```bash
-bash .claude/scripts/jira-ops.sh comment PROJQUAY-11352 "<final_markdown>"
+curl -s -X POST \
+  -H "Authorization: Basic $(echo -n "${JIRA_EMAIL}:${JIRA_API_TOKEN}" | base64)" \
+  -H "Content-Type: application/json" \
+  "https://redhat.atlassian.net/rest/api/3/issue/PROJQUAY-11352/comment" \
+  -d '{"body":{"type":"doc","version":1,"content":[{"type":"paragraph","content":[{"type":"text","text":"<final_markdown>"}]}]}}'
 ```
 
-If `jira-ops.sh` does not support comment posting, fall back to the Jira
-MCP tool or display the full markdown for the user to copy-paste manually.
+If the curl call fails (non-200 response), display the full markdown for
+the user to copy-paste manually and report the error.
 
 Confirm success with: "Comment posted to PROJQUAY-11352."
 
@@ -284,3 +308,7 @@ Confirm success with: "Comment posted to PROJQUAY-11352."
   report this period." as the placeholder.
 - **Comment post fails**: display markdown for manual copy-paste and
   report the error.
+- **Jira MCP tools unavailable** (running outside Ambient): fall back to
+  the Jira REST API via curl for both data gathering and comment posting.
+  If credentials are not available, report the error and display
+  instructions for manual posting.
