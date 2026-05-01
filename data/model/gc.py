@@ -81,8 +81,11 @@ def purge_repository(repo, force=False):
     assert repo.state == RepositoryState.MARKED_FOR_DELETION or force
 
     # Update the repo state to ensure nothing else is written to it.
-    repo.state = RepositoryState.MARKED_FOR_DELETION
-    repo.save()
+    # Skip the individual save when the state is already set (e.g. after a bulk
+    # UPDATE from delete_user()) to avoid N per-repo round-trips.
+    if repo.state != RepositoryState.MARKED_FOR_DELETION:
+        repo.state = RepositoryState.MARKED_FOR_DELETION
+        repo.save()
 
     # GC to remove the images and storage.
     _purge_repository_contents(repo)
