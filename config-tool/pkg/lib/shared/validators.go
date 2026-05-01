@@ -239,18 +239,32 @@ func ValidateIsURL(input string, field string, fgName string) (bool, ValidationE
 }
 
 // ValidateIsHostname tests a string to determine if it is a well-structured hostname or not.
+// Hostnames must be fully qualified domain names (contain at least one dot) or "localhost".
 func ValidateIsHostname(input string, field string, fgName string) (bool, ValidationError) {
 
 	// trim whitespace
 	input = strings.Trim(input, " ")
 
-	// check against regex
-	re, _ := regexp.Compile(`^[a-zA-Z-0-9\.]+(:[0-9]+)?$`)
+	// check against regex for valid hostname characters
+	re, _ := regexp.Compile(`^[a-zA-Z0-9\.\-]+(:[0-9]+)?$`)
 	if !re.MatchString(input) {
 		newError := ValidationError{
 			Tags:       []string{field},
 			FieldGroup: fgName,
 			Message:    field + " must be of type Hostname",
+		}
+		return false, newError
+	}
+
+	// extract hostname without port
+	hostPart := strings.Split(input, ":")[0]
+
+	// require FQDN format (at least one dot) or localhost
+	if hostPart != "localhost" && !strings.Contains(hostPart, ".") {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + " must be a fully qualified domain name (e.g. registry.example.com). Single-label hostnames like '" + hostPart + "' are not supported by OpenShift",
 		}
 		return false, newError
 	}

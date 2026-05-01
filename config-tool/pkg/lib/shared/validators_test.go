@@ -4,6 +4,45 @@ import (
 	"testing"
 )
 
+func TestValidateIsHostname(t *testing.T) {
+	var tests = []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		// Valid FQDNs
+		{"fqdn", "registry.example.com", true},
+		{"fqdnWithPort", "registry.example.com:8443", true},
+		{"twoParts", "fakehost.com", true},
+		{"twoParts with port", "fakehost.com:443", true},
+		{"subdomains", "my.registry.example.com", true},
+		{"hyphenated", "my-registry.example.com", true},
+		{"hyphenatedWithPort", "my-registry.example.com:5000", true},
+		{"localhost", "localhost", true},
+		{"localhostWithPort", "localhost:8443", true},
+
+		// Invalid: single-label hostnames (no dots, not localhost)
+		{"singleLabel", "myregistry", false},
+		{"singleLabelWithPort", "myregistry:8443", false},
+		{"singleLabelHyphen", "my-registry", false},
+		{"singleLabelHyphenWithPort", "my-registry:8443", false},
+
+		// Invalid: bad characters
+		{"invalidChars", "registry!.com", false},
+		{"spaces", "registry .com", false},
+		{"underscore", "my_registry.com", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := ValidateIsHostname(tt.input, "TEST_FIELD", "TestGroup")
+			if ok != tt.want {
+				t.Errorf("ValidateIsHostname(%q) = %v, want %v. Error: %s", tt.input, ok, tt.want, err.Message)
+			}
+		})
+	}
+}
+
 // TestValidateCertPairWithHostname tests the Validate function
 func TestValidateCertPairWithHostname(t *testing.T) {
 
