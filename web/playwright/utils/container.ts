@@ -17,6 +17,13 @@ const REGISTRY_HOST = new URL(API_URL).host;
 // Cache the detected container runtime
 let containerRuntime: string | null = null;
 
+// Deduplicate the busybox pull — concurrent workers share one Promise
+let busyboxPullPromise: Promise<void> | null = null;
+
+// Track registries we've already logged into so each worker logs in only once.
+// Quay rate-limits concurrent logins (HTTP 429) when many workers fire at once.
+const loggedInRegistries = new Set<string>();
+
 /**
  * Detect available container runtime (podman or docker)
  *
@@ -41,9 +48,30 @@ async function detectContainerRuntime(): Promise<string | null> {
 }
 
 /**
- * Push a test image to the registry using podman or docker
+ * Execute a shell command, retrying with exponential backoff on failure.
  *
- * Uses busybox as a minimal test image
+ * @param cmd - Shell command to run
+ * @param maxAttempts - Maximum number of attempts (default: 5)
+ */
+async function retryPush(cmd: string, maxAttempts = 5): Promise<void> {
+  let lastErr: unknown;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      await execAsync(cmd);
+      return;
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 500 * 2 ** i));
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * Push a test image to the registry using podman or docker.
+ *
+ * Uses busybox as a minimal test image. Login and busybox pull are
+ * deduplicated per process so concurrent workers don't race on them.
  *
  * @example
  * ```typescript
@@ -64,20 +92,30 @@ export async function pushImage(
 
   const image = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
   const tlsFlag = runtime === 'podman' ? '--tls-verify=false' : '';
+  const loginKey = `${runtime}:${REGISTRY_HOST}:${username}`;
 
-  // Login to registry
-  await execAsync(
-    `${runtime} login ${REGISTRY_HOST} -u ${username} -p ${password} ${tlsFlag}`.trim(),
-  );
+  if (!loggedInRegistries.has(loginKey)) {
+    await execAsync(
+      `${runtime} login ${REGISTRY_HOST} -u ${username} -p ${password} ${tlsFlag}`.trim(),
+    );
+    loggedInRegistries.add(loginKey);
+  }
 
   const busyboxImage = 'quay.io/prometheus/busybox:latest';
 
-  // Pull busybox and tag it
-  await execAsync(`${runtime} pull ${busyboxImage}`);
+  // Pull busybox once per process; concurrent callers wait on the same Promise.
+  if (!busyboxPullPromise) {
+    busyboxPullPromise = execAsync(`${runtime} pull ${busyboxImage}`).then(
+      () => undefined,
+    );
+  }
+  await busyboxPullPromise;
+
   await execAsync(`${runtime} tag ${busyboxImage} ${image}`);
 
-  // Push to registry
-  await execAsync(`${runtime} push ${image} ${tlsFlag}`.trim());
+  // Push with retries — repo creation is async; the push can race against
+  // Quay's backend committing the repo, especially with many parallel workers.
+  await retryPush(`${runtime} push ${image} ${tlsFlag}`.trim());
 
   // Cleanup local image
   await execAsync(`${runtime} rmi ${image}`);
@@ -112,9 +150,9 @@ export async function pushMultiArchImage(
   const targetImage = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
   const sourceImage = 'quay.io/prometheus/busybox:latest';
 
-  // Use skopeo to copy the entire multi-arch manifest list in one command
-  // --all flag copies all architectures and the manifest list
-  await execAsync(
+  // Use skopeo to copy the entire multi-arch manifest list in one command.
+  // Retry for the same repo-init race as pushImage.
+  await retryPush(
     `skopeo copy --all docker://${sourceImage} docker://${targetImage} --dest-tls-verify=false --dest-creds=${username}:${password}`,
   );
 }

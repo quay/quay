@@ -7,7 +7,7 @@ on:
 jobs:
   playwright:
     name: Playwright E2E Tests
-    runs-on: quay-002-small-ubuntu-24-x64
+    runs-on: quay-003-medium-ubuntu-24-x64
     env:
       QUAY_HOTRELOAD: "false"
     steps:
@@ -21,6 +21,7 @@ jobs:
           with-keycloak: true
           with-jaeger: true
           with-repomirror: true
+          use-gha-cache: false
           extra-config: |
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
