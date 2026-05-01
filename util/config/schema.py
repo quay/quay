@@ -1119,7 +1119,7 @@ CONFIG_SCHEMA = {
         },
         "REPO_MIRROR_DELETE_STALE_TAGS": {
             "type": "boolean",
-            "description": "When true, tags that no longer exist upstream are deleted from the local mirror during sync. Defaults to true",
+            "description": "When true, local tags that no longer match the configured mirror rules or no longer exist upstream are deleted during sync. Defaults to true",
             "x-example": True,
         },
         "REPO_MIRROR_MAX_MANIFEST_LIST_SIZE": {

@@ -509,6 +509,11 @@ def test_remove_obsolete_tags_all_deleted_when_empty(initialized_db):
     deleted_names = sorted([tag.name for tag in deleted_tags])
     assert deleted_names == ["tag_a", "tag_b"]
 
+    from data.model.oci.tag import lookup_alive_tags_shallow
+
+    remaining, _ = lookup_alive_tags_shallow(repository.id)
+    assert [t.name for t in remaining] == []
+
 
 def test_remove_obsolete_tags_skipped_when_config_disabled(initialized_db, app):
     """
