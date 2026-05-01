@@ -48,6 +48,35 @@ jobs:
             exit 1
           fi
 
+          # Enable the memberOf plugin (required for Quay LDAP team sync).
+          # Must be done after init-389ds.sh imports the LDIF, then the
+          # container is restarted so the plugin takes effect. A fixup task
+          # backfills memberOf attributes on entries added before enablement.
+          echo "Enabling memberOf plugin for team sync..."
+          docker exec quay-ldap dsconf localhost plugin memberof enable
+          docker exec quay-ldap dsconf localhost plugin memberof set --type uniqueMember
+          docker exec quay-ldap dsconf localhost plugin memberof set --scope "dc=example,dc=org"
+          docker restart quay-ldap
+          echo "Waiting for LDAP to be ready after restart..."
+          timeout=60
+          while [ $timeout -gt 0 ]; do
+            if docker exec quay-ldap ldapsearch -x -H ldap://localhost:3389 \
+                -D "cn=Directory Manager" -w admin \
+                -b "dc=example,dc=org" -s base &>/dev/null; then
+              echo "LDAP is ready after restart!"
+              break
+            fi
+            sleep 2
+            timeout=$((timeout - 2))
+          done
+          if [ $timeout -le 0 ]; then
+            echo "::error::LDAP failed to restart within 60 seconds"
+            docker logs quay-ldap
+            exit 1
+          fi
+          docker exec quay-ldap dsconf localhost plugin memberof fixup "dc=example,dc=org"
+          echo "memberOf plugin enabled and fixup complete"
+
       - name: Set up Node.js with npm caching
         uses: actions/setup-node@v6
         with:

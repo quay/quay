@@ -37,30 +37,4 @@ else
     echo "LDIF imported successfully!"
 fi
 
-# Enable the memberOf plugin so user entries get memberOf attributes
-# when they are listed in group entries (required for Quay team sync)
-if dsconf localhost plugin memberof status | grep -q "disabled"; then
-    echo "Enabling memberOf plugin..."
-    dsconf localhost plugin memberof enable
-    # Configure for groupOfUniqueNames / uniqueMember
-    dsconf localhost plugin memberof set --type uniqueMember
-    dsconf localhost plugin memberof set --scope "dc=example,dc=org"
-    # Restart to apply plugin change
-    dsctl localhost restart
-    # Wait for restart
-    timeout=30
-    while [ $timeout -gt 0 ]; do
-        if ldapsearch -x -H ldap://localhost:3389 -b "" -s base &>/dev/null; then
-            break
-        fi
-        sleep 1
-        timeout=$((timeout - 1))
-    done
-    # Run fixup to backfill memberOf on users added before plugin was enabled
-    dsconf localhost plugin memberof fixup "dc=example,dc=org"
-    echo "memberOf plugin enabled and fixup complete"
-else
-    echo "memberOf plugin already enabled"
-fi
-
 echo "389 DS initialization complete!"
