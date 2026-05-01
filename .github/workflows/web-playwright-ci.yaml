@@ -7,7 +7,7 @@ on:
 jobs:
   playwright:
     name: Playwright E2E Tests
-    runs-on: quay-002-small-ubuntu-24-x64
+    runs-on: quay-003-medium-ubuntu-24-x64
     env:
       QUAY_HOTRELOAD: "false"
     steps:
