@@ -436,6 +436,12 @@ class RegenerateOrgRobot(ApiResource):
 
 
 def _parse_federation_config(request):
+    """
+    Parse and validate federation configuration from the request body.
+
+    Expects a JSON array of objects with 'issuer' (a URL) and 'subject' fields.
+    Raises request_error on missing fields, invalid issuer URLs, or duplicates.
+    """
     fed_config = list()
     seen = set()
     for item in request.json:
@@ -449,10 +455,10 @@ def _parse_federation_config(request):
             raise request_error(message="Issuer must be a URL (http:// or https://)")
         entry = {"issuer": issuer, "subject": subject}
 
-        if f"{issuer}:{subject}" in seen:
+        if (issuer, subject) in seen:
             raise request_error(message="Duplicate federation config entry")
 
-        seen.add(f"{issuer}:{subject}")
+        seen.add((issuer, subject))
         fed_config.append(entry)
 
     return list(fed_config)
