@@ -3,6 +3,7 @@ const ColumnNames = {
   security: 'Security',
   size: 'Size',
   lastModified: 'Last Modified',
+  imageBuilt: 'Image Built',
   expires: 'Expires',
   digest: 'Digest',
   lastPulled: 'Last Pulled',

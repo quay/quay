@@ -424,3 +424,37 @@ def test_manifest_layer_annotations():
                 "com.example.layerkey1": "value1",
                 "com.example.layerkey2": "value2",
             }
+
+
+def test_is_image_manifest_true_on_image():
+    """
+    Checks if is_image_manifest returns true on a valid manifest with image layers.
+    """
+    manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_MANIFEST))
+    assert not manifest.is_manifest_list
+    assert manifest.is_image_manifest
+
+
+def test_is_image_manifest_false_on_attestation_manifest():
+    """
+    Checks whether is_image_manifest returns false on a valid attestation manifest.
+    """
+    ATTESTATION_MANIFEST = """{
+        "schemaVersion": 2,
+        "config": {
+            "mediaType": "application/vnd.oci.image.config.v1+json",
+            "size": 7023,
+            "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
+        },
+        "layers": [
+            {
+            "mediaType": "application/vnd.in-toto+json",
+            "size": 32654,
+            "digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0"
+            }
+        ]
+    }"""
+
+    manifest = OCIManifest(Bytes.for_string_or_unicode(ATTESTATION_MANIFEST))
+    assert not manifest.is_manifest_list
+    assert not manifest.is_image_manifest

@@ -65,6 +65,14 @@ export default function Details(props: DetailsProps) {
               )}
             </DescriptionListDescription>
           </DescriptionListGroup>
+          <DescriptionListGroup data-testid="image-built">
+            <DescriptionListTerm>Image Built</DescriptionListTerm>
+            <DescriptionListDescription>
+              {props.tag.is_manifest_list
+                ? formatDate(props.tag.last_modified)
+                : formatDate(props.tag.image_built)}
+            </DescriptionListDescription>
+          </DescriptionListGroup>
           <DescriptionListGroup>
             <DescriptionListTerm>Digest</DescriptionListTerm>
             <DescriptionListDescription>

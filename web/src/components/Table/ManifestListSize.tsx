@@ -1,6 +1,6 @@
 import {Skeleton} from '@patternfly/react-core';
 import prettyBytes from 'pretty-bytes';
-import {Manifest} from 'src/resources/TagResource';
+import {ManifestDescriptor} from 'src/resources/TagResource';
 import {useRecoilValue} from 'recoil';
 import {childManifestSizeState} from 'src/atoms/TagListState';
 
@@ -34,5 +34,5 @@ export default function ManifestListSize(props: ManifestListSizeProps) {
 }
 
 interface ManifestListSizeProps {
-  manifests: Manifest[];
+  manifests: ManifestDescriptor[];
 }

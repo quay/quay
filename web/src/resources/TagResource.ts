@@ -24,6 +24,8 @@ export interface Tag {
   manifest_list: ManifestList;
   expiration?: string;
   end_ts?: number;
+  // Image built date
+  image_built?: string;
   modelcard?: string;
   cosign_signature_tag?: string;
   cosign_signature_manifest_digest?: string;
@@ -41,9 +43,28 @@ export interface Tag {
 export interface ManifestList {
   schemaVersion: number;
   mediaType: string;
-  manifests: Manifest[];
+  manifests: ManifestDescriptor[];
 }
 
+/**
+ * ManifestDescriptor reporesents a child manifest entry in a manifest list.
+ * Contains descriptor fields plus optional enriched fields.
+ */
+export interface ManifestDescriptor {
+  mediaType: string;
+  size: number;
+  digest: string;
+  platform: Platform;
+  // whether manifest context is available locally (not sparse)
+  is_present?: boolean;
+  // child manifest built timestamp if applicable
+  image_built?: string;
+}
+
+/**
+ * Manifest represents the full manifest with security and layer information.
+ * Used for single arch manifests and when fetching complete manifest details.
+ */
 export interface Manifest {
   mediaType: string;
   size: number;
@@ -53,6 +74,8 @@ export interface Manifest {
   layers: Layer[];
   // Whether manifest content is available locally (not sparse)
   is_present?: boolean;
+  // Read child manifest built timestamp if applicable
+  image_built?: string;
 }
 
 export interface Layer {
@@ -94,6 +117,7 @@ export interface ManifestByDigestResponse {
   layers?: Layer[];
   layers_compressed_size?: number;
   modelcard?: string;
+  manifests?: ManifestDescriptor[]; // Enriched child manifests (for manifest lists)
 }
 
 export interface SecurityDetailsResponse {

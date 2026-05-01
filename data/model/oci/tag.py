@@ -36,6 +36,10 @@ from image.docker.schema1 import (
     DockerSchema1Manifest,
     MalformedSchema1Manifest,
 )
+from image.docker.schema2.list import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from image.docker.schema2.manifest import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+from image.oci.index import OCI_IMAGE_INDEX_CONTENT_TYPE
+from image.oci.manifest import OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from util.bytes import Bytes
 from util.timedeltastring import convert_to_timedelta
 

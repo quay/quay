@@ -10,6 +10,7 @@ from flask import request
 
 import features
 from app import app, label_validator, storage
+from data.database import Manifest as ManifestTable
 from data.model import InvalidLabelKeyException, InvalidMediaTypeException
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.pull_statistics import get_manifest_pull_statistics
@@ -78,6 +79,87 @@ def _layer_dict(manifest_layer, index):
     }
 
 
+def _enrich_child_manifests(manifest_list, repository_id):
+    """
+    Parses the manifest list and extracts the child manifest information. For each child, reads the
+    config layer and extracts the image built timestamp if it exists.
+    """
+    try:
+        manifest_json = json.loads(manifest_list.internal_manifest_bytes.as_unicode())
+        child_entries = manifest_json.get("manifests", [])
+    except Exception as e:
+        logger.debug("Could not parse manifest list %s: %s", manifest_list.digest, e)
+        return []
+
+    if not child_entries:
+        return []
+
+    # Collect child digests and batch process them
+    child_digests = [entry.get("digest") for entry in child_entries if entry.get("digest")]
+    child_manifests = ManifestTable.select(
+        ManifestTable.digest,
+        ManifestTable.manifest_bytes,
+    ).where(
+        ManifestTable.digest << child_digests,
+        ManifestTable.repository == repository_id,
+    )
+
+    child_by_digest = {child.digest: child for child in child_manifests}
+
+    # Extract config digests from children
+    config_digests_by_child = {}
+    for entry in child_entries:
+        child_digest = entry.get("digest")
+        if not child_digest:
+            continue
+        child = child_by_digest.get(child_digest)
+        if not child or not child.manifest_bytes:
+            continue
+
+        try:
+            child_manifest_json = json.loads(child.manifest_bytes)
+            config_obj = child_manifest_json.get("config")
+            if config_obj and config_obj.get("digest"):
+                config_digests_by_child[child_digest] = config_obj["digest"]
+        except Exception as e:
+            logger.debug("Failed to parse child manifest %s: %s", child_digest, e)
+
+    # Construct the timestamp cache for all child manifests
+    timestamp_cache = {}
+    if config_digests_by_child:
+        retriever = RepositoryContentRetriever(repository_id, storage)
+        for child_digest, config_digest in config_digests_by_child.items():
+            try:
+                config_bytes = retriever.get_blob_bytes_with_digest(config_digest)
+                if config_bytes:
+                    config_json = json.loads(config_bytes.decode("utf-8"))
+                    created = config_json.get("created")
+                    if created:
+                        timestamp_cache[child_digest] = created
+            except Exception as e:
+                logger.debug(
+                    "Failed to fetch config digest %s for child digest %s: %s",
+                    config_digest,
+                    child_digest,
+                    e,
+                )
+
+    # build enriched child manifest list
+    enriched_children = []
+    for entry in child_entries:
+        child_digest = entry.get("digest")
+        enriched = {
+            "digest": child_digest,
+            "mediaType": entry.get("mediaType"),
+            "size": entry.get("size"),
+            "platform": entry.get("platform", {}),
+        }
+        if child_digest in timestamp_cache:
+            enriched["image_built"] = timestamp_cache[child_digest]
+        enriched_children.append(enriched)
+    return enriched_children
+
+
 def _manifest_dict(manifest):
     layers = None
     if not manifest.is_manifest_list:
@@ -86,7 +168,7 @@ def _manifest_dict(manifest):
             logger.debug("Missing layers for manifest `%s`", manifest.digest)
             abort(404)
 
-    return {
+    manifest_dict = {
         "digest": manifest.digest,
         "is_manifest_list": manifest.is_manifest_list,
         "manifest_data": manifest.internal_manifest_bytes.as_unicode(),
@@ -98,6 +180,14 @@ def _manifest_dict(manifest):
             [_layer_dict(lyr.layer_info, idx) for idx, lyr in enumerate(layers)] if layers else None
         ),
     }
+
+    # Enrich manifest list return to contain timestamps when images were built
+    if manifest.is_manifest_list:
+        manifest_dict["manifests"] = _enrich_child_manifests(
+            manifest,
+            manifest.repository._db_id,
+        )
+    return manifest_dict
 
 
 def _find_modelcard_layer(parsed):
