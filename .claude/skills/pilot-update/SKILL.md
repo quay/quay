@@ -38,15 +38,21 @@ input on subjective sections, and post the final comment to PROJQUAY-11352.
 > session level, not in the repo's `.mcp.json`. It must be run inside an
 > Ambient Code session with the Jira integration enabled. If running
 > locally, the skill falls back to the Jira REST API via curl using
-> credentials from `~/.atlassian/credentials` or environment variables.
+> the same credential locations as `.claude/scripts/jira-ops.sh`
+> (`~/.config/acli/jira_config.yaml` + token from
+> `~/.config/acli/token.txt` or `~/.acli-token`, or `JIRA_API_TOKEN`
+> environment variable).
 
 ---
 
 ## Phase 1: Gather Jira Activity (BFS traversal)
 
 Determine the lookback window. Default is 14 days. If `$ARGUMENTS` was
-provided and is a positive integer, use that value instead. Otherwise fall
-back to 14.
+provided and is a single positive integer (> 0), use that value instead.
+If `$ARGUMENTS` is empty, missing, or not provided, use 14. If it
+contains a non-numeric value, zero, a negative number, or multiple
+tokens, inform the user the input is invalid and ask them to provide a
+single positive integer before proceeding.
 
 Compute:
 - `end_date` = today's date
@@ -79,8 +85,10 @@ itself, with fields stored for each):**
 
 Fetch changelogs for all discovered keys using
 `mcp__mcp-atlassian__jira_batch_get_changelogs` with `fields="status"` to
-get status transitions. Filter transitions to those whose timestamp falls
-within the lookback window. If more than 20 keys, batch in groups of 20.
+get status transitions. Each changelog item has a `created` timestamp —
+compare it (in UTC) against the lookback window using inclusive start,
+exclusive end: `[start_date 00:00 UTC, end_date+1 00:00 UTC)`. If more
+than 20 keys, batch in groups of 20.
 
 **Classify findings:**
 
@@ -258,10 +266,16 @@ ask the user to confirm or request edits:
 Apply any requested edits and re-display until the user confirms with
 "post".
 
-**Deduplication rule:** If a PR or Jira issue is already mentioned in
-"What We Tried," only carry it into "What Happened" if there is a distinct
-new event to report (e.g., it merged, it was completed, it transitioned to
-a new status). Do not repeat items across sections without new information.
+**Deduplication rule:** Each PR or Jira issue should appear in at most
+one of "What We Tried" or "What Happened" unless it has a distinct
+outcome to report in the latter. Specifically:
+- If an item appears in "What We Tried" (opened/created) and also
+  merged or completed within the window, move it to "What Happened"
+  (do not list in both).
+- For items with multiple status transitions within the window, report
+  only the most recent transition.
+- Items that remain in the same state across both sections should appear
+  only once, in whichever section is most relevant.
 
 ---
 
@@ -275,20 +289,28 @@ integration is active. However, the MCP tools exposed in this skill do
 not include a comment-posting tool. Proceed to Method 2.
 
 **Method 2 — Jira REST API via curl:**
-Use the same credential helpers as `.claude/scripts/jira-ops.sh`. Source
-credentials from environment variables (`JIRA_EMAIL` / `JIRA_API_TOKEN`)
-or from `~/.atlassian/credentials` (INI format with `email` and `token`
-keys). Post the comment with:
+Source credentials using the same locations as
+`.claude/scripts/jira-ops.sh`: `JIRA_API_TOKEN` environment variable
+(with email from `~/.config/acli/jira_config.yaml`), or token from
+`~/.config/acli/token.txt` / `~/.acli-token`. Post the comment with:
 
 ```bash
-curl -s -X POST \
-  -H "Authorization: Basic $(echo -n "${JIRA_EMAIL}:${JIRA_API_TOKEN}" | base64)" \
-  -H "Content-Type: application/json" \
-  "https://redhat.atlassian.net/rest/api/3/issue/PROJQUAY-11352/comment" \
-  -d '{"body":{"type":"doc","version":1,"content":[{"type":"paragraph","content":[{"type":"text","text":"<final_markdown>"}]}]}}'
+resp_file="$(mktemp)"
+http_code="$(
+  curl -sS -o "$resp_file" -w "%{http_code}" -X POST \
+    -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+    -H "Content-Type: application/json" \
+    "https://redhat.atlassian.net/rest/api/3/issue/PROJQUAY-11352/comment" \
+    -d '{"body":{"type":"doc","version":1,"content":[{"type":"paragraph","content":[{"type":"text","text":"<final_markdown>"}]}]}}'
+)"
+
+if [[ "$http_code" != 2* ]]; then
+  echo "ERROR: Jira comment POST failed (HTTP $http_code):"
+  cat "$resp_file" >&2
+fi
 ```
 
-If the curl call fails (non-200 response), display the full markdown for
+If the curl call returns a non-2xx status, display the full markdown for
 the user to copy-paste manually and report the error.
 
 Confirm success with: "Comment posted to PROJQUAY-11352."
