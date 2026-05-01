@@ -421,10 +421,11 @@ class PopenExecutor(BuilderExecutor):
             real_path = os.path.realpath(socket_path)
             exists = os.path.exists(socket_path)
             logger.debug(
-                "Docker socket check: path=%s, realpath=%s, exists=%s",
+                "Docker socket check: path=%s, realpath=%s, exists=%s, /run contents=%s",
                 socket_path,
                 real_path,
                 exists,
+                os.listdir("/run") if os.path.isdir("/run") else "N/A",
             )
             if not exists:
                 for candidate in ["/run/docker.sock", "/var/run/docker.sock"]:
@@ -436,6 +437,18 @@ class PopenExecutor(BuilderExecutor):
                         )
                         docker_host = "unix://%s" % candidate
                         break
+                else:
+                    try:
+                        mounts = [
+                            l
+                            for l in open("/proc/self/mounts").readlines()
+                            if "docker" in l or "sock" in l
+                        ]
+                        logger.warning(
+                            "Docker socket not found at any path. Relevant mounts: %s", mounts
+                        )
+                    except Exception:
+                        pass
 
         builder_env = {
             "TOKEN": token,
