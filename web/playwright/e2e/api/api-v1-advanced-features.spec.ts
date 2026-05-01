@@ -937,7 +937,7 @@ test.describe(
   'Pull Statistics',
   {tag: ['@api', '@feature:IMAGE_PULL_STATS']},
   () => {
-    test('tag pull statistics endpoint responds for non-existent tag', async ({
+    test('tag pull statistics returns 404 for non-existent tag', async ({
       superuserApi,
       adminClient,
     }) => {
@@ -947,7 +947,7 @@ test.describe(
       const resp = await adminClient.get(
         `/api/v1/repository/${org.name}/${repo.name}/tag/latest/pull_statistics`,
       );
-      expect([200, 404]).toContain(resp.status());
+      expect(resp.status()).toBe(404);
     });
   },
 );
