@@ -42,6 +42,12 @@ export default function TagsList(props: TagsProps) {
     ? tags
     : tags.filter((tag) => !isCosignSignatureTag(tag.name));
 
+  const toEpochOrZero = (value?: string): number => {
+    if (!value) return 0;
+    const ts = Date.parse(value);
+    return Number.isFinite(ts) ? ts : 0;
+  };
+
   // Use unified table hook for sorting, filtering, and pagination
   const {
     paginatedData: paginatedTags,
@@ -53,11 +59,9 @@ export default function TagsList(props: TagsProps) {
       2: (item: Tag) => item.name, // Tag Name
       4: (item: Tag) => item.size || 0, // Size
       5: (item: Tag) => item.start_ts || 0, // Last Modified
-      6: (item: Tag) =>
-        item.expiration ? new Date(item.expiration).getTime() : 0, // Expires
+      6: (item: Tag) => toEpochOrZero(item.expiration), // Expires
       7: (item: Tag) => item.manifest_digest, // Manifest
-      8: (item: Tag) =>
-        item.last_pulled ? new Date(item.last_pulled).getTime() : 0, // Last Pulled
+      8: (item: Tag) => toEpochOrZero(item.last_pulled), // Last Pulled
       9: (item: Tag) => item.pull_count || 0, // Pull Count
     },
     filter: searchFilter,

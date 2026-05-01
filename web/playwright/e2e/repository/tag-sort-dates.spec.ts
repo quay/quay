@@ -58,7 +58,12 @@ test.describe(
 
     test('Last Modified column sorts tags chronologically', async ({
       authenticatedPage,
+      cachedContainerAvailable,
     }) => {
+      test.skip(
+        !cachedContainerAvailable,
+        'Requires cached container image to push test tags',
+      );
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
 
       // Wait for all 3 tags to render
