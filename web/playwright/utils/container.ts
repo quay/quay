@@ -48,14 +48,10 @@ async function detectContainerRuntime(): Promise<string | null> {
 }
 
 /**
- * Push a test image to the registry using podman or docker
+ * Execute a shell command, retrying with exponential backoff on failure.
  *
- * Uses busybox as a minimal test image
- *
- * @example
- * ```typescript
- * await pushImage('myorg', 'myrepo', 'latest', 'testuser', 'password');
- * ```
+ * @param cmd - Shell command to run
+ * @param maxAttempts - Maximum number of attempts (default: 5)
  */
 async function retryPush(cmd: string, maxAttempts = 5): Promise<void> {
   let lastErr: unknown;
@@ -71,6 +67,17 @@ async function retryPush(cmd: string, maxAttempts = 5): Promise<void> {
   throw lastErr;
 }
 
+/**
+ * Push a test image to the registry using podman or docker.
+ *
+ * Uses busybox as a minimal test image. Login and busybox pull are
+ * deduplicated per process so concurrent workers don't race on them.
+ *
+ * @example
+ * ```typescript
+ * await pushImage('myorg', 'myrepo', 'latest', 'testuser', 'password');
+ * ```
+ */
 export async function pushImage(
   namespace: string,
   repo: string,
