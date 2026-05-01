@@ -31,10 +31,9 @@ jobs:
         run: |
           docker compose up -d ldap
           echo "Waiting for LDAP to be ready..."
-          timeout=60
+          timeout=90
           while [ $timeout -gt 0 ]; do
             if docker exec quay-ldap ldapsearch -x -H ldap://localhost:3389 \
-                -D "cn=Directory Manager" -w admin \
                 -b "dc=example,dc=org" -s base &>/dev/null; then
               echo "LDAP is ready!"
               break
@@ -43,7 +42,7 @@ jobs:
             timeout=$((timeout - 2))
           done
           if [ $timeout -le 0 ]; then
-            echo "::error::LDAP failed to initialize within 60 seconds"
+            echo "::error::LDAP failed to initialize within 90 seconds"
             docker logs quay-ldap
             exit 1
           fi
@@ -58,10 +57,9 @@ jobs:
           docker exec quay-ldap dsconf localhost plugin memberof set --scope "dc=example,dc=org"
           docker restart quay-ldap
           echo "Waiting for LDAP to be ready after restart..."
-          timeout=60
+          timeout=90
           while [ $timeout -gt 0 ]; do
             if docker exec quay-ldap ldapsearch -x -H ldap://localhost:3389 \
-                -D "cn=Directory Manager" -w admin \
                 -b "dc=example,dc=org" -s base &>/dev/null; then
               echo "LDAP is ready after restart!"
               break
@@ -70,7 +68,7 @@ jobs:
             timeout=$((timeout - 2))
           done
           if [ $timeout -le 0 ]; then
-            echo "::error::LDAP failed to restart within 60 seconds"
+            echo "::error::LDAP failed to restart within 90 seconds"
             docker logs quay-ldap
             exit 1
           fi
