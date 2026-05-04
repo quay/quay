@@ -23,27 +23,53 @@ set -euo pipefail
 
 PR_NUMBER="${1:?Usage: poll-pr.sh <PR_NUMBER> [--repo OWNER/REPO] [--once] [--full] [--max-polls N]}"
 if ! [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
-  echo "PR_NUMBER must be a positive integer: ${PR_NUMBER}" >&2; exit 1
+  echo "PR_NUMBER must be a positive integer: ${PR_NUMBER}" >&2
+  exit 1
 fi
 shift
 
 REPO="quay/quay"
 ONCE=false
 FULL=false
-MAX_POLLS=0  # 0 = unlimited
+MAX_POLLS=0 # 0 = unlimited
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo)
-      [ $# -lt 2 ] && { echo "Missing value for --repo" >&2; exit 1; }
-      [[ "$2" == -* ]] && { echo "Invalid value for --repo: $2" >&2; exit 1; }
-      REPO="$2"; shift 2 ;;
-    --once)       ONCE=true; shift ;;
-    --full)       FULL=true; shift ;;
+      [ $# -lt 2 ] && {
+        echo "Missing value for --repo" >&2
+        exit 1
+      }
+      [[ "$2" == -* ]] && {
+        echo "Invalid value for --repo: $2" >&2
+        exit 1
+      }
+      REPO="$2"
+      shift 2
+      ;;
+    --once)
+      ONCE=true
+      shift
+      ;;
+    --full)
+      FULL=true
+      shift
+      ;;
     --max-polls)
-      [ $# -lt 2 ] && { echo "Missing value for --max-polls" >&2; exit 1; }
-      [[ "$2" =~ ^[0-9]+$ ]] || { echo "Invalid value for --max-polls: $2" >&2; exit 1; }
-      MAX_POLLS="$2"; shift 2 ;;
-    *) echo "Unknown option: $1" >&2; exit 1 ;;
+      [ $# -lt 2 ] && {
+        echo "Missing value for --max-polls" >&2
+        exit 1
+      }
+      [[ "$2" =~ ^[0-9]+$ ]] || {
+        echo "Invalid value for --max-polls: $2" >&2
+        exit 1
+      }
+      MAX_POLLS="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      exit 1
+      ;;
   esac
 done
 
@@ -61,7 +87,10 @@ load_state() {
 # Safe jq string read with fallback (normalises JSON null to the fallback value)
 jq_str() {
   local _v
-  _v=$(echo "$1" | jq -r "${2}" 2>/dev/null) || { echo "${3:-}"; return; }
+  _v=$(echo "$1" | jq -r "${2}" 2>/dev/null) || {
+    echo "${3:-}"
+    return
+  }
   [ "$_v" = "null" ] && _v="${3:-}"
   echo "$_v"
 }
@@ -69,7 +98,10 @@ jq_str() {
 # Safe jq numeric read with fallback (treats jq errors AND literal "null" as missing)
 jq_int() {
   local _v
-  _v=$(echo "$1" | jq "${2}" 2>/dev/null) || { echo "${3:-0}"; return; }
+  _v=$(echo "$1" | jq "${2}" 2>/dev/null) || {
+    echo "${3:-0}"
+    return
+  }
   [ "$_v" = "null" ] && _v="${3:-0}"
   echo "$_v"
 }
@@ -78,17 +110,17 @@ jq_int() {
 adaptive_sleep() {
   local pending="$1" unchanged="$2" prev_sleep="$3"
   if [ "$pending" -eq 0 ]; then
-    echo 0       # Nothing pending — don't sleep, something is actionable
+    echo 0 # Nothing pending — don't sleep, something is actionable
   elif [ "$unchanged" -ge 2 ]; then
     local base=$prev_sleep
     [ "$base" -lt 120 ] && base=120
-    local next=$(( base * 2 ))
+    local next=$((base * 2))
     [ "$next" -gt 600 ] && next=600
     echo "$next" # Backing off: nothing changed across multiple polls
   elif [ "$pending" -gt 3 ]; then
-    echo 180     # Many checks pending — jobs likely just queued
+    echo 180 # Many checks pending — jobs likely just queued
   else
-    echo 120     # A few checks pending — jobs running
+    echo 120 # A few checks pending — jobs running
   fi
 }
 
@@ -113,21 +145,22 @@ notify_for_review() {
     local body
     body=$(printf '## Ready for Review\n\nCI is green and all review threads are resolved.\n\n%s\n\ncc @quay/downstream' "$summary")
     gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-      -X POST -f body="$body" > /dev/null 2>&1 || return 1
+      -X POST -f body="$body" >/dev/null 2>&1 || return 1
   else
     echo "  Ready-for-review comment already posted (id: ${existing_id})."
   fi
 
   # Assign quay/downstream team as reviewer via API (best-effort — team may not be a collaborator)
   gh api "repos/${REPO}/pulls/${PR_NUMBER}/requested_reviewers" \
-    -X POST -f "team_reviewers[]=downstream" > /dev/null 2>&1 || \
-    echo "  NOTE: quay/downstream team assignment skipped (not a repo collaborator)."
+    -X POST -f "team_reviewers[]=downstream" >/dev/null 2>&1 \
+    || echo "  NOTE: quay/downstream team assignment skipped (not a repo collaborator)."
 }
 
 # Fetch all CodeRabbit review threads via GraphQL (includes resolved/outdated status)
 fetch_review_threads() {
   local owner="${REPO%%/*}" rname="${REPO##*/}"
   local result
+  # shellcheck disable=SC2016
   result=$(gh api graphql \
     -f query='query($owner:String!,$repo:String!,$pr:Int!){
       repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100){
@@ -136,7 +169,7 @@ fetch_review_threads() {
           id isResolved isOutdated
           comments(first:3){nodes{databaseId author{login __typename} body path line originalLine}}
         }
-      }}}}'  \
+      }}}}' \
     -f owner="$owner" -f repo="$rname" -F pr="$PR_NUMBER" 2>/dev/null) || return 1
   local has_next
   has_next=$(echo "$result" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage // false' 2>/dev/null)
@@ -168,7 +201,7 @@ do_poll() {
   prev_review_notified_at=$(jq_str "$prev" '.review_notified_at' '')
   $is_first && first_polled_at="$now"
 
-  local poll_num=$(( prev_count + 1 ))
+  local poll_num=$((prev_count + 1))
 
   # ── Fetch from GitHub ───────────────────────────────────────────────────
   local pr_meta checks_json cr_review cr_inline_count human_inline_count walkthrough_body codecov_body human_reviews_json jira_body
@@ -204,7 +237,11 @@ do_poll() {
     2>/dev/null | jq -s 'flatten | last // {}' || echo '{}')
 
   local threads_json threads_ok=true
-  threads_json=$(fetch_review_threads) || { threads_ok=false; threads_json='{}'; echo "  WARN: GraphQL review-thread fetch failed; treating as indeterminate." >&2; }
+  threads_json=$(fetch_review_threads) || {
+    threads_ok=false
+    threads_json='{}'
+    echo "  WARN: GraphQL review-thread fetch failed; treating as indeterminate." >&2
+  }
   cr_inline_count=$(echo "$threads_json" | jq \
     '[.data.repository.pullRequest.reviewThreads.nodes[]? |
       select(.isResolved==false and .isOutdated==false) |
@@ -297,7 +334,7 @@ do_poll() {
   prev_head_sha=$(jq_str "$prev" '.head_sha' '')
   if [ -n "$head_sha" ] && [ -n "$prev_head_sha" ] && [ "$head_sha" != "$prev_head_sha" ]; then
     has_changes=true
-    prev_checks='{}'  # discard stale per-commit check states
+    prev_checks='{}' # discard stale per-commit check states
     delta_lines+=("  NEW COMMIT: ${prev_head_sha:0:7} -> ${head_sha:0:7} (check history reset)")
   fi
 
@@ -314,7 +351,7 @@ do_poll() {
         has_changes=true
         delta_lines+=("  CI: ${name}: ${prev_s} -> ${cur_s}")
       fi
-    done <<< "$check_names_raw"
+    done <<<"$check_names_raw"
   fi
 
   # CodeRabbit review state change
@@ -324,24 +361,24 @@ do_poll() {
   fi
 
   # CodeRabbit inline comment count change
-  local cr_delta=$(( cr_inline_count - prev_cr_count ))
+  local cr_delta=$((cr_inline_count - prev_cr_count))
   if [ "$cr_delta" -gt 0 ]; then
     has_changes=true
     delta_lines+=("  CodeRabbit: +${cr_delta} new unresolved thread(s) (total: ${cr_inline_count})")
   elif [ "$cr_delta" -lt 0 ]; then
     has_changes=true
-    delta_lines+=("  CodeRabbit: $(( -cr_delta )) thread(s) resolved (total: ${cr_inline_count})")
+    delta_lines+=("  CodeRabbit: $((-cr_delta)) thread(s) resolved (total: ${cr_inline_count})")
   fi
 
   # Human inline comment count change
   local human_inline_delta
-  human_inline_delta=$(( human_inline_count - prev_human_inline ))
+  human_inline_delta=$((human_inline_count - prev_human_inline))
   if [ "$human_inline_delta" -gt 0 ]; then
     has_changes=true
     delta_lines+=("  Human: +${human_inline_delta} new unresolved thread(s) (total: ${human_inline_count})")
   elif [ "$human_inline_delta" -lt 0 ]; then
     has_changes=true
-    delta_lines+=("  Human: $(( -human_inline_delta )) thread(s) resolved (total: ${human_inline_count})")
+    delta_lines+=("  Human: $((-human_inline_delta)) thread(s) resolved (total: ${human_inline_count})")
   fi
 
   # Human review changes
@@ -357,21 +394,21 @@ do_poll() {
         has_changes=true
         delta_lines+=("  Review: ${reviewer}: ${prev_hr} -> ${cur_hr}")
       fi
-    done <<< "$human_names_raw"
+    done <<<"$human_names_raw"
   fi
 
   # Human PR comment delta
   local prev_human_comment_count prev_human_comment_last_id
   prev_human_comment_count=$(jq_int "$prev" '.human_comment_count // 0')
   prev_human_comment_last_id=$(jq_int "$prev" '.human_comment_last_id // 0')
-  local human_comment_delta=$(( human_comment_count - prev_human_comment_count ))
+  local human_comment_delta=$((human_comment_count - prev_human_comment_count))
   if [ "$human_comment_delta" -gt 0 ]; then
     has_changes=true
     # List authors of the new comments
     local new_authors
-    new_authors=$(echo "$human_comments_json" | \
-      jq -r --argjson last_id "$prev_human_comment_last_id" \
-      '[.[] | select(.id > $last_id) | .login] | unique | join(", ")' 2>/dev/null || echo "unknown")
+    new_authors=$(echo "$human_comments_json" \
+      | jq -r --argjson last_id "$prev_human_comment_last_id" \
+        '[.[] | select(.id > $last_id) | .login] | unique | join(", ")' 2>/dev/null || echo "unknown")
     delta_lines+=("  Comment: +${human_comment_delta} new comment(s) from: ${new_authors}")
   fi
 
@@ -380,7 +417,7 @@ do_poll() {
   if $has_changes || $is_first; then
     new_unchanged=0
   else
-    new_unchanged=$(( prev_unchanged + 1 ))
+    new_unchanged=$((prev_unchanged + 1))
   fi
 
   # Next adaptive sleep
@@ -392,22 +429,22 @@ do_poll() {
 
   # ── Persist state ───────────────────────────────────────────────────────
   jq -n \
-    --argjson pr      "$PR_NUMBER" \
-    --arg     first   "$first_polled_at" \
-    --arg     last    "$now" \
-    --argjson count   "$poll_num" \
-    --argjson checks  "$checks_map" \
-    --arg     cr_state "$cr_state" \
-    --arg     cr_at    "$cr_at" \
+    --argjson pr "$PR_NUMBER" \
+    --arg first "$first_polled_at" \
+    --arg last "$now" \
+    --argjson count "$poll_num" \
+    --argjson checks "$checks_map" \
+    --arg cr_state "$cr_state" \
+    --arg cr_at "$cr_at" \
     --argjson cr_count "$cr_inline_count" \
-    --argjson human          "$human_reviews_json" \
-    --argjson human_inline   "$human_inline_count" \
-    --argjson human_comment_count  "$human_comment_count" \
+    --argjson human "$human_reviews_json" \
+    --argjson human_inline "$human_inline_count" \
+    --argjson human_comment_count "$human_comment_count" \
     --argjson human_comment_last_id "$human_comment_last_id" \
-    --arg     head_sha        "$head_sha" \
-    --arg     review_notified "$review_notified_at" \
+    --arg head_sha "$head_sha" \
+    --arg review_notified "$review_notified_at" \
     --argjson unchanged "$new_unchanged" \
-    --argjson sleep     "$next_sleep" \
+    --argjson sleep "$next_sleep" \
     '{
       pr_number:                   $pr,
       head_sha:                    $head_sha,
@@ -425,7 +462,7 @@ do_poll() {
       consecutive_unchanged_polls: $unchanged,
       next_sleep_seconds:          $sleep,
       review_notified_at:          $review_notified
-    }' > "$STATE_FILE"
+    }' >"$STATE_FILE"
 
   # ── Header ──────────────────────────────────────────────────────────────
   echo "============================================================"
@@ -462,6 +499,7 @@ do_poll() {
 
     echo "--- CodeRabbit Unresolved Threads: ${cr_inline_count} ---"
     if [ "$cr_inline_count" -gt 0 ]; then
+      # shellcheck disable=SC2016
       local _jq_cr='[.data.repository.pullRequest.reviewThreads.nodes[]? |
           select(.isResolved==false and .isOutdated==false) |
           select(.comments.nodes[0]?.author.__typename=="Bot" and (.comments.nodes[0]?.author.login | startswith("coderabbit")))][-5:] |
@@ -501,6 +539,7 @@ do_poll() {
 
     echo "--- Human Unresolved Threads: ${human_inline_count} ---"
     if [ "$human_inline_count" -gt 0 ]; then
+      # shellcheck disable=SC2016
       local _jq_human='[.data.repository.pullRequest.reviewThreads.nodes[]? |
           select(.isResolved==false and .isOutdated==false) |
           select(.comments.nodes[0]?.author.__typename=="User")][-5:] |
@@ -552,8 +591,8 @@ do_poll() {
 
   local hr_count hr_approved review_decision
   hr_count=$(echo "$human_reviews_json" | jq 'length')
-  hr_approved=$(echo "$human_reviews_json" | \
-    jq '[to_entries[] | select(.value == "APPROVED")] | length')
+  hr_approved=$(echo "$human_reviews_json" \
+    | jq '[to_entries[] | select(.value == "APPROVED")] | length')
   review_decision=$(jq_str "$pr_meta" '.review_decision' '')
 
   printf "  CI:         %s/%s passed, %s failed, %s pending\n" \
@@ -569,9 +608,9 @@ do_poll() {
 
   if [ "$fail" -gt 0 ]; then
     echo "  ACTION REQUIRED: Fix CI failures:"
-    echo "$checks_json" | \
-      jq -r '.[] | select(.bucket == "fail" or .bucket == "cancel") | "    - \(.name)"' \
-      2>/dev/null || true
+    echo "$checks_json" \
+      | jq -r '.[] | select(.bucket == "fail" or .bucket == "cancel") | "    - \(.name)"' \
+        2>/dev/null || true
     exit_code=1
 
   elif [ "$human_inline_count" -gt 0 ] || [ "$cr_inline_count" -gt 0 ]; then
@@ -588,8 +627,8 @@ do_poll() {
        "  \(.login): \(.body | split("\n") | .[0:2] | join(" "))"' 2>/dev/null || true
     exit_code=3
 
-  elif [ "$review_decision" = "REVIEW_CHANGES_REQUESTED" ] || \
-       { [ "$hr_count" -gt 0 ] && [ "$(echo "$human_reviews_json" | jq '[to_entries[] | select(.value == "CHANGES_REQUESTED")] | length')" -gt 0 ]; }; then
+  elif [ "$review_decision" = "REVIEW_CHANGES_REQUESTED" ] \
+    || { [ "$hr_count" -gt 0 ] && [ "$(echo "$human_reviews_json" | jq '[to_entries[] | select(.value == "CHANGES_REQUESTED")] | length')" -gt 0 ]; }; then
     echo "  ACTION REQUIRED: Reviewer(s) requested changes"
     echo "$human_reviews_json" | jq -r 'to_entries[] | select(.value == "CHANGES_REQUESTED") | "    - \(.key)"' 2>/dev/null || true
     exit_code=3
@@ -622,7 +661,7 @@ do_poll() {
         # Persist immediately so subsequent polls skip the notify guard
         local _tmp
         _tmp=$(mktemp) && jq --arg v "$review_notified_at" '.review_notified_at = $v' \
-          "$STATE_FILE" > "$_tmp" && mv "$_tmp" "$STATE_FILE"
+          "$STATE_FILE" >"$_tmp" && mv "$_tmp" "$STATE_FILE"
       else
         echo "  WARN: reviewer notification incomplete — will retry on next poll."
       fi
@@ -646,7 +685,7 @@ do_poll() {
 # ── Main loop ─────────────────────────────────────────────────────────────────
 iter=0
 while true; do
-  iter=$(( iter + 1 ))
+  iter=$((iter + 1))
 
   if [ "$MAX_POLLS" -gt 0 ] && [ "$iter" -gt "$MAX_POLLS" ]; then
     echo "Max polls (${MAX_POLLS}) reached. Stopping." >&2

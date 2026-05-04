@@ -15,7 +15,6 @@ export KUBECONFIG="$KUBECONFIG_PATH"
 
 PF_DIR=/tmp/pw-remote
 PF_PID_FILE="$PF_DIR/port-forward.pid"
-MANAGED_BY_LABEL="app.kubernetes.io/managed-by=remote-playwright"
 
 stop_port_forward() {
   if [[ -f "$PF_PID_FILE" ]]; then
@@ -51,7 +50,7 @@ down() {
   oc delete deployment/playwright-server service/playwright-server \
     -n "$NAMESPACE" --ignore-not-found 2>/dev/null || true
   if oc get namespace "$NAMESPACE" -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}' 2>/dev/null \
-      | grep -qx 'remote-playwright'; then
+    | grep -qx 'remote-playwright'; then
     oc delete namespace "$NAMESPACE" --ignore-not-found 2>/dev/null || true
   fi
   echo "Done."
@@ -63,8 +62,8 @@ connect() {
   if ! pf_is_active; then
     echo "Setting up port-forward..."
     stop_port_forward
-    oc port-forward -n "$NAMESPACE" svc/playwright-server 3000:3000 > /tmp/pf-playwright.log 2>&1 &
-    echo $! > "$PF_PID_FILE"
+    oc port-forward -n "$NAMESPACE" svc/playwright-server 3000:3000 >/tmp/pf-playwright.log 2>&1 &
+    echo $! >"$PF_PID_FILE"
     sleep 3
     if ! pf_is_active; then
       echo "ERROR: Port-forward failed" >&2
@@ -75,7 +74,7 @@ connect() {
   fi
   echo "Port-forward active (pid $(cat "$PF_PID_FILE"))"
 
-  cat > "$PF_DIR/cli.config.json" << 'CLIEOF'
+  cat >"$PF_DIR/cli.config.json" <<'CLIEOF'
 {
   "browser": {
     "remoteEndpoint": "ws://localhost:3000/",
@@ -250,8 +249,11 @@ EOF
 }
 
 case "$ACTION" in
-  up)     up ;;
-  down)   down ;;
+  up) up ;;
+  down) down ;;
   status) status ;;
-  *)      echo "Usage: $0 [up|down|status] [KUBECONFIG] [NAMESPACE]"; exit 1 ;;
+  *)
+    echo "Usage: $0 [up|down|status] [KUBECONFIG] [NAMESPACE]"
+    exit 1
+    ;;
 esac

@@ -18,11 +18,22 @@ ARGS=()
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --all-files) ARGS+=(--all-files); shift ;;
+    --all-files)
+      ARGS+=(--all-files)
+      shift
+      ;;
     --hook)
-      [ $# -ge 2 ] || { echo "Usage: $0 [--all-files] [--hook <id>]" >&2; exit 1; }
-      ARGS+=("$2"); shift 2 ;;
-    *)           ARGS+=("$1"); shift ;;
+      [ $# -ge 2 ] || {
+        echo "Usage: $0 [--all-files] [--hook <id>]" >&2
+        exit 1
+      }
+      ARGS+=("$2")
+      shift 2
+      ;;
+    *)
+      ARGS+=("$1")
+      shift
+      ;;
   esac
 done
 
