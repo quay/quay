@@ -2010,6 +2010,7 @@ def test_proxy_cache_create_blob_uses_lock(mock_get_config, initialized_db):
     )
 
 
+@pytest.mark.xdist_group("registry_proxy_serial")
 @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
 class TestGetRepoBlobByDigestMissingFromStorage:
     orgname = "quayio-cache"
