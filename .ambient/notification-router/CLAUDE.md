@@ -194,61 +194,7 @@ The `quay-devel` GitHub account must have:
 
 ## Scheduling
 
-This workflow is designed to be launched externally on a ~30 minute cadence.
-Options for scheduling:
-
-### Option A: GitHub Actions cron (recommended for production)
-
-Create `.github/workflows/notification-router.yaml` in the workflows repo:
-
-```yaml
-name: PR Notification Router
-on:
-  schedule:
-    - cron: '17,47 * * * *'  # Every 30 min, offset from :00/:30
-  workflow_dispatch: {}
-
-jobs:
-  route:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create router session
-        run: |
-          curl -X POST "$AMBIENT_API/sessions" \
-            -H "Authorization: Bearer ${{ secrets.AMBIENT_TOKEN }}" \
-            -d '{
-              "session_name": "notif-router-${{ github.run_id }}",
-              "display_name": "Notification Router",
-              "workflow_git_url": "<this-workflow-repo-url>",
-              "workflow_path": "notification-router",
-              "repos": [{"url": "https://github.com/quay/quay.git", "branch": "master"}],
-              "initial_prompt": "Run the notification routing cycle now."
-            }'
-```
-
-### Option B: Parent session with CronCreate (quick setup, 7-day limit)
-
-From any running Ambient session:
-
-```
-CronCreate(
-  cron: "17,47 * * * *",
-  durable: true,
-  prompt: "Create a notification router session:
-    acp_create_session(
-      session_name: 'notif-router-<timestamp>',
-      display_name: 'Notification Router',
-      workflow_git_url: '<this-workflow-repo-url>',
-      workflow_path: 'notification-router',
-      repos: '[{\"url\": \"https://github.com/quay/quay.git\", \"branch\": \"master\"}]',
-      initial_prompt: 'Run the notification routing cycle now.'
-    )"
-)
-```
-
-Note: CronCreate jobs auto-expire after 7 days.
-
-### Option C: Manual trigger
-
-Create a session on-demand via the Ambient UI or API whenever you want a
-routing check.
+This workflow is launched by Ambient's scheduled sessions feature on a
+~30 minute cadence. Each invocation creates a fresh session, runs the
+routing cycle, and exits. The anti-spam cleanup in Step 1 ensures only
+one router instance is active at a time.
