@@ -3,7 +3,7 @@
 Prioritized checklist of testable areas in `web/src/`, with effort estimates and implementation guidance.
 
 **Stack:** Vitest + React Testing Library + happy-dom
-**Current state:** 927 tests passing across 131 files. Phases 1-7 complete. Playwright covers E2E (58 tests).
+**Current state:** 1030 tests passing across 143 files. Phases 1-8b complete. Playwright covers E2E (58 tests).
 **Target:** ~1,100 unit tests across 8 phases
 
 ## Completed: Framework Setup
