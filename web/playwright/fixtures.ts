@@ -1121,13 +1121,16 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   api: async ({authenticatedRequest, quayConfig}, use) => {
     const client = new ApiClient(authenticatedRequest);
     const users = getTestUsers(quayConfig);
+    client.setCredentials(users.user.username, users.user.password);
     const testApi = new TestApi(client, users.user.username);
     await use(testApi);
     await testApi.cleanup();
   },
 
-  superuserApi: async ({superuserRequest}, use) => {
+  superuserApi: async ({superuserRequest, cachedQuayConfig}, use) => {
     const client = new ApiClient(superuserRequest);
+    const users = getTestUsers(cachedQuayConfig);
+    client.setCredentials(users.admin.username, users.admin.password);
     const testApi = new TestApi(client);
     await use(testApi);
     await testApi.cleanup();
