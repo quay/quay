@@ -3,8 +3,8 @@
 Prioritized checklist of testable areas in `web/src/`, with effort estimates and implementation guidance.
 
 **Stack:** Vitest + React Testing Library + happy-dom
-**Current state:** 1030 tests passing across 143 files. Phases 1-8b complete. Playwright covers E2E (58 tests).
-**Target:** ~1,100 unit tests across 8 phases
+**Current state:** 1117 tests passing across 160 files. Phases 1-8a, 8b complete. Playwright covers E2E (58 tests).
+**Target:** ~1,100 unit tests across 8 phases (exceeded)
 
 ## Completed: Framework Setup
 
@@ -209,34 +209,36 @@ Prioritized checklist of testable areas in `web/src/`, with effort estimates and
 
 Covers untested modals, hooks with testable logic, and remaining components from Phase 7 backlog.
 
-### 8a: Modal Components (~80 tests, ~4-5 days)
+### 8a: Modal Components — COMPLETE (87 tests)
 
-30 of 31 modal files are untested. Critical user-facing validation and security logic.
+18 test files covering modals, wizard sub-components, and header toolbar. All use `vi.mock` at module boundary for hooks; `customRender` from `test-utils.tsx` for QueryClient/RecoilRoot/UIProvider.
 
 **Critical priority (>250 lines, security/core features):**
 
-| Component | Lines | Est. Tests | What to Test |
-|-----------|-------|-----------|-------------|
-| `src/components/modals/RobotTokensModal.tsx` | 505 | ~8 | Token display/generation/revocation, copy-to-clipboard, lifecycle |
-| `src/components/modals/robotAccountWizard/*` (8 files) | 238-370 | ~20 | Multi-step wizard: permission selection, team view, review+submit |
-| `src/components/header/HeaderToolbar.tsx` | 369 | ~8 | Navigation state, user menu, search interactions |
-| `src/components/modals/ChangeAccountTypeModal.tsx` | 368 | ~6 | Account conversion with validation |
-| `src/components/modals/CreateRepoModalTemplate.tsx` | 351 | ~8 | Repository creation form validation and submission |
-| `src/components/modals/CredentialsModal.tsx` | 320 | ~6 | Token display + copy functionality |
-| `src/components/modals/CreateRobotAccountModal.tsx` | 290 | ~6 | Robot account creation with permissions |
-| `src/components/modals/ChangePasswordModal.tsx` | 210 | ~5 | Password validation + change form |
+| Component | Tests | Status |
+|-----------|-------|--------|
+| `src/components/modals/RobotTokensModal.tsx` | 8 | **Done** — Tab switching, regenerate token, clipboard display. Uses `Module._resolveFilename` patch for dynamic `require()` SVG assets. |
+| `src/components/modals/robotAccountWizard/*` (4 files tested) | 20 | **Done** — NameAndDescription (6), DefaultPermissions (3), ReviewAndFinish (6), DisplayModal (5). Validation states, toggle groups, save/close. |
+| `src/components/header/HeaderToolbar.tsx` | 8 | **Done** — User menu, notification badge, theme toggle, sign-in button, logout |
+| `src/components/modals/ChangeAccountTypeModal.tsx` | 6 | **Done** — Blocking message for org members, admin form validation, convert flow |
+| `src/components/modals/CreateRepoModalTemplate.tsx` | 8 | **Done** — Namespace dropdown, repo name regex validation, visibility radio, submit |
+| `src/components/modals/CredentialsModal.tsx` | 8 | **Done** — 6 tabs, token/encrypted-password types, newly created alert, clipboard |
+| `src/components/modals/CreateRobotAccountModal.tsx` | 6 | **Done** — Wizard steps (5 for org, 3 for user), name validation, submit disabled state |
+| `src/components/modals/ChangePasswordModal.tsx` | 7 | **Done** — Password validation, match check, submit, cancel (pre-existing) |
 
 **Medium priority modals:**
 
-| Component | Est. Tests | What to Test |
-|-----------|-----------|-------------|
-| `BulkDeleteModalTemplate.tsx` | ~4 | Bulk selection + confirmation |
-| `ConfirmationModal.tsx` | ~3 | Confirm/cancel callbacks |
-| `DeleteModalForRowTemplate.tsx` | ~3 | Single-row delete confirmation |
-| `DeleteAccountModal.tsx` | ~3 | Account deletion confirmation |
-| `RobotFederationModal.tsx` | ~3 | Federation config display |
-| `TokenDisplayModal.tsx` | ~3 | Token display + copy |
-| `RevokeTokenModal.tsx` | ~2 | Revocation confirmation |
+| Component | Tests | Status |
+|-----------|-------|--------|
+| `BulkDeleteModalTemplate.tsx` | 4 | **Done** — Confirm input, search filter, bulk delete callback |
+| `ConfirmationModal.tsx` | 3 | **Done** — Custom confirm handler, visibility change, cancel |
+| `DeleteModalForRowTemplate.tsx` | 3 | **Done** — Item display, delete handler, cancel |
+| `DeleteAccountModal.tsx` | 4 | **Done** — Verification text match, disabled state, confirm/cancel |
+| `RobotFederationModal.tsx` | 3 | **Done** — Title, empty state, existing entries |
+| `TokenDisplayModal.tsx` | 3 | **Done** — Scopes display, security warning |
+| `RevokeTokenModal.tsx` | 3 | **Done** — Warning text, null token, revoke mutation |
+
+**Notes:** SCSS compilation in vitest was failing due to sass version mismatch with Vite. Fixed by adding an `enforce: 'pre'` plugin to `vitest.config.ts` that stubs `.scss` files via `resolveId`/`load` hooks before the `vite:css` plugin processes them. PatternFly Modal renders its own close (X) button, requiring `getAllByRole` + filter for footer-specific close buttons. `ClipboardCopy` splits text across `<input>` + wrapper elements — use `data-testid` or `querySelector('input')` instead of `getByText`.
 
 ### 8b: Remaining Hooks (~50 tests, ~2-3 days)
 
@@ -299,13 +301,13 @@ Leave these to Playwright E2E:
 | 5 | API resources (28 files) | 291 | 4-5 days | **Complete** |
 | 6 | Standard hooks (55 files) | 240 | 4-5 days | **Complete** — 55 test files |
 | 7 | Components (39 files) | 163 | 5-6 days | **Complete** — 39 test files |
-| 8a | Remaining modals | ~80 | 4-5 days | **Planned** |
-| 8b | Remaining hooks (12 files) | ~50 | 2-3 days | **Planned** |
+| 8a | Modal components (18 files) | 87 | 4-5 days | **Complete** |
+| 8b | Remaining hooks (12 files) | 53 | 2-3 days | **Complete** |
 | 8c | Remaining components | ~40 | 2 days | **Planned** |
 
-**Current: 927 tests passing across 131 files | Target: ~1,100 tests**
+**Current: 1117 tests passing across 160 files | Target: ~1,100 tests (exceeded)**
 
-Phases 1-7 complete. Phase 8 covers the remaining gaps and can be spread over sprints. Remaining effort: ~8-10 days.
+Phases 1-8a, 8b complete. Phase 8c covers remaining component gaps. Remaining effort: ~2 days.
 
 ---
 
