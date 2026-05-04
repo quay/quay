@@ -64,7 +64,26 @@ describe('UseMirroringConfig', () => {
     expect(getMirrorConfig).toHaveBeenCalledWith('myorg', 'myrepo');
     expect(result.current.config).toEqual(mockConfig);
     expect(result.current.error).toBeNull();
-    expect(mockReset).toHaveBeenCalled();
+    expect(mockReset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isEnabled: true,
+        externalReference: 'docker.io/library/nginx',
+        tags: 'latest, stable',
+        syncStartDate: '2024-01-01T00:00',
+        syncValue: '1',
+        syncUnit: 'hours',
+        robotUsername: 'myorg+mirror_bot',
+        username: '',
+        password: '',
+        verifyTls: true,
+        httpProxy: '',
+        httpsProxy: '',
+        noProxy: '',
+        unsignedImages: false,
+        skopeoTimeoutInterval: 300,
+        architectureFilter: [],
+      }),
+    );
     expect(mockSetSelectedRobot).toHaveBeenCalledWith(
       expect.objectContaining({name: 'myorg+mirror_bot', is_robot: true}),
     );
@@ -170,9 +189,22 @@ describe('UseMirroringConfig', () => {
       expect.objectContaining({
         is_enabled: true,
         external_reference: 'docker.io/library/nginx',
+        sync_interval: 3600,
+        sync_start_date: '2024-01-01T00:00:00Z',
+        robot_username: 'myorg+bot',
+        skopeo_timeout_interval: 300,
         root_rule: {
           rule_kind: 'tag_glob_csv',
           rule_value: ['latest', 'stable'],
+        },
+        external_registry_config: {
+          verify_tls: true,
+          unsigned_images: false,
+          proxy: {
+            http_proxy: null,
+            https_proxy: null,
+            no_proxy: null,
+          },
         },
       }),
     );
