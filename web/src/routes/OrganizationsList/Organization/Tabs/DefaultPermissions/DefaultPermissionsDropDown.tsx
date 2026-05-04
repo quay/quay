@@ -65,6 +65,7 @@ export default function DefaultPermissionsDropDown(
       <DropdownList>
         {Object.keys(repoPermissions).map((key) => (
           <DropdownItem
+            component="button"
             data-testid={`${props.defaultPermission.createdBy}-${key}`}
             key={repoPermissions[key]}
             onClick={() =>
