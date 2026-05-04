@@ -27,6 +27,26 @@ jobs:
             FEATURE_SECURITY_SCANNER: true
             FEATURE_SECURITY_NOTIFICATIONS: true
 
+      - name: Start LDAP server (pre-initialize for later auth swap)
+        run: |
+          docker compose up -d ldap
+          echo "Waiting for LDAP to be ready..."
+          timeout=90
+          while [ $timeout -gt 0 ]; do
+            if docker exec quay-ldap ldapsearch -x -H ldap://localhost:3389 \
+                -b "dc=example,dc=org" -s base &>/dev/null; then
+              echo "LDAP is ready!"
+              break
+            fi
+            sleep 2
+            timeout=$((timeout - 2))
+          done
+          if [ $timeout -le 0 ]; then
+            echo "::error::LDAP failed to initialize within 90 seconds"
+            docker logs quay-ldap
+            exit 1
+          fi
+
       - name: Set up Node.js with npm caching
         uses: actions/setup-node@v6
         with:
@@ -65,7 +85,7 @@ jobs:
       - name: Run Database auth tests
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
-        run: cd web && npx playwright test --project=chromium --grep-invert @auth:OIDC --reporter=blob
+        run: cd web && npx playwright test --project=chromium --grep-invert "@auth:OIDC|@auth:LDAP" --reporter=blob
 
       - name: Run legacy UI toggle and smoke tests
         if: always()
@@ -108,6 +128,41 @@ jobs:
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
         run: cd web && npx playwright test --project=chromium --grep @auth:OIDC --reporter=blob
+
+      - name: Swap to LDAP authentication
+        if: always()
+        run: |
+          pip install pyyaml -q
+          # Merge LDAP config (sets AUTHENTICATION_TYPE: LDAP + connection details)
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            local-dev/ldap/ldap-config.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Merge LDAP-specific feature flags
+          cat > /tmp/ldap-auth-overlay.yaml <<'EOF'
+          FEATURE_TEAM_SYNCING: true
+          FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP: true
+          SUPER_USERS:
+            - admin
+            - admin_ldap
+          EOF
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            /tmp/ldap-auth-overlay.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Restart Quay and wait for healthy
+          docker restart quay-quay
+          curl -sf --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:8080/health/instance > /dev/null
+          echo "Quay is ready with LDAP auth"
+
+      - name: Run LDAP auth tests
+        if: always()
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/ldap
+        run: cd web && npx playwright test --project=chromium --grep @auth:LDAP --reporter=blob
 
       - name: Merge test reports
         if: always()

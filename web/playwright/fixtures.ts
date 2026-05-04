@@ -28,7 +28,7 @@ import {
   BrowserContext,
 } from '@playwright/test';
 import {uniqueName} from './utils/test-utils';
-import {TEST_USERS, TEST_USERS_OIDC} from './global-setup';
+import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
 import {API_URL} from './utils/config';
 import {
   ApiClient,
@@ -865,6 +865,13 @@ export function skipUnlessAuthType(
   ];
 }
 
+function getTestUsers(config?: QuayConfig | null) {
+  const authType = config?.config?.AUTHENTICATION_TYPE;
+  if (authType === 'OIDC') return TEST_USERS_OIDC;
+  if (authType === 'LDAP') return TEST_USERS_LDAP;
+  return TEST_USERS;
+}
+
 /**
  * Login a user via API (Database auth) or OIDC browser flow (Keycloak).
  * Detects the auth type from config and uses the appropriate method.
@@ -989,10 +996,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   userContext: [
     async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      const users =
-        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
-          ? TEST_USERS_OIDC
-          : TEST_USERS;
+      const users = getTestUsers(cachedQuayConfig);
       await loginUser(
         context,
         users.user.username,
@@ -1008,10 +1012,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   superuserContext: [
     async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      const users =
-        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
-          ? TEST_USERS_OIDC
-          : TEST_USERS;
+      const users = getTestUsers(cachedQuayConfig);
       await loginUser(
         context,
         users.admin.username,
@@ -1027,10 +1028,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   readonlyContext: [
     async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      const users =
-        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
-          ? TEST_USERS_OIDC
-          : TEST_USERS;
+      const users = getTestUsers(cachedQuayConfig);
       await loginUser(
         context,
         users.readonly.username,
@@ -1122,10 +1120,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   api: async ({authenticatedRequest, quayConfig}, use) => {
     const client = new ApiClient(authenticatedRequest);
-    const users =
-      quayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
-        ? TEST_USERS_OIDC
-        : TEST_USERS;
+    const users = getTestUsers(quayConfig);
     const testApi = new TestApi(client, users.user.username);
     await use(testApi);
     await testApi.cleanup();
@@ -1148,10 +1143,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     });
     try {
       const client = new RawApiClient(request, API_URL);
-      const users =
-        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
-          ? TEST_USERS_OIDC
-          : TEST_USERS;
+      const users = getTestUsers(cachedQuayConfig);
       await client.signIn(users.admin.username, users.admin.password);
       await use(client);
     } finally {
@@ -1165,10 +1157,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     });
     try {
       const client = new RawApiClient(request, API_URL);
-      const users =
-        cachedQuayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC'
-          ? TEST_USERS_OIDC
-          : TEST_USERS;
+      const users = getTestUsers(cachedQuayConfig);
       await client.signIn(users.user.username, users.user.password);
       await use(client);
     } finally {
