@@ -13,7 +13,7 @@ export default defineConfig({
       },
       load(id: string) {
         if (id === '\0stub-scss') {
-          return '';
+          return 'export default {}';
         }
       },
       transform(_code: string, id: string) {

@@ -41,8 +41,9 @@ describe('DisplayModal', () => {
     const closeButtons = screen.getAllByRole('button', {name: /close/i});
     const footerClose = closeButtons.find(
       (btn) => btn.textContent?.trim() === 'Close',
-    )!;
-    await userEvent.click(footerClose);
+    );
+    expect(footerClose).toBeDefined();
+    await userEvent.click(footerClose!);
     expect(setIsModalOpen).toHaveBeenCalledWith(false);
   });
 
