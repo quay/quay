@@ -30,6 +30,10 @@ jobs:
         working-directory: web
         run: npm ci
 
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
       - name: Build Storybook
         working-directory: web
         run: npm run build-storybook
