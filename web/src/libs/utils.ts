@@ -36,6 +36,7 @@ export function formatDate(
   });
 }
 
+/** Parse a date string to epoch millis, returning 0 for falsy or unparseable values. */
 export function toEpochOrZero(value?: string): number {
   if (!value) return 0;
   const ts = Date.parse(value);
