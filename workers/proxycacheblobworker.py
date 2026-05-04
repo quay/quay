@@ -4,7 +4,7 @@ import time
 from peewee import JOIN
 
 import features
-from app import app, proxy_cache_blob_queue
+from app import app, proxy_cache_blob_queue, storage
 from data.database import (
     ImageStorage,
     ImageStoragePlacement,
@@ -15,6 +15,7 @@ from data.database import (
     db_transaction,
 )
 from data.model import repository, user
+from data.model.storage import get_layer_path, get_storage_locations
 from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.registry_proxy_model import ProxyModel
 from util.locking import GlobalLock
@@ -160,6 +161,23 @@ class ProxyCacheBlobWorker(QueueWorker):
         try:
             ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
         except ImageStoragePlacement.DoesNotExist:
+            return True
+
+        try:
+            layer_path = get_layer_path(blob)
+            locations = get_storage_locations(blob.uuid)
+            if not locations or not storage.exists(locations, layer_path):
+                logger.warning(
+                    "Blob %s has placements in DB but is missing from storage, "
+                    "will re-download",
+                    digest,
+                )
+                return True
+        except Exception:
+            logger.exception(
+                "Failed to verify blob %s existence in storage",
+                digest,
+            )
             return True
 
         return False

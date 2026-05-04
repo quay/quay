@@ -10,6 +10,7 @@ from app import storage
 from data.database import (
     ImageStorage,
     ImageStorageLocation,
+    ImageStoragePlacement,
     Manifest,
     ManifestBlob,
     ManifestChild,
@@ -2007,3 +2008,155 @@ def test_proxy_cache_create_blob_uses_lock(mock_get_config, initialized_db):
         )
         .exists()
     )
+
+
+@patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+class TestGetRepoBlobByDigestMissingFromStorage:
+    orgname = "quayio-cache"
+    upstream_repository = "app-sre/ubi8-ubi"
+    upstream_registry = "quay.io"
+
+    @pytest.fixture(autouse=True)
+    def setup(self, app, create_repo):
+        self.user = get_user("devtable")
+        self.org = create_organization(self.orgname, "{self.orgname}@devtable.com", self.user)
+        self.org.save()
+        self.config = create_proxy_cache_config(
+            org_name=self.orgname,
+            upstream_registry=self.upstream_registry,
+            expiration_s=3600,
+        )
+        self.repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+
+    def test_refetches_blob_missing_from_storage(self):
+        """
+        When a blob has a placement record in DB but the file is missing from
+        storage, the proxy model should re-download it from upstream instead of
+        returning a reference to a non-existent file (PROJQUAY-10315).
+        """
+        content = b"test blob content for proxy cache"
+        digest = str(sha256_digest(content))
+        blob = store_blob_record_and_temp_link(
+            self.orgname,
+            self.upstream_repository,
+            digest,
+            ImageStorageLocation.get(name="local_us"),
+            len(content),
+            120,
+        )
+        layer_path = get_layer_path(blob)
+        storage.put_content(["local_us"], layer_path, content)
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(content),
+                    "digest": digest,
+                },
+                "layers": [],
+            }
+        )
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+        from data.database import Repository
+
+        repo = Repository.get(id=self.repo_ref.id)
+        manifest = Manifest.create(
+            repository=repo,
+            digest=_get_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+        ManifestBlob.create(
+            manifest=manifest,
+            repository=repo,
+            blob=blob,
+        )
+
+        assert storage.exists(["local_us"], layer_path)
+        assert ImageStoragePlacement.select().where(
+            ImageStoragePlacement.storage == blob
+        ).exists()
+
+        storage.remove(["local_us"], layer_path)
+        assert not storage.exists(["local_us"], layer_path)
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        with patch.object(proxy_model, "_download_blob") as mock_download:
+            proxy_model.get_repo_blob_by_digest(
+                self.repo_ref, digest, include_placements=True
+            )
+            mock_download.assert_called_once_with(self.repo_ref, digest)
+
+    def test_does_not_refetch_blob_present_in_storage(self):
+        """
+        When a blob has a placement record and the file exists in storage,
+        the proxy model should NOT re-download it.
+        """
+        content = b"test blob content that exists"
+        digest = str(sha256_digest(content))
+        blob = store_blob_record_and_temp_link(
+            self.orgname,
+            self.upstream_repository,
+            digest,
+            ImageStorageLocation.get(name="local_us"),
+            len(content),
+            120,
+        )
+        layer_path = get_layer_path(blob)
+        storage.put_content(["local_us"], layer_path, content)
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(content),
+                    "digest": digest,
+                },
+                "layers": [],
+            }
+        )
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+        from data.database import Repository
+
+        repo = Repository.get(id=self.repo_ref.id)
+        manifest = Manifest.create(
+            repository=repo,
+            digest=_get_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+        ManifestBlob.create(
+            manifest=manifest,
+            repository=repo,
+            blob=blob,
+        )
+
+        assert storage.exists(["local_us"], layer_path)
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        with patch.object(proxy_model, "_download_blob") as mock_download:
+            result = proxy_model.get_repo_blob_by_digest(
+                self.repo_ref, digest, include_placements=True
+            )
+            mock_download.assert_not_called()
+            assert result is not None
+            assert result.digest == digest
