@@ -48,6 +48,10 @@ jobs:
       - name: Install Playwright browsers
         run: cd web && pnpm exec playwright install --with-deps chromium
 
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
       - name: Build Storybook
         working-directory: web
         run: pnpm run build-storybook
