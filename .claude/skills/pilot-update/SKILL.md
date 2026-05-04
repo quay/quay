@@ -338,17 +338,22 @@ sessions). Source credentials from `.claude/scripts/jira-ops.sh` locations:
 `JIRA_API_TOKEN` env var (or `~/.config/acli/token.txt` / `~/.acli-token`),
 and `JIRA_EMAIL` (defaults to `quay-devel@redhat.com` if not set).
 
-The ADF document must be wrapped in a `body` field:
+The ADF document must be wrapped in a `body` field. Set the default
+email if not already configured:
 
 ```bash
-adf_content=$(cat /tmp/pilot-update-adf.json)
+: "\${JIRA_EMAIL:=quay-devel@redhat.com}"
+```
+
+```bash
 resp_file="$(mktemp)"
 http_code="$(
+  jq -n --argjson body "$(cat /tmp/pilot-update-adf.json)" '{body: $body}' | \
   curl -sS -o "$resp_file" -w "%{http_code}" -X POST \
     -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
     -H "Content-Type: application/json" \
     "https://redhat.atlassian.net/rest/api/3/issue/PROJQUAY-11352/comment" \
-    -d "{\"body\": ${adf_content}}"
+    -d @-
 )"
 
 if [[ "$http_code" != 2* ]]; then
@@ -357,8 +362,12 @@ if [[ "$http_code" != 2* ]]; then
 fi
 ```
 
-If both methods fail, save the ADF JSON file and instruct the user to
-paste the content into the Jira rich-text editor manually. Report the error.
+If both methods fail, save the ADF JSON to a file and provide the user
+with both options:
+- A manual curl command they can run with their own credentials
+- The original Markdown so they can format it manually in the Jira editor
+
+Report the error.
 
 Confirm success with: "Comment posted to PROJQUAY-11352."
 
@@ -375,8 +384,8 @@ Confirm success with: "Comment posted to PROJQUAY-11352."
 - **Jira batch changelog limit**: if >20 keys, batch in groups of 20.
 - **User provides empty input for a subjective section**: use "Nothing to
   report this period." as the placeholder.
-- **Comment post fails**: save ADF JSON and instruct the user to paste content
-  into the Jira rich-text editor manually. Report the error.
+- **Comment post fails**: save ADF JSON, provide a manual curl command
+  and the original Markdown for Jira editor formatting. Report the error.
 - **Jira MCP tools unavailable** (running outside Ambient): fall back to
   the Jira REST API via curl for both data gathering and comment posting.
   If credentials are not available, report the error and display
