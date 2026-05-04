@@ -104,3 +104,69 @@ gecos: Test User
 loginShell: /bin/bash
 homeDirectory: /home/testuser
 mail: testuser@example.com
+
+# Playwright test user: admin_ldap (superuser, avoids conflict with Database-phase admin)
+dn: uid=admin_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: admin_ldap
+sn: Ldap
+givenName: Admin
+cn: Admin Ldap
+displayName: Admin Ldap
+uidNumber: 10005
+gidNumber: 10005
+userPassword: password
+gecos: Admin Ldap
+loginShell: /bin/bash
+homeDirectory: /home/admin_ldap
+mail: admin_ldap@example.com
+
+# Playwright test user: testuser_ldap (regular user, avoids conflict with Database-phase testuser)
+dn: uid=testuser_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: testuser_ldap
+sn: Ldap
+givenName: Testuser
+cn: Testuser Ldap
+displayName: Testuser Ldap
+uidNumber: 10006
+gidNumber: 10006
+userPassword: password
+gecos: Testuser Ldap
+loginShell: /bin/bash
+homeDirectory: /home/testuser_ldap
+mail: testuser_ldap@example.com
+
+# Playwright test user: readonly_ldap (readonly user, avoids conflict with Database-phase readonly)
+dn: uid=readonly_ldap,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: readonly_ldap
+sn: Ldap
+givenName: Readonly
+cn: Readonly Ldap
+displayName: Readonly Ldap
+uidNumber: 10007
+gidNumber: 10007
+userPassword: password
+gecos: Readonly Ldap
+loginShell: /bin/bash
+homeDirectory: /home/readonly_ldap
+mail: readonly_ldap@example.com
+
+# Organizational unit for groups (used by team syncing)
+dn: ou=groups,dc=example,dc=org
+objectClass: organizationalUnit
+ou: groups
+
+# Sample group for team sync testing
+dn: cn=test_ldap_group,ou=groups,dc=example,dc=org
+objectClass: groupOfUniqueNames
+cn: test_ldap_group
+uniqueMember: uid=testuser_ldap,ou=users,dc=example,dc=org
+uniqueMember: uid=admin_ldap,ou=users,dc=example,dc=org

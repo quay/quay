@@ -1,8 +1,13 @@
 #!/bin/bash
 # Initialize 389 Directory Server with backend and LDIF import
 # This script runs inside the container after 389 DS starts
+#
+# All authenticated operations use LDAPI (Unix socket) with root autobind
+# to avoid dependency on the Directory Manager password.
 
 set -e
+
+LDAPI_URI="ldapi://%2Fdata%2Frun%2Fslapd-localhost.socket"
 
 echo "Waiting for 389 DS to start..."
 timeout=30
@@ -28,12 +33,12 @@ else
     dsconf localhost backend create --suffix "dc=example,dc=org" --be-name userroot
 fi
 
-# Check if base DN exists
-if ldapsearch -x -H ldap://localhost:3389 -D "cn=Directory Manager" -w admin -b "dc=example,dc=org" -s base &>/dev/null; then
+# Check if base DN exists (anonymous search)
+if ldapsearch -x -H ldap://localhost:3389 -b "dc=example,dc=org" -s base &>/dev/null; then
     echo "Base DN already exists, skipping LDIF import"
 else
     echo "Importing LDIF from /data/ldif/base.ldif..."
-    ldapadd -x -H ldap://localhost:3389 -D "cn=Directory Manager" -w admin -f /data/ldif/base.ldif
+    ldapadd -H "$LDAPI_URI" -Y EXTERNAL -f /data/ldif/base.ldif 2>&1 | grep -v "^SASL" || true
     echo "LDIF imported successfully!"
 fi
 
