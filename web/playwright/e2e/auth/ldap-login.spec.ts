@@ -2,12 +2,7 @@ import {test, expect} from '../../fixtures';
 import {TEST_USERS_LDAP} from '../../global-setup';
 
 test.describe('LDAP Login', {tag: ['@auth', '@auth:LDAP', '@critical']}, () => {
-  test('logs in with LDAP credentials', async ({browser, quayConfig}) => {
-    test.skip(
-      quayConfig?.config?.AUTHENTICATION_TYPE !== 'LDAP',
-      'Requires AUTHENTICATION_TYPE: LDAP',
-    );
-
+  test('logs in with LDAP credentials', async ({browser}) => {
     const context = await browser.newContext();
     const page = await context.newPage();
 
@@ -29,15 +24,7 @@ test.describe('LDAP Login', {tag: ['@auth', '@auth:LDAP', '@critical']}, () => {
     await context.close();
   });
 
-  test('superuser can log in with LDAP credentials', async ({
-    browser,
-    quayConfig,
-  }) => {
-    test.skip(
-      quayConfig?.config?.AUTHENTICATION_TYPE !== 'LDAP',
-      'Requires AUTHENTICATION_TYPE: LDAP',
-    );
-
+  test('superuser can log in with LDAP credentials', async ({browser}) => {
     const context = await browser.newContext();
     const page = await context.newPage();
 
@@ -59,12 +46,7 @@ test.describe('LDAP Login', {tag: ['@auth', '@auth:LDAP', '@critical']}, () => {
     await context.close();
   });
 
-  test('rejects invalid LDAP credentials', async ({browser, quayConfig}) => {
-    test.skip(
-      quayConfig?.config?.AUTHENTICATION_TYPE !== 'LDAP',
-      'Requires AUTHENTICATION_TYPE: LDAP',
-    );
-
+  test('rejects invalid LDAP credentials', async ({browser}) => {
     const context = await browser.newContext();
     const page = await context.newPage();
 
@@ -85,13 +67,7 @@ test.describe('LDAP Login', {tag: ['@auth', '@auth:LDAP', '@critical']}, () => {
 
   test('does not show create account link for LDAP auth', async ({
     unauthenticatedPage: page,
-    quayConfig,
   }) => {
-    test.skip(
-      quayConfig?.config?.AUTHENTICATION_TYPE !== 'LDAP',
-      'Requires AUTHENTICATION_TYPE: LDAP',
-    );
-
     await page.goto('/signin');
 
     await expect(page.getByRole('textbox', {name: /username/i})).toBeVisible();
@@ -102,13 +78,7 @@ test.describe('LDAP Login', {tag: ['@auth', '@auth:LDAP', '@critical']}, () => {
 
   test('does not show forgot password link for LDAP auth', async ({
     unauthenticatedPage: page,
-    quayConfig,
   }) => {
-    test.skip(
-      quayConfig?.config?.AUTHENTICATION_TYPE !== 'LDAP',
-      'Requires AUTHENTICATION_TYPE: LDAP',
-    );
-
     await page.goto('/signin');
 
     await expect(page.getByRole('textbox', {name: /username/i})).toBeVisible();
