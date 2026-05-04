@@ -58,6 +58,12 @@ test.describe(
       await expect(page.getByText(LDAP_GROUP_DN)).toBeVisible();
       await expect(page.getByText('Last Updated')).toBeVisible();
 
+      // Verify team membership is in read-only mode — "Add new member" is hidden
+      // when LDAP controls membership (pageInReadOnlyMode = true in ManageMembersList)
+      await expect(
+        page.getByRole('button', {name: 'Add new member'}),
+      ).not.toBeVisible();
+
       // Remove sync
       await page.getByRole('button', {name: 'Remove synchronization'}).click();
       await expect(
