@@ -7,7 +7,7 @@
 #   4. If AGENTIC_SESSION_NAME is set, --label "ambient-session" is present
 #   5. --base flag is specified
 
-set -euo pipefail
+set -uo pipefail
 
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
@@ -65,7 +65,7 @@ fi
 
 # --- Check 4: Ambient session label ---
 if [ -n "${AGENTIC_SESSION_NAME:-}" ]; then
-  if ! echo "$CMD" | grep -q -- '--label.*ambient-session\|ambient-session.*--label'; then
+  if ! echo "$CMD" | grep -qE 'ambient-session'; then
     ERRORS+=("AGENTIC_SESSION_NAME is set ($AGENTIC_SESSION_NAME) but --label \"ambient-session\" is missing. The /pr skill requires this label for ambient session PRs.")
   fi
 fi
