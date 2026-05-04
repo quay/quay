@@ -42,34 +42,18 @@ else
     echo "LDIF imported successfully!"
 fi
 
-# Enable MemberOf plugin so LDAP team sync can resolve group members via
-# (memberOf=<group_dn>) filter. Requires a restart to take effect; dscontainer -r
-# (the container entrypoint) restarts ns-slapd automatically when it exits.
-# After restart, fixup populates memberOf back-links on existing group members.
-echo "Enabling MemberOf plugin..."
+# Enable the MemberOf plugin so LDAP team sync can find group members via the
+# (memberOf=<group_dn>) filter. 389 DS 2.x+ supports online plugin enable
+# without a server restart. After enabling, run fixup to populate memberOf
+# back-links on existing group members (testuser_ldap, admin_ldap).
+echo "Enabling MemberOf plugin (online, no restart required)..."
 dsconf localhost plugin memberof enable 2>&1 || true
 
-echo "Restarting 389 DS to activate MemberOf plugin..."
-kill -TERM "$(pgrep -f 'ns-slapd' | head -1)" 2>/dev/null || true
-sleep 5
+echo "Running MemberOf fixup to create memberOf back-links for existing group members..."
+dsconf localhost plugin memberof fixup -b "dc=example,dc=org" 2>&1 || true
 
-timeout=60
-while [ $timeout -gt 0 ]; do
-    if ldapsearch -x -H ldap://localhost:3389 -b "" -s base &>/dev/null; then
-        echo "389 DS is ready after restart!"
-        break
-    fi
-    sleep 1
-    timeout=$((timeout - 1))
-done
-
-if [ $timeout -le 0 ]; then
-    echo "WARNING: 389 DS did not restart within timeout, memberOf back-links unavailable"
-else
-    echo "Running MemberOf fixup to populate memberOf attributes for existing group members..."
-    dsconf localhost plugin memberof fixup -b "dc=example,dc=org" 2>&1 || true
-    sleep 10
-    echo "MemberOf fixup complete"
-fi
+# Give the async fixup task time to complete before the container is considered ready
+sleep 10
+echo "MemberOf initialization complete"
 
 echo "389 DS initialization complete!"
