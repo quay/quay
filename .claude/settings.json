@@ -44,7 +44,7 @@
           },
           {
             "type": "command",
-            "command": ".claude/scripts/validate-pr-title.sh",
+            "command": ".claude/scripts/enforce-pr-skill.sh",
             "if": "Bash(gh pr create *)",
             "timeout": 10
           },
@@ -70,6 +70,12 @@
           {
             "type": "command",
             "command": ".claude/scripts/check-target-version.sh",
+            "if": "Bash(git push *)",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'PR_NUM=$(gh pr view --json number,state -q \"select(.state==\\\"OPEN\\\") | .number\" 2>/dev/null || true); if [ -n \"$PR_NUM\" ]; then jq -n --arg pr \"$PR_NUM\" \"{hookSpecificOutput:{hookEventName:\\\"PostToolUse\\\",additionalContext:(\\\"Push detected for open PR #\\\" + \\$pr + \\\". You MUST now run /poll \\\" + \\$pr + \\\" immediately. Do NOT continue other work until poll is running.\\\")}}\"; fi'",
             "if": "Bash(git push *)",
             "timeout": 15
           }

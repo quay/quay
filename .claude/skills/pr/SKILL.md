@@ -5,7 +5,7 @@ description: >
   filled-in description template, and JIRA reference. Validates the PR title
   against the CI-enforced regex before creating.
 allowed-tools:
-  - Bash(bash .claude/scripts/validate-pr-title.sh *)
+  - Bash(bash .claude/scripts/enforce-pr-skill.sh *)
   - Bash(git *)
   - Bash(gh pr *)
   - Bash(cat *)
