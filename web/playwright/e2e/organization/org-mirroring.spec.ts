@@ -1,0 +1,1466 @@
+/**
+ * Organization Mirroring E2E Tests
+ *
+ * Tests for organization-level mirroring functionality including:
+ * - Feature flag behavior and tab visibility
+ * - Creating new mirror configurations
+ * - Managing existing mirror configurations
+ * - Sync operations (trigger, cancel)
+ * - Verify connection
+ * - Deleting configurations
+ * - Discovered repositories table
+ * - Error handling
+ *
+ * Requires ORG_MIRROR feature to be enabled in Quay config.
+ */
+
+import {test, expect} from '../../fixtures';
+import {Page} from '@playwright/test';
+
+async function fillRequiredFields(
+  page: Page,
+  robotFullName: string,
+  options: {
+    registryType?: string;
+    registryUrl?: string;
+    namespace?: string;
+    syncInterval?: string;
+  } = {},
+) {
+  const {
+    registryType = 'Quay',
+    registryUrl = 'https://quay.io',
+    namespace = 'projectquay',
+    syncInterval = '60',
+  } = options;
+
+  // Select registry type (required field)
+  await page.getByTestId('registry-type-toggle').click();
+  await page.getByRole('option', {name: registryType}).click();
+
+  await page.getByTestId('registry-url-input').fill(registryUrl);
+  await page.getByTestId('namespace-input').fill(namespace);
+  await page.getByTestId('sync-interval-input').fill(syncInterval);
+
+  const futureDate = new Date();
+  futureDate.setMinutes(futureDate.getMinutes() + 5);
+
+  // Fill DatePicker with YYYY-MM-DD format (matches component's dateFormat)
+  const year = futureDate.getFullYear();
+  const month = String(futureDate.getMonth() + 1).padStart(2, '0');
+  const day = String(futureDate.getDate()).padStart(2, '0');
+  const dateString = `${year}-${month}-${day}`;
+  const dateInput = page.getByLabel('Sync start date');
+  await dateInput.clear();
+  await dateInput.fill(dateString);
+
+  // Detect browser locale time format and fill TimePicker accordingly
+  const is24h = await page.evaluate(() => {
+    const resolved = new Intl.DateTimeFormat(undefined, {
+      hour: 'numeric',
+    }).resolvedOptions();
+    return resolved.hour12 !== true;
+  });
+  const hours24 = futureDate.getHours();
+  const mins = String(futureDate.getMinutes()).padStart(2, '0');
+  let timeString: string;
+  if (is24h) {
+    timeString = `${String(hours24).padStart(2, '0')}:${mins}`;
+  } else {
+    const period = hours24 >= 12 ? 'PM' : 'AM';
+    const h12 = hours24 % 12 || 12;
+    timeString = `${h12}:${mins} ${period}`;
+  }
+  const timeInput = page.getByRole('textbox', {name: 'Sync start time'});
+  await timeInput.clear();
+  await timeInput.fill(timeString);
+
+  // Dismiss any TimePicker popover before interacting with the robot dropdown
+  await page.keyboard.press('Escape');
+
+  await page.locator('#robot-user-select').click();
+  await page.getByRole('option', {name: robotFullName}).click();
+}
+
+test.describe(
+  'Organization Mirroring',
+  {tag: ['@organization', '@feature:ORG_MIRROR']},
+  () => {
+    test('shows NORMAL state message when no config exists', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrnorm');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByText("This organization's state is"),
+      ).toBeVisible();
+      await expect(authenticatedPage.getByText('NORMAL')).toBeVisible();
+      await expect(authenticatedPage.getByText('Settings tab')).toBeVisible();
+    });
+
+    test('shows mirroring tab only for org admins when feature is enabled', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrvis');
+
+      await authenticatedPage.goto(`/organization/${org.name}`);
+
+      // Mirroring tab should be visible for org admin
+      await expect(
+        authenticatedPage.getByRole('tab', {name: 'Mirroring'}),
+      ).toBeVisible();
+    });
+
+    test('settings tab shows organization state with mirror option', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrsett');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+      // Click on "Organization state" settings tab
+      await authenticatedPage.getByText('Organization state').click();
+
+      // Verify Normal and Mirror radio buttons are visible
+      await expect(
+        authenticatedPage.getByRole('radio', {name: 'Normal'}),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('radio', {name: 'Mirror'}),
+      ).toBeVisible();
+    });
+
+    test('navigates from settings mirror state to mirroring tab', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrsnav');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+      // Click on "Organization state" settings tab
+      await authenticatedPage.getByText('Organization state').click();
+
+      // Select Mirror radio
+      await authenticatedPage.getByRole('radio', {name: 'Mirror'}).click();
+
+      // Verify info alert appears
+      await expect(
+        authenticatedPage.getByText(
+          'Selecting Mirror will take you to the Mirroring tab',
+        ),
+      ).toBeVisible();
+
+      // Submit
+      await authenticatedPage.getByRole('button', {name: 'Submit'}).click();
+
+      // Verify navigated to Mirroring tab with setup mode
+      await expect(authenticatedPage).toHaveURL(/tab=Mirroring/);
+      await expect(authenticatedPage).toHaveURL(/setup=true/);
+    });
+
+    test('creates new mirror configuration with form validation', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrcrt');
+      const robot = await api.robot(org.name, 'mirrorbot');
+
+      // Navigate to mirroring tab in setup mode
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      // Wait for form to load
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Verify submit button is disabled initially (required fields empty)
+      await expect(
+        authenticatedPage.getByTestId('submit-button'),
+      ).toBeDisabled();
+
+      // Verify button says "Enable Organization Mirror" for new config
+      await expect(
+        authenticatedPage.getByTestId('submit-button'),
+      ).toContainText('Enable Organization Mirror');
+
+      // Fill in required fields
+      await fillRequiredFields(authenticatedPage, robot.fullName);
+
+      // Now submit button should be enabled
+      await expect(
+        authenticatedPage.getByTestId('submit-button'),
+      ).toBeEnabled();
+
+      // Submit the form
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      // Verify success message
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify config exists via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config).not.toBeNull();
+      expect(config?.external_registry_url).toBe('https://quay.io');
+      expect(config?.external_namespace).toBe('projectquay');
+    });
+
+    test('loads and manages existing mirror configuration', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrexst');
+      const robot = await api.robot(org.name, 'existbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        repository_filters: ['clair*', 'quay'],
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      // Wait for form to load with existing data
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Verify form is populated with existing data
+      await expect(
+        authenticatedPage.getByTestId('registry-url-input'),
+      ).toHaveValue('https://quay.io');
+      await expect(
+        authenticatedPage.getByTestId('namespace-input'),
+      ).toHaveValue('projectquay');
+
+      // Verify button says "Update Organization Mirror" for existing config
+      await expect(
+        authenticatedPage.getByTestId('submit-button'),
+      ).toContainText('Update Organization Mirror');
+
+      // Verify enabled checkbox is visible and checked
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-enabled-checkbox'),
+      ).toBeChecked();
+
+      // Verify status section exists
+      const statusDisplay = authenticatedPage.getByTestId(
+        'org-mirror-status-display',
+      );
+      await expect(statusDisplay).toBeVisible();
+      await expect(statusDisplay.getByText('State')).toBeVisible();
+
+      // Update the namespace
+      await authenticatedPage
+        .getByTestId('namespace-input')
+        .fill('newnamespace');
+
+      // Submit update
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      // Verify success message
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify update via API
+      const updatedConfig = await api.raw.getOrgMirrorConfig(org.name);
+      expect(updatedConfig?.external_namespace).toBe('newnamespace');
+    });
+
+    test('triggers sync-now operation', async ({authenticatedPage, api}) => {
+      const org = await api.organization('orgmirrsync');
+      const robot = await api.robot(org.name, 'syncbot');
+
+      // Create config via API with future start date
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      // Wait for form and sync button to be visible
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('sync-now-button'),
+      ).toBeVisible();
+
+      // Click sync-now button
+      await authenticatedPage.getByTestId('sync-now-button').click();
+
+      // Verify success message
+      await expect(
+        authenticatedPage
+          .getByText('Organization sync scheduled successfully')
+          .first(),
+      ).toBeVisible();
+    });
+
+    test('verify connection succeeds with valid config (no credentials)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrverf');
+      const robot = await api.robot(org.name, 'verfbot');
+
+      // Create config with no credentials — public access to quay.io
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      await authenticatedPage.getByTestId('verify-connection-button').click();
+
+      await expect(
+        authenticatedPage.getByText('Connection verified successfully').first(),
+      ).toBeVisible({timeout: 15000});
+    });
+
+    test('verify connection fails with invalid credentials', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrvfal');
+      const robot = await api.robot(org.name, 'vfalbot');
+
+      // Create config with invalid credentials
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        external_registry_username: 'invaliduser',
+        external_registry_password: 'invalidpassword',
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      await authenticatedPage.getByTestId('verify-connection-button').click();
+
+      await expect(
+        authenticatedPage.getByText('Connection verification failed').first(),
+      ).toBeVisible({timeout: 15000});
+    });
+
+    test('deletes mirror configuration with confirmation', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrdel');
+      const robot = await api.robot(org.name, 'delbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Click delete button
+      await authenticatedPage.getByTestId('delete-mirror-button').click();
+
+      // Verify confirmation modal appears
+      await expect(
+        authenticatedPage
+          .getByText(
+            'Are you sure you want to delete the organization mirror configuration?',
+          )
+          .first(),
+      ).toBeVisible();
+
+      // Click confirm
+      await authenticatedPage.getByTestId('confirm-delete-button').click();
+
+      // Verify success message
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration deleted successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify config is gone via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config).toBeNull();
+    });
+
+    test('displays error on mirror configuration failure', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrerr');
+      const robot = await api.robot(org.name, 'errbot');
+
+      // Mock error response for POST to org mirror endpoint
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'POST') {
+            await route.fulfill({
+              status: 400,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                message: 'Invalid configuration',
+              }),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      // Wait for form to load
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Fill in required fields
+      await fillRequiredFields(authenticatedPage, robot.fullName, {
+        namespace: 'testns',
+      });
+
+      // Submit form
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      // Verify error message is displayed
+      await expect(
+        authenticatedPage
+          .getByText('Error saving organization mirror configuration')
+          .first(),
+      ).toBeVisible();
+    });
+
+    test('shows discovered repositories table when config exists', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrrepo');
+      const robot = await api.robot(org.name, 'repobot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Verify discovered repositories section exists
+      await expect(
+        authenticatedPage.getByText('Discovered Repositories'),
+      ).toBeVisible();
+    });
+
+    test('toggles enabled checkbox and updates config', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrtgl');
+      const robot = await api.robot(org.name, 'tglbot');
+
+      // Create config via API (enabled by default)
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        is_enabled: true,
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Verify checkbox is checked
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-enabled-checkbox'),
+      ).toBeChecked();
+
+      // Uncheck it
+      await authenticatedPage
+        .getByTestId('org-mirror-enabled-checkbox')
+        .click();
+
+      // Verify success message for disable
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror disabled successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.is_enabled).toBe(false);
+    });
+
+    test('cancel sync button is disabled when not syncing', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrcanc');
+      const robot = await api.robot(org.name, 'cancbot');
+
+      // Create config in NEVER_RUN state
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Cancel sync button should be disabled when not syncing
+      await expect(
+        authenticatedPage.getByTestId('cancel-sync-button'),
+      ).toBeDisabled();
+    });
+
+    test('repository filters are preserved on save', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrfilt');
+      const robot = await api.robot(org.name, 'filtbot');
+
+      // Navigate in setup mode
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Fill required fields
+      await fillRequiredFields(authenticatedPage, robot.fullName);
+
+      // Add repository filters
+      await authenticatedPage
+        .getByTestId('repository-filters-input')
+        .fill('nginx*, redis, app-*');
+
+      // Submit
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      // Verify success
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify filters saved via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.repository_filters).toContain('nginx*');
+      expect(config?.repository_filters).toContain('redis');
+      expect(config?.repository_filters).toContain('app-*');
+    });
+
+    test('creates config with Harbor registry type', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrharb');
+      const robot = await api.robot(org.name, 'harbbot');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Fill in required fields with Harbor registry type
+      await fillRequiredFields(authenticatedPage, robot.fullName, {
+        registryType: 'Harbor',
+        registryUrl: 'https://quay.io',
+        namespace: 'library',
+      });
+
+      // Submit
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify Harbor type saved via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.external_registry_type).toBe('harbor');
+      expect(config?.external_registry_url).toBe('https://quay.io');
+    });
+
+    test('changes visibility from private to public and saves', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrpub');
+      const robot = await api.robot(org.name, 'pubbot');
+
+      // Create config with private visibility
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Verify private is initially selected
+      await expect(
+        authenticatedPage.getByTestId('visibility-private'),
+      ).toBeChecked();
+
+      // Switch to public
+      await authenticatedPage.getByTestId('visibility-public').click();
+
+      // Submit
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.visibility).toBe('public');
+    });
+
+    test('saves advanced settings (TLS and proxy)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirradv');
+      const robot = await api.robot(org.name, 'advbot');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Fill required fields
+      await fillRequiredFields(authenticatedPage, robot.fullName, {
+        namespace: 'testns',
+      });
+
+      // Uncheck TLS verification
+      await authenticatedPage.getByTestId('verify-tls-checkbox').click();
+
+      // Fill in proxy settings
+      await authenticatedPage
+        .getByTestId('http-proxy-input')
+        .fill('http://proxy.example.com:8080');
+      await authenticatedPage
+        .getByTestId('https-proxy-input')
+        .fill('https://proxy.example.com:8443');
+      await authenticatedPage
+        .getByTestId('no-proxy-input')
+        .fill('localhost,127.0.0.1');
+
+      // Submit
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.external_registry_config?.verify_tls).toBe(false);
+      expect(config?.external_registry_config?.proxy?.http_proxy).toBe(
+        'http://proxy.example.com:8080',
+      );
+      expect(config?.external_registry_config?.proxy?.https_proxy).toBe(
+        'https://proxy.example.com:8443',
+      );
+      expect(config?.external_registry_config?.proxy?.no_proxy).toBe(
+        'localhost,127.0.0.1',
+      );
+    });
+
+    test('saves credentials (username and password)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrcred');
+      const robot = await api.robot(org.name, 'credbot');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Fill required fields
+      await fillRequiredFields(authenticatedPage, robot.fullName, {
+        namespace: 'testns',
+      });
+
+      // Fill in credentials
+      await authenticatedPage.getByTestId('username-input').fill('testuser');
+      await authenticatedPage.getByTestId('password-input').fill('testpass');
+
+      // Submit
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify username saved via API (password is not returned)
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.external_registry_username).toBe('testuser');
+    });
+
+    test('clears credentials when username is removed', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrclrc');
+      const robot = await api.robot(org.name, 'clrcbot');
+
+      // Create config with credentials via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        external_registry_username: 'myuser',
+        external_registry_password: 'mypass',
+      });
+
+      // Verify credentials exist
+      const beforeConfig = await api.raw.getOrgMirrorConfig(org.name);
+      expect(beforeConfig?.external_registry_username).toBe('myuser');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Clear the username field
+      await authenticatedPage.getByTestId('username-input').clear();
+
+      // Submit update
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify credentials are cleared via API
+      const afterConfig = await api.raw.getOrgMirrorConfig(org.name);
+      expect(afterConfig?.external_registry_username).toBeNull();
+    });
+
+    test('validates skopeo timeout range', async ({authenticatedPage, api}) => {
+      const org = await api.organization('orgmirrskop');
+      const robot = await api.robot(org.name, 'skopbot');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Fill required fields first so only skopeo validation blocks submit
+      await fillRequiredFields(authenticatedPage, robot.fullName, {
+        namespace: 'testns',
+      });
+
+      // Set skopeo timeout below minimum (29)
+      await authenticatedPage.getByTestId('skopeo-timeout-input').fill('29');
+
+      // Verify validation error appears
+      await expect(
+        authenticatedPage.getByText('Minimum timeout is 30 seconds'),
+      ).toBeVisible();
+
+      // Submit button should be disabled
+      await expect(
+        authenticatedPage.getByTestId('submit-button'),
+      ).toBeDisabled();
+
+      // Set skopeo timeout above maximum (3601)
+      await authenticatedPage.getByTestId('skopeo-timeout-input').fill('3601');
+
+      // Verify validation error appears
+      await expect(
+        authenticatedPage.getByText('Maximum timeout is 3600 seconds (1 hour)'),
+      ).toBeVisible();
+
+      // Set valid value
+      await authenticatedPage.getByTestId('skopeo-timeout-input').fill('300');
+
+      // Verify validation error is gone
+      await expect(
+        authenticatedPage.getByText('Minimum timeout is 30 seconds'),
+      ).not.toBeVisible();
+      await expect(
+        authenticatedPage.getByText('Maximum timeout is 3600 seconds (1 hour)'),
+      ).not.toBeVisible();
+    });
+
+    test('validates sync interval is a positive number', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrival');
+      const robot = await api.robot(org.name, 'ivalbot');
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Clear the sync interval (it has default value)
+      await authenticatedPage.getByTestId('sync-interval-input').fill('');
+
+      // Verify validation error appears
+      await expect(
+        authenticatedPage.getByText('This field is required').first(),
+      ).toBeVisible();
+
+      // Fill with a valid value
+      await authenticatedPage.getByTestId('sync-interval-input').fill('60');
+
+      // Error should be resolved for the interval
+      const intervalErrors = authenticatedPage
+        .locator('[id="sync_interval"]')
+        .locator('..');
+      await expect(
+        intervalErrors.getByText('Must be a positive number'),
+      ).not.toBeVisible();
+    });
+
+    test('cannot enable org mirror when immutability policies exist', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrimm');
+      await api.orgImmutabilityPolicy(org.name, 'v.*', true);
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+      // The "Organization state" tab should be hidden due to mutual exclusion
+      await expect(
+        authenticatedPage.getByTestId('Organization state'),
+      ).not.toBeVisible();
+    });
+
+    test('displays repo sync status counts in State field', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrcnts');
+      const robot = await api.robot(org.name, 'cntsbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Navigate first to let the real config load, then set up a mock
+      // that injects repo_sync_status_counts and reload
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Now intercept with a deterministic mock (no route.fetch race)
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'GET') {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                is_enabled: true,
+                external_registry_type: 'quay',
+                external_registry_url: 'https://quay.io',
+                external_namespace: 'projectquay',
+                robot_username: robot.fullName,
+                sync_interval: 3600,
+                sync_start_date: syncStartDate
+                  .toISOString()
+                  .replace(/\.\d{3}Z$/, 'Z'),
+                repo_sync_status_counts: {
+                  SUCCESS: 5,
+                  SYNCING: 2,
+                  FAIL: 1,
+                  NEVER_RUN: 3,
+                  SYNC_NOW: 0,
+                  CANCEL: 0,
+                },
+              }),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.reload();
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Verify status count labels are rendered (only non-zero counts)
+      const statusDisplay = authenticatedPage.getByTestId(
+        'org-mirror-status-display',
+      );
+      // Use longer timeout for CI where API responses may be slower
+      await expect(statusDisplay.getByText('Success: 5')).toBeVisible({
+        timeout: 15000,
+      });
+      await expect(statusDisplay.getByText('Syncing: 2')).toBeVisible();
+      await expect(statusDisplay.getByText('Failed: 1')).toBeVisible();
+      // NEVER_RUN is displayed as "Pending" via orgMirrorStatusLabels
+      await expect(statusDisplay.getByText('Pending: 3')).toBeVisible();
+
+      // Zero-count statuses should NOT be displayed
+      await expect(statusDisplay.getByText('Cancelled')).not.toBeVisible();
+    });
+
+    test('displays "No repositories" when all status counts are zero', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrnocnt');
+      const robot = await api.robot(org.name, 'nocntbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Mock the config GET response to return all-zero repo_sync_status_counts
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 0,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 0,
+              CANCEL: 0,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // With all counts stubbed to zero — should show "No repositories"
+      const statusDisplay = authenticatedPage.getByTestId(
+        'org-mirror-status-display',
+      );
+      await expect(statusDisplay.getByText('No repositories')).toBeVisible();
+    });
+
+    test('filters repos by status using dropdown', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrfltst');
+      const robot = await api.robot(org.name, 'fltstbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Mock repos list endpoint to return different results based on status filter
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror/repositories*`,
+        async (route) => {
+          const url = new URL(route.request().url());
+          const status = url.searchParams.get('status');
+
+          const allRepos = [
+            {
+              name: 'app-frontend',
+              sync_status: 'SUCCESS',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: '2026-03-18T01:00:00Z',
+              status_message: null,
+              quay_repository: `${org.name}/app-frontend`,
+            },
+            {
+              name: 'app-backend',
+              sync_status: 'SUCCESS',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: '2026-03-18T01:00:00Z',
+              status_message: null,
+              quay_repository: `${org.name}/app-backend`,
+            },
+            {
+              name: 'app-worker',
+              sync_status: 'FAIL',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: '2026-03-18T00:30:00Z',
+              status_message: 'Connection timeout',
+              quay_repository: `${org.name}/app-worker`,
+            },
+          ];
+
+          const filtered = status
+            ? allRepos.filter((r) => r.sync_status === status)
+            : allRepos;
+
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              repositories: filtered,
+              page: 1,
+              limit: 20,
+              total: filtered.length,
+            }),
+          });
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Wait for repos table to load (unfiltered — all 3 repos)
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-repos-table'),
+      ).toBeVisible();
+      const rows = authenticatedPage
+        .getByTestId('org-mirror-repos-table')
+        .locator('tbody tr');
+      await expect(rows).toHaveCount(3);
+
+      // Open the status filter dropdown and select "Failed"
+      await authenticatedPage.getByTestId('status-filter-toggle').click();
+      await authenticatedPage.getByTestId('status-filter-FAIL').click();
+
+      // Only the failed repo should be visible
+      await expect(rows).toHaveCount(1);
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-worker'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-frontend'),
+      ).not.toBeVisible();
+
+      // Select "Success" filter
+      await authenticatedPage.getByTestId('status-filter-toggle').click();
+      await authenticatedPage.getByTestId('status-filter-SUCCESS').click();
+
+      // Two success repos should be visible
+      await expect(rows).toHaveCount(2);
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-frontend'),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByTestId('repo-link-app-backend'),
+      ).toBeVisible();
+    });
+
+    test('filter reset to "All statuses" shows all repos', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrfrst');
+      const robot = await api.robot(org.name, 'frstbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Mock repos list endpoint
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror/repositories*`,
+        async (route) => {
+          const url = new URL(route.request().url());
+          const status = url.searchParams.get('status');
+
+          const allRepos = [
+            {
+              name: 'repo-a',
+              sync_status: 'SUCCESS',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: '2026-03-18T01:00:00Z',
+              status_message: null,
+              quay_repository: `${org.name}/repo-a`,
+            },
+            {
+              name: 'repo-b',
+              sync_status: 'FAIL',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: null,
+              status_message: 'Error',
+              quay_repository: null,
+            },
+          ];
+
+          const filtered = status
+            ? allRepos.filter((r) => r.sync_status === status)
+            : allRepos;
+
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              repositories: filtered,
+              page: 1,
+              limit: 20,
+              total: filtered.length,
+            }),
+          });
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-repos-table'),
+      ).toBeVisible();
+      const rows = authenticatedPage
+        .getByTestId('org-mirror-repos-table')
+        .locator('tbody tr');
+
+      // Start with all repos
+      await expect(rows).toHaveCount(2);
+
+      // Filter by FAIL
+      await authenticatedPage.getByTestId('status-filter-toggle').click();
+      await authenticatedPage.getByTestId('status-filter-FAIL').click();
+      await expect(rows).toHaveCount(1);
+
+      // Reset to "All statuses"
+      await authenticatedPage.getByTestId('status-filter-toggle').click();
+      await authenticatedPage.getByTestId('status-filter-all').click();
+
+      // All repos should be visible again
+      await expect(rows).toHaveCount(2);
+    });
+
+    test('shows empty filter message when no repos match status', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrempt');
+      const robot = await api.robot(org.name, 'emptbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Mock repos endpoint — return repos only when unfiltered, empty for CANCEL
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror/repositories*`,
+        async (route) => {
+          const url = new URL(route.request().url());
+          const status = url.searchParams.get('status');
+
+          const allRepos = [
+            {
+              name: 'repo-x',
+              sync_status: 'SUCCESS',
+              discovery_date: '2026-03-18T00:00:00Z',
+              last_sync_date: '2026-03-18T01:00:00Z',
+              status_message: null,
+              quay_repository: `${org.name}/repo-x`,
+            },
+          ];
+
+          const filtered = status
+            ? allRepos.filter((r) => r.sync_status === status)
+            : allRepos;
+
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              repositories: filtered,
+              page: 1,
+              limit: 20,
+              total: filtered.length,
+            }),
+          });
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      // Wait for repos to load
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-repos-table'),
+      ).toBeVisible();
+
+      // Filter by "Cancelled" — no repos have this status
+      await authenticatedPage.getByTestId('status-filter-toggle').click();
+      await authenticatedPage.getByTestId('status-filter-CANCEL').click();
+
+      // Table should disappear, empty message should appear
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-repos-table'),
+      ).not.toBeVisible();
+      await expect(
+        authenticatedPage.getByText(
+          'No repositories match the selected status filter.',
+        ),
+      ).toBeVisible();
+    });
+
+    test('cancel delete modal keeps config intact', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrkeep');
+      const robot = await api.robot(org.name, 'keepbot');
+
+      // Create config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Click delete button
+      await authenticatedPage.getByTestId('delete-mirror-button').click();
+
+      // Verify confirmation modal appears
+      await expect(
+        authenticatedPage
+          .getByText(
+            'Are you sure you want to delete the organization mirror configuration?',
+          )
+          .first(),
+      ).toBeVisible();
+
+      // Click Cancel instead of confirm (exact: true to avoid matching "Cancel Sync")
+      await authenticatedPage
+        .getByRole('button', {name: 'Cancel', exact: true})
+        .click();
+
+      // Modal should be closed
+      await expect(
+        authenticatedPage
+          .getByText(
+            'Are you sure you want to delete the organization mirror configuration?',
+          )
+          .first(),
+      ).not.toBeVisible();
+
+      // Config should still exist
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config).not.toBeNull();
+
+      // Form should still be visible
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+    });
+  },
+);
