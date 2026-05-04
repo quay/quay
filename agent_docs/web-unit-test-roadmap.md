@@ -3,8 +3,8 @@
 Prioritized checklist of testable areas in `web/src/`, with effort estimates and implementation guidance.
 
 **Stack:** Vitest + React Testing Library + happy-dom
-**Current state:** 893 tests passing across 124 files. Phases 1-7 complete. Playwright covers E2E (58 tests).
-**Target:** ~870 unit tests across 7 phases
+**Current state:** 927 tests passing across 131 files. Phases 1-7 complete. Playwright covers E2E (58 tests).
+**Target:** ~1,100 unit tests across 8 phases
 
 ## Completed: Framework Setup
 
@@ -184,22 +184,41 @@ Prioritized checklist of testable areas in `web/src/`, with effort estimates and
 
 ---
 
-## Phase 7: Components with Logic (~140 tests)
+## Phase 7: Components with Logic — COMPLETE (163 tests)
 
-101 component files total. Focus on components with branching/validation logic (70+ testable). Skip pure layout/presentation components (~30).
+101 component files total. 39 tested, 62 remaining. Focus on components with branching/validation logic (70+ testable). Skip pure layout/presentation components (~30).
 
-**Seed test completed:**
+**Completed (39 test files, 163 tests):**
 
 | Component | Tests | Status |
 |-----------|-------|--------|
-| `src/components/LoadingPage.tsx` | 6 | **Done** — Default render, custom title/message, JSX title, primary/secondary actions. Validates PatternFly + happy-dom + RTL chain. |
+| `src/components/LoadingPage.tsx` | 6 | **Done** — Default render, custom title/message, JSX title, primary/secondary actions |
+| `src/components/ActivityHeatmap/` | tests | **Done** |
+| `src/components/empty/` (2 files) | tests | **Done** |
+| `src/components/errors/` (7 files) | tests | **Done** — 100% file coverage |
+| `src/components/forms/` (2 files) | tests | **Done** |
+| `src/components/labels/` (2 files) | tests | **Done** |
+| `src/components/toolbar/` (11 files) | tests | **Done** — 85% file coverage |
+| Other components | tests | **Done** — LinkOrPlainText, ManifestDigest, etc. |
 
-**Critical priority (>250 lines, 5+ hooks, security/core features):**
+**Remaining — see Phase 8.**
+
+---
+
+## Phase 8: Remaining Gaps (~170 tests)
+
+Covers untested modals, hooks with testable logic, and remaining components from Phase 7 backlog.
+
+### 8a: Modal Components (~80 tests, ~4-5 days)
+
+30 of 31 modal files are untested. Critical user-facing validation and security logic.
+
+**Critical priority (>250 lines, security/core features):**
 
 | Component | Lines | Est. Tests | What to Test |
 |-----------|-------|-----------|-------------|
 | `src/components/modals/RobotTokensModal.tsx` | 505 | ~8 | Token display/generation/revocation, copy-to-clipboard, lifecycle |
-| `src/components/modals/robotAccountWizard/*` (5 files) | 238-370 | ~20 | Multi-step wizard: permission selection, team view, review+submit |
+| `src/components/modals/robotAccountWizard/*` (8 files) | 238-370 | ~20 | Multi-step wizard: permission selection, team view, review+submit |
 | `src/components/header/HeaderToolbar.tsx` | 369 | ~8 | Navigation state, user menu, search interactions |
 | `src/components/modals/ChangeAccountTypeModal.tsx` | 368 | ~6 | Account conversion with validation |
 | `src/components/modals/CreateRepoModalTemplate.tsx` | 351 | ~8 | Repository creation form validation and submission |
@@ -207,26 +226,51 @@ Prioritized checklist of testable areas in `web/src/`, with effort estimates and
 | `src/components/modals/CreateRobotAccountModal.tsx` | 290 | ~6 | Robot account creation with permissions |
 | `src/components/modals/ChangePasswordModal.tsx` | 210 | ~5 | Password validation + change form |
 
-**High priority (significant logic):**
+**Medium priority modals:**
 
 | Component | Est. Tests | What to Test |
 |-----------|-----------|-------------|
-| `src/components/AutoPrunePolicyForm.tsx` | ~15 | Method selection (NONE/TAG_NUMBER/TAG_CREATION_DATE), duration parsing, form state sync |
-| `src/components/ImmutabilityPolicyForm.tsx` | ~10 | Pattern validation regex, edit/view toggle, error states |
-| `src/components/EntitySearch.tsx` | ~15 | Search input, dropdown filtering, entity selection, team/robot distinction |
-| `src/components/ActivityHeatmap.tsx` | ~10 | Calendar generation (90-day window), week alignment, color scaling |
-| `src/components/TypeAheadSelect.tsx` | ~6 | Search dropdown filtering + selection |
-| `src/components/LabelsEditable.tsx` | ~8 | Label CRUD with inline edit mode |
-| `src/components/errors/ErrorBoundary.tsx` | ~5 | Error capture + fallback render |
+| `BulkDeleteModalTemplate.tsx` | ~4 | Bulk selection + confirmation |
+| `ConfirmationModal.tsx` | ~3 | Confirm/cancel callbacks |
+| `DeleteModalForRowTemplate.tsx` | ~3 | Single-row delete confirmation |
+| `DeleteAccountModal.tsx` | ~3 | Account deletion confirmation |
+| `RobotFederationModal.tsx` | ~3 | Federation config display |
+| `TokenDisplayModal.tsx` | ~3 | Token display + copy |
+| `RevokeTokenModal.tsx` | ~2 | Revocation confirmation |
 
-**Medium priority:**
-- `FormTextInput.tsx`, `FormCheckbox.tsx`, `FormDateTimePicker.tsx` — ~10 tests each
-- Error display components (`RequestError`, `PageLoadError`, `SiteUnavailableError`, `ErrorModal`, `FormError`, `404`) — ~15 tests total
+### 8b: Remaining Hooks (~50 tests, ~2-3 days)
+
+12 hooks with testable logic not covered by the Phase 6 skip list:
+
+| Hook | Est. Tests | What to Test |
+|------|-----------|-------------|
+| `UseTeams.ts` | ~6 | Team CRUD queries/mutations |
+| `UseEvents.tsx` | ~5 | Event fetching + filtering |
+| `UseUsageLogs.ts` | ~5 | Usage log queries |
+| `UseMirroringConfig.ts` | ~5 | Mirror config queries |
+| `UseOrganization.ts` | ~4 | Single org fetch |
+| `UseAnalytics.ts` | ~3 | Analytics event dispatch |
+| `UseAuthorizedApplications.ts` | ~4 | App listing + revocation |
+| `UseGlobalFreshLogin.tsx` | ~3 | Fresh login modal trigger |
+| `UseLogDescriptions.tsx` | ~3 | Log description mapping |
+| `UseMarketplaceSubscriptions.ts` | ~3 | Subscription queries |
+| `UseServiceStatus.ts` | ~3 | Service status polling |
+| `useAppNotifications.ts` | ~3 | Notification state management |
+
+**Skip (intentional — Recoil, form state, external deps, infrastructure):**
+UseOrganizations, UseRepositories, UseUpgradePlan, UseOrgMirroringConfig, UseMirroringForm, UseOAuthApplicationForm, UseCreateAccount, UseCreateServiceKey, UseExternalLoginAuth, UseExternalLoginManagement, UseExternalScripts, UseAxios, UseLogo, UseRefreshPage, UseOrgMirroringForm.
+
+### 8c: Remaining Components (~40 tests, ~2 days)
+
+| Component | Est. Tests | What to Test |
+|-----------|-----------|-------------|
+| `EntitySearch.tsx` | ~15 | Search input, dropdown filtering, entity selection |
+| `TypeAheadSelect.tsx` | ~6 | Search dropdown filtering + selection |
+| `ImmutabilityPolicyForm.tsx` | ~10 | Pattern validation regex, edit/view toggle |
+| `AutoPrunePolicyForm.tsx` | ~15 | Method selection, duration parsing, form state |
 
 **Skip (pure presentation, covered by Playwright):**
-- Breadcrumb, Footer (base), Labels (read-only), Sidebar, Table cells (ImageSize, ManifestListSize, RepoCount, Menu), layout-only modals without form logic
-
-**Effort:** ~5-6 days. Template one modal and one form component first, then batch.
+Breadcrumb, Footer, Labels (read-only), Sidebar, Table cells (ImageSize, ManifestListSize, RepoCount, Menu), layout-only modals without form logic, header/MinimalHeader/QuayHeader.
 
 ---
 
@@ -252,13 +296,16 @@ Leave these to Playwright E2E:
 | 2 | Error handling + cookies | 31 | 1 day | **Complete** |
 | 3 | Contexts | 38 | 1 day | **Complete** |
 | 4 | Complex hooks | 59 | 2-3 days | **Complete** |
-| 5 | API resources (27 files) | 291 | 4-5 days | **Complete** |
-| 6 | Standard hooks (52 files) | 206 | 4-5 days | **Complete** — 206 new tests across 52 hook files |
-| 7 | Components (100 files) | ~140 | 5-6 days | **Complete** — 157 tests across 31 files added |
+| 5 | API resources (28 files) | 291 | 4-5 days | **Complete** |
+| 6 | Standard hooks (55 files) | 240 | 4-5 days | **Complete** — 55 test files |
+| 7 | Components (39 files) | 163 | 5-6 days | **Complete** — 39 test files |
+| 8a | Remaining modals | ~80 | 4-5 days | **Planned** |
+| 8b | Remaining hooks (12 files) | ~50 | 2-3 days | **Planned** |
+| 8c | Remaining components | ~40 | 2 days | **Planned** |
 
-**Current: 893 tests passing across 124 files | Target: ~870 tests**
+**Current: 927 tests passing across 131 files | Target: ~1,100 tests**
 
-Phases 1-5 are complete. Phases 6-7 are incremental and can be spread over sprints. Remaining effort: ~9-11 days.
+Phases 1-7 complete. Phase 8 covers the remaining gaps and can be spread over sprints. Remaining effort: ~8-10 days.
 
 ---
 
@@ -276,11 +323,17 @@ Phases 1-5 are complete. Phases 6-7 are incremental and can be spread over sprin
 
 Coverage is collected via V8 (`@vitest/coverage-v8`). No enforcement thresholds initially.
 
-**Baseline after Phase 5 (530 tests):** `src/libs/` 84%, `src/contexts/` 100%, `src/hooks/` 4%, `src/resources/` ~55-60%, `src/components/` <1%, overall ~8%.
+**Baseline after Phase 7 (927 tests, measured 2026-05-04):**
+- `src/contexts/` **100%** lines
+- `src/resources/` **87%** lines (28/29 files tested)
+- `src/libs/` **83%** lines (7/8 files tested)
+- `src/components/` **50%** lines (39/101 files tested)
+- `src/hooks/` **37%** lines (55/82 files tested)
+- `src/routes/` **0%** lines (intentionally untested — 235 files, E2E only)
+- **Overall: 20.9% lines** (routes drag this down)
 
 **Ratchet-up plan:**
-1. After Phase 4 (done): baseline measured. `src/libs/` and `src/contexts/` already meet targets.
-2. After Phase 5 (done): `src/resources/` ~55-60%
-3. After Phase 6: `src/hooks/` should reach ~45-50%
-4. After Phase 7: `src/components/` should reach ~40-45%, overall ~50-55%
-5. Target: 80% on `src/libs/`, 60% on `src/hooks/`, 40% overall
+1. After Phase 8b (hooks): `src/hooks/` should reach ~55%
+2. After Phase 8a (modals): `src/components/` should reach ~60%
+3. After Phase 8c (remaining components): `src/components/` should reach ~65%
+4. Target: 90%+ `src/libs/`, 90%+ `src/resources/`, 55%+ `src/hooks/`, 60%+ `src/components/`
