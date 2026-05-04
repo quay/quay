@@ -1042,20 +1042,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   cachedQuayConfig: [
-    async ({playwright}, use) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const response = await request.get(`${API_URL}/config`);
-        if (!response.ok()) {
-          throw new Error(`Failed to fetch Quay config: ${response.status()}`);
-        }
-        const config = (await response.json()) as QuayConfig;
-        await use(config);
-      } finally {
-        await request.dispose();
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      const raw = process.env.QUAY_CONFIG_JSON;
+      if (!raw) {
+        throw new Error(
+          'QUAY_CONFIG_JSON not set -- globalSetup must run before workers',
+        );
       }
+      await use(JSON.parse(raw) as QuayConfig);
     },
     {scope: 'worker'},
   ],

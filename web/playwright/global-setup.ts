@@ -104,6 +104,7 @@ async function globalSetup(config: FullConfig) {
           const quayConfig = await configResponse.json();
           mailingEnabled = quayConfig?.features?.MAILING === true;
           authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
+          process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
           break;
         }
       } catch {
