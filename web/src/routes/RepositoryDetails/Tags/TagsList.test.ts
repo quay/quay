@@ -35,9 +35,7 @@ describe('Tag date column extractors (PROJQUAY-11351)', () => {
       const result = extractExpires(
         makeTag({expiration: 'Mon, 13 Apr 2026 12:33:00 -0000'}),
       );
-      expect(result).toBe(
-        Date.parse('Mon, 13 Apr 2026 12:33:00 -0000'),
-      );
+      expect(result).toBe(Date.parse('Mon, 13 Apr 2026 12:33:00 -0000'));
       expect(result).toBeGreaterThan(0);
     });
 
@@ -55,9 +53,7 @@ describe('Tag date column extractors (PROJQUAY-11351)', () => {
       const result = extractLastPulled(
         makeTag({last_pulled: 'Mon, 13 Apr 2026 09:21:00 -0000'}),
       );
-      expect(result).toBe(
-        Date.parse('Mon, 13 Apr 2026 09:21:00 -0000'),
-      );
+      expect(result).toBe(Date.parse('Mon, 13 Apr 2026 09:21:00 -0000'));
       expect(result).toBeGreaterThan(0);
     });
 
