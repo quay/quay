@@ -1,6 +1,8 @@
 import {test, expect} from '../../fixtures';
 
-const LDAP_GROUP_DN = 'cn=test_ldap_group,ou=groups,dc=example,dc=org';
+// Relative group DN (relative to the configured LDAP_BASE_DN dc=example,dc=org).
+// The UI shows the base DN and asks for the relative part only.
+const LDAP_GROUP_RELATIVE_DN = 'cn=test_ldap_group,ou=groups';
 
 test.describe(
   'LDAP Team Sync',
@@ -20,12 +22,8 @@ test.describe(
       // Click Enable Team Sync
       await page.getByRole('button', {name: 'Enable Team Sync'}).click();
 
-      // Modal should appear with group name input
-      await expect(
-        page.getByText(
-          "Enter the Group Name you'd like to sync membership with:",
-        ),
-      ).toBeVisible();
+      // Modal should appear — LDAP shows the base DN with a relative-DN input prompt
+      await expect(page.getByText('relative to the base DN')).toBeVisible();
 
       // Enable Sync button should be disabled without input
       await expect(
@@ -38,8 +36,8 @@ test.describe(
         page.getByRole('button', {name: 'Enable Sync'}),
       ).toBeDisabled();
 
-      // Type valid LDAP group DN — should enable
-      await page.locator('#team-sync-group-name').fill(LDAP_GROUP_DN);
+      // Type valid relative LDAP group DN — should enable
+      await page.locator('#team-sync-group-name').fill(LDAP_GROUP_RELATIVE_DN);
       await expect(
         page.getByRole('button', {name: 'Enable Sync'}),
       ).toBeEnabled();
@@ -55,7 +53,7 @@ test.describe(
         page.getByText('synchronized with a group in ldap'),
       ).toBeVisible();
       await expect(page.getByText('Bound to group')).toBeVisible();
-      await expect(page.getByText(LDAP_GROUP_DN)).toBeVisible();
+      await expect(page.getByText(LDAP_GROUP_RELATIVE_DN)).toBeVisible();
       await expect(page.getByText('Last Updated')).toBeVisible();
 
       // Verify team membership is in read-only mode — "Add new member" is hidden
