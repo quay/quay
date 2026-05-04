@@ -1,16 +1,18 @@
 import {
   PageSection,
-  PageSectionVariants,
   Title,
   Button,
   Spinner,
   Alert,
-  Modal,
-  ModalVariant,
   Dropdown,
   DropdownList,
   DropdownItem,
   MenuToggle,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
 } from '@patternfly/react-core';
 import {
   EnvelopeIcon,
@@ -25,6 +27,7 @@ import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import {useState} from 'react';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import Empty from 'src/components/empty/Empty';
@@ -47,7 +50,7 @@ function MessagesHeader({onCreateMessage, canModify}: MessagesHeaderProps) {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <div
           className="co-m-nav-title--row"
           style={{
@@ -77,7 +80,7 @@ function MessageContent({message}: {message: IGlobalMessage}) {
     return (
       <Markdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        rehypePlugins={[rehypeRaw, rehypeSanitize]}
         components={{
           a: ({href, children, ...props}) => {
             const isExternal = href?.startsWith('http');
@@ -302,7 +305,7 @@ export default function Messages() {
         onCreateMessage={handleCreateMessage}
         canModify={canModify}
       />
-      <PageSection>{renderContent()}</PageSection>
+      <PageSection hasBodyWrapper={false}>{renderContent()}</PageSection>
 
       {/* Create Message Modal */}
       <CreateMessageForm
@@ -313,10 +316,15 @@ export default function Messages() {
       {/* Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete Message?"
         isOpen={isDeleteModalOpen}
         onClose={cancelDeleteMessage}
-        actions={[
+      >
+        <ModalHeader title="Delete Message?" />
+        <ModalBody>
+          Are you sure you want to delete this message? This action cannot be
+          undone.
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="delete"
             variant="danger"
@@ -325,14 +333,11 @@ export default function Messages() {
             isDisabled={deleteMessage.isLoading}
           >
             Delete Message
-          </Button>,
+          </Button>
           <Button key="cancel" variant="link" onClick={cancelDeleteMessage}>
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to delete this message? This action cannot be
-        undone.
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

@@ -31,13 +31,12 @@ describe('Default permissions page', () => {
     // Search for creator
     cy.get('#default-permissions-search').type(`${createdBy}`);
     cy.contains('1 - 1 of 1');
-    cy.get(`[data-testid="${createdBy}-permission-dropdown-toggle"]`)
-      .contains('Read')
-      .click();
+    cy.get(`[data-testid="${createdBy}-permission-dropdown-toggle"]`).click();
+    // Select options render in a portal outside the table row
     cy.get(`[data-testid="${createdBy}-WRITE"]`).click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Permission updated successfully to: owners`)
       .should('exist');
   });
@@ -51,14 +50,14 @@ describe('Default permissions page', () => {
     cy.contains('1 - 1 of 1');
     cy.get('[data-testid="default-permissions-table"]').within(() => {
       cy.get(`[data-testid="${permissionToBeDeleted}-toggle-kebab"]`).click();
-
-      cy.get(`[data-testid="${permissionToBeDeleted}-del-option"]`)
-        .contains('Delete')
-        .click();
     });
+    // Kebab menu items render in a portal outside the table
+    cy.get(`[data-testid="${permissionToBeDeleted}-del-option"]`)
+      .contains('Delete')
+      .click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(
         `Permission created by: ${permissionToBeDeleted} successfully deleted`,
       )
@@ -87,7 +86,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-permission-button"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(
         `Successfully created default permission for creator: ${createdBy}`,
       )
@@ -112,7 +111,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-permission-button"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully applied default permission to: ${appliedTo}`)
       .should('exist');
   });
@@ -140,7 +139,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-team-confirm"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully created new team: ${newTeam}`)
       .should('exist');
 
@@ -199,7 +198,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-permission-button"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success').should('exist');
+    cy.get('.pf-v6-c-alert.pf-m-success').should('exist');
   });
 
   it('Can create default permission applied to a new team along with creating new robot account from the drawer', () => {
@@ -227,7 +226,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-team-confirm"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(`Successfully created new team: ${newTeam}`)
       .should('exist');
 
@@ -291,7 +290,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-permission-button"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success').should('exist');
+    cy.get('.pf-v6-c-alert.pf-m-success').should('exist');
   });
 
   it('Can create default permission for repository creator with new robot account', () => {
@@ -336,7 +335,7 @@ describe('Default permissions page', () => {
 
     // step - Review and Finish
     cy.get('[data-testid="review-and-finish-btn"]').click();
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(
         `Successfully created robot account with robot name: ${orgName}+${newRobotName}`,
       )
@@ -361,7 +360,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="create-permission-button"]').click();
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains(
         `Successfully created default permission for creator: ${orgName}+${newRobotName}`,
       )

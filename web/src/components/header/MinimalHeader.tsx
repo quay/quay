@@ -1,6 +1,7 @@
 import {
   Masthead,
   MastheadMain,
+  MastheadLogo,
   MastheadBrand,
   Brand,
 } from '@patternfly/react-core';
@@ -14,8 +15,10 @@ export function MinimalHeader() {
   return (
     <Masthead data-testid="minimal-header">
       <MastheadMain>
-        <MastheadBrand component={(props) => <Link {...props} to="/signin" />}>
-          <Brand src={logoUrl} alt="Red Hat Quay" className={'header-logo'} />
+        <MastheadBrand>
+          <MastheadLogo component={(props) => <Link {...props} to="/signin" />}>
+            <Brand src={logoUrl} alt="Red Hat Quay" className={'header-logo'} />
+          </MastheadLogo>
         </MastheadBrand>
       </MastheadMain>
     </Masthead>

@@ -6,7 +6,6 @@ import {
   DescriptionListTerm,
   Divider,
   PageSection,
-  PageSectionVariants,
   Skeleton,
 } from '@patternfly/react-core';
 import {ImageSize} from 'src/components/Table/ImageSize';
@@ -23,7 +22,7 @@ export default function Details(props: DetailsProps) {
 
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <DescriptionList
           columnModifier={{
             default: '2Col',
@@ -128,7 +127,7 @@ export default function Details(props: DetailsProps) {
         </DescriptionList>
       </PageSection>
       <Divider />
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <CopyTags
           org={props.org}
           repo={props.repo}

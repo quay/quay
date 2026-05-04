@@ -1,11 +1,5 @@
 import React, {useMemo} from 'react';
-import {
-  PageSection,
-  Title,
-  Text,
-  TextContent,
-  Alert,
-} from '@patternfly/react-core';
+import {PageSection, Title, Content, Alert} from '@patternfly/react-core';
 import {ManifestByDigestResponse, Layer} from 'src/resources/TagResource';
 import {LayerItem} from './LayerItem';
 import './Layers.scss';
@@ -30,8 +24,8 @@ export function Layers(props: LayersProps) {
   // Show error state if manifest fetch failed
   if (props.err && !props.manifestData) {
     return (
-      <PageSection>
-        <Title headingLevel="h3" className="pf-v5-u-text-align-left">
+      <PageSection hasBodyWrapper={false}>
+        <Title headingLevel="h3" className="pf-v6-u-text-align-left">
           Manifest Layers
         </Title>
         <Alert variant="danger" title="Failed to load layers" isInline>
@@ -44,30 +38,30 @@ export function Layers(props: LayersProps) {
   // Show loading state while waiting for manifest data
   if (!props.manifestData) {
     return (
-      <PageSection>
-        <TextContent>
-          <Text>Loading layers...</Text>
-        </TextContent>
+      <PageSection hasBodyWrapper={false}>
+        <Content>
+          <Content component="p">Loading layers...</Content>
+        </Content>
       </PageSection>
     );
   }
 
   if (!layers || layers.length === 0) {
     return (
-      <PageSection>
-        <Title headingLevel="h3" className="pf-v5-u-text-align-left">
+      <PageSection hasBodyWrapper={false}>
+        <Title headingLevel="h3" className="pf-v6-u-text-align-left">
           Manifest Layers
         </Title>
-        <TextContent>
-          <Text>No layers found for this manifest.</Text>
-        </TextContent>
+        <Content>
+          <Content component="p">No layers found for this manifest.</Content>
+        </Content>
       </PageSection>
     );
   }
 
   return (
-    <PageSection>
-      <Title headingLevel="h3" className="pf-v5-u-text-align-left">
+    <PageSection hasBodyWrapper={false}>
+      <Title headingLevel="h3" className="pf-v6-u-text-align-left">
         Manifest Layers
       </Title>
       <div

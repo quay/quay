@@ -114,7 +114,7 @@ describe('Superuser Change Log', () => {
       cy.wait('@getChangeLog');
 
       // Should render markdown content in card layout
-      cy.get('.pf-v5-c-card__body').should('exist');
+      cy.get('.pf-v6-c-card__body').should('exist');
       cy.contains('Red Hat Quay Release Notes').should('exist');
       cy.contains('v3.10.0').should('exist');
       cy.contains('Service Keys').should('exist');
@@ -132,7 +132,7 @@ describe('Superuser Change Log', () => {
       cy.wait('@getSuperUser');
 
       // Should show loading spinner
-      cy.get('.pf-v5-c-spinner').should('exist');
+      cy.get('.pf-v6-c-spinner').should('exist');
     });
 
     it('should show error state when changelog fails to load', () => {
@@ -190,8 +190,8 @@ describe('Superuser Change Log', () => {
       });
 
       // Check basic structure first
-      cy.get('.pf-v5-c-card').should('exist');
-      cy.get('.pf-v5-c-card__body').should('exist');
+      cy.get('.pf-v6-c-card').should('exist');
+      cy.get('.pf-v6-c-card__body').should('exist');
 
       // Just check for one version we know should be there
       cy.contains('v3.10.0').should('exist');

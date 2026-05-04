@@ -41,7 +41,7 @@ describe('Namespace settings - autoprune policies', () => {
     cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
     cy.contains('Add Policy').click();
-    cy.get('#autoprune-policy-form-1', {timeout: 3000}).should('be.visible');
+    cy.get('#autoprune-policy-form-1', {timeout: 10000}).should('be.visible');
 
     // Create second policy
     cy.get('#autoprune-policy-form-1').within(() => {

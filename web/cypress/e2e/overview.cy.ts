@@ -11,16 +11,16 @@ describe('Overview List Page', () => {
   it('Dropdowns', () => {
     cy.get('#store-containers-dropdown').click();
 
-    cy.get('#store-containers-info').should('be.visible');
+    cy.get('[data-testid="store-containers-info"]').should('be.visible');
 
     cy.get('#build-containers-dropdown').click();
-    cy.get('#build-containers-info').should('be.visible');
+    cy.get('[data-testid="build-containers-info"]').should('be.visible');
 
     cy.get('#scan-containers-dropdown').click();
-    cy.get('#scan-containers-info').should('be.visible');
+    cy.get('[data-testid="scan-containers-info"]').should('be.visible');
 
     cy.get('#public-containers-dropdown').click();
-    cy.get('#public-containers-info').should('be.visible');
+    cy.get('[data-testid="public-containers-info"]').should('be.visible');
   });
 
   it('External Links', () => {
@@ -55,8 +55,9 @@ describe('Overview List Page', () => {
 
     options.forEach((option) => {
       cy.get('#plans-dropdown').click();
+      // Dropdown items render in a portal outside the dropdown toggle
       cy.get(option).click();
-      cy.get('#selected-pricing')
+      cy.get('[data-testid="selected-pricing"]')
         .scrollIntoView()
         .should('be.visible')
         .then(($selectedPricing) => {

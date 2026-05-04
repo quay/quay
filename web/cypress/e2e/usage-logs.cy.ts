@@ -190,7 +190,7 @@ describe('Usage Logs', () => {
       aggregateLogsResp,
     );
     cy.visit('/organization/projectquay?tab=Logs'); // Capital L for organization
-    cy.get('[class=pf-v5-c-chart]')
+    cy.get('[class=pf-v6-c-chart]')
       .should('be.visible')
       .and((chart) => {
         expect(chart.height()).to.be.greaterThan(1);
@@ -249,10 +249,10 @@ describe('Usage Logs', () => {
     cy.visit('/organization/projectquay?tab=Logs');
 
     cy.contains('Hide Chart').click();
-    cy.get('[class=pf-v5-c-chart]').should('not.exist');
+    cy.get('[class=pf-v6-c-chart]').should('not.exist');
 
     cy.contains('Show Chart').click();
-    cy.get('[class=pf-v5-c-chart]').should('be.visible');
+    cy.get('[class=pf-v6-c-chart]').should('be.visible');
   });
 
   it('empty chart', () => {
@@ -392,7 +392,10 @@ describe('Usage Logs', () => {
     cy.contains('button', 'Load More Logs').should('not.exist');
 
     // Verify we can access logs from second page through table pagination
-    cy.get('button[aria-label="Go to next page"]:visible').first().click();
+    cy.get('button[aria-label="Go to next page"]:visible')
+      .first()
+      .should('be.visible')
+      .click();
 
     // Should now show second page of client-side pagination
     cy.contains(/of\s+26/).should('be.visible');
@@ -503,13 +506,13 @@ describe('Usage Logs - Superuser', () => {
     cy.visit('/usage-logs');
 
     // Verify chart is visible initially - use class selector to avoid matching header logo
-    cy.get('[class=pf-v5-c-chart]').should('exist');
+    cy.get('[class=pf-v6-c-chart]').should('exist');
 
     // Hide chart
     cy.contains('button', 'Hide Chart').click();
 
     // Verify chart is hidden (not in DOM)
-    cy.get('[class=pf-v5-c-chart]').should('not.exist');
+    cy.get('[class=pf-v6-c-chart]').should('not.exist');
 
     // Verify button text changed
     cy.contains('button', 'Show Chart').should('be.visible');
@@ -518,7 +521,7 @@ describe('Usage Logs - Superuser', () => {
     cy.contains('button', 'Show Chart').click();
 
     // Verify chart is visible
-    cy.get('[class=pf-v5-c-chart]').should('exist');
+    cy.get('[class=pf-v6-c-chart]').should('exist');
     cy.contains('button', 'Hide Chart').should('be.visible');
   });
 

@@ -11,17 +11,17 @@ describe('Tests for Breadcrumbs', () => {
 
   it('Organization list page', () => {
     cy.visit('/organization');
-    cy.get('nav[test-id="page-breadcrumbs-list"]').should('not.exist');
+    cy.get('nav[data-testid="page-breadcrumbs-list"]').should('not.exist');
   });
 
   it('Repository list page', () => {
     cy.visit('/repository');
-    cy.get('nav[test-id="page-breadcrumbs-list"]').should('not.exist');
+    cy.get('nav[data-testid="page-breadcrumbs-list"]').should('not.exist');
   });
 
   it('Organization page', () => {
     cy.visit('/organization/projectquay');
-    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
+    cy.get('nav[data-testid="page-breadcrumbs-list"]').within(() => {
       cy.get('li')
         .each(($el, index) => {
           switch (index) {
@@ -48,7 +48,7 @@ describe('Tests for Breadcrumbs', () => {
 
   it('Repository page', () => {
     cy.visit('/repository/projectquay/repo1');
-    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
+    cy.get('nav[data-testid="page-breadcrumbs-list"]').within(() => {
       cy.get('li')
         .each(($el, index) => {
           switch (index) {
@@ -81,7 +81,7 @@ describe('Tests for Breadcrumbs', () => {
 
   it('Tags list page', () => {
     cy.visit('/repository/user1/hello-world/tag/latest');
-    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
+    cy.get('nav[data-testid="page-breadcrumbs-list"]').within(() => {
       cy.get('li')
         .each(($el, index) => {
           switch (index) {
@@ -124,7 +124,7 @@ describe('Tests for Breadcrumbs', () => {
 
   it('Teams page', () => {
     cy.visit('/organization/projectquay/teams/owners?tab=Teamsandmembership');
-    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
+    cy.get('nav[data-testid="page-breadcrumbs-list"]').within(() => {
       cy.get('li')
         .each(($el, index) => {
           switch (index) {
@@ -163,7 +163,7 @@ describe('Tests for Breadcrumbs', () => {
     cy.visit(
       '/organization/prometheus/teams/prometheus?tab=Teamsandmembership',
     );
-    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
+    cy.get('nav[data-testid="page-breadcrumbs-list"]').within(() => {
       cy.get('li')
         .each(($el, index) => {
           switch (index) {
@@ -200,7 +200,7 @@ describe('Tests for Breadcrumbs', () => {
 
   it('Org repo same name', () => {
     cy.visit('/repository/prometheus/prometheus');
-    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
+    cy.get('nav[data-testid="page-breadcrumbs-list"]').within(() => {
       cy.get('li')
         .each(($el, index) => {
           switch (index) {

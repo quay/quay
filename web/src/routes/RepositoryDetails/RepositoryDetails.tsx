@@ -7,7 +7,6 @@ import {
   DrawerHead,
   DrawerPanelContent,
   PageSection,
-  PageSectionVariants,
   Tab,
   TabTitleText,
   Tabs,
@@ -214,13 +213,13 @@ export default function RepositoryDetails() {
         >
           <DrawerContentBody>
             <QuayBreadcrumb />
-            <PageSection variant={PageSectionVariants.light}>
+            <PageSection hasBodyWrapper={false}>
               <Title data-testid="repo-title" headingLevel="h1">
                 {repository}
               </Title>
             </PageSection>
             <PageSection
-              variant={PageSectionVariants.light}
+              hasBodyWrapper={false}
               padding={{default: 'noPadding'}}
             >
               <ErrorBoundary

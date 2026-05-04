@@ -139,7 +139,7 @@ describe('Superuser Messages', () => {
       cy.wait('@getSuperUser');
 
       // Should show loading spinner
-      cy.get('.pf-v5-c-spinner').should('exist');
+      cy.get('.pf-v6-c-spinner').should('exist');
     });
 
     it('should show error state when messages fail to load', () => {
