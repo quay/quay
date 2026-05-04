@@ -17,6 +17,10 @@ const origResolve = (Module as any)._resolveFilename;
   return origResolve.call(this, request, parent, isMain, options);
 };
 
+afterAll(() => {
+  (Module as any)._resolveFilename = origResolve;
+});
+
 vi.mock('src/hooks/UseQuayConfig', () => ({
   useQuayConfig: vi.fn(),
 }));
@@ -49,6 +53,8 @@ beforeEach(() => {
     features: {},
   } as any);
   mockUseRobotToken.mockReturnValue({
+    robotAccountToken: {token: 'mock-token'},
+    loading: false,
     regenerateRobotToken: vi.fn().mockResolvedValue({}),
   } as any);
 });

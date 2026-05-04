@@ -72,9 +72,6 @@ describe('CreateRobotAccountModal', () => {
 
   it('shows 5 steps for organization namespace', () => {
     render(<CreateRobotAccountModal {...makeProps()} />);
-    const nav =
-      screen.getByRole('navigation', {name: /Wizard/i}) ||
-      screen.getByRole('list');
     expect(
       screen.getAllByText('Robot name and description').length,
     ).toBeGreaterThanOrEqual(1);

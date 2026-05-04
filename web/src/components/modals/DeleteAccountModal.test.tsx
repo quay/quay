@@ -49,5 +49,6 @@ describe('DeleteAccountModal', () => {
       'wrongname',
     );
     expect(screen.getByTestId('delete-account-confirm')).toBeDisabled();
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 });
