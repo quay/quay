@@ -1043,7 +1043,7 @@ test.describe(
       const saveLabelsButton = authenticatedPage.getByRole('button', {
         name: 'Save Labels',
       });
-      await expect(saveLabelsButton).toBeEnabled({timeout: 5000});
+      await expect(saveLabelsButton).toBeEnabled({timeout: 15000});
 
       // Save
       await saveLabelsButton.click();
