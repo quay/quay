@@ -251,6 +251,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               <TabTitleIcon>
                 <img
                   src={activeTabKey == 1 ? kubernetesIcon : kubernetesGreyIcon}
+                  alt=""
                 />
               </TabTitleIcon>
               <TabTitleText>Kubernetes</TabTitleText>
@@ -363,7 +364,10 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
           title={
             <>
               <TabTitleIcon>
-                <img src={activeTabKey == 2 ? podmanIcon : podmanGreyIcon} />
+                <img
+                  src={activeTabKey == 2 ? podmanIcon : podmanGreyIcon}
+                  alt=""
+                />
               </TabTitleIcon>
               <TabTitleText>Podman</TabTitleText>
             </>

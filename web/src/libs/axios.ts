@@ -3,7 +3,7 @@ import axios from 'axios';
 import {GlobalAuthState} from 'src/resources/AuthResource';
 
 if (process.env.MOCK_API === 'true') {
-  import('src/tests/fake-db/ApiMock');
+  await import('src/tests/fake-db/ApiMock');
 }
 
 axios.defaults.withCredentials = true;

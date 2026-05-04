@@ -26,7 +26,7 @@ while IFS= read -r file; do
   if [[ ! -f "$story_file" ]]; then
     missing+=("$file")
   fi
-done < <(git diff --diff-filter=A --name-only "origin/${base_ref}...HEAD" -- src/components/)
+done < <(git diff --diff-filter=A --name-only --relative "origin/${base_ref}...HEAD" -- src/components/)
 
 if [[ ${#missing[@]} -gt 0 ]]; then
   echo "::error::New components missing stories:"
