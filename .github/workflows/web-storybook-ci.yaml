@@ -48,10 +48,6 @@ jobs:
       - name: Install Playwright browsers
         run: cd web && pnpm exec playwright install --with-deps chromium
 
-      - name: Install Playwright browsers
-        working-directory: web
-        run: npx playwright install --with-deps chromium
-
       - name: Build Storybook
         working-directory: web
         run: pnpm run build-storybook
@@ -72,6 +68,12 @@ jobs:
         working-directory: web
         run: bash ../.github/scripts/story-coverage-report.sh
 
+      - name: Save PR number
+        if: always()
+        run: |
+          mkdir -p pr-info
+          echo "${{ github.event.pull_request.number }}" > pr-info/pr_number.txt
+
       - name: Upload Storybook build
         if: always()
         uses: actions/upload-artifact@v4
@@ -80,13 +82,10 @@ jobs:
           path: web/storybook-static
           retention-days: 7
 
-      - name: Save PR number
-        if: github.event_name == 'pull_request'
-        run: echo "${{ github.event.pull_request.number }}" > pr_number.txt
-
       - name: Upload PR info
-        if: github.event_name == 'pull_request'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: storybook-pr-info
-          path: pr_number.txt
+          path: pr-info/
+          retention-days: 7
