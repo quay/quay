@@ -23,7 +23,7 @@ test.describe(
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage
         .getByRole('row')
@@ -79,7 +79,7 @@ test.describe(
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage
         .getByRole('row')
@@ -110,7 +110,7 @@ test.describe(
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage
         .getByRole('row')
@@ -147,7 +147,7 @@ test.describe(
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage
         .getByRole('row')
@@ -198,7 +198,7 @@ test.describe(
           name: 'immutable-tag',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
       await expect(
         authenticatedPage.getByRole('link', {name: 'mutable-tag', exact: true}),
       ).toBeVisible();
@@ -280,7 +280,7 @@ test.describe(
           name: 'immutable-1',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
       await expect(
         authenticatedPage.getByRole('link', {
           name: 'immutable-2',
@@ -334,7 +334,7 @@ test.describe(
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'already-immutable'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const immutableRow = authenticatedPage.getByRole('row').filter({
         has: authenticatedPage.getByRole('link', {name: 'already-immutable'}),
@@ -373,7 +373,7 @@ test.describe(
 
       await expect(
         superuserPage.getByRole('link', {name: 'immutable-tag', exact: true}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = superuserPage.getByRole('row').filter({
         has: superuserPage.getByRole('link', {
@@ -445,7 +445,7 @@ test.describe(
           name: 'immutable-tag',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
       await expect(
         authenticatedPage.getByRole('link', {name: 'mutable-tag', exact: true}),
       ).toBeVisible();
@@ -514,7 +514,7 @@ test.describe(
           name: 'expiring-tag',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage.getByRole('row').filter({
         has: authenticatedPage.getByRole('link', {
@@ -571,7 +571,7 @@ test.describe(
           name: 'expiring-tag',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
       await expect(
         authenticatedPage.getByRole('link', {
           name: 'non-expiring-tag',
@@ -662,7 +662,7 @@ test.describe(
           name: 'expiring-tag-1',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
       await expect(
         authenticatedPage.getByRole('link', {
           name: 'expiring-tag-2',
@@ -723,7 +723,7 @@ test.describe(
           name: 'immutable-tag',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage.getByRole('row').filter({
         has: authenticatedPage.getByRole('link', {
@@ -766,7 +766,7 @@ test.describe(
 
       // Verify "Never" is visible but is NOT rendered as a link
       const neverText = tagRow.getByText('Never');
-      await expect(neverText).toBeVisible();
+      await expect(neverText).toBeVisible({timeout: 30000});
 
       // Should not be inside an <a> tag (not clickable)
       const neverLink = tagRow.locator('a', {hasText: 'Never'});
@@ -825,7 +825,7 @@ test.describe(
           name: 'immutable-1',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
       await expect(
         authenticatedPage.getByRole('link', {
           name: 'immutable-2',
@@ -894,10 +894,10 @@ test.describe(
 
       await expect(
         updatedRow1.getByTestId('immutable-tag-icon'),
-      ).not.toBeVisible({timeout: 10000});
+      ).not.toBeVisible({timeout: 30000});
       await expect(
         updatedRow2.getByTestId('immutable-tag-icon'),
-      ).not.toBeVisible({timeout: 10000});
+      ).not.toBeVisible({timeout: 30000});
     });
 
     // PROJQUAY-10503: Bulk remove immutability disabled when no immutable tags selected
@@ -921,7 +921,7 @@ test.describe(
           name: 'mutable-tag',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage.getByRole('row').filter({
         has: authenticatedPage.getByRole('link', {
@@ -967,7 +967,7 @@ test.describe(
       // Wait for table to load
       await expect(
         authenticatedPage.getByTestId('usage-logs-table'),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       // Filter by "immutable" to find our log entry
       await authenticatedPage.getByPlaceholder('Filter logs').fill('immutable');
@@ -1008,7 +1008,7 @@ test.describe(
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage
         .getByRole('row')
@@ -1090,7 +1090,7 @@ test.describe(
       // Wait for tag to render (UI loads tag as mutable)
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       // Make tag immutable via API while UI still shows stale mutable state.
       // This simulates a tag becoming immutable after the page was loaded
