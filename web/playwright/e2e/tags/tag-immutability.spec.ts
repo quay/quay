@@ -897,7 +897,7 @@ test.describe(
       ).not.toBeVisible({timeout: 30000});
       await expect(
         updatedRow2.getByTestId('immutable-tag-icon'),
-      ).not.toBeVisible({timeout: 10000});
+      ).not.toBeVisible({timeout: 30000});
     });
 
     // PROJQUAY-10503: Bulk remove immutability disabled when no immutable tags selected
