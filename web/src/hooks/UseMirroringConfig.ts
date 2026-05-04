@@ -129,14 +129,16 @@ export const useMirroringConfig = (
         data.architectureFilter.length > 0 ? data.architectureFilter : null,
     };
 
-    // Only include credentials if:
-    // 1. Creating new config (no existing config), OR
-    // 2. Password field has been filled in (user is updating credentials), OR
-    // 3. Username field has been filled in (user is updating credentials)
-    // This prevents clearing existing credentials when updating other fields
-    if (!config || data.password || data.username) {
+    // Only include credentials when the user explicitly changed them.
+    // The password field is never pre-populated from the API (for security),
+    // so a non-empty value means the user is actively setting new credentials.
+    if (!config || data.password) {
       mirrorConfig.external_registry_username = data.username || null;
       mirrorConfig.external_registry_password = data.password || null;
+    } else if (data.username !== (config.external_registry_username ?? '')) {
+      // Username-only change: backend has a dedicated handler that preserves
+      // the existing password (change_username vs change_credentials).
+      mirrorConfig.external_registry_username = data.username || null;
     }
 
     if (config) {
