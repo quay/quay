@@ -1,0 +1,67 @@
+name: Storybook CI
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+
+concurrency:
+  group: storybook-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  storybook:
+    name: Build & Test Storybook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build Storybook
+        working-directory: web
+        run: npm run build-storybook
+
+      - name: Run interaction tests
+        working-directory: web
+        run: |
+          npx concurrently -k -s first -n "SB,TEST" \
+            "npx http-server storybook-static --port 6006 --silent" \
+            "npx wait-on tcp:127.0.0.1:6006 && npm run test-storybook -- --url http://127.0.0.1:6006"
+
+      - name: Check story coverage for new components
+        working-directory: web
+        run: bash ../.github/scripts/check-story-coverage.sh
+
+      - name: Story coverage report
+        if: always()
+        working-directory: web
+        run: bash ../.github/scripts/story-coverage-report.sh
+
+      - name: Deploy Storybook preview
+        if: github.event_name == 'pull_request'
+        working-directory: web
+        env:
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+        run: |
+          npm install -g surge
+          surge storybook-static "pr-${{ github.event.pull_request.number }}-storybook-quay.surge.sh" --token "$SURGE_TOKEN"
+
+      - name: Add preview link to summary
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "## Storybook Preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "[Open Storybook](https://pr-${{ github.event.pull_request.number }}-storybook-quay.surge.sh)" >> "$GITHUB_STEP_SUMMARY"

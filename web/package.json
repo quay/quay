@@ -60,7 +60,10 @@
     "quay:dump": "${CLIENT:=docker} exec quay-db pg_dump -U quay -d quay --clean --if-exists > ./cypress/test/quay-db-data.txt && ${CLIENT:=docker} cp quay-quay:/datastorage/registry/. ./cypress/test/quay-storage-data",
     "quay:seed": "npm run quay:seed-db && npm run quay:seed-storage",
     "quay:seed-db": "${CLIENT:=docker} exec -i quay-db psql quay -U quay -v ON_ERROR_STOP=1 < ./cypress/test/quay-db-data.txt",
-    "quay:seed-storage": "${CLIENT:=docker} cp ./cypress/test/quay-storage-data/. quay-quay:/datastorage/registry"
+    "quay:seed-storage": "${CLIENT:=docker} cp ./cypress/test/quay-storage-data/. quay-quay:/datastorage/registry",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "test-storybook": "test-storybook"
   },
   "browserslist": {
     "production": [
@@ -77,6 +80,14 @@
   "devDependencies": {
     "@openshift/dynamic-plugin-sdk-webpack": "^3.0.1",
     "@playwright/test": "^1.56.1",
+    "@storybook/addon-a11y": "^8.6.18",
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/addon-interactions": "^8.6.14",
+    "@storybook/blocks": "^8.6.14",
+    "@storybook/react": "^8.6.18",
+    "@storybook/react-vite": "^8.6.18",
+    "@storybook/test": "^8.6.18",
+    "@storybook/test-runner": "^0.21.3",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -114,6 +125,7 @@
     "sass": "^1.64.1",
     "sass-loader": "^16.0.5",
     "serve": "^14.2.0",
+    "storybook": "^8.6.18",
     "style-loader": "^3.3.3",
     "svg-url-loader": "^8.0.0",
     "terser-webpack-plugin": "^5.3.9",
@@ -121,6 +133,8 @@
     "ts-node": "^10.9.1",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "url-loader": "^4.1.1",
+    "vite": "^8.0.10",
+    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.4",
     "webpack": "^5.105.0",
     "webpack-cli": "^5.1.4",
