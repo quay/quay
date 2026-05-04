@@ -54,18 +54,24 @@ jobs:
         working-directory: web
         run: bash ../.github/scripts/story-coverage-report.sh
 
-      - name: Deploy Storybook preview
-        if: github.event_name == 'pull_request'
-        working-directory: web
-        env:
-          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+      - name: Save PR number
+        if: always()
         run: |
-          npm install -g surge
-          surge storybook-static "pr-${{ github.event.pull_request.number }}-storybook-quay.surge.sh" --token "$SURGE_TOKEN"
+          mkdir -p pr-info
+          echo "${{ github.event.pull_request.number }}" > pr-info/pr_number.txt
 
-      - name: Add preview link to summary
-        if: github.event_name == 'pull_request'
-        run: |
-          echo "## Storybook Preview" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "[Open Storybook](https://pr-${{ github.event.pull_request.number }}-storybook-quay.surge.sh)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Storybook build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-static
+          path: web/storybook-static
+          retention-days: 7
+
+      - name: Upload PR info
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-pr-info
+          path: pr-info/
+          retention-days: 7
