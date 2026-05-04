@@ -36,15 +36,15 @@ jobs:
       id: pr
       run: |
         PR_NUMBER=$(cat pr-info/pr_number.txt)
-        echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+        echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
     - name: Deploy to Surge
       id: deploy
       run: |
         DEPLOY_DOMAIN="quay-storybook-pr-${{ steps.pr.outputs.number }}.surge.sh"
         cd storybook-static
-        npx surge . $DEPLOY_DOMAIN --token ${{ secrets.SURGE_TOKEN }}
-        echo "url=https://$DEPLOY_DOMAIN" >> $GITHUB_OUTPUT
+        npx surge . "$DEPLOY_DOMAIN" --token ${{ secrets.SURGE_TOKEN }}
+        echo "url=https://$DEPLOY_DOMAIN" >> "$GITHUB_OUTPUT"
       env:
         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
 
