@@ -197,13 +197,19 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
         await authenticatedPage.waitForLoadState('networkidle');
 
         if (
-          await credentialsHeading.isVisible({timeout: 2000}).catch(() => false)
+          await expect(credentialsHeading)
+            .toBeVisible({timeout: 2000})
+            .then(() => true)
+            .catch(() => false)
         ) {
           break;
         }
 
         if (
-          await rateLimitError.isVisible({timeout: 1000}).catch(() => false)
+          await expect(rateLimitError)
+            .toBeVisible({timeout: 1000})
+            .then(() => true)
+            .catch(() => false)
         ) {
           await authenticatedPage.waitForTimeout(2000 * (attempt + 1));
         }
