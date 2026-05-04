@@ -179,19 +179,38 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
       // Click generate password button
       await authenticatedPage.locator('#cli-password-button').click();
 
-      // Enter correct password
-      await authenticatedPage
-        .locator('#delete-confirmation-input')
-        .fill(password);
-      await authenticatedPage.locator('#submit').click();
-      await authenticatedPage.waitForLoadState('networkidle');
+      // Submit password with retry — the previous wrong-password test
+      // increments invalid_login_attempts and Quay's exponential backoff
+      // can reject the next attempt with HTTP 429.
+      const credentialsHeading = authenticatedPage.getByRole('heading', {
+        name: `Credentials for ${username}`,
+      });
+      const rateLimitError = authenticatedPage.getByText(
+        'Too many login attempts',
+      );
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await authenticatedPage
+          .locator('#delete-confirmation-input')
+          .fill(password);
+        await authenticatedPage.locator('#submit').click();
+        await authenticatedPage.waitForLoadState('networkidle');
+
+        if (
+          await credentialsHeading.isVisible({timeout: 2000}).catch(() => false)
+        ) {
+          break;
+        }
+
+        if (
+          await rateLimitError.isVisible({timeout: 1000}).catch(() => false)
+        ) {
+          await authenticatedPage.waitForTimeout(2000 * (attempt + 1));
+        }
+      }
 
       // Credentials modal should appear
-      await expect(
-        authenticatedPage.getByRole('heading', {
-          name: `Credentials for ${username}`,
-        }),
-      ).toBeVisible();
+      await expect(credentialsHeading).toBeVisible();
 
       // Verify all credential format tabs exist
       await expect(

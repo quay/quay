@@ -14,7 +14,9 @@ test.describe(
     }) => {
       const org = await api.organization('sucreateorg');
 
-      await superuserPage.goto(`/organization/${org.name}`);
+      await superuserPage.goto(`/organization/${org.name}`, {
+        waitUntil: 'networkidle',
+      });
 
       // Click create repository
       await superuserPage
@@ -29,8 +31,12 @@ test.describe(
       // Select private visibility
       await superuserPage.getByTestId('visibility-private-radio').click();
 
-      // Submit
-      await superuserPage.getByTestId('create-repository-submit-btn').click();
+      // Wait for form to stabilize after radio toggle re-render
+      const submitBtn = superuserPage.getByTestId(
+        'create-repository-submit-btn',
+      );
+      await expect(submitBtn).toBeEnabled();
+      await submitBtn.click();
 
       // Verify success alert appears
       await expect(

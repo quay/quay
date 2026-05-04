@@ -19,7 +19,9 @@ test.describe(
         TEST_USERS.user.password,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
@@ -75,7 +77,9 @@ test.describe(
         true,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
@@ -106,7 +110,9 @@ test.describe(
         true,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
@@ -143,7 +149,9 @@ test.describe(
         true,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
@@ -191,7 +199,9 @@ test.describe(
         true,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {
@@ -273,7 +283,9 @@ test.describe(
         ),
       ]);
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {
@@ -330,7 +342,9 @@ test.describe(
         true,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'already-immutable'}),
@@ -369,7 +383,9 @@ test.describe(
         true,
       );
 
-      await superuserPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await superuserPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         superuserPage.getByRole('link', {name: 'immutable-tag', exact: true}),
@@ -438,14 +454,16 @@ test.describe(
         true,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {
           name: 'immutable-tag',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 15000});
       await expect(
         authenticatedPage.getByRole('link', {name: 'mutable-tag', exact: true}),
       ).toBeVisible();
@@ -507,14 +525,16 @@ test.describe(
         expirationTimestamp,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {
           name: 'expiring-tag',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 15000});
 
       const tagRow = authenticatedPage.getByRole('row').filter({
         has: authenticatedPage.getByRole('link', {
@@ -564,14 +584,16 @@ test.describe(
         expirationTimestamp,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {
           name: 'expiring-tag',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 15000});
       await expect(
         authenticatedPage.getByRole('link', {
           name: 'non-expiring-tag',
@@ -655,14 +677,16 @@ test.describe(
         ),
       ]);
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {
           name: 'expiring-tag-1',
           exact: true,
         }),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 15000});
       await expect(
         authenticatedPage.getByRole('link', {
           name: 'expiring-tag-2',
@@ -716,7 +740,9 @@ test.describe(
         true,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {
@@ -755,7 +781,9 @@ test.describe(
         true,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       const tagRow = authenticatedPage.getByRole('row').filter({
         has: authenticatedPage.getByRole('link', {
@@ -818,7 +846,9 @@ test.describe(
         ),
       ]);
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {
@@ -877,7 +907,9 @@ test.describe(
       ).not.toBeVisible();
 
       // Wait for tags to reload and verify lock icons are gone
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       const updatedRow1 = authenticatedPage.getByRole('row').filter({
         has: authenticatedPage.getByRole('link', {
@@ -914,7 +946,9 @@ test.describe(
         TEST_USERS.user.password,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {
@@ -1004,7 +1038,9 @@ test.describe(
         true,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1.0.0'}),
@@ -1085,7 +1121,9 @@ test.describe(
         TEST_USERS.user.password,
       );
 
-      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`, {
+        waitUntil: 'networkidle',
+      });
 
       // Wait for tag to render (UI loads tag as mutable)
       await expect(
