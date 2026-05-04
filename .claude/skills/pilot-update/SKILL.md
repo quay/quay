@@ -18,7 +18,6 @@ allowed-tools:
   - Bash(curl *)
   - Bash(acli jira workitem comment create *)
   - Bash(acli jira workitem comment list *)
-  - Bash(acli jira workitem comment delete *)
   - mcp__mcp-atlassian__jira_get_issue
   - mcp__mcp-atlassian__jira_search
   - mcp__mcp-atlassian__jira_batch_get_changelogs
@@ -334,10 +333,10 @@ Method 2.
 
 ### Method 2 — Jira REST API via curl (fallback)
 
-This requires `JIRA_API_TOKEN` to be set (not available in all Ambient
+This requires both `JIRA_EMAIL` and `JIRA_API_TOKEN` to be set (not available in all Ambient
 sessions). Source credentials from `.claude/scripts/jira-ops.sh` locations:
-`JIRA_API_TOKEN` env var, or `~/.config/acli/token.txt`, or
-`~/.acli-token`.
+`JIRA_API_TOKEN` env var (or `~/.config/acli/token.txt` / `~/.acli-token`),
+and `JIRA_EMAIL` (defaults to `quay-devel@redhat.com` if not set).
 
 The ADF document must be wrapped in a `body` field:
 
@@ -358,8 +357,8 @@ if [[ "$http_code" != 2* ]]; then
 fi
 ```
 
-If both methods fail, display the full Markdown for the user to
-copy-paste manually and report the error.
+If both methods fail, save the ADF JSON file and instruct the user to
+paste the content into the Jira rich-text editor manually. Report the error.
 
 Confirm success with: "Comment posted to PROJQUAY-11352."
 
@@ -376,8 +375,8 @@ Confirm success with: "Comment posted to PROJQUAY-11352."
 - **Jira batch changelog limit**: if >20 keys, batch in groups of 20.
 - **User provides empty input for a subjective section**: use "Nothing to
   report this period." as the placeholder.
-- **Comment post fails**: display markdown for manual copy-paste and
-  report the error.
+- **Comment post fails**: save ADF JSON and instruct the user to paste content
+  into the Jira rich-text editor manually. Report the error.
 - **Jira MCP tools unavailable** (running outside Ambient): fall back to
   the Jira REST API via curl for both data gathering and comment posting.
   If credentials are not available, report the error and display
