@@ -2078,9 +2078,7 @@ class TestGetRepoBlobByDigestMissingFromStorage:
         )
 
         assert storage.exists(["local_us"], layer_path)
-        assert ImageStoragePlacement.select().where(
-            ImageStoragePlacement.storage == blob
-        ).exists()
+        assert ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).exists()
 
         storage.remove(["local_us"], layer_path)
         assert not storage.exists(["local_us"], layer_path)
@@ -2092,9 +2090,7 @@ class TestGetRepoBlobByDigestMissingFromStorage:
         )
 
         with patch.object(proxy_model, "_download_blob") as mock_download:
-            proxy_model.get_repo_blob_by_digest(
-                self.repo_ref, digest, include_placements=True
-            )
+            proxy_model.get_repo_blob_by_digest(self.repo_ref, digest, include_placements=True)
             mock_download.assert_called_once_with(self.repo_ref, digest)
 
     def test_does_not_refetch_blob_present_in_storage(self):
@@ -2154,9 +2150,7 @@ class TestGetRepoBlobByDigestMissingFromStorage:
         )
 
         with patch.object(proxy_model, "_download_blob") as mock_download:
-            result = proxy_model.get_repo_blob_by_digest(
-                self.repo_ref, digest, include_placements=True
-            )
+            result = proxy_model.get_repo_blob_by_digest(self.repo_ref, digest, include_placements=True)
             mock_download.assert_not_called()
             assert result is not None
             assert result.digest == digest

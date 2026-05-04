@@ -734,8 +734,7 @@ class ProxyModel(OCIModel):
                     needs_download = True
             except Exception:
                 logger.exception(
-                    "Failed to verify blob %s existence in storage, "
-                    "re-fetching from upstream",
+                    "Failed to verify blob %s existence in storage, " "re-fetching from upstream",
                     blob_digest,
                 )
                 needs_download = True

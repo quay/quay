@@ -168,8 +168,7 @@ class ProxyCacheBlobWorker(QueueWorker):
             locations = get_storage_locations(blob.uuid)
             if not locations or not storage.exists(locations, layer_path):
                 logger.warning(
-                    "Blob %s has placements in DB but is missing from storage, "
-                    "will re-download",
+                    "Blob %s has placements in DB but is missing from storage, " "will re-download",
                     digest,
                 )
                 return True
