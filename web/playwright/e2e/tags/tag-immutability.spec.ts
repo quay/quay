@@ -6,6 +6,8 @@ test.describe(
   'Tag Immutability',
   {tag: ['@tags', '@immutability', '@feature:IMMUTABLE_TAGS', '@container']},
   () => {
+    test.slow();
+
     test('can make a tag immutable via kebab menu', async ({
       authenticatedPage,
       api,
