@@ -14,11 +14,12 @@ test.describe(
     }) => {
       const org = await api.organization('sucreateorg');
 
-      await superuserPage.goto(`/organization/${org.name}`, {
-        waitUntil: 'networkidle',
-      });
+      await superuserPage.goto(`/organization/${org.name}`);
 
       // Click create repository
+      await superuserPage
+        .getByRole('button', {name: 'Create Repository'})
+        .waitFor({state: 'visible', timeout: 30000});
       await superuserPage
         .getByRole('button', {name: 'Create Repository'})
         .click();
