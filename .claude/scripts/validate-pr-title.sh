@@ -13,22 +13,28 @@ if [ -z "$CMD" ]; then
   exit 0
 fi
 
-TITLE=""
+# Use python3 shlex to correctly parse shell argv — portable and handles all
+# quoting/escaping forms. CMD is passed as argv[1] to avoid stdin conflict.
+TITLE=$(python3 -c '
+import shlex, sys
 
-# Strategy 1: --title 'message' (single quotes)
-if [ -z "$TITLE" ]; then
-  TITLE=$(echo "$CMD" | grep -oP -- "--title[= ]\x27\K[^\x27]+" 2>/dev/null | head -1 || true)
-fi
+cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+try:
+    argv = shlex.split(cmd, posix=True)
+except ValueError:
+    sys.exit(0)
 
-# Strategy 2: --title "message" (double quotes)
-if [ -z "$TITLE" ]; then
-  TITLE=$(echo "$CMD" | grep -oP -- '--title[= ]"\K[^"]+' 2>/dev/null | head -1 || true)
-fi
+title = ""
+for i, arg in enumerate(argv):
+    if arg == "--title" and i + 1 < len(argv):
+        title = argv[i + 1]
+        break
+    if arg.startswith("--title="):
+        title = arg.split("=", 1)[1]
+        break
 
-# Strategy 3: --title=bare-value (no quotes, stop at space)
-if [ -z "$TITLE" ]; then
-  TITLE=$(echo "$CMD" | grep -oP -- "--title=\K[^ \x27\"]+" 2>/dev/null | head -1 || true)
-fi
+print(title, end="")
+' "$CMD")
 
 # No --title flag found -- nothing to validate
 if [ -z "$TITLE" ]; then
@@ -39,7 +45,7 @@ PATTERN='^(\[redhat-[0-9]+\.[0-9]+\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE):
 
 if ! echo "$TITLE" | grep -qE "$PATTERN"; then
   echo "BLOCKED: PR title does not match required format." >&2
-  echo "Expected: PROJQUAY-XXXX: type(scope): description" >&2
+  echo "Expected: [redhat-X.Y] (PROJQUAY-XXXX|QUAYIO-XXXX|NO-ISSUE): type(scope): description" >&2
   echo "Got: $TITLE" >&2
   exit 2
 fi
