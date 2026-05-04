@@ -49,10 +49,11 @@ jobs:
         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
 
     - name: Comment PR with Storybook URL
+      if: always()
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
       with:
         script: |
-          const reportUrl = '${{ steps.deploy.outputs.url }}';
+          const reportUrl = '${{ steps.deploy.outputs.url }}' || '';
           const prNumber = ${{ steps.pr.outputs.number }};
           const conclusion = '${{ github.event.workflow_run.conclusion }}';
           const runUrl = '${{ github.event.workflow_run.html_url }}';
@@ -70,12 +71,15 @@ jobs:
 
           const statusEmoji = conclusion === 'success' ? '✅' : '❌';
           const statusText = conclusion === 'success' ? 'passed' : 'failed';
+          const previewLine = reportUrl
+            ? `📖 **[Open Storybook](${reportUrl})**`
+            : '📖 _Preview not available (deploy skipped or failed)_';
 
           const commentBody = `## Storybook Preview
 
           ${statusEmoji} **Build ${statusText}**
 
-          📖 **[Open Storybook](${reportUrl})**
+          ${previewLine}
 
           🔗 [View Workflow Run](${runUrl})
 
