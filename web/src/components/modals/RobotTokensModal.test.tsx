@@ -4,6 +4,8 @@ import {useRobotToken} from 'src/hooks/useRobotAccounts';
 import path from 'path';
 import Module from 'module';
 
+// RobotTokensModal uses dynamic require('src/assets/...') for SVG icons which
+// bypasses Vite's alias resolution. Patch Node's module resolver to handle this.
 const origResolve = (Module as any)._resolveFilename;
 (Module as any)._resolveFilename = function (
   request: string,
