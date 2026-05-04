@@ -131,10 +131,10 @@ gangway_get() {
 }
 
 save_state() {
-  mkdir -p "$STATE_DIR"
-  chmod 700 "$STATE_DIR"
   [[ -L "$STATE_DIR" ]] && die "Refusing to write through symlinked state dir: $STATE_DIR"
   [[ -L "$STATE_FILE" ]] && die "Refusing to write through symlinked state file: $STATE_FILE"
+  mkdir -p "$STATE_DIR"
+  chmod 700 "$STATE_DIR"
   jq -n \
     --arg eid "$1" \
     --arg gcs "$2" \
@@ -238,7 +238,7 @@ ensure_oc() {
 }
 
 validate_cluster() {
-  ensure_oc
+  ensure_oc || true
   if ! command -v oc >/dev/null 2>&1; then
     echo "WARNING: could not install 'oc' — skipping cluster validation."
     return
