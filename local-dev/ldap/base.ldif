@@ -122,7 +122,6 @@ gecos: Admin Ldap
 loginShell: /bin/bash
 homeDirectory: /home/admin_ldap
 mail: admin_ldap@example.com
-memberOf: cn=test_ldap_group,ou=groups,dc=example,dc=org
 
 # Playwright test user: testuser_ldap (regular user, avoids conflict with Database-phase testuser)
 dn: uid=testuser_ldap,ou=users,dc=example,dc=org
@@ -141,7 +140,6 @@ gecos: Testuser Ldap
 loginShell: /bin/bash
 homeDirectory: /home/testuser_ldap
 mail: testuser_ldap@example.com
-memberOf: cn=test_ldap_group,ou=groups,dc=example,dc=org
 
 # Playwright test user: readonly_ldap (readonly user, avoids conflict with Database-phase readonly)
 dn: uid=readonly_ldap,ou=users,dc=example,dc=org
