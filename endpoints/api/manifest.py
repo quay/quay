@@ -95,7 +95,9 @@ def _manifest_dict(manifest):
             manifest.layers_compressed_size if not manifest.is_manifest_list else 0
         ),
         "layers": (
-            [_layer_dict(lyr.layer_info, idx) for idx, lyr in enumerate(layers)] if layers else None
+            [_layer_dict(lyr.layer_info, idx) for idx, lyr in enumerate(layers)]
+            if layers is not None
+            else None
         ),
     }
 
