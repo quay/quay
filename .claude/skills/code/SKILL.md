@@ -74,3 +74,13 @@ Format:
 ```
 
 See `.github/CONTRIBUTING.md` for full conventions. Pre-commit hooks run on commit — fix any failures and re-commit.
+
+## Step 5: Continue — invoke /pr immediately
+
+**Do not stop after committing.** Invoke the `/pr` skill immediately to create the pull request. The full workflow is a single uninterrupted pipeline:
+
+```text
+/code  →  /pr  →  /poll <PR#>
+```
+
+Only pause if there is a genuine blocker that requires a decision from the user (e.g. ambiguous scope, missing JIRA ticket number). Completing the implementation is not the end — the goal is a running poll loop.

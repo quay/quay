@@ -1,53 +1,51 @@
 #!/bin/bash
-# validate-pr-title.sh -- Validate PR title matches the required format.
-#
-# Usage: bash scripts/validate-pr-title.sh "PROJQUAY-1234: fix(api): add pagination"
-#
-# The PR title must match (enforced by CI pull_request_linting.yaml):
-#   ^(?:\[redhat-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$
-#
-# Valid examples:
-#   PROJQUAY-1234: fix(api): add pagination to tag listing
-#   PROJQUAY-5678: feat(web): add mirror config page
-#   QUAYIO-9999: chore: update dependencies
-#   NO-ISSUE: docs: update README
-#   [redhat-3.12] PROJQUAY-1234: fix(api): backport tag pagination
+# validate-pr-title.sh -- PreToolUse hook for gh pr create.
+# Reads tool_input JSON from stdin, extracts the PR title from --title flag,
+# and blocks if it does not match the CI-enforced regex:
+#   ^(\[redhat-[0-9]+\.[0-9]+\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(\([^)]+\))?: .+$
 
 set -euo pipefail
 
-TITLE="${1:?Usage: validate-pr-title.sh \"<PR TITLE>\"}"
+INPUT=$(cat)
+CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
-# The regex from .github/workflows/pull_request_linting.yaml
+if [ -z "$CMD" ]; then
+  exit 0
+fi
+
+# Use python3 shlex to correctly parse shell argv — portable and handles all
+# quoting/escaping forms. CMD is passed as argv[1] to avoid stdin conflict.
+TITLE=$(python3 -c '
+import shlex, sys
+
+cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+try:
+    argv = shlex.split(cmd, posix=True)
+except ValueError:
+    sys.exit(0)
+
+title = ""
+for i, arg in enumerate(argv):
+    if arg == "--title" and i + 1 < len(argv):
+        title = argv[i + 1]
+        break
+    if arg.startswith("--title="):
+        title = arg.split("=", 1)[1]
+        break
+
+print(title, end="")
+' "$CMD")
+
+# No --title flag found -- nothing to validate
+if [ -z "$TITLE" ]; then
+  exit 0
+fi
+
 PATTERN='^(\[redhat-[0-9]+\.[0-9]+\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(\([^)]+\))?: .+$'
 
-if echo "$TITLE" | grep -qP "$PATTERN" 2>/dev/null || echo "$TITLE" | grep -qE "$PATTERN" 2>/dev/null; then
-  echo "VALID: \"${TITLE}\""
-  echo ""
-  echo "Format breakdown:"
-
-  # Extract parts
-  BACKPORT_PREFIX=$(echo "$TITLE" | grep -oP '^\[redhat-[0-9]+\.[0-9]+\] ' 2>/dev/null || true)
-  JIRA_REF=$(echo "$TITLE" | grep -oP '(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE)' 2>/dev/null || echo "?")
-  TYPE=$(echo "$TITLE" | sed -E 's/^(\[redhat-[0-9]+\.[0-9]+\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): ([a-z]+).*/\3/' 2>/dev/null || echo "?")
-  SCOPE=$(echo "$TITLE" | grep -oP '(?<=\()[^)]+(?=\))' 2>/dev/null || echo "(none)")
-
-  [ -n "$BACKPORT_PREFIX" ] && echo "  Backport:  ${BACKPORT_PREFIX}"
-  echo "  JIRA ref:  ${JIRA_REF}"
-  echo "  Type:      ${TYPE}"
-  echo "  Scope:     ${SCOPE}"
-  exit 0
-else
-  echo "INVALID: \"${TITLE}\""
-  echo ""
-  echo "Required format:"
-  echo "  [optional backport prefix] JIRA-REF: type(optional-scope): description"
-  echo ""
-  echo "Valid types: fix, feat, chore, docs, test, refactor, perf, style, ci, build, deps"
-  echo ""
-  echo "Examples:"
-  echo "  PROJQUAY-1234: fix(api): add pagination to tag listing"
-  echo "  PROJQUAY-5678: feat(web): add mirror config page"
-  echo "  NO-ISSUE: chore: update dependencies"
-  echo "  [redhat-3.12] PROJQUAY-1234: fix(api): backport tag pagination"
-  exit 1
+if ! echo "$TITLE" | grep -qE "$PATTERN"; then
+  echo "BLOCKED: PR title does not match required format." >&2
+  echo "Expected: [redhat-X.Y] (PROJQUAY-XXXX|QUAYIO-XXXX|NO-ISSUE): type(scope): description" >&2
+  echo "Got: $TITLE" >&2
+  exit 2
 fi
