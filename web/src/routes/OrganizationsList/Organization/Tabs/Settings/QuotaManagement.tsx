@@ -14,10 +14,13 @@ import {
   GridItem,
   Card,
   CardBody,
-  Text,
+  Content,
   FlexItem,
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {PlusIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
@@ -624,10 +627,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                   spaceItems={{default: 'spaceItemsSm'}}
                 >
                   <FlexItem style={{minWidth: '140px'}}>
-                    <Text component="h6">Action</Text>
+                    <Content component="h6">Action</Content>
                   </FlexItem>
                   <FlexItem style={{minWidth: '140px'}}>
-                    <Text component="h6">Quota Threshold</Text>
+                    <Content component="h6">Quota Threshold</Content>
                   </FlexItem>
                 </Flex>
               </FlexItem>
@@ -734,7 +737,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                               />
                             </FlexItem>
                             <FlexItem>
-                              <Text component="small">%</Text>
+                              <Content component="small">%</Content>
                             </FlexItem>
                           </Flex>
                         </FlexItem>
@@ -867,7 +870,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                               />
                             </FlexItem>
                             <FlexItem>
-                              <Text component="small">%</Text>
+                              <Content component="small">%</Content>
                             </FlexItem>
                           </Flex>
                         </FlexItem>
@@ -944,10 +947,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
       {/* Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete Quota"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Delete Quota" />
+        <ModalBody>
+          Are you sure you want to delete quota for this organization? When you
+          remove the quota storage, users can consume arbitrary amount of
+          storage resources.
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="confirm"
             variant="danger"
@@ -955,19 +964,15 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
             data-testid="confirm-delete-quota"
           >
             OK
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setIsDeleteModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to delete quota for this organization? When you
-        remove the quota storage, users can consume arbitrary amount of storage
-        resources.
+          </Button>
+        </ModalFooter>
       </Modal>
     </Form>
   );

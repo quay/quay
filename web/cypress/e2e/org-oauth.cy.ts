@@ -290,7 +290,7 @@ describe('Organization OAuth Applications', () => {
 
       // Click actions kebab
       cy.get('[data-testid="oauth-application-actions"]').first().click();
-      cy.contains('Edit').click();
+      cy.contains('Edit').should('be.visible').click();
 
       // Check drawer opened
       cy.get('[data-testid="manage-oauth-drawer"]').should('exist');
@@ -1039,10 +1039,10 @@ describe('Organization OAuth Applications', () => {
 
       // Click actions kebab
       cy.get('[data-testid="oauth-application-actions"]').first().click();
-      cy.contains('Delete').click();
+      cy.get('.pf-v6-c-menu__item').contains('Delete').click();
 
       // Confirm deletion
-      cy.get('[data-testid="test-app-del-btn"]').click();
+      cy.get('[data-testid="test-app-del-btn"]').should('be.visible').click();
 
       cy.wait('@deleteOAuthApplication');
       cy.contains('Successfully deleted oauth application').should('exist');
@@ -1064,8 +1064,8 @@ describe('Organization OAuth Applications', () => {
 
       // Click actions kebab and delete
       cy.get('[data-testid="oauth-application-actions"]').first().click();
-      cy.contains('Delete').click();
-      cy.get('[data-testid="test-app-del-btn"]').click();
+      cy.get('.pf-v6-c-menu__item').contains('Delete').click();
+      cy.get('[data-testid="test-app-del-btn"]').should('be.visible').click();
 
       cy.wait('@deleteOAuthApplicationError');
       cy.contains('Error deleting oauth application').should('exist');
@@ -1377,7 +1377,7 @@ describe('Organization OAuth Applications', () => {
       );
 
       // Verify token is displayed in the ClipboardCopy input
-      cy.get('.pf-v5-c-clipboard-copy input').should(
+      cy.get('.pf-v6-c-clipboard-copy input').should(
         'have.value',
         'test-generated-token-456',
       );

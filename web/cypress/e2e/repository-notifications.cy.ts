@@ -133,8 +133,8 @@ describe('Repository Settings - Notifications', () => {
     const flowdockRow = cy.get('tbody:contains("(Untitled)")');
     flowdockRow.within(() => {
       cy.get('[data-label="kebab"]').within(() => cy.get('button').click());
-      cy.contains('Test Notification').click();
     });
+    cy.contains('Test Notification').click();
     cy.contains('Test Notification Queued').should('exist');
     cy.contains(
       'A test version of this notification has been queued and should appear shortly',
@@ -145,7 +145,9 @@ describe('Repository Settings - Notifications', () => {
     const emailRow = cy.get('tbody:contains("email-notification")');
     emailRow.within(() => {
       cy.get('[data-label="kebab"]').within(() => cy.get('button').click());
-      cy.contains('Enable Notification').click();
+    });
+    cy.contains('Enable Notification').click();
+    cy.get('tbody:contains("email-notification")').within(() => {
       cy.get(`[data-label="status"]`).should('have.text', 'Enabled');
     });
   });
@@ -154,9 +156,9 @@ describe('Repository Settings - Notifications', () => {
     const emailRow = cy.get('tbody:contains("email-notification")');
     emailRow.within(() => {
       cy.get('[data-label="kebab"]').within(() => cy.get('button').click());
-      cy.contains('Delete Notification').click();
-      cy.contains('email-notification').should('not.exist');
     });
+    cy.contains('Delete Notification').click();
+    cy.contains('email-notification').should('not.exist');
   });
 
   it('Bulk enables notification', () => {
@@ -178,11 +180,17 @@ describe('Repository Settings - Notifications', () => {
     cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
-      cy.contains('Push to Repository').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+    cy.get('#create-notification-form').within(() => {
       cy.contains('Select method').click();
-      cy.contains('Red Hat Quay Notification').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Red Hat Quay Notification').click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#entity-search-input').type('user2');
-      cy.contains('user2').click();
+    });
+    cy.contains('user2').click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#notification-title').type('newnotification');
       cy.contains('Submit').click();
     });
@@ -206,9 +214,15 @@ describe('Repository Settings - Notifications', () => {
     cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
-      cy.contains('Push to Repository').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+    cy.get('#create-notification-form').within(() => {
       cy.contains('Select method').click();
-      cy.contains('Flowdock Team Notification').click();
+    });
+    cy.get('.pf-v6-c-menu__item')
+      .contains('Flowdock Team Notification')
+      .click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#flowdock-api-token-field').type('testtoken');
       cy.get('#notification-title').type('newnotification');
       cy.contains('Submit').click();
@@ -229,9 +243,13 @@ describe('Repository Settings - Notifications', () => {
     cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
-      cy.contains('Push to Repository').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+    cy.get('#create-notification-form').within(() => {
       cy.contains('Select method').click();
-      cy.contains('HipChat Room Notification').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('HipChat Room Notification').click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#room-id-number-field').type('12345');
       cy.get('#room-notification-token-field').type('testtoken');
       cy.get('#notification-title').type('newnotification');
@@ -253,9 +271,13 @@ describe('Repository Settings - Notifications', () => {
     cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
-      cy.contains('Push to Repository').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+    cy.get('#create-notification-form').within(() => {
       cy.contains('Select method').click();
-      cy.contains('Slack Notification').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Slack Notification').click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#slack-webhook-url-field').type(
         'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX',
       );
@@ -278,9 +300,13 @@ describe('Repository Settings - Notifications', () => {
     cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
-      cy.contains('Push to Repository').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+    cy.get('#create-notification-form').within(() => {
       cy.contains('Select method').click();
-      cy.contains('Webhook POST').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Webhook POST').click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#webhook-url-field').type('https://doesnotexist');
       cy.get('#json-body-field').type('{"foo":"bar"}', {
         parseSpecialCharSequences: false,
@@ -341,17 +367,21 @@ describe('Repository Settings - Notifications', () => {
     cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
-      cy.contains('Push to Repository').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+    cy.get('#create-notification-form').within(() => {
       cy.contains('Select method').click();
-      cy.contains('Email Notification').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Email Notification').click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#notification-email').type('user2@redhat.com');
       cy.get('#notification-title').type('newnotification');
       cy.contains('Submit').click();
     });
     cy.contains('Email Authorization').should('exist');
-    cy.contains(
-      'The email address user2@redhat.com has not been authorized to recieve notifications from this repository. Please click ‘Send Authorized Email‘ to start the authorization process.',
-    ).should('exist');
+    cy.contains('has not been authorized to receive notifications').should(
+      'exist',
+    );
     cy.get('button').contains('Send Authorized Email').click();
     cy.contains(
       'An email has been sent to user2@redhat.com. Please click the link contained in the email.',
@@ -375,10 +405,14 @@ describe('Repository Settings - Notifications', () => {
     cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
-      cy.contains('Image expiry trigger').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Image expiry trigger').click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#days-to-image-expiry').type('5');
       cy.contains('Select method').click();
-      cy.contains('Slack Notification').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Slack Notification').click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#slack-webhook-url-field').type(
         'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX',
       );
@@ -409,10 +443,14 @@ describe('Repository Settings - Notifications', () => {
     cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
-      cy.contains('Image expiry trigger').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Image expiry trigger').click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#days-to-image-expiry').type('-5');
       cy.contains('Select method').click();
-      cy.contains('Slack Notification').click();
+    });
+    cy.get('.pf-v6-c-menu__item').contains('Slack Notification').click();
+    cy.get('#create-notification-form').within(() => {
       cy.get('#slack-webhook-url-field').type(
         'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX',
       );
@@ -427,26 +465,37 @@ describe('Repository Settings - Notifications', () => {
       cy.contains('Create notification').click();
       cy.get('#create-notification-form').within(() => {
         cy.contains('Select event').click();
-        cy.contains('Push to Repository').click();
+      });
+      cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+      cy.get('#create-notification-form').within(() => {
         cy.contains('Select method').click();
-        cy.contains('Red Hat Quay Notification').click();
-
+      });
+      cy.get('.pf-v6-c-menu__item')
+        .contains('Red Hat Quay Notification')
+        .click();
+      cy.get('#create-notification-form').within(() => {
         // Click on recipient field to open dropdown
         cy.get('#entity-search-input').click();
-
-        // Verify "Create team" option is visible (should appear for organizations)
-        cy.get('[data-testid="create-new-team-btn"]').should('exist');
       });
+
+      // Verify "Create team" option is visible (should appear for organizations)
+      // Dropdown is rendered in a portal outside the form
+      cy.get('[data-testid="create-new-team-btn"]').should('exist');
     });
 
     it('Shows teams in recipient dropdown for organization repository', () => {
       cy.contains('Create notification').click();
       cy.get('#create-notification-form').within(() => {
         cy.contains('Select event').click();
-        cy.contains('Push to Repository').click();
+      });
+      cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+      cy.get('#create-notification-form').within(() => {
         cy.contains('Select method').click();
-        cy.contains('Red Hat Quay Notification').click();
-
+      });
+      cy.get('.pf-v6-c-menu__item')
+        .contains('Red Hat Quay Notification')
+        .click();
+      cy.get('#create-notification-form').within(() => {
         // Click on recipient field to open dropdown
         cy.get('#entity-search-input').click();
       });
@@ -473,16 +522,23 @@ describe('Repository Settings - Notifications', () => {
       cy.contains('Create notification').click();
       cy.get('#create-notification-form').within(() => {
         cy.contains('Select event').click();
-        cy.contains('Push to Repository').click();
+      });
+      cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+      cy.get('#create-notification-form').within(() => {
         cy.contains('Select method').click();
-        cy.contains('Red Hat Quay Notification').click();
-
+      });
+      cy.get('.pf-v6-c-menu__item')
+        .contains('Red Hat Quay Notification')
+        .click();
+      cy.get('#create-notification-form').within(() => {
         // Click recipient field to open dropdown
         cy.get('#entity-search-input').click();
+      });
 
-        // Select the team we just created
-        cy.get('[data-testid="testteam-team"]').click();
+      // Select the team we just created (dropdown rendered in portal)
+      cy.get('[data-testid="testteam-team"]').click();
 
+      cy.get('#create-notification-form').within(() => {
         // Verify the team name appears in the input
         cy.get('#entity-search-input input').should('have.value', 'testteam');
 
@@ -508,14 +564,20 @@ describe('Repository Settings - Notifications', () => {
       cy.contains('Create notification').click();
       cy.get('#create-notification-form').within(() => {
         cy.contains('Select event').click();
-        cy.contains('Push to Repository').click();
+      });
+      cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+      cy.get('#create-notification-form').within(() => {
         cy.contains('Select method').click();
-        cy.contains('Red Hat Quay Notification').click();
-
+      });
+      cy.get('.pf-v6-c-menu__item')
+        .contains('Red Hat Quay Notification')
+        .click();
+      cy.get('#create-notification-form').within(() => {
         // Type to search for user
         cy.get('#entity-search-input').type('user2');
-        cy.contains('user2').click();
-
+      });
+      cy.contains('user2').click();
+      cy.get('#create-notification-form').within(() => {
         // Verify user2 appears in the input
         cy.get('#entity-search-input input').should('have.value', 'user2');
 
@@ -537,14 +599,20 @@ describe('Repository Settings - Notifications', () => {
       cy.contains('Create notification').click();
       cy.get('#create-notification-form').within(() => {
         cy.contains('Select event').click();
-        cy.contains('Push to Repository').click();
+      });
+      cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+      cy.get('#create-notification-form').within(() => {
         cy.contains('Select method').click();
-        cy.contains('Red Hat Quay Notification').click();
-
+      });
+      cy.get('.pf-v6-c-menu__item')
+        .contains('Red Hat Quay Notification')
+        .click();
+      cy.get('#create-notification-form').within(() => {
         // Select a user
         cy.get('#entity-search-input').type('user2');
-        cy.contains('user2').click();
-
+      });
+      cy.contains('user2').click();
+      cy.get('#create-notification-form').within(() => {
         // Verify user2 appears
         cy.get('#entity-search-input input').should('have.value', 'user2');
 
@@ -568,16 +636,21 @@ describe('Repository Settings - Notifications', () => {
       cy.contains('Create notification').click();
       cy.get('#create-notification-form').within(() => {
         cy.contains('Select event').click();
-        cy.contains('Push to Repository').click();
+      });
+      cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+      cy.get('#create-notification-form').within(() => {
         cy.contains('Select method').click();
-        cy.contains('Red Hat Quay Notification').click();
-
+      });
+      cy.get('.pf-v6-c-menu__item')
+        .contains('Red Hat Quay Notification')
+        .click();
+      cy.get('#create-notification-form').within(() => {
         // Click recipient field to open dropdown
         cy.get('#entity-search-input').click();
-
-        // Click "Create team" button
-        cy.get('[data-testid="create-new-team-btn"]').click();
       });
+
+      // Click "Create team" button (dropdown rendered in portal)
+      cy.get('[data-testid="create-new-team-btn"]').click();
 
       // Verify Create team modal opened
       cy.contains('Create team').should('exist');
@@ -592,14 +665,21 @@ describe('Repository Settings - Notifications', () => {
       cy.contains('Create notification').click();
       cy.get('#create-notification-form').within(() => {
         cy.contains('Select event').click();
-        cy.contains('Push to Repository').click();
-        cy.contains('Select method').click();
-        cy.contains('Red Hat Quay Notification').click();
-
-        // Click recipient field and open Create team modal
-        cy.get('#entity-search-input').click();
-        cy.get('[data-testid="create-new-team-btn"]').click();
       });
+      cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+      cy.get('#create-notification-form').within(() => {
+        cy.contains('Select method').click();
+      });
+      cy.get('.pf-v6-c-menu__item')
+        .contains('Red Hat Quay Notification')
+        .click();
+      cy.get('#create-notification-form').within(() => {
+        // Click recipient field to open dropdown
+        cy.get('#entity-search-input').click();
+      });
+
+      // Click "Create team" button (dropdown rendered in portal)
+      cy.get('[data-testid="create-new-team-btn"]').click();
 
       // Create a new team
       cy.get('[data-testid="new-team-name-input"]').type('notificationteam');
@@ -615,8 +695,10 @@ describe('Repository Settings - Notifications', () => {
       cy.get('#create-notification-form').within(() => {
         // The newly created team should now be available in the dropdown
         cy.get('#entity-search-input').click();
-        cy.get('[data-testid="notificationteam-team"]').click();
+      });
+      cy.get('[data-testid="notificationteam-team"]').click();
 
+      cy.get('#create-notification-form').within(() => {
         cy.get('#notification-title').type('new-team-notification');
         cy.contains('Submit').click();
       });
@@ -639,11 +721,19 @@ describe('Repository Settings - Notifications', () => {
       cy.contains('Create notification').click();
       cy.get('#create-notification-form').within(() => {
         cy.contains('Select event').click();
-        cy.contains('Push to Repository').click();
+      });
+      cy.get('.pf-v6-c-menu__item').contains('Push to Repository').click();
+      cy.get('#create-notification-form').within(() => {
         cy.contains('Select method').click();
-        cy.contains('Red Hat Quay Notification').click();
+      });
+      cy.get('.pf-v6-c-menu__item')
+        .contains('Red Hat Quay Notification')
+        .click();
+      cy.get('#create-notification-form').within(() => {
         cy.get('#entity-search-input').type('user2');
-        cy.contains('user2').click();
+      });
+      cy.contains('user2').click();
+      cy.get('#create-notification-form').within(() => {
         cy.get('#notification-title').type('display-test');
         cy.contains('Submit').click();
       });

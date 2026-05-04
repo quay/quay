@@ -2,12 +2,14 @@ import {
   Alert,
   Button,
   DropdownItem,
-  Modal,
-  ModalVariant,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Title,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {CubesIcon} from '@patternfly/react-icons';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
@@ -76,13 +78,13 @@ function OrgListHeader({
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
-        <div className="co-m-nav-title--row pf-v5-u-display-flex pf-v5-u-justify-content-space-between pf-v5-u-align-items-flex-end">
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
+        <div className="co-m-nav-title--row pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-flex-end">
           <Title headingLevel="h1">Organizations</Title>
 
           {/* Registry Size Display - Inline with header for superusers */}
           {showRegistrySize && (
-            <div className="pf-v5-u-font-size-sm pf-v5-u-mb-xs">
+            <div className="pf-v6-u-font-size-sm pf-v6-u-mb-xs">
               <span>
                 Total Registry Size:{' '}
                 {registrySize
@@ -96,7 +98,7 @@ function OrgListHeader({
                 size="sm"
                 onClick={handleCalculateClick}
                 isDisabled={isQueuing}
-                className="pf-v5-u-ml-md"
+                className="pf-v6-u-ml-md"
               >
                 {isQueuing ? 'Calculating...' : 'Calculate'}
               </Button>
@@ -105,7 +107,7 @@ function OrgListHeader({
         </div>
       </PageSection>
       {isSuperUser && isExternalAuth && (
-        <PageSection variant={PageSectionVariants.light}>
+        <PageSection hasBodyWrapper={false}>
           <Alert
             variant="info"
             isInline
@@ -506,7 +508,7 @@ export default function OrganizationsList() {
         setError={setRegistryCalcErr}
       />
 
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <OrganizationToolBar
           search={search}
           setSearch={setSearch}
@@ -594,10 +596,17 @@ export default function OrganizationsList() {
       {/* Calculate Registry Size Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Confirm Registry Size Calculation"
         isOpen={isCalculateModalOpen}
         onClose={() => setCalculateModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Confirm Registry Size Calculation" />
+        <ModalBody>
+          <p>Are you sure you want to queue registry size calculation?</p>
+          <p style={{color: 'red', marginTop: '1em'}}>
+            This is a database intensive operation. Use with caution.
+          </p>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="confirm"
             variant="primary"
@@ -605,20 +614,15 @@ export default function OrganizationsList() {
             isDisabled={isQueuing}
           >
             {isQueuing ? 'Queuing...' : 'Calculate'}
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setCalculateModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <p>Are you sure you want to queue registry size calculation?</p>
-        <p style={{color: 'red', marginTop: '1em'}}>
-          This is a database intensive operation. Use with caution.
-        </p>
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

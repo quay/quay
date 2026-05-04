@@ -1,5 +1,14 @@
 import {useState} from 'react';
-import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
+import {
+  Button,
+  Content,
+  Alert,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 import {useTakeOwnership} from 'src/hooks/UseOrganizationActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {isFreshLoginError} from 'src/utils/freshLoginErrors';
@@ -50,17 +59,45 @@ export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
   const handleTakeOwnership = () => {
     setError(null);
     takeOwnership(props.organizationName);
-    // Close modal; request is queued if fresh login required
-    handleClose();
   };
 
   return (
     <Modal
-      title="Take Ownership"
       isOpen={props.isOpen}
       onClose={handleClose}
       variant={ModalVariant.medium}
-      actions={[
+    >
+      <ModalHeader title="Take Ownership" />
+      <ModalBody>
+        <Content component="p">
+          Are you sure you want to take ownership of {entityType}{' '}
+          <strong>{props.organizationName}</strong>?
+        </Content>
+        {props.isUser && (
+          <Alert
+            variant="warning"
+            title="Note"
+            isInline
+            style={{marginTop: 16}}
+          >
+            This will convert the user namespace into an organization.{' '}
+            <strong>
+              The user will no longer be able to login to this account.
+            </strong>
+          </Alert>
+        )}
+        {error && (
+          <Alert
+            variant="danger"
+            title="Error"
+            isInline
+            style={{marginTop: 16}}
+          >
+            {error}
+          </Alert>
+        )}
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant="primary"
@@ -69,29 +106,11 @@ export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
           isDisabled={isLoading}
         >
           Take Ownership
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Text>
-        Are you sure you want to take ownership of {entityType}{' '}
-        <strong>{props.organizationName}</strong>?
-      </Text>
-      {props.isUser && (
-        <Alert variant="warning" title="Note" isInline style={{marginTop: 16}}>
-          This will convert the user namespace into an organization.{' '}
-          <strong>
-            The user will no longer be able to login to this account.
-          </strong>
-        </Alert>
-      )}
-      {error && (
-        <Alert variant="danger" title="Error" isInline style={{marginTop: 16}}>
-          {error}
-        </Alert>
-      )}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

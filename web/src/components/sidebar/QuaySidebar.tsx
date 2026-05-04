@@ -179,7 +179,7 @@ export function QuaySidebar() {
 
   if (isSidebarOpen) {
     return (
-      <PageSidebar className="page-sidebar" theme="dark">
+      <PageSidebar className="page-sidebar">
         <PageSidebarBody>{Navigation}</PageSidebarBody>
       </PageSidebar>
     );

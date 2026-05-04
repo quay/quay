@@ -4,7 +4,6 @@ import {
   Alert,
   AlertVariant,
   PageSection,
-  PageSectionVariants,
   Spinner,
 } from '@patternfly/react-core';
 import TokenDisplayModal from 'src/components/modals/TokenDisplayModal';
@@ -112,7 +111,7 @@ export default function OAuthLocalHandler() {
 
   if (isLoading) {
     return (
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Spinner />
       </PageSection>
     );
@@ -130,7 +129,7 @@ export default function OAuthLocalHandler() {
         : 'Authorization Cancelled';
 
     return (
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Alert variant={variant} title={title}>
           {error}
         </Alert>

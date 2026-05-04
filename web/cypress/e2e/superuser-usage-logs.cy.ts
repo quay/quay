@@ -148,17 +148,17 @@ describe('Superuser Usage Logs', () => {
       cy.wait('@getSuperUser');
 
       // Chart should be visible initially
-      cy.get('.pf-v5-c-chart').should('exist');
+      cy.get('.pf-v6-c-chart').should('exist');
       cy.contains('Hide Chart').should('exist');
 
       // Hide chart
       cy.contains('Hide Chart').click();
-      cy.get('.pf-v5-c-chart').should('not.exist');
+      cy.get('.pf-v6-c-chart').should('not.exist');
       cy.contains('Show Chart').should('exist');
 
       // Show chart again
       cy.contains('Show Chart').click();
-      cy.get('.pf-v5-c-chart').should('exist');
+      cy.get('.pf-v6-c-chart').should('exist');
       cy.contains('Hide Chart').should('exist');
     });
 

@@ -177,7 +177,7 @@ export default function RobotAccounts(props: RobotAccountsProps) {
                 setPerPage={setPerPage}
               />
             </ToolbarItem>
-            <ToolbarItem align={{default: 'alignRight'}}>
+            <ToolbarItem align={{default: 'alignEnd'}}>
               <Button onClick={() => setRobotAccount(null)}>Clear</Button>
             </ToolbarItem>
           </ToolbarContent>

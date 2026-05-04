@@ -6,17 +6,17 @@ import {VulnerabilitySeverity} from 'src/resources/TagResource';
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {
     case VulnerabilitySeverity.Critical:
-      return 'var(--pf-v5-global--palette--red-200)';
+      return 'var(--pf-t--global--icon--color--severity--critical--default)';
     case VulnerabilitySeverity.High:
-      return 'var(--pf-v5-global--palette--red-100)';
+      return 'var(--pf-t--global--icon--color--severity--important--default)';
     case VulnerabilitySeverity.Medium:
-      return 'var(--pf-v5-global--palette--orange-300)';
+      return 'var(--pf-t--global--icon--color--severity--moderate--default)';
     case VulnerabilitySeverity.Low:
-      return 'var(--pf-v5-global--palette--gold-300)';
+      return 'var(--pf-t--global--icon--color--severity--minor--default)';
     case VulnerabilitySeverity.None:
-      return 'var(--pf-v5-global--palette--green-400)';
+      return 'var(--pf-t--global--icon--color--severity--none--default)';
     default:
-      return 'var(--pf-v5-global--palette--black-300)';
+      return 'var(--pf-t--global--icon--color--severity--undefined--default)';
   }
 }
 

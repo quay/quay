@@ -39,19 +39,26 @@ describe('Repository Settings - Permissions', () => {
     const user1Row = cy.get('tr:contains("user1")');
     user1Row.within(() => {
       cy.contains('admin').click();
-      cy.contains('Read').click();
+    });
+    // Select options render in a portal outside the table row
+    cy.contains('Read').click();
+    cy.get('tr:contains("user1")').within(() => {
       cy.get(`[data-label="role"]`).should('have.text', 'read');
     });
     const robotRow = cy.get('tr:contains("testorg+testrobot")');
     robotRow.within(() => {
       cy.contains('read').click();
-      cy.contains('Write').click();
+    });
+    cy.contains('Write').click();
+    cy.get('tr:contains("testorg+testrobot")').within(() => {
       cy.get(`[data-label="role"]`).should('have.text', 'write');
     });
     const teamRow = cy.get('tr:contains("testteam")');
     teamRow.within(() => {
       cy.contains('read').click();
-      cy.contains('Write').click();
+    });
+    cy.contains('Write').click();
+    cy.get('tr:contains("testteam")').within(() => {
       cy.get(`[data-label="role"]`).should('have.text', 'write');
     });
   });
@@ -60,21 +67,24 @@ describe('Repository Settings - Permissions', () => {
     const user1Row = cy.get('tr:contains("user1")');
     user1Row.within(() => {
       cy.get('[data-label="kebab"]').within(() => cy.get('button').click());
-      cy.contains('Delete Permission').click();
-      cy.contains('user1').should('not.exist');
     });
+    // Kebab menu items render in a portal outside the table row
+    cy.contains('Delete Permission').click();
+    cy.get('tr:contains("user1")').should('not.exist');
+
     const robotRow = cy.get('tr:contains("testorg+testrobot")');
     robotRow.within(() => {
       cy.get('[data-label="kebab"]').within(() => cy.get('button').click());
-      cy.contains('Delete Permission').click();
-      cy.contains('testorg+testrobot').should('not.exist');
     });
+    cy.contains('Delete Permission').click();
+    cy.get('tr:contains("testorg+testrobot")').should('not.exist');
+
     const teamRow = cy.get('tr:contains("testteam")');
     teamRow.within(() => {
       cy.get('[data-label="kebab"]').within(() => cy.get('button').click());
-      cy.contains('Delete Permission').click();
-      cy.contains('testteam').should('not.exist');
     });
+    cy.contains('Delete Permission').click();
+    cy.get('tr:contains("testteam")').should('not.exist');
   });
 
   it('Bulk deletes permissions', () => {
@@ -128,10 +138,15 @@ describe('Repository Settings - Permissions', () => {
       cy.get(
         'input[placeholder="Search for user, add/create robot account"]',
       ).should('have.value', 'user');
-
-      cy.get('button:contains("user2")').click();
+    });
+    // Typeahead dropdown options render in a portal
+    cy.get('button:contains("user2")').click();
+    cy.get('#add-permission-form').within(() => {
       cy.contains('admin').click();
-      cy.contains('Read').click();
+    });
+    // Select options render in a portal
+    cy.contains('Read').click();
+    cy.get('#add-permission-form').within(() => {
       cy.contains('Submit').click();
     });
     const user2Row = cy.get('tr:contains("user2")');
@@ -150,10 +165,13 @@ describe('Repository Settings - Permissions', () => {
       cy.get(
         'input[placeholder="Search for user, add/create robot account"]',
       ).should('have.value', 'test');
-
-      cy.contains('testorg+testrobot2').click();
+    });
+    cy.contains('testorg+testrobot2').click();
+    cy.get('#add-permission-form').within(() => {
       cy.contains('admin').click();
-      cy.contains('Read').click();
+    });
+    cy.contains('Read').click();
+    cy.get('#add-permission-form').within(() => {
       cy.contains('Submit').click();
     });
     const testrobot3Row = cy.get('tr:contains("testorg+testrobot2")');
@@ -175,10 +193,13 @@ describe('Repository Settings - Permissions', () => {
       cy.get(
         'input[placeholder="Search for user, add/create robot account"]',
       ).should('have.value', 'test');
-
-      cy.contains('testteam2').click();
+    });
+    cy.contains('testteam2').click();
+    cy.get('#add-permission-form').within(() => {
       cy.contains('admin').click();
-      cy.contains('Read').click();
+    });
+    cy.contains('Read').click();
+    cy.get('#add-permission-form').within(() => {
       cy.contains('Submit').click();
     });
     const testteam2Row = cy.get('tr:contains("testteam2")');
