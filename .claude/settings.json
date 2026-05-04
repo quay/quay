@@ -44,12 +44,6 @@
           },
           {
             "type": "command",
-            "command": ".claude/scripts/validate-pr-title.sh",
-            "if": "Bash(gh pr create *)",
-            "timeout": 10
-          },
-          {
-            "type": "command",
             "command": ".claude/scripts/enforce-pr-skill.sh",
             "if": "Bash(gh pr create *)",
             "timeout": 10
