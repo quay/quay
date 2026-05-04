@@ -2150,7 +2150,9 @@ class TestGetRepoBlobByDigestMissingFromStorage:
         )
 
         with patch.object(proxy_model, "_download_blob") as mock_download:
-            result = proxy_model.get_repo_blob_by_digest(self.repo_ref, digest, include_placements=True)
+            result = proxy_model.get_repo_blob_by_digest(
+                self.repo_ref, digest, include_placements=True
+            )
             mock_download.assert_not_called()
             assert result is not None
             assert result.digest == digest
