@@ -64,8 +64,8 @@ if command -v acli &>/dev/null; then
     if [ -n "$token" ]; then
       echo "$token" | acli jira auth login \
         --site "redhat.atlassian.net" \
-        --email "$email" --token 2>/dev/null && echo "  acli authenticated as ${email}." || \
-        echo "  Warning: acli auth failed. Run manually: acli jira auth login --site redhat.atlassian.net --email ${email} --token"
+        --email "$email" --token 2>/dev/null && echo "  acli authenticated as ${email}." \
+        || echo "  Warning: acli auth failed. Run manually: acli jira auth login --site redhat.atlassian.net --email ${email} --token"
     else
       echo "  Warning: No JIRA_API_TOKEN set. Set it or run: acli jira auth login --site redhat.atlassian.net --email <email> --token"
     fi

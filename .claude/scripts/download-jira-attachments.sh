@@ -12,7 +12,7 @@ if [ -z "$ISSUE_KEY" ]; then
 fi
 
 # Check if acli is installed
-if ! command -v acli &> /dev/null; then
+if ! command -v acli &>/dev/null; then
   echo "Error: acli CLI is not installed or not in PATH"
   echo "Install from: https://docs.atlassian.com/acli/"
   exit 1
@@ -20,7 +20,7 @@ fi
 
 # Get raw issue JSON
 TEMP_JSON="/tmp/issue-${ISSUE_KEY}.json"
-acli jira workitem view "$ISSUE_KEY" --json --fields "*all" > "$TEMP_JSON"
+acli jira workitem view "$ISSUE_KEY" --json --fields "*all" >"$TEMP_JSON"
 
 # Check if attachments exist
 ATTACHMENT_COUNT=$(jq -r '.fields.attachment | length' "$TEMP_JSON" 2>/dev/null || echo "0")
@@ -53,6 +53,7 @@ if [ "$ATTACHMENT_COUNT" -gt 0 ]; then
   # rewrite URLs to use the public site hostname
   jq -r '.fields.attachment[] | "\(.filename)|\(.content)"' "$TEMP_JSON" | while IFS='|' read -r filename url; do
     if [ -n "$JIRA_SITE" ]; then
+      # shellcheck disable=SC2001
       url=$(echo "$url" | sed "s|https://[^/]*/|https://${JIRA_SITE}/|")
     fi
     echo "  Downloading: $filename"

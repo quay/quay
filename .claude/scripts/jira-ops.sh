@@ -25,7 +25,10 @@ install_acli() {
   local install_dir="${HOME}/.local/bin"
   mkdir -p "$install_dir"
   echo "Installing acli to ${install_dir}..."
-  curl -fsSL -o "${install_dir}/acli" "https://acli.atlassian.com/linux/latest/acli_linux_amd64/acli" || { echo "ERROR: Failed to download acli." >&2; return 1; }
+  curl -fsSL -o "${install_dir}/acli" "https://acli.atlassian.com/linux/latest/acli_linux_amd64/acli" || {
+    echo "ERROR: Failed to download acli." >&2
+    return 1
+  }
   chmod +x "${install_dir}/acli"
   export PATH="${install_dir}:${PATH}"
 
@@ -33,7 +36,7 @@ install_acli() {
   local token="${JIRA_API_TOKEN:-}"
   local email="${JIRA_USER:-quay-devel@redhat.com}"
   if [ -n "$token" ]; then
-    echo "$token" | acli jira auth login       --site "redhat.atlassian.net"       --email "$email" --token 2>/dev/null && echo "acli authenticated." ||       echo "Warning: acli installed but auth failed. Run: acli jira auth login --site redhat.atlassian.net --email $email --token" >&2
+    echo "$token" | acli jira auth login --site "redhat.atlassian.net" --email "$email" --token 2>/dev/null && echo "acli authenticated." || echo "Warning: acli installed but auth failed. Run: acli jira auth login --site redhat.atlassian.net --email $email --token" >&2
   else
     echo "acli installed. Authenticate with: acli jira auth login --site redhat.atlassian.net --email <email> --token" >&2
   fi

@@ -49,7 +49,7 @@ while IFS= read -r KEY; do
   if [ "$EMBARGO_VAL" = "True" ]; then
     BLOCKED="${BLOCKED}  - ${KEY}\n"
   fi
-done <<< "$KEYS"
+done <<<"$KEYS"
 
 if [ -n "$BLOCKED" ]; then
   cat >&2 <<EOF
