@@ -16,6 +16,9 @@ allowed-tools:
   - Bash(date *)
   - Bash(bash .claude/scripts/jira-ops.sh *)
   - Bash(curl *)
+  - Bash(acli jira workitem comment create *)
+  - Bash(acli jira workitem comment list *)
+  - Bash(acli jira workitem comment delete *)
   - mcp__mcp-atlassian__jira_get_issue
   - mcp__mcp-atlassian__jira_search
   - mcp__mcp-atlassian__jira_batch_get_changelogs
@@ -234,7 +237,9 @@ After presenting the seeded bullets, use AskUserQuestion to prompt the user:
 
 ## Phase 4: Review and Confirm
 
-Assemble the complete comment using the template:
+Assemble the complete comment using the template below for **terminal
+preview** (Markdown for readability). The actual posted comment will use
+ADF format — see Phase 5.
 
 ```markdown
 ## Quay Agentic SDLC Pilot Update — {start_date} to {end_date}
@@ -281,27 +286,70 @@ outcome to report in the latter. Specifically:
 
 ## Phase 5: Post the Comment
 
-Post the confirmed comment to PROJQUAY-11352.
+> **Critical:** Jira Cloud requires **Atlassian Document Format (ADF)**
+> JSON for rich comment formatting. Markdown and Jira wiki markup both
+> render as raw unformatted text. You **must** convert the comment to ADF
+> before posting.
 
-**Method 1 — Jira MCP (preferred in Ambient sessions):**
-If `mcp__mcp-atlassian__jira_get_issue` is available, the Jira MCP
-integration is active. However, the MCP tools exposed in this skill do
-not include a comment-posting tool. Proceed to Method 2.
+### Converting to ADF
 
-**Method 2 — Jira REST API via curl:**
-Source credentials using the same locations as
-`.claude/scripts/jira-ops.sh`: `JIRA_API_TOKEN` environment variable
-(with email from `~/.config/acli/jira_config.yaml`), or token from
-`~/.config/acli/token.txt` / `~/.acli-token`. Post the comment with:
+Build an ADF JSON document from the confirmed Markdown. The top-level
+structure is:
+
+```json
+{
+  "type": "doc",
+  "version": 1,
+  "content": [ ... ]
+}
+```
+
+Map Markdown elements to ADF nodes:
+
+| Markdown | ADF node |
+|----------|----------|
+| `## Heading` | `{"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"..."}]}` |
+| `### Heading` | `{"type":"heading","attrs":{"level":3},"content":[{"type":"text","text":"..."}]}` |
+| `- bullet item` | Wrap items in `{"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[...]}]}]}` |
+| `**bold text**` | `{"type":"text","text":"...","marks":[{"type":"strong"}]}` |
+| `[link text](url)` | `{"type":"text","text":"...","marks":[{"type":"link","attrs":{"href":"..."}}]}` |
+| Plain text | `{"type":"text","text":"..."}` |
+| Paragraph break | `{"type":"paragraph","content":[...]}` |
+
+Write the ADF JSON to a temp file (e.g., `/tmp/pilot-update-adf.json`).
+
+### Method 1 — acli (preferred)
+
+`acli` is pre-authenticated in Ambient sessions (encrypted token stored
+in `~/.config/acli/jira_config.yaml`). Post the comment with:
 
 ```bash
+acli jira workitem comment create \
+  --key PROJQUAY-11352 \
+  --body-file /tmp/pilot-update-adf.json
+```
+
+Verify success by checking the exit code. If it fails, proceed to
+Method 2.
+
+### Method 2 — Jira REST API via curl (fallback)
+
+This requires `JIRA_API_TOKEN` to be set (not available in all Ambient
+sessions). Source credentials from `.claude/scripts/jira-ops.sh` locations:
+`JIRA_API_TOKEN` env var, or `~/.config/acli/token.txt`, or
+`~/.acli-token`.
+
+The ADF document must be wrapped in a `body` field:
+
+```bash
+adf_content=$(cat /tmp/pilot-update-adf.json)
 resp_file="$(mktemp)"
 http_code="$(
   curl -sS -o "$resp_file" -w "%{http_code}" -X POST \
     -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
     -H "Content-Type: application/json" \
     "https://redhat.atlassian.net/rest/api/3/issue/PROJQUAY-11352/comment" \
-    -d '{"body":{"type":"doc","version":1,"content":[{"type":"paragraph","content":[{"type":"text","text":"<final_markdown>"}]}]}}'
+    -d "{\"body\": ${adf_content}}"
 )"
 
 if [[ "$http_code" != 2* ]]; then
@@ -310,8 +358,8 @@ if [[ "$http_code" != 2* ]]; then
 fi
 ```
 
-If the curl call returns a non-2xx status, display the full markdown for
-the user to copy-paste manually and report the error.
+If both methods fail, display the full Markdown for the user to
+copy-paste manually and report the error.
 
 Confirm success with: "Comment posted to PROJQUAY-11352."
 
