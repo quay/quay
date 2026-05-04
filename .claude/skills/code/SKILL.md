@@ -79,7 +79,7 @@ See `.github/CONTRIBUTING.md` for full conventions. Pre-commit hooks run on comm
 
 **Do not stop after committing.** Invoke the `/pr` skill immediately to create the pull request. The full workflow is a single uninterrupted pipeline:
 
-```
+```text
 /code  →  /pr  →  /poll <PR#>
 ```
 
