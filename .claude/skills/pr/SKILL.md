@@ -10,6 +10,7 @@ allowed-tools:
   - Bash(gh pr *)
   - Bash(cat *)
   - Bash(echo $AGENTIC_SESSION_NAME)
+  - Bash(bash .claude/scripts/resolve-github-user.sh *)
   - Read
   - Write
   - Edit
@@ -68,6 +69,18 @@ echo $AGENTIC_SESSION_NAME
 
 Write the filled template to `/tmp/pr-body.md`.
 
+## Step 3.5: Resolve Session Author for PR Assignment
+
+If `AGENTIC_SESSION_NAME` was set (ambient session), resolve the session creator's GitHub username:
+
+1. Call the `acp_get_session` MCP tool with the session name to get `spec.userContext.userId`
+2. If `userId` is present (human-initiated session), run:
+   ```bash
+   bash .claude/scripts/resolve-github-user.sh <userId>
+   ```
+3. If the script outputs a GitHub username, add `--assignee <username>` to the `gh pr create` command in Step 4
+4. If no output (no match or non-human session), skip — do not add `--assignee`
+
 ## Step 4: Create PR
 
 If `AGENTIC_SESSION_NAME` was set (ambient session), include `--label "ambient-session"`:
@@ -77,10 +90,11 @@ gh pr create \
   --title "PROJQUAY-XXXX: type(scope): description" \
   --body "$(cat /tmp/pr-body.md)" \
   --base master \
-  --label "ambient-session"
+  --label "ambient-session" \
+  --assignee "<resolved-username>"  # only if Step 3.5 resolved a username
 ```
 
-For manual PRs (no ambient session), omit the `--label` flag.
+For manual PRs (no ambient session), omit the `--label` and `--assignee` flags.
 
 ## Step 5: Post-PR
 
