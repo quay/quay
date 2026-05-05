@@ -24,6 +24,7 @@ import {
   getSeconds,
   formatRelativeTime,
   extractTextFromReactNode,
+  toEpochOrZero,
 } from './utils';
 
 describe('formatSize', () => {
@@ -398,6 +399,35 @@ describe('formatRelativeTime', () => {
     const result = formatRelativeTime(Date.now() / 1000 - 3600); // 1 hour ago
     expect(typeof result).toBe('string');
     expect(result).not.toBe('Never');
+  });
+});
+
+describe('toEpochOrZero', () => {
+  it('returns 0 for undefined', () => {
+    expect(toEpochOrZero(undefined)).toBe(0);
+  });
+
+  it('returns 0 for empty string', () => {
+    expect(toEpochOrZero('')).toBe(0);
+  });
+
+  it('parses valid RFC 2822 date string', () => {
+    const result = toEpochOrZero('Mon, 13 Apr 2026 12:33:00 -0000');
+    expect(result).toBe(Date.parse('Mon, 13 Apr 2026 12:33:00 -0000'));
+    expect(result).toBeGreaterThan(0);
+  });
+
+  it('parses valid ISO 8601 date string', () => {
+    const result = toEpochOrZero('2026-04-13T12:33:00Z');
+    expect(result).toBe(Date.parse('2026-04-13T12:33:00Z'));
+  });
+
+  it('returns 0 for invalid date string', () => {
+    expect(toEpochOrZero('not-a-date')).toBe(0);
+  });
+
+  it('returns 0 for malformed date string', () => {
+    expect(toEpochOrZero('99/99/9999')).toBe(0);
   });
 });
 

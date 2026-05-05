@@ -26,6 +26,12 @@ import TagsTable from './TagsTable';
 import {TagsToolbar} from './TagsToolbar';
 import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 import {enrichTagsWithCosignData, isCosignSignatureTag} from 'src/libs/cosign';
+import {toEpochOrZero} from 'src/libs/utils';
+import {
+  extractLastModified,
+  extractExpires,
+  extractLastPulled,
+} from './tagColumnExtractors';
 
 export default function TagsList(props: TagsProps) {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -52,10 +58,10 @@ export default function TagsList(props: TagsProps) {
     columns: {
       2: (item: Tag) => item.name, // Tag Name
       4: (item: Tag) => item.size || 0, // Size
-      5: (item: Tag) => item.last_modified, // Last Modified
-      6: (item: Tag) => item.expiration || '', // Expires
+      5: extractLastModified, // Last Modified
+      6: extractExpires, // Expires
       7: (item: Tag) => item.manifest_digest, // Manifest
-      8: (item: Tag) => item.last_pulled || '', // Last Pulled
+      8: extractLastPulled, // Last Pulled
       9: (item: Tag) => item.pull_count || 0, // Pull Count
     },
     filter: searchFilter,
