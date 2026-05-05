@@ -74,7 +74,7 @@ jobs:
         with:
           name: release
       - name: Create Release
-        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0 zizmor: ignore[superfluous-actions]
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # zizmor: ignore[superfluous-actions] v1.21.0
         id: create_release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

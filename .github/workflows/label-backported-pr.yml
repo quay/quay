@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Label original PR as backported
-        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0 zizmor: ignore[impostor-commit,ref-version-mismatch]
+        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # zizmor: ignore[impostor-commit,ref-version-mismatch] v9.0.0
         with:
           script: |
             const prBody = context.payload.pull_request.body || '';
