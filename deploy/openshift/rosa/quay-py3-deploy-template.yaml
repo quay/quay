@@ -113,6 +113,7 @@ objects:
         labels:
           ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
         annotations:
+          ${{DYNATRACE_APM_ANNOTATION_KEY}}: "${DYNATRACE_APM_ANNOTATION_VALUE}"
           ${{QUAY_APP_COMPONENT_ANNOTATIONS_KEY}}: ${{QUAY_APP_COMPONENT_ANNOTATIONS_VALUE}}
       spec:
         terminationGracePeriodSeconds: ${{QUAY_APP_DEPLOYMENT_TERMINATION_GRACE_PERIOD_SECONDS}}
@@ -373,3 +374,7 @@ parameters:
   - name: SERVICE_ACCOUNT_ANNOTATIONS
     value: "{}"
     description: Optional annotations to add the service account like for IRSA/ROSA (JSON format)
+  - name: DYNATRACE_APM_ANNOTATION_KEY
+    value: oneagent.dynatrace.com/inject
+  - name: DYNATRACE_APM_ANNOTATION_VALUE
+    value: "false"
