@@ -144,10 +144,9 @@ services:
     container_name: quay-mock-github
     build:
       context: ./local-dev/mock-github
-    extra_hosts:
-      - "host.containers.internal:host-gateway"
-    ports:
-      - "9090:9090"
+    network_mode: "service:quay"
+    depends_on:
+      - quay
     profiles:
       - github-oauth
 
@@ -207,6 +206,7 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
+      - "9090:9090"
     environment:
       QUAY_VERSION: local-dev
       QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
