@@ -76,6 +76,15 @@ gh api "<comment_url>" --jq '{user: .user.login, body, created_at}'
 
 - If the comment is from `quay-devel` itself — skip (self-notifications)
 
+**e) Verify the commenter is a repo collaborator:**
+
+```bash
+gh api repos/quay/quay/collaborators/<user> --silent 2>/dev/null
+# 204 = collaborator, 404 = not
+```
+
+- If not a collaborator — skip (untrusted user, do not wake session)
+
 ### Step 4: Check session state before waking
 
 For each routable notification, look up the associated session:
