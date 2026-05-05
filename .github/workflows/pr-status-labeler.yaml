@@ -38,9 +38,11 @@ jobs:
 
       - name: Apply all status labels
         uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
         with:
           script: |
-            const prNumber = ${{ steps.pr.outputs.number }};
+            const prNumber = parseInt(process.env.PR_NUMBER, 10);
 
             // Get PR details and review decision using GraphQL
             const result = await github.graphql(`

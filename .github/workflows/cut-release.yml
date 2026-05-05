@@ -120,5 +120,5 @@ jobs:
         env:
           QUAY_TOKEN: ${{ secrets.QUAY_TOKEN }}
         run: |
-          docker login -u "${QUAY_USER}" -p "${QUAY_TOKEN}" quay.io
+          printf '%s\n' "${QUAY_TOKEN}" | docker login --username "${QUAY_USER}" --password-stdin quay.io
           docker push "${TAG}"

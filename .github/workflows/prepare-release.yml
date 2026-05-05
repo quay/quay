@@ -53,7 +53,7 @@ jobs:
           TAG_PATTERN="v3.($Y_STREAM_REGEX).*"
 
           # Generate the changelog using the tag pattern
-          /tmp/git-chglog --next-tag "${RELEASE_TAG}" --tag-filter-pattern $TAG_PATTERN -o CHANGELOG.md v3.6.0-alpha.4..
+          /tmp/git-chglog --next-tag "${RELEASE_TAG}" --tag-filter-pattern "$TAG_PATTERN" -o CHANGELOG.md v3.6.0-alpha.4..
       - name: Modify changelog URL to point to current y-stream
         env:
           RELEASE_BRANCH: ${{ github.event.inputs.branch }}
