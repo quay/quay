@@ -21,7 +21,7 @@ func collectTags(t reflect.Type, tags map[string]bool) {
 	if t == nil {
 		return
 	}
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {

@@ -22,14 +22,14 @@ func validateRedis(cfg *Config, _ ValidateOptions) []ValidationError {
 
 	if cfg.BuildlogsRedis != nil && cfg.BuildlogsRedis.Host == "" {
 		errs = append(errs, ValidationError{
-			Field: "BUILDLOGS_REDIS", Severity: SeverityError,
+			Field: fieldBuildlogsRedis, Severity: SeverityError,
 			Message: "host is required when BUILDLOGS_REDIS is specified",
 		})
 	}
 
 	if cfg.UserEventsRedis != nil && cfg.UserEventsRedis.Host == "" {
 		errs = append(errs, ValidationError{
-			Field: "USER_EVENTS_REDIS", Severity: SeverityError,
+			Field: fieldUserEventsRedis, Severity: SeverityError,
 			Message: "host is required when USER_EVENTS_REDIS is specified",
 		})
 	}
