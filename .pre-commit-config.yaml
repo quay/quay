@@ -35,7 +35,7 @@ repos:
         entry: web/node_modules/.bin/eslint --fix
         language: system
         files: ^web/
-        exclude: ^web/cypress/test/|^web/cypress/fixtures|^web/Containerfile|^web/Dockerfile
+        exclude: ^web/cypress/test/|^web/cypress/fixtures|^web/Containerfile|^web/Dockerfile|^web/pnpm-lock\.yaml
 -   repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.10.0.1
     hooks:
