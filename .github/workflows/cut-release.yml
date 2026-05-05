@@ -6,19 +6,25 @@ on:
     tags:
       - v3.*
 
+permissions:
+  contents: read
+
 jobs:
   release-archive:
     name: Create Release Archive
     runs-on: 'ubuntu-latest'
     steps:
       - name: Setup
+        env:
+          GH_REF: ${{ github.ref }}
         run: |
-          tag=`basename ${{ github.ref }}`
+          tag="$(basename "$GH_REF")"
           echo "PREFIX=quay-${tag}/" >> $GITHUB_ENV
           echo "TAG=${tag}" >> $GITHUB_ENV
       - name: Checkout
-        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: Create Release Archive
         # any additional files can be added by appending to the tar
@@ -38,7 +44,7 @@ jobs:
           echo "creating change log for tag: $TAG"
           /tmp/git-chglog --tag-filter-pattern "v3.*" -o changelog v3.6.0-alpha.4..
       - name: Upload Release Archive
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release
           path: |
@@ -57,16 +63,18 @@ jobs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Setup
+        env:
+          GH_REF: ${{ github.ref }}
         run: |
-          tag=`basename ${{ github.ref }}`
+          tag="$(basename "$GH_REF")"
           echo "VERSION=${tag}" >> $GITHUB_ENV
       - name: Fetch Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         id: download
         with:
           name: release
       - name: Create Release
-        uses: ncipollo/release-action@4c75f0f2e4ae5f3c807cf0904605408e319dcaac # v1.11.1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         id: create_release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -90,14 +98,15 @@ jobs:
     needs: [release-archive, release]
     steps:
       - name: Setup
+        env:
+          GH_REF: ${{ github.ref }}
         run: |
-          tag=`basename ${{ github.ref }}`
+          tag="$(basename "$GH_REF")"
           echo "QUAY_VERSION=${tag}" >> $GITHUB_ENV
           echo "TAG=quay.io/projectquay/quay:${tag}" >> $GITHUB_ENV
           echo "QUAY_USER=projectquay+quay_github" >> $GITHUB_ENV
-          echo "::add-mask::${{ secrets.QUAY_TOKEN }}"
       - name: Fetch Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         id: download
         with:
           name: release
@@ -108,6 +117,8 @@ jobs:
           tar -xz -f ${{steps.download.outputs.download-path}}/release.tar.gz --strip-components=1 -C "$d"
           docker build --build-arg QUAY_VERSION --tag "${TAG}" "$d"
       - name: Publish Release Container
+        env:
+          QUAY_TOKEN: ${{ secrets.QUAY_TOKEN }}
         run: |
-          docker login -u "${QUAY_USER}" -p '${{ secrets.QUAY_TOKEN }}' quay.io
+          docker login -u "${QUAY_USER}" -p "${QUAY_TOKEN}" quay.io
           docker push "${TAG}"

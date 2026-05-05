@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - name: Download test results
-      uses: dawidd6/action-download-artifact@v8
+      uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
       with:
         name: test-results
         workflow: web-ci.yaml
@@ -34,7 +34,7 @@ jobs:
         echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
     - name: Publish test results to PR
-      uses: ctrf-io/github-test-reporter@v1
+      uses: ctrf-io/github-test-reporter@a325dce068ba2171ae2cb45ab08b8bd9ba1b69fe # v1.0.28
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:

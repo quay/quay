@@ -15,26 +15,32 @@ on:
         description: 'PROJQUAY jira release issue'
         required: true
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   prepare:
     name: Prepare Release
     runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout
-        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.branch }}
       - name: Changelog
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag }}
         run: |
           curl -o /tmp/git-chglog.tar.gz -fsSL\
             https://github.com/git-chglog/git-chglog/releases/download/v0.15.4/git-chglog_0.15.4_linux_amd64.tar.gz
           tar xvf /tmp/git-chglog.tar.gz --directory /tmp
           chmod u+x /tmp/git-chglog
-          echo "creating change log for tag: ${{ github.event.inputs.tag }}"
+          echo "creating change log for tag: ${RELEASE_TAG}"
 
           # Get the y stream version from the tag
-          Y_STREAM_VERSION=$(echo "${{ github.event.inputs.tag }}" | sed 's/^v//' | awk -F'.' '{print $2}')
+          Y_STREAM_VERSION=$(echo "${RELEASE_TAG}" | sed 's/^v//' | awk -F'.' '{print $2}')
 
           # build the regex in the form of "v3.(6|7|8|9).*" for the y-stream
           for (( i=6; i<=$Y_STREAM_VERSION; i++ )); do
@@ -47,14 +53,16 @@ jobs:
           TAG_PATTERN="v3.($Y_STREAM_REGEX).*"
 
           # Generate the changelog using the tag pattern
-          /tmp/git-chglog --next-tag "${{ github.event.inputs.tag }}" --tag-filter-pattern $TAG_PATTERN -o CHANGELOG.md v3.6.0-alpha.4..
+          /tmp/git-chglog --next-tag "${RELEASE_TAG}" --tag-filter-pattern $TAG_PATTERN -o CHANGELOG.md v3.6.0-alpha.4..
       - name: Modify changelog URL to point to current y-stream
+        env:
+          RELEASE_BRANCH: ${{ github.event.inputs.branch }}
         run: |
           echo "modifying changelog URL to point to current y-stream release."
-          QUAY_VERSION=$(echo ${{ github.event.inputs.branch }} | cut -d'-' -f2)
+          QUAY_VERSION=$(echo "$RELEASE_BRANCH" | cut -d'-' -f2)
           sed -in --regexp-extended "s/\/[0-9\.]+\//\/$QUAY_VERSION\//" CHANGELOG.md
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@ce699aa2d108e9d04fde047a71e44b2bf444b6dc # v3.5.1
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           title: "${{ github.event.inputs.tag }} Changelog Bump"
           body: "This is an automated changelog commit."

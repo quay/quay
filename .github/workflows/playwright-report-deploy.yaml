@@ -43,22 +43,30 @@ jobs:
 
     - name: Deploy to Surge
       id: deploy
-      run: |
-        DEPLOY_DOMAIN="quay-playwright-pr-${{ steps.pr.outputs.number }}.surge.sh"
-        cd playwright-report
-        npx surge . $DEPLOY_DOMAIN --token ${{ secrets.SURGE_TOKEN }}
-        echo "url=https://$DEPLOY_DOMAIN" >> $GITHUB_OUTPUT
       env:
+        PR_NUMBER: ${{ steps.pr.outputs.number }}
         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+      run: |
+        DEPLOY_DOMAIN="quay-playwright-pr-${PR_NUMBER}.surge.sh"
+        cd playwright-report
+        npx surge . "$DEPLOY_DOMAIN" --token "$SURGE_TOKEN"
+        echo "url=https://$DEPLOY_DOMAIN" >> $GITHUB_OUTPUT
 
     - name: Comment PR with report URL
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+      env:
+        REPORT_URL: ${{ steps.deploy.outputs.url }}
+        PR_NUMBER: ${{ steps.pr.outputs.number }}
+        RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        RUN_URL: ${{ github.event.workflow_run.html_url }}
+        HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
       with:
         script: |
-          const reportUrl = '${{ steps.deploy.outputs.url }}';
-          const prNumber = ${{ steps.pr.outputs.number }};
-          const conclusion = '${{ github.event.workflow_run.conclusion }}';
-          const runUrl = '${{ github.event.workflow_run.html_url }}';
+          const reportUrl = process.env.REPORT_URL;
+          const prNumber = parseInt(process.env.PR_NUMBER, 10);
+          const conclusion = process.env.RUN_CONCLUSION;
+          const runUrl = process.env.RUN_URL;
+          const headSha = process.env.HEAD_SHA;
 
           // Find existing comment
           const { data: comments } = await github.rest.issues.listComments({
@@ -83,7 +91,7 @@ jobs:
 
           🔗 [View Workflow Run](${runUrl})
 
-          _Report from commit ${{ github.event.workflow_run.head_sha }}_`;
+          _Report from commit ${headSha}_`;
 
           if (botComment) {
             // Update existing comment
