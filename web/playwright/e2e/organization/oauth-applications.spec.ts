@@ -89,6 +89,61 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     await expect(page.getByText('OAuth Applications')).not.toBeVisible();
   });
 
+  test('bulk select and delete apps with the same name', async ({
+    authenticatedPage: page,
+    api,
+  }) => {
+    const org = await api.organization('bulkdel');
+
+    // Create three apps with the same name via API
+    await api.oauthApplication(org.name, 'samename');
+    await api.oauthApplication(org.name, 'samename');
+    await api.oauthApplication(org.name, 'samename');
+
+    await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
+
+    const table = page.getByTestId('oauth-applications-table');
+    await expect(table).toBeVisible();
+
+    // All three should be visible
+    await expect(table.locator('tbody tr')).toHaveCount(3);
+
+    // Open dropdown and select all
+    await page.locator('#toolbar-dropdown-checkbox').click();
+    await page.getByTestId('select-all-items-action').click();
+
+    // All row checkboxes should be checked
+    await expect(
+      page.getByRole('checkbox', {name: 'Select row 0'}),
+    ).toBeChecked();
+    await expect(
+      page.getByRole('checkbox', {name: 'Select row 1'}),
+    ).toBeChecked();
+    await expect(
+      page.getByRole('checkbox', {name: 'Select row 2'}),
+    ).toBeChecked();
+
+    // Click bulk delete
+    await page.getByTestId('default-perm-bulk-delete-icon').click();
+    await expect(page.getByTestId('bulk-delete-modal')).toBeVisible();
+
+    // Type confirmation and delete
+    await page.getByTestId('delete-confirmation-input').fill('confirm');
+    await page.getByTestId('bulk-delete-confirm-btn').click();
+
+    // Verify success and empty state
+    await expect(
+      page.getByText('Successfully deleted OAuth applications').first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText("doesn't have any OAuth applications"),
+    ).toBeVisible();
+
+    // Verify all three are gone via API
+    const remaining = await api.raw.getOAuthApplications(org.name);
+    expect(remaining).toHaveLength(0);
+  });
+
   test('reset client secret with confirmation', async ({
     authenticatedPage: page,
     api,
