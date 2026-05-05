@@ -162,6 +162,26 @@ WHgsCLsLspQZqpi5o9pKqo1WH8b+uaqm5LDQvvrk3kkQLB/M5VMI
 			want:   "invalid",
 			opts:   validOpts,
 		},
+		{
+			config: map[string]interface{}{"PREFERRED_URL_SCHEME": "http", "SERVER_HOSTNAME": "myregistry"},
+			name:   "singleLabelHostname",
+			want:   "invalid",
+		},
+		{
+			config: map[string]interface{}{"PREFERRED_URL_SCHEME": "http", "SERVER_HOSTNAME": "myregistry:8443"},
+			name:   "singleLabelHostnameWithPort",
+			want:   "invalid",
+		},
+		{
+			config: map[string]interface{}{"PREFERRED_URL_SCHEME": "http", "SERVER_HOSTNAME": "localhost"},
+			name:   "localhostAllowed",
+			want:   "valid",
+		},
+		{
+			config: map[string]interface{}{"PREFERRED_URL_SCHEME": "http", "SERVER_HOSTNAME": "localhost:8443"},
+			name:   "localhostWithPortAllowed",
+			want:   "valid",
+		},
 	}
 	for _, tt := range tests {
 
