@@ -1,0 +1,77 @@
+name: Storybook CI
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+
+concurrency:
+  group: storybook-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  storybook:
+    name: Build & Test Storybook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Storybook
+        working-directory: web
+        run: npm run build-storybook
+
+      - name: Run interaction tests
+        working-directory: web
+        run: |
+          npx concurrently -k -s first -n "SB,TEST" \
+            "npx http-server storybook-static --port 6006 --silent" \
+            "npx wait-on tcp:127.0.0.1:6006 && npm run test-storybook -- --url http://127.0.0.1:6006"
+
+      - name: Check story coverage for new components
+        working-directory: web
+        run: bash ../.github/scripts/check-story-coverage.sh
+
+      - name: Story coverage report
+        if: always()
+        working-directory: web
+        run: bash ../.github/scripts/story-coverage-report.sh
+
+      - name: Save PR number
+        if: always()
+        run: |
+          mkdir -p pr-info
+          echo "${{ github.event.pull_request.number }}" > pr-info/pr_number.txt
+
+      - name: Upload Storybook build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-static
+          path: web/storybook-static
+          retention-days: 7
+
+      - name: Upload PR info
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-pr-info
+          path: pr-info/
+          retention-days: 7

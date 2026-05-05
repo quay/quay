@@ -1,3 +1,8 @@
+ignore:
+  - "web/**/*.stories.tsx"
+  - "web/**/*.stories.ts"
+  - "web/.storybook/**"
+
 coverage:
   status:
     project:

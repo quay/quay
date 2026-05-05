@@ -23,6 +23,10 @@ import {useRobotToken} from 'src/hooks/useRobotAccounts';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {IRobotToken} from 'src/resources/RobotsResource';
 import 'src/routes/RepositoriesList/css/RobotAccount.css';
+import kubernetesIcon from 'src/assets/kubernetes.svg';
+import kubernetesGreyIcon from 'src/assets/kubernetes-grey.svg';
+import podmanIcon from 'src/assets/podman.svg';
+import podmanGreyIcon from 'src/assets/podman-grey.svg';
 
 const EmptyRobotToken = {
   name: '',
@@ -246,11 +250,8 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             <>
               <TabTitleIcon>
                 <img
-                  src={require(
-                    activeTabKey == 1
-                      ? 'src/assets/kubernetes.svg'
-                      : 'src/assets/kubernetes-grey.svg',
-                  )}
+                  src={activeTabKey == 1 ? kubernetesIcon : kubernetesGreyIcon}
+                  alt=""
                 />
               </TabTitleIcon>
               <TabTitleText>Kubernetes</TabTitleText>
@@ -364,11 +365,8 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             <>
               <TabTitleIcon>
                 <img
-                  src={require(
-                    activeTabKey == 2
-                      ? 'src/assets/podman.svg'
-                      : 'src/assets/podman-grey.svg',
-                  )}
+                  src={activeTabKey == 2 ? podmanIcon : podmanGreyIcon}
+                  alt=""
                 />
               </TabTitleIcon>
               <TabTitleText>Podman</TabTitleText>
