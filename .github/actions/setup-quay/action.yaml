@@ -257,7 +257,11 @@ runs:
     - name: Start Quay container
       shell: bash
       run: |
-        DOCKER_USER="1001:0" docker compose up -d --no-build quay
+        COMPOSE_PROFILES=""
+        if [ "${{ inputs.with-mock-github }}" = "true" ]; then
+          COMPOSE_PROFILES="github-oauth"
+        fi
+        DOCKER_USER="1001:0" COMPOSE_PROFILES="${COMPOSE_PROFILES}" docker compose up -d --no-build quay
 
     - name: Wait for Quay to be ready
       id: healthcheck
