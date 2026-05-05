@@ -19,6 +19,7 @@ jobs:
         with:
           with-clair: true
           with-keycloak: true
+          with-mock-github: true
           with-jaeger: true
           with-repomirror: true
           use-gha-cache: false

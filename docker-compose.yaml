@@ -140,6 +140,17 @@ services:
       - start-dev
       - --import-realm
 
+  mock-github:
+    container_name: quay-mock-github
+    build:
+      context: ./local-dev/mock-github
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    ports:
+      - "9090:9090"
+    profiles:
+      - github-oauth
+
   local-dev-frontend:
     user: ${DOCKER_USER:-root}
     container_name: quay-local-dev-frontend
