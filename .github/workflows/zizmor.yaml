@@ -34,3 +34,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           persona: regular
+          config: zizmor.yml
