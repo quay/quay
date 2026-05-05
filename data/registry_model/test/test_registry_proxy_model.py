@@ -2157,3 +2157,68 @@ class TestGetRepoBlobByDigestMissingFromStorage:
             mock_download.assert_not_called()
             assert result is not None
             assert result.digest == digest
+
+    def test_refetches_blob_when_storage_check_raises(self):
+        """
+        When storage.exists() raises an exception (e.g. storage backend
+        unavailable), the proxy model should re-download from upstream
+        rather than serving a potentially missing blob.
+        """
+        content = b"test blob content for storage error"
+        digest = str(sha256_digest(content))
+        blob = store_blob_record_and_temp_link(
+            self.orgname,
+            self.upstream_repository,
+            digest,
+            ImageStorageLocation.get(name="local_us"),
+            len(content),
+            120,
+        )
+        layer_path = get_layer_path(blob)
+        storage.put_content(["local_us"], layer_path, content)
+
+        manifest_bytes = json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": len(content),
+                    "digest": digest,
+                },
+                "layers": [],
+            }
+        )
+        media_type, _ = MediaType.get_or_create(
+            name="application/vnd.docker.distribution.manifest.v2+json"
+        )
+        from data.database import Repository
+
+        repo = Repository.get(id=self.repo_ref.id)
+        manifest = Manifest.create(
+            repository=repo,
+            digest=_get_digest(manifest_bytes.encode("utf-8")),
+            manifest_bytes=manifest_bytes,
+            media_type=media_type,
+        )
+        ManifestBlob.create(
+            manifest=manifest,
+            repository=repo,
+            blob=blob,
+        )
+
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        with (
+            patch(
+                "data.registry_model.registry_proxy_model.storage.exists",
+                side_effect=IOError("storage unavailable"),
+            ),
+            patch.object(proxy_model, "_download_blob") as mock_download,
+        ):
+            proxy_model.get_repo_blob_by_digest(self.repo_ref, digest, include_placements=True)
+            mock_download.assert_called_once_with(self.repo_ref, digest)
