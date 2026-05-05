@@ -1,0 +1,33 @@
+rules:
+  # SHA pins verified correct via GitHub API — zizmor cannot resolve
+  # annotated tags for these actions, producing false positives.
+  # Affected: actions/github-script@v9.0.0, codecov/codecov-action@v6.0.0,
+  #           github/codeql-action@v4.35.3, ctrf-io/github-test-reporter@v1.0.28
+  impostor-commit:
+    ignore:
+      - .github/workflows/CI.yaml:121
+      - .github/workflows/CI.yaml:160
+      - .github/workflows/codeql.yml:46
+      - .github/workflows/codeql.yml:60
+      - .github/workflows/codeql.yml:73
+      - .github/workflows/label-backported-pr.yml:22
+      - .github/workflows/playwright-report-cleanup.yaml:26
+      - .github/workflows/playwright-report-deploy.yaml:56
+      - .github/workflows/pr-status-labeler.yaml:40
+      - .github/workflows/surge-preview-cleanup.yaml:26
+      - .github/workflows/web-ci-results.yaml:37
+      - .github/workflows/web-unit-tests.yaml:44
+
+  # These workflows intentionally use pull_request_target or workflow_run
+  # triggers to access secrets for labeling, reporting, and deployments.
+  dangerous-triggers:
+    ignore:
+      - .github/workflows/playwright-report-deploy.yaml
+      - .github/workflows/pr-labeler.yaml
+      - .github/workflows/pr-status-labeler.yaml
+      - .github/workflows/web-ci-results.yaml
+
+  # Test-only workflow cache with no sensitive data at risk.
+  cache-poisoning:
+    ignore:
+      - .github/workflows/oci-distribution-spec.yaml

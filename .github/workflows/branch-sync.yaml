@@ -23,8 +23,9 @@ jobs:
           git config user.email "github-actions-bot@users.noreply.github.com"
 
       - name: Merge master into release
+        env:
+          BRANCH_NAME: ${{ vars.BRANCH_SYNC_TARGET }}
         run: |
-          BRANCH_NAME="${{ vars.BRANCH_SYNC_TARGET }}"
           if [ -z "$BRANCH_NAME" ]; then echo "BRANCH_SYNC_TARGET variable is not set" && exit 1; fi
           echo "Syncing master to $BRANCH_NAME"
           git checkout master

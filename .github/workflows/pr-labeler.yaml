@@ -8,13 +8,14 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
 
 jobs:
   label-components:
     name: Label Components
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     # Only run on PR events, not review events
     if: github.event_name == 'pull_request_target'
     steps:
@@ -34,6 +35,9 @@ jobs:
   label-community:
     name: Label Community Contributions
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     if: github.event_name == 'pull_request_target'
     steps:
       - name: Checkout repository

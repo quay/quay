@@ -111,10 +111,12 @@ jobs:
         with:
           name: release
       - name: Build Release Container
+        env:
+          DOWNLOAD_PATH: ${{ steps.download.outputs.download-path }}
         run: |
           d=$(mktemp -d)
           trap 'rm -rf "$d"' EXIT
-          tar -xz -f ${{steps.download.outputs.download-path}}/release.tar.gz --strip-components=1 -C "$d"
+          tar -xz -f "${DOWNLOAD_PATH}/release.tar.gz" --strip-components=1 -C "$d"
           docker build --build-arg QUAY_VERSION --tag "${TAG}" "$d"
       - name: Publish Release Container
         env:
