@@ -48,7 +48,7 @@ async function detectContainerRuntime(): Promise<string | null> {
 }
 
 /**
- * Execute a shell command, retrying with exponential backoff on failure.
+ * Execute a shell command, retrying with fixed 1s delays on failure.
  *
  * @param cmd - Shell command to run
  * @param maxAttempts - Maximum number of attempts (default: 5)
@@ -61,7 +61,7 @@ async function retryPush(cmd: string, maxAttempts = 5): Promise<void> {
       return;
     } catch (err) {
       lastErr = err;
-      await new Promise((r) => setTimeout(r, 500 * 2 ** i));
+      await new Promise((r) => setTimeout(r, 1000));
     }
   }
   throw lastErr;
@@ -117,8 +117,10 @@ export async function pushImage(
   // Quay's backend committing the repo, especially with many parallel workers.
   await retryPush(`${runtime} push ${image} ${tlsFlag}`.trim());
 
-  // Cleanup local image
-  await execAsync(`${runtime} rmi ${image}`);
+  // Cleanup local image (skip in CI — ephemeral runners don't need disk reclaimed)
+  if (!process.env.CI) {
+    await execAsync(`${runtime} rmi ${image}`);
+  }
 }
 
 /**

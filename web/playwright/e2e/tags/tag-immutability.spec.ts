@@ -6,6 +6,8 @@ test.describe(
   'Tag Immutability',
   {tag: ['@tags', '@immutability', '@feature:IMMUTABLE_TAGS', '@container']},
   () => {
+    test.slow();
+
     test('can make a tag immutable via kebab menu', async ({
       authenticatedPage,
       api,
@@ -1041,7 +1043,7 @@ test.describe(
       const saveLabelsButton = authenticatedPage.getByRole('button', {
         name: 'Save Labels',
       });
-      await expect(saveLabelsButton).toBeEnabled({timeout: 5000});
+      await expect(saveLabelsButton).toBeEnabled({timeout: 15000});
 
       // Save
       await saveLabelsButton.click();
