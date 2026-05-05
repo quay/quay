@@ -287,7 +287,8 @@ runs:
       if: inputs.with-mock-github == 'true'
       shell: bash
       run: |
-        docker compose --profile github-oauth up -d --build mock-github
+        docker compose --profile github-oauth build mock-github
+        docker compose --profile github-oauth up -d --no-recreate mock-github
         echo "Waiting for mock GitHub OAuth server to be ready..."
         if curl -sf --retry 15 --retry-delay 2 --retry-all-errors \
             http://localhost:9090/api/v3/ > /dev/null 2>&1; then
