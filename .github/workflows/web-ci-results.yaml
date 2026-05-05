@@ -34,7 +34,7 @@ jobs:
         echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
     - name: Publish test results to PR
-      uses: ctrf-io/github-test-reporter@a325dce068ba2171ae2cb45ab08b8bd9ba1b69fe # v1.0.28
+      uses: ctrf-io/github-test-reporter@a325dce068ba2171ae2cb45ab08b8bd9ba1b69fe # v1.0.28 zizmor: ignore[impostor-commit,ref-version-mismatch]
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:

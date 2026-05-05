@@ -41,7 +41,7 @@ jobs:
         run: cd web && npm run test:coverage
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@3f20e214133d0983f9a10f3d63b0faf9241a3daa # v6.0.0
+        uses: codecov/codecov-action@3f20e214133d0983f9a10f3d63b0faf9241a3daa # v6.0.0 zizmor: ignore[impostor-commit,ref-version-mismatch]
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: web
