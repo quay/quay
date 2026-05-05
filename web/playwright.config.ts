@@ -72,7 +72,7 @@ export default defineConfig({
       : {
           command:
             'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && ' +
-            'mkdir -p ../static/patternfly && cp -r dist/* ../static/patternfly/ && ' +
+            'rm -rf ../static/patternfly && mkdir -p ../static/patternfly && cp -r dist/* ../static/patternfly/ && ' +
             'echo "React deployed to static/patternfly/" && tail -f /dev/null',
           url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
           reuseExistingServer: true,
