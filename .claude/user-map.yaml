@@ -2,11 +2,12 @@
 # Used by resolve-github-user.sh to assign PRs to session creators.
 #
 # Format:
-#   <ambient-userId>:
-#     github: <github-username>
+#   <ambient-userId>: <github-username>
 #
-# If a userId is not listed here, the script falls back to fuzzy-matching
-# against the OWNERS file in the repo root.
+# Add your Ambient userId here to get auto-assigned on PRs.
 
-bpratt:
-  github: jbpratt
+bpratt: jbpratt
+kleesc: kleesc
+syed: syed
+cubismod: cubismod
+sridipta: sridipta
