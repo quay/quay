@@ -6,56 +6,56 @@ func validateRequired(cfg *Config, _ ValidateOptions) []ValidationError {
 
 	if cfg.SecretKey == "" {
 		errs = append(errs, ValidationError{
-			Field: "SECRET_KEY", Severity: SeverityError,
-			Message: "is required",
+			Field: fieldSecretKey, Severity: SeverityError,
+			Message: msgRequired,
 		})
 	}
 	if cfg.DatabaseSecretKey == "" {
 		errs = append(errs, ValidationError{
-			Field: "DATABASE_SECRET_KEY", Severity: SeverityError,
-			Message: "is required",
+			Field: fieldDatabaseSecretKey, Severity: SeverityError,
+			Message: msgRequired,
 		})
 	}
 	if cfg.ServerHostname == "" {
 		errs = append(errs, ValidationError{
 			Field: "SERVER_HOSTNAME", Severity: SeverityError,
-			Message: "is required",
+			Message: msgRequired,
 		})
 	}
 	if cfg.DBURI == "" {
 		errs = append(errs, ValidationError{
-			Field: "DB_URI", Severity: SeverityError,
-			Message: "is required",
+			Field: fieldDBURI, Severity: SeverityError,
+			Message: msgRequired,
 		})
 	}
 	if len(cfg.DistributedStorageConfig) == 0 {
 		errs = append(errs, ValidationError{
 			Field: "DISTRIBUTED_STORAGE_CONFIG", Severity: SeverityError,
-			Message: "is required",
+			Message: msgRequired,
 		})
 	}
 	if cfg.BuildlogsRedis == nil {
 		errs = append(errs, ValidationError{
-			Field: "BUILDLOGS_REDIS", Severity: SeverityError,
-			Message: "is required",
+			Field: fieldBuildlogsRedis, Severity: SeverityError,
+			Message: msgRequired,
 		})
 	}
 	if cfg.UserEventsRedis == nil {
 		errs = append(errs, ValidationError{
-			Field: "USER_EVENTS_REDIS", Severity: SeverityError,
-			Message: "is required",
+			Field: fieldUserEventsRedis, Severity: SeverityError,
+			Message: msgRequired,
 		})
 	}
 	if len(cfg.DistributedStoragePreference) == 0 {
 		errs = append(errs, ValidationError{
-			Field: "DISTRIBUTED_STORAGE_PREFERENCE", Severity: SeverityError,
-			Message: "is required",
+			Field: fieldDistributedStoragePreference, Severity: SeverityError,
+			Message: msgRequired,
 		})
 	}
 	if len(cfg.TagExpirationOptions) == 0 {
 		errs = append(errs, ValidationError{
-			Field: "TAG_EXPIRATION_OPTIONS", Severity: SeverityError,
-			Message: "is required",
+			Field: fieldTagExpirationOptions, Severity: SeverityError,
+			Message: msgRequired,
 		})
 	}
 

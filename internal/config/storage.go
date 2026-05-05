@@ -80,7 +80,7 @@ func validateStorage(cfg *Config, _ ValidateOptions) []ValidationError {
 	for _, pref := range cfg.DistributedStoragePreference {
 		if _, ok := cfg.DistributedStorageConfig[pref]; !ok {
 			errs = append(errs, ValidationError{
-				Field: "DISTRIBUTED_STORAGE_PREFERENCE", Severity: SeverityError,
+				Field: fieldDistributedStoragePreference, Severity: SeverityError,
 				Message: fmt.Sprintf("%q is not defined in DISTRIBUTED_STORAGE_CONFIG", pref),
 			})
 		}
@@ -107,7 +107,7 @@ func validateStorage(cfg *Config, _ ValidateOptions) []ValidationError {
 	for _, opt := range cfg.TagExpirationOptions {
 		if !durationPattern.MatchString(opt) {
 			errs = append(errs, ValidationError{
-				Field: "TAG_EXPIRATION_OPTIONS", Severity: SeverityError,
+				Field: fieldTagExpirationOptions, Severity: SeverityError,
 				Message: fmt.Sprintf("%q does not match duration pattern (e.g. 2w, 1d, 0s)", opt),
 			})
 		}

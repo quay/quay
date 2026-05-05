@@ -4,6 +4,10 @@ on:
     - cron: '30 5 * * *'
   workflow_dispatch:
     inputs: {}
+
+permissions:
+  contents: read
+
 jobs:
   unit:
     if: github.repository == 'quay/quay'

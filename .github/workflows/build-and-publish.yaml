@@ -12,6 +12,9 @@ on:
         description: 'Tag to attach to image'
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   build-amd64-ppc64le-s390x:
     name: Build amd64, ppc64le, s390x images
@@ -25,7 +28,9 @@ jobs:
       digest: ${{ steps.docker_build.outputs.digest }}
     steps:
       - name: Check out the repo
-        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set version from branch name
         id: version-from-branch
@@ -89,7 +94,7 @@ jobs:
           END
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55 # v2.10.0
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
         with:
           platforms: linux/amd64
           append: |
@@ -99,7 +104,7 @@ jobs:
               platforms: linux/s390x
 
       - name: Login to Quay.io
-        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1.14.1
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USER }}
@@ -107,7 +112,7 @@ jobs:
 
       - name: Build and push
         id: docker_build
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         env:
           TAG: ${{ steps.version-from-branch.outputs.version }}${{ env.TAG_SUFFIX }}
         with:
@@ -132,13 +137,15 @@ jobs:
       digest: ${{ steps.docker_build.outputs.digest }}
     steps:
       - name: Check out the repo
-        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55 # v2.10.0
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Login to Quay.io
-        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1.14.1
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USER }}
@@ -152,7 +159,7 @@ jobs:
 
       - name: Build and push
         id: docker_build
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         env:
           TAG: ${{ steps.version-from-branch.outputs.version }}${{ env.TAG_SUFFIX }}
         with:
@@ -171,10 +178,10 @@ jobs:
       TAG_SUFFIX: -unstable
     steps:
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55 # v2.10.0
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Login to Quay.io
-        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1.14.1
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USER }}
@@ -187,11 +194,13 @@ jobs:
           echo "branch_tag=${BRANCH_NAME/${{ env.BRANCH_PREFIX }}/}${{ env.TAG_SUFFIX }}" >> $GITHUB_OUTPUT
 
       - name: Create and push manifest
+        env:
+          TAG: ${{ github.event.inputs.tag || steps.version.outputs.branch_tag }}
+          IMAGE: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}
+          DIGEST_MULTI: ${{ needs.build-amd64-ppc64le-s390x.outputs.digest }}
+          DIGEST_ARM64: ${{ needs.build-arm64.outputs.digest }}
         run: |
-          TAG=${{ github.event.inputs.tag || steps.version.outputs.branch_tag }}
-          IMAGE=${{ env.REGISTRY }}/${{ env.REPO_NAME }}
-
           # Combine the multi-arch image (amd64/ppc64le/s390x) with arm64 into final manifest
-          docker buildx imagetools create -t ${IMAGE}:${TAG} \
-            ${IMAGE}@${{ needs.build-amd64-ppc64le-s390x.outputs.digest }} \
-            ${IMAGE}@${{ needs.build-arm64.outputs.digest }}
+          docker buildx imagetools create -t "${IMAGE}:${TAG}" \
+            "${IMAGE}@${DIGEST_MULTI}" \
+            "${IMAGE}@${DIGEST_ARM64}"

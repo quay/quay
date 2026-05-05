@@ -36,7 +36,7 @@ func validateDatabase(cfg *Config, _ ValidateOptions) []ValidationError {
 		}
 		if !valid {
 			errs = append(errs, ValidationError{
-				Field: "DB_URI", Severity: SeverityError,
+				Field: fieldDBURI, Severity: SeverityError,
 				Message: "must start with postgresql:// or sqlite:///",
 			})
 		}

@@ -7,6 +7,10 @@ on:
   pull_request:
     branches:
     - "*"
+
+permissions:
+  contents: read
+
 jobs:
   cypress:
     name: Cypress Tests
@@ -14,10 +18,12 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
     - name: Docker Build
       env:
@@ -31,13 +37,15 @@ jobs:
         DOCKER_USER="1001:0" docker compose up -d --no-build quay
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
 
     - name: Seed Database
       run: cd web && npm run quay:seed
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: 3.12
         cache: 'pip'
@@ -61,14 +69,14 @@ jobs:
         sleep 30
 
     - name: Set up Node.js with npm caching
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
       with:
         node-version: '22'
         cache: 'npm'
         cache-dependency-path: web/package-lock.json
 
     - name: Cypress run
-      uses: cypress-io/github-action@v5
+      uses: cypress-io/github-action@b7a7441d775af8f8b9d19945c10dd689a51dba68 # v7.2.0
       with:
         browser: chrome
         build: npm run build
@@ -81,12 +89,14 @@ jobs:
 
     - name: Save PR number
       if: always() && github.event_name == 'pull_request'
+      env:
+        PR_NUMBER: ${{ github.event.pull_request.number }}
       run: |
         mkdir -p ./test-results
-        echo ${{ github.event.pull_request.number }} > ./test-results/pr_number.txt
+        echo "$PR_NUMBER" > ./test-results/pr_number.txt
 
     - name: Upload test results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() && github.event_name == 'pull_request'
       with:
         name: test-results
@@ -104,7 +114,7 @@ jobs:
       if: failure()
 
     - name: Upload debugging artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: failure()
       with:
         name: cypress-debug
@@ -118,10 +128,12 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
 
     - name: Set up Node.js with npm caching
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
       with:
         node-version: '22'
         cache: 'npm'
