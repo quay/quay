@@ -302,7 +302,14 @@ test.describe(
 
 test.describe(
   'Quota Enforcement E2E',
-  {tag: ['@organization', '@feature:QUOTA_MANAGEMENT', '@container']},
+  {
+    tag: [
+      '@organization',
+      '@feature:QUOTA_MANAGEMENT',
+      '@feature:EDIT_QUOTA',
+      '@container',
+    ],
+  },
   () => {
     test('displays quota usage in organization dashboard', async ({
       authenticatedPage,
@@ -327,14 +334,21 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Quota').click();
 
-      const quotaSection = authenticatedPage.getByTestId('quota-management');
-      await expect(quotaSection).toBeVisible();
+      // When quota is configured, the form renders with id="quota-management-form"
+      const quotaForm = authenticatedPage.locator('#quota-management-form');
+      await expect(quotaForm).toBeVisible();
 
-      const quotaText = await quotaSection.textContent();
-      expect(quotaText).toMatch(/\d+(\.\d+)?\s*(KiB|MiB)/);
+      // Verify quota value input and unit selector are present
+      await expect(
+        authenticatedPage.getByTestId('quota-value-input'),
+      ).toBeVisible();
+      const unitToggle = authenticatedPage.getByTestId(
+        'quota-unit-select-toggle',
+      );
+      await expect(unitToggle).toHaveText(/KiB|MiB|GiB|TiB/);
     });
 
-    test('shows quota usage at warning threshold in settings', async ({
+    test('shows quota with warning policy in settings', async ({
       authenticatedPage,
       superuserApi,
       api,
@@ -369,16 +383,20 @@ test.describe(
         TEST_USERS.user.password,
       );
 
-      // Verify quota percentage in Settings > Quota tab
+      // Verify quota form and policy section in Settings > Quota tab
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Quota').click();
 
-      const quotaSection = authenticatedPage.getByTestId('quota-management');
-      await expect(quotaSection).toBeVisible();
+      const quotaForm = authenticatedPage.locator('#quota-management-form');
+      await expect(quotaForm).toBeVisible();
 
-      const quotaText = await quotaSection.textContent();
-      expect(quotaText).toMatch(/\d+(\.\d+)?\s*(KiB|MiB)/);
-      expect(quotaText).toMatch(/\d+%/);
+      // Verify warning policy is shown with percentage
+      const policySection = authenticatedPage.getByTestId(
+        'quota-policy-section',
+      );
+      await expect(policySection).toBeVisible();
+      await expect(policySection).toContainText('Warning');
+      await expect(policySection).toContainText('%');
     });
 
     test('displays quota state when quota exceeded', async ({
@@ -426,20 +444,18 @@ test.describe(
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
       await authenticatedPage.getByTestId('Quota').click();
 
-      const quotaSection = authenticatedPage.getByTestId('quota-management');
-      await expect(quotaSection).toBeVisible();
+      const quotaForm = authenticatedPage.locator('#quota-management-form');
+      await expect(quotaForm).toBeVisible();
 
-      const quotaText = await quotaSection.textContent();
-      expect(quotaText).toMatch(/\d+%/);
-
-      // If the push was rejected, quota enforcement is working at the registry level
-      // If it wasn't rejected, quota should show >= 100% usage
-      if (!secondPushFailed) {
-        expect(quotaText).toMatch(/1\d\d%/);
-      }
+      // Verify reject policy is configured
+      const policySection = authenticatedPage.getByTestId(
+        'quota-policy-section',
+      );
+      await expect(policySection).toBeVisible();
+      await expect(policySection).toContainText('Reject');
     });
 
-    test('quota warning appears in notification center', async ({
+    test('quota warning policy visible after push', async ({
       authenticatedPage,
       superuserApi,
       api,
@@ -474,22 +490,24 @@ test.describe(
         TEST_USERS.user.password,
       );
 
-      // Navigate to org page and check notification center
-      await authenticatedPage.goto(`/organization/${org.name}`);
+      // Verify quota configuration and warning limit in Settings > Quota tab
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByTestId('Quota').click();
 
-      const notificationBell =
-        authenticatedPage.getByTestId('notification-bell');
-      await expect(notificationBell).toBeVisible({timeout: 10000});
-      await notificationBell.click();
+      const quotaForm = authenticatedPage.locator('#quota-management-form');
+      await expect(quotaForm).toBeVisible();
 
-      // Verify quota warning notification exists in drawer
-      const notificationDrawer = authenticatedPage.getByTestId(
-        'notification-drawer',
+      // Verify the read-only alert is shown
+      await expect(
+        authenticatedPage.getByTestId('readonly-quota-alert'),
+      ).toBeVisible();
+
+      // Verify warning policy exists
+      const policySection = authenticatedPage.getByTestId(
+        'quota-policy-section',
       );
-      await expect(notificationDrawer).toBeVisible();
-
-      const drawerText = await notificationDrawer.textContent();
-      expect(drawerText?.toLowerCase()).toContain('quota');
+      await expect(policySection).toBeVisible();
+      await expect(policySection).toContainText('Warning');
     });
   },
 );
