@@ -1,0 +1,12 @@
+# Ambient userId -> GitHub username mapping.
+# Used by resolve-github-user.sh to assign PRs to session creators.
+#
+# Format:
+#   <ambient-userId>:
+#     github: <github-username>
+#
+# If a userId is not listed here, the script falls back to fuzzy-matching
+# against the OWNERS file in the repo root.
+
+bpratt:
+  github: jbpratt

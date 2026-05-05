@@ -90,10 +90,11 @@ gh pr create \
   --title "PROJQUAY-XXXX: type(scope): description" \
   --body "$(cat /tmp/pr-body.md)" \
   --base master \
-  --label "ambient-session"
+  --label "ambient-session" \
+  --assignee "<resolved-username>"  # only if Step 3.5 resolved a username
 ```
 
-For manual PRs (no ambient session), omit the `--label` flag.
+For manual PRs (no ambient session), omit the `--label` and `--assignee` flags.
 
 ## Step 5: Post-PR
 
