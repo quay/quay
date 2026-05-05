@@ -48,21 +48,16 @@ CI status changes, and other PR activity.
 
 For each notification:
 
-**a) Get the PR number** from the subject URL:
+**a) Skip non-routable notifications early:**
+- If `subject.type` is not `PullRequest` — skip (issues, releases, etc.)
+- If `comment_url` is null or empty — skip (CheckSuite, WorkflowRun, etc.)
+
+**b) Get the PR number** from the subject URL:
 
 ```bash
 # The pr_url looks like https://api.github.com/repos/quay/quay/pulls/5848
 PR_NUMBER=$(echo "$pr_url" | grep -oP '/pulls/\K[0-9]+')
 ```
-
-**b) Fetch the actual comment** that triggered the notification:
-
-```bash
-gh api "<comment_url>" --jq '{user: .user.login, body, created_at}'
-```
-
-This gives you the exact message someone sent (e.g. `@quay-devel please fix the
-CI failure`).
 
 **c) Extract the session ID** from the PR body:
 
@@ -71,9 +66,14 @@ gh api "repos/quay/quay/pulls/${PR_NUMBER}" --jq '.body' \
   | grep -oP 'Session ID.*?:\s*\K(session-[a-f0-9-]+)'
 ```
 
-**d) Skip non-routable notifications:**
-- If `subject.type` is not `PullRequest` — skip (issues, releases, etc.)
-- If no session ID found in PR body — skip (not an ambient-session PR)
+- If no session ID found — skip (not an ambient-session PR)
+
+**d) Fetch the actual comment** that triggered the notification:
+
+```bash
+gh api "<comment_url>" --jq '{user: .user.login, body, created_at}'
+```
+
 - If the comment is from `quay-devel` itself — skip (self-notifications)
 
 ### Step 4: Check session state before waking
