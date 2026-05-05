@@ -787,8 +787,7 @@ class TestQuotaEnforcementV2:
                 # Batch query: get all quota_warning notifications for all admins in one query
                 admin_ids = [admin.id for admin in admins]
                 notifications = Notification.select().where(
-                    Notification.target.in_(admin_ids),
-                    Notification.kind == kind_ref
+                    Notification.target.in_(admin_ids), Notification.kind == kind_ref
                 )
                 # Filter by metadata in Python (metadata is JSON, can't filter in SQL easily)
                 for notification in notifications:
@@ -837,8 +836,7 @@ class TestQuotaEnforcementV2:
                 # Batch query: get all quota_warning notifications for all admins in one query
                 admin_ids = [admin.id for admin in admins]
                 notifications = Notification.select().where(
-                    Notification.target.in_(admin_ids),
-                    Notification.kind == kind_ref
+                    Notification.target.in_(admin_ids), Notification.kind == kind_ref
                 )
                 # Filter by metadata in Python (metadata is JSON, can't filter in SQL easily)
                 for notification in notifications:
@@ -849,7 +847,7 @@ class TestQuotaEnforcementV2:
                             # Find which admin received the notification
                             warning_admin = next(
                                 (admin for admin in admins if admin.id == notification.target_id),
-                                None
+                                None,
                             )
                             break
                     except:
@@ -939,12 +937,12 @@ class TestQuotaEnforcementV2:
             min_time_ms = min(quota_check_times)
 
             # Print performance metrics for reporting
-            print(f"\n=== Quota Check Performance Metrics ===")
+            print("\n=== Quota Check Performance Metrics ===")
             print(f"Number of iterations: {num_iterations}")
             print(f"Average quota check time: {avg_time_ms:.2f}ms")
             print(f"Min quota check time: {min_time_ms:.2f}ms")
             print(f"Max quota check time: {max_time_ms:.2f}ms")
-            print(f"JIRA requirement: < 50ms")
+            print("JIRA requirement: < 50ms")
 
             # Assert JIRA requirement: Average quota check overhead < 50ms
             assert avg_time_ms < 50, (
@@ -960,9 +958,9 @@ class TestQuotaEnforcementV2:
 
     @pytest.mark.xfail(
         reason="Race condition in quota enforcement: blobs are written to storage before "
-               "quota check happens in create_manifest_and_retarget_tag, causing all concurrent "
-               "pushes to be rejected even though quota has capacity. The quota enforcement "
-               "check occurs after blob storage operations, leading to inconsistent state."
+        "quota check happens in create_manifest_and_retarget_tag, causing all concurrent "
+        "pushes to be rejected even though quota has capacity. The quota enforcement "
+        "check occurs after blob storage operations, leading to inconsistent state."
     )
     def test_concurrent_manifest_pushes_quota_enforcement(self, client, app, initialized_db):
         """
@@ -1117,7 +1115,7 @@ class TestQuotaEnforcementV2:
                     errors.append((thread_id, status, data))
 
             # Print results for debugging
-            print(f"\n=== Concurrent Push Test Results ===")
+            print("\n=== Concurrent Push Test Results ===")
             print(f"Successes: {len(successes)} - {successes}")
             print(f"Quota exceeded: {len(quota_exceeded)} - {quota_exceeded}")
             print(f"Errors: {len(errors)} - {errors}")
@@ -1135,9 +1133,7 @@ class TestQuotaEnforcementV2:
             # Validate: With quota enforcement, only first push succeeds
             # With 10KB limit and 6KB manifests, only the first push should succeed.
             # The other 2 should be rejected with QuotaExceededException.
-            assert (
-                len(successes) == 1
-            ), f"Expected 1 successful push, got {len(successes)}"
+            assert len(successes) == 1, f"Expected 1 successful push, got {len(successes)}"
             assert (
                 len(quota_exceeded) == 2
             ), f"Expected 2 quota rejections, got {len(quota_exceeded)}"
@@ -1157,9 +1153,9 @@ class TestQuotaEnforcementV2:
 
     @pytest.mark.xfail(
         reason="Race condition in quota enforcement: blobs are written to storage before "
-               "quota check happens in create_manifest_and_retarget_tag, causing all concurrent "
-               "pushes to be rejected even though quota has capacity. The quota enforcement "
-               "check occurs after blob storage operations, leading to inconsistent state."
+        "quota check happens in create_manifest_and_retarget_tag, causing all concurrent "
+        "pushes to be rejected even though quota has capacity. The quota enforcement "
+        "check occurs after blob storage operations, leading to inconsistent state."
     )
     def test_concurrent_chunked_uploads_quota_tracking(self, client, app, initialized_db):
         """
@@ -1311,7 +1307,7 @@ class TestQuotaEnforcementV2:
                     errors.append((thread_id, status, data))
 
             # Print results for debugging
-            print(f"\n=== Concurrent Upload Test Results ===")
+            print("\n=== Concurrent Upload Test Results ===")
             print(f"Successes: {len(successes)} - {successes}")
             print(f"Rejections: {len(rejections)} - {rejections}")
             print(f"Errors: {len(errors)} - {errors}")
@@ -1324,12 +1320,8 @@ class TestQuotaEnforcementV2:
             # Verify quota enforcement: 3 pushes succeed, 1 rejected
             # With 15KB limit and 5KB manifests, 3 pushes should succeed (15KB total).
             # The 4th push should be rejected with QuotaExceededException.
-            assert (
-                len(successes) == 3
-            ), f"Expected 3 successful pushes, got {len(successes)}"
-            assert (
-                len(rejections) == 1
-            ), f"Expected 1 quota rejection, got {len(rejections)}"
+            assert len(successes) == 3, f"Expected 3 successful pushes, got {len(successes)}"
+            assert len(rejections) == 1, f"Expected 1 quota rejection, got {len(rejections)}"
 
             # Verify quota tracking is accurate
             final_quota = model.namespacequota.get_namespace_size(org_name)
@@ -1455,12 +1447,12 @@ class TestQuotaEnforcementV2:
             concurrent_min = min(concurrent_times)
 
             # Print performance metrics
-            print(f"\n=== Performance Under Load Metrics ===")
-            print(f"Baseline (single-threaded):")
+            print("\n=== Performance Under Load Metrics ===")
+            print("Baseline (single-threaded):")
             print(f"  Average: {baseline_avg:.2f}ms")
             print(f"  Min: {min(baseline_times):.2f}ms")
             print(f"  Max: {max(baseline_times):.2f}ms")
-            print(f"\nUnder load (10 concurrent):")
+            print("\nUnder load (10 concurrent):")
             print(f"  Average: {concurrent_avg:.2f}ms")
             print(f"  Min: {concurrent_min:.2f}ms")
             print(f"  Max: {concurrent_max:.2f}ms")
@@ -1500,7 +1492,7 @@ class TestQuotaEnforcementV2:
                     print(
                         f"\nℹ️  High degradation ({degradation_factor:.1f}x) is expected with SQLite."
                     )
-                    print(f"   Production PostgreSQL deployment would show ~2-3x degradation.")
+                    print("   Production PostgreSQL deployment would show ~2-3x degradation.")
 
     def test_blob_upload_post_initiation_quota_enforcement(self, client, app, initialized_db):
         """
