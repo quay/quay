@@ -1,0 +1,9 @@
+rules:
+  # These workflows intentionally use pull_request_target or workflow_run
+  # triggers to access secrets for labeling, reporting, and deployments.
+  dangerous-triggers:
+    ignore:
+      - .github/workflows/playwright-report-deploy.yaml
+      - .github/workflows/pr-labeler.yaml
+      - .github/workflows/pr-status-labeler.yaml
+      - .github/workflows/web-ci-results.yaml
