@@ -1,10 +1,8 @@
 #!/bin/bash
 # resolve-github-user.sh -- Resolve an Ambient userId to a GitHub username
-# using the explicit mapping in .claude/user-map.yaml.
+# via the explicit mapping in .claude/user-map.yaml.
 #
-# Usage:
-#   bash .claude/scripts/resolve-github-user.sh <userId>
-#
+# Usage:  bash .claude/scripts/resolve-github-user.sh <userId>
 # Output: matched GitHub username (stdout), or nothing if no mapping found.
 
 set -euo pipefail
