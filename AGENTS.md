@@ -25,6 +25,7 @@ Use these skills for common tasks — they encode the full workflow so short pro
 | `/backport PR# [branch]` | Cherry-pick a merged PR to a release branch |
 | `/jira PROJQUAY-XXXX [action]` | View or update a JIRA ticket (assign, transition, set-version) |
 | `/ci PR#` | Quick CI status snapshot for a PR |
+| `/pilot-update [days]` | Draft and post a biweekly agentic SDLC pilot update to PROJQUAY-11352 |
 | `/migration` | Create an Alembic migration: scaffolds file, guides upgrade/downgrade, validates |
 | `/test [path]` | Run targeted tests for a file or area |
 | `/cluster-provision` | Provision an ephemeral OpenShift cluster for integration testing |
