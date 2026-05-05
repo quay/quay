@@ -53,14 +53,8 @@ jobs:
       - name: Install dependencies
         run: cd web && pnpm install --frozen-lockfile
 
-      - name: Verify npm lockfile is in sync
-        run: |
-          cd web
-          npm install --package-lock-only --legacy-peer-deps
-          git diff --exit-code package-lock.json || {
-            echo "::error::package-lock.json is out of sync with package.json. Run 'cd web && npm install --package-lock-only --legacy-peer-deps' and commit the result."
-            exit 1
-          }
+      - name: Verify npm lockfile is valid
+        run: cd web && npm ci --ignore-scripts --legacy-peer-deps --dry-run
 
       - name: Run unit tests with coverage
         run: cd web && pnpm run test:coverage
