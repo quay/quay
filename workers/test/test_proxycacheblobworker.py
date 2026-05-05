@@ -566,6 +566,4 @@ def test_should_download_blob_storage_error(proxy_cache_blob_worker, initialized
         "workers.proxycacheblobworker.storage.exists",
         side_effect=IOError("storage unavailable"),
     ):
-        assert proxy_cache_blob_worker._should_download_blob(
-            digest, repo.id, registry_proxy_model
-        )
+        assert proxy_cache_blob_worker._should_download_blob(digest, repo.id, registry_proxy_model)
