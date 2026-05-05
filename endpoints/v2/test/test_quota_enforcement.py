@@ -1089,8 +1089,9 @@ class TestQuotaEnforcementV2:
             for i in range(3):
 
                 def thread_target(tid=i):
-                    barrier.wait()  # Wait for all threads to be ready
-                    push_manifest_thread(tid)
+                    with app.app_context():
+                        barrier.wait()
+                        push_manifest_thread(tid)
 
                 t = threading.Thread(target=thread_target)
                 threads.append(t)
@@ -1281,8 +1282,9 @@ class TestQuotaEnforcementV2:
             for i in range(4):
 
                 def thread_target(tid=i):
-                    barrier.wait()  # Synchronize start
-                    upload_thread(tid)
+                    with app.app_context():
+                        barrier.wait()
+                        upload_thread(tid)
 
                 t = threading.Thread(target=thread_target)
                 threads.append(t)
@@ -1419,8 +1421,9 @@ class TestQuotaEnforcementV2:
             for i in range(10):
 
                 def thread_target(tid=i):
-                    barrier.wait()
-                    concurrent_quota_check(tid)
+                    with app.app_context():
+                        barrier.wait()
+                        concurrent_quota_check(tid)
 
                 t = threading.Thread(target=thread_target)
                 threads.append(t)
@@ -1440,6 +1443,14 @@ class TestQuotaEnforcementV2:
                     concurrent_times.append(data)
                 else:
                     errors.append((thread_id, data))
+
+            # Validate: No errors
+            assert len(errors) == 0, f"Unexpected errors: {errors}"
+
+            # Validate: All quota checks succeeded
+            assert (
+                len(concurrent_times) == 10
+            ), f"Expected 10 successful checks, got {len(concurrent_times)}"
 
             # Calculate statistics
             concurrent_avg = sum(concurrent_times) / len(concurrent_times)
@@ -1462,32 +1473,20 @@ class TestQuotaEnforcementV2:
                 degradation_pct = ((concurrent_avg - baseline_avg) / baseline_avg) * 100
                 print(f"  Performance degradation: {degradation_pct:.1f}%")
 
-            # Validate: No errors
-            assert len(errors) == 0, f"Unexpected errors: {errors}"
-
-            # Validate: All quota checks succeeded
-            assert (
-                len(concurrent_times) == 10
-            ), f"Expected 10 successful checks, got {len(concurrent_times)}"
-
             # Validate: Average time under load should still be < 50ms (JIRA requirement)
             assert (
                 concurrent_avg < 50
             ), f"Average time under load ({concurrent_avg:.2f}ms) exceeds 50ms requirement"
 
-            # Validate: Performance degradation should be reasonable
             # Note: SQLite shows ~12x degradation due to table-level locking
             # PostgreSQL would show much better performance (~2-3x degradation)
             if baseline_avg > 0:
                 degradation_factor = concurrent_avg / baseline_avg
-                # Allow up to 20x degradation for SQLite test environment
-                # Production PostgreSQL should be <5x
                 assert degradation_factor < 20.0, (
                     f"Performance degraded by {degradation_factor:.1f}x under load. "
                     f"Baseline: {baseline_avg:.2f}ms, Concurrent: {concurrent_avg:.2f}ms"
                 )
 
-                # Document if degradation is significant
                 if degradation_factor > 10.0:
                     print(
                         f"\nℹ️  High degradation ({degradation_factor:.1f}x) is expected with SQLite."
