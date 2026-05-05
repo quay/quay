@@ -37,9 +37,9 @@ from data.model.quota import (
 )
 from data.model.repository import create_repository, get_repository
 from data.model.storage import (
+    get_image_location_for_id,
     get_layer_path,
     get_or_create_blob_with_lock,
-    get_storage_locations,
     with_blob_lock_or_fallback,
 )
 from data.registry_model.blobuploader import (
@@ -717,24 +717,25 @@ class ProxyModel(OCIModel):
 
         needs_download = False
         try:
-            ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            placement = (
+                ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            )
         except ImageStoragePlacement.DoesNotExist:
             needs_download = True
 
         if not needs_download:
             try:
                 layer_path = get_layer_path(blob)
-                locations = get_storage_locations(blob.uuid)
-                if not locations or not storage.exists(locations, layer_path):
+                location_name = get_image_location_for_id(placement.location_id).name
+                if not storage.exists([location_name], layer_path):
                     logger.warning(
-                        "Blob %s has placements in DB but is missing from storage, "
-                        "re-fetching from upstream",
+                        "Blob %s has placements in DB but is missing from storage, re-fetching from upstream",
                         blob_digest,
                     )
                     needs_download = True
-            except Exception:
+            except (IOError, OSError):
                 logger.exception(
-                    "Failed to verify blob %s existence in storage, " "re-fetching from upstream",
+                    "Failed to verify blob %s existence in storage, re-fetching from upstream",
                     blob_digest,
                 )
                 needs_download = True

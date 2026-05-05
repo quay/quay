@@ -15,7 +15,7 @@ from data.database import (
     db_transaction,
 )
 from data.model import repository, user
-from data.model.storage import get_layer_path, get_storage_locations
+from data.model.storage import get_image_location_for_id, get_layer_path
 from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.registry_proxy_model import ProxyModel
 from util.locking import GlobalLock
@@ -159,20 +159,22 @@ class ProxyCacheBlobWorker(QueueWorker):
                 return False
 
         try:
-            ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            placement = (
+                ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            )
         except ImageStoragePlacement.DoesNotExist:
             return True
 
         try:
             layer_path = get_layer_path(blob)
-            locations = get_storage_locations(blob.uuid)
-            if not locations or not storage.exists(locations, layer_path):
+            location_name = get_image_location_for_id(placement.location_id).name
+            if not storage.exists([location_name], layer_path):
                 logger.warning(
-                    "Blob %s has placements in DB but is missing from storage, " "will re-download",
+                    "Blob %s has placements in DB but is missing from storage, will re-download",
                     digest,
                 )
                 return True
-        except Exception:
+        except (IOError, OSError):
             logger.exception(
                 "Failed to verify blob %s existence in storage",
                 digest,
