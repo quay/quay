@@ -446,6 +446,10 @@ test.describe(
         .getByTestId('quota-management')
         .textContent();
 
+      // Verify quota enforcement worked: either push was rejected OR alert was shown
+      // At least one should be true - if both are false, quota enforcement failed
+      expect(secondPushFailed || alertVisible).toBe(true);
+
       // Should show 100%+ usage if both pushes succeeded (quota exceeded state)
       // or 50-70% if second push was properly rejected
       if (secondPushFailed || alertVisible) {
