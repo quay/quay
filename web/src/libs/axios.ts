@@ -9,6 +9,11 @@ if (process.env.MOCK_API === 'true') {
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
+// Set axios baseURL at module level so it applies to ALL routes (including /signin, /createaccount, etc.)
+axios.defaults.baseURL =
+  process.env.REACT_QUAY_APP_API_URL ||
+  `${window.location.protocol}//${window.location.host}`;
+
 export async function getCsrfToken() {
   if (process.env.MOCK_API === 'true') {
     return 'test-csrf-token';
@@ -28,7 +33,9 @@ let pendingFreshLoginRequests: Array<{
 // Tracks whether fresh login modal is currently displayed
 let freshLoginModalShown = false;
 
-const axiosIns = axios.create();
+const axiosIns = axios.create({
+  baseURL: axios.defaults.baseURL,
+});
 axiosIns.interceptors.request.use(async (config) => {
   if (!GlobalAuthState.csrfToken) {
     const r = await getCsrfToken();

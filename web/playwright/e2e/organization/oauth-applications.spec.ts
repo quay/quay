@@ -97,10 +97,11 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     const app = await api.oauthApplication(org.name, 'secretapp');
 
     await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
-    await expect(page.getByText(app.name)).toBeVisible();
+    const appLink = page.getByRole('button', {name: app.name});
+    await expect(appLink).toBeVisible();
 
     // Open manage drawer and go to OAuth Information
-    await page.getByText(app.name).click();
+    await appLink.click();
     await page.getByText('OAuth Information').click();
 
     // Note the current secret

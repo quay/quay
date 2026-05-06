@@ -34,6 +34,7 @@ export default function RepoEventExpiry(props: RepoEventExpiryProps) {
         onChange={onChange}
         type={'number'}
         id="days-to-image-expiry"
+        data-testid="days-to-image-expiry"
         required
         validated={valid}
       />

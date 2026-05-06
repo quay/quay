@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   Flex,
   FlexItem,
@@ -26,7 +27,6 @@ import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {extractTextFromReactNode} from 'src/libs/utils';
 import {useState, useMemo, useEffect, useRef} from 'react';
-import {AxiosError} from 'axios';
 
 interface LogEntry {
   datetime: string;
@@ -59,6 +59,7 @@ interface UsageLogsTableProps {
   repo: string;
   type: string;
   isSuperuser?: boolean;
+  enabled?: boolean;
 }
 
 interface LogEntry {
@@ -118,6 +119,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     },
     initialPageParam: undefined,
     getNextPageParam: (lastPage: LogPage) => lastPage.nextPage,
+    enabled: props.enabled !== false,
   });
 
   // Flatten all log pages into a single array for our table hook
@@ -201,17 +203,24 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
 
   if (loadingLogs) return <Spinner />;
 
+  // tslint:disable-next-line:curly
   if (errorLogs) {
-    // Check if this is a 501 NOT IMPLEMENTED error from Splunk
-    if (
-      fetchError instanceof AxiosError &&
-      fetchError.response?.status === 501
-    ) {
-      const errorMessage =
-        fetchError.response?.data?.message || 'Unable to retrieve logs';
-      return <RequestError message={errorMessage} title="" />;
-    }
     return <RequestError message="Unable to retrieve logs" />;
+  }
+
+  // Check if log viewing is unavailable (e.g. Splunk HEC without search_token)
+  const firstPage = logs?.pages?.[0] as LogPage & {
+    unavailable?: boolean;
+    message?: string;
+  };
+  if (firstPage?.unavailable) {
+    return (
+      <PageSection hasBodyWrapper={false}>
+        <Alert variant="info" isInline title="Log viewing is not available">
+          {firstPage.message}
+        </Alert>
+      </PageSection>
+    );
   }
 
   return (
@@ -234,7 +243,11 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
         </FlexItem>
         <FlexItem>
           <div style={{margin: '20px'}}>
-            <Table variant="compact" aria-label="Usage logs table" data-testid="usage-logs-table">
+            <Table
+              variant="compact"
+              aria-label="Usage logs table"
+              data-testid="usage-logs-table"
+            >
               <Thead>
                 <Tr>
                   <Th width={15} sort={getSortableSort(0)}>
@@ -270,9 +283,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                     {!props.repo && (
                       <Td>
                         {log.metadata?.namespace && log.metadata?.repo
-                          ? props.isSuperuser
-                            ? log.metadata.repo
-                            : `${log.metadata.namespace}/${log.metadata.repo}`
+                          ? `${log.metadata.namespace}/${log.metadata.repo}`
                           : log.metadata?.repo || ''}
                       </Td>
                     )}

@@ -54,6 +54,7 @@ export function useLabels(
     isError: errorCreateLabels,
     error: detailedErrorCreateLabels,
     isLoading: loadingCreateLabels,
+    reset: resetCreateLabels,
   } = useMutation(async (labels: Label[]) => {
     await bulkCreateLabels(org, repo, digest, labels);
   });
@@ -64,6 +65,7 @@ export function useLabels(
     isError: errorDeleteLabels,
     error: detailedErrorDeleteLabels,
     isLoading: loadingDeleteLabels,
+    reset: resetDeleteLabels,
   } = useMutation(async (labels: Label[]) => {
     await bulkDeleteLabels(org, repo, digest, labels);
   });
@@ -80,11 +82,13 @@ export function useLabels(
     errorCreatingLabelsDetails:
       detailedErrorCreateLabels as BulkOperationError<ResourceError>,
     loadingCreateLabels: loadingCreateLabels,
+    resetCreateLabels: resetCreateLabels,
     deleteLabels: bulkDeleteLabelsMutator,
     successDeletingLabels: successDeleteLabels,
     errorDeletingLabels: errorDeleteLabels,
     errorDeletingLabelsDetails:
       detailedErrorDeleteLabels as BulkOperationError<ResourceError>,
     loadingDeleteLabels: loadingDeleteLabels,
+    resetDeleteLabels: resetDeleteLabels,
   };
 }

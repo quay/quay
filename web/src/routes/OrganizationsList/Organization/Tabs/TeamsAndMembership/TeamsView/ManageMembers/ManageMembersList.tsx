@@ -140,6 +140,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     paginatedData: paginatedCurrentMembers,
     getSortableSort,
     paginationProps,
+    totalCount,
   } = usePaginatedSortableTable(currentDataSource, {
     columns: {
       1: (item: ITeamMember) => item.name, // Team member
@@ -147,6 +148,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     },
     initialPerPage: 20,
     initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: Team member ascending
+    filter: search.query
+      ? (item: ITeamMember) => item.name.includes(search.query)
+      : undefined,
   });
 
   const {teams} = useFetchTeams(organizationName);
@@ -650,6 +654,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           setPage={paginationProps.setPage}
           perPage={paginationProps.perPage}
           setPerPage={paginationProps.setPerPage}
+          totalItems={totalCount}
           search={search}
           setSearch={setSearch}
           searchOptions={[manageMemberColumnNames.teamMember]}

@@ -277,7 +277,9 @@ function TagsTableRow(props: RowProps) {
           )}
           <span
             className="copy-icon"
-            style={{visibility: isTagHovered || isTagCopied ? 'visible' : 'hidden'}}
+            style={{
+              visibility: isTagHovered || isTagCopied ? 'visible' : 'hidden',
+            }}
           >
             <Tooltip
               content={isTagCopied ? 'Copied to clipboard!' : 'Copy pull spec'}
@@ -340,7 +342,10 @@ function TagsTableRow(props: RowProps) {
           {tag.manifest_digest.substring(0, 19)}
           <span
             className="copy-icon"
-            style={{visibility: isDigestHovered || isDigestCopied ? 'visible' : 'hidden'}}
+            style={{
+              visibility:
+                isDigestHovered || isDigestCopied ? 'visible' : 'hidden',
+            }}
           >
             <Tooltip
               content={isDigestCopied ? 'Copied to clipboard!' : 'Copy digest'}

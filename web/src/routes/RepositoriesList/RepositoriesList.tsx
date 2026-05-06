@@ -321,22 +321,19 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     <>
       <RepoListHeader shouldRender={currentOrg === null} />
       <PageSection hasBodyWrapper={false}>
-        {truncated && (
-          <Alert
-            variant="warning"
-            isInline
-            title="Results truncated"
-            style={{marginBottom: '1em'}}
-          >
-            Not all repositories are displayed. Use the search to find specific
-            repositories.
-          </Alert>
-        )}
         <ErrorModal
           title="Repository deletion failed"
           error={err}
           setError={setErr}
         />
+        {truncated && (
+          <Alert
+            variant="info"
+            isInline
+            title="Showing first 10,000 repositories. Filter by organization to narrow results."
+            style={{marginBottom: '1em'}}
+          />
+        )}
         {quayConfig?.features?.QUOTA_MANAGEMENT &&
           quayConfig?.features?.EDIT_QUOTA &&
           currentOrg && (
@@ -401,12 +398,17 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           </Thead>
           <Tbody data-testid="repository-list-table">
             {filteredRepos.length === 0 ? (
-              // Repo table loading icon
-              <Tr>
-                <Td>
-                  <Spinner size="lg" />
-                </Td>
-              </Tr>
+              loading ? (
+                <Tr>
+                  <Td colSpan={5}>
+                    <Spinner size="lg" />
+                  </Td>
+                </Tr>
+              ) : (
+                <Tr>
+                  <Td colSpan={5}>No repositories found</Td>
+                </Tr>
+              )
             ) : (
               paginatedRepositoryList.map((repo, rowIndex) => (
                 <Tr key={rowIndex}>

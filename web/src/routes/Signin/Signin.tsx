@@ -444,7 +444,9 @@ export function Signin() {
 
             {showInvitationMessage() && (
               <>
-                <span data-testid="signin-invitation-message">Invitation required to sign up</span>
+                <span data-testid="signin-invitation-message">
+                  Invitation required to sign up
+                </span>
                 <br />
               </>
             )}
