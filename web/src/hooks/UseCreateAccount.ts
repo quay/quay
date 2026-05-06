@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
+import {AxiosError} from 'axios';
 import {createUser, fetchUser} from 'src/resources/UserResource';
 import {
   loginUser,
@@ -76,7 +77,12 @@ export function useCreateAccount() {
         return {success: true, autoLoginFailed: true};
       }
     } catch (err) {
-      setError(addDisplayError('Unable to create account', err));
+      const authErr = err instanceof AxiosError && err.response;
+      if (authErr && err.response.status === 409) {
+        setError('Username or email already exists');
+      } else {
+        setError(addDisplayError('Unable to create account', err));
+      }
       return {success: false};
     } finally {
       setIsLoading(false);
