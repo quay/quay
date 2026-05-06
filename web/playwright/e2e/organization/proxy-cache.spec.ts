@@ -120,6 +120,50 @@ test.describe(
       ).toBeEnabled();
     });
 
+    test('proxy cache form is functional when FEATURE_ORG_MIRROR is disabled (PROJQUAY-11478)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('proxynomirr');
+
+      // Override config to disable ORG_MIRROR (the bug scenario)
+      await authenticatedPage.route('**/config', async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.features.ORG_MIRROR = false;
+        body.features.PROXY_CACHE = true;
+        await route.fulfill({response, body: JSON.stringify(body)});
+      });
+
+      // Intercept the org mirror endpoint to return 405 (simulates unregistered route)
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          await route.fulfill({
+            status: 405,
+            contentType: 'application/json',
+            body: JSON.stringify({error_message: 'Method Not Allowed'}),
+          });
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Proxy Cache').click();
+
+      // The org mirror error alert should NOT be visible
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-error-alert'),
+      ).not.toBeAttached();
+
+      // Save button should be enabled (not blocked by org mirror check)
+      await authenticatedPage
+        .getByTestId('remote-registry-input')
+        .fill('docker.io');
+      await expect(
+        authenticatedPage.getByTestId('save-proxy-cache-btn'),
+      ).toBeEnabled();
+    });
+
     test('proxy cache tab not visible for user namespaces', async ({
       authenticatedPage,
     }) => {
