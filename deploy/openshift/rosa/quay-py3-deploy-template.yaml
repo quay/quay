@@ -112,6 +112,7 @@ objects:
       metadata:
         labels:
           ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+          ${{QUAY_APP_GRPC_ENABLE_LABEL_KEY}}: ${{QUAY_APP_GRPC_ENABLE_LABEL_VALUE}}
         annotations:
           ${{DYNATRACE_APM_ANNOTATION_KEY}}: "${DYNATRACE_APM_ANNOTATION_VALUE}"
           ${{QUAY_APP_COMPONENT_ANNOTATIONS_KEY}}: ${{QUAY_APP_COMPONENT_ANNOTATIONS_VALUE}}
@@ -378,3 +379,7 @@ parameters:
     value: oneagent.dynatrace.com/inject
   - name: DYNATRACE_APM_ANNOTATION_VALUE
     value: "false"
+  - name: QUAY_APP_GRPC_ENABLE_LABEL_KEY
+    value: quay_grpc_endpoint
+  - name: QUAY_APP_GRPC_ENABLE_LABEL_VALUE
+    value: "true"
