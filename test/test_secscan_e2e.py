@@ -65,11 +65,11 @@ def create_test_repository(namespace="devtable", repo_name="secscan-test"):
         repo_name: Repository name (default: secscan-test)
 
     Returns:
-        RepositoryReference object
+        Repository database model object
     """
     user = model.user.get_user(namespace)
     repo = model.repository.create_repository(namespace, repo_name, user)
-    return RepositoryReference.for_repo_obj(repo)
+    return repo
 
 
 def create_test_manifest(repo, num_layers=3, tag="latest"):
@@ -77,17 +77,20 @@ def create_test_manifest(repo, num_layers=3, tag="latest"):
     Create Docker v2 manifest for testing.
 
     Args:
-        repo: RepositoryReference object
+        repo: Repository database model object
         num_layers: Number of layers in manifest (default: 3)
         tag: Tag name (default: latest)
 
     Returns:
-        Manifest object
+        Manifest object (via registry_model)
     """
     tag_map = {}
     structure = (num_layers, [], [tag])
-    create_schema2_or_oci_manifest_for_testing(repo._db_obj, structure, tag_map)
-    tag_ref = registry_model.get_repo_tag(repo, tag)
+    create_schema2_or_oci_manifest_for_testing(repo, structure, tag_map)
+
+    # Convert to RepositoryReference for registry_model calls
+    repo_ref = RepositoryReference.for_repo_obj(repo)
+    tag_ref = registry_model.get_repo_tag(repo_ref, tag)
     return registry_model.get_manifest_for_tag(tag_ref)
 
 

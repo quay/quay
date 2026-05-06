@@ -12,7 +12,6 @@
  */
 
 import {test, expect} from '../../fixtures';
-import {ApiClient} from '../../utils/api';
 import {pushImage} from '../../utils/container';
 import {waitForSecurityScan} from '../../utils/security';
 import {TEST_USERS} from '../../global-setup';
