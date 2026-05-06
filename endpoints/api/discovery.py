@@ -31,6 +31,7 @@ PARAM_REGEX = re.compile(r"<([^:>]+:)*([\w]+)>")
 
 TYPE_CONVERTER = {
     truthy_bool: "boolean",
+    bool: "boolean",
     str: "string",
     reqparse.text_type: "string",
     int: "integer",

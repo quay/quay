@@ -844,6 +844,7 @@ import endpoints.api.immutability_policy
 import endpoints.api.logs
 import endpoints.api.manifest
 import endpoints.api.mirror
+import endpoints.api.mirrorhealth
 import endpoints.api.namespacequota
 import endpoints.api.org_mirror
 import endpoints.api.organization
