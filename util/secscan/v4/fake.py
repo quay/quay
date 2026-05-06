@@ -1,7 +1,6 @@
 import json
 from collections import defaultdict
 from contextlib import contextmanager
-from urllib.parse import unquote
 
 from httmock import HTTMock, all_requests, urlmatch
 
@@ -112,7 +111,7 @@ class FakeSecurityScanner(object):
             method="GET",
         )
         def index_report(url, request):
-            manifest_hash = unquote(url.path[len("/indexer/api/v1/index_report/") :])
+            manifest_hash = url.path[len("/indexer/api/v1/index_report/") :]
             if manifest_hash not in self.index_reports:
                 return {
                     "status_code": 404,
@@ -140,7 +139,7 @@ class FakeSecurityScanner(object):
             method="GET",
         )
         def vulnerability_report(url, request):
-            manifest_hash = unquote(url.path[len("/matcher/api/v1/vulnerability_report/") :])
+            manifest_hash = url.path[len("/matcher/api/v1/vulnerability_report/") :]
             if manifest_hash not in self.index_reports:
                 return {
                     "status_code": 404,
