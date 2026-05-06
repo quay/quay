@@ -589,6 +589,7 @@ export default function OrganizationsList() {
             itemsList={sortedOrgs}
             {...paginationProps}
             bottom={true}
+            data-testid="orgslist-pagination"
           />
         </PanelFooter>
       </PageSection>

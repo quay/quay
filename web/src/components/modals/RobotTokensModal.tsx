@@ -239,6 +239,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
         </Tab>
         <Tab
           id="kubernetes-tab"
+          data-testid="kubernetes-tab"
           eventKey={1}
           title={
             <>
