@@ -58,6 +58,24 @@ export const TEST_USERS_OIDC = {
   },
 } as const;
 
+export const TEST_USERS_LDAP = {
+  admin: {
+    username: 'admin_ldap',
+    password: 'password',
+    email: 'admin_ldap@example.com',
+  },
+  user: {
+    username: 'testuser_ldap',
+    password: 'password',
+    email: 'testuser_ldap@example.com',
+  },
+  readonly: {
+    username: 'readonly_ldap',
+    password: 'password',
+    email: 'readonly_ldap@example.com',
+  },
+} as const;
+
 async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0].use.baseURL || 'http://localhost:9000';
 
