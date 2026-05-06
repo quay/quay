@@ -6,7 +6,7 @@ scanner unavailability handling, and re-scan on CVE database updates.
 """
 
 import base64
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 from urllib.parse import urlparse
 
 import pytest
@@ -21,7 +21,7 @@ from data.secscan_model.datatypes import ScanLookupStatus
 from data.secscan_model.secscan_v4_model import V4SecurityScanner
 from initdb import create_schema2_or_oci_manifest_for_testing
 from test.fixtures import *
-from util.secscan.v4.api import APIRequestFailure
+from util.secscan.v4.api import APIRequestFailure, ClairSecurityScannerAPI
 from util.secscan.v4.fake import fake_security_scanner
 
 
@@ -244,7 +244,7 @@ def test_scanner_unavailability(initialized_db, set_secscan_config):
     # state() returns successfully so perform_indexing() proceeds
     # index() fails to trigger the error handling path that sets FAILED status
     secscan = V4SecurityScanner(application, instance_keys, storage)
-    secscan._secscan_api = Mock()
+    secscan._secscan_api = create_autospec(ClairSecurityScannerAPI, spec_set=True)
     secscan._secscan_api.state.return_value = "test-indexer-state"
     secscan._secscan_api.index.side_effect = APIRequestFailure()
 
