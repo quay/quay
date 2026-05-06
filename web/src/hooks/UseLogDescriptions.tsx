@@ -330,16 +330,28 @@ export function useLogDescriptions() {
       return `Mirror started for ${metadata.message}`;
     },
     repo_mirror_sync_success: function (metadata: Metadata) {
-      return `Mirror finished successfully for ${metadata.message} ${metadata.tags}`;
+      let msg = `Mirror finished successfully for ${metadata.message}`;
+      if (metadata.tags) msg += ` ${metadata.tags}`;
+      return msg;
     },
     repo_mirror_sync_failed: function (metadata: Metadata) {
-      return `Mirror finished unsuccessfully for ${metadata.message} ${metadata.tags} ${metadata.stdout} ${metadata.stderr}`;
+      let msg = `Mirror finished unsuccessfully for ${metadata.message}`;
+      if (metadata.tags) msg += ` ${metadata.tags}`;
+      if (metadata.stdout) msg += ` ${metadata.stdout}`;
+      if (metadata.stderr) msg += ` ${metadata.stderr}`;
+      return msg;
     },
     repo_mirror_sync_tag_success: function (metadata: Metadata) {
-      return `Mirror of ${metadata.tag} successful to repository ${metadata.namespace}/${metadata.repo} ${metadata.message} ${metadata.stdout} ${metadata.stderr}`;
+      let msg = `Mirror of ${metadata.tag} successful to repository ${metadata.namespace}/${metadata.repo} ${metadata.message}`;
+      if (metadata.stdout) msg += ` ${metadata.stdout}`;
+      if (metadata.stderr) msg += ` ${metadata.stderr}`;
+      return msg;
     },
     repo_mirror_sync_tag_failed: function (metadata: Metadata) {
-      return `Mirror of ${metadata.tag} failure to repository ${metadata.namespace}/${metadata.repo} ${metadata.message} ${metadata.stdout} ${metadata.stderr}`;
+      let msg = `Mirror of ${metadata.tag} failure to repository ${metadata.namespace}/${metadata.repo} ${metadata.message}`;
+      if (metadata.stdout) msg += ` ${metadata.stdout}`;
+      if (metadata.stderr) msg += ` ${metadata.stderr}`;
+      return msg;
     },
     repo_mirror_config_changed: function (metadata: Metadata) {
       switch (metadata.changed) {
