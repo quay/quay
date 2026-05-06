@@ -3,7 +3,7 @@ name: code
 description: >
   Implement changes following Quay conventions. Reads the relevant AGENTS.md
   and agent_docs/ for the area being worked on, then guides implementation,
-  quality checks (pre-commit, tests), and commit with proper message format.
+  testing, quality checks (pre-commit, tests), and commit with proper message format.
 allowed-tools:
   - Bash(bash .claude/scripts/format-and-lint.sh *)
   - Bash(git *)
@@ -45,7 +45,48 @@ Follow `AGENTS.md` conventions:
 - Never hand-write migration files — run `alembic revision -m "description"` first
 - No secrets in code
 
-## Step 3: Quality Checks
+## Step 3: Write Tests
+
+**Every code change must include tests.** Choose the right test type for the area:
+
+### Backend (Python)
+
+| Change | Test type | Location |
+|--------|-----------|----------|
+| API endpoint | pytest API test | `endpoints/api/test/` |
+| Data model / query | pytest model test | `data/model/test/` |
+| Worker logic | pytest unit test | `workers/test/` |
+| Auth change | pytest auth test | `auth/test/` |
+| Registry protocol | pytest registry test | `test/registry/` |
+
+Run: `TEST=true PYTHONPATH="." pytest path/to/test.py -v`
+
+### Frontend (React/TypeScript)
+
+| Change | Test type | Location |
+|--------|-----------|----------|
+| UI interaction, page flow, bug fix | **Playwright E2E** | `web/playwright/e2e/` |
+| Pure utility function | Vitest unit test | Co-located `*.test.ts` |
+| Data transformation helper | Vitest unit test | Co-located `*.test.ts` |
+| Custom hook (no UI) | Vitest unit test with `renderHook` | Co-located `*.test.tsx` |
+
+**Default to Playwright E2E for frontend changes.** Use vitest only for pure logic with no UI interaction. Most bug fixes and feature work should have E2E coverage.
+
+### Playwright E2E guidelines
+
+- Read `web/playwright/MIGRATION.md` for conventions and patterns
+- **Add to existing spec files** when the feature area already has one (check `web/playwright/e2e/`)
+- Use the `api` fixture for test data setup (auto-cleanup)
+- Use `data-testid` attributes for selectors — add them to components if missing
+- Tag tests with `@PROJQUAY-XXXX` to link back to the JIRA ticket
+
+### Test scope
+
+- Cover the happy path of the change
+- Cover the specific bug scenario for bug fixes (e.g. duplicate names, edge cases)
+- Verify via API when possible (not just UI assertions)
+
+## Step 4: Quality Checks
 
 Pre-commit hooks run automatically on `git commit`. To run manually:
 
@@ -63,7 +104,7 @@ make registry-test                                   # Registry protocol
 make types-test                                      # mypy
 ```
 
-## Step 4: Commit
+## Step 5: Commit
 
 Format:
 
@@ -75,7 +116,7 @@ Format:
 
 See `.github/CONTRIBUTING.md` for full conventions. Pre-commit hooks run on commit — fix any failures and re-commit.
 
-## Step 5: Continue — invoke /pr immediately
+## Step 6: Continue — invoke /pr immediately
 
 **Do not stop after committing.** Invoke the `/pr` skill immediately to create the pull request. The full workflow is a single uninterrupted pipeline:
 
