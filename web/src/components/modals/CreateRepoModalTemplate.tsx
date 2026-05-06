@@ -319,6 +319,7 @@ export default function CreateRepositoryModalTemplate(
           variant="primary"
           onClick={createRepositoryHandler}
           form="modal-with-form-form"
+          data-testid="create-repository-submit-btn"
           isDisabled={
             !currentOrganization.name ||
             !newRepository.name ||
