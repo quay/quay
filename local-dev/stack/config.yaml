@@ -47,9 +47,10 @@ GITHUB_LOGIN_CONFIG: {}
 GITHUB_TRIGGER_CONFIG: {}
 GITLAB_TRIGGER_KIND: {}
 LOG_ARCHIVE_LOCATION: default
-MAIL_DEFAULT_SENDER: admin@example.com
-MAIL_PORT: 587
-MAIL_USE_TLS: true
+MAIL_DEFAULT_SENDER: quay@localhost
+MAIL_SERVER: quay-mailpit
+MAIL_PORT: 1025
+MAIL_USE_TLS: false
 PREFERRED_URL_SCHEME: http
 REGISTRY_TITLE: Red Hat Quay
 REGISTRY_TITLE_SHORT: Red Hat Quay
@@ -89,16 +90,16 @@ CORS_ORIGIN:
 FEATURE_UI_V2: True
 FEATURE_USER_METADATA: True
 # Local Keycloak OIDC provider (PKCE disabled initially)
-SOMEOIDC_LOGIN_CONFIG:
-  SERVICE_NAME: "Keycloak"
-  OIDC_SERVER: "http://host.containers.internal:8081/realms/quay/"
-  CLIENT_ID: "quay-ui"
-  CLIENT_SECRET: "KbIEbjqeK73iL6zhXZLaVSOCiD5mhB3h"
-  LOGIN_SCOPES: ["openid", "profile", "email"]
-  DEBUGGING: true
-  USE_PKCE: true
-  PKCE_METHOD: "S256"
-  PUBLIC_CLIENT: true # omit client_secret during token request when client is public
+#SOMEOIDC_LOGIN_CONFIG:
+#  SERVICE_NAME: "Keycloak"
+#  OIDC_SERVER: "http://host.containers.internal:8081/realms/quay/"
+#  CLIENT_ID: "quay-ui"
+#  CLIENT_SECRET: "KbIEbjqeK73iL6zhXZLaVSOCiD5mhB3h"
+#  LOGIN_SCOPES: ["openid", "profile", "email"]
+#  DEBUGGING: true
+#  USE_PKCE: true
+#  PKCE_METHOD: "S256"
+#  PUBLIC_CLIENT: true # omit client_secret during token request when client is public
 #RHSSO_LOGIN_CONFIG:
 #  CLIENT_ID: stage.quay.io
 #  CLIENT_SECRET: SECRET
