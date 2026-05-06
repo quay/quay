@@ -234,7 +234,11 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
         </FlexItem>
         <FlexItem>
           <div style={{margin: '20px'}}>
-            <Table variant="compact" aria-label="Usage logs table" data-testid="usage-logs-table">
+            <Table
+              variant="compact"
+              aria-label="Usage logs table"
+              data-testid="usage-logs-table"
+            >
               <Thead>
                 <Tr>
                   <Th width={15} sort={getSortableSort(0)}>

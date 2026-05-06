@@ -83,6 +83,5 @@ test.describe(
       // The table should still be visible
       await expect(superuserPage.getByTestId('usage-logs-table')).toBeVisible();
     });
-
   },
 );

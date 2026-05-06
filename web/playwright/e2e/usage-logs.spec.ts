@@ -200,9 +200,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         'Delete Robot Federation',
       ]);
     });
-
   });
-
 });
 
 test.describe(
