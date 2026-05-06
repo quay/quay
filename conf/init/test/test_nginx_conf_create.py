@@ -40,9 +40,7 @@ class TestErrorPageDirective:
 
     def test_502_location_uses_correct_root(self):
         rendered = render_server_base_conf()
-        match = re.search(
-            r"location = /502\.html \{[^}]*root\s+([^;]+);", rendered, re.DOTALL
-        )
+        match = re.search(r"location = /502\.html \{[^}]*root\s+([^;]+);", rendered, re.DOTALL)
         assert match is not None, "502 location block must have a root directive"
         assert match.group(1).strip() == "/quay-registry/static"
 
@@ -56,16 +54,17 @@ class TestErrorPageDirective:
         rendered = render_server_base_conf()
         assert "=502" in rendered
 
-    @pytest.mark.parametrize("static_dir", [
-        "/quay-registry/static",
-        "/custom/path/static",
-        "/opt/quay/static",
-    ])
+    @pytest.mark.parametrize(
+        "static_dir",
+        [
+            "/quay-registry/static",
+            "/custom/path/static",
+            "/opt/quay/static",
+        ],
+    )
     def test_502_location_root_matches_static_dir(self, static_dir):
         rendered = render_server_base_conf(static_dir=static_dir)
-        match = re.search(
-            r"location = /502\.html \{[^}]*root\s+([^;]+);", rendered, re.DOTALL
-        )
+        match = re.search(r"location = /502\.html \{[^}]*root\s+([^;]+);", rendered, re.DOTALL)
         assert match is not None
         assert match.group(1).strip() == static_dir
 
