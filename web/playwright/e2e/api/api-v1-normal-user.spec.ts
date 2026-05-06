@@ -1948,7 +1948,7 @@ test.describe(
     test('gets 404 on GET /superuser/registrysettings (endpoint removed)', async ({
       userClient,
     }) => {
-      const r = await userClient.get('/api/v1/superuser/registrysettings');
+      const r = await userClient.get('/api/v1/superuser/registrysettings/');
       expect(r.status()).toBe(404);
     });
 
@@ -1982,7 +1982,7 @@ test.describe(
       expect(r.status()).toBe(403);
     });
 
-    test('gets 403 on user quota via superuser API', async ({userClient}) => {
+    test('gets 403 on user quota via superuser API', {tag: ['@feature:QUOTA_MANAGEMENT']}, async ({userClient}) => {
       const r = await userClient.get('/api/v1/superuser/users/testuser/quota');
       expect(r.status()).toBe(403);
     });

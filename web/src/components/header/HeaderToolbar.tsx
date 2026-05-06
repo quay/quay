@@ -113,12 +113,12 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
       case 'logout':
         try {
           await logoutUser();
+        } catch (err) {
+          console.error('Logout API failed:', err);
+        } finally {
           GlobalAuthState.csrfToken = undefined;
           queryClient.invalidateQueries(['user']);
           window.location.href = '/signin';
-        } catch (err) {
-          console.error(err);
-          setErr(addDisplayError('Unable to log out', err));
         }
         setIsDropdownOpen(false);
         break;
