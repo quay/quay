@@ -25,8 +25,9 @@ test.describe(
       authenticatedPage,
       api,
     }) => {
-      // Create PUBLIC repo (required for Clair to pull and scan)
-      const repo = await api.repository(undefined, 'vuln-test', 'public');
+      // Create PUBLIC repo with unique name to avoid collisions
+      const repoName = `vuln-test-${Date.now()}`;
+      const repo = await api.repository(undefined, repoName, 'public');
 
       // Push image to trigger scan
       await pushImage(
@@ -39,6 +40,8 @@ test.describe(
 
       // Wait for Clair to complete scan
       const tags = await api.raw.getTags(repo.namespace, repo.name);
+      expect(tags.tags).toBeDefined();
+      expect(tags.tags.length).toBeGreaterThan(0);
       const digest = tags.tags[0].manifest_digest;
 
       const result = await waitForSecurityScan(
@@ -97,8 +100,9 @@ test.describe(
       authenticatedPage,
       api,
     }) => {
-      // Create PUBLIC repo and push image
-      const repo = await api.repository(undefined, 'badge-test', 'public');
+      // Create PUBLIC repo with unique name to avoid collisions
+      const repoName = `badge-test-${Date.now()}`;
+      const repo = await api.repository(undefined, repoName, 'public');
 
       await pushImage(
         repo.namespace,
@@ -110,6 +114,8 @@ test.describe(
 
       // Wait for scan to complete
       const tags = await api.raw.getTags(repo.namespace, repo.name);
+      expect(tags.tags).toBeDefined();
+      expect(tags.tags.length).toBeGreaterThan(0);
       const digest = tags.tags[0].manifest_digest;
       await waitForSecurityScan(
         api.raw,
@@ -150,8 +156,9 @@ test.describe(
       authenticatedPage,
       api,
     }) => {
-      // Create PUBLIC repo
-      const repo = await api.repository(undefined, 'status-test', 'public');
+      // Create PUBLIC repo with unique name to avoid collisions
+      const repoName = `status-test-${Date.now()}`;
+      const repo = await api.repository(undefined, repoName, 'public');
 
       // Push image
       await pushImage(
@@ -164,6 +171,8 @@ test.describe(
 
       // Get manifest digest
       const tags = await api.raw.getTags(repo.namespace, repo.name);
+      expect(tags.tags).toBeDefined();
+      expect(tags.tags.length).toBeGreaterThan(0);
       const digest = tags.tags[0].manifest_digest;
 
       // Navigate to tag page (scan might still be queued)

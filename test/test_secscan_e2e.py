@@ -28,10 +28,32 @@ from util.secscan.v4.fake import fake_security_scanner
 @pytest.fixture()
 def set_secscan_config():
     """Configure Clair V4 endpoint for tests."""
+    # Save original config values
+    original_endpoint = application.config.get("SECURITY_SCANNER_V4_ENDPOINT")
+    original_feature = application.config.get("FEATURE_SECURITY_SCANNER")
+    original_psk = application.config.get("SECURITY_SCANNER_V4_PSK")
+
+    # Set test config
     application.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://fakesecurityscanner:6060"
     application.config["FEATURE_SECURITY_SCANNER"] = True
     application.config["SECURITY_SCANNER_V4_PSK"] = base64.b64encode(b"test-psk").decode()
     yield
+
+    # Restore original config values
+    if original_endpoint is None:
+        application.config.pop("SECURITY_SCANNER_V4_ENDPOINT", None)
+    else:
+        application.config["SECURITY_SCANNER_V4_ENDPOINT"] = original_endpoint
+
+    if original_feature is None:
+        application.config.pop("FEATURE_SECURITY_SCANNER", None)
+    else:
+        application.config["FEATURE_SECURITY_SCANNER"] = original_feature
+
+    if original_psk is None:
+        application.config.pop("SECURITY_SCANNER_V4_PSK", None)
+    else:
+        application.config["SECURITY_SCANNER_V4_PSK"] = original_psk
 
 
 def create_test_repository(namespace="devtable", repo_name="secscan-test"):
@@ -234,28 +256,22 @@ def test_scanner_unavailability(initialized_db, set_secscan_config):
     # Verify manifest still exists (push not blocked)
     assert Manifest.get(id=manifest._db_id) is not None
 
-    # Check if ManifestSecurityStatus was created
-    try:
-        mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
+    # Verify that ManifestSecurityStatus was created and shows FAILED
+    # Connection errors should result in FAILED status, not MANIFEST_UNSUPPORTED
+    mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
+    assert (
+        mss.index_status == IndexStatus.FAILED
+    ), f"Expected IndexStatus.FAILED for scanner unavailability, got {mss.index_status}"
 
-        # If status record exists, it should show FAILED or remain NOT_INDEXED
-        # (worker may not create the record if state() fails)
-        assert mss.index_status in [IndexStatus.FAILED, IndexStatus.MANIFEST_UNSUPPORTED]
-
-        # If error_json is populated, verify it contains error information
-        if mss.error_json:
-            error_str = str(mss.error_json).lower()
-            # Error message should indicate a problem
-            assert (
-                "error" in error_str
-                or "failed" in error_str
-                or "exception" in error_str
-                or "request" in error_str
-            )
-    except ManifestSecurityStatus.DoesNotExist:
-        # If no status record created, that's also acceptable - worker didn't get
-        # far enough to create it due to state() failure
-        pass
+    # Verify error_json contains error information
+    assert mss.error_json is not None, "Expected error_json to be populated for failed scan"
+    error_str = str(mss.error_json).lower()
+    assert (
+        "error" in error_str
+        or "failed" in error_str
+        or "exception" in error_str
+        or "request" in error_str
+    ), f"Expected error information in error_json, got: {mss.error_json}"
 
 
 def test_rescan_on_cve_update(initialized_db, set_secscan_config):
