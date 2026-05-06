@@ -114,7 +114,19 @@ def test_scan_on_push_lifecycle(initialized_db, set_secscan_config):
     # Configure fake Clair with test vulnerabilities
     hostname = urlparse(application.config["SECURITY_SCANNER_V4_ENDPOINT"]).netloc
     with fake_security_scanner(hostname=hostname) as fake:
-        # Simulate Clair returning a vulnerability in the scan
+        # Trigger security worker indexing
+        secscan = V4SecurityScanner(application, instance_keys, storage)
+        secscan.perform_indexing_recent_manifests()
+        next_token = secscan.perform_indexing()
+
+        # Verify status updated to COMPLETED
+        mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
+        assert mss.index_status == IndexStatus.COMPLETED
+        assert mss.indexer_hash == fake.indexer_state
+        assert mss.indexer_version == IndexerVersion.V4
+
+        # Set vulnerability data AFTER indexing - the fake scanner's index endpoint
+        # overwrites vulnerability_reports with empty data during indexing
         fake.vulnerability_reports[manifest.digest] = {
             "manifest_hash": manifest.digest,
             "packages": {
@@ -183,17 +195,6 @@ def test_scan_on_push_lifecycle(initialized_db, set_secscan_config):
                 "1": ["CVE-2024-1234"],
             },
         }
-
-        # Trigger security worker indexing
-        secscan = V4SecurityScanner(application, instance_keys, storage)
-        secscan.perform_indexing_recent_manifests()
-        next_token = secscan.perform_indexing()
-
-        # Verify status updated to COMPLETED
-        mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
-        assert mss.index_status == IndexStatus.COMPLETED
-        assert mss.indexer_hash == fake.indexer_state
-        assert mss.indexer_version == IndexerVersion.V4
 
         # Verify CVE data queryable via API
         security_info = secscan.load_security_information(manifest, include_vulnerabilities=True)
@@ -299,6 +300,16 @@ def test_rescan_on_cve_update(initialized_db, set_secscan_config):
 
     hostname = urlparse(application.config["SECURITY_SCANNER_V4_ENDPOINT"]).netloc
     with fake_security_scanner(hostname=hostname) as fake:
+        secscan = V4SecurityScanner(application, instance_keys, storage)
+        secscan.perform_indexing()
+
+        # Verify manifest was indexed
+        mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
+        assert mss.index_status == IndexStatus.COMPLETED
+        initial_indexer_hash = mss.indexer_hash
+
+        # Set vulnerability data AFTER indexing - the fake scanner's index endpoint
+        # overwrites vulnerability_reports with empty data during indexing
         # Initial scan: no vulnerabilities
         fake.vulnerability_reports[manifest.digest] = {
             "manifest_hash": manifest.digest,
@@ -309,20 +320,29 @@ def test_rescan_on_cve_update(initialized_db, set_secscan_config):
             "package_vulnerabilities": {},
         }
 
-        secscan = V4SecurityScanner(application, instance_keys, storage)
-        secscan.perform_indexing()
-
-        # Verify manifest was indexed
-        mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
-        assert mss.index_status == IndexStatus.COMPLETED
-        initial_indexer_hash = mss.indexer_hash
-
         # Verify no CVEs initially
         security_info = secscan.load_security_information(manifest, include_vulnerabilities=True)
         assert security_info.status == ScanLookupStatus.SUCCESS
         # No packages means no vulnerabilities
         assert len(security_info.security_information.Layer.Features) == 0
 
+        # Change indexer state to trigger re-index
+        new_state = "new_indexer_state_v2"
+        fake.indexer_state = new_state
+
+        # Trigger re-indexing by running perform_indexing again
+        # The worker will detect the indexer state change and re-index
+        secscan.perform_indexing_recent_manifests()
+        secscan.perform_indexing()
+
+        # Verify indexer hash was updated
+        mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
+        assert mss.index_status == IndexStatus.COMPLETED
+        assert mss.indexer_hash == new_state
+        assert mss.indexer_hash != initial_indexer_hash
+
+        # Set vulnerability data AFTER re-indexing - the fake scanner's index endpoint
+        # overwrites vulnerability_reports with empty data during indexing
         # Simulate CVE database update with new vulnerability
         fake.vulnerability_reports[manifest.digest] = {
             "manifest_hash": manifest.digest,
@@ -392,21 +412,6 @@ def test_rescan_on_cve_update(initialized_db, set_secscan_config):
                 "1": ["CVE-2024-9999"],
             },
         }
-
-        # Change indexer state to trigger re-index
-        new_state = "new_indexer_state_v2"
-        fake.indexer_state = new_state
-
-        # Trigger re-indexing by running perform_indexing again
-        # The worker will detect the indexer state change and re-index
-        secscan.perform_indexing_recent_manifests()
-        secscan.perform_indexing()
-
-        # Verify indexer hash was updated
-        mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
-        assert mss.index_status == IndexStatus.COMPLETED
-        assert mss.indexer_hash == new_state
-        assert mss.indexer_hash != initial_indexer_hash
 
         # Verify new CVE detected
         security_info = secscan.load_security_information(manifest, include_vulnerabilities=True)

@@ -175,9 +175,7 @@ test.describe(
       const digest = tags.tags[0].manifest_digest;
 
       // Navigate to tag page (scan might still be queued)
-      await authenticatedPage.goto(
-        `/repository/${repo.fullName}/tag/v1.0.0`,
-      );
+      await authenticatedPage.goto(`/repository/${repo.fullName}/tag/v1.0.0`);
 
       // Wait for scan to complete in background
       await waitForSecurityScan(
@@ -198,7 +196,9 @@ test.describe(
       ).toBeVisible({timeout: 10000});
 
       // Verify we can navigate to security report
-      await authenticatedPage.getByRole('tab', {name: 'Security Report'}).click();
+      await authenticatedPage
+        .getByRole('tab', {name: 'Security Report'})
+        .click();
 
       // Verify security report loaded (shows scan results)
       await expect(
