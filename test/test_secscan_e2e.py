@@ -241,17 +241,16 @@ def test_scanner_unavailability(initialized_db, set_secscan_config):
     manifest = create_test_manifest(repo, num_layers=3, tag="latest")
 
     # Make Clair unavailable (mock returns connection errors)
+    # state() returns successfully so perform_indexing() proceeds
+    # index() fails to trigger the error handling path that sets FAILED status
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = Mock()
-    secscan._secscan_api.state.side_effect = APIRequestFailure()
+    secscan._secscan_api.state.return_value = "test-indexer-state"
     secscan._secscan_api.index.side_effect = APIRequestFailure()
 
     # Trigger worker - should handle error gracefully
-    try:
-        secscan.perform_indexing()
-    except APIRequestFailure:
-        # Worker may propagate the exception, which is acceptable
-        pass
+    # The error will be caught internally and status set to FAILED
+    secscan.perform_indexing()
 
     # Verify manifest still exists (push not blocked)
     assert Manifest.get(id=manifest._db_id) is not None
