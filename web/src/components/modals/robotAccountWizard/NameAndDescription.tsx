@@ -38,7 +38,7 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
     <Form>
       <FormGroup label={props.nameLabel} fieldId="form-name" isRequired>
         <TextInput
-          data-testid="new-robot-name-input"
+          data-testid="robot-wizard-form-name"
           isRequired
           type="text"
           id="robot-wizard-form-name"

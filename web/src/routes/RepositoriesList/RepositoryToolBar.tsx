@@ -89,6 +89,7 @@ export function RepositoryToolBar(props: RepositoryToolBarProps) {
         buttonText="Make public"
         makePublic={true}
         selectAllRepos={props.selectAllRepos}
+        confirmButtonTestId="make-public-confirm-btn"
       />
       <ConfirmationModal
         title="Make repositories private"
@@ -99,6 +100,7 @@ export function RepositoryToolBar(props: RepositoryToolBarProps) {
         selectedItems={props.selectedRepoNames}
         makePublic={false}
         selectAllRepos={props.selectAllRepos}
+        confirmButtonTestId="make-private-confirm-btn"
       />
     </Toolbar>
   );

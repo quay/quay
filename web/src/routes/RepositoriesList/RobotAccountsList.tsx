@@ -615,6 +615,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           aria-label="Expandable table"
           variant="compact"
           id="robot-accounts-table"
+          data-testid="robot-accounts-table"
         >
           <Thead>
             <Tr>
