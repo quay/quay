@@ -141,11 +141,13 @@ def test_scan_on_push_lifecycle(initialized_db, set_secscan_config):
                 },
             },
             "environments": {
-                "1": {
-                    "package_db": "1",
-                    "introduced_in": "sha256:abc123",
-                    "distribution_id": "1",
-                },
+                "1": [
+                    {
+                        "package_db": "1",
+                        "introduced_in": "sha256:abc123",
+                        "distribution_id": "1",
+                    }
+                ],
             },
             "vulnerabilities": {
                 "CVE-2024-1234": {
@@ -217,7 +219,8 @@ def test_scan_on_push_lifecycle(initialized_db, set_secscan_config):
         assert "CVE-2024-1234" in cve_names
 
         # Find our specific CVE and verify details
-        test_cve = next(v for v in vulnerabilities if v.Name == "CVE-2024-1234")
+        test_cve = next((v for v in vulnerabilities if v.Name == "CVE-2024-1234"), None)
+        assert test_cve is not None, "Expected CVE-2024-1234 in vulnerabilities"
         assert test_cve.Severity == "Critical"
         assert test_cve.FixedBy == "1.2.3"
         assert "Test critical vulnerability" in test_cve.Description
@@ -347,11 +350,13 @@ def test_rescan_on_cve_update(initialized_db, set_secscan_config):
                 },
             },
             "environments": {
-                "1": {
-                    "package_db": "1",
-                    "introduced_in": "sha256:def456",
-                    "distribution_id": "1",
-                },
+                "1": [
+                    {
+                        "package_db": "1",
+                        "introduced_in": "sha256:def456",
+                        "distribution_id": "1",
+                    }
+                ],
             },
             "vulnerabilities": {
                 "CVE-2024-9999": {
@@ -423,7 +428,8 @@ def test_rescan_on_cve_update(initialized_db, set_secscan_config):
         assert "CVE-2024-9999" in cve_names
 
         # Find our specific CVE and verify details
-        new_cve = next(v for v in vulnerabilities if v.Name == "CVE-2024-9999")
+        new_cve = next((v for v in vulnerabilities if v.Name == "CVE-2024-9999"), None)
+        assert new_cve is not None, "Expected CVE-2024-9999 in vulnerabilities"
         assert new_cve.Severity == "High"
         assert new_cve.FixedBy == "7.70.0"
         assert "Newly discovered" in new_cve.Description
