@@ -1,0 +1,66 @@
+name: Playwright Report Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+    paths:
+      - 'web/**'
+
+jobs:
+  cleanup:
+    name: Teardown Playwright Report
+    runs-on: ubuntu-22.04
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+    - name: Teardown Surge deployment
+      run: |
+        DEPLOY_DOMAIN="quay-playwright-pr-${{ github.event.pull_request.number }}.surge.sh"
+        npx surge teardown $DEPLOY_DOMAIN --token $SURGE_TOKEN
+      env:
+        SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+
+    - name: Update PR comment
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const prNumber = context.payload.pull_request.number;
+          const deployDomain = `quay-playwright-pr-${prNumber}.surge.sh`;
+
+          // Find existing comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+
+          const botComment = comments.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Playwright Test Report')
+          );
+
+          const commentBody = `## Playwright Test Report
+
+          🧹 **Report deployment has been cleaned up**
+
+          The report at \`${deployDomain}\` has been torn down since this PR was closed.`;
+
+          if (botComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: commentBody
+            });
+          } else {
+            // Fallback: create new comment if original wasn't found
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+          }

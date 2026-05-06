@@ -1,0 +1,153 @@
+name: Playwright E2E Tests
+on:
+  pull_request:
+    branches:
+      - "*"
+    paths:
+      - "web/**"
+      - ".github/workflows/web-playwright-ci.yaml"
+      - ".github/actions/setup-quay/**"
+
+jobs:
+  playwright:
+    name: Playwright E2E Tests
+    runs-on: quay-002-small-ubuntu-24-x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Quay
+        uses: ./.github/actions/setup-quay
+        with:
+          with-clair: true
+          with-keycloak: true
+          extra-config: |
+            FEATURE_MAILING: true
+            FEATURE_SECURITY_SCANNER: true
+            FEATURE_SECURITY_NOTIFICATIONS: true
+
+      - name: Set up Node.js with npm caching
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: cd web && npm install
+
+      - name: Get Playwright version
+        id: playwright-version
+        run: |
+          cd web
+          PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package-lock.json').packages['node_modules/@playwright/test'].version)")
+          echo "version=$PLAYWRIGHT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: cd web && npx playwright install --with-deps
+
+      - name: Install Playwright OS dependencies only
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: cd web && npx playwright install-deps
+
+      - name: Install skopeo for multi-arch image tests
+        run: sudo apt-get update && sudo apt-get install -y skopeo
+
+      - name: Run Database auth tests
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
+        run: cd web && npx playwright test --grep-invert @auth:OIDC --reporter=blob
+
+      - name: Swap to OIDC authentication
+        if: always()
+        run: |
+          pip install pyyaml -q
+          # Merge Keycloak OIDC login config
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            local-dev/keycloak/keycloak-config.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Merge OIDC auth type + feature flags (inline, no duplicate file)
+          cat > /tmp/oidc-auth-overlay.yaml <<'EOF'
+          AUTHENTICATION_TYPE: OIDC
+          FEATURE_TEAM_SYNCING: true
+          FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP: true
+          SUPER_USERS:
+            - admin
+            - admin_oidc
+          EOF
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            /tmp/oidc-auth-overlay.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Restart Quay and wait for healthy
+          docker restart quay-quay
+          curl -sf --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:8080/health/instance > /dev/null
+          echo "Quay is ready with OIDC auth"
+
+      - name: Run OIDC auth tests
+        if: always()
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
+        run: cd web && npx playwright test --grep @auth:OIDC --reporter=blob
+
+      - name: Merge test reports
+        if: always()
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/results.json
+        run: |
+          cd web
+          mkdir -p all-blob-reports
+          find blob-results -name '*.zip' -exec cp {} all-blob-reports/ \; 2>/dev/null
+          if [ "$(ls -A all-blob-reports 2>/dev/null)" ]; then
+            npx playwright merge-reports --reporter=html,json all-blob-reports
+          else
+            echo "::warning::No blob reports found. Test reports were not generated."
+          fi
+
+      - name: Save PR number
+        if: always()
+        run: |
+          mkdir -p ./pr-info
+          echo ${{ github.event.pull_request.number }} > ./pr-info/pr_number.txt
+
+      - name: Upload PR info
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr-info
+          path: pr-info/
+          retention-days: 1
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          retention-days: 30
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-test-results
+          path: web/test-results/
+          retention-days: 30
+
+      - name: Collect Quay logs on failure
+        if: failure()
+        uses: ./.github/actions/collect-quay-logs
+        with:
+          artifact-name: 'quay-container-logs'

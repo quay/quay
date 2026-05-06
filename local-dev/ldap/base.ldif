@@ -1,0 +1,106 @@
+# Base DN structure for Quay LDAP using 389 Directory Server
+# This LDIF file sets up a simple LDAP directory that matches the Quay config
+#
+# NOTE: The admin user is cn=Directory Manager (created automatically).
+# We need to create the base DN and organizational units manually.
+
+# Base organization entry
+dn: dc=example,dc=org
+objectClass: top
+objectClass: domain
+dc: example
+
+# Organizational unit for users
+dn: ou=users,dc=example,dc=org
+objectClass: organizationalUnit
+ou: users
+
+# Sample user: admin (superuser in Quay)
+dn: uid=admin,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: admin
+sn: Admin
+givenName: Admin
+cn: Admin User
+displayName: Admin User
+uidNumber: 10000
+gidNumber: 10000
+userPassword: password
+gecos: Admin User
+loginShell: /bin/bash
+homeDirectory: /home/admin
+mail: admin@example.com
+
+# Sample user: user1 (superuser in Quay)
+dn: uid=user1,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: user1
+sn: One
+givenName: User
+cn: User One
+displayName: User One
+uidNumber: 10001
+gidNumber: 10001
+userPassword: password
+gecos: User One
+loginShell: /bin/bash
+homeDirectory: /home/user1
+mail: user1@example.com
+
+# Sample user: quayadmin (superuser + readonly superuser in Quay)
+dn: uid=quayadmin,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: quayadmin
+sn: Admin
+givenName: Quay
+cn: Quay Admin
+displayName: Quay Admin
+uidNumber: 10002
+gidNumber: 10002
+userPassword: password
+gecos: Quay Admin
+loginShell: /bin/bash
+homeDirectory: /home/quayadmin
+mail: quayadmin@example.com
+
+# Sample user: readonly (readonly superuser in Quay)
+dn: uid=readonly,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: readonly
+sn: Only
+givenName: Read
+cn: Read Only
+displayName: Read Only
+uidNumber: 10003
+gidNumber: 10003
+userPassword: password
+gecos: Read Only
+loginShell: /bin/bash
+homeDirectory: /home/readonly
+mail: readonly@example.com
+
+# Sample regular user: testuser
+dn: uid=testuser,ou=users,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: testuser
+sn: User
+givenName: Test
+cn: Test User
+displayName: Test User
+uidNumber: 10004
+gidNumber: 10004
+userPassword: password
+gecos: Test User
+loginShell: /bin/bash
+homeDirectory: /home/testuser
+mail: testuser@example.com
