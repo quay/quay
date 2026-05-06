@@ -19,7 +19,7 @@ fi
 # Self-gate: only enforce on gh pr create commands.
 # The settings.json `if` field may not be honored on all Claude Code versions,
 # so the script must guard itself.
-if ! echo "$CMD" | grep -q 'gh pr create'; then
+if ! echo "$CMD" | grep -qE "(^|[|&;]\s*)gh pr create"; then
   exit 0
 fi
 
