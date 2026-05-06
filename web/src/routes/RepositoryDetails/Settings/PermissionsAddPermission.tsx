@@ -197,6 +197,7 @@ export default function AddPermissions(props: AddPermissionsProps) {
               createPermission();
             }}
             variant="primary"
+            data-testid="permissions-submit-btn"
           >
             Submit
           </Button>

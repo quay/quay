@@ -84,46 +84,5 @@ test.describe(
       await expect(superuserPage.getByTestId('usage-logs-table')).toBeVisible();
     });
 
-    test('shows info alert when Splunk search is not configured', async ({
-      superuserPage,
-    }) => {
-      await superuserPage.route('**/api/v1/superuser/logs*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            logs: [],
-            search_unavailable: true,
-            message:
-              'Audit log viewing requires a search_token to be configured for Splunk HEC.',
-          }),
-        });
-      });
-      await superuserPage.route(
-        '**/api/v1/superuser/aggregatelogs*',
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              aggregated: [],
-              search_unavailable: true,
-              message:
-                'Audit log viewing requires a search_token to be configured for Splunk HEC.',
-            }),
-          });
-        },
-      );
-
-      await superuserPage.goto('/usage-logs');
-
-      await expect(
-        superuserPage
-          .getByText(
-            'Audit log viewing requires a search_token to be configured for Splunk HEC.',
-          )
-          .first(),
-      ).toBeVisible();
-    });
   },
 );

@@ -11,6 +11,7 @@ export const ToolbarPagination = (props: ToolbarPaginationProps) => {
         itemCount={props.total || props.itemsList?.length}
         perPage={props.perPage}
         id={props.id ? props.id : 'toolbar-pagination'}
+        data-testid={props['data-testid']}
         page={props.page}
         onSetPage={(_event, pageNumber) => props.setPage(pageNumber)}
         onPerPageSelect={(_event, perPageNumber) => {
@@ -37,4 +38,5 @@ type ToolbarPaginationProps = {
   id?: string;
   total?: number;
   isCompact?: boolean;
+  'data-testid'?: string;
 };
