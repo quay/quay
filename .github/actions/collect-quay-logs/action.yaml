@@ -1,0 +1,32 @@
+name: 'Collect Quay Logs'
+description: 'Collect debug logs from Quay containers for troubleshooting'
+
+inputs:
+  artifact-name:
+    description: 'Name for the logs artifact'
+    required: false
+    default: 'quay-debug-logs'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Collect container logs
+      shell: bash
+      run: |
+        mkdir -p logs/
+        docker ps -a > logs/container-status.txt 2>&1 || true
+
+        # Collect logs from any Quay-related container that exists
+        for container in quay-quay quay-db quay-redis quay-clair clair-db quay-ldap quay-repomirror quay-mailpit; do
+          if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+            echo "Collecting logs from ${container}..."
+            docker logs "${container}" > "logs/${container}.log" 2>&1 || true
+          fi
+        done
+
+    - name: Upload logs artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: logs/
+        retention-days: 7
