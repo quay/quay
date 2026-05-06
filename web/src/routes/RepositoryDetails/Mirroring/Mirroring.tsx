@@ -130,7 +130,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               </>
             ) : (
               <>
-                Use the settings tab and change it to <strong>Mirror</strong> to
+                Use the Settings tab and change it to <strong>Mirror</strong> to
                 manage its mirroring configuration.
               </>
             )}
