@@ -153,7 +153,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     // tslint:disable-next-line:curly
   } else
     return (
-      <Flex grow={{default: 'grow'}}>
+      <Flex grow={{default: 'grow'}} data-testid="usage-logs-chart">
         <FlexItem>
           <Chart
             key={props.starttime + props.endtime}

@@ -166,6 +166,7 @@ export function TagsToolbar(props: ToolBarProps) {
               setKebabOpen={setKebabOpen}
               kebabItems={kebabItems}
               useActions={true}
+              data-testid="bulk-actions-kebab"
             />
           ) : null}
         </ToolbarItem>

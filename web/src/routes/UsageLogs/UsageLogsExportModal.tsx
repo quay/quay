@@ -51,6 +51,7 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
         variant="primary"
         onClick={handleModalToggle}
         isDisabled={!validateDate()}
+        data-testid="usage-logs-export-button"
       >
         Export
       </Button>
@@ -111,6 +112,7 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
               })
             }
             isDisabled={userInputValidated === 'error'}
+            data-testid="usage-logs-export-confirm-button"
           >
             {' '}
             Confirm
