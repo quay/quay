@@ -1,2 +1,0 @@
-# This file is used to workaround a bootstrapping issue when generating build requirements
-setuptools_scm < 8.2.0; python_version < "3.10"

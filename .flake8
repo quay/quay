@@ -1,8 +1,0 @@
-[flake8]
-exclude =
-    .*,
-    __pycache__,
-    node_modules
-max-line-length = 100
-max-complexity = 10
-extend-ignore = E704
