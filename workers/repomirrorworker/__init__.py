@@ -404,15 +404,14 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 rollback(mirror, now_ms)
             else:
                 rollback(mirror, now_ms, failed_tags)
-        if overall_status == RepoMirrorStatus.CANCEL:
+        elif overall_status == RepoMirrorStatus.CANCEL:
             log_message = "'%s' with tag pattern '%s'"
             emit_log(
                 mirror,
                 "repo_mirror_sync_failed",
                 "Cancelled",
                 log_message % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
-                stdout="Not applicable",
-                stderr="Not applicable",
+                tags=", ".join(tags),
             )
         else:
             emit_log(
