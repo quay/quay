@@ -222,6 +222,7 @@ export default function OrgTableData(props: OrgTableDataProps) {
             isUser={props.isUser}
             userEnabled={props.userEnabled}
             userSuperuser={props.userSuperuser}
+            userGlobalReadonlySuperuser={props.userGlobalReadonlySuperuser}
             selectedOrganization={props.selectedOrganization}
             setSelectedOrganization={props.setSelectedOrganization}
           />
