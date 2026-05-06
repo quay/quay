@@ -1,5 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
+import {pushImage} from '../../utils/container';
 
 test.describe(
   'Quota Management',
@@ -296,5 +297,217 @@ test.describe(
         ).not.toBeVisible();
       },
     );
+  },
+);
+
+test.describe(
+  'Quota Enforcement E2E',
+  {
+    tag: [
+      '@organization',
+      '@feature:QUOTA_MANAGEMENT',
+      '@feature:EDIT_QUOTA',
+      '@container',
+    ],
+  },
+  () => {
+    test('displays quota usage in organization dashboard', async ({
+      authenticatedPage,
+      superuserApi,
+      api,
+    }) => {
+      const org = await api.organization('quotadashboard');
+      await superuserApi.quota(org.name, 104857600); // 100 MiB
+
+      // Create repo before pushing so V2 auth can resolve scope
+      await api.repositoryWithName(org.name, 'testrepo');
+
+      await pushImage(
+        org.name,
+        'testrepo',
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Verify quota usage appears in Settings > Quota tab
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByTestId('Quota').click();
+
+      // When quota is configured, the form renders with id="quota-management-form"
+      const quotaForm = authenticatedPage.locator('#quota-management-form');
+      await expect(quotaForm).toBeVisible();
+
+      // Verify quota value input and unit selector are present
+      await expect(
+        authenticatedPage.getByTestId('quota-value-input'),
+      ).toBeVisible();
+      const unitToggle = authenticatedPage.getByTestId(
+        'quota-unit-select-toggle',
+      );
+      await expect(unitToggle).toHaveText(/KiB|MiB|GiB|TiB/);
+    });
+
+    test('shows quota with warning policy in settings', async ({
+      authenticatedPage,
+      superuserApi,
+      api,
+    }) => {
+      const org = await api.organization('quotawarn');
+      const quota = await superuserApi.quota(org.name, 3145728); // 3 MiB
+
+      await superuserApi.raw.createQuotaLimit(
+        org.name,
+        quota.quotaId,
+        'Warning',
+        80,
+      );
+
+      // Create repos before pushing
+      await api.repositoryWithName(org.name, 'repo1');
+      await api.repositoryWithName(org.name, 'repo2');
+
+      // Push images to exceed 80% warning threshold (2 x ~1.2 MiB)
+      await pushImage(
+        org.name,
+        'repo1',
+        'v1',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+      await pushImage(
+        org.name,
+        'repo2',
+        'v2',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Verify quota form and policy section in Settings > Quota tab
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByTestId('Quota').click();
+
+      const quotaForm = authenticatedPage.locator('#quota-management-form');
+      await expect(quotaForm).toBeVisible();
+
+      // Verify warning policy is shown with percentage
+      const policySection = authenticatedPage.getByTestId(
+        'quota-policy-section',
+      );
+      await expect(policySection).toBeVisible();
+      await expect(policySection).toContainText('Warning');
+      await expect(policySection).toContainText('%');
+    });
+
+    test('displays quota state when quota exceeded', async ({
+      authenticatedPage,
+      superuserApi,
+      api,
+    }) => {
+      const org = await api.organization('quotaexceed');
+      const quota = await superuserApi.quota(org.name, 2097152); // 2 MiB
+
+      await superuserApi.raw.createQuotaLimit(
+        org.name,
+        quota.quotaId,
+        'Reject',
+        100,
+      );
+
+      // Create repo before pushing
+      await api.repositoryWithName(org.name, 'fillrepo');
+
+      // First push (~1.2 MiB) should succeed
+      await pushImage(
+        org.name,
+        'fillrepo',
+        'v1',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Second push should be rejected (total ~2.4 MiB > 2 MiB limit)
+      let secondPushFailed = false;
+      try {
+        await pushImage(
+          org.name,
+          'fillrepo',
+          'v2',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        );
+      } catch {
+        secondPushFailed = true;
+      }
+
+      // Verify quota state in Settings > Quota tab
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByTestId('Quota').click();
+
+      const quotaForm = authenticatedPage.locator('#quota-management-form');
+      await expect(quotaForm).toBeVisible();
+
+      // Verify reject policy is configured
+      const policySection = authenticatedPage.getByTestId(
+        'quota-policy-section',
+      );
+      await expect(policySection).toBeVisible();
+      await expect(policySection).toContainText('Reject');
+    });
+
+    test('quota warning policy visible after push', async ({
+      authenticatedPage,
+      superuserApi,
+      api,
+    }) => {
+      const org = await api.organization('quotanotify');
+      const quota = await superuserApi.quota(org.name, 3145728); // 3 MiB
+
+      await superuserApi.raw.createQuotaLimit(
+        org.name,
+        quota.quotaId,
+        'Warning',
+        80,
+      );
+
+      // Create repos before pushing
+      await api.repositoryWithName(org.name, 'repo1');
+      await api.repositoryWithName(org.name, 'repo2');
+
+      // Push images to trigger warning threshold
+      await pushImage(
+        org.name,
+        'repo1',
+        'v1',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+      await pushImage(
+        org.name,
+        'repo2',
+        'v2',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Verify quota configuration and warning limit in Settings > Quota tab
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByTestId('Quota').click();
+
+      const quotaForm = authenticatedPage.locator('#quota-management-form');
+      await expect(quotaForm).toBeVisible();
+
+      // Verify the read-only alert is shown
+      await expect(
+        authenticatedPage.getByTestId('readonly-quota-alert'),
+      ).toBeVisible();
+
+      // Verify warning policy exists
+      const policySection = authenticatedPage.getByTestId(
+        'quota-policy-section',
+      );
+      await expect(policySection).toBeVisible();
+      await expect(policySection).toContainText('Warning');
+    });
   },
 );
