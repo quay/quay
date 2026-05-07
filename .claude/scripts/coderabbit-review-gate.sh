@@ -43,9 +43,9 @@ echo "[coderabbit-review-gate] Running CodeRabbit review before PR creation..." 
 
 CR_OUTPUT=$(cd "$REPO_ROOT" && coderabbit review --agent --base "$BASE_BRANCH" 2>&1 || true)
 
-CR_JSON=$(echo "$CR_OUTPUT" | grep -E '^\{' || true)
+CR_JSON=$(echo "$CR_OUTPUT" | jq -c '.' 2>/dev/null || true)
 
-CR_ERROR_TYPE=$(echo "$CR_JSON" | jq -r 'select(.type == "error") | .errorType' 2>/dev/null || true)
+CR_ERROR_TYPE=$(echo "$CR_JSON" | jq -r 'select(.type == "error") | .errorType' 2>/dev/null | head -1 || true)
 
 if [ "$CR_ERROR_TYPE" = "rate_limit" ]; then
   echo "[coderabbit-review-gate] Rate-limited — allowing PR creation" >&2
