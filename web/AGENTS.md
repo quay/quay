@@ -57,26 +57,26 @@ web/
 
 ```bash
 # Local Development
-npm install              # Install dependencies
-npm start                # Dev server on http://localhost:9000 (hot-reload)
-MOCK_API=true npm start  # Mock API (no backend required)
-npm run format           # Prettier formatting
+pnpm install             # Install dependencies
+pnpm start               # Dev server on http://localhost:9000 (hot-reload)
+MOCK_API=true pnpm start # Mock API (no backend required)
+pnpm run format          # Prettier formatting
 
 # Unit Testing (Vitest + React Testing Library)
-npm test                 # Run all unit tests
-npm run test:watch       # Watch mode for development
-npm run test:coverage    # Run with coverage report
-npx vitest run src/libs/utils.test.ts  # Single test file
+pnpm test                # Run all unit tests
+pnpm run test:watch      # Watch mode for development
+pnpm run test:coverage   # Run with coverage report
+pnpm vitest run src/libs/utils.test.ts  # Single test file
 
 # E2E Testing (Playwright)
-npm run test:e2e         # Run all Playwright e2e tests
-npm run test:e2e:ui      # Playwright UI mode
-npm run test:api         # API-only tests
+pnpm run test:e2e        # Run all Playwright e2e tests
+pnpm run test:e2e:ui     # Playwright UI mode
+pnpm run test:api        # API-only tests
 
 # Building
-npm run build            # Production build → dist/
-npm run build-plugin     # OpenShift Console plugin build
-npm run start-plugin     # Plugin dev server
+pnpm run build           # Production build → dist/
+pnpm run build-plugin    # OpenShift Console plugin build
+pnpm run start-plugin    # Plugin dev server
 ```
 
 ## Quay-Specific Patterns

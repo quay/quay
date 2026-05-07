@@ -108,7 +108,7 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 | Unit tests | Run failing test locally, fix code |
 | Types (mypy) | Fix type annotations |
 | Registry tests | `make registry-test` locally |
-| Cypress/Playwright | `cd web && npm run test:e2e` |
+| Cypress/Playwright | `cd web && pnpm run test:e2e` |
 | PR Lint | Fix PR title to match regex |
 
 ## Session Setup
