@@ -55,6 +55,7 @@ export default function PermissionsDropdown({
         <DropdownList>
           {roles.map((role) => (
             <DropdownItem
+              component="button"
               key={role.name}
               description={role.description}
               onClick={() =>
