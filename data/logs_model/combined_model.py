@@ -125,6 +125,7 @@ class CombinedLogsModel(SharedModel, ActionLogsDataInterface):
         repository_id=None,
         namespace_id=None,
         max_query_time=None,
+        upload_id=None,
     ):
         rw_model = self.read_write_logs_model
         ro_model = self.read_only_logs_model
@@ -134,7 +135,14 @@ class CombinedLogsModel(SharedModel, ActionLogsDataInterface):
         ro_logs = ro_model.yield_logs_for_export(
             start_datetime, end_datetime, repository_id, namespace_id, max_query_time
         )
+        all_logs = itertools.chain(rw_logs, ro_logs)
+        logger.debug(
+            f"length of total logs to stream for upload id: {upload_id} is {len(list(all_logs))}"
+        )
+        batch_count = 1
         for batch in itertools.chain(rw_logs, ro_logs):
+            logger.debug(f"yielding batch: {batch_count} for upload id: {upload_id}")
+            batch_count += 1
             yield batch
 
     def lookup_logs(
