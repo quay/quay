@@ -251,6 +251,83 @@ describe('UseLogDescriptions', () => {
         }),
       ).toContain('External Registry');
     });
+
+    it('repo_mirror_sync_success includes tags when present', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_success({
+        message: 'registry.example.com/repo',
+        tags: 'latest, v1.0',
+      });
+      expect(result).toBe(
+        'Mirror finished successfully for registry.example.com/repo latest, v1.0',
+      );
+    });
+
+    it('repo_mirror_sync_success omits tags when missing', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_success({
+        message: 'registry.example.com/repo',
+      });
+      expect(result).toBe(
+        'Mirror finished successfully for registry.example.com/repo',
+      );
+      expect(result).not.toContain('undefined');
+      expect(result).not.toContain('null');
+    });
+
+    it('repo_mirror_sync_failed includes all fields when present', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_failed({
+        message: 'registry.example.com/repo',
+        tags: 'latest',
+        stdout: 'output',
+        stderr: 'error',
+      });
+      expect(result).toContain('registry.example.com/repo');
+      expect(result).toContain('latest');
+      expect(result).toContain('output');
+      expect(result).toContain('error');
+    });
+
+    it('repo_mirror_sync_failed omits null/undefined fields', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_failed({
+        message: 'registry.example.com/repo',
+      });
+      expect(result).toBe(
+        'Mirror finished unsuccessfully for registry.example.com/repo',
+      );
+      expect(result).not.toContain('undefined');
+      expect(result).not.toContain('null');
+      expect(result).not.toContain('Not applicable');
+    });
+
+    it('repo_mirror_sync_tag_success omits missing stdout/stderr', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_tag_success({
+        tag: 'latest',
+        namespace: 'ns',
+        repo: 'myrepo',
+        message: 'ok',
+      });
+      expect(result).toContain('latest');
+      expect(result).not.toContain('undefined');
+      expect(result).not.toContain('null');
+    });
+
+    it('repo_mirror_sync_tag_failed omits missing stdout/stderr', () => {
+      const desc = getDescriptions();
+      const result = desc.repo_mirror_sync_tag_failed({
+        tag: 'latest',
+        namespace: 'ns',
+        repo: 'myrepo',
+        message: 'failed',
+      });
+      expect(result).toContain('latest');
+      expect(result).toContain('failure');
+      expect(result).not.toContain('undefined');
+      expect(result).not.toContain('null');
+    });
   });
 
   describe('permission events', () => {
