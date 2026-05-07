@@ -177,7 +177,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
       3: (log: LogEntry) => log.ip || '', // IP Address
     },
     filter: searchFilter,
-    initialPerPage: 20,
+    initialPerPage: 50,
     initialSort: {columnIndex: 0, direction: 'desc'}, // Default sort: newest first
   });
 
