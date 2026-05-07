@@ -9,10 +9,12 @@ as well as manifest_utils.py and org_mirror_model.py.
 import json
 from datetime import datetime, timedelta
 from functools import wraps
+from io import BytesIO
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from app import storage
 from data import model
 from data.database import (
     OrgMirrorConfig,
@@ -26,7 +28,12 @@ from data.database import (
     Visibility,
 )
 from data.encryption import DecryptionFailureException
+from data.model.oci.tag import lookup_alive_tags_shallow
 from data.model.user import create_robot, create_user_noverify, lookup_robot
+from data.registry_model import registry_model
+from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
+from data.registry_model.datatypes import RepositoryReference
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 from util.repomirror.skopeomirror import SkopeoResults
 from workers.repomirrorworker import (
@@ -94,6 +101,40 @@ def _create_org_and_robot(org_name: str):
         robot, _ = create_robot(robot_shortname, org)
 
     return org, robot
+
+
+def _create_tag_in_repo(repo, name):
+    """Create a tag with a minimal manifest in the given repository."""
+    repo_ref = RepositoryReference.for_repo_obj(repo)
+
+    with upload_blob(repo_ref, storage, BlobUploadSettings(500, 500)) as upload:
+        app_config = {"TESTING": True}
+        config_json = json.dumps(
+            {
+                "config": {"author": "Org Mirror Test"},
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [
+                    {
+                        "created": "2024-01-01T00:00:00Z",
+                        "created_by": "test",
+                        "author": "Org Mirror Test",
+                    }
+                ],
+            }
+        )
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
+        blob = upload.commit_to_blob(app_config)
+
+    builder = DockerSchema2ManifestBuilder()
+    builder.set_config_digest(blob.digest, blob.compressed_size)
+    builder.add_layer("sha256:abcd", 1234, urls=["http://hello/world"])
+    manifest = builder.build()
+
+    manifest, tag = registry_model.create_manifest_and_retarget_tag(
+        repo_ref, manifest, name, storage, raise_on_error=True
+    )
+    assert tag
+    assert tag.name == name
 
 
 def _create_org_mirror_config(org, robot, is_enabled=True):
@@ -782,6 +823,126 @@ class TestPerformOrgMirrorRepo:
         assert refreshed_repo.sync_status == OrgMirrorRepoStatus.CANCEL
         assert refreshed_repo.sync_start_date is None
         assert refreshed_repo.sync_retries_remaining == 0
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    def test_sync_removes_obsolete_tags(self, mock_token, _mock_logs, initialized_db, app):
+        """Tags present locally but absent from upstream should be deleted after sync."""
+        org, robot = _create_org_and_robot("sync_obsolete1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        local_repo = model.repository.create_repository(
+            org.username, "obsolete-tag-repo", robot, visibility="private"
+        )
+        repo_db = Repository.get(Repository.id == local_repo.id)
+        repo_db.state = RepositoryState.ORG_MIRROR
+        repo_db.save()
+
+        _create_tag_in_repo(local_repo, "stale_v1")
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="obsolete-tag-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            repository=repo_db,
+        )
+
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, ["v2.0"], "", "")
+        mock_skopeo.copy.return_value = SkopeoResults(True, [], "copied", "")
+        mock_token.return_value = "robot_token"
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.SUCCESS
+        remaining_tags, _ = lookup_alive_tags_shallow(local_repo.id)
+        remaining_names = [tag.name for tag in remaining_tags]
+        assert "stale_v1" not in remaining_names
+
+    @disable_existing_org_mirrors
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    def test_sync_removes_all_tags_when_no_upstream_tags(
+        self, mock_token, _mock_logs, initialized_db, app
+    ):
+        """When upstream has no tags, all existing local tags should be deleted."""
+        org, robot = _create_org_and_robot("sync_empty1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        local_repo = model.repository.create_repository(
+            org.username, "empty-upstream-repo", robot, visibility="private"
+        )
+        repo_db = Repository.get(Repository.id == local_repo.id)
+        repo_db.state = RepositoryState.ORG_MIRROR
+        repo_db.save()
+
+        _create_tag_in_repo(local_repo, "old_a")
+        _create_tag_in_repo(local_repo, "old_b")
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="empty-upstream-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            repository=repo_db,
+        )
+
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, [], "", "")
+        mock_token.return_value = "robot_token"
+
+        result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.SUCCESS
+        remaining_tags, _ = lookup_alive_tags_shallow(local_repo.id)
+        assert [tag.name for tag in remaining_tags] == []
+
+    @disable_existing_org_mirrors
+    @pytest.mark.usefixtures("initialized_db", "app")
+    @patch("workers.repomirrorworker.logs_model")
+    @patch("workers.repomirrorworker.retrieve_robot_token")
+    def test_sync_releases_on_cleanup_error(self, mock_token, _mock_logs, initialized_db, app):
+        """When tag cleanup raises in the empty-tags path, the repo should be
+        released with FAIL status instead of staying claimed."""
+        org, robot = _create_org_and_robot("sync_clerr1")
+        config = _create_org_mirror_config(org, robot, is_enabled=True)
+
+        local_repo = model.repository.create_repository(
+            org.username, "cleanup-err-repo", robot, visibility="private"
+        )
+        repo_db = Repository.get(Repository.id == local_repo.id)
+        repo_db.state = RepositoryState.ORG_MIRROR
+        repo_db.save()
+
+        past_time = datetime.utcnow() - timedelta(hours=1)
+        org_mirror_repo = OrgMirrorRepository.create(
+            org_mirror_config=config,
+            repository_name="cleanup-err-repo",
+            sync_status=OrgMirrorRepoStatus.NEVER_RUN,
+            sync_start_date=past_time,
+            sync_retries_remaining=3,
+            repository=repo_db,
+        )
+
+        mock_skopeo = Mock()
+        mock_skopeo.tags.return_value = SkopeoResults(True, [], "", "")
+        mock_token.return_value = "robot_token"
+
+        with patch(
+            "workers.repomirrorworker._delete_obsolete_tags_for_repo",
+            side_effect=Exception("db error"),
+        ):
+            result = perform_org_mirror_repo(mock_skopeo, org_mirror_repo)
+
+        assert result == OrgMirrorRepoStatus.FAIL
+        updated = OrgMirrorRepository.get_by_id(org_mirror_repo.id)
+        assert updated.sync_status == OrgMirrorRepoStatus.FAIL
 
 
 class TestPerTagLogging:

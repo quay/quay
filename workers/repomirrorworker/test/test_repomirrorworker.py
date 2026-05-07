@@ -494,6 +494,132 @@ def test_remove_obsolete_tags(initialized_db):
     assert [tag.name for tag in deleted_tags] == ["oldtag"]
 
 
+def test_remove_obsolete_tags_all_deleted_when_empty(initialized_db):
+    """
+    When upstream returns no matching tags, all existing local tags should be deleted.
+    """
+
+    mirror, repository = create_mirror_repo_robot(["updated", "created"], repo_name="all_removed")
+
+    _create_tag(repository, "tag_a")
+    _create_tag(repository, "tag_b")
+
+    deleted_tags = delete_obsolete_tags(mirror, [])
+
+    deleted_names = sorted([tag.name for tag in deleted_tags])
+    assert deleted_names == ["tag_a", "tag_b"]
+
+    from data.model.oci.tag import lookup_alive_tags_shallow
+
+    remaining, _ = lookup_alive_tags_shallow(repository.id)
+    assert [t.name for t in remaining] == []
+
+
+def test_remove_obsolete_tags_skipped_when_config_disabled(initialized_db):
+    """
+    When REPO_MIRROR_DELETE_STALE_TAGS is false, no tags should be deleted.
+    """
+    from app import app as quay_app
+
+    mirror, repository = create_mirror_repo_robot(["updated", "created"], repo_name="skip_delete")
+
+    _create_tag(repository, "tag_a")
+
+    quay_app.config["REPO_MIRROR_DELETE_STALE_TAGS"] = False
+    try:
+        deleted_tags = delete_obsolete_tags(mirror, [])
+        assert deleted_tags == []
+
+        from data.model.oci.tag import lookup_alive_tags_shallow
+
+        remaining, _ = lookup_alive_tags_shallow(repository.id)
+        assert [t.name for t in remaining] == ["tag_a"]
+    finally:
+        quay_app.config["REPO_MIRROR_DELETE_STALE_TAGS"] = True
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_perform_mirror_cleans_tags_on_empty_upstream(run_skopeo_mock, initialized_db, app):
+    """
+    When upstream returns no tags matching the pattern, perform_mirror should
+    delete previously-synced local tags (the bug from PROJQUAY-11431).
+    """
+    mirror, repo = create_mirror_repo_robot(["latest", "7.1"], repo_name="empty_upstream")
+
+    _create_tag(repo, "stale_tag")
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=True",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": []}', ""),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        skopeo_call = skopeo_calls.pop(0)
+        _assert_skopeo_args(args, skopeo_call["args"])
+        return skopeo_call["results"]
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    assert [] == skopeo_calls
+
+    from data.model.oci.tag import lookup_alive_tags_shallow
+
+    remaining_tags, _ = lookup_alive_tags_shallow(repo.id)
+    assert [tag.name for tag in remaining_tags] == []
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+def test_perform_mirror_releases_on_cleanup_error(run_skopeo_mock, initialized_db, app):
+    """
+    When delete_obsolete_tags raises during the empty-tags path, the mirror
+    should be released with FAIL status instead of staying claimed.
+    """
+    mirror, repo = create_mirror_repo_robot(["latest", "7.1"], repo_name="cleanup_err")
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=True",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": []}', ""),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        skopeo_call = skopeo_calls.pop(0)
+        _assert_skopeo_args(args, skopeo_call["args"])
+        return skopeo_call["results"]
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    with mock.patch(
+        "workers.repomirrorworker.delete_obsolete_tags",
+        side_effect=Exception("db error"),
+    ):
+        worker = RepoMirrorWorker()
+        worker._process_mirrors()
+
+    assert [] == skopeo_calls
+
+    updated = RepoMirrorConfig.get_by_id(mirror.id)
+    assert updated.sync_status == RepoMirrorStatus.FAIL
+
+
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, monkeypatch):
