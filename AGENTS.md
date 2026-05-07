@@ -12,6 +12,27 @@ Enterprise container registry supporting Docker Registry Protocol v2, OCI spec v
 
 **Config:** YAML at `conf/stack/config.yaml` (local dev), validated via JSON Schema
 
+## Workflow Skills
+
+Use these skills for common tasks — they encode the full workflow so short prompts produce correct results:
+
+| Skill | When to use |
+|-------|-------------|
+| `/start PROJQUAY-XXXX` | Begin any ticketed task: assigns ticket, creates branch, loads context |
+| `/code` | Implement changes: reads conventions, writes code, runs quality checks, commits |
+| `/pr` | Open a pull request: validates title format, fills description template, sets labels |
+| `/poll PR#` | Monitor CI and reviews: loops until all checks pass, fixes failures automatically |
+| `/backport PR# [branch]` | Cherry-pick a merged PR to a release branch |
+| `/jira PROJQUAY-XXXX [action]` | View or update a JIRA ticket (assign, transition, set-version) |
+| `/ci PR#` | Quick CI status snapshot for a PR |
+| `/pilot-update [days]` | Draft and post a biweekly agentic SDLC pilot update to PROJQUAY-11352 |
+| `/migration` | Create an Alembic migration: scaffolds file, guides upgrade/downgrade, validates |
+| `/test [path]` | Run targeted tests for a file or area |
+| `/cluster-provision` | Provision an ephemeral OpenShift cluster for integration testing |
+| `/remote-playwright` | Deploy a remote Playwright browser on a cluster for E2E testing |
+
+**Full ticket workflow:** `/start PROJQUAY-XXXX` → `/code` → `/pr` → `/poll PR#` → `/backport PR# branch` (if needed)
+
 ## Quick Commands
 
 ```bash

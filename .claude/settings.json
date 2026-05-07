@@ -104,5 +104,12 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Write(.claude/skills/*)",
+      "Write(agent_docs/*)",
+      "Bash(mkdir *)"
+    ]
   }
 }
