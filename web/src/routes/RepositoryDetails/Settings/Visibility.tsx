@@ -34,16 +34,27 @@ export default function Visibility(props: VisibilityProps) {
   if (!props.repoDetails?.is_public) {
     return (
       <>
-        <div style={{paddingBottom: '1em'}}>
+        <div
+          style={{paddingBottom: '1em'}}
+          data-testid="visibility-private-description"
+        >
           This Repository is currently private. Only users on the permissions
           list may view and interact with it.
         </div>
-        <Button onClick={() => setVisibility('public')}>Make public</Button>
+        <Button
+          onClick={() => setVisibility('public')}
+          data-testid="visibility-make-public-btn"
+        >
+          Make public
+        </Button>
       </>
     );
   } else {
     const publicRepoDescription = (
-      <div style={{paddingBottom: '1em'}}>
+      <div
+        style={{paddingBottom: '1em'}}
+        data-testid="visibility-public-description"
+      >
         This Repository is currently public and is visible to all users, and may
         be pulled by all users.
       </div>
@@ -95,7 +106,12 @@ export default function Visibility(props: VisibilityProps) {
       return (
         <>
           {publicRepoDescription}
-          <Button onClick={() => setVisibility('private')}>Make private</Button>
+          <Button
+            onClick={() => setVisibility('private')}
+            data-testid="visibility-make-private-btn"
+          >
+            Make private
+          </Button>
         </>
       );
     }

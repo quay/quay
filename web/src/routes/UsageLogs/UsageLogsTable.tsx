@@ -227,13 +227,18 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                 onChange={(_event, value) => filterOnChange(value)}
                 onClear={() => filterOnChange('')}
                 id="log-filter-input"
+                data-testid="usage-logs-filter-input"
               />
             </SplitItem>
           </Split>
         </FlexItem>
         <FlexItem>
           <div style={{margin: '20px'}}>
-            <Table variant="compact" aria-label="Usage logs table">
+            <Table
+              variant="compact"
+              aria-label="Usage logs table"
+              data-testid="usage-logs-table"
+            >
               <Thead>
                 <Tr>
                   <Th width={15} sort={getSortableSort(0)}>
@@ -269,7 +274,9 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                     {!props.repo && (
                       <Td>
                         {log.metadata?.namespace && log.metadata?.repo
-                          ? `${log.metadata.namespace}/${log.metadata.repo}`
+                          ? props.isSuperuser
+                            ? log.metadata.repo
+                            : `${log.metadata.namespace}/${log.metadata.repo}`
                           : log.metadata?.repo || ''}
                       </Td>
                     )}

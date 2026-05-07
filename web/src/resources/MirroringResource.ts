@@ -27,12 +27,7 @@ export interface MirroringConfig {
 }
 
 export interface MirroringConfigResponse extends MirroringConfig {
-  sync_status:
-    | 'NEVER_RUN'
-    | 'SYNC_NOW'
-    | 'SYNC_FAILED'
-    | 'SYNCING'
-    | 'SYNC_SUCCESS';
+  sync_status: 'NEVER_RUN' | 'SYNC_NOW' | 'FAIL' | 'SYNCING' | 'SUCCESS';
   last_sync: string;
   last_error: string;
   status_message: string;
@@ -128,7 +123,7 @@ export const statusLabels: Record<
 > = {
   NEVER_RUN: 'Scheduled',
   SYNC_NOW: 'Scheduled Now',
-  SYNC_FAILED: 'Failed',
+  FAIL: 'Failed',
   SYNCING: 'Syncing',
-  SYNC_SUCCESS: 'Success',
+  SUCCESS: 'Success',
 };

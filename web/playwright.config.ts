@@ -1,0 +1,90 @@
+import {defineConfig, devices} from '@playwright/test';
+
+/**
+ * Playwright configuration for Quay E2E tests
+ * See https://playwright.dev/docs/test-configuration
+ */
+export default defineConfig({
+  testDir: './playwright/e2e',
+
+  // Global setup to create test users before all tests
+  globalSetup: require.resolve('./playwright/global-setup'),
+
+  // Maximum time one test can run for
+  timeout: 60 * 1000,
+
+  // Run tests in parallel — fixed at 4 for CI so Quay isn't overwhelmed by
+  // more workers than it can sustain, regardless of runner CPU count.
+  fullyParallel: true,
+  workers: process.env.CI ? 4 : undefined,
+
+  // Fail the build on CI if you accidentally left test.only in the source code
+  forbidOnly: !!process.env.CI,
+
+  // Retry on CI only
+  retries: process.env.CI ? 1 : 0,
+
+  // Reporter configuration
+  reporter: [
+    [process.env.CI && !process.env.OPENSHIFT_CI ? 'github' : 'list'],
+    ['html', {outputFolder: 'playwright-report'}],
+    ['json', {outputFile: 'test-results/results.json'}],
+  ],
+
+  // Shared settings for all tests
+  use: {
+    // Base URL for navigation
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
+
+    // Accept self-signed certificates (needed for OpenShift CI clusters)
+    ignoreHTTPSErrors: true,
+
+    // Action timeout
+    actionTimeout: 30 * 1000,
+
+    // Collect trace only on failure
+    trace: 'on-first-retry',
+
+    // Screenshot only on failure
+    screenshot: 'only-on-failure',
+
+    // Video only on failure
+    video: 'retain-on-failure',
+  },
+
+  // Output directories
+  outputDir: 'test-results/',
+
+  // Configure projects for different browsers
+  projects: [
+    {
+      name: 'chromium',
+      testIgnore: /legacy-ui/,
+      use: {...devices['Desktop Chrome'], channel: 'chromium'},
+    },
+    {
+      name: 'legacy-ui',
+      testDir: './playwright/e2e/legacy-ui',
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chromium',
+        baseURL:
+          process.env.PLAYWRIGHT_LEGACY_BASE_URL || 'http://localhost:8080',
+      },
+    },
+  ],
+
+  // Configure web server for local development
+  // Note: In OpenShift CI (Prow), services are already running on the cluster.
+  // API-only tests (test:api) skip this since they only need Quay, not the frontend.
+  webServer:
+    process.env.OPENSHIFT_CI || process.env.PLAYWRIGHT_SKIP_WEBSERVER
+      ? undefined
+      : {
+          command:
+            'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && npm run start:integration',
+          url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
+          reuseExistingServer: true,
+          timeout: 120 * 1000,
+        },
+});

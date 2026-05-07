@@ -78,8 +78,8 @@ export function useCreateAccount() {
       }
     } catch (err) {
       const authErr = err instanceof AxiosError && err.response;
-      if (authErr && err.response.status === 409) {
-        setError('Username or email already exists');
+      if (authErr && err.response.data?.error_message) {
+        setError(err.response.data.error_message);
       } else {
         setError(addDisplayError('Unable to create account', err));
       }

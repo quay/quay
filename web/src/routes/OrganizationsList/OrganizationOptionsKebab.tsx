@@ -338,6 +338,7 @@ interface OrganizationOptionsKebabProps {
   isUser: boolean;
   userEnabled?: boolean; // Only used when isUser is true
   userSuperuser?: boolean; // Only used when isUser is true
+  userGlobalReadonlySuperuser?: boolean; // Only used when isUser is true
   selectedOrganization?: import('./OrganizationsList').OrganizationsTableItem[];
   setSelectedOrganization?: (
     orgs: import('./OrganizationsList').OrganizationsTableItem[],

@@ -3,6 +3,8 @@ import logging
 from datetime import datetime
 from email.utils import mktime_tz, parsedate_tz
 
+logger = logging.getLogger(__name__)
+
 from flask import request
 from jsonschema import ValidationError
 
@@ -321,6 +323,8 @@ class RepoMirrorResource(RepositoryParamResource):
             namespace_name, repository_name, data["robot_username"]
         )
         del data["robot_username"]
+
+        data.pop("architecture_filter", None)
 
         mirror = model.repo_mirror.enable_mirroring_for_repository(
             repo, root_rule=rule, internal_robot=robot, **data

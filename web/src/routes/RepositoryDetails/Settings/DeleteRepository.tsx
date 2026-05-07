@@ -72,6 +72,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
             variant="danger"
             isDisabled={`${org}/${repo}` != repoNameInput}
             onClick={() => deleteRepositories([{namespace: org, name: repo}])}
+            data-testid="delete-repository-confirm-btn"
           >
             Delete
           </Button>
@@ -81,6 +82,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
             onClick={() => {
               setIsModalOpen(!isModalOpen);
             }}
+            data-testid="delete-repository-cancel-btn"
           >
             Cancel
           </Button>
@@ -94,7 +96,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
       />
       <Button
         variant="danger"
-        test-id="delete-repository-btn"
+        data-testid="delete-repository-btn"
         onClick={() => setIsModalOpen(true)}
       >
         Delete Repository

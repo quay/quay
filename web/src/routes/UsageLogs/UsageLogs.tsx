@@ -108,6 +108,7 @@ export default function UsageLogs(props: UsageLogsProps) {
               <Button
                 variant="secondary"
                 onClick={() => setChartHidden(!chartHidden)}
+                data-testid="usage-logs-chart-toggle"
               >
                 {chartHidden ? 'Show Chart' : 'Hide Chart'}
               </Button>
@@ -281,4 +282,7 @@ export const logKinds = {
   push_repo_failed: 'Push to repository failed',
   export_logs_success: 'Export logs queued for delivery',
   export_logs_failure: 'Export logs failure',
+  create_robot_federation: 'Create Robot Federation',
+  delete_robot_federation: 'Delete Robot Federation',
+  federated_robot_token_exchange: 'Federated Robot Token Exchange',
 };

@@ -120,6 +120,7 @@ export function CreateAccount() {
             type="text"
             id="username"
             name="username"
+            data-testid="create-account-username"
             value={username}
             onChange={(_event, v) => setUsername(v)}
             validated={validateUsername(username)}
@@ -156,6 +157,7 @@ export function CreateAccount() {
             type="email"
             id="email"
             name="email"
+            data-testid="create-account-email"
             value={email}
             onChange={(_event, v) => setEmail(v)}
             validated={validateEmail(email)}
@@ -191,6 +193,7 @@ export function CreateAccount() {
             type="password"
             id="password"
             name="password"
+            data-testid="create-account-password"
             value={password}
             onChange={(_event, v) => setPassword(v)}
             validated={validatePassword(password)}
@@ -226,6 +229,7 @@ export function CreateAccount() {
             type="password"
             id="confirm-password"
             name="confirm-password"
+            data-testid="create-account-confirm-password"
             value={confirmPassword}
             onChange={(_event, v) => setConfirmPassword(v)}
             validated={validateConfirmPassword(confirmPassword)}
@@ -262,6 +266,7 @@ export function CreateAccount() {
             isDisabled={!isFormValid() || isLoading}
             isLoading={isLoading}
             onClick={onCreateAccountClick}
+            data-testid="create-account-submit"
           >
             Create Account
           </Button>

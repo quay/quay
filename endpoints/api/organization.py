@@ -1012,11 +1012,16 @@ class OrganizationProxyCacheConfig(ApiResource):
             pass
 
         data = request.get_json()
-        # filter None values
-        data = {k: v for k, v in data.items() if (v is not None or not "")}
 
         try:
-            config = model.proxy_cache.create_proxy_cache_config(**data)
+            config = model.proxy_cache.create_proxy_cache_config(
+                org_name=orgname,
+                upstream_registry=data.get("upstream_registry"),
+                upstream_registry_username=data.get("upstream_registry_username"),
+                upstream_registry_password=data.get("upstream_registry_password"),
+                expiration_s=data.get("expiration_s", 86400),
+                insecure=data.get("insecure", False),
+            )
             if config is not None:
                 log_action(
                     "create_proxy_cache_config",

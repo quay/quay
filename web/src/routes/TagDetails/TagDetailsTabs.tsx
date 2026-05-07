@@ -54,13 +54,7 @@ export default function TagTabs(props: TagTabsProps) {
         eventKey={TabIndex.Layers}
         title={<TabTitleText>Layers</TabTitleText>}
       >
-        <Layers
-          org={props.org}
-          repo={props.repo}
-          digest={props.digest}
-          manifestData={props.manifestData}
-          err={props.err}
-        />
+        <Layers org={props.org} repo={props.repo} digest={props.digest} />
       </Tab>
       <Tab
         eventKey={TabIndex.SecurityReport}

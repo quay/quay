@@ -72,6 +72,7 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
             page={props.page}
             setPage={props.setPage}
             setPerPage={props.setPerPage}
+            data-testid="orgslist-pagination"
           />
         </ToolbarContent>
       </Toolbar>

@@ -113,12 +113,12 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
       case 'logout':
         try {
           await logoutUser();
+        } catch (err) {
+          console.error('Logout API failed:', err);
+        } finally {
           GlobalAuthState.csrfToken = undefined;
           queryClient.invalidateQueries(['user']);
           window.location.href = '/signin';
-        } catch (err) {
-          console.error(err);
-          setErr(addDisplayError('Unable to log out', err));
         }
         setIsDropdownOpen(false);
         break;
@@ -296,6 +296,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
         user?.avatar ? <Avatar avatar={user.avatar} size="sm" /> : <UserIcon />
       }
       id="user-menu-toggle"
+      data-testid="user-menu-toggle"
       aria-label="User menu"
     >
       {user.username}

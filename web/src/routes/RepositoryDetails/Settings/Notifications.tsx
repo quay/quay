@@ -198,7 +198,11 @@ export default function Notifications({
               </Td>
             </Tr>
             <Tr isExpanded={isExpanded(notification.uuid)}>
-              <Td colSpan={7} id="notification-config-details">
+              <Td
+                colSpan={7}
+                id="notification-config-details"
+                data-testid="notification-config-details"
+              >
                 <ExpandableRowContent>
                   <NotificationConfig notification={notification} />
                 </ExpandableRowContent>
