@@ -8,6 +8,8 @@ from data.database import (
     AccessToken,
     BlobUpload,
     DeletedRepository,
+    HelmChartMetadata,
+    HelmRepoIndexConfig,
     ImageStorage,
     Label,
     Manifest,
@@ -124,6 +126,10 @@ def purge_repository(repo, force=False):
     # Delete pull statistics for the repository.
     _chunk_delete_all(repo, TagPullStatistics, force=force)
     _chunk_delete_all(repo, ManifestPullStatistics, force=force)
+
+    # Delete Helm chart metadata and repo index config for the repository.
+    _chunk_delete_all(repo, HelmChartMetadata, force=force)
+    HelmRepoIndexConfig.delete().where(HelmRepoIndexConfig.repository == repo).execute()
 
     # Delete any marker rows for the repository.
     DeletedRepository.delete().where(DeletedRepository.repository == repo).execute()
@@ -275,6 +281,18 @@ def garbage_collect_repo(repo):
 
         _run_garbage_collection(context)
         had_changes = True
+
+    if had_changes:
+        try:
+            from data.model.oci.helmrepoindex import invalidate_helm_repo_index_cache
+
+            invalidate_helm_repo_index_cache(repo.id)
+        except Exception:
+            logger.warning(
+                "Failed to invalidate helm repo index cache after GC for repo %s",
+                repo.id,
+                exc_info=True,
+            )
 
     # Purge expired uploaded blobs.
     for uploaded_blobs in _chunk_iterate_for_deletion(blob.lookup_expired_uploaded_blobs(repo)):
