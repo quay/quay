@@ -398,12 +398,17 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           </Thead>
           <Tbody data-testid="repository-list-table">
             {filteredRepos.length === 0 ? (
-              // Repo table loading icon
-              <Tr>
-                <Td>
-                  <Spinner size="lg" />
-                </Td>
-              </Tr>
+              loading ? (
+                <Tr>
+                  <Td>
+                    <Spinner size="lg" />
+                  </Td>
+                </Tr>
+              ) : (
+                <Tr>
+                  <Td>No repositories found</Td>
+                </Tr>
+              )
             ) : (
               paginatedRepositoryList.map((repo, rowIndex) => (
                 <Tr key={rowIndex}>
