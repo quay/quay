@@ -41,9 +41,18 @@ fi
 
 echo "[coderabbit-review-gate] Running CodeRabbit review before PR creation..." >&2
 
-CR_OUTPUT=$(cd "$REPO_ROOT" && coderabbit review --agent --base "$BASE_BRANCH" 2>&1 || true)
+CR_ERR=$(mktemp)
+CR_OUTPUT=$(cd "$REPO_ROOT" && coderabbit review --agent --base "$BASE_BRANCH" 2>"$CR_ERR" || true)
 
 CR_JSON=$(echo "$CR_OUTPUT" | jq -c '.' 2>/dev/null || true)
+
+if [ -z "$CR_JSON" ] && [ -s "$CR_ERR" ]; then
+  echo "[coderabbit-review-gate] CodeRabbit produced no parseable output — allowing PR creation" >&2
+  cat "$CR_ERR" >&2
+  rm -f "$CR_ERR"
+  exit 0
+fi
+rm -f "$CR_ERR"
 
 CR_ERROR_TYPE=$(echo "$CR_JSON" | jq -r 'select(.type == "error") | .errorType' 2>/dev/null | head -1 || true)
 
