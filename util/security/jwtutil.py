@@ -147,7 +147,7 @@ def jwk_dict_to_public_key(jwk_dict):
 def is_jwt(token):
     try:
         headers = get_unverified_header(token)
-        return headers.get("typ", "").lower() == "jwt"
+        return headers.get("typ", "").lower() in ("jwt", "at+jwt")
     except DecodeError:
         pass
 
