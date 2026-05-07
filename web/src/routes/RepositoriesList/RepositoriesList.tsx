@@ -400,13 +400,13 @@ export default function RepositoriesList(props: RepositoriesListProps) {
             {filteredRepos.length === 0 ? (
               loading ? (
                 <Tr>
-                  <Td>
+                  <Td colSpan={5}>
                     <Spinner size="lg" />
                   </Td>
                 </Tr>
               ) : (
                 <Tr>
-                  <Td>No repositories found</Td>
+                  <Td colSpan={5}>No repositories found</Td>
                 </Tr>
               )
             ) : (
