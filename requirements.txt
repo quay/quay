@@ -105,7 +105,7 @@ sentry-sdk[flask]==1.40.0
 pyroscope-io==1.0.4
 recaptcha2==0.1
 redis==7.1.0
-regex==2026.2.28
+regex==2026.4.4
 rehash==1.0.1
 requests==2.32.3
 requests-aws4auth==1.2.3
