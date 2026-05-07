@@ -5,6 +5,20 @@ export default defineConfig({
   plugins: [
     {
       name: 'stub-assets',
+      enforce: 'pre',
+      resolveId(id: string) {
+        if (/\.scss$/i.test(id)) {
+          return '\0virtual:empty-scss';
+        }
+      },
+      load(id: string) {
+        if (id === '\0virtual:empty-scss') {
+          return 'export default {}';
+        }
+        if (/\.(svg|png|jpe?g|gif|webp|ico|ttf|eot|woff2?)(\?.*)?$/i.test(id)) {
+          return 'export default ""';
+        }
+      },
       transform(_code: string, id: string) {
         if (/\.(svg|png|jpe?g|gif|webp|ico|ttf|eot|woff2?)(\?.*)?$/i.test(id)) {
           return {code: 'export default ""', map: null};
