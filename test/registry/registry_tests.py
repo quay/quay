@@ -2249,7 +2249,15 @@ def test_push_pull_manifest_list_back_compat(
     )
 
 
-@pytest.mark.parametrize("schema_version", [1, 2, "oci"])
+@pytest.mark.parametrize(
+    "schema_version, first_manifest_schema_version, second_manifest_schema_version",
+    [
+        (1, 1, 2),
+        (2, 2, 2),
+        ("oci", "oci", "oci"),
+        ("oci", 2, 2),
+    ],
+)
 def test_push_pull_manifest_list(
     v22_protocol,
     basic_images,
@@ -2257,6 +2265,8 @@ def test_push_pull_manifest_list(
     liveserver_session,
     app_reloader,
     schema_version,
+    first_manifest_schema_version,
+    second_manifest_schema_version,
     data_model,
 ):
     """Test: Push a new tag with a manifest list containing two manifests, one (possibly) legacy
@@ -2272,15 +2282,18 @@ def test_push_pull_manifest_list(
         "devtable", "newrepo", "latest", basic_images, blobs, options
     )
 
-    if schema_version == "oci":
-        first_manifest = v22_protocol.build_oci(basic_images, blobs, options)
-        second_manifest = v22_protocol.build_oci(different_images, blobs, options)
-    else:
-        first_manifest = signed.unsigned()
-        if schema_version == 2:
-            first_manifest = v22_protocol.build_schema2(basic_images, blobs, options)
+    def _build_manifest(layers, schema_version):
+        if schema_version == "oci":
+            return v22_protocol.build_oci(layers, blobs, options)
+        elif schema_version == 2:
+            return v22_protocol.build_schema2(layers, blobs, options)
+        elif schema_version == 1:
+            return signed.unsigned()
+        else:
+            raise ValueError("invalid schema version")
 
-        second_manifest = v22_protocol.build_schema2(different_images, blobs, options)
+    first_manifest = _build_manifest(basic_images, first_manifest_schema_version)
+    second_manifest = _build_manifest(different_images, second_manifest_schema_version)
 
     # Create and push the manifest list.
     builder = OCIIndexBuilder() if schema_version == "oci" else DockerSchema2ManifestListBuilder()
