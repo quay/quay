@@ -10,7 +10,6 @@ from workers.repomirrorworker import (
     _update_mirror_metrics_on_failure,
 )
 
-
 # =============================================================================
 # Tests for _map_failure_to_reason
 # =============================================================================

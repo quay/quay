@@ -174,9 +174,7 @@ test.describe(
       }) => {
         const org = await superuserApi.organization('mhealthtest');
 
-        const r = await userClient.get(
-          `${HEALTH_URL}?namespace=${org.name}`,
-        );
+        const r = await userClient.get(`${HEALTH_URL}?namespace=${org.name}`);
         // Should be denied — user is not a member of this org
         expect([401, 403]).toContain(r.status());
       });

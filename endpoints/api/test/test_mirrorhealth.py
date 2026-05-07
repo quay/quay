@@ -18,7 +18,6 @@ from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
 
-
 # =============================================================================
 # Unit tests for Prometheus registry reader helpers
 # =============================================================================
@@ -169,7 +168,9 @@ class TestGetMirrorHealthData:
             "failed": 0,
             "never_run": 0,
         }
-        mock_rows.return_value = mock.Mock(where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[]))))
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
 
         result = get_mirror_health_data()
 
@@ -191,7 +192,9 @@ class TestGetMirrorHealthData:
             "failed": 0,
             "never_run": 0,
         }
-        mock_rows.return_value = mock.Mock(where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[]))))
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
 
         result = get_mirror_health_data()
 
@@ -214,7 +217,9 @@ class TestGetMirrorHealthData:
             "failed": 5,
             "never_run": 0,
         }
-        mock_rows.return_value = mock.Mock(where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[]))))
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
 
         result = get_mirror_health_data()
 
@@ -239,7 +244,9 @@ class TestGetMirrorHealthData:
             "failed": 2,
             "never_run": 0,
         }
-        mock_rows.return_value = mock.Mock(where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[]))))
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
 
         result = get_mirror_health_data()
 
@@ -260,7 +267,9 @@ class TestGetMirrorHealthData:
             "failed": 1,
             "never_run": 5,
         }
-        mock_rows.return_value = mock.Mock(where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[]))))
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
 
         result = get_mirror_health_data()
 
@@ -282,7 +291,9 @@ class TestGetMirrorHealthData:
             "failed": 0,
             "never_run": 0,
         }
-        mock_rows.return_value = mock.Mock(where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[]))))
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
         mock_app.config.get.return_value = 3
 
         result = get_mirror_health_data()
@@ -305,7 +316,9 @@ class TestGetMirrorHealthData:
             "failed": 0,
             "never_run": 0,
         }
-        mock_rows.return_value = mock.Mock(where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[]))))
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
 
         stale_ts = (datetime.now(timezone.utc) - timedelta(hours=48)).timestamp()
         with mock.patch(
@@ -314,9 +327,7 @@ class TestGetMirrorHealthData:
         ):
             result = get_mirror_health_data()
 
-        stale_warnings = [
-            i for i in result["issues"] if "hasn't synced" in i.get("message", "")
-        ]
+        stale_warnings = [i for i in result["issues"] if "hasn't synced" in i.get("message", "")]
         assert len(stale_warnings) == 1
         assert "ns1/repo1" in stale_warnings[0]["message"]
 
@@ -335,7 +346,9 @@ class TestGetMirrorHealthData:
             "failed": 0,
             "never_run": 0,
         }
-        mock_rows.return_value = mock.Mock(where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[]))))
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
 
         stale_ts = (datetime.now(timezone.utc) - timedelta(hours=48)).timestamp()
         many_stale = {(f"ns{i}", f"repo{i}"): stale_ts for i in range(20)}
@@ -345,9 +358,7 @@ class TestGetMirrorHealthData:
         ):
             result = get_mirror_health_data()
 
-        stale_warnings = [
-            i for i in result["issues"] if "hasn't synced" in i.get("message", "")
-        ]
+        stale_warnings = [i for i in result["issues"] if "hasn't synced" in i.get("message", "")]
         assert len(stale_warnings) <= 5
 
     @mock.patch("endpoints.api.mirrorhealth._get_mirror_workers_active_value", return_value=0)
@@ -363,7 +374,9 @@ class TestGetMirrorHealthData:
             "failed": 1,
             "never_run": 0,
         }
-        mock_rows.return_value = mock.Mock(where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[]))))
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
 
         result = get_mirror_health_data()
 
@@ -429,7 +442,9 @@ class TestGetMirrorHealthData:
             "failed": 0,
             "never_run": 0,
         }
-        mock_rows.return_value = mock.Mock(where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[]))))
+        mock_rows.return_value = mock.Mock(
+            where=mock.Mock(return_value=mock.Mock(limit=mock.Mock(return_value=[])))
+        )
 
         result = get_mirror_health_data(detailed=False)
 
@@ -473,7 +488,11 @@ class TestMirrorHealthEndpoint:
             "healthy": True,
             "workers": {"active": 0, "configured": 0, "status": "healthy"},
             "repositories": {
-                "total": 0, "syncing": 0, "completed": 0, "failed": 0, "never_run": 0,
+                "total": 0,
+                "syncing": 0,
+                "completed": 0,
+                "failed": 0,
+                "never_run": 0,
             },
             "tags_pending": 0,
             "last_check": "2024-01-01T00:00:00Z",
@@ -494,11 +513,21 @@ class TestMirrorHealthEndpoint:
             "healthy": False,
             "workers": {"active": 0, "configured": 0, "status": "degraded"},
             "repositories": {
-                "total": 10, "syncing": 0, "completed": 5, "failed": 5, "never_run": 0,
+                "total": 10,
+                "syncing": 0,
+                "completed": 5,
+                "failed": 5,
+                "never_run": 0,
             },
             "tags_pending": 0,
             "last_check": "2024-01-01T00:00:00Z",
-            "issues": [{"severity": "critical", "message": "high failure rate", "timestamp": "2024-01-01T00:00:00Z"}],
+            "issues": [
+                {
+                    "severity": "critical",
+                    "message": "high failure rate",
+                    "timestamp": "2024-01-01T00:00:00Z",
+                }
+            ],
         }
         with client_with_identity("devtable", app) as cl:
             resp = conduct_api_call(cl, RepositoryMirrorHealth, "GET", None, None, 503)
@@ -510,7 +539,11 @@ class TestMirrorHealthEndpoint:
             "healthy": True,
             "workers": {"active": 0, "configured": 0, "status": "healthy"},
             "repositories": {
-                "total": 0, "syncing": 0, "completed": 0, "failed": 0, "never_run": 0,
+                "total": 0,
+                "syncing": 0,
+                "completed": 0,
+                "failed": 0,
+                "never_run": 0,
             },
             "tags_pending": 0,
             "last_check": "2024-01-01T00:00:00Z",
@@ -526,7 +559,11 @@ class TestMirrorHealthEndpoint:
             "healthy": True,
             "workers": {"active": 0, "configured": 0, "status": "healthy"},
             "repositories": {
-                "total": 0, "syncing": 0, "completed": 0, "failed": 0, "never_run": 0,
+                "total": 0,
+                "syncing": 0,
+                "completed": 0,
+                "failed": 0,
+                "never_run": 0,
             },
             "tags_pending": 0,
             "last_check": "2024-01-01T00:00:00Z",
@@ -551,7 +588,11 @@ class TestMirrorHealthEndpoint:
             "healthy": True,
             "workers": {"active": 0, "configured": 0, "status": "healthy"},
             "repositories": {
-                "total": 0, "syncing": 0, "completed": 0, "failed": 0, "never_run": 0,
+                "total": 0,
+                "syncing": 0,
+                "completed": 0,
+                "failed": 0,
+                "never_run": 0,
             },
             "tags_pending": 0,
             "last_check": "2024-01-01T00:00:00Z",
