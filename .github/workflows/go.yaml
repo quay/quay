@@ -10,6 +10,14 @@ on:
       - '.golangci.yml'
       - '.github/workflows/go.yaml'
       - 'util/config/schema.py'
+      - 'data/database.py'
+      - 'data/fields.py'
+      - 'data/migrations/versions/**'
+      - 'internal/dal/**'
+      - 'sqlc.yaml'
+      - 'Makefile'
+      - 'tools/schema_fingerprint.py'
+      - 'requirements.txt'
       - '!config-tool/**'
   pull_request:
     paths:
@@ -19,6 +27,14 @@ on:
       - '.golangci.yml'
       - '.github/workflows/go.yaml'
       - 'util/config/schema.py'
+      - 'data/database.py'
+      - 'data/fields.py'
+      - 'data/migrations/versions/**'
+      - 'internal/dal/**'
+      - 'sqlc.yaml'
+      - 'Makefile'
+      - 'tools/schema_fingerprint.py'
+      - 'requirements.txt'
       - '!config-tool/**'
 
 permissions:
@@ -81,3 +97,39 @@ jobs:
 
       - name: Run tests
         run: make go-test
+
+  schema-sync:
+    name: Schema Drift Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgpgme-dev libldap2-dev libsasl2-dev swig
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+
+      - name: Check schema drift
+        run: make go-schema-check

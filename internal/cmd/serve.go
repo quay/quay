@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"crypto/tls"
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -17,12 +20,18 @@ import (
 
 	// Registers the filesystem storage driver with the distribution driver factory.
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/filesystem"
+
+	"github.com/quay/quay/internal/config"
+	"github.com/quay/quay/internal/dal/dbcore"
+	"github.com/quay/quay/internal/registry"
 )
+
+const defaultHostname = "localhost"
 
 func runServe(args []string) int {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
-	addr := fs.String("addr", "127.0.0.1:5000", "listen address (host:port)")
-	root := fs.String("root", "/var/lib/registry", "root directory for image storage")
+	configPath := fs.String("config", "", "path to config.yaml (default: $QUAY_CONFIG or ./config.yaml)")
+	addr := fs.String("addr", "", "listen address override (default from config or :8443)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -30,44 +39,129 @@ func runServe(args []string) int {
 		return 1
 	}
 
-	// Minimal distribution config: filesystem storage with delete support.
-	// Auth, TLS, and metrics are left unconfigured for local use.
-	cfg := &configuration.Configuration{
+	// Load config.
+	cfg, err := config.Load(resolveConfigPath(*configPath))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+
+	// Resolve storage path from config.
+	resolvedConfig := resolveConfigPath(*configPath)
+	storagePath, err := resolveStoragePath(cfg, resolvedConfig)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+
+	// Open SQLite for auth queries.
+	dbPath, err := loadDBPath(resolvedConfig)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+
+	db, err := dbcore.OpenSQLite(dbPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error opening database: %v\n", err)
+		return 1
+	}
+	defer func() { _ = db.Close() }()
+
+	// Build distribution config.
+	listenAddr := ":8443"
+	if *addr != "" {
+		listenAddr = *addr
+	}
+	distCfg := buildDistConfig(storagePath, cfg, db, listenAddr)
+
+	// Root context canceled on SIGINT/SIGTERM.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	app := handlers.NewApp(ctx, distCfg)
+
+	srv := &http.Server{
+		Addr:              listenAddr,
+		Handler:           app,
+		ReadHeaderTimeout: 10 * time.Second,
+		BaseContext:       func(_ net.Listener) context.Context { return ctx },
+	}
+
+	// TLS setup.
+	useHTTPS := cfg.PreferredURLScheme == "https"
+	certPath, keyPath, err := ensureServeTLS(cfg, dbPath, useHTTPS, srv)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+
+	return startAndWait(ctx, stop, srv, useHTTPS, certPath, keyPath, listenAddr, storagePath, dbPath)
+}
+
+func buildDistConfig(storagePath string, cfg *config.Config, db *sql.DB, listenAddr string) *configuration.Configuration {
+	distCfg := &configuration.Configuration{
 		Storage: configuration.Storage{
 			"filesystem": configuration.Parameters{
-				"rootdirectory": *root,
+				"rootdirectory": storagePath,
 			},
 			"delete": configuration.Parameters{
 				"enabled": true,
 			},
 		},
+		Auth: configuration.Auth{
+			"quaydb": configuration.Parameters{
+				"realm": cfg.ServerHostname,
+				"db":    db,
+			},
+		},
+	}
+	distCfg.HTTP.Addr = listenAddr
+	return distCfg
+}
+
+func ensureServeTLS(cfg *config.Config, dbPath string, useHTTPS bool, srv *http.Server) (certPath, keyPath string, err error) {
+	if !useHTTPS {
+		return "", "", nil
 	}
 
-	cfg.HTTP.Addr = *addr
+	certDir := filepath.Dir(dbPath)
+	certPath = filepath.Join(certDir, "ssl.cert")
+	keyPath = filepath.Join(certDir, "ssl.key")
 
-	// Root context canceled on SIGINT/SIGTERM; propagates to the
-	// distribution app and all in-flight HTTP requests.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	// NewApp wires up all OCI Distribution Spec endpoints (/v2/, manifests,
-	// blobs, uploads, tags, catalog). The context enables cancellation.
-	app := handlers.NewApp(ctx, cfg)
-
-	srv := &http.Server{
-		Addr:              *addr,
-		Handler:           app,
-		ReadHeaderTimeout: 10 * time.Second,
-
-		// Derive request contexts from root so shutdown cancels in-flight requests.
-		BaseContext: func(_ net.Listener) context.Context { return ctx },
+	if !registry.CertFilesExist(certPath, keyPath) {
+		hostname := cfg.ServerHostname
+		if hostname == "" {
+			hostname = defaultHostname
+		}
+		fmt.Fprintf(os.Stderr, "generating self-signed certificate for %s\n", hostname)
+		if err = registry.GenerateSelfSignedCert(hostname, certPath, keyPath); err != nil {
+			return "", "", fmt.Errorf("generating certificate: %w", err)
+		}
 	}
 
+	srv.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	return certPath, keyPath, nil
+}
+
+func startAndWait(ctx context.Context, stop context.CancelFunc, srv *http.Server, useHTTPS bool, certPath, keyPath, listenAddr, storagePath, dbPath string) int {
 	errCh := make(chan error, 1)
 	go func() {
-		fmt.Fprintf(os.Stderr, "registry listening on %s (storage: %s)\n", *addr, *root)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- err
+		scheme := "http"
+		if useHTTPS {
+			scheme = "https"
+		}
+		fmt.Fprintf(os.Stderr, "registry listening on %s://%s (storage: %s, db: %s)\n",
+			scheme, listenAddr, storagePath, dbPath)
+
+		if useHTTPS {
+			if err := srv.ListenAndServeTLS(certPath, keyPath); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- err
+			}
+		} else {
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- err
+			}
 		}
 	}()
 
@@ -78,11 +172,9 @@ func runServe(args []string) int {
 	case <-ctx.Done():
 	}
 
-	stop() // Restore default signal handling; second Ctrl-C kills immediately.
-
+	stop()
 	fmt.Fprintln(os.Stderr, "\nshutting down...")
 
-	// Fresh context for graceful drain; the root context is already canceled.
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -93,4 +185,29 @@ func runServe(args []string) int {
 
 	fmt.Fprintln(os.Stderr, "stopped")
 	return 0
+}
+
+// resolveStoragePath extracts the filesystem storage path from config.
+// Relative paths are resolved against the config file's directory.
+// Only one storage location is supported (multi-location is a full Quay feature).
+func resolveStoragePath(cfg *config.Config, configPath string) (string, error) {
+	if len(cfg.DistributedStorageConfig) == 0 {
+		return "", fmt.Errorf("DISTRIBUTED_STORAGE_CONFIG is not set")
+	}
+	if len(cfg.DistributedStorageConfig) > 1 {
+		return "", fmt.Errorf("multiple storage locations not supported; use a single entry in DISTRIBUTED_STORAGE_CONFIG")
+	}
+
+	for id, entry := range cfg.DistributedStorageConfig {
+		path, ok := entry.Params["storage_path"].(string)
+		if !ok || path == "" {
+			return "", fmt.Errorf("DISTRIBUTED_STORAGE_CONFIG.%s: missing storage_path", id)
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(filepath.Dir(configPath), path)
+		}
+		return path, nil
+	}
+
+	return "", fmt.Errorf("DISTRIBUTED_STORAGE_CONFIG has no entries")
 }
