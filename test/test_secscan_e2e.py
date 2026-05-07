@@ -11,7 +11,8 @@ from urllib.parse import urlparse
 
 import pytest
 
-from app import app as application
+from registry import application
+
 from app import instance_keys, storage
 from data import model
 from data.database import IndexerVersion, IndexStatus, Manifest, ManifestSecurityStatus
@@ -32,11 +33,16 @@ def set_secscan_config():
     original_endpoint = application.config.get("SECURITY_SCANNER_V4_ENDPOINT")
     original_feature = application.config.get("FEATURE_SECURITY_SCANNER")
     original_psk = application.config.get("SECURITY_SCANNER_V4_PSK")
+    original_server_hostname = application.config.get("SERVER_HOSTNAME")
+    original_url_scheme = application.config.get("PREFERRED_URL_SCHEME")
 
     # Set test config
     application.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://fakesecurityscanner:6060"
     application.config["FEATURE_SECURITY_SCANNER"] = True
     application.config["SECURITY_SCANNER_V4_PSK"] = base64.b64encode(b"test-psk").decode()
+    application.config["SERVER_HOSTNAME"] = "localhost:8080"
+    application.config["PREFERRED_URL_SCHEME"] = "http"
+    application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0  # Allow immediate re-indexing
     yield
 
     # Restore original config values
@@ -54,6 +60,16 @@ def set_secscan_config():
         application.config.pop("SECURITY_SCANNER_V4_PSK", None)
     else:
         application.config["SECURITY_SCANNER_V4_PSK"] = original_psk
+
+    if original_server_hostname is None:
+        application.config.pop("SERVER_HOSTNAME", None)
+    else:
+        application.config["SERVER_HOSTNAME"] = original_server_hostname
+
+    if original_url_scheme is None:
+        application.config.pop("PREFERRED_URL_SCHEME", None)
+    else:
+        application.config["PREFERRED_URL_SCHEME"] = original_url_scheme
 
 
 def create_test_repository(namespace="devtable", repo_name="secscan-test"):
@@ -116,8 +132,7 @@ def test_scan_on_push_lifecycle(initialized_db, set_secscan_config):
     with fake_security_scanner(hostname=hostname) as fake:
         # Trigger security worker indexing
         secscan = V4SecurityScanner(application, instance_keys, storage)
-        secscan.perform_indexing_recent_manifests()
-        next_token = secscan.perform_indexing()
+        next_token = secscan.perform_indexing(batch_size=1000)
 
         # Verify status updated to COMPLETED
         mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
@@ -134,12 +149,18 @@ def test_scan_on_push_lifecycle(initialized_db, set_secscan_config):
                     "id": "1",
                     "name": "openssl",
                     "version": "1.0.1",
-                    "kind": "",
+                    "kind": "binary",
                     "normalized_version": "",
                     "arch": "",
                     "module": "",
                     "cpe": "",
-                    "source": {},
+                    "source": {
+                        "id": "0",
+                        "name": "openssl",
+                        "version": "1.0.1",
+                        "kind": "source",
+                        "source": "",
+                    },
                 },
             },
             "distributions": {
@@ -175,20 +196,23 @@ def test_scan_on_push_lifecycle(initialized_db, set_secscan_config):
                     "severity": "Critical",
                     "normalized_severity": "Critical",
                     "fixed_in_version": "1.2.3",
-                    "package_name": "",
-                    "package_kind": "",
-                    "dist_id": "",
-                    "dist_name": "",
-                    "dist_version": "",
-                    "dist_version_code_name": "",
-                    "dist_version_id": "",
-                    "dist_arch": "",
-                    "dist_cpe": "",
-                    "dist_pretty_name": "",
-                    "arch": "",
-                    "repository_name": "",
-                    "repository_uri": "",
-                    "repository_cpe": "",
+                    "package": {
+                        "id": "1",
+                        "name": "openssl",
+                        "version": "1.0.1",
+                        "kind": "binary",
+                    },
+                    "distribution": {
+                        "id": "1",
+                        "did": "ubuntu",
+                        "name": "Ubuntu",
+                        "version": "20.04",
+                        "version_code_name": "focal",
+                        "version_id": "20.04",
+                        "arch": "amd64",
+                        "cpe": "",
+                        "pretty_name": "Ubuntu 20.04 LTS",
+                    },
                 },
             },
             "package_vulnerabilities": {
@@ -252,7 +276,7 @@ def test_scanner_unavailability(initialized_db, set_secscan_config):
     # index() fails to trigger the error handling path that sets FAILED status
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = create_autospec(ClairSecurityScannerAPI, spec_set=True)
-    secscan._secscan_api.state.return_value = "test-indexer-state"
+    secscan._secscan_api.state.return_value = {"state": "test-indexer-state"}
     secscan._secscan_api.index.side_effect = APIRequestFailure()
 
     # Trigger worker - should handle error gracefully
@@ -301,7 +325,7 @@ def test_rescan_on_cve_update(initialized_db, set_secscan_config):
     hostname = urlparse(application.config["SECURITY_SCANNER_V4_ENDPOINT"]).netloc
     with fake_security_scanner(hostname=hostname) as fake:
         secscan = V4SecurityScanner(application, instance_keys, storage)
-        secscan.perform_indexing()
+        secscan.perform_indexing(batch_size=1000)
 
         # Verify manifest was indexed
         mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
@@ -332,8 +356,8 @@ def test_rescan_on_cve_update(initialized_db, set_secscan_config):
 
         # Trigger re-indexing by running perform_indexing again
         # The worker will detect the indexer state change and re-index
-        secscan.perform_indexing_recent_manifests()
-        secscan.perform_indexing()
+        # Use a large batch_size to ensure the manifest is included
+        secscan.perform_indexing(batch_size=1000)
 
         # Verify indexer hash was updated
         mss = ManifestSecurityStatus.get(manifest=manifest._db_id)
@@ -351,12 +375,18 @@ def test_rescan_on_cve_update(initialized_db, set_secscan_config):
                     "id": "1",
                     "name": "curl",
                     "version": "7.68.0",
-                    "kind": "",
+                    "kind": "binary",
                     "normalized_version": "",
                     "arch": "",
                     "module": "",
                     "cpe": "",
-                    "source": {},
+                    "source": {
+                        "id": "0",
+                        "name": "curl",
+                        "version": "7.68.0",
+                        "kind": "source",
+                        "source": "",
+                    },
                 },
             },
             "distributions": {
@@ -392,20 +422,23 @@ def test_rescan_on_cve_update(initialized_db, set_secscan_config):
                     "severity": "High",
                     "normalized_severity": "High",
                     "fixed_in_version": "7.70.0",
-                    "package_name": "",
-                    "package_kind": "",
-                    "dist_id": "",
-                    "dist_name": "",
-                    "dist_version": "",
-                    "dist_version_code_name": "",
-                    "dist_version_id": "",
-                    "dist_arch": "",
-                    "dist_cpe": "",
-                    "dist_pretty_name": "",
-                    "arch": "",
-                    "repository_name": "",
-                    "repository_uri": "",
-                    "repository_cpe": "",
+                    "package": {
+                        "id": "1",
+                        "name": "curl",
+                        "version": "7.68.0",
+                        "kind": "binary",
+                    },
+                    "distribution": {
+                        "id": "1",
+                        "did": "debian",
+                        "name": "Debian",
+                        "version": "10",
+                        "version_code_name": "buster",
+                        "version_id": "10",
+                        "arch": "amd64",
+                        "cpe": "",
+                        "pretty_name": "Debian GNU/Linux 10 (buster)",
+                    },
                 },
             },
             "package_vulnerabilities": {
