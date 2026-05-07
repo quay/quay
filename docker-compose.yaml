@@ -196,6 +196,7 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
+      - "50051:50051"
     environment:
       QUAY_VERSION: local-dev
       QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"

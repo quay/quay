@@ -62,6 +62,11 @@ inputs:
     required: false
     default: 'false'
 
+  with-builds:
+    description: 'Enable container build support with PopenExecutor'
+    required: false
+    default: 'false'
+
   with-mailpit:
     description: 'Start Mailpit email testing server'
     required: false
@@ -192,6 +197,28 @@ runs:
         rm -f "${INLINE_CONFIG}"
         echo "Inline config merged successfully"
 
+    - name: Extract quay-builder binary
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: make local-dev-extract-builder
+
+    - name: Configure build support
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: |
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          local-dev/stack/config.yaml local-dev/builds/builds-config.yaml \
+          > local-dev/stack/config.yaml.tmp
+        mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+        echo "Build support configuration merged"
+
+        # Allow the Quay container (UID 1001) to access the Docker socket.
+        # The runner user accesses via group 'docker'; the container runs as
+        # 1001:0 which is neither owner nor in that group, so we need o+rw.
+        sudo chmod 666 /var/run/docker.sock
+        echo "Docker socket permissions: $(ls -la /var/run/docker.sock)"
+
     - name: Start database services
       shell: bash
       run: |
@@ -254,7 +281,22 @@ runs:
     - name: Start Quay container
       shell: bash
       run: |
-        DOCKER_USER="1001:0" docker compose up -d --no-build quay
+        if [ "${{ inputs.with-builds }}" == "true" ]; then
+          cat > /tmp/docker-compose.builds.yaml <<'EOF'
+        services:
+          quay:
+            volumes:
+              - "/var/run/docker.sock:/opt/docker.sock"
+            environment:
+              DOCKER_HOST: "unix:///opt/docker.sock"
+        EOF
+          sed -i 's/^        //' /tmp/docker-compose.builds.yaml
+          echo "--- Build compose override ---"
+          cat /tmp/docker-compose.builds.yaml
+          DOCKER_USER="1001:0" docker compose -f docker-compose.yaml -f /tmp/docker-compose.builds.yaml up -d --no-build quay
+        else
+          DOCKER_USER="1001:0" docker compose up -d --no-build quay
+        fi
 
     - name: Wait for Quay to be ready
       id: healthcheck
@@ -277,6 +319,39 @@ runs:
           docker logs quay-quay 2>&1 | tail -100
           exit 1
         fi
+
+    - name: Verify build manager
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: |
+        echo "=== Build Manager Diagnostics ==="
+
+        echo "--- Docker socket inside container ---"
+        docker exec quay-quay ls -la /opt/docker.sock 2>&1 || echo "Docker socket not found"
+        docker exec quay-quay python3 -c "import os; print('os.path.exists:', os.path.exists('/opt/docker.sock'))" 2>&1
+
+        echo "--- quay-builder binary ---"
+        docker exec quay-quay ls -la /quay-registry/local-dev/quay-builder 2>&1 || echo "quay-builder binary not found"
+
+        echo "--- Build config (BUILD_MANAGER section) ---"
+        docker exec quay-quay python3 -c "
+        import yaml
+        with open('/quay-registry/conf/stack/config.yaml') as f:
+            cfg = yaml.safe_load(f)
+        print('FEATURE_BUILD_SUPPORT:', cfg.get('FEATURE_BUILD_SUPPORT'))
+        print('BUILD_MANAGER:', cfg.get('BUILD_MANAGER'))
+        " 2>&1 || echo "Failed to read config"
+
+        echo "--- Build manager process check ---"
+        docker exec quay-quay ps aux 2>/dev/null | grep -E "build|grpc" || echo "No build-related processes found"
+
+        echo "--- Quay startup logs (build-related) ---"
+        docker logs quay-quay 2>&1 | grep -iE "build|executor|grpc|popen" | tail -30 || echo "No build-related log lines"
+
+        echo "--- gRPC port check ---"
+        docker exec quay-quay bash -c 'ss -tlnp | grep 50051' 2>/dev/null || echo "gRPC port 50051 not listening"
+
+        echo "=== End Build Manager Diagnostics ==="
 
     - name: Start Clair
       if: inputs.with-clair == 'true'
