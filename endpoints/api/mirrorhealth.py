@@ -290,7 +290,11 @@ def get_mirror_health_data(
 
     if stale_repos:
         for repo in stale_repos[:_ISSUE_SAMPLE_CAP]:
-            ns = repo["namespace"] if isinstance(repo, dict) else repo.repository.namespace_user.username
+            ns = (
+                repo["namespace"]
+                if isinstance(repo, dict)
+                else repo.repository.namespace_user.username
+            )
             name = repo["repository"] if isinstance(repo, dict) else repo.repository.name
             issues.append(
                 {
