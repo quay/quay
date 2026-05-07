@@ -24,6 +24,7 @@ jobs:
         with:
           with-clair: true
           with-keycloak: true
+          with-mock-github: true
           with-jaeger: true
           with-repomirror: true
           use-gha-cache: false
@@ -31,6 +32,7 @@ jobs:
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
             FEATURE_SECURITY_NOTIFICATIONS: true
+            DEFAULT_UI: react
 
       - name: Start LDAP server (pre-initialize for later auth swap)
         run: |
@@ -87,16 +89,11 @@ jobs:
       - name: Install skopeo for multi-arch image tests
         run: sudo apt-get update && sudo apt-get install -y skopeo
 
-      - name: Run Database auth tests
+      - name: Run Database auth tests (React + Legacy UI)
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
-        run: cd web && npx playwright test --project=chromium --grep-invert "@auth:OIDC|@auth:LDAP" --reporter=blob
-
-      - name: Run legacy UI toggle and smoke tests
-        if: always()
-        env:
-          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/legacy-ui
-        run: cd web && npx playwright test --project=legacy-ui --reporter=blob
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
+        run: cd web && npx playwright test --grep-invert "@auth:OIDC|@auth:LDAP" --reporter=blob
 
       - name: Swap to OIDC authentication
         if: always()
@@ -132,7 +129,8 @@ jobs:
         if: always()
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
-        run: cd web && npx playwright test --project=chromium --grep @auth:OIDC --reporter=blob
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
+        run: cd web && npx playwright test --grep @auth:OIDC --reporter=blob
 
       - name: Swap to LDAP authentication
         if: always()
@@ -167,7 +165,8 @@ jobs:
         if: always()
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/ldap
-        run: cd web && npx playwright test --project=chromium --grep @auth:LDAP --reporter=blob
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
+        run: cd web && npx playwright test --grep @auth:LDAP --reporter=blob
 
       - name: Merge test reports
         if: always()

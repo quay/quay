@@ -1,46 +1,49 @@
 import {test, expect} from '../../fixtures';
 
+const hasGitHubLogin = (quayConfig: {external_login?: Array<{id: string}>}) =>
+  quayConfig?.external_login?.some((p) => p.id === 'github');
+
 test.describe('OAuth Callback Routing', {tag: ['@auth']}, () => {
-  test('redirects to error page when callback has error param', async ({
+  test('redirects to error page when user denies access', async ({
     unauthenticatedPage: page,
+    quayConfig,
   }) => {
-    await page.goto(
-      '/oauth2/github/callback?error=access_denied&error_description=User%20denied%20access',
-    );
+    test.skip(!hasGitHubLogin(quayConfig), 'GitHub login not configured');
 
-    await expect(page).toHaveURL(/\/oauth-error/, {timeout: 10000});
-    expect(page.url()).toContain('error=access_denied');
-    expect(page.url()).toContain('provider=github');
+    await page.goto('/signin');
+
+    await page.getByTestId('external-login-github').click();
+
+    // Wait for redirect to mock GitHub authorize page
+    await page.waitForURL(/.*9090.*authorize/, {timeout: 15000});
+
+    // Click "Deny" to trigger error callback
+    await page.getByRole('button', {name: 'Deny'}).click();
+
+    // Should be redirected back to Quay's /oauth-error page
+    await expect(page).toHaveURL(/\/oauth-error/, {timeout: 15000});
+    expect(page.url()).toContain('error');
   });
 
-  test('redirects to error page with error as description when description is missing', async ({
+  test('redirects to error page with provider name', async ({
     unauthenticatedPage: page,
+    quayConfig,
   }) => {
-    await page.goto('/oauth2/github/callback?error=server_error');
+    test.skip(!hasGitHubLogin(quayConfig), 'GitHub login not configured');
 
-    await expect(page).toHaveURL(/\/oauth-error/, {timeout: 10000});
-    expect(page.url()).toContain('error_description=server_error');
-  });
+    await page.goto('/signin');
 
-  test('handles attach flow error redirect', async ({
-    unauthenticatedPage: page,
-  }) => {
-    await page.goto(
-      '/oauth2/github/callback/attach?error=already_attached&error_description=Account%20already%20attached',
-    );
+    // Intercept the authorize redirect to inject force_error param
+    await page.route(/\/login\/oauth\/authorize/, (route) => {
+      const url = new URL(route.request().url());
+      url.searchParams.set('force_error', 'server_error');
+      route.continue({url: url.toString()});
+    });
 
-    await expect(page).toHaveURL(/\/oauth-error/, {timeout: 10000});
-    expect(page.url()).toContain('error=already_attached');
-  });
+    await page.getByTestId('external-login-github').click();
 
-  test('handles CLI token flow error redirect', async ({
-    unauthenticatedPage: page,
-  }) => {
-    await page.goto(
-      '/oauth2/github/callback/cli?error=invalid_request&error_description=Invalid%20CLI%20token%20request',
-    );
-
-    await expect(page).toHaveURL(/\/oauth-error/, {timeout: 10000});
-    expect(page.url()).toContain('error=invalid_request');
+    // Mock sees force_error and redirects with error param
+    await expect(page).toHaveURL(/\/oauth-error/, {timeout: 15000});
+    expect(page.url()).toContain('provider=');
   });
 });

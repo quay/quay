@@ -140,6 +140,16 @@ services:
       - start-dev
       - --import-realm
 
+  mock-github:
+    container_name: quay-mock-github
+    build:
+      context: ./local-dev/mock-github
+    network_mode: "service:quay"
+    depends_on:
+      - quay
+    profiles:
+      - github-oauth
+
   local-dev-frontend:
     user: ${DOCKER_USER:-root}
     container_name: quay-local-dev-frontend
@@ -196,6 +206,7 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
+      - "9090:9090"
     environment:
       QUAY_VERSION: local-dev
       QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"

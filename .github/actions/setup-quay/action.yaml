@@ -62,6 +62,11 @@ inputs:
     required: false
     default: 'false'
 
+  with-mock-github:
+    description: 'Start mock GitHub OAuth server for GitHub login testing'
+    required: false
+    default: 'false'
+
   with-mailpit:
     description: 'Start Mailpit email testing server'
     required: false
@@ -254,7 +259,11 @@ runs:
     - name: Start Quay container
       shell: bash
       run: |
-        DOCKER_USER="1001:0" docker compose up -d --no-build quay
+        COMPOSE_PROFILES=""
+        if [ "${{ inputs.with-mock-github }}" = "true" ]; then
+          COMPOSE_PROFILES="github-oauth"
+        fi
+        DOCKER_USER="1001:0" COMPOSE_PROFILES="${COMPOSE_PROFILES}" docker compose up -d --no-build quay
 
     - name: Wait for Quay to be ready
       id: healthcheck
@@ -275,6 +284,46 @@ runs:
         else
           echo "Quay failed to become ready within ${TIMEOUT} seconds"
           docker logs quay-quay 2>&1 | tail -100
+          exit 1
+        fi
+
+    - name: Start mock GitHub OAuth server
+      if: inputs.with-mock-github == 'true'
+      shell: bash
+      run: |
+        docker compose --profile github-oauth build mock-github
+        docker compose --profile github-oauth up -d --no-recreate mock-github
+        echo "Waiting for mock GitHub OAuth server to be ready..."
+        if curl -sf --retry 15 --retry-delay 2 --retry-all-errors \
+            http://localhost:9090/api/v3/ > /dev/null 2>&1; then
+          echo "Mock GitHub OAuth server is ready!"
+        else
+          echo "::error::Mock GitHub OAuth server failed to start"
+          docker logs quay-mock-github 2>&1 | tail -50
+          exit 1
+        fi
+
+    - name: Configure GitHub OAuth login
+      if: inputs.with-mock-github == 'true'
+      shell: bash
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        GITHUB_CONFIG="local-dev/mock-github/github-config.yaml"
+
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${GITHUB_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "GitHub OAuth configuration merged"
+
+        docker restart quay-quay
+        echo "Waiting for Quay to restart with GitHub OAuth config..."
+        if curl -sf --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:8080/health/instance > /dev/null 2>&1; then
+          echo "Quay is ready with GitHub OAuth!"
+        else
+          echo "::error::Quay failed to restart after GitHub OAuth config merge"
+          docker logs quay-quay 2>&1 | tail -50
           exit 1
         fi
 

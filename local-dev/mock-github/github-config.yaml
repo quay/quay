@@ -1,0 +1,6 @@
+FEATURE_GITHUB_LOGIN: true
+GITHUB_LOGIN_CONFIG:
+  CLIENT_ID: "mock-github-client-id"
+  CLIENT_SECRET: "mock-github-client-secret"
+  GITHUB_ENDPOINT: "http://localhost:9090"
+  API_ENDPOINT: "http://localhost:9090/api/v3/"

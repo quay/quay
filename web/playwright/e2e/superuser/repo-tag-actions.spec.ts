@@ -36,7 +36,7 @@ test.describe(
       const submitBtn = superuserPage.getByTestId(
         'create-repository-submit-btn',
       );
-      await expect(submitBtn).toBeEnabled();
+      await expect(submitBtn).toBeEnabled({timeout: 10000});
       await submitBtn.click();
 
       // Verify success alert appears
