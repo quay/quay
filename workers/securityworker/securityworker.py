@@ -22,25 +22,35 @@ class SecurityWorker(Worker):
         super(SecurityWorker, self).__init__()
         self._next_token = None
         self._model = secscan_model
+        self._model_version = app.config.get("SECURITY_SCANNER_V4_MODEL_VERSION", 1)
 
         interval = app.config.get("SECURITY_SCANNER_INDEXING_INTERVAL", DEFAULT_INDEXING_INTERVAL)
         self.add_operation(self._index_in_scanner, interval)
-        self.add_operation(self._index_recent_manifests_in_scanner, interval)
+
+        # Model v2 doesn't need the recent manifests operation (SKIP LOCKED handles it)
+        if self._model_version != 2:
+            self.add_operation(self._index_recent_manifests_in_scanner, interval)
 
     def _index_in_scanner(self):
         batch_size = app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
 
+        # Model v2 uses DB-level locking (SKIP LOCKED), doesn't need Redis locks
+        if self._model_version == 2:
+            self._model.perform_indexing(None, batch_size)
+            return
+
+        # Model v1 uses optional Redis locks
         if app.config.get("SECURITY_SCANNER_V4_LOCK", False):
             try:
                 with GlobalLock("SECURITY_SCANNER_V4_INDEXING"):
                     self._next_token = self._model.perform_indexing(self._next_token, batch_size)
             except LockNotAcquiredException:
                 return
-
         else:
             self._next_token = self._model.perform_indexing(self._next_token, batch_size)
 
     def _index_recent_manifests_in_scanner(self):
+        """Only used by model v1. Model v2 handles recent manifests in main indexing loop."""
         batch_size = app.config.get("SECURITY_SCANNER_V4_RECENT_MANIFEST_BATCH_SIZE", 1000)
 
         if app.config.get("SECURITY_SCANNER_V4_RECENT_MANIFEST_BATCH_LOCK", False):
@@ -53,7 +63,6 @@ class SecurityWorker(Worker):
                 logger.warning(
                     "Could not acquire global lock for recent manifest indexing. Skipping"
                 )
-
         else:
             self._model.perform_indexing_recent_manifests(batch_size)
 
