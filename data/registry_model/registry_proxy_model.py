@@ -36,7 +36,12 @@ from data.model.quota import (
     update_quota,
 )
 from data.model.repository import create_repository, get_repository
-from data.model.storage import get_or_create_blob_with_lock, with_blob_lock_or_fallback
+from data.model.storage import (
+    get_image_location_for_id,
+    get_layer_path,
+    get_or_create_blob_with_lock,
+    with_blob_lock_or_fallback,
+)
 from data.registry_model.blobuploader import (
     BlobDigestMismatchException,
     BlobRangeMismatchException,
@@ -710,9 +715,32 @@ class ProxyModel(OCIModel):
             except ImageStorage.DoesNotExist:
                 return None
 
+        needs_download = False
         try:
-            ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            placement = (
+                ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+            )
         except ImageStoragePlacement.DoesNotExist:
+            needs_download = True
+
+        if not needs_download:
+            try:
+                layer_path = get_layer_path(blob)
+                location_name = get_image_location_for_id(placement.location_id).name
+                if not storage.exists([location_name], layer_path):
+                    logger.warning(
+                        "Blob %s has placements in DB but is missing from storage, re-fetching from upstream",
+                        blob_digest,
+                    )
+                    needs_download = True
+            except (IOError, OSError):
+                logger.exception(
+                    "Failed to verify blob %s existence in storage, re-fetching from upstream",
+                    blob_digest,
+                )
+                needs_download = True
+
+        if needs_download:
             try:
                 self._download_blob(repository_ref, blob_digest)
             except BlobDigestMismatchException:
