@@ -1,4 +1,5 @@
 import logging
+import os
 import tempfile
 
 from digest.digest_tools import content_path
@@ -37,10 +38,16 @@ class StoragePaths(object):
         return content_path(digest_str)
 
 
+_DEFAULT_BUFFER_SIZE = 1024 * 1024  # 1MB
+
+
 class BaseStorage(StoragePaths):
     def __init__(self):
-        # Set the IO buffer to 64kB
-        self.buffer_size = 64 * 1024
+        # Buffer size for streaming blob reads. Configurable via environment variable.
+        # Default is 1MB for better network throughput on modern high-bandwidth networks.
+        # The previous 64KB default caused excessive syscalls (~18,000/sec on 10Gbps).
+        # Distribution (Go registry) uses 4MB for reads; 1MB is a conservative improvement.
+        self.buffer_size = int(os.environ.get("QUAY_STORAGE_BUFFER_SIZE", _DEFAULT_BUFFER_SIZE))
 
     def setup(self):
         """
