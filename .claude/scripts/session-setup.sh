@@ -98,6 +98,16 @@ else
   echo "  Warning: gh CLI not found."
 fi
 
+# ── CodeRabbit CLI ─────────────────────────────────────────────
+if ! command -v coderabbit &>/dev/null; then
+  echo "Installing CodeRabbit CLI..."
+  curl -fsSL https://cli.coderabbit.ai/install.sh | sh 2>/dev/null \
+    && echo "  CodeRabbit CLI installed." \
+    || echo "  Warning: CodeRabbit CLI install failed (non-fatal)."
+else
+  echo "CodeRabbit CLI already installed."
+fi
+
 # Mark complete
 touch "$SETUP_MARKER"
 echo "=== Bootstrap complete ==="
