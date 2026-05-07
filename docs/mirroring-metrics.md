@@ -118,31 +118,29 @@ quay_repository_mirror_sync_complete{namespace="org2",repository="repo2"} 0
 #### 4. Synchronization Failure Counter
 
 ```text
-quay_repository_mirror_sync_failures_total{namespace="org1",repository="repo1",reason="network_timeout"} 3
-quay_repository_mirror_sync_failures_total{namespace="org2",repository="repo2",reason="auth_failed"} 7
+quay_repository_mirror_sync_failures_total{namespace="org1",reason="network_timeout"} 3
+quay_repository_mirror_sync_failures_total{namespace="org2",reason="auth_failed"} 7
 ```
 
 **Type:** Counter
 **Labels:**
 - `namespace`: Organization or user namespace
-- `repository`: Repository name
 - `reason`: Categorized failure reason (see error reasons above)
 
-**Description:** Cumulative counter of synchronization failures per repository. Increments on each failed sync attempt, with failures categorized by reason.
+**Description:** Cumulative counter of synchronization failures aggregated by namespace. Increments on each failed sync attempt, with failures categorized by reason. Per-repository failure detail is available via the health endpoint.
 
 **Use Cases:**
 - Set up alerts based on failure thresholds
-- Track failure rates over time
-- Identify consistently problematic repositories
+- Track failure rates over time per namespace
 - Analyze failure patterns by type
 
 **Example Queries:**
 ```promql
-# Failure rate per repository over 5 minutes
+# Failure rate per namespace over 5 minutes
 rate(quay_repository_mirror_sync_failures_total[5m])
 
-# Repositories with more than 10 total failures
-quay_repository_mirror_sync_failures_total > 10
+# Namespaces with more than 10 total failures
+sum by (namespace) (quay_repository_mirror_sync_failures_total) > 10
 
 # Most common failure types
 topk(5, sum by (reason) (quay_repository_mirror_sync_failures_total))
@@ -197,23 +195,21 @@ quay_repository_mirror_last_sync_timestamp{namespace="org1",repository="repo1"} 
 #### 7. Synchronization Duration
 
 ```text
-quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository="repo1",le="30"} 45
-quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository="repo1",le="60"} 82
-quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository="repo1",le="+Inf"} 100
+quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",le="60"} 45
+quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",le="300"} 82
+quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",le="+Inf"} 100
 ```
 
 **Type:** Histogram
 **Labels:**
 - `namespace`: Organization or user namespace
-- `repository`: Repository name
 
-**Buckets:** 30s, 60s, 120s, 300s (5m), 600s (10m), 1200s (20m), 1800s (30m), 3600s (1h), 7200s (2h), +Inf
+**Buckets:** 60s (1m), 300s (5m), 900s (15m), 3600s (1h), +Inf
 
-**Description:** Duration of synchronization operations, allowing percentile calculations and performance analysis.
+**Description:** Duration of synchronization operations aggregated by namespace, allowing percentile calculations and performance analysis. Per-repository granularity is omitted to control time series cardinality at scale.
 
 **Use Cases:**
-- Calculate 95th/99th percentile sync times
-- Identify slow mirrors
+- Calculate 95th/99th percentile sync times per namespace
 - Track performance trends over time
 - Capacity planning
 
@@ -222,7 +218,7 @@ quay_repository_mirror_sync_duration_seconds_bucket{namespace="org1",repository=
 # 95th percentile sync duration
 histogram_quantile(0.95, rate(quay_repository_mirror_sync_duration_seconds_bucket[5m]))
 
-# Average sync duration per repository
+# Average sync duration per namespace
 rate(quay_repository_mirror_sync_duration_seconds_sum[5m]) /
 rate(quay_repository_mirror_sync_duration_seconds_count[5m])
 ```
@@ -504,7 +500,7 @@ sum by(namespace) (quay_repository_mirror_last_sync_status{last_error_reason=""}
 ### Panel 2: Failure Rate
 
 ```promql
-# Failures per second by repository
+# Failures per second by namespace
 rate(quay_repository_mirror_sync_failures_total[5m])
 
 # Total failure rate
@@ -562,7 +558,7 @@ histogram_quantile(0.95, rate(quay_repository_mirror_sync_duration_seconds_bucke
 # 99th percentile sync duration
 histogram_quantile(0.99, rate(quay_repository_mirror_sync_duration_seconds_bucket[5m]))
 
-# Average duration by repository
+# Average duration by namespace
 rate(quay_repository_mirror_sync_duration_seconds_sum{namespace="myorg"}[5m]) /
 rate(quay_repository_mirror_sync_duration_seconds_count{namespace="myorg"}[5m])
 ```

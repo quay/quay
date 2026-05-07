@@ -91,8 +91,8 @@ repo_mirror_sync_complete = Gauge(
 
 repo_mirror_sync_failures_total = Counter(
     "quay_repository_mirror_sync_failures_total",
-    "Total number of synchronization failures per repository",
-    labelnames=["namespace", "repository", "reason"],
+    "Total number of synchronization failures aggregated by namespace",
+    labelnames=["namespace", "reason"],
 )
 
 # Additional supporting metrics
@@ -104,9 +104,9 @@ repo_mirror_last_sync_timestamp = Gauge(
 
 repo_mirror_sync_duration_seconds = Histogram(
     "quay_repository_mirror_sync_duration_seconds",
-    "Duration of the last synchronization operation",
-    labelnames=["namespace", "repository"],
-    buckets=(30, 60, 120, 300, 600, 1200, 1800, 3600, 7200, float("inf")),
+    "Duration of synchronization operations aggregated by namespace",
+    labelnames=["namespace"],
+    buckets=(60, 300, 900, 3600, float("inf")),
 )
 
 repo_mirror_workers_active = Gauge(
@@ -344,7 +344,6 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         ).set(1)
         repo_mirror_sync_duration_seconds.labels(
             namespace=namespace,
-            repository=repository_name,
         ).observe(sync_duration)
         release_mirror(mirror, RepoMirrorStatus.SUCCESS)
         return
@@ -598,14 +597,12 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         # Record sync duration
         repo_mirror_sync_duration_seconds.labels(
             namespace=namespace,
-            repository=repository_name,
         ).observe(sync_duration)
 
         # Increment failure counter on failures with reason
         if overall_status == RepoMirrorStatus.FAIL:
             repo_mirror_sync_failures_total.labels(
                 namespace=namespace,
-                repository=repository_name,
                 reason=failure_reason or "unknown_error",
             ).inc()
 
@@ -1130,7 +1127,6 @@ def _update_mirror_metrics_on_failure(namespace, repository_name, failure_reason
 
     repo_mirror_sync_failures_total.labels(
         namespace=namespace,
-        repository=repository_name,
         reason=reason,
     ).inc()
 
@@ -1139,7 +1135,6 @@ def _update_mirror_metrics_on_failure(namespace, repository_name, failure_reason
         sync_duration = time.time() - sync_start_time
         repo_mirror_sync_duration_seconds.labels(
             namespace=namespace,
-            repository=repository_name,
         ).observe(sync_duration)
 
 

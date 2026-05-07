@@ -235,38 +235,31 @@ def get_mirror_health_data(
     lim = max(1, min(int(detail_limit), _MAX_DETAIL_PAGE)) if detailed else 0
     off = max(0, int(detail_offset)) if detailed else 0
 
-    # Sample up to _ISSUE_SAMPLE_CAP of each issue type; stop early once all caps are reached.
-    scan_query = _mirror_rows_query(namespace)
-    for mirror in scan_query.iterator():
-        namespace_name = mirror.repository.namespace_user.username
-        repo_name = mirror.repository.name
-        last_sync_ts = last_sync_timestamps.get((namespace_name, repo_name))
+    # Bounded queries: sample up to _ISSUE_SAMPLE_CAP of each issue type via SQL LIMIT.
+    failing_repos = list(
+        _mirror_rows_query(namespace)
+        .where(
+            RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL,
+            RepoMirrorConfig.sync_retries_remaining == 0,
+        )
+        .limit(_ISSUE_SAMPLE_CAP)
+    )
 
-        if (
-            mirror.sync_status == RepoMirrorStatus.FAIL
-            and mirror.sync_retries_remaining == 0
-            and len(failing_repos) < _ISSUE_SAMPLE_CAP
-        ):
-            failing_repos.append(mirror)
+    never_synced_repos = list(
+        _mirror_rows_query(namespace)
+        .where(RepoMirrorConfig.sync_status == RepoMirrorStatus.NEVER_RUN)
+        .limit(_ISSUE_SAMPLE_CAP)
+    )
 
-        if mirror.sync_status != RepoMirrorStatus.SYNCING:
-            if last_sync_ts is None:
-                if (
-                    mirror.sync_status == RepoMirrorStatus.NEVER_RUN
-                    and len(never_synced_repos) < _ISSUE_SAMPLE_CAP
-                ):
-                    never_synced_repos.append(mirror)
-            elif len(stale_repos) < _ISSUE_SAMPLE_CAP:
-                last_sync_dt = datetime.fromtimestamp(last_sync_ts, tz=timezone.utc)
-                if last_sync_dt < stale_threshold:
-                    stale_repos.append(mirror)
-
-        if (
-            len(stale_repos) >= _ISSUE_SAMPLE_CAP
-            and len(never_synced_repos) >= _ISSUE_SAMPLE_CAP
-            and len(failing_repos) >= _ISSUE_SAMPLE_CAP
-        ):
+    # Stale detection uses in-process Prometheus timestamps (bounded by registry size).
+    for (ns, repo), ts in last_sync_timestamps.items():
+        if len(stale_repos) >= _ISSUE_SAMPLE_CAP:
             break
+        if namespace and ns != namespace:
+            continue
+        last_sync_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+        if last_sync_dt < stale_threshold:
+            stale_repos.append({"namespace": ns, "repository": repo})
 
     if detailed:
         page_query = _mirror_rows_query(namespace).limit(lim + 1).offset(off)
@@ -296,11 +289,13 @@ def get_mirror_health_data(
             )
 
     if stale_repos:
-        for repo in stale_repos[:5]:  # Limit to first 5 for brevity
+        for repo in stale_repos[:_ISSUE_SAMPLE_CAP]:
+            ns = repo["namespace"] if isinstance(repo, dict) else repo.repository.namespace_user.username
+            name = repo["repository"] if isinstance(repo, dict) else repo.repository.name
             issues.append(
                 {
                     "severity": "warning",
-                    "message": f"Repository {repo.repository.namespace_user.username}/{repo.repository.name} hasn't synced in over 24 hours",
+                    "message": f"Repository {ns}/{name} hasn't synced in over 24 hours",
                     "timestamp": _utc_z_timestamp(now),
                 }
             )
