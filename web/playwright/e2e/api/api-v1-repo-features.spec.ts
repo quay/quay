@@ -2,9 +2,10 @@
  * Repository Features API Tests
  *
  * Covers permissions, collaborators, teams, notifications, robot accounts,
- * robot federation, default permissions (prototypes), and repository state
- * changes. Each test.describe block is self-contained with its own setup
- * and auto-cleanup via TestApi fixtures.
+ * robot federation, default permissions (prototypes), repository state
+ * changes, build triggers, and authorized repository emails. Each
+ * test.describe block is self-contained with its own setup and auto-cleanup
+ * via TestApi fixtures.
  */
 
 import {test, expect, uniqueName} from '../../fixtures';
@@ -460,6 +461,114 @@ test.describe(
         }/invite/${encodeURIComponent(email)}`,
       );
       expect([204, 404]).toContain(revokeResp.status());
+    });
+  },
+);
+
+// ============================================================================
+// Build Triggers
+// ============================================================================
+
+test.describe('Build Triggers', {tag: ['@api', '@auth:Database']}, () => {
+  test('list triggers returns empty array for new repository', async ({
+    superuserApi,
+    adminClient,
+  }) => {
+    const org = await superuserApi.organization('trig');
+    const repo = await superuserApi.repository(org.name, 'repo');
+
+    const resp = await adminClient.get(
+      `/api/v1/repository/${org.name}/${repo.name}/trigger/`,
+    );
+    expect(resp.status()).toBe(200);
+    const body = await resp.json();
+    expect(body.triggers).toEqual([]);
+  });
+
+  test('get non-existent trigger returns 404', async ({
+    superuserApi,
+    adminClient,
+  }) => {
+    const org = await superuserApi.organization('trig');
+    const repo = await superuserApi.repository(org.name, 'repo');
+
+    const resp = await adminClient.get(
+      `/api/v1/repository/${org.name}/${repo.name}/trigger/00000000-0000-0000-0000-000000000000`,
+    );
+    expect(resp.status()).toBe(404);
+  });
+
+  test('list builds for non-existent trigger returns empty list', async ({
+    superuserApi,
+    adminClient,
+  }) => {
+    const org = await superuserApi.organization('trig');
+    const repo = await superuserApi.repository(org.name, 'repo');
+
+    const resp = await adminClient.get(
+      `/api/v1/repository/${org.name}/${repo.name}/trigger/00000000-0000-0000-0000-000000000000/builds`,
+    );
+    expect(resp.status()).toBe(200);
+    const body = await resp.json();
+    expect(body.builds).toEqual([]);
+  });
+
+  test('normal user without admin gets 403 on triggers', async ({
+    superuserApi,
+    userClient,
+  }) => {
+    const org = await superuserApi.organization('trig');
+    const repo = await superuserApi.repository(org.name, 'repo');
+
+    const resp = await userClient.get(
+      `/api/v1/repository/${org.name}/${repo.name}/trigger/`,
+    );
+    expect(resp.status()).toBe(403);
+  });
+});
+
+// ============================================================================
+// Authorized Repository Emails
+// ============================================================================
+
+test.describe(
+  'Authorized Repository Emails',
+  {tag: ['@api', '@auth:Database', '@feature:MAILING']},
+  () => {
+    test('check email authorization status for repo', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const org = await superuserApi.organization('repomail');
+      const repo = await superuserApi.repository(org.name, 'repo');
+      const email = 'repocheck@example.com';
+
+      const resp = await adminClient.get(
+        `/api/v1/repository/${org.name}/${
+          repo.name
+        }/authorizedemail/${encodeURIComponent(email)}`,
+      );
+      expect([200, 404]).toContain(resp.status());
+      if (resp.status() === 200) {
+        const body = await resp.json();
+        expect(body).toHaveProperty('confirmed');
+      }
+    });
+
+    test('send authorization email for repository', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const org = await superuserApi.organization('repomail');
+      const repo = await superuserApi.repository(org.name, 'repo');
+      const email = 'repoauth@example.com';
+
+      const resp = await adminClient.post(
+        `/api/v1/repository/${org.name}/${
+          repo.name
+        }/authorizedemail/${encodeURIComponent(email)}`,
+      );
+      expect([200, 201]).toContain(resp.status());
     });
   },
 );
