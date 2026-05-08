@@ -949,6 +949,7 @@ class User(BaseModel):
                 OrgMirrorConfig,
                 OrgMirrorRepository,
                 OrganizationContactEmail,
+                QuarantinedRepository,
             } | v22_classes
             delete_instance_filtered(self, User, delete_nullable, skip_transitive_deletes)
 
@@ -2354,9 +2355,7 @@ class QuarantinedRepository(BaseModel):
     class Meta:
         database = db
         read_only_config = read_only_config
-        indexes = (
-            (("status", "total_confidence_score"), False),
-        )
+        indexes = ((("status", "total_confidence_score"), False),)
 
 
 # Defines a map from full-length index names to the legacy names used in our code
