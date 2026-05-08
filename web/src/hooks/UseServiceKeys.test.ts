@@ -8,6 +8,7 @@ import {
   createServiceKey,
   deleteServiceKey,
   approveServiceKey,
+  IServiceKey,
 } from 'src/resources/ServiceKeysResource';
 
 vi.mock('src/resources/ServiceKeysResource', () => ({
@@ -54,6 +55,28 @@ describe('useServiceKeys', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.serviceKeys).toEqual(mockKeys);
     expect(result.current.totalResults).toBe(2);
+  });
+
+  it('resets to page 1 when search query changes', async () => {
+    const mockKeys: IServiceKey[] = Array.from({length: 25}, (_, i) => ({
+      kid: `kid${i}`,
+      name: i < 20 ? 'Common Name' : 'Other Name',
+      service: `svc${i}`,
+      created_date: '2024-01-01',
+    }));
+    vi.mocked(fetchServiceKeys).mockResolvedValueOnce(mockKeys);
+    const {result} = renderHook(() => useServiceKeys(), {wrapper});
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    // Advance to page 2
+    act(() => {
+      result.current.setPage(2);
+    });
+    expect(result.current.page).toBe(2);
+    // Apply a search filter — page should reset to 1
+    act(() => {
+      result.current.setSearch({query: 'Common', field: 'name'});
+    });
+    await waitFor(() => expect(result.current.page).toBe(1));
   });
 
   it('filters keys by search query', async () => {

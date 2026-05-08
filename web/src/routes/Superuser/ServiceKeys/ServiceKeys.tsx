@@ -395,7 +395,7 @@ export default function ServiceKeys() {
                 placeholder="Filter Keys..."
                 value={search.query}
                 onChange={(_event, val) =>
-                  setSearch((prev) => ({...prev, query: val.trim()}))
+                  setSearch((prev) => ({...prev, query: val}))
                 }
               />
             </ToolbarItem>
