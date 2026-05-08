@@ -108,8 +108,12 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     // All three should be visible
     await expect(table.locator('tbody tr')).toHaveCount(3);
 
-    // Open dropdown and select all
-    await page.locator('#toolbar-dropdown-checkbox').click();
+    // Open dropdown and select all (scope to OAuth section to avoid ambiguity with other tab toolbars)
+    await page
+      .locator(
+        'section:has([data-testid="oauth-applications-table"]) #toolbar-dropdown-checkbox',
+      )
+      .click();
     await page.getByTestId('select-all-items-action').click();
 
     // All row checkboxes should be checked
