@@ -1,16 +1,9 @@
+import importlib
+
 import pytest
 
+import endpoints.api.superuser_spam as _superuser_spam_module
 import features
-from endpoints.api.superuser_spam import (
-    SuperUserDismissRepo,
-    SuperUserFlaggedRepoDetail,
-    SuperUserFlaggedRepoList,
-    SuperUserQuarantineRepo,
-    SuperUserRestoreRepo,
-    SuperUserSpamRuleDetail,
-    SuperUserSpamRuleList,
-    SuperUserSpamScan,
-)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
@@ -28,9 +21,17 @@ VALID_RULE_BODY = {
     "confidence_score": 75,
 }
 
+features.import_features(SPAM_FEATURES)
+importlib.reload(_superuser_spam_module)
 
-def _enable_features():
-    features.import_features(SPAM_FEATURES)
+SuperUserDismissRepo = _superuser_spam_module.SuperUserDismissRepo
+SuperUserFlaggedRepoDetail = _superuser_spam_module.SuperUserFlaggedRepoDetail
+SuperUserFlaggedRepoList = _superuser_spam_module.SuperUserFlaggedRepoList
+SuperUserQuarantineRepo = _superuser_spam_module.SuperUserQuarantineRepo
+SuperUserRestoreRepo = _superuser_spam_module.SuperUserRestoreRepo
+SuperUserSpamRuleDetail = _superuser_spam_module.SuperUserSpamRuleDetail
+SuperUserSpamRuleList = _superuser_spam_module.SuperUserSpamRuleList
+SuperUserSpamScan = _superuser_spam_module.SuperUserSpamScan
 
 
 def _create_rule(cl):
@@ -38,7 +39,7 @@ def _create_rule(cl):
 
 
 def test_list_spam_rules(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, SuperUserSpamRuleList, "GET", None, None, 200).json
         assert "rules" in result
@@ -46,7 +47,7 @@ def test_list_spam_rules(app):
 
 
 def test_create_spam_rule(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         result = _create_rule(cl)
         assert result["name"] == VALID_RULE_BODY["name"]
@@ -57,7 +58,7 @@ def test_create_spam_rule(app):
 
 
 def test_create_spam_rule_invalid_type(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         body = {
             "name": "bad-rule",
@@ -67,7 +68,7 @@ def test_create_spam_rule_invalid_type(app):
 
 
 def test_get_spam_rule_by_uuid(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         created = _create_rule(cl)
         rule_uuid = created["uuid"]
@@ -79,7 +80,7 @@ def test_get_spam_rule_by_uuid(app):
 
 
 def test_get_spam_rule_not_found(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         conduct_api_call(
             cl, SuperUserSpamRuleDetail, "GET", {"rule_uuid": "nonexistent-uuid"}, None, 404
@@ -87,7 +88,7 @@ def test_get_spam_rule_not_found(app):
 
 
 def test_update_spam_rule(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         created = _create_rule(cl)
         rule_uuid = created["uuid"]
@@ -100,7 +101,7 @@ def test_update_spam_rule(app):
 
 
 def test_update_spam_rule_not_found(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         update_body = {"name": "does-not-matter"}
         conduct_api_call(
@@ -109,7 +110,7 @@ def test_update_spam_rule_not_found(app):
 
 
 def test_delete_spam_rule(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         created = _create_rule(cl)
         rule_uuid = created["uuid"]
@@ -118,7 +119,7 @@ def test_delete_spam_rule(app):
 
 
 def test_delete_spam_rule_not_found(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         conduct_api_call(
             cl, SuperUserSpamRuleDetail, "DELETE", {"rule_uuid": "nonexistent-uuid"}, None, 404
@@ -126,7 +127,7 @@ def test_delete_spam_rule_not_found(app):
 
 
 def test_list_flagged_repos(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, SuperUserFlaggedRepoList, "GET", None, None, 200).json
         assert "flagged_repos" in result
@@ -134,7 +135,7 @@ def test_list_flagged_repos(app):
 
 
 def test_get_flagged_repo_not_found(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         conduct_api_call(
             cl, SuperUserFlaggedRepoDetail, "GET", {"repo_uuid": "nonexistent-uuid"}, None, 404
@@ -142,7 +143,7 @@ def test_get_flagged_repo_not_found(app):
 
 
 def test_quarantine_repo_not_found(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         conduct_api_call(
             cl, SuperUserQuarantineRepo, "POST", {"repo_uuid": "nonexistent-uuid"}, None, 404
@@ -150,7 +151,7 @@ def test_quarantine_repo_not_found(app):
 
 
 def test_restore_repo_not_found(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         conduct_api_call(
             cl, SuperUserRestoreRepo, "POST", {"repo_uuid": "nonexistent-uuid"}, None, 404
@@ -158,7 +159,7 @@ def test_restore_repo_not_found(app):
 
 
 def test_dismiss_repo_not_found(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         conduct_api_call(
             cl, SuperUserDismissRepo, "POST", {"repo_uuid": "nonexistent-uuid"}, None, 404
@@ -166,7 +167,7 @@ def test_dismiss_repo_not_found(app):
 
 
 def test_trigger_spam_scan(app):
-    _enable_features()
+
     with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, SuperUserSpamScan, "POST", None, None, 200).json
         assert "scan_id" in result
