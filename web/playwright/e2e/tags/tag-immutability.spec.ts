@@ -1032,10 +1032,13 @@ test.describe(
         name: 'key=value',
       });
       await labelInput.fill('test=value');
-      // Press Tab to trigger onEditComplete (blur event) more reliably than
-      // clicking another element — this avoids race conditions where the click
-      // might not properly blur the input.
-      await labelInput.press('Tab');
+      // Click outside the EditableLabel to trigger onEditComplete via mousedown.
+      // EditableLabel listens for mousedown events (not blur), so we must click
+      // a reliable element outside the input wrapper to finalize the edit.
+      await authenticatedPage
+        .getByRole('dialog', {name: 'Edit labels'})
+        .getByText('Mutable labels')
+        .click();
 
       // Wait for the Save Labels button to become enabled and click it.
       // Using click() directly after the expect ensures the button is still
