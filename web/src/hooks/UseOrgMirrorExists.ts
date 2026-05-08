@@ -16,7 +16,12 @@ export function useOrgMirrorExists(orgName: string, enabled = true) {
         await getOrgMirrorConfig(orgName);
         return true;
       } catch (err) {
-        if (isAxiosError(err) && err.response?.status === 404) {
+        if (
+          isAxiosError(err) &&
+          err.response?.status &&
+          err.response.status >= 400 &&
+          err.response.status < 500
+        ) {
           return false;
         }
         throw err;
