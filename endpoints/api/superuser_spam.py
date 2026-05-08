@@ -53,7 +53,7 @@ class SuperUserSpamRuleList(ApiResource):
     @nickname("listSpamDetectionRules")
     @require_scope(scopes.SUPERUSER)
     def get(self):
-        if not allow_if_any_superuser()[0]:
+        if not allow_if_any_superuser():
             raise Unauthorized()
         rules = spam.get_spam_detection_rules()
         return {"rules": [r.get_view() for r in rules]}
@@ -104,7 +104,7 @@ class SuperUserSpamRuleDetail(ApiResource):
     @nickname("getSpamDetectionRule")
     @require_scope(scopes.SUPERUSER)
     def get(self, rule_uuid):
-        if not allow_if_any_superuser()[0]:
+        if not allow_if_any_superuser():
             raise Unauthorized()
         rule = spam.get_spam_detection_rule_by_uuid(rule_uuid)
         if not rule:
@@ -160,7 +160,7 @@ class SuperUserFlaggedRepoList(ApiResource):
     @query_param("page_token", "Pagination token", type=str)
     @query_param("limit", "Results per page", type=int, default=50)
     def get(self, parsed_args):
-        if not allow_if_any_superuser()[0]:
+        if not allow_if_any_superuser():
             raise Unauthorized()
         repos, next_token = spam.get_quarantined_repos(
             status=parsed_args.get("status"),
@@ -186,7 +186,7 @@ class SuperUserFlaggedRepoDetail(ApiResource):
     @nickname("getFlaggedRepo")
     @require_scope(scopes.SUPERUSER)
     def get(self, repo_uuid):
-        if not allow_if_any_superuser()[0]:
+        if not allow_if_any_superuser():
             raise Unauthorized()
         repo = spam.get_quarantined_repo_by_uuid(repo_uuid)
         if not repo:
