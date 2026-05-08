@@ -3,11 +3,7 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from data.database import (
-    QuarantinedRepository,
-    Repository,
-    SpamDetectionRule,
-)
+from data.database import QuarantinedRepository, Repository, SpamDetectionRule
 from data.model import DataModelException, db_transaction, modelutil
 
 logger = logging.getLogger(__name__)
@@ -157,9 +153,7 @@ def update_spam_detection_rule(uuid, **fields):
     update_fields[SpamDetectionRule.updated_at] = datetime.utcnow()
 
     with db_transaction():
-        SpamDetectionRule.update(update_fields).where(
-            SpamDetectionRule.uuid == uuid
-        ).execute()
+        SpamDetectionRule.update(update_fields).where(SpamDetectionRule.uuid == uuid).execute()
     return True
 
 
@@ -172,8 +166,9 @@ def delete_spam_detection_rule(uuid):
     return True
 
 
-def get_quarantined_repos(status=None, min_confidence=0, namespace=None, scan_id=None,
-                          page_token=None, limit=50):
+def get_quarantined_repos(
+    status=None, min_confidence=0, namespace=None, scan_id=None, page_token=None, limit=50
+):
     query = QuarantinedRepository.select()
 
     if status:
@@ -201,8 +196,16 @@ def get_quarantined_repo_by_uuid(uuid):
         return None
 
 
-def create_quarantined_repo(repository, namespace_name, repo_name, original_description,
-                            matched_rules, total_confidence, is_empty, scan_id):
+def create_quarantined_repo(
+    repository,
+    namespace_name,
+    repo_name,
+    original_description,
+    matched_rules,
+    total_confidence,
+    is_empty,
+    scan_id,
+):
     with db_transaction():
         row = QuarantinedRepository.create(
             repository=repository,
@@ -231,16 +234,12 @@ def repo_already_flagged(repository_id):
 def quarantine_repository(uuid, actioned_by):
     with db_transaction():
         try:
-            qr = QuarantinedRepository.select().where(
-                QuarantinedRepository.uuid == uuid
-            ).get()
+            qr = QuarantinedRepository.select().where(QuarantinedRepository.uuid == uuid).get()
         except QuarantinedRepository.DoesNotExist:
             raise QuarantinedRepoNotFound(f"Quarantined repo {uuid} not found")
 
         now = datetime.utcnow()
-        Repository.update(description=None).where(
-            Repository.id == qr.repository_id
-        ).execute()
+        Repository.update(description=None).where(Repository.id == qr.repository_id).execute()
         QuarantinedRepository.update(
             status="quarantined",
             actioned_by=actioned_by,
@@ -253,9 +252,7 @@ def quarantine_repository(uuid, actioned_by):
 def restore_repository(uuid, actioned_by):
     with db_transaction():
         try:
-            qr = QuarantinedRepository.select().where(
-                QuarantinedRepository.uuid == uuid
-            ).get()
+            qr = QuarantinedRepository.select().where(QuarantinedRepository.uuid == uuid).get()
         except QuarantinedRepository.DoesNotExist:
             raise QuarantinedRepoNotFound(f"Quarantined repo {uuid} not found")
 
@@ -275,9 +272,7 @@ def restore_repository(uuid, actioned_by):
 def dismiss_quarantined_repo(uuid, actioned_by):
     with db_transaction():
         try:
-            QuarantinedRepository.select().where(
-                QuarantinedRepository.uuid == uuid
-            ).get()
+            QuarantinedRepository.select().where(QuarantinedRepository.uuid == uuid).get()
         except QuarantinedRepository.DoesNotExist:
             raise QuarantinedRepoNotFound(f"Quarantined repo {uuid} not found")
 

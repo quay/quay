@@ -999,3 +999,5 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to allow sparse manifest indexes where not all architectures are required.
     # When enabled, manifests for missing architectures will be skipped instead of raising errors.
     FEATURE_SPARSE_INDEX = False
+
+    FEATURE_SPAM_DETECTION = False

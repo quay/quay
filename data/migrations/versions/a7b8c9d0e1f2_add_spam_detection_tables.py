@@ -24,7 +24,7 @@ def upgrade(op, tables, tester):
         sa.Column("pattern", sa.Text(), nullable=True),
         sa.Column("config", sa.Text(), nullable=True),
         sa.Column("confidence_score", sa.Integer(), nullable=False, server_default="50"),
-        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.sql.expression.true()),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
@@ -43,7 +43,9 @@ def upgrade(op, tables, tester):
         sa.Column("original_description", sa.Text(), nullable=True),
         sa.Column("matched_rules", sa.Text(), nullable=True),
         sa.Column("total_confidence_score", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("is_empty", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column(
+            "is_empty", sa.Boolean(), nullable=False, server_default=sa.sql.expression.false()
+        ),
         sa.Column("scan_id", sa.String(length=36), nullable=True),
         sa.Column("actioned_by", sa.String(length=255), nullable=True),
         sa.Column("actioned_at", sa.DateTime(), nullable=True),
@@ -52,9 +54,7 @@ def upgrade(op, tables, tester):
         sa.ForeignKeyConstraint(["repository_id"], ["repository.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "quarantinedrepository_uuid", "quarantinedrepository", ["uuid"], unique=True
-    )
+    op.create_index("quarantinedrepository_uuid", "quarantinedrepository", ["uuid"], unique=True)
     op.create_index(
         "quarantinedrepository_repository_id",
         "quarantinedrepository",

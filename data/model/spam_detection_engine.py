@@ -155,12 +155,14 @@ class SpamScanner:
                     matches = []
                     for evaluator in evaluators:
                         if evaluator.evaluate(repo, namespace_user):
-                            matches.append(RuleMatch(
-                                rule_uuid=evaluator.rule.uuid,
-                                rule_name=evaluator.rule.name,
-                                rule_type=evaluator.rule.rule_type,
-                                confidence=evaluator.rule.confidence_score,
-                            ))
+                            matches.append(
+                                RuleMatch(
+                                    rule_uuid=evaluator.rule.uuid,
+                                    rule_name=evaluator.rule.name,
+                                    rule_type=evaluator.rule.rule_type,
+                                    confidence=evaluator.rule.confidence_score,
+                                )
+                            )
 
                     if not matches:
                         self.report.clean += 1
@@ -201,7 +203,10 @@ class SpamScanner:
                     self.report.flagged += 1
                     logger.debug(
                         "Flagged repo %s/%s (confidence: %d, rules: %d)",
-                        namespace_user.username, repo.name, total_confidence, len(matches),
+                        namespace_user.username,
+                        repo.name,
+                        total_confidence,
+                        len(matches),
                     )
                 except Exception:
                     self.report.errors += 1
