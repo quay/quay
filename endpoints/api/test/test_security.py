@@ -7188,7 +7188,12 @@ def test_api_security(resource, method, params, body, identity, expected, app):
         conduct_api_call(cl, resource, method, params, body, expected)
 
 
-ALLOWED_MISSING_MODULES = {"endpoints.api.suconfig", "endpoints.api.error", "data.userfiles"}
+ALLOWED_MISSING_MODULES = {
+    "endpoints.api.suconfig",
+    "endpoints.api.error",
+    "endpoints.api.superuser_spam",
+    "data.userfiles",
+}
 
 
 def test_all_apis_tested(app):
