@@ -1,11 +1,13 @@
 import pytest
 
+from data import model
 from data.database import DeletedNamespace, User
 from endpoints.api.superuser import (
     SuperUserDumpConfig,
     SuperUserList,
     SuperUserManagement,
     SuperUserOrganizationList,
+    SuperUserRepositoryBuildResource,
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
@@ -106,3 +108,48 @@ def test_get_superuserdumpconfig(app):
             result.get("schema", {})["description"]
             result.get("schema", {})["required"]
             raise AttributeError()
+
+
+def test_get_repository_build_no_trigger(app):
+    """Superuser build endpoint must not crash when a build has no associated trigger."""
+    repo = model.repository.get_repository("devtable", "simple")
+    access_token = model.token.create_access_token(repo, "read")
+    build = model.build.create_repository_build(
+        repo, access_token, {}, "someresourcekey", "manual build", trigger=None
+    )
+
+    with client_with_identity("devtable", app) as cl:
+        result = conduct_api_call(
+            cl,
+            SuperUserRepositoryBuildResource,
+            "GET",
+            {"build_uuid": build.uuid},
+            None,
+            200,
+        )
+
+    assert result.json["trigger"] is None
+
+
+def test_get_repository_build_with_trigger(app):
+    """Superuser build endpoint returns trigger info for trigger-based builds."""
+    repo = model.repository.get_repository("devtable", "simple")
+    access_token = model.token.create_access_token(repo, "read")
+    user = model.user.get_user("devtable")
+    trigger = model.build.create_build_trigger(repo, "custom-git", "someauthtoken", user)
+    build = model.build.create_repository_build(
+        repo, access_token, {}, "someresourcekey2", "triggered build", trigger=trigger
+    )
+
+    with client_with_identity("devtable", app) as cl:
+        result = conduct_api_call(
+            cl,
+            SuperUserRepositoryBuildResource,
+            "GET",
+            {"build_uuid": build.uuid},
+            None,
+            200,
+        )
+
+    assert result.json["trigger"] is not None
+    assert result.json["trigger"]["service"] == "custom-git"
