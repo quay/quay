@@ -270,6 +270,7 @@ def test_create_repo_with_restricted_users_enabled_as_normal_user(app):
     with (
         patch("features.RESTRICTED_USERS", FeatureNameValue("RESTRICTED_USERS", True)),
         patch.object(usermanager, "is_superuser", return_value=False),
+        patch.dict(realapp.config, {"SUPER_USERS": []}),
     ):
         with client_with_identity("devtable", app) as cl:
             body = {
