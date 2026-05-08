@@ -55,7 +55,7 @@ class BuildTrigger(
     """
 
     def to_dict(self):
-        if not self.trigger and not self.trigger.uuid:
+        if not self.trigger:
             return None
 
         build_trigger = BuildTriggerHandler.get_handler(self.trigger)
