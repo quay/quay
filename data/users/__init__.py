@@ -409,6 +409,9 @@ class UserManager(object):
         if not features.RESTRICTED_USERS:
             return False
 
+        if self.is_superuser(username):
+            return False
+
         return self.state.is_restricted_user(username)
 
     def is_superuser(self, username):
