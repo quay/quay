@@ -498,12 +498,19 @@ test.describe(
       await authenticatedPage
         .locator('input[placeholder="key=value"]')
         .fill('testkey=testval');
+      // Click outside to trigger onEditComplete (EditableLabel uses mousedown)
       await authenticatedPage.getByText('Mutable labels').click();
+      // Wait for the label chip to appear before adding next label
+      await expect(mutableLabels).toContainText('testkey=testval');
+
       await authenticatedPage.getByText('Add new label').click();
       await authenticatedPage
         .locator('input[placeholder="key=value"]')
         .fill('foo=bar');
       await authenticatedPage.getByText('Mutable labels').click();
+      // Wait for the label chip to appear
+      await expect(mutableLabels).toContainText('foo=bar');
+
       await authenticatedPage.getByText('Save Labels').click();
 
       await expect(
