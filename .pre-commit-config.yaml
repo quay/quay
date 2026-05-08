@@ -30,6 +30,12 @@ repos:
         language: script
         pass_filenames: false
         stages: [pre-commit]
+    -   id: npm-lockfile-sync
+        name: Sync npm lockfile with pnpm changes
+        entry: bash -c 'if git diff --cached --name-only | grep -qE "^web/(pnpm-lock\.yaml|package\.json)$"; then cd web && npm install --package-lock-only --legacy-peer-deps --silent 2>/dev/null && git add package-lock.json; fi'
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
     -   id: eslint
         name: ESLint
         entry: web/node_modules/.bin/eslint --fix
