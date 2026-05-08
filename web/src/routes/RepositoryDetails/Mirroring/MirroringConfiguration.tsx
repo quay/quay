@@ -351,8 +351,14 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
                 id="skopeo_timeout_interval"
                 value={value?.toString() || ''}
                 onChange={(_event, newValue) => {
-                  const numericValue = parseInt(newValue) || 300;
-                  onChange(numericValue);
+                  if (newValue === '') {
+                    onChange(null);
+                    return;
+                  }
+                  const parsed = parseInt(newValue, 10);
+                  if (!isNaN(parsed)) {
+                    onChange(parsed);
+                  }
                 }}
                 min="300"
                 max="43200"
