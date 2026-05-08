@@ -264,6 +264,36 @@ class TestRuleEvaluatorEdgeCases:
         assert evaluator.evaluate(repo) is False
 
 
+def _setup_repo_mock(mock_repo, batches, max_id=1):
+    batch_idx = [0]
+
+    def select_side_effect(*args, **kwargs):
+        join_mock = MagicMock()
+
+        def where_side_effect(*args, **kwargs):
+            order_mock = MagicMock()
+            if batch_idx[0] < len(batches):
+                batch = batches[batch_idx[0]]
+                order_mock.__iter__ = lambda self, b=batch: iter(b)
+                batch_idx[0] += 1
+            else:
+                order_mock.__iter__ = lambda self: iter([])
+            return order_mock
+
+        join_mock.where = where_side_effect
+        result = MagicMock()
+        result.join.return_value = join_mock
+
+        max_id_mock = MagicMock()
+        max_id_entry = MagicMock()
+        max_id_entry.id = max_id
+        max_id_mock.limit.return_value = [max_id_entry]
+        result.order_by.return_value = max_id_mock
+        return result
+
+    mock_repo.select.side_effect = select_side_effect
+
+
 @patch("data.model.spam_detection_engine.time")
 @patch("data.model.spam_detection_engine.Tag")
 @patch("data.model.spam_detection_engine.Repository")
@@ -294,12 +324,7 @@ class TestSpamScanner:
         repo.namespace_user = MagicMock()
         repo.namespace_user.username = "testuser"
 
-        mock_repo.select.return_value.join.return_value.where.return_value.order_by.return_value = [
-            repo
-        ]
-        max_id_repo = MagicMock()
-        max_id_repo.id = 1
-        mock_repo.select.return_value.order_by.return_value.limit.return_value = [max_id_repo]
+        _setup_repo_mock(mock_repo, [[repo]], max_id=1)
 
         config = ScanConfig(scan_id="scan-clean", batch_size=200, sleep_between_batches=0)
         scanner = SpamScanner(config)
@@ -318,12 +343,7 @@ class TestSpamScanner:
         repo = make_repo(repo_id=1)
         repo.namespace_user = MagicMock()
 
-        mock_repo.select.return_value.join.return_value.where.return_value.order_by.return_value = [
-            repo
-        ]
-        max_id_repo = MagicMock()
-        max_id_repo.id = 1
-        mock_repo.select.return_value.order_by.return_value.limit.return_value = [max_id_repo]
+        _setup_repo_mock(mock_repo, [[repo]], max_id=1)
 
         config = ScanConfig(scan_id="scan-skip", batch_size=200, sleep_between_batches=0)
         scanner = SpamScanner(config)
@@ -344,12 +364,7 @@ class TestSpamScanner:
         namespace_user.username = "spammer"
         repo.namespace_user = namespace_user
 
-        mock_repo.select.return_value.join.return_value.where.return_value.order_by.return_value = [
-            repo
-        ]
-        max_id_repo = MagicMock()
-        max_id_repo.id = 1
-        mock_repo.select.return_value.order_by.return_value.limit.return_value = [max_id_repo]
+        _setup_repo_mock(mock_repo, [[repo]], max_id=1)
 
         mock_tag.select.return_value.where.return_value.limit.return_value.exists.return_value = (
             False
@@ -380,12 +395,7 @@ class TestSpamScanner:
         repo = make_repo(name="low-conf", description="test content", repo_id=1)
         repo.namespace_user = MagicMock()
 
-        mock_repo.select.return_value.join.return_value.where.return_value.order_by.return_value = [
-            repo
-        ]
-        max_id_repo = MagicMock()
-        max_id_repo.id = 1
-        mock_repo.select.return_value.order_by.return_value.limit.return_value = [max_id_repo]
+        _setup_repo_mock(mock_repo, [[repo]], max_id=1)
 
         config = ScanConfig(
             scan_id="scan-low", batch_size=200, min_confidence_threshold=50, sleep_between_batches=0
@@ -406,12 +416,7 @@ class TestSpamScanner:
         repo = make_repo(repo_id=1)
         repo.namespace_user = MagicMock()
 
-        mock_repo.select.return_value.join.return_value.where.return_value.order_by.return_value = [
-            repo
-        ]
-        max_id_repo = MagicMock()
-        max_id_repo.id = 1
-        mock_repo.select.return_value.order_by.return_value.limit.return_value = [max_id_repo]
+        _setup_repo_mock(mock_repo, [[repo]], max_id=1)
 
         config = ScanConfig(scan_id="scan-err", batch_size=200, sleep_between_batches=0)
         scanner = SpamScanner(config)
@@ -431,35 +436,7 @@ class TestSpamScanner:
         repo2 = make_repo(name="repo2", description="clean", repo_id=201)
         repo2.namespace_user = MagicMock()
 
-        batch_call_count = [0]
-
-        def select_side_effect(*args, **kwargs):
-            join_mock = MagicMock()
-
-            def where_side_effect(*args, **kwargs):
-                order_mock = MagicMock()
-                if batch_call_count[0] == 0:
-                    order_mock.__iter__ = lambda self: iter([repo1])
-                    batch_call_count[0] += 1
-                elif batch_call_count[0] == 1:
-                    order_mock.__iter__ = lambda self: iter([repo2])
-                    batch_call_count[0] += 1
-                else:
-                    order_mock.__iter__ = lambda self: iter([])
-                return order_mock
-
-            join_mock.where = where_side_effect
-            result = MagicMock()
-            result.join.return_value = join_mock
-
-            max_id_mock = MagicMock()
-            max_id_entry = MagicMock()
-            max_id_entry.id = 201
-            max_id_mock.limit.return_value = [max_id_entry]
-            result.order_by.return_value = max_id_mock
-            return result
-
-        mock_repo.select.side_effect = select_side_effect
+        _setup_repo_mock(mock_repo, [[repo1], [repo2]], max_id=201)
 
         config = ScanConfig(scan_id="scan-batch", batch_size=200, sleep_between_batches=0)
         scanner = SpamScanner(config)
