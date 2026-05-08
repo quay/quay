@@ -213,9 +213,10 @@ test.describe(
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      // Wait for tag to appear — push completion can race with UI load
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       // Select tag checkbox
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
@@ -253,9 +254,10 @@ test.describe(
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      // Wait for tag to appear — push completion can race with UI load
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
@@ -297,9 +299,10 @@ test.describe(
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      // Wait for tag to appear — push completion can race with UI load
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       // Select tag and use toolbar Actions > Permanently delete
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
@@ -345,12 +348,13 @@ test.describe(
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      // Wait for tags to appear — push completion can race with UI load
       await expect(
         authenticatedPage.getByRole('link', {name: 'tag1'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
       await expect(
         authenticatedPage.getByRole('link', {name: 'tag2'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       // Select all via toolbar checkbox dropdown
       await authenticatedPage.locator('#toolbar-dropdown-checkbox').click();
@@ -386,9 +390,10 @@ test.describe(
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      // Wait for tag to appear — push completion can race with UI load
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'v1'}),
@@ -434,9 +439,10 @@ test.describe(
       );
 
       await authenticatedPage.goto(`/repository/${repo.fullName}?tab=tags`);
+      // Wait for tag to appear — push completion can race with UI load
       await expect(
         authenticatedPage.getByRole('link', {name: 'v1'}),
-      ).toBeVisible();
+      ).toBeVisible({timeout: 30000});
 
       const tagRow = authenticatedPage.getByTestId('table-entry').filter({
         has: authenticatedPage.getByRole('link', {name: 'v1'}),

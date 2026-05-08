@@ -1028,24 +1028,22 @@ test.describe(
 
       // Add a new label
       await authenticatedPage.getByText('Add new label').click();
-      await authenticatedPage
-        .getByRole('textbox', {name: 'key=value'})
-        .fill('test=value');
-      // Click away from the input to trigger onEditComplete (blur event),
-      // which adds the label to state and enables the Save Labels button.
-      await authenticatedPage.getByText('Mutable labels').click();
+      const labelInput = authenticatedPage.getByRole('textbox', {
+        name: 'key=value',
+      });
+      await labelInput.fill('test=value');
+      // Press Tab to trigger onEditComplete (blur event) more reliably than
+      // clicking another element — this avoids race conditions where the click
+      // might not properly blur the input.
+      await labelInput.press('Tab');
 
-      // Wait for the Save Labels button to become enabled before clicking.
-      // Without this wait, a race condition between the blur handler updating
-      // React state and Playwright's next click causes the button to be found
-      // in a disabled state (isSaveButtonDisabled returns true when no labels
-      // have been added/deleted yet — see LabelsEditable.tsx:194).
+      // Wait for the Save Labels button to become enabled and click it.
+      // Using click() directly after the expect ensures the button is still
+      // enabled at click time — separate expect + click can race.
       const saveLabelsButton = authenticatedPage.getByRole('button', {
         name: 'Save Labels',
       });
       await expect(saveLabelsButton).toBeEnabled({timeout: 15000});
-
-      // Save
       await saveLabelsButton.click();
 
       // Verify success alert appears exactly once and no crash
