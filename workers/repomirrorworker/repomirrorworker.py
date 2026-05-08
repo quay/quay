@@ -13,6 +13,7 @@ from workers.repomirrorworker import (
     process_mirrors,
     process_org_mirror_discovery,
     process_org_mirrors,
+    repo_mirror_workers_active,
 )
 from workers.worker import Worker
 
@@ -40,6 +41,9 @@ class RepoMirrorWorker(Worker):
         org_interval = app.config.get("ORG_MIRROR_INTERVAL", DEFAULT_MIRROR_INTERVAL)
         self.add_operation(self._process_org_mirror_discovery, org_interval)
         self.add_operation(self._process_org_mirrors, org_interval)
+
+        if features.REPO_MIRROR:
+            repo_mirror_workers_active.set(1)
 
     def _process_mirrors(self):
         while True:

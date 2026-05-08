@@ -22,6 +22,7 @@ from endpoints.api.immutability_policy import *
 from endpoints.api.logs import *  # type: ignore[no-redef]
 from endpoints.api.manifest import *
 from endpoints.api.mirror import *  # type: ignore[no-redef]
+from endpoints.api.mirrorhealth import RepositoryMirrorHealth
 from endpoints.api.namespacequota import *
 from endpoints.api.org_mirror import *  # type: ignore[no-redef]
 from endpoints.api.organization import *  # type: ignore[assignment,no-redef]
@@ -5963,6 +5964,11 @@ SECURITY_TESTS: List[
         "globalreadonlysuperuser",
         404,
     ),
+    (RepositoryMirrorHealth, "GET", None, None, None, 401),
+    (RepositoryMirrorHealth, "GET", None, None, "devtable", 200),
+    (RepositoryMirrorHealth, "GET", None, None, "globalreadonlysuperuser", 200),
+    (RepositoryMirrorHealth, "GET", None, None, "freshuser", 403),
+    (RepositoryMirrorHealth, "GET", None, None, "reader", 403),
     (RepoMirrorResource, "POST", {"repository": "devtable/simple"}, None, None, 401),
     (RepoMirrorResource, "POST", {"repository": "devtable/simple"}, None, "devtable", 400),
     (RepoMirrorResource, "POST", {"repository": "devtable/simple"}, None, "freshuser", 403),

@@ -69,6 +69,10 @@ def _list_files(path, extension, contains=""):
         return os.path.join(dp, f)[len("static/") :]
 
     filepath = os.path.join("static/", path)
+    if not os.path.isdir(filepath):
+        # Volume mounts of the repo (e.g. CI, local dev) often omit gitignored `static/build`;
+        # walking a missing path raises FileNotFoundError and yields 500 on every Angular UI route.
+        return []
     return [join_path(dp, f) for dp, _, files in os.walk(filepath) for f in files if matches(f)]
 
 
