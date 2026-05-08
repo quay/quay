@@ -17,6 +17,7 @@ from data.database import (
     ManifestPullStatistics,
     ManifestSecurityStatus,
     OrgMirrorRepository,
+    QuarantinedRepository,
     QuotaRepositorySize,
     RepoMirrorConfig,
     Repository,
@@ -106,6 +107,7 @@ def purge_repository(repo, force=False):
     )
     # Delete auto-prune policy associated with the repository
     RepositoryAutoPrunePolicy.delete().where(RepositoryAutoPrunePolicy.repository == repo).execute()
+    QuarantinedRepository.delete().where(QuarantinedRepository.repository == repo).execute()
 
     # Delete any repository build triggers, builds, and any other large-ish reference tables for
     # the repository.

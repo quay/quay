@@ -53,6 +53,7 @@ def registry_services():
         "quotatotalworker": {"autostart": "true"},
         "quotaregistrysizeworker": {"autostart": "true"},
         "autopruneworker": {"autostart": "true"},
+        "spamdetectionworker": {"autostart": "true"},
         "proxycacheblobworker": {"autostart": "true"},
         "pullstatsredisflushworker": {"autostart": "true"},
     }
@@ -94,6 +95,7 @@ def config_services():
         "quotatotalworker": {"autostart": "false"},
         "quotaregistrysizeworker": {"autostart": "false"},
         "autopruneworker": {"autostart": "false"},
+        "spamdetectionworker": {"autostart": "false"},
         "proxycacheblobworker": {"autostart": "false"},
         "pullstatsredisflushworker": {"autostart": "false"},
     }

@@ -47,6 +47,9 @@ export function QuaySidebar() {
       ...(quayConfig?.features?.BUILD_SUPPORT
         ? [NavigationPath.buildLogs]
         : []),
+      ...(quayConfig?.features?.SPAM_DETECTION
+        ? [NavigationPath.spamDetection]
+        : []),
     ];
 
     if (superuserPaths.includes(location.pathname as NavigationPath)) {
@@ -113,6 +116,17 @@ export function QuaySidebar() {
           },
         ]
       : []),
+    // Conditional Spam Detection (if SPAM_DETECTION enabled)
+    ...(quayConfig?.features?.SPAM_DETECTION
+      ? [
+          {
+            isSideNav: true,
+            navPath: NavigationPath.spamDetection,
+            title: 'Spam Detection',
+            component: null,
+          },
+        ]
+      : []),
   ];
 
   const getTestId = (title: string) => {
@@ -127,6 +141,8 @@ export function QuaySidebar() {
         return 'messages-nav';
       case 'Build Logs':
         return 'build-logs-nav';
+      case 'Spam Detection':
+        return 'spam-detection-nav';
       default:
         return undefined;
     }

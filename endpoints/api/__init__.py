@@ -860,6 +860,7 @@ import endpoints.api.secscan
 import endpoints.api.signing
 import endpoints.api.suconfig
 import endpoints.api.superuser
+import endpoints.api.superuser_spam
 import endpoints.api.tag
 import endpoints.api.team
 import endpoints.api.trigger
