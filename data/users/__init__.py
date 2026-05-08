@@ -360,7 +360,7 @@ class UserAuthentication(object):
             else:
                 password = decrypted
 
-        (result, err_msg) = self.state.verify_and_link_user(username_or_email, password)
+        result, err_msg = self.state.verify_and_link_user(username_or_email, password)
         if not result:
             return (result, err_msg)
 
