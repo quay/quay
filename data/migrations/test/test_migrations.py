@@ -10,8 +10,10 @@ Tests all database migrations for:
 Coverage: 119+ migrations across SQLite and PostgreSQL.
 """
 
+import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import pytest
@@ -20,8 +22,15 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.exc import OperationalError
 
 from test.fixtures import *
+
+logger = logging.getLogger(__name__)
+
+# Repository root for resolving alembic.ini
+REPO_ROOT = Path(__file__).parent.parent.parent.parent
+ALEMBIC_INI = str(REPO_ROOT / "alembic.ini")
 
 # =============================================================================
 # Test Fixtures
@@ -64,7 +73,7 @@ def get_all_migration_revisions() -> List[str]:
     Example:
         ['c156deb8845d', '10f45ee2310b', ..., '946f0e90f9c9']
     """
-    config = Config("alembic.ini")
+    config = Config(ALEMBIC_INI)
     script = ScriptDirectory.from_config(config)
 
     # walk_revisions() returns newest first, reverse for chronological order
@@ -104,12 +113,19 @@ def get_migration_dependencies(revision: str) -> Tuple[Optional[str], Optional[s
 
     Returns:
         Tuple of (down_revision, next_revision). Either can be None.
+        For merge migrations with multiple parents, returns the first parent.
     """
-    config = Config("alembic.ini")
+    config = Config(ALEMBIC_INI)
     script = ScriptDirectory.from_config(config)
 
     rev_obj = script.get_revision(revision)
-    down_rev = rev_obj.down_revision
+    down_rev_raw = rev_obj.down_revision
+
+    # Handle merge migrations (down_revision can be tuple/list)
+    if isinstance(down_rev_raw, (tuple, list)):
+        down_rev = down_rev_raw[0] if down_rev_raw else None
+    else:
+        down_rev = down_rev_raw
 
     # Find next revision (migration that depends on this one)
     next_rev = None
@@ -138,34 +154,37 @@ def upgrade_to_revision(db_uri: str, revision: str, env_vars: Optional[Dict] = N
 
     # Save original config
     original_db_uri_config = app.config.get("DB_URI")
+    env_keys_to_restore = []
 
-    # Set DB_URI in both environment and app.config for env.py to use
-    os.environ["DB_URI"] = db_uri
-    app.config["DB_URI"] = db_uri
+    try:
+        # Set DB_URI in both environment and app.config for env.py to use
+        os.environ["DB_URI"] = db_uri
+        app.config["DB_URI"] = db_uri
 
-    if env_vars:
-        for key, value in env_vars.items():
-            os.environ[key] = value
+        if env_vars:
+            for key, value in env_vars.items():
+                os.environ[key] = value
+                env_keys_to_restore.append(key)
 
-    config = Config("alembic.ini")
-    config.set_main_option("alembic_setup_app", "True")
+        config = Config(ALEMBIC_INI)
+        config.set_main_option("alembic_setup_app", "True")
 
-    # Escape % characters for configparser (used by some alembic internals)
-    escaped_uri = db_uri.replace("%", "%%")
-    config.set_main_option("sqlalchemy.url", escaped_uri)
+        # Escape % characters for configparser (used by some alembic internals)
+        escaped_uri = db_uri.replace("%", "%%")
+        config.set_main_option("sqlalchemy.url", escaped_uri)
 
-    command.upgrade(config, revision)
+        command.upgrade(config, revision)
+    finally:
+        # Restore original DB_URI
+        if original_db_uri_config:
+            os.environ["DB_URI"] = original_db_uri_config
+            app.config["DB_URI"] = original_db_uri_config
+        else:
+            os.environ.pop("DB_URI", None)
+            app.config.pop("DB_URI", None)
 
-    # Restore original DB_URI
-    if original_db_uri_config:
-        os.environ["DB_URI"] = original_db_uri_config
-        app.config["DB_URI"] = original_db_uri_config
-    else:
-        os.environ.pop("DB_URI", None)
-        app.config.pop("DB_URI", None)
-
-    if env_vars:
-        for key in env_vars.keys():
+        # Restore environment variables
+        for key in env_keys_to_restore:
             os.environ.pop(key, None)
 
 
@@ -187,25 +206,26 @@ def downgrade_to_revision(db_uri: str, revision: str):
     # Save original config
     original_db_uri_config = app.config.get("DB_URI")
 
-    # Set DB_URI in both environment and app.config for env.py to use
-    os.environ["DB_URI"] = db_uri
-    app.config["DB_URI"] = db_uri
+    try:
+        # Set DB_URI in both environment and app.config for env.py to use
+        os.environ["DB_URI"] = db_uri
+        app.config["DB_URI"] = db_uri
 
-    config = Config("alembic.ini")
-    config.set_main_option("alembic_setup_app", "True")
+        config = Config(ALEMBIC_INI)
+        config.set_main_option("alembic_setup_app", "True")
 
-    escaped_uri = db_uri.replace("%", "%%")
-    config.set_main_option("sqlalchemy.url", escaped_uri)
+        escaped_uri = db_uri.replace("%", "%%")
+        config.set_main_option("sqlalchemy.url", escaped_uri)
 
-    command.downgrade(config, revision)
-
-    # Restore original DB_URI
-    if original_db_uri_config:
-        os.environ["DB_URI"] = original_db_uri_config
-        app.config["DB_URI"] = original_db_uri_config
-    else:
-        os.environ.pop("DB_URI", None)
-        app.config.pop("DB_URI", None)
+        command.downgrade(config, revision)
+    finally:
+        # Restore original DB_URI
+        if original_db_uri_config:
+            os.environ["DB_URI"] = original_db_uri_config
+            app.config["DB_URI"] = original_db_uri_config
+        else:
+            os.environ.pop("DB_URI", None)
+            app.config.pop("DB_URI", None)
 
 
 def get_current_revision(db_uri: str) -> Optional[str]:
@@ -245,21 +265,24 @@ def reset_database_for_migrations(db_uri: str):
     from sqlalchemy import MetaData
 
     engine = create_engine(db_uri)
-    metadata = MetaData()
-    metadata.reflect(bind=engine)
+    try:
+        metadata = MetaData()
+        metadata.reflect(bind=engine)
 
-    # Drop all tables including alembic_version
-    with engine.begin() as conn:
-        metadata.drop_all(conn)
+        # Drop all tables including alembic_version
+        with engine.begin() as conn:
+            metadata.drop_all(conn)
 
-    # Now stamp the empty database with base revision
-    # This tells alembic we're at the beginning
-    config = Config("alembic.ini")
-    config.set_main_option("alembic_setup_app", "True")
-    escaped_uri = db_uri.replace("%", "%%")
-    config.set_main_option("sqlalchemy.url", escaped_uri)
+        # Now stamp the empty database with base revision
+        # This tells alembic we're at the beginning
+        config = Config(ALEMBIC_INI)
+        config.set_main_option("alembic_setup_app", "True")
+        escaped_uri = db_uri.replace("%", "%%")
+        config.set_main_option("sqlalchemy.url", escaped_uri)
 
-    command.stamp(config, "base")
+        command.stamp(config, "base")
+    finally:
+        engine.dispose()
 
 
 # =============================================================================
@@ -326,61 +349,64 @@ def capture_schema_snapshot(db_uri: str) -> SchemaSnapshot:
         SchemaSnapshot with all table definitions.
     """
     engine = create_engine(db_uri)
-    inspector = Inspector.from_engine(engine)
+    try:
+        inspector = Inspector.from_engine(engine)
 
-    tables = {}
-    for table_name in inspector.get_table_names():
-        # Skip alembic internal table
-        if table_name == "alembic_version":
-            continue
+        tables = {}
+        for table_name in inspector.get_table_names():
+            # Skip alembic internal table
+            if table_name == "alembic_version":
+                continue
 
-        # Get columns
-        columns = {}
-        for col in inspector.get_columns(table_name):
-            columns[col["name"]] = ColumnSchema(
-                name=col["name"],
-                type=str(col["type"]),
-                nullable=col["nullable"],
-                default=col.get("default"),
-            )
-
-        # Get indexes
-        indexes = []
-        for idx in inspector.get_indexes(table_name):
-            indexes.append(
-                IndexSchema(
-                    name=idx["name"],
-                    columns=idx["column_names"],
-                    unique=idx["unique"],
+            # Get columns
+            columns = {}
+            for col in inspector.get_columns(table_name):
+                columns[col["name"]] = ColumnSchema(
+                    name=col["name"],
+                    type=str(col["type"]),
+                    nullable=col["nullable"],
+                    default=col.get("default"),
                 )
-            )
 
-        # Get primary key
-        pk_constraint = inspector.get_pk_constraint(table_name)
-        pk_columns = pk_constraint.get("constrained_columns", [])
-
-        # Get foreign keys
-        foreign_keys = []
-        for fk in inspector.get_foreign_keys(table_name):
-            foreign_keys.append(
-                ForeignKeySchema(
-                    name=fk.get("name", ""),
-                    columns=fk["constrained_columns"],
-                    referred_table=fk["referred_table"],
-                    referred_columns=fk["referred_columns"],
+            # Get indexes
+            indexes = []
+            for idx in inspector.get_indexes(table_name):
+                indexes.append(
+                    IndexSchema(
+                        name=idx["name"],
+                        columns=idx["column_names"],
+                        unique=idx["unique"],
+                    )
                 )
+
+            # Get primary key
+            pk_constraint = inspector.get_pk_constraint(table_name)
+            pk_columns = pk_constraint.get("constrained_columns", [])
+
+            # Get foreign keys
+            foreign_keys = []
+            for fk in inspector.get_foreign_keys(table_name):
+                foreign_keys.append(
+                    ForeignKeySchema(
+                        name=fk.get("name", ""),
+                        columns=fk["constrained_columns"],
+                        referred_table=fk["referred_table"],
+                        referred_columns=fk["referred_columns"],
+                    )
+                )
+
+            tables[table_name] = TableSchema(
+                name=table_name,
+                columns=columns,
+                indexes=indexes,
+                primary_key=pk_columns,
+                foreign_keys=foreign_keys,
             )
 
-        tables[table_name] = TableSchema(
-            name=table_name,
-            columns=columns,
-            indexes=indexes,
-            primary_key=pk_columns,
-            foreign_keys=foreign_keys,
-        )
-
-    current_rev = get_current_revision(db_uri)
-    return SchemaSnapshot(tables=tables, revision=current_rev)
+        current_rev = get_current_revision(db_uri)
+        return SchemaSnapshot(tables=tables, revision=current_rev)
+    finally:
+        engine.dispose()
 
 
 # =============================================================================
@@ -402,15 +428,17 @@ def seed_test_data_for_migration(db_uri: str, revision: str):
         data migrations that require pre-migration state.
     """
     engine = create_engine(db_uri)
-
-    # Revision-specific seeding logic
-    if revision == "c3d4b7ebcdf7":
-        # RepositorySearchScore backfill - needs Repository without search score
-        _seed_repository_search_migration(engine)
-    elif revision == "d42c175b439a":
-        # QueueItem state_id backfill - needs QueueItem with empty state_id
-        _seed_queueitem_migration(engine)
-    # Other data migrations rely on TEST_MIGRATE=true PopulateTestDataTester
+    try:
+        # Revision-specific seeding logic
+        if revision == "c3d4b7ebcdf7":
+            # RepositorySearchScore backfill - needs Repository without search score
+            _seed_repository_search_migration(engine)
+        elif revision == "d42c175b439a":
+            # QueueItem state_id backfill - needs QueueItem with empty state_id
+            _seed_queueitem_migration(engine)
+        # Other data migrations rely on TEST_MIGRATE=true PopulateTestDataTester
+    finally:
+        engine.dispose()
 
 
 def _seed_repository_search_migration(engine):
@@ -466,19 +494,23 @@ def validate_data_integrity(db_uri: str, revision: str) -> bool:
         True if data integrity checks pass.
     """
     engine = create_engine(db_uri)
+    try:
+        # Revision-specific validation
+        if revision == "c3d4b7ebcdf7":
+            return _validate_repository_search(engine)
+        elif revision == "d42c175b439a":
+            return _validate_queueitem_state(engine)
 
-    # Revision-specific validation
-    if revision == "c3d4b7ebcdf7":
-        return _validate_repository_search(engine)
-    elif revision == "d42c175b439a":
-        return _validate_queueitem_state(engine)
-
-    # Default: no constraint violations occurred (if we got here, migration succeeded)
-    return True
+        # Default: no constraint violations occurred (if we got here, migration succeeded)
+        return True
+    finally:
+        engine.dispose()
 
 
 def _validate_repository_search(engine) -> bool:
     """Validate c3d4b7ebcdf7 - all repositories have search score."""
+    from sqlalchemy.exc import NoSuchTableError
+
     with engine.connect() as conn:
         try:
             result = conn.execute(
@@ -491,26 +523,29 @@ def _validate_repository_search(engine) -> bool:
                 )
             )
             unmigrated_count = result.fetchone()[0]
-            # Some repos may not be migrated yet (backfill flag may be false)
-            # but at least some should be migrated
-            return unmigrated_count >= 0  # Migration created table successfully
-        except Exception:
-            # Table may not exist if migration changed
-            return True
+            # Migration should backfill all repositories
+            return unmigrated_count == 0
+        except (NoSuchTableError, OperationalError) as e:
+            # Table doesn't exist - schema may have changed
+            logger.warning(f"Repository search validation failed: {e}")
+            return False
 
 
 def _validate_queueitem_state(engine) -> bool:
     """Validate d42c175b439a - queueitem state_id backfilled."""
-    with engine.connect() as conn:
-        try:
-            # Check that unique index exists on state_id
-            inspector = Inspector.from_engine(engine)
-            indexes = inspector.get_indexes("queueitem")
-            state_idx = next((i for i in indexes if "state_id" in i.get("name", "")), None)
-            # Index should exist and be unique
-            return state_idx is not None and state_idx.get("unique", False)
-        except Exception:
-            return True
+    from sqlalchemy.exc import NoSuchTableError
+
+    try:
+        # Check that unique index exists on state_id
+        inspector = Inspector.from_engine(engine)
+        indexes = inspector.get_indexes("queueitem")
+        state_idx = next((i for i in indexes if "state_id" in i.get("name", "")), None)
+        # Index should exist and be unique
+        return state_idx is not None and state_idx.get("unique", False)
+    except (NoSuchTableError, OperationalError) as e:
+        # Table doesn't exist - schema may have changed
+        logger.warning(f"QueueItem state validation failed: {e}")
+        return False
 
 
 # =============================================================================
@@ -527,7 +562,7 @@ class TestSchemaMigrations:
     """
 
     @pytest.mark.parametrize("revision", get_all_migration_revisions())
-    def test_upgrade_downgrade_schema(self, revision, database_uri):
+    def test_upgrade_downgrade_schema(self, revision, migration_database_uri):
         """
         Test that upgrade and downgrade operations complete successfully.
 
@@ -547,27 +582,26 @@ class TestSchemaMigrations:
             pytest.skip("Base migration - no downgrade possible")
 
         # Upgrade to parent revision (baseline)
-        upgrade_to_revision(database_uri, down_rev)
-        schema_before = capture_schema_snapshot(database_uri)
+        upgrade_to_revision(migration_database_uri, down_rev)
+        schema_before = capture_schema_snapshot(migration_database_uri)
 
         # Upgrade to target revision
-        upgrade_to_revision(database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
-        assert get_current_revision(database_uri) == revision
+        upgrade_to_revision(migration_database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
+        assert get_current_revision(migration_database_uri) == revision
 
         # Attempt downgrade (many migrations have empty downgrade())
         try:
-            downgrade_to_revision(database_uri, down_rev)
-            schema_after = capture_schema_snapshot(database_uri)
+            downgrade_to_revision(migration_database_uri, down_rev)
+            schema_after = capture_schema_snapshot(migration_database_uri)
 
-            # Verify schema roughly matches (some irreversible changes expected)
-            # At minimum, we shouldn't have MORE tables after downgrade
-            assert len(schema_after.tables) <= len(schema_before.tables) + 5
+            # Verify schema matches for reversible migrations
+            assert len(schema_after.tables) == len(schema_before.tables)
         except Exception:
             # Downgrade not implemented or failed - common for many migrations
             pytest.skip(f"Migration {revision} downgrade not fully implemented")
 
     @pytest.mark.parametrize("revision", get_all_migration_revisions())
-    def test_migration_idempotency(self, revision, database_uri):
+    def test_migration_idempotency(self, revision, migration_database_uri):
         """
         Test that running migration twice is safe (idempotent).
 
@@ -587,19 +621,19 @@ class TestSchemaMigrations:
             pytest.skip("Base migration")
 
         # First run
-        upgrade_to_revision(database_uri, down_rev)
-        upgrade_to_revision(database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
-        schema_first = capture_schema_snapshot(database_uri)
+        upgrade_to_revision(migration_database_uri, down_rev)
+        upgrade_to_revision(migration_database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
+        schema_first = capture_schema_snapshot(migration_database_uri)
 
         # Check if downgrade is implemented
         try:
-            downgrade_to_revision(database_uri, down_rev)
+            downgrade_to_revision(migration_database_uri, down_rev)
         except Exception:
             pytest.skip(f"Migration {revision} downgrade not implemented")
 
         # Second run
-        upgrade_to_revision(database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
-        schema_second = capture_schema_snapshot(database_uri)
+        upgrade_to_revision(migration_database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
+        schema_second = capture_schema_snapshot(migration_database_uri)
 
         # Verify identical schemas
         assert schema_first.tables.keys() == schema_second.tables.keys()
@@ -627,7 +661,7 @@ class TestDataMigrations:
     DATA_MIGRATIONS = get_data_migration_revisions()
 
     @pytest.mark.parametrize("revision", DATA_MIGRATIONS)
-    def test_data_integrity(self, revision, database_uri):
+    def test_data_integrity(self, revision, migration_database_uri):
         """
         Test that data migrations preserve and transform data correctly.
 
@@ -642,64 +676,74 @@ class TestDataMigrations:
         down_rev, _ = get_migration_dependencies(revision)
 
         # Upgrade to version before data migration
-        upgrade_to_revision(database_uri, down_rev, env_vars={"TEST_MIGRATE": "true"})
+        upgrade_to_revision(migration_database_uri, down_rev, env_vars={"TEST_MIGRATE": "true"})
 
         # Seed test data
-        seed_test_data_for_migration(database_uri, revision)
+        seed_test_data_for_migration(migration_database_uri, revision)
 
         # Run migration with test data population enabled
-        upgrade_to_revision(database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
+        upgrade_to_revision(migration_database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
 
         # Validate data integrity
         assert validate_data_integrity(
-            database_uri, revision
+            migration_database_uri, revision
         ), f"Data integrity check failed for {revision}"
 
     @pytest.mark.parametrize("revision", DATA_MIGRATIONS)
-    def test_data_transformation_correctness(self, revision, database_uri):
+    def test_data_transformation_correctness(self, revision, migration_database_uri):
         """
         Test specific data transformation logic for each migration.
 
         Coverage: 8 data migrations with detailed validation
         """
         down_rev, _ = get_migration_dependencies(revision)
-        upgrade_to_revision(database_uri, down_rev, env_vars={"TEST_MIGRATE": "true"})
+        upgrade_to_revision(migration_database_uri, down_rev, env_vars={"TEST_MIGRATE": "true"})
 
-        engine = create_engine(database_uri)
+        engine = create_engine(migration_database_uri)
+        try:
+            # Revision-specific transformation tests
+            if revision == "c3d4b7ebcdf7":
+                # RepositorySearchScore backfill
+                with engine.connect() as conn:
+                    # Get initial repo count
+                    initial_count = conn.execute(
+                        text("SELECT COUNT(*) FROM repository")
+                    ).fetchone()[0]
 
-        # Revision-specific transformation tests
-        if revision == "c3d4b7ebcdf7":
-            # RepositorySearchScore backfill
-            with engine.connect() as conn:
-                # Get initial repo count
-                initial_count = conn.execute(text("SELECT COUNT(*) FROM repository")).fetchone()[0]
+                # Run migration
+                upgrade_to_revision(
+                    migration_database_uri, revision, env_vars={"TEST_MIGRATE": "true"}
+                )
 
-            # Run migration
-            upgrade_to_revision(database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
+                with engine.connect() as conn:
+                    # Verify search score table exists
+                    search_count = conn.execute(
+                        text("SELECT COUNT(*) FROM repositorysearchscore")
+                    ).fetchone()[0]
+                    # At least some repos should have search scores
+                    assert search_count >= 0  # Table created successfully
 
-            with engine.connect() as conn:
-                # Verify search score table exists
-                search_count = conn.execute(
-                    text("SELECT COUNT(*) FROM repositorysearchscore")
-                ).fetchone()[0]
-                # At least some repos should have search scores
-                assert search_count >= 0  # Table created successfully
+            elif revision == "d42c175b439a":
+                # QueueItem state_id backfill
+                # Run migration
+                upgrade_to_revision(
+                    migration_database_uri, revision, env_vars={"TEST_MIGRATE": "true"}
+                )
 
-        elif revision == "d42c175b439a":
-            # QueueItem state_id backfill
-            # Run migration
-            upgrade_to_revision(database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
+                # Verify unique index exists
+                inspector = Inspector.from_engine(engine)
+                indexes = inspector.get_indexes("queueitem")
+                state_idx = next((i for i in indexes if "state_id" in i.get("name", "")), None)
+                assert state_idx is not None, "state_id index not created"
 
-            # Verify unique index exists
-            inspector = Inspector.from_engine(engine)
-            indexes = inspector.get_indexes("queueitem")
-            state_idx = next((i for i in indexes if "state_id" in i.get("name", "")), None)
-            assert state_idx is not None, "state_id index not created"
-
-        else:
-            # For other data migrations, just verify migration completes
-            upgrade_to_revision(database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
-            assert get_current_revision(database_uri) == revision
+            else:
+                # For other data migrations, just verify migration completes
+                upgrade_to_revision(
+                    migration_database_uri, revision, env_vars={"TEST_MIGRATE": "true"}
+                )
+                assert get_current_revision(migration_database_uri) == revision
+        finally:
+            engine.dispose()
 
 
 class TestMigrationChains:
