@@ -60,7 +60,7 @@ jobs:
         run: |
           pnpm exec concurrently -k -s first -n "SB,TEST" \
             "pnpm exec http-server storybook-static --port 6006 --silent" \
-            "pnpm exec wait-on tcp:127.0.0.1:6006 && pnpm run test-storybook -- --url http://127.0.0.1:6006"
+            "pnpm exec wait-on tcp:127.0.0.1:6006 && pnpm exec test-storybook --url http://127.0.0.1:6006"
 
       - name: Check story coverage for new components
         working-directory: web
