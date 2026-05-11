@@ -34,7 +34,7 @@ export default defineConfig({
   // Shared settings for all tests
   use: {
     // Base URL for navigation
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
 
     // Accept self-signed certificates (needed for OpenShift CI clusters)
     ignoreHTTPSErrors: true,
@@ -59,18 +59,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: /legacy-ui/,
       use: {...devices['Desktop Chrome'], channel: 'chromium'},
-    },
-    {
-      name: 'legacy-ui',
-      testDir: './playwright/e2e/legacy-ui',
-      use: {
-        ...devices['Desktop Chrome'],
-        channel: 'chromium',
-        baseURL:
-          process.env.PLAYWRIGHT_LEGACY_BASE_URL || 'http://localhost:8080',
-      },
     },
   ],
 
@@ -82,8 +71,10 @@ export default defineConfig({
       ? undefined
       : {
           command:
-            'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && npm run start:integration',
-          url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
+            'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && ' +
+            'rm -rf ../static/patternfly && mkdir -p ../static/patternfly && cp -r dist/* ../static/patternfly/ && ' +
+            'echo "React deployed to static/patternfly/" && tail -f /dev/null',
+          url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
           reuseExistingServer: true,
           timeout: 120 * 1000,
         },
