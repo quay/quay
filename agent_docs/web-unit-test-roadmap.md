@@ -294,20 +294,22 @@ Leave these to Playwright E2E:
 
 | Phase | Scope | Tests | Effort | Status |
 |-------|-------|-------|--------|--------|
-| 1 | Pure utilities | 105 | 1-2 days | **Complete** |
-| 2 | Error handling + cookies | 31 | 1 day | **Complete** |
-| 3 | Contexts | 38 | 1 day | **Complete** |
-| 4 | Complex hooks | 59 | 2-3 days | **Complete** |
-| 5 | API resources (28 files) | 291 | 4-5 days | **Complete** |
-| 6 | Standard hooks (55 files) | 240 | 4-5 days | **Complete** — 55 test files |
-| 7 | Components (39 files) | 163 | 5-6 days | **Complete** — 39 test files |
-| 8a | Modal components (18 files) | 87 | 4-5 days | **Complete** |
-| 8b | Remaining hooks (12 files) | 53 | 2-3 days | **Complete** |
+| 1 | Pure utilities | 122 | 1-2 days | **Complete** — 5 test files |
+| 2 | Error handling + cookies | 31 | 1 day | **Complete** — 3 test files |
+| 3 | Contexts | 38 | 1 day | **Complete** — 2 test files |
+| 4 | Complex hooks | 59 | 2-3 days | **Complete** — 3 test files |
+| 5 | API resources | 311 | 4-5 days | **Complete** — 28 test files |
+| 6 | Standard hooks | 293 | 4-5 days | **Complete** — 55 test files |
+| 7 | Components | 161 | 5-6 days | **Complete** — 39 test files |
+| 8a | Modal components + HeaderToolbar | 95 | 4-5 days | **Complete** — 18 test files |
+| 8b | Remaining hooks | 53 | 2-3 days | **Complete** — 12 test files |
 | 8c | Remaining components | ~40 | 2 days | **Planned** |
 
-**Current: 1117 tests passing across 160 files | Target: ~1,100 tests (exceeded)**
+**Current (vitest): 1173 tests passing across 165 test files | Target: ~1,100 tests (exceeded)**
 
-Phases 1-8a, 8b complete. Phase 8c covers remaining component gaps. Remaining effort: ~2 days.
+Per-phase counts above are actuals from `npx vitest run`. Total includes 10 route-level tests not assigned to any phase.
+
+Phases 1-8b complete. Phase 8c covers remaining component gaps. Remaining effort: ~2 days.
 
 ---
 
