@@ -42,7 +42,7 @@ jobs:
         persist-credentials: false
 
     - name: Install pnpm (for seed scripts)
-      uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      uses: pnpm/action-setup@739bfe42ca9233c5e6aca07c1a25a9d34aca49b0 # v6.0.7
       with:
         version: 10
         run_install: false
@@ -80,7 +80,7 @@ jobs:
         node-version: '22'
 
     - name: Install pnpm (for Cypress job)
-      uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      uses: pnpm/action-setup@739bfe42ca9233c5e6aca07c1a25a9d34aca49b0 # v6.0.7
       with:
         version: 10
         run_install: false
@@ -155,7 +155,7 @@ jobs:
         node-version: '22'
 
     - name: Install pnpm
-      uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      uses: pnpm/action-setup@739bfe42ca9233c5e6aca07c1a25a9d34aca49b0 # v6.0.7
       with:
         version: 10
         run_install: false
