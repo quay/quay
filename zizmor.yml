@@ -6,4 +6,5 @@ rules:
       - .github/workflows/playwright-report-deploy.yaml
       - .github/workflows/pr-labeler.yaml
       - .github/workflows/pr-status-labeler.yaml
+      - .github/workflows/storybook-deploy.yaml
       - .github/workflows/web-ci-results.yaml
