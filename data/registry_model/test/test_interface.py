@@ -653,6 +653,21 @@ def test_blob_uploads(registry_model):
     assert not registry_model.lookup_blob_upload(repository_ref, blob_upload.upload_id)
 
 
+def test_blob_upload_repository_isolation(registry_model):
+    repo_a = registry_model.lookup_repository("devtable", "simple")
+    repo_b = registry_model.lookup_repository("devtable", "complex")
+
+    blob_upload = registry_model.create_blob_upload(
+        repo_a, str(uuid.uuid4()), "local_us", {"some": "metadata"}
+    )
+    assert blob_upload
+
+    assert registry_model.lookup_blob_upload(repo_a, blob_upload.upload_id) == blob_upload
+    assert registry_model.lookup_blob_upload(repo_b, blob_upload.upload_id) is None
+
+    registry_model.delete_blob_upload(blob_upload)
+
+
 def test_commit_blob_upload(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     blob_upload = registry_model.create_blob_upload(
