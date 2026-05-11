@@ -56,14 +56,16 @@ func buildEndpoint(endpointURL string, host string, port int, defaultIsSecure bo
 }
 
 // buildSTSEndpointConfig builds endpoint configuration for STS-based storage types (IRSA and STS).
-func buildSTSEndpointConfig(args *DistributedStorageArgs) (string, bool, *aws.Config, error) {
+// defaultIsSecure controls TLS when no explicit scheme is present in the endpoint; callers should
+// pass true for S3Storage (mirrors Python's hardcoded is_secure=True) and args.IsSecure otherwise.
+func buildSTSEndpointConfig(args *DistributedStorageArgs, defaultIsSecure bool) (string, bool, *aws.Config, error) {
 	var s3Endpoint string
 	var isSecure bool
 	awsConfig := &aws.Config{}
 
 	if args.EndpointURL != "" || args.Host != "" {
 		var err error
-		s3Endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, args.IsSecure)
+		s3Endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, defaultIsSecure)
 		if err != nil {
 			return "", false, nil, err
 		}
@@ -159,11 +161,12 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		secretKey = args.S3SecretKey
 		bucketName = args.S3Bucket
 
-		// Build endpoint from either endpoint_url (boto3) or host+port (boto2)
+		// Build endpoint from either endpoint_url (boto3) or host+port (boto2).
+		// S3Storage always uses HTTPS (matching Python storage/cloud.py:L803 is_secure=True).
 		var awsConfig *aws.Config
 		if args.EndpointURL != "" || args.Host != "" {
 			var err error
-			endpoint, isSecure, awsConfig, err = buildSTSEndpointConfig(args)
+			endpoint, isSecure, awsConfig, err = buildSTSEndpointConfig(args, true)
 			if err != nil {
 				errors = append(errors, ValidationError{
 					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
@@ -253,7 +256,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 		// Build endpoint configuration for STS and S3
 		var awsConfig *aws.Config
-		endpoint, isSecure, awsConfig, err := buildSTSEndpointConfig(args)
+		endpoint, isSecure, awsConfig, err := buildSTSEndpointConfig(args, args.IsSecure)
 		if err != nil {
 			errors = append(errors, ValidationError{
 				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
