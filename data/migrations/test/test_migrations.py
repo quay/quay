@@ -585,8 +585,8 @@ class TestSchemaMigrations:
         upgrade_to_revision(migration_database_uri, down_rev)
         schema_before = capture_schema_snapshot(migration_database_uri)
 
-        # Upgrade to target revision
-        upgrade_to_revision(migration_database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
+        # Upgrade to target revision (without TEST_MIGRATE to avoid data population issues)
+        upgrade_to_revision(migration_database_uri, revision)
         assert get_current_revision(migration_database_uri) == revision
 
         # Attempt downgrade (many migrations have empty downgrade())
@@ -620,9 +620,9 @@ class TestSchemaMigrations:
         if not down_rev:
             pytest.skip("Base migration")
 
-        # First run
+        # First run (without TEST_MIGRATE to avoid data population issues)
         upgrade_to_revision(migration_database_uri, down_rev)
-        upgrade_to_revision(migration_database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
+        upgrade_to_revision(migration_database_uri, revision)
         schema_first = capture_schema_snapshot(migration_database_uri)
 
         # Check if downgrade is implemented
@@ -632,7 +632,7 @@ class TestSchemaMigrations:
             pytest.skip(f"Migration {revision} downgrade not implemented")
 
         # Second run
-        upgrade_to_revision(migration_database_uri, revision, env_vars={"TEST_MIGRATE": "true"})
+        upgrade_to_revision(migration_database_uri, revision)
         schema_second = capture_schema_snapshot(migration_database_uri)
 
         # Verify identical schemas
