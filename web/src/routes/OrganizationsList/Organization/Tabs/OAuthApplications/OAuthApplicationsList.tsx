@@ -95,7 +95,7 @@ export default function OAuthApplicationsList(
   ) => {
     setSelectedOAuthApplications((prevSelected) => {
       const otherSelectedOAuthApplications = prevSelected.filter(
-        (p) => p.name !== permission.name,
+        (p) => p.client_id !== permission.client_id,
       );
       return isSelecting
         ? [...otherSelectedOAuthApplications, permission]
@@ -268,7 +268,7 @@ export default function OAuthApplicationsList(
                                 isSelecting,
                               ),
                             isSelected: selectedOAuthApplications.some(
-                              (p) => p.name === oauthApplication.name,
+                              (p) => p.client_id === oauthApplication.client_id,
                             ),
                             isDisabled: false,
                           }}
@@ -373,7 +373,7 @@ export default function OAuthApplicationsList(
                               isSelecting,
                             ),
                           isSelected: selectedOAuthApplications.some(
-                            (p) => p.name === oauthApplication.name,
+                            (p) => p.client_id === oauthApplication.client_id,
                           ),
                           isDisabled: false,
                         }}
