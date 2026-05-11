@@ -198,12 +198,6 @@ objects:
             value: ${DEBUGLOG}
           - name: IGNORE_VALIDATION
             value: ${IGNORE_VALIDATION}
-          - name: SYSLOG_SERVER
-            value: ${{SYSLOG_SERVER}}
-          - name: SYSLOG_PORT
-            value: ${SYSLOG_PORT}
-          - name: SYSLOG_PROTO
-            value: ${{SYSLOG_PROTO}}
           - name: QUAY_LOGGING
             value: ${{QUAY_LOGGING}}
           - name: WORKER_MULTIPLIER_REGISTRY
@@ -216,6 +210,10 @@ objects:
             value: ${WORKER_COUNT_WEB}
           - name: WORKER_COUNT_REGISTRY
             value: ${WORKER_COUNT_REGISTRY}
+          - name: QUAY_SERVICES
+            value: ${QUAY_SERVICES}
+          - name: QUAY_OVERRIDE_SERVICES
+            value: ${QUAY_OVERRIDE_SERVICES}
 parameters:
   - name: NAME
     value: "quay-py3"
@@ -379,6 +377,14 @@ parameters:
     value: oneagent.dynatrace.com/inject
   - name: DYNATRACE_APM_ANNOTATION_VALUE
     value: "false"
+  - name: QUAY_SERVICES
+    value: ""
+    displayName: quay services whitelist
+    description: Comma-separated list of supervisord services to enable. If empty, all default services run.
+  - name: QUAY_OVERRIDE_SERVICES
+    value: ""
+    displayName: quay services override
+    description: Comma-separated list of service=true/false overrides. Applied after QUAY_SERVICES. Example "builder=false,repomirrorworker=true"
   - name: QUAY_APP_GRPC_ENABLE_LABEL_KEY
     value: quay_grpc_endpoint
   - name: QUAY_APP_GRPC_ENABLE_LABEL_VALUE
