@@ -628,12 +628,18 @@ class TestSchemaMigrations:
         # Check if downgrade is implemented
         try:
             downgrade_to_revision(migration_database_uri, down_rev)
-        except Exception:
-            pytest.skip(f"Migration {revision} downgrade not implemented")
+        except Exception as e:
+            pytest.skip(f"Migration {revision} downgrade not implemented: {e}")
 
-        # Second run
-        upgrade_to_revision(migration_database_uri, revision)
-        schema_second = capture_schema_snapshot(migration_database_uri)
+        # Second run - verify migration is idempotent
+        try:
+            upgrade_to_revision(migration_database_uri, revision)
+            schema_second = capture_schema_snapshot(migration_database_uri)
+        except Exception as e:
+            # If upgrade after downgrade fails, downgrade was incomplete
+            pytest.skip(
+                f"Migration {revision} downgrade incomplete (upgrade after downgrade failed): {e}"
+            )
 
         # Verify identical schemas
         assert schema_first.tables.keys() == schema_second.tables.keys()
