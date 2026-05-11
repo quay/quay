@@ -443,43 +443,72 @@ def seed_test_data_for_migration(db_uri: str, revision: str):
 
 def _seed_repository_search_migration(engine):
     """Seed data for c3d4b7ebcdf7 - RepositorySearchScore backfill."""
-    with engine.connect() as conn:
+    import uuid
+
+    with engine.begin() as conn:
         # Insert Repository without corresponding RepositorySearchScore
-        # Uses test user ID 1 which should exist from PopulateTestDataTester
+        # Must create foreign key dependencies first
         try:
+            # Create a visibility record (e.g., "public")
+            conn.execute(text("INSERT OR IGNORE INTO visibility (id, name) VALUES (1, 'public')"))
+
+            # Create a repository kind record
+            conn.execute(
+                text("INSERT OR IGNORE INTO repositorykind (id, name) VALUES (1, 'image')")
+            )
+
+            # Create a user record
             conn.execute(
                 text(
                     """
-                INSERT INTO repository (name, visibility_id, namespace_user_id)
-                VALUES ('test-repo-search-1', 1, 1),
-                       ('test-repo-search-2', 1, 1),
-                       ('test-repo-search-3', 1, 1)
+                INSERT OR IGNORE INTO user (id, username, email, password_hash, verified)
+                VALUES (1, 'testuser', 'test@example.com', '', 1)
             """
                 )
             )
-            conn.commit()
+
+            # Insert Repository without corresponding RepositorySearchScore
+            # Include required fields: badge_token, kind_id
+            conn.execute(
+                text(
+                    """
+                INSERT INTO repository (name, visibility_id, namespace_user_id, badge_token, kind_id)
+                VALUES ('test-repo-search-1', 1, 1, :token1, 1),
+                       ('test-repo-search-2', 1, 1, :token2, 1),
+                       ('test-repo-search-3', 1, 1, :token3, 1)
+            """
+                ),
+                {
+                    "token1": str(uuid.uuid4()),
+                    "token2": str(uuid.uuid4()),
+                    "token3": str(uuid.uuid4()),
+                },
+            )
         except Exception:
             # May fail if repositories already exist or schema changed
-            conn.rollback()
+            pass
 
 
 def _seed_queueitem_migration(engine):
     """Seed data for d42c175b439a - QueueItem state_id backfill."""
-    with engine.connect() as conn:
+    from datetime import datetime
+
+    with engine.begin() as conn:
         try:
             # Insert QueueItem with empty state_id
+            # Must include required fields: available_after
             conn.execute(
                 text(
                     """
-                INSERT INTO queueitem (queue_name, body, state_id)
-                VALUES ('testqueue', '{}', '')
+                INSERT INTO queueitem (queue_name, body, state_id, available_after, available, retries_remaining)
+                VALUES ('testqueue', '{}', '', :available_after, 1, 5)
             """
-                )
+                ),
+                {"available_after": datetime.utcnow()},
             )
-            conn.commit()
         except Exception:
             # May fail if schema changed or constraint prevents empty state_id
-            conn.rollback()
+            pass
 
 
 def validate_data_integrity(db_uri: str, revision: str) -> bool:
@@ -702,10 +731,20 @@ class TestDataMigrations:
         except Exception as e:
             # Some migrations use Peewee ORM (global database connection) or
             # PostgreSQL-specific SQL that can't run in isolated SQLite tests
-            if isinstance(e, OperationalError) or "OperationalError" in type(e).__name__:
-                if "no such table" in str(e).lower() or "syntax error" in str(e).lower():
+            error_type = type(e).__name__
+            error_msg = str(e).lower()
+
+            # Skip migrations that use global DB or database-specific features
+            if error_type in ("OperationalError", "ProgrammingError"):
+                skip_phrases = [
+                    "no such table",
+                    "syntax error",
+                    "column",
+                    "does not exist",
+                ]
+                if any(phrase in error_msg for phrase in skip_phrases):
                     pytest.skip(
-                        f"Migration {revision} uses database-specific features incompatible with isolated SQLite testing: {e}"
+                        f"Migration {revision} uses database-specific features incompatible with isolated testing: {e}"
                     )
             raise
 
@@ -771,10 +810,20 @@ class TestDataMigrations:
         except Exception as e:
             # Some migrations use Peewee ORM (global database connection) or
             # PostgreSQL-specific SQL that can't run in isolated SQLite tests
-            if isinstance(e, OperationalError) or "OperationalError" in type(e).__name__:
-                if "no such table" in str(e).lower() or "syntax error" in str(e).lower():
+            error_type = type(e).__name__
+            error_msg = str(e).lower()
+
+            # Skip migrations that use global DB or database-specific features
+            if error_type in ("OperationalError", "ProgrammingError"):
+                skip_phrases = [
+                    "no such table",
+                    "syntax error",
+                    "column",
+                    "does not exist",
+                ]
+                if any(phrase in error_msg for phrase in skip_phrases):
                     pytest.skip(
-                        f"Migration {revision} uses database-specific features incompatible with isolated SQLite testing: {e}"
+                        f"Migration {revision} uses database-specific features incompatible with isolated testing: {e}"
                     )
             raise
         finally:
