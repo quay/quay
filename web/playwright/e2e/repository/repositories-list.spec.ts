@@ -501,5 +501,33 @@ test.describe('Repositories List', {tag: ['@repository']}, () => {
       const count = await rows.count();
       expect(count).toBeGreaterThanOrEqual(2);
     });
+
+    test('shows empty state instead of spinner when search matches nothing (PROJQUAY-11217)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('searchnomatch');
+      await api.repositoryWithName(org.name, 'exists-repo');
+
+      await authenticatedPage.goto(`/organization/${org.name}`);
+
+      const reposPanel = authenticatedPage.getByRole('tabpanel', {
+        name: 'Repositories',
+      });
+
+      // Wait for initial load to complete — repo should be visible
+      await expect(reposPanel.getByText('exists-repo')).toBeVisible();
+
+      // Search for a name that will never match
+      await getSearchInput(authenticatedPage).fill('zzz-no-such-repo');
+
+      // Regression: old code showed a spinner here forever
+      await expect(reposPanel.getByRole('progressbar')).not.toBeVisible();
+      await expect(reposPanel.getByText('No repositories found')).toBeVisible();
+
+      // Clear search — repo should reappear
+      await getSearchInput(authenticatedPage).fill('');
+      await expect(reposPanel.getByText('exists-repo')).toBeVisible();
+    });
   });
 });
