@@ -1,0 +1,211 @@
+name: Agent PR Metrics
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  classify-comments:
+    name: Classify PR Comments
+    if: github.event.pull_request.merged == true && github.event.pull_request.user.login == 'quay-devel'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Classify and post comment metrics
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DEVLAKE_ENDPOINT: ${{ secrets.DEVLAKE_ENDPOINT }}
+          DEVLAKE_CONNECTION_ID: ${{ secrets.DEVLAKE_CONNECTION_ID }}
+          DEVLAKE_API_KEY: ${{ secrets.DEVLAKE_API_KEY }}
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const prAuthor = context.payload.pull_request.user.login;
+
+            // Fetch all review comments and issue comments
+            const reviewComments = await github.paginate(
+              github.rest.pulls.listReviewComments,
+              { owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber }
+            );
+            const issueComments = await github.paginate(
+              github.rest.issues.listComments,
+              { owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber }
+            );
+
+            const counts = { major: 0, minor: 0, nit: 0, suggestion: 0, question: 0, other: 0 };
+            let total = 0;
+
+            function classifyCodeRabbit(body) {
+              if (body.includes('🟠')) return 'major';
+              if (body.includes('🟡')) return 'minor';
+              return 'other';
+            }
+
+            function classifyHuman(body) {
+              const lower = body.toLowerCase();
+              const majorKw = ['bug', 'breaks', 'broken', 'wrong', 'incorrect', 'security',
+                               'vulnerability', 'crash', 'data loss', 'race condition'];
+              if (majorKw.some(k => lower.includes(k))) return 'major';
+              if (['minor', 'small', 'trivial'].some(k => lower.includes(k))) return 'minor';
+              if (['nit', 'nitpick', 'style', 'formatting', 'whitespace'].some(k => lower.includes(k))) return 'nit';
+              if (['consider', 'could', 'might want', 'suggestion', 'what about',
+                   'how about', 'alternatively'].some(k => lower.includes(k))) return 'suggestion';
+              if (['why', 'what does', 'how does', 'is this'].some(k => lower.includes(k)) ||
+                  lower.trim().endsWith('?')) return 'question';
+              return 'other';
+            }
+
+            for (const comment of [...reviewComments, ...issueComments]) {
+              const author = comment.user.login;
+              if (author === prAuthor) continue;
+              if (author !== 'coderabbitai[bot]' && !author.endsWith('[bot]') &&
+                  author === prAuthor) continue;
+
+              total++;
+              let category;
+              if (author === 'coderabbitai[bot]') {
+                category = classifyCodeRabbit(comment.body || '');
+              } else {
+                category = classifyHuman(comment.body || '');
+              }
+              counts[category]++;
+            }
+
+            const description = JSON.stringify({ ...counts, total_comments: total });
+            const issueKey = `quay-pr-comments-${prNumber}`;
+
+            if (!process.env.DEVLAKE_ENDPOINT || !process.env.DEVLAKE_CONNECTION_ID || !process.env.DEVLAKE_API_KEY) {
+              core.warning('DEVLAKE secrets not configured — skipping POST');
+              return;
+            }
+
+            const url = `${process.env.DEVLAKE_ENDPOINT}/api/plugins/webhook/connections/${process.env.DEVLAKE_CONNECTION_ID}/issues`;
+            const payload = {
+              issueKey,
+              status: 'DONE',
+              originalStatus: 'analyzed',
+              type: 'REQUIREMENT',
+              description,
+            };
+
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.DEVLAKE_API_KEY}`,
+              },
+              body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+              core.warning(`DevLake POST failed: ${response.status} ${await response.text()}`);
+            } else {
+              core.info(`Posted comment metrics for PR #${prNumber}: ${description}`);
+            }
+
+  cyclomatic-complexity:
+    name: Cyclomatic Complexity
+    if: github.event.pull_request.merged == true && github.event.pull_request.user.login == 'quay-devel'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: '1.24'
+
+      - name: Compute complexity and post metrics
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEVLAKE_ENDPOINT: ${{ secrets.DEVLAKE_ENDPOINT }}
+          DEVLAKE_CONNECTION_ID: ${{ secrets.DEVLAKE_CONNECTION_ID }}
+          DEVLAKE_API_KEY: ${{ secrets.DEVLAKE_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          # Fetch changed .go files (exclude tests, generated, vendor, config-tool)
+          CHANGED=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
+            --paginate --jq '.[].filename' \
+            | grep '\.go$' \
+            | grep -v '_test\.go' \
+            | grep -v '\.pb\.go' \
+            | grep -v '^vendor/' \
+            | grep -v '^config-tool/' \
+            | xargs -I{} sh -c 'test -f "{}" && echo "{}"' 2>/dev/null || true)
+
+          if [ -z "$CHANGED" ]; then
+            MAX_COMPLEXITY=0
+            AVG_COMPLEXITY=0
+            ABOVE_THRESHOLD=0
+            COMPLEXITY_JSON="{}"
+          else
+            go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+
+            GOCYCLO_OUT=$(echo "$CHANGED" | xargs gocyclo 2>/dev/null || true)
+
+            if [ -z "$GOCYCLO_OUT" ]; then
+              MAX_COMPLEXITY=0
+              AVG_COMPLEXITY=0
+              ABOVE_THRESHOLD=0
+              COMPLEXITY_JSON="{}"
+            else
+              # Parse: complexity function file:line
+              MAX_COMPLEXITY=$(echo "$GOCYCLO_OUT" | awk '{print $1}' | sort -n | tail -1)
+              TOTAL=$(echo "$GOCYCLO_OUT" | awk '{s+=$1} END {print s}')
+              COUNT=$(echo "$GOCYCLO_OUT" | wc -l | tr -d ' ')
+              AVG_COMPLEXITY=$(echo "scale=2; $TOTAL / $COUNT" | bc)
+              ABOVE_THRESHOLD=$(echo "$GOCYCLO_OUT" | awk '$1 > 15 {n++} END {print n+0}')
+
+              COMPLEXITY_JSON=$(jq -n \
+                --argjson max "$MAX_COMPLEXITY" \
+                --argjson avg "$AVG_COMPLEXITY" \
+                --argjson above "$ABOVE_THRESHOLD" \
+                --argjson count "$COUNT" \
+                '{max_complexity: $max, avg_complexity: $avg, above_threshold: $above, functions_analyzed: $count}')
+            fi
+          fi
+
+          echo "Complexity results: $COMPLEXITY_JSON"
+
+          if [ -z "${DEVLAKE_ENDPOINT:-}" ] || [ -z "${DEVLAKE_CONNECTION_ID:-}" ] || [ -z "${DEVLAKE_API_KEY:-}" ]; then
+            echo "::warning::DEVLAKE secrets not configured — skipping POST"
+            exit 0
+          fi
+
+          ISSUE_KEY="quay-pr-complexity-${PR_NUMBER}"
+          URL="${DEVLAKE_ENDPOINT}/api/plugins/webhook/connections/${DEVLAKE_CONNECTION_ID}/issues"
+
+          PAYLOAD=$(jq -n \
+            --arg issueKey "$ISSUE_KEY" \
+            --arg description "$COMPLEXITY_JSON" \
+            --argjson storyPoint "${MAX_COMPLEXITY:-0}" \
+            '{
+              issueKey: $issueKey,
+              status: "DONE",
+              originalStatus: "analyzed",
+              type: "REQUIREMENT",
+              description: $description,
+              storyPoint: $storyPoint
+            }')
+
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "$URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${DEVLAKE_API_KEY}" \
+            -d "$PAYLOAD")
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::warning::DevLake POST failed with HTTP ${HTTP_STATUS}"
+          else
+            echo "Posted complexity metrics for PR #${PR_NUMBER}: max=${MAX_COMPLEXITY:-0}"
+          fi
