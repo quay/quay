@@ -1,0 +1,110 @@
+name: Storybook Preview Deploy
+on:
+  workflow_run:
+    workflows: ["Storybook CI"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    name: Deploy Storybook Preview to Surge
+    runs-on: ubuntu-22.04
+    if: github.event.workflow_run.event == 'pull_request'
+
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+    - name: Download Storybook build artifact
+      uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
+      with:
+        name: storybook-static
+        workflow: web-storybook-ci.yaml
+        run_id: ${{ github.event.workflow_run.id }}
+        path: ./storybook-static
+
+    - name: Download PR number
+      uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
+      with:
+        name: storybook-pr-info
+        workflow: web-storybook-ci.yaml
+        run_id: ${{ github.event.workflow_run.id }}
+        path: ./pr-info
+
+    - name: Read PR number
+      id: pr
+      run: |
+        PR_NUMBER=$(cat pr-info/pr_number.txt)
+        echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+    - name: Deploy to Surge
+      id: deploy
+      run: |
+        DEPLOY_DOMAIN="quay-storybook-pr-${PR_NUMBER}.surge.sh"
+        cd storybook-static
+        npx surge . "$DEPLOY_DOMAIN" --token "$SURGE_TOKEN"
+        echo "url=https://$DEPLOY_DOMAIN" >> "$GITHUB_OUTPUT"
+      env:
+        SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+        PR_NUMBER: ${{ steps.pr.outputs.number }}
+
+    - name: Comment PR with Storybook URL
+      if: always()
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      env:
+        DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+        PR_NUMBER: ${{ steps.pr.outputs.number }}
+        WF_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        WF_RUN_URL: ${{ github.event.workflow_run.html_url }}
+        WF_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      with:
+        script: |
+          const reportUrl = process.env.DEPLOY_URL || '';
+          const prNumber = parseInt(process.env.PR_NUMBER, 10);
+          const conclusion = process.env.WF_CONCLUSION;
+          const runUrl = process.env.WF_RUN_URL;
+          const headSha = process.env.WF_HEAD_SHA;
+
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+
+          const botComment = comments.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Storybook Preview')
+          );
+
+          const statusEmoji = conclusion === 'success' ? '✅' : '❌';
+          const statusText = conclusion === 'success' ? 'passed' : 'failed';
+          const previewLine = reportUrl
+            ? `📖 **[Open Storybook](${reportUrl})**`
+            : '📖 _Preview not available (deploy skipped or failed)_';
+
+          const commentBody = `## Storybook Preview
+
+          ${statusEmoji} **Build ${statusText}**
+
+          ${previewLine}
+
+          🔗 [View Workflow Run](${runUrl})
+
+          _Preview from commit ${headSha}_`;
+
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: commentBody
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+          }
