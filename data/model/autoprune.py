@@ -1,6 +1,7 @@
 import json
 import logging.config
 import re
+import time
 from enum import Enum
 
 from data.database import AutoPruneTaskStatus
@@ -514,15 +515,39 @@ def create_autoprune_task(namespace_id):
 
 
 def update_autoprune_task(task, task_status):
-    try:
-        task.status = task_status
-        task.save(only=[AutoPruneTaskStatus.status])
-    except AutoPruneTaskStatus.DoesNotExist:
-        return None
-    except Exception as err:
-        raise Exception(
-            f"Error updating autoprune task for namespace id: {task.namespace_id}, task_status: {task_status} with error as: {str(err)}"
-        )
+    """
+    Update autoprune task status with retry logic for deadlock handling.
+
+    Retries up to 3 times with exponential backoff when PostgreSQL deadlocks occur.
+    """
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            task.status = task_status
+            task.save(only=[AutoPruneTaskStatus.status])
+            return
+        except AutoPruneTaskStatus.DoesNotExist:
+            return None
+        except Exception as err:
+            error_msg = str(err).lower()
+            # Check if this is a deadlock error
+            if "deadlock" in error_msg and attempt < max_retries - 1:
+                # Exponential backoff: 0.1s, 0.2s, 0.4s
+                backoff = 0.1 * (2**attempt)
+                logger.warning(
+                    "Deadlock detected updating autoprune task for namespace %s (attempt %d/%d), retrying in %.1fs",
+                    task.namespace_id,
+                    attempt + 1,
+                    max_retries,
+                    backoff,
+                )
+                time.sleep(backoff)
+                continue
+
+            # Not a deadlock or max retries exceeded
+            raise Exception(
+                f"Error updating autoprune task for namespace id: {task.namespace_id}, task_status: {task_status} with error as: {str(err)}"
+            )
 
 
 def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):

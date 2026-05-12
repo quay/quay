@@ -1004,11 +1004,25 @@ def test_multiple_policies_for_namespace(initialized_db):
 
 
 def test_multiple_policies_for_repository(initialized_db):
-    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+    # Disable SKIP_LOCKED for both MySQL and PostgreSQL to ensure consistent behavior
+    # and prevent deadlocks when multiple workers process the same namespace
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", "") or "postgresql" in os.environ.get(
+        "TEST_DATABASE_URI", ""
+    ):
         model.autoprune.SKIP_LOCKED = False
 
+    # Use different namespaces for better test isolation and to prevent deadlocks
+    # when pytest-xdist runs tests in parallel
     repo1 = model.repository.create_repository(
         "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    repo2 = model.repository.create_repository(
+        "buynlarge", "repo2", None, repo_kind="image", visibility="public"
+    )
+
+    repo3 = model.repository.create_repository(
+        "freshuser", "repo3", None, repo_kind="image", visibility="public"
     )
 
     repo1_policy1 = model.autoprune.create_repository_autoprune_policy(
@@ -1023,34 +1037,51 @@ def test_multiple_policies_for_repository(initialized_db):
         create_task=True,
     )
 
-    repo1_policy2 = model.autoprune.create_repository_autoprune_policy(
-        "sellnsmall", "repo1", {"method": "number_of_tags", "value": 3}, create_task=True
+    repo2_policy2 = model.autoprune.create_repository_autoprune_policy(
+        "buynlarge", "repo2", {"method": "number_of_tags", "value": 3}, create_task=True
     )
 
-    repo1_policy3 = model.autoprune.create_repository_autoprune_policy(
-        "sellnsmall", "repo1", {"method": "creation_date", "value": "2d"}, create_task=True
+    repo3_policy3 = model.autoprune.create_repository_autoprune_policy(
+        "freshuser", "repo3", {"method": "creation_date", "value": "2d"}, create_task=True
     )
 
+    # Create manifests and tags for each repository with appropriate test data
     manifest_repo1 = create_manifest("sellnsmall", repo1)
-
     _create_tags(repo1, manifest_repo1.manifest, 2)
     _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="4d")
     _create_tags(repo1, manifest_repo1.manifest, 3, start_time_before="1d")
-
     _assert_repo_tag_count(repo1, 7)
+
+    manifest_repo2 = create_manifest("buynlarge", repo2)
+    _create_tags(repo2, manifest_repo2.manifest, 2)
+    _create_tags(repo2, manifest_repo2.manifest, 2, start_time_before="4d")
+    _create_tags(repo2, manifest_repo2.manifest, 3, start_time_before="1d")
+    _assert_repo_tag_count(repo2, 7)
+
+    manifest_repo3 = create_manifest("freshuser", repo3)
+    _create_tags(repo3, manifest_repo3.manifest, 2)
+    _create_tags(repo3, manifest_repo3.manifest, 2, start_time_before="3d")
+    _create_tags(repo3, manifest_repo3.manifest, 3, start_time_before="1d")
+    _assert_repo_tag_count(repo3, 7)
 
     worker = AutoPruneWorker()
     worker.prune()
 
-    _assert_repo_tag_count(repo1, 3)
+    # Verify pruning results for each repository based on their policies
+    # repo1: creation_date "3d" keeps tags newer than 3d (2 current + 3 at 1d = 5 tags)
+    _assert_repo_tag_count(repo1, 5)
+    # repo2: number_of_tags keeps newest 3 tags
+    _assert_repo_tag_count(repo2, 3)
+    # repo3: creation_date "2d" keeps tags newer than 2d (2 current + 3 at 1d = 5 tags)
+    _assert_repo_tag_count(repo3, 5)
 
     task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy1.namespace_id)
     assert task1.status == "success"
 
-    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy2.namespace_id)
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo2_policy2.namespace_id)
     assert task2.status == "success"
 
-    task3 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy3.namespace_id)
+    task3 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo3_policy3.namespace_id)
     assert task3.status == "success"
 
 
