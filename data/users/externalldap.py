@@ -175,6 +175,13 @@ class LDAPConnection(object):
     def __enter__(self):
         trace_level = 2 if os.environ.get("USERS_DEBUG") == "1" else 0
 
+        if trace_level:
+            self._conn = ldap.initialize(
+                self._ldap_uri, trace_level=trace_level, trace_file=_LDAPTraceRedactor()
+            )
+        else:
+            self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
+
         trace_file = _LDAPTraceRedactor() if trace_level else sys.stdout
 
         self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level, trace_file=trace_file)
