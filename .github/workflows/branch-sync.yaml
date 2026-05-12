@@ -25,6 +25,7 @@ jobs:
       - name: Merge master into release
         env:
           BRANCH_NAME: ${{ vars.BRANCH_SYNC_TARGET }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -z "$BRANCH_NAME" ]; then echo "BRANCH_SYNC_TARGET variable is not set" && exit 1; fi
           echo "Syncing master to $BRANCH_NAME"
@@ -41,5 +42,3 @@ jobs:
           git push origin $BRANCH_NAME
 
           echo "Merged master ($MASTER_COMMIT) into $BRANCH_NAME ($RELEASE_COMMIT)"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
