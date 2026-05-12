@@ -1,6 +1,8 @@
 import hashlib
 import logging
 import os
+import re
+import sys
 import threading
 from collections import OrderedDict, namedtuple
 from datetime import datetime, timedelta
@@ -40,6 +42,25 @@ _TRANSIENT_ERROR_MESSAGES = frozenset(
         "Failed to follow referral when looking up username",
     ]
 )
+
+
+class _LDAPTraceRedactor:
+    """
+    Wraps the LDAP output for password redaction when USERS_DEBUG is set.
+    """
+
+    _BIND_PW_RE = re.compile(
+        r"(SimpleLDAPObject\.simple_bind\s*\n\(\('[^']*',\s*\n\s+')[^']*(')",
+    )
+
+    def __init__(self, stream=None):
+        self._stream = stream or sys.stdout
+
+    def write(self, data):
+        self._stream.write(self._BIND_PW_RE.sub(r"\1******\2", data))
+
+    def flush(self):
+        self._stream.flush()
 
 
 class LDAPCache:
@@ -154,7 +175,9 @@ class LDAPConnection(object):
     def __enter__(self):
         trace_level = 2 if os.environ.get("USERS_DEBUG") == "1" else 0
 
-        self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
+        trace_file = _LDAPTraceRedactor() if trace_level else sys.stdout
+
+        self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level, trace_file=trace_file)
         self._conn.set_option(ldap.OPT_REFERRALS, self._referrals)
         self._conn.set_option(
             ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
