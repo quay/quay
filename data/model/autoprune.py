@@ -519,9 +519,10 @@ def update_autoprune_task(task, task_status):
     Update autoprune task status with retry logic for deadlock handling.
 
     Retries up to 3 times with exponential backoff when PostgreSQL deadlocks occur.
+    Total of 4 attempts (1 initial + 3 retries) with backoff delays of 0.1s, 0.2s, 0.4s.
     """
-    max_retries = 3
-    for attempt in range(max_retries):
+    max_retries = 3  # number of retries after the initial attempt
+    for attempt in range(max_retries + 1):
         try:
             task.status = task_status
             task.save(only=[AutoPruneTaskStatus.status])
@@ -531,14 +532,14 @@ def update_autoprune_task(task, task_status):
         except Exception as err:
             error_msg = str(err).lower()
             # Check if this is a deadlock error
-            if "deadlock" in error_msg and attempt < max_retries - 1:
+            if "deadlock" in error_msg and attempt < max_retries:
                 # Exponential backoff: 0.1s, 0.2s, 0.4s
                 backoff = 0.1 * (2**attempt)
                 logger.warning(
                     "Deadlock detected updating autoprune task for namespace %s (attempt %d/%d), retrying in %.1fs",
                     task.namespace_id,
                     attempt + 1,
-                    max_retries,
+                    max_retries + 1,
                     backoff,
                 )
                 time.sleep(backoff)

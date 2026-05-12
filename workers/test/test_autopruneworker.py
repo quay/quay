@@ -1003,13 +1003,13 @@ def test_multiple_policies_for_namespace(initialized_db):
     assert task3.status == "success"
 
 
-def test_multiple_policies_for_repository(initialized_db):
+def test_multiple_policies_for_repository(initialized_db, monkeypatch):
     # Disable SKIP_LOCKED for both MySQL and PostgreSQL to ensure consistent behavior
     # and prevent deadlocks when multiple workers process the same namespace
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", "") or "postgresql" in os.environ.get(
         "TEST_DATABASE_URI", ""
     ):
-        model.autoprune.SKIP_LOCKED = False
+        monkeypatch.setattr(model.autoprune, "SKIP_LOCKED", False)
 
     # Use different namespaces for better test isolation and to prevent deadlocks
     # when pytest-xdist runs tests in parallel
