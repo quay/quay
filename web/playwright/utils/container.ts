@@ -7,7 +7,8 @@
  * against registries and work in restricted pods.
  */
 
-import {execFile, execFileSync, spawn} from 'child_process';
+import {exec, execFile, execFileSync, spawn} from 'child_process';
+import * as fs from 'fs';
 import {mkdtempSync, rmSync, writeFileSync} from 'fs';
 import {mkdtemp, mkdir, rm, writeFile} from 'fs/promises';
 import * as os from 'os';
@@ -15,6 +16,7 @@ import * as path from 'path';
 import {promisify} from 'util';
 import {API_URL} from './config';
 
+const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
 // Extract registry host from API_URL (e.g., 'localhost:8080')
@@ -164,6 +166,25 @@ async function retryOperation(
   for (let i = 0; i < maxAttempts; i++) {
     try {
       await operation();
+      return;
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * Execute a shell command, retrying with fixed 1s delays on failure.
+ *
+ * Similar to retryOperation but for direct shell commands via execAsync.
+ */
+async function retryPush(cmd: string, maxAttempts = 5): Promise<void> {
+  let lastErr: unknown;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      await execAsync(cmd);
       return;
     } catch (err) {
       lastErr = err;
@@ -505,6 +526,18 @@ export async function isRegctlAvailable(): Promise<boolean> {
 }
 
 /**
+ * Check if helm CLI is available on the system.
+ */
+export async function isHelmAvailable(): Promise<boolean> {
+  try {
+    await execAsync('helm version');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * List tags for a repository using skopeo.
  *
  * @returns Array of tag name strings
@@ -550,4 +583,157 @@ export async function regctlListTags(
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
+}
+
+/**
+ * Push a Helm chart to the registry using helm CLI.
+ *
+ * Creates a minimal test Helm chart, packages it, and pushes to the registry.
+ *
+ * @param namespace - Organization/namespace
+ * @param repo - Repository name (chart name)
+ * @param version - Chart version (e.g., '1.0.0')
+ * @param username - Registry username
+ * @param password - Registry password
+ * @param chartMetadata - Optional chart metadata overrides
+ *
+ * @example
+ * ```typescript
+ * await pushHelmChart('myorg', 'nginx-chart', '1.0.0', 'testuser', 'password');
+ * await pushHelmChart('myorg', 'app-chart', '2.1.0', 'testuser', 'password', {
+ *   description: 'My application chart',
+ *   appVersion: '2.1.0',
+ * });
+ * ```
+ */
+export async function pushHelmChart(
+  namespace: string,
+  repo: string,
+  version: string,
+  username: string,
+  password: string,
+  chartMetadata?: {
+    description?: string;
+    appVersion?: string;
+    dependencies?: Array<{name: string; version: string; repository: string}>;
+  },
+): Promise<void> {
+  // Create temporary directory for chart
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'helm-chart-'));
+  const chartDir = path.join(tmpDir, repo);
+
+  try {
+    // Create chart directory structure
+    fs.mkdirSync(chartDir);
+    fs.mkdirSync(path.join(chartDir, 'templates'));
+
+    // Create Chart.yaml
+    const chartYaml = `apiVersion: v2
+name: ${repo}
+description: ${chartMetadata?.description || `Test Helm chart for ${repo}`}
+type: application
+version: ${version}
+appVersion: "${chartMetadata?.appVersion || version}"
+${
+  chartMetadata?.dependencies
+    ? `dependencies:\n${chartMetadata.dependencies
+        .map(
+          (dep) =>
+            `  - name: ${dep.name}\n    version: "${dep.version}"\n    repository: "${dep.repository}"`,
+        )
+        .join('\n')}`
+    : ''
+}`;
+
+    fs.writeFileSync(path.join(chartDir, 'Chart.yaml'), chartYaml);
+
+    // Create values.yaml
+    const valuesYaml = `# Default values for ${repo}
+replicaCount: 1
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 80
+`;
+    fs.writeFileSync(path.join(chartDir, 'values.yaml'), valuesYaml);
+
+    // Create a simple deployment template
+    const deploymentYaml = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "${repo}.fullname" . }}
+  labels:
+    app: {{ include "${repo}.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "${repo}.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "${repo}.name" . }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        ports:
+        - containerPort: 80
+`;
+    fs.writeFileSync(
+      path.join(chartDir, 'templates', 'deployment.yaml'),
+      deploymentYaml,
+    );
+
+    // Create _helpers.tpl
+    const helpersTpl = `{{/*
+Expand the name of the chart.
+*/}}
+{{- define "${repo}.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Create a default fully qualified app name.
+*/}}
+{{- define "${repo}.fullname" -}}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+`;
+    fs.writeFileSync(
+      path.join(chartDir, 'templates', '_helpers.tpl'),
+      helpersTpl,
+    );
+
+    // Package the chart
+    await execAsync(`helm package ${chartDir}`, {cwd: tmpDir});
+
+    // Login to registry
+    await execAsync(
+      `helm registry login ${REGISTRY_HOST} -u ${username} -p ${password} --insecure`,
+    );
+
+    // Push the chart (with retries for repo-init race)
+    const registryUrl = `oci://${REGISTRY_HOST}`;
+    const packagedChart = `${repo}-${version}.tgz`;
+    await retryPush(
+      `helm push ${path.join(
+        tmpDir,
+        packagedChart,
+      )} ${registryUrl}/${namespace} --insecure`,
+    );
+  } finally {
+    // Cleanup temporary directory
+    fs.rmSync(tmpDir, {recursive: true, force: true});
+  }
 }
