@@ -356,4 +356,9 @@ location /static/ {
     error_page 404 /404;
 }
 
-error_page 502 {{static_dir}}/502.html;
+error_page 502 =502 /502.html;
+
+location = /502.html {
+    root {{static_dir}};
+    internal;
+}
