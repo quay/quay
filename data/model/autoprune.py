@@ -4,6 +4,8 @@ import re
 import time
 from enum import Enum
 
+from peewee import OperationalError
+
 from data.database import AutoPruneTaskStatus
 from data.database import NamespaceAutoPrunePolicy as NamespaceAutoPrunePolicyTable
 from data.database import Repository
@@ -539,7 +541,7 @@ def update_autoprune_task(task, task_status):
             return
         except AutoPruneTaskStatus.DoesNotExist:
             return None
-        except Exception as err:
+        except OperationalError as err:
             error_msg = str(err).lower()
             # Check if this is a deadlock error or transaction abort
             if (
@@ -561,7 +563,7 @@ def update_autoprune_task(task, task_status):
             # Not a retryable error or max retries exceeded
             raise Exception(
                 f"Error updating autoprune task for namespace id: {namespace_id}, task_status: {task_status} with error as: {str(err)}"
-            )
+            ) from err
 
 
 def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
