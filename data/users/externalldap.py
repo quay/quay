@@ -182,9 +182,6 @@ class LDAPConnection(object):
         else:
             self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
 
-        trace_file = _LDAPTraceRedactor() if trace_level else sys.stdout
-
-        self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level, trace_file=trace_file)
         self._conn.set_option(ldap.OPT_REFERRALS, self._referrals)
         self._conn.set_option(
             ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
