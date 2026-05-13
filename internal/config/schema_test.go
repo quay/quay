@@ -169,10 +169,12 @@ var knownUnmapped = map[string]bool{
 	"ENTITLEMENT_RECONCILIATION_USER_ENDPOINT":            true,
 
 	// Repo mirror
-	"REPO_MIRROR_INTERVAL":        true,
-	"REPO_MIRROR_ROLLBACK":        true,
-	"REPO_MIRROR_SERVER_HOSTNAME": true,
-	"REPO_MIRROR_TLS_VERIFY":      true,
+	"REPO_MIRROR_INTERVAL":             true,
+	"REPO_MIRROR_MAX_MANIFEST_ENTRIES":  true,
+	"REPO_MIRROR_MAX_MANIFEST_LIST_SIZE": true,
+	"REPO_MIRROR_ROLLBACK":             true,
+	"REPO_MIRROR_SERVER_HOSTNAME":      true,
+	"REPO_MIRROR_TLS_VERIFY":           true,
 
 	// Quotas
 	"DEFAULT_SYSTEM_REJECT_QUOTA_BYTES": true,
@@ -230,7 +232,8 @@ var knownUnmapped = map[string]bool{
 	"NON_RATE_LIMITED_NAMESPACES":                    true,
 	"NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX":         true,
 	"NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES": true,
-	"ORG_MIRROR_INTERVAL":                            true,
+	"ORG_MIRROR_INTERVAL":               true,
+	"ORG_MIRROR_MAX_DISCOVERY_DURATION": true,
 	"PERMANENTLY_DELETE_TAGS":                        true,
 	"RESET_CHILD_MANIFEST_EXPIRATION":                true,
 	"ROBOTS_DISALLOW":                                true,
