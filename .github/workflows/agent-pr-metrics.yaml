@@ -150,10 +150,12 @@ jobs:
             | grep -v '^config-tool/' \
             | xargs -I{} sh -c 'test -f "{}" && echo "{}"' 2>/dev/null || true)
 
-          # Python: exclude test files and vendor
+          # Python: exclude test files (test_*.py and *_test.py) and vendor
           CHANGED_PY=$(echo "$ALL_FILES" \
             | grep '\.py$' \
             | grep -v '_test\.py' \
+            | grep -v '/test_[^/]*\.py$' \
+            | grep -v '^test_[^/]*\.py$' \
             | grep -v '^vendor/' \
             | xargs -I{} sh -c 'test -f "{}" && echo "{}"' 2>/dev/null || true)
 
