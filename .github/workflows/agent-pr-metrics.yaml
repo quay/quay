@@ -63,8 +63,7 @@ jobs:
             for (const comment of [...reviewComments, ...issueComments]) {
               const author = comment.user.login;
               if (author === prAuthor) continue;
-              if (author !== 'coderabbitai[bot]' && !author.endsWith('[bot]') &&
-                  author === prAuthor) continue;
+              if (author.endsWith('[bot]') && author !== 'coderabbitai[bot]') continue;
 
               total++;
               let category;
@@ -93,14 +92,22 @@ jobs:
               description,
             };
 
-            const response = await fetch(url, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.DEVLAKE_API_KEY}`,
-              },
-              body: JSON.stringify(payload),
-            });
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 30_000);
+            let response;
+            try {
+              response = await fetch(url, {
+                method: 'POST',
+                signal: controller.signal,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${process.env.DEVLAKE_API_KEY}`,
+                },
+                body: JSON.stringify(payload),
+              });
+            } finally {
+              clearTimeout(timeout);
+            }
 
             if (!response.ok) {
               core.warning(`DevLake POST failed: ${response.status} ${await response.text()}`);
@@ -173,7 +180,10 @@ jobs:
               MAX_COMPLEXITY=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{print $2}' | sort -n | tail -1)
               TOTAL=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{s+=$2} END {print s+0}')
               COUNT=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{n++} END {print n+0}')
-              AVG_COMPLEXITY=$([ "$COUNT" -gt 0 ] && echo "scale=2; $TOTAL / $COUNT" | bc || echo "0")
+              AVG_COMPLEXITY=$(awk -v total="$TOTAL" -v count="$COUNT" 'BEGIN {
+                if (count > 0) printf "%.2f", total / count;
+                else print "0"
+              }')
               ABOVE_THRESHOLD=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/ && $2 > 15 {n++} END {print n+0}')
 
               COMPLEXITY_JSON=$(jq -n \
@@ -209,6 +219,8 @@ jobs:
             }')
 
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            --connect-timeout 10 \
+            --max-time 30 \
             -X POST "$URL" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${DEVLAKE_API_KEY}" \
