@@ -1042,20 +1042,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   cachedQuayConfig: [
-    async ({playwright}, use) => {
-      const request = await playwright.request.newContext({
-        ignoreHTTPSErrors: true,
-      });
-      try {
-        const response = await request.get(`${API_URL}/config`);
-        if (!response.ok()) {
-          throw new Error(`Failed to fetch Quay config: ${response.status()}`);
-        }
-        const config = (await response.json()) as QuayConfig;
-        await use(config);
-      } finally {
-        await request.dispose();
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      const raw = process.env.QUAY_CONFIG_JSON;
+      if (!raw) {
+        throw new Error(
+          'QUAY_CONFIG_JSON not set -- globalSetup must run before workers',
+        );
       }
+      await use(JSON.parse(raw) as QuayConfig);
     },
     {scope: 'worker'},
   ],
@@ -1121,13 +1116,16 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   api: async ({authenticatedRequest, quayConfig}, use) => {
     const client = new ApiClient(authenticatedRequest);
     const users = getTestUsers(quayConfig);
+    client.setCredentials(users.user.username, users.user.password);
     const testApi = new TestApi(client, users.user.username);
     await use(testApi);
     await testApi.cleanup();
   },
 
-  superuserApi: async ({superuserRequest}, use) => {
+  superuserApi: async ({superuserRequest, cachedQuayConfig}, use) => {
     const client = new ApiClient(superuserRequest);
+    const users = getTestUsers(cachedQuayConfig);
+    client.setCredentials(users.admin.username, users.admin.password);
     const testApi = new TestApi(client);
     await use(testApi);
     await testApi.cleanup();

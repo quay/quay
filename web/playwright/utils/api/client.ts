@@ -4,7 +4,8 @@
  * Provides API interactions with CSRF token caching to reduce redundant requests.
  */
 
-import {APIRequestContext} from '@playwright/test';
+import {APIRequestContext, APIResponse} from '@playwright/test';
+import {requestCsrfToken} from './csrf';
 import {API_URL} from '../config';
 
 export type RepositoryVisibility = 'public' | 'private';
@@ -207,21 +208,19 @@ export interface ProxyCacheConfig {
 export class ApiClient {
   private request: APIRequestContext;
   private csrfToken: string | null = null;
+  private credentials: {username: string; password: string} | null = null;
 
   constructor(request: APIRequestContext) {
     this.request = request;
   }
 
+  setCredentials(username: string, password: string): void {
+    this.credentials = {username, password};
+  }
+
   private async fetchToken(): Promise<string> {
     if (!this.csrfToken) {
-      const response = await this.request.get(`${API_URL}/csrf_token`, {
-        timeout: 5000,
-      });
-      if (!response.ok()) {
-        throw new Error(`Failed to get CSRF token: ${response.status()}`);
-      }
-      const data = await response.json();
-      this.csrfToken = data.csrf_token;
+      this.csrfToken = await requestCsrfToken(this.request, API_URL);
     }
     return this.csrfToken;
   }
@@ -232,6 +231,36 @@ export class ApiClient {
    */
   async getToken(): Promise<string> {
     return this.fetchToken();
+  }
+
+  private isFreshLoginRequired(status: number, body: string): boolean {
+    if (status !== 401) return false;
+    try {
+      return JSON.parse(body).error_type === 'fresh_login_required';
+    } catch {
+      return false;
+    }
+  }
+
+  private async ensureFreshSession(): Promise<void> {
+    if (!this.credentials) {
+      throw new Error('Cannot refresh session: no credentials stored');
+    }
+    await this.signIn(this.credentials.username, this.credentials.password);
+  }
+
+  private async withFreshLoginRetry(
+    doRequest: () => Promise<APIResponse>,
+  ): Promise<APIResponse> {
+    const response = await doRequest();
+    if (this.credentials && response.status() === 401) {
+      const body = await response.text();
+      if (this.isFreshLoginRequired(response.status(), body)) {
+        await this.ensureFreshSession();
+        return doRequest();
+      }
+    }
+    return response;
   }
 
   // Organization methods
@@ -266,16 +295,15 @@ export class ApiClient {
   }
 
   async deleteOrganization(name: string): Promise<void> {
-    const token = await this.fetchToken();
-    const response = await this.request.delete(
-      `${API_URL}/api/v1/organization/${name}`,
-      {
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.delete(`${API_URL}/api/v1/organization/${name}`, {
         timeout: 5000,
         headers: {
           'X-CSRF-Token': token,
         },
-      },
-    );
+      });
+    });
 
     if (!response.ok() && response.status() !== 404) {
       const body = await response.text();
@@ -895,16 +923,18 @@ export class ApiClient {
   }
 
   async deleteUser(username: string): Promise<void> {
-    const token = await this.fetchToken();
-    const response = await this.request.delete(
-      `${API_URL}/api/v1/superuser/users/${username}`,
-      {
-        timeout: 10000,
-        headers: {
-          'X-CSRF-Token': token,
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.delete(
+        `${API_URL}/api/v1/superuser/users/${username}`,
+        {
+          timeout: 10000,
+          headers: {
+            'X-CSRF-Token': token,
+          },
         },
-      },
-    );
+      );
+    });
 
     if (!response.ok() && response.status() !== 404) {
       const body = await response.text();
@@ -945,6 +975,7 @@ export class ApiClient {
         `Failed to sign in as ${username}: ${response.status()} - ${body}`,
       );
     }
+    this.csrfToken = null;
   }
 
   // User notification methods
@@ -1102,19 +1133,21 @@ export class ApiClient {
     severity: MessageSeverity = 'info',
     mediaType: MessageMediaType = 'text/markdown',
   ): Promise<GlobalMessage> {
-    const token = await this.fetchToken();
-    const response = await this.request.post(`${API_URL}/api/v1/messages`, {
-      timeout: 5000,
-      headers: {
-        'X-CSRF-Token': token,
-      },
-      data: {
-        message: {
-          content,
-          media_type: mediaType,
-          severity,
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.post(`${API_URL}/api/v1/messages`, {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
         },
-      },
+        data: {
+          message: {
+            content,
+            media_type: mediaType,
+            severity,
+          },
+        },
+      });
     });
 
     if (response.status() !== 201) {
@@ -1134,16 +1167,15 @@ export class ApiClient {
   }
 
   async deleteMessage(uuid: string): Promise<void> {
-    const token = await this.fetchToken();
-    const response = await this.request.delete(
-      `${API_URL}/api/v1/message/${uuid}`,
-      {
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.delete(`${API_URL}/api/v1/message/${uuid}`, {
         timeout: 5000,
         headers: {
           'X-CSRF-Token': token,
         },
-      },
-    );
+      });
+    });
 
     if (!response.ok() && response.status() !== 404) {
       const body = await response.text();
@@ -1731,6 +1763,40 @@ export class ApiClient {
   }
 
   /**
+   * Permanently expire a tag (force delete).
+   * Uses POST /api/v1/repository/{namespace}/{repo}/tag/{tag}/expire
+   */
+  async expireTag(
+    namespace: string,
+    repo: string,
+    tag: string,
+    opts?: {
+      manifest_digest?: string;
+      is_alive?: boolean;
+      include_submanifests?: boolean;
+    },
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/tag/${tag}/expire`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data: opts ?? {},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to expire tag ${tag} from ${namespace}/${repo}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
    * Set tag immutability.
    * Uses PUT /api/v1/repository/{namespace}/{repo}/tag/{tag}
    */
@@ -2177,15 +2243,17 @@ export class ApiClient {
     teamName: string,
     groupName: string,
   ): Promise<void> {
-    const token = await this.fetchToken();
-    const response = await this.request.post(
-      `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/syncing`,
-      {
-        timeout: 5000,
-        headers: {'X-CSRF-Token': token},
-        data: {group_dn: groupName},
-      },
-    );
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.post(
+        `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/syncing`,
+        {
+          timeout: 5000,
+          headers: {'X-CSRF-Token': token},
+          data: {group_dn: groupName},
+        },
+      );
+    });
 
     if (!response.ok()) {
       const body = await response.text();
@@ -2196,14 +2264,16 @@ export class ApiClient {
   }
 
   async disableTeamSync(orgName: string, teamName: string): Promise<void> {
-    const token = await this.fetchToken();
-    const response = await this.request.delete(
-      `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/syncing`,
-      {
-        timeout: 5000,
-        headers: {'X-CSRF-Token': token},
-      },
-    );
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.delete(
+        `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/syncing`,
+        {
+          timeout: 5000,
+          headers: {'X-CSRF-Token': token},
+        },
+      );
+    });
 
     if (!response.ok() && response.status() !== 404) {
       const body = await response.text();
@@ -2304,6 +2374,94 @@ export class ApiClient {
     }
 
     return (await response.json()) as OAuthApp;
+  }
+
+  /**
+   * Update an existing quota limit for an organization.
+   * PUT /api/v1/organization/{orgName}/quota/{quotaId}/limit/{limitId}
+   * Logs the org_change_quota_limit action. Superuser only.
+   */
+  async changeOrganizationQuotaLimit(
+    orgName: string,
+    quotaId: string,
+    limitId: string,
+    type: 'Warning' | 'Reject',
+    thresholdPercent: number,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+        data: {type, threshold_percent: thresholdPercent},
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to change quota limit for ${orgName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
+   * Create a robot federation config.
+   * POST /api/v1/organization/{orgName}/robots/{robotShortname}/federation
+   * Logs the create_robot_federation action.
+   */
+  async createRobotFederation(
+    orgName: string,
+    robotShortname: string,
+    federations: {issuer: string; subject: string}[],
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/organization/${orgName}/robots/${robotShortname}/federation`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+        data: federations,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to create robot federation for ${orgName}+${robotShortname}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  /**
+   * Delete a robot federation config.
+   * DELETE /api/v1/organization/{orgName}/robots/{robotShortname}/federation
+   * Logs the delete_robot_federation action.
+   */
+  async deleteRobotFederation(
+    orgName: string,
+    robotShortname: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/robots/${robotShortname}/federation`,
+      {
+        timeout: 5000,
+        headers: {'X-CSRF-Token': token},
+      },
+    );
+
+    if (
+      !response.ok() &&
+      response.status() !== 204 &&
+      response.status() !== 404
+    ) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete robot federation for ${orgName}+${robotShortname}: ${response.status()} - ${body}`,
+      );
+    }
   }
 }
 
