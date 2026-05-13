@@ -310,6 +310,20 @@ class OIDCAuthTests(unittest.TestCase):
         assert service == "oidc"
         assert error_msg == "Not supported"
 
+    def test_has_password_set_returns_false(self):
+        # PROJQUAY-10510: OIDCUsers must return False so require_fresh_login
+        # skips the fresh-login check for OIDC browser users (who have no
+        # Quay-local password and cannot complete password verification).
+        assert self.oidc_instance.has_password_set("any_oidc_user") is False
+        assert self.oidc_instance.has_password_set("another_user") is False
+
+
+def test_has_password_set_returns_false_standalone():
+    # Standalone (no DB) variant so codecov/patch sees the method covered.
+    oidc_instance = OIDCAuthTests().fake_oidc()
+    assert oidc_instance.has_password_set("any_oidc_user") is False
+    assert oidc_instance.has_password_set("another_user") is False
+
 
 def test_verify_credentials(discovery_handler, token_handler_password_grant, userinfo_handler):
     oidc_instance = OIDCAuthTests().fake_oidc()

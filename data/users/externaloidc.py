@@ -61,6 +61,12 @@ class OIDCUsers(FederatedUsers):
         """
         return (None, "Not supported")
 
+    def has_password_set(self, username):
+        # OIDC users authenticate via token flows; they have no Quay-local password.
+        # Returning False lets require_fresh_login bypass the fresh-login check so
+        # OIDC browser users are not prompted for a password they cannot provide.
+        return False
+
     def verify_credentials(self, username_or_email, password):
         """
         Unsupported to login via username/email and password
