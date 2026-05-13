@@ -41,25 +41,29 @@ export function RepositoryToolBar(props: RepositoryToolBarProps) {
   return (
     <Toolbar>
       <ToolbarContent>
-        <DropdownCheckbox
-          selectedItems={props.selectedRepoNames}
-          deSelectAll={props.setSelectedRepoNames}
-          allItemsList={props.repositoryList}
-          itemsPerPageList={props.paginatedRepositoryList}
-          onItemSelect={props.onSelectRepo}
-        />
+        {props.showPageButton && (
+          <DropdownCheckbox
+            selectedItems={props.selectedRepoNames}
+            deSelectAll={props.setSelectedRepoNames}
+            allItemsList={props.repositoryList}
+            itemsPerPageList={props.paginatedRepositoryList}
+            onItemSelect={props.onSelectRepo}
+          />
+        )}
         <FilterInput
           id="repositorylist-search-input"
           searchState={props.search}
           onChange={props.setSearch}
         />
-        <ToolbarButton
-          id="create-repository-button"
-          buttonValue={props.buttonText}
-          Modal={props.pageModal}
-          isModalOpen={props.isModalOpen}
-          setModalOpen={props.setModalOpen}
-        />
+        {props.showPageButton && (
+          <ToolbarButton
+            id="create-repository-button"
+            buttonValue={props.buttonText}
+            Modal={props.pageModal}
+            isModalOpen={props.isModalOpen}
+            setModalOpen={props.setModalOpen}
+          />
+        )}
         <ToolbarItem>
           {props.selectedRepoNames?.length !== 0 ? (
             <Kebab
@@ -89,6 +93,7 @@ export function RepositoryToolBar(props: RepositoryToolBarProps) {
         buttonText="Make public"
         makePublic={true}
         selectAllRepos={props.selectAllRepos}
+        confirmButtonTestId="make-public-confirm-btn"
       />
       <ConfirmationModal
         title="Make repositories private"
@@ -99,6 +104,7 @@ export function RepositoryToolBar(props: RepositoryToolBarProps) {
         selectedItems={props.selectedRepoNames}
         makePublic={false}
         selectAllRepos={props.selectAllRepos}
+        confirmButtonTestId="make-private-confirm-btn"
       />
     </Toolbar>
   );

@@ -145,6 +145,7 @@ export default function CreateEmailNotification(
             key="sendemail"
             variant="primary"
             onClick={() => sendAuthorizedEmail(email)}
+            data-testid="send-authorized-email-btn"
           >
             Send Authorized Email
           </Button>
@@ -194,6 +195,7 @@ export default function CreateEmailNotification(
       <FormGroup fieldId="email" label="E-mail address" isRequired>
         <TextInput
           id="notification-email"
+          data-testid="notification-email"
           isRequired
           value={email}
           onChange={(_event, value) => setEmail(value)}
@@ -212,6 +214,7 @@ export default function CreateEmailNotification(
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
+          data-testid="notification-title"
           value={title}
           onChange={(_event, value) => setTitle(value)}
         />
@@ -221,6 +224,7 @@ export default function CreateEmailNotification(
           isDisabled={!isFormComplete}
           onClick={createNotification}
           variant="primary"
+          data-testid="notification-submit-btn"
         >
           Submit
         </Button>

@@ -383,7 +383,11 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
   return (
     <Form id="form-form" maxWidth="70%" onSubmit={handleSubmit(onSubmit)}>
-      <FormGroup isInline label="Organization" fieldId="form-organization">
+      <FormGroup
+        isInline
+        label={isUserOrganization ? 'Username' : 'Organization'}
+        fieldId="form-organization"
+      >
         <TextInput
           isDisabled
           type="text"
@@ -394,7 +398,9 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         <FormHelperText>
           <HelperText>
             <HelperTextItem variant="indeterminate">
-              Namespace names cannot be changed once set.
+              {isUserOrganization
+                ? 'Usernames cannot be changed once set.'
+                : 'Namespace names cannot be changed once set.'}
             </HelperTextItem>
           </HelperText>
         </FormHelperText>
@@ -601,6 +607,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       <ActionGroup>
         <Button
           id="save-org-settings"
+          data-testid="settings-save-button"
           variant="primary"
           type="submit"
           onClick={handleSubmit(onSubmit)}

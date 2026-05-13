@@ -26,6 +26,7 @@ export type OrganizationDetail = {
   isUser: boolean;
   userEnabled?: boolean;
   userSuperuser?: boolean;
+  userGlobalReadonlySuperuser?: boolean;
   quota_report?: IQuotaReport;
   avatar?: IAvatar;
 };
@@ -114,6 +115,7 @@ export function useOrganizations() {
         isUser: true,
         userEnabled: userObj?.enabled,
         userSuperuser: userObj?.super_user,
+        userGlobalReadonlySuperuser: userObj?.global_readonly_super_user,
         quota_report: quotaReport,
         avatar: userObj?.avatar ?? (isCurrentUser ? user?.avatar : undefined),
       });
@@ -155,7 +157,7 @@ export function useOrganizations() {
   const queryClient = useQueryClient();
 
   const createOrganizationMutator = useMutation(
-    async ({name, email}: {name: string; email: string}) => {
+    async ({name, email}: {name: string; email?: string}) => {
       return createOrg(name, email);
     },
     {
@@ -253,7 +255,7 @@ export function useOrganizations() {
     totalResults: organizationsTableDetails.length,
 
     // Mutations
-    createOrganization: async (name: string, email: string) =>
+    createOrganization: async (name: string, email?: string) =>
       createOrganizationMutator.mutateAsync({name, email}),
     deleteOrganizations: async (names: string[]) =>
       deleteOrganizationMutator.mutateAsync(names),

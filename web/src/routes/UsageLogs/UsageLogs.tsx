@@ -17,6 +17,7 @@ interface UsageLogsProps {
   organization: string;
   repository: string;
   type: string;
+  isActive?: boolean;
 }
 
 function formatDate(date: string) {
@@ -108,6 +109,7 @@ export default function UsageLogs(props: UsageLogsProps) {
               <Button
                 variant="secondary"
                 onClick={() => setChartHidden(!chartHidden)}
+                data-testid="usage-logs-chart-toggle"
               >
                 {chartHidden ? 'Show Chart' : 'Hide Chart'}
               </Button>
@@ -150,6 +152,7 @@ export default function UsageLogs(props: UsageLogsProps) {
             org={props.organization}
             type={props.type}
             isHidden={chartHidden}
+            enabled={props.isActive !== false}
           />
         </FlexItem>
         <FlexItem>
@@ -159,6 +162,7 @@ export default function UsageLogs(props: UsageLogsProps) {
             repo={props.repository}
             org={props.organization}
             type={props.type}
+            enabled={props.isActive !== false}
           />
         </FlexItem>
       </Flex>
@@ -231,6 +235,9 @@ export const logKinds = {
   delete_repo_notification: 'Delete repository notification',
   reset_repo_notification: 'Re-enable repository notification',
   regenerate_robot_token: 'Regenerate Robot Token',
+  create_robot_federation: 'Create Robot Federation',
+  delete_robot_federation: 'Delete Robot Federation',
+  federated_robot_token_exchange: 'Federated Robot Token Exchange',
   service_key_create: 'Create Service Key',
   service_key_approve: 'Approve Service Key',
   service_key_modify: 'Modify Service Key',
@@ -241,6 +248,7 @@ export const logKinds = {
   manifest_label_add: 'Add Manifest Label',
   manifest_label_delete: 'Delete Manifest Label',
   change_tag_expiration: 'Change tag expiration',
+  change_tag_immutability: 'Change tag immutability',
   create_app_specific_token: 'Create external app token',
   revoke_app_specific_token: 'Revoke external app token',
   repo_mirror_enabled: 'Enable Repository Mirror',
@@ -255,6 +263,17 @@ export const logKinds = {
   repo_mirror_sync_test_success: 'Test Repository Mirror success',
   repo_mirror_sync_test_failed: 'Test Repository Mirror failed',
   repo_mirror_sync_test_started: 'Test Repository Mirror started',
+  org_mirror_enabled: 'Enable Organization Mirror',
+  org_mirror_disabled: 'Disable Organization Mirror',
+  org_mirror_config_changed: 'Change Organization Mirror Configuration',
+  org_mirror_sync_started: 'Start Organization Mirror Sync',
+  org_mirror_sync_success: 'Organization Mirror Sync Success',
+  org_mirror_sync_failed: 'Organization Mirror Sync Failed',
+  org_mirror_sync_now_requested: 'Organization Mirror Immediate Sync Requested',
+  org_mirror_sync_cancelled: 'Organization Mirror Sync Cancelled',
+  org_mirror_repo_created: 'Organization Mirror Repository Created',
+  org_mirror_repo_creation_failed:
+    'Organization Mirror Repository Creation Failed',
   create_proxy_cache_config: 'Create Proxy Cache Config',
   delete_proxy_cache_config: 'Delete Proxy Cache Config',
   start_build_trigger: 'Manual build trigger',
@@ -270,6 +289,17 @@ export const logKinds = {
   create_repository_autoprune_policy: 'Create Repository Autoprune Policy',
   update_repository_autoprune_policy: 'Update Repository Autoprune Policy',
   delete_repository_autoprune_policy: 'Delete Repository Autoprune Policy',
+  create_immutability_policy: 'Create Immutability Policy',
+  update_immutability_policy: 'Update Immutability Policy',
+  delete_immutability_policy: 'Delete Immutability Policy',
+  tag_made_immutable_by_policy: 'Tag Made Immutable by Policy',
+  tags_made_immutable_by_policy: 'Tags Made Immutable by Policy',
+  org_create_quota: 'Create Organization Quota',
+  org_change_quota: 'Change Organization Quota',
+  org_delete_quota: 'Delete Organization Quota',
+  org_create_quota_limit: 'Create Organization Quota Limit',
+  org_change_quota_limit: 'Change Organization Quota Limit',
+  org_delete_quota_limit: 'Delete Organization Quota Limit',
   oauth_token_assigned: 'OAuth token assigned',
   enable_team_sync: 'Enable Team Sync',
   disable_team_sync: 'Disable Team Sync',

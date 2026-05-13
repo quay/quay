@@ -238,6 +238,7 @@ export function Signin() {
   const errMessage = (
     <Alert
       id="form-error-alert"
+      data-testid="signin-error-alert"
       isInline
       actionClose={<AlertActionCloseButton onClose={() => setErr(null)} />}
       variant="danger"
@@ -317,6 +318,7 @@ export function Signin() {
                   type="email"
                   id="recovery-email"
                   name="recovery-email"
+                  data-testid="signin-recovery-email"
                   value={recoveryEmail}
                   onChange={(_event, v) => setRecoveryEmail(v)}
                   placeholder="Email"
@@ -341,6 +343,7 @@ export function Signin() {
                   sendingRecovery
                 }
                 style={{marginTop: '20px'}}
+                data-testid="signin-send-recovery"
               >
                 Send Recovery Email
               </Button>
@@ -354,6 +357,7 @@ export function Signin() {
           type="button"
           className="signin-link-button"
           onClick={() => handleViewChange('signin')}
+          data-testid="signin-back-to-login"
         >
           Back to Sign In
         </button>
@@ -440,7 +444,9 @@ export function Signin() {
 
             {showInvitationMessage() && (
               <>
-                <span>Invitation required to sign up</span>
+                <span data-testid="signin-invitation-message">
+                  Invitation required to sign up
+                </span>
                 <br />
               </>
             )}
@@ -450,6 +456,7 @@ export function Signin() {
                 type="button"
                 className="signin-link-button"
                 onClick={() => handleViewChange('forgotPassword')}
+                data-testid="signin-forgot-password-link"
               >
                 Forgot Password?
               </button>

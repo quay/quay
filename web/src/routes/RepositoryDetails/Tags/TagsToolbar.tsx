@@ -59,6 +59,7 @@ export function TagsToolbar(props: ToolBarProps) {
     </DropdownItem>,
     <DropdownItem
       key="delete"
+      data-testid="bulk-remove-action"
       onClick={() => {
         setKebabOpen(!isKebabOpen);
         setModalOptions((prevOptions) => ({
@@ -166,6 +167,7 @@ export function TagsToolbar(props: ToolBarProps) {
               setKebabOpen={setKebabOpen}
               kebabItems={kebabItems}
               useActions={true}
+              data-testid="bulk-actions-kebab"
             />
           ) : null}
         </ToolbarItem>

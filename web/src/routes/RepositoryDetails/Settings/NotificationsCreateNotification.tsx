@@ -63,7 +63,10 @@ export default function CreateNotification(props: CreateNotificationProps) {
   return (
     <>
       <Title headingLevel="h3">Create notification</Title>
-      <Form id="create-notification-form">
+      <Form
+        id="create-notification-form"
+        data-testid="create-notification-form"
+      >
         <Conditional if={error != ''}>
           <Alert
             isInline
@@ -82,6 +85,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
               <MenuToggle
                 ref={toggleRef}
                 id="event-dropdown-toggle"
+                data-testid="notification-event-dropdown"
                 onClick={() => setIsEventOpen(() => !isEventOpen)}
                 isExpanded={isEventOpen}
               >
@@ -121,6 +125,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
               <MenuToggle
                 ref={toggleRef}
                 id="method-dropdown-toggle"
+                data-testid="notification-method-dropdown"
                 onClick={() => setIsMethodOpen(() => !isMethodOpen)}
                 isExpanded={isMethodOpen}
               >

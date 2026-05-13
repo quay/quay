@@ -1,5 +1,9 @@
 import React from 'react';
-import {isNullOrUndefined, humanizeTimeForExpiry} from 'src/libs/utils';
+import {
+  isNullOrUndefined,
+  humanizeTimeForExpiry,
+  formatDate,
+} from 'src/libs/utils';
 import {useEvents} from './UseEvents';
 
 export function useLogDescriptions() {
@@ -75,13 +79,20 @@ export function useLogDescriptions() {
     return metadata.kid ? metadata.kid.substr(0, 12) : '';
   };
 
-  // Helper function to format Unix timestamps (mimics Angular's date filters)
-  const formatUnixTimestamp = (timestamp: string | number) => {
-    if (!timestamp) return '';
-    // Handle both string and number timestamps
-    const unixTime =
-      typeof timestamp === 'string' ? parseInt(timestamp) : timestamp;
-    return new Date(unixTime * 1000).toLocaleString();
+  // Helper to normalize timestamps that may be in milliseconds or numeric strings.
+  // formatDate expects seconds; values from tag.lifetime_end_ms are in ms.
+  // Epoch seconds won't exceed 1e10 until year ~2286, so values above that
+  // threshold are treated as milliseconds and divided by 1000.
+  // Metadata values are always strings, so numeric epoch strings like
+  // "1709251200" must be coerced to numbers for formatDate to work correctly.
+  const normalizeTimestamp = (ts: string | number): string | number => {
+    if (typeof ts === 'string' && /^\d+(\.\d+)?$/.test(ts)) {
+      ts = Number(ts);
+    }
+    if (typeof ts === 'number' && ts > 1e10) {
+      return ts / 1000;
+    }
+    return ts;
   };
 
   // Helper function to wrap variables with styling (mimics Angular's code tag styling)
@@ -222,20 +233,125 @@ export function useLogDescriptions() {
         </>
       );
     },
+    org_mirror_enabled: function (metadata: Metadata) {
+      const target =
+        metadata.external_registry_url && metadata.external_namespace
+          ? `${metadata.external_registry_url}/${metadata.external_namespace}`
+          : metadata.external_registry_url || 'external registry';
+      return <>Organization mirroring enabled for {wrapVariable(target)}</>;
+    },
+    org_mirror_disabled: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirroring disabled
+          {metadata.external_reference && (
+            <> for {wrapVariable(metadata.external_reference)}</>
+          )}
+        </>
+      );
+    },
+    org_mirror_config_changed: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror configuration updated
+          {metadata.external_reference && (
+            <> for {wrapVariable(metadata.external_reference)}</>
+          )}
+        </>
+      );
+    },
+    org_mirror_sync_now_requested: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror sync triggered
+          {metadata.external_reference && (
+            <> for {wrapVariable(metadata.external_reference)}</>
+          )}
+        </>
+      );
+    },
+    org_mirror_sync_cancelled: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror sync cancelled
+          {metadata.external_reference && (
+            <> for {wrapVariable(metadata.external_reference)}</>
+          )}
+        </>
+      );
+    },
+    org_mirror_sync_started: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror sync started
+          {metadata.message && <> - {wrapVariable(metadata.message)}</>}
+        </>
+      );
+    },
+    org_mirror_sync_success: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror sync completed successfully
+          {metadata.message && <> - {wrapVariable(metadata.message)}</>}
+        </>
+      );
+    },
+    org_mirror_sync_failed: function (metadata: Metadata) {
+      return (
+        <>
+          Organization mirror sync failed
+          {metadata.message && <> - {wrapVariable(metadata.message)}</>}
+          {metadata.stderr && <> | stderr: {wrapVariable(metadata.stderr)}</>}
+        </>
+      );
+    },
+    org_mirror_repo_created: function (metadata: Metadata) {
+      return (
+        <>
+          Repository created by organization mirroring
+          {metadata.external_reference && (
+            <> from {wrapVariable(metadata.external_reference)}</>
+          )}
+        </>
+      );
+    },
+    org_mirror_repo_creation_failed: function (metadata: Metadata) {
+      return (
+        <>
+          Repository creation failed during organization mirroring
+          {metadata.external_reference && (
+            <> for {wrapVariable(metadata.external_reference)}</>
+          )}
+          {metadata.error && <> - {wrapVariable(metadata.error)}</>}
+        </>
+      );
+    },
     repo_mirror_sync_started: function (metadata: Metadata) {
       return `Mirror started for ${metadata.message}`;
     },
     repo_mirror_sync_success: function (metadata: Metadata) {
-      return `Mirror finished successfully for ${metadata.message} ${metadata.tags}`;
+      let msg = `Mirror finished successfully for ${metadata.message}`;
+      if (metadata.tags) msg += ` ${metadata.tags}`;
+      return msg;
     },
     repo_mirror_sync_failed: function (metadata: Metadata) {
-      return `Mirror finished unsuccessfully for ${metadata.message} ${metadata.tags} ${metadata.stdout} ${metadata.stderr}`;
+      let msg = `Mirror finished unsuccessfully for ${metadata.message}`;
+      if (metadata.tags) msg += ` ${metadata.tags}`;
+      if (metadata.stdout) msg += ` ${metadata.stdout}`;
+      if (metadata.stderr) msg += ` ${metadata.stderr}`;
+      return msg;
     },
     repo_mirror_sync_tag_success: function (metadata: Metadata) {
-      return `Mirror of ${metadata.tag} successful to repository ${metadata.namespace}/${metadata.repo} ${metadata.message} ${metadata.stdout} ${metadata.stderr}`;
+      let msg = `Mirror of ${metadata.tag} successful to repository ${metadata.namespace}/${metadata.repo} ${metadata.message}`;
+      if (metadata.stdout) msg += ` ${metadata.stdout}`;
+      if (metadata.stderr) msg += ` ${metadata.stderr}`;
+      return msg;
     },
     repo_mirror_sync_tag_failed: function (metadata: Metadata) {
-      return `Mirror of ${metadata.tag} failure to repository ${metadata.namespace}/${metadata.repo} ${metadata.message} ${metadata.stdout} ${metadata.stderr}`;
+      let msg = `Mirror of ${metadata.tag} failure to repository ${metadata.namespace}/${metadata.repo} ${metadata.message}`;
+      if (metadata.stdout) msg += ` ${metadata.stdout}`;
+      if (metadata.stderr) msg += ` ${metadata.stderr}`;
+      return msg;
     },
     repo_mirror_config_changed: function (metadata: Metadata) {
       switch (metadata.changed) {
@@ -249,7 +365,9 @@ export function useLogDescriptions() {
           }
         case 'sync_start_date':
           metadata.changed = 'Sync Start Date';
-          return `Mirror ${metadata.changed} changed to ${metadata.to}`;
+          return `Mirror ${metadata.changed} changed to ${formatDate(
+            normalizeTimestamp(metadata.to),
+          )}`;
         case 'sync_interval':
           metadata.changed = 'Sync Interval';
           return `Mirror ${metadata.changed} changed to ${metadata.to}`;
@@ -470,6 +588,112 @@ export function useLogDescriptions() {
     },
     delete_repository_autoprune_policy: function (metadata: Metadata) {
       return `Deleted repository autoprune policy for repository: ${metadata.namespace}/${metadata.repo}`;
+    },
+    create_immutability_policy: function (metadata: Metadata) {
+      const behavior =
+        String(metadata.tag_pattern_matches) === 'false'
+          ? 'NOT matching'
+          : 'matching';
+      if (metadata.repo) {
+        return (
+          <>
+            Created immutability policy for repository{' '}
+            {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}: tags{' '}
+            {behavior} {wrapVariable(metadata.tag_pattern)} are immutable
+          </>
+        );
+      }
+      return (
+        <>
+          Created immutability policy for namespace{' '}
+          {wrapVariable(metadata.namespace)}: tags {behavior}{' '}
+          {wrapVariable(metadata.tag_pattern)} are immutable
+        </>
+      );
+    },
+    update_immutability_policy: function (metadata: Metadata) {
+      const behavior =
+        String(metadata.tag_pattern_matches) === 'false'
+          ? 'NOT matching'
+          : 'matching';
+      if (metadata.repo) {
+        return (
+          <>
+            Updated immutability policy for repository{' '}
+            {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}: tags{' '}
+            {behavior} {wrapVariable(metadata.tag_pattern)} are immutable
+          </>
+        );
+      }
+      return (
+        <>
+          Updated immutability policy for namespace{' '}
+          {wrapVariable(metadata.namespace)}: tags {behavior}{' '}
+          {wrapVariable(metadata.tag_pattern)} are immutable
+        </>
+      );
+    },
+    delete_immutability_policy: function (metadata: Metadata) {
+      if (metadata.repo) {
+        return (
+          <>
+            Deleted immutability policy for repository{' '}
+            {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+          </>
+        );
+      }
+      return (
+        <>
+          Deleted immutability policy for namespace{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+    change_tag_immutability: function (metadata: Metadata) {
+      const action =
+        String(metadata.immutable) === 'true'
+          ? 'set as immutable'
+          : 'set as mutable';
+      return (
+        <>
+          Tag {wrapVariable(metadata.tag)} {action} in repository{' '}
+          {wrapVariable(`${metadata.namespace}/${metadata.repo}`)} by user{' '}
+          {wrapVariable(metadata.username)}
+        </>
+      );
+    },
+    tag_made_immutable_by_policy: function (metadata: Metadata) {
+      return (
+        <>
+          Tag {wrapVariable(metadata.tag)} automatically set as immutable by
+          policy in repository{' '}
+          {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+        </>
+      );
+    },
+    tags_made_immutable_by_policy: function (metadata: Metadata) {
+      const behavior =
+        String(metadata.tag_pattern_matches) === 'false'
+          ? 'NOT matching'
+          : 'matching';
+      const tagWord =
+        String(metadata.count) === '1' ? 'existing tag' : 'existing tags';
+      if (metadata.repo) {
+        return (
+          <>
+            {wrapVariable(metadata.count)} {tagWord} {behavior}{' '}
+            {wrapVariable(metadata.tag_pattern)} set as immutable by policy in
+            repository {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+          </>
+        );
+      }
+      return (
+        <>
+          {wrapVariable(metadata.count)} {tagWord} {behavior}{' '}
+          {wrapVariable(metadata.tag_pattern)} set as immutable by policy in
+          namespace {wrapVariable(metadata.namespace)}
+        </>
+      );
     },
     delete_tag: function (metadata: Metadata) {
       return (
@@ -829,8 +1053,10 @@ export function useLogDescriptions() {
     },
     service_key_extend: function (metadata: Metadata) {
       const keyName = formatServiceKeyName(metadata);
-      const oldDate = formatUnixTimestamp(metadata.old_expiration_date);
-      const newDate = formatUnixTimestamp(metadata.expiration_date);
+      const oldDate = formatDate(
+        normalizeTimestamp(metadata.old_expiration_date),
+      );
+      const newDate = formatDate(normalizeTimestamp(metadata.expiration_date));
       return (
         <>
           Change of expiration of service key {wrapVariable(keyName)} from{' '}
@@ -875,14 +1101,22 @@ export function useLogDescriptions() {
 
     change_tag_expiration: function (metadata: Metadata) {
       if (metadata.expiration_date && metadata.old_expiration_date) {
-        const newDate = formatUnixTimestamp(metadata.expiration_date);
-        const oldDate = formatUnixTimestamp(metadata.old_expiration_date);
+        const newDate = formatDate(
+          normalizeTimestamp(metadata.expiration_date),
+        );
+        const oldDate = formatDate(
+          normalizeTimestamp(metadata.old_expiration_date),
+        );
         return `Tag ${metadata.tag} set to expire on ${newDate} (previously ${oldDate})`;
       } else if (metadata.expiration_date) {
-        const newDate = formatUnixTimestamp(metadata.expiration_date);
+        const newDate = formatDate(
+          normalizeTimestamp(metadata.expiration_date),
+        );
         return `Tag ${metadata.tag} set to expire on ${newDate}`;
       } else if (metadata.old_expiration_date) {
-        const oldDate = formatUnixTimestamp(metadata.old_expiration_date);
+        const oldDate = formatDate(
+          normalizeTimestamp(metadata.old_expiration_date),
+        );
         return `Tag ${metadata.tag} set to no longer expire (previously ${oldDate})`;
       } else {
         return `Tag ${metadata.tag} set to no longer expire`;
@@ -1108,6 +1342,61 @@ export function useLogDescriptions() {
     },
     federated_robot_token_exchange: function (metadata: Metadata) {
       return `Federated robot token exchange robot:${metadata.robot}, issuer:${metadata.issuer}, subject:${metadata.subject}`;
+    },
+    org_create_quota: function (metadata: Metadata) {
+      return (
+        <>
+          Created storage quota of {wrapVariable(metadata.limit)} for
+          organization {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+    org_change_quota: function (metadata: Metadata) {
+      return (
+        <>
+          Changed storage quota for organization{' '}
+          {wrapVariable(metadata.namespace)} from{' '}
+          {wrapVariable(metadata.previous_limit)} to{' '}
+          {wrapVariable(metadata.limit)}
+        </>
+      );
+    },
+    org_delete_quota: function (metadata: Metadata) {
+      return (
+        <>
+          Deleted storage quota of {wrapVariable(metadata.limit)} for
+          organization {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+    org_create_quota_limit: function (metadata: Metadata) {
+      return (
+        <>
+          Created {wrapVariable(metadata.type)} quota limit at{' '}
+          {wrapVariable(`${metadata.threshold_percent}%`)} for organization{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
+    },
+    org_change_quota_limit: function (metadata: Metadata) {
+      return (
+        <>
+          Changed quota limit for organization{' '}
+          {wrapVariable(metadata.namespace)}: {wrapVariable(metadata.type)}{' '}
+          threshold from{' '}
+          {wrapVariable(`${metadata.previous_threshold_percent}%`)} to{' '}
+          {wrapVariable(`${metadata.threshold_percent}%`)}
+        </>
+      );
+    },
+    org_delete_quota_limit: function (metadata: Metadata) {
+      return (
+        <>
+          Deleted {wrapVariable(metadata.type)} quota limit at{' '}
+          {wrapVariable(`${metadata.threshold_percent}%`)} for organization{' '}
+          {wrapVariable(metadata.namespace)}
+        </>
+      );
     },
   };
 

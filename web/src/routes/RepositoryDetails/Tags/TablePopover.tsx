@@ -30,7 +30,7 @@ export default function TablePopover(props: TablePopoverProps) {
             hoverTip="Copy"
             clickTip="Copied"
           >
-            podman pull {domain}/{props.org}/{props.repo}:{props.tag}
+            {`podman pull ${domain}/${props.org}/${props.repo}:${props.tag}`}
           </ClipboardCopy>
           <br />
           <Content component="p" style={{fontWeight: 'bold'}}>
@@ -42,7 +42,7 @@ export default function TablePopover(props: TablePopoverProps) {
             hoverTip="Copy"
             clickTip="Copied"
           >
-            podman pull {domain}/{props.org}/{props.repo}@{props.digest}
+            {`podman pull ${domain}/${props.org}/${props.repo}@${props.digest}`}
           </ClipboardCopy>
           <br />
           <Content component="p" style={{fontWeight: 'bold'}}>
@@ -54,7 +54,7 @@ export default function TablePopover(props: TablePopoverProps) {
             hoverTip="Copy"
             clickTip="Copied"
           >
-            docker pull {domain}/{props.org}/{props.repo}:{props.tag}
+            {`docker pull ${domain}/${props.org}/${props.repo}:${props.tag}`}
           </ClipboardCopy>
           <br />
           <Content component="p" style={{fontWeight: 'bold'}}>
@@ -66,7 +66,7 @@ export default function TablePopover(props: TablePopoverProps) {
             hoverTip="Copy"
             clickTip="Copied"
           >
-            docker pull {domain}/{props.org}/{props.repo}@{props.digest}
+            {`docker pull ${domain}/${props.org}/${props.repo}@${props.digest}`}
           </ClipboardCopy>
         </div>
       }

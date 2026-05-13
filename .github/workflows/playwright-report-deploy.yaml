@@ -1,0 +1,104 @@
+name: Playwright Report Deploy
+on:
+  workflow_run:
+    workflows: ["Playwright E2E Tests"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    name: Deploy Playwright Report to Surge
+    runs-on: ubuntu-22.04
+    # Only run on pull request events
+    if: github.event.workflow_run.event == 'pull_request'
+
+    permissions:
+      # Required to post comments on PRs
+      pull-requests: write
+      # Required for checkout
+      contents: read
+
+    steps:
+    - name: Download Playwright report artifact
+      uses: dawidd6/action-download-artifact@v8
+      with:
+        name: playwright-report
+        workflow: web-playwright-ci.yaml
+        run_id: ${{ github.event.workflow_run.id }}
+        path: ./playwright-report
+
+    - name: Download PR number
+      uses: dawidd6/action-download-artifact@v8
+      with:
+        name: pr-info
+        workflow: web-playwright-ci.yaml
+        run_id: ${{ github.event.workflow_run.id }}
+        path: ./pr-info
+
+    - name: Read PR number
+      id: pr
+      run: |
+        PR_NUMBER=$(cat pr-info/pr_number.txt)
+        echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+    - name: Deploy to Surge
+      id: deploy
+      run: |
+        DEPLOY_DOMAIN="quay-playwright-pr-${{ steps.pr.outputs.number }}.surge.sh"
+        cd playwright-report
+        npx surge . $DEPLOY_DOMAIN --token ${{ secrets.SURGE_TOKEN }}
+        echo "url=https://$DEPLOY_DOMAIN" >> $GITHUB_OUTPUT
+      env:
+        SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+
+    - name: Comment PR with report URL
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const reportUrl = '${{ steps.deploy.outputs.url }}';
+          const prNumber = ${{ steps.pr.outputs.number }};
+          const conclusion = '${{ github.event.workflow_run.conclusion }}';
+          const runUrl = '${{ github.event.workflow_run.html_url }}';
+
+          // Find existing comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+
+          const botComment = comments.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Playwright Test Report')
+          );
+
+          const statusEmoji = conclusion === 'success' ? '✅' : '❌';
+          const statusText = conclusion === 'success' ? 'passed' : 'failed';
+
+          const commentBody = `## Playwright Test Report
+
+          ${statusEmoji} **Tests ${statusText}**
+
+          📊 **[View Full Report](${reportUrl})**
+
+          🔗 [View Workflow Run](${runUrl})
+
+          _Report from commit ${{ github.event.workflow_run.head_sha }}_`;
+
+          if (botComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: commentBody
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+          }

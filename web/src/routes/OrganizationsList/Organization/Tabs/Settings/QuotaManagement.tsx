@@ -291,6 +291,11 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
 
   // Validation functions
   const validateQuota = (value: string): string | boolean => {
+    // First check if value contains only numeric characters (with optional decimal)
+    if (!/^\d+\.?\d*$/.test(value)) {
+      return 'Please enter a valid number.';
+    }
+
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue <= 0) {
       return 'A quota greater than 0 must be defined.';
@@ -549,7 +554,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                   control={control}
                   errors={errors}
                   label=""
-                  type="text"
+                  type="number"
                   inputMode="numeric"
                   required={true}
                   customValidation={validateQuota}
@@ -770,8 +775,8 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
               </Card>
             ))}
 
-            {/* Add new limit card */}
-            {
+            {/* Add new limit card - only show in editable mode */}
+            {!isReadOnly && (
               <Card
                 isCompact
                 isPlain
@@ -896,7 +901,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                   </Flex>
                 </CardBody>
               </Card>
-            }
+            )}
 
             {/* Note message when no limits exist - placed after Add Limit form */}
             {limits.length === 0 && (

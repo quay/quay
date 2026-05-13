@@ -1,0 +1,267 @@
+name: 'Setup Quay Local Dev'
+description: 'Set up Quay container registry for CI testing using docker-compose'
+author: 'Project Quay'
+
+branding:
+  icon: 'box'
+  color: 'red'
+
+inputs:
+  build-image:
+    description: 'Whether to build the Quay Docker image'
+    required: false
+    default: 'true'
+
+  use-gha-cache:
+    description: 'Use GitHub Actions cache for Docker builds'
+    required: false
+    default: 'true'
+
+  image-tag:
+    description: 'Tag for the built Quay image'
+    required: false
+    default: 'localhost/quay-local:latest'
+
+  extra-config-file:
+    description: 'Path to extra config to append to config.yaml'
+    required: false
+    default: ''
+
+  extra-config:
+    description: 'Inline YAML config to merge into config.yaml'
+    required: false
+    default: ''
+
+  health-check-timeout:
+    description: 'Health check timeout in seconds'
+    required: false
+    default: '120'
+
+  with-clair:
+    description: 'Start Clair security scanner'
+    required: false
+    default: 'false'
+
+  with-repomirror:
+    description: 'Start Quay repository mirroring worker'
+    required: false
+    default: 'false'
+
+  with-ldap:
+    description: 'Start LDAP server and configure Quay for LDAP auth'
+    required: false
+    default: 'false'
+
+  with-keycloak:
+    description: 'Start Keycloak OIDC provider (config merge handled separately by CI workflow)'
+    required: false
+    default: 'false'
+
+  with-mailpit:
+    description: 'Start Mailpit email testing server'
+    required: false
+    default: 'true'
+
+outputs:
+  quay-url:
+    description: 'URL where Quay is accessible'
+    value: ${{ steps.healthcheck.outputs.quay-url }}
+
+  container-name:
+    description: 'Name of the Quay container'
+    value: 'quay-quay'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Docker Buildx
+      if: inputs.build-image == 'true'
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Quay image (with cache)
+      if: inputs.build-image == 'true' && inputs.use-gha-cache == 'true'
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        load: true
+        tags: ${{ inputs.image-tag }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build Quay image (no cache)
+      if: inputs.build-image == 'true' && inputs.use-gha-cache != 'true'
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        load: true
+        tags: ${{ inputs.image-tag }}
+
+    - name: Start LDAP server
+      if: inputs.with-ldap == 'true'
+      shell: bash
+      run: |
+        docker compose up -d ldap
+        echo "Waiting for LDAP to be ready..."
+        # Poll until LDAP responds and base DN exists (init script completed)
+        timeout=60
+        while [ $timeout -gt 0 ]; do
+          if docker exec quay-ldap ldapsearch -x -H ldap://localhost:3389 \
+              -D "cn=Directory Manager" -w admin \
+              -b "dc=example,dc=org" -s base &>/dev/null; then
+            echo "LDAP is ready!"
+            break
+          fi
+          sleep 2
+          timeout=$((timeout - 2))
+        done
+        if [ $timeout -le 0 ]; then
+          echo "::error::LDAP failed to initialize within 60 seconds"
+          docker logs quay-ldap
+          exit 1
+        fi
+
+    - name: Configure LDAP authentication
+      if: inputs.with-ldap == 'true'
+      shell: bash
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        LDAP_CONFIG="local-dev/ldap/ldap-config.yaml"
+
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${LDAP_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "LDAP configuration merged"
+
+    - name: Merge extra config file
+      if: inputs.extra-config-file != ''
+      shell: bash
+      run: |
+        EXTRA_CONFIG="${{ inputs.extra-config-file }}"
+        BASE_CONFIG="local-dev/stack/config.yaml"
+
+        if [ ! -f "${EXTRA_CONFIG}" ]; then
+          echo "::error::extra-config-file '${EXTRA_CONFIG}' not found"
+          exit 1
+        fi
+
+        echo "Merging ${EXTRA_CONFIG} into ${BASE_CONFIG}..."
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${EXTRA_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "Config merged successfully"
+
+    - name: Merge inline extra config
+      if: inputs.extra-config != ''
+      shell: bash
+      env:
+        EXTRA_CONFIG_CONTENT: ${{ inputs.extra-config }}
+      run: |
+        set -euo pipefail
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        INLINE_CONFIG=$(mktemp --suffix=.yaml)
+
+        printf '%s\n' "${EXTRA_CONFIG_CONTENT}" > "${INLINE_CONFIG}"
+
+        echo "Merging inline config into ${BASE_CONFIG}..."
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${INLINE_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        rm -f "${INLINE_CONFIG}"
+        echo "Inline config merged successfully"
+
+    - name: Start database services
+      shell: bash
+      run: |
+        docker compose up -d redis quay-db
+        docker exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+
+    - name: Start Keycloak
+      if: inputs.with-keycloak == 'true'
+      shell: bash
+      run: |
+        docker compose up -d keycloak
+        echo "Waiting for Keycloak to be ready..."
+        if curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+            http://localhost:8081/realms/quay > /dev/null 2>&1; then
+          echo "Keycloak is ready!"
+        else
+          echo "::error::Keycloak failed to start"
+          docker logs quay-keycloak 2>&1 | tail -50
+          exit 1
+        fi
+
+    - name: Build Angular static files
+      shell: bash
+      env:
+        NODE_OPTIONS: --openssl-legacy-provider
+      run: |
+        echo "Building Angular static files for old UI..."
+        npm clean-install
+        npm run build
+        echo "Static files built successfully"
+        ls -la static/build/ || echo "Warning: static/build/ directory not found"
+
+    - name: Start Quay container
+      shell: bash
+      run: |
+        DOCKER_USER="1001:0" docker compose up -d --no-build quay
+
+    - name: Wait for Quay to be ready
+      id: healthcheck
+      shell: bash
+      run: |
+        echo "Waiting for Quay to be ready..."
+
+        TIMEOUT=${{ inputs.health-check-timeout }}
+        RETRY_DELAY=2
+        MAX_RETRIES=$((TIMEOUT / RETRY_DELAY))
+
+        if curl -sf --retry ${MAX_RETRIES} --retry-delay ${RETRY_DELAY} --retry-all-errors \
+            http://localhost:8080/health/instance > /dev/null 2>&1; then
+          echo "Quay is ready!"
+          echo "quay-url=http://localhost:8080" >> $GITHUB_OUTPUT
+        else
+          echo "Quay failed to become ready within ${TIMEOUT} seconds"
+          docker logs quay-quay 2>&1 | tail -100
+          exit 1
+        fi
+
+    - name: Start Clair
+      if: inputs.with-clair == 'true'
+      shell: bash
+      run: |
+        docker compose up -d clair-db
+        docker exec clair-db bash -c 'while ! pg_isready; do echo "waiting for clair postgres"; sleep 2; done'
+        DOCKER_USER="1001:0" docker compose up -d clair
+        echo "Waiting for Clair to be ready..."
+        timeout=120
+        while [ $timeout -gt 0 ]; do
+          if docker exec quay-quay curl -sf http://localhost:6000/indexer/api/v1/index_state > /dev/null 2>&1; then
+            echo "Clair is ready!"
+            break
+          fi
+          sleep 3
+          timeout=$((timeout - 3))
+        done
+        if [ $timeout -le 0 ]; then
+          echo "Clair failed to become ready within 120 seconds"
+          docker logs quay-clair 2>&1 | tail -100
+          exit 1
+        fi
+
+    - name: Start Repomirror
+      if: inputs.with-repomirror == 'true'
+      shell: bash
+      run: |
+        DOCKER_USER="1001:0" docker compose up -d repomirror
+        echo "Repomirror worker started"
+
+    - name: Start Mailpit
+      if: inputs.with-mailpit == 'true'
+      shell: bash
+      run: |
+        docker compose up -d mailpit
+        echo "Mailpit email server started (SMTP: localhost:1025, Web UI: localhost:8025)"

@@ -83,7 +83,7 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             </Conditional>
           </Flex>
           <ToolbarPagination
-            itemsList={props.paginatedItems}
+            total={props.totalItems}
             perPage={props.perPage}
             page={props.page}
             setPage={props.setPage}
@@ -94,7 +94,7 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
       {props.children}
       <PanelFooter>
         <ToolbarPagination
-          itemsList={props.paginatedItems}
+          total={props.totalItems}
           perPage={props.perPage}
           page={props.page}
           setPage={props.setPage}
@@ -120,6 +120,7 @@ interface ManageMembersToolbarProps {
   setPage: (page: number) => void;
   perPage: number;
   setPerPage: (perPage: number) => void;
+  totalItems: number;
   searchOptions: string[];
   search: SearchState;
   setSearch: (search: SearchState) => void;

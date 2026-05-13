@@ -1,5 +1,6 @@
 import {ReactElement, useEffect, useState} from 'react';
 import {
+  Alert,
   PageSection,
   Spinner,
   Title,
@@ -29,6 +30,7 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {RepositoryListColumnNames} from './ColumnNames';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
@@ -67,11 +69,12 @@ export default function RepositoriesList(props: RepositoriesListProps) {
 
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
 
   // Fetch quota information - use 'self' viewMode for user namespaces, 'organization' for orgs
   const viewMode = props.isUserOrganization ? 'self' : 'organization';
   const {organizationQuota} = useFetchOrganizationQuota(currentOrg, viewMode);
-  const {repos, loading, error, search, setSearch, searchFilter} =
+  const {repos, loading, error, search, setSearch, searchFilter, truncated} =
     useRepositories(currentOrg);
 
   repos?.sort((r1, r2) => {
@@ -300,13 +303,15 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         title="There are no viewable repositories"
         body="Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository."
         button={
-          <ToolbarButton
-            id=""
-            buttonValue="Create Repository"
-            Modal={createRepoModal}
-            isModalOpen={isCreateRepoModalOpen}
-            setModalOpen={setCreateRepoModalOpen}
-          />
+          !isReadOnlySuperUser ? (
+            <ToolbarButton
+              id=""
+              buttonValue="Create Repository"
+              Modal={createRepoModal}
+              isModalOpen={isCreateRepoModalOpen}
+              setModalOpen={setCreateRepoModalOpen}
+            />
+          ) : undefined
         }
       />
     );
@@ -321,6 +326,14 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           error={err}
           setError={setErr}
         />
+        {truncated && (
+          <Alert
+            variant="info"
+            isInline
+            title="Showing first 10,000 repositories. Filter by organization to narrow results."
+            style={{marginBottom: '1em'}}
+          />
+        )}
         {quayConfig?.features?.QUOTA_MANAGEMENT &&
           quayConfig?.features?.EDIT_QUOTA &&
           currentOrg && (
@@ -336,14 +349,14 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           total={paginationProps.total}
           currentOrg={currentOrg}
           pageModal={createRepoModal}
-          showPageButton={true}
+          showPageButton={!isReadOnlySuperUser}
           buttonText="Create Repository"
           isModalOpen={isCreateRepoModalOpen}
           setModalOpen={setCreateRepoModalOpen}
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
-          kebabItems={kebabItems}
-          selectedRepoNames={selectedRepoNames}
+          kebabItems={!isReadOnlySuperUser ? kebabItems : []}
+          selectedRepoNames={!isReadOnlySuperUser ? selectedRepoNames : []}
           deleteModal={deleteRepositoryModal}
           deleteKebabIsOpen={isDeleteModalOpen}
           makePublicModalOpen={makePublicModalOpen}
@@ -363,7 +376,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
-              <Th />
+              {!isReadOnlySuperUser && <Th />}
               <Th modifier="wrap" sort={getSortableSort(0)}>
                 {RepositoryListColumnNames.name}
               </Th>
@@ -385,24 +398,31 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           </Thead>
           <Tbody data-testid="repository-list-table">
             {filteredRepos.length === 0 ? (
-              // Repo table loading icon
-              <Tr>
-                <Td>
-                  <Spinner size="lg" />
-                </Td>
-              </Tr>
+              loading ? (
+                <Tr>
+                  <Td colSpan={5}>
+                    <Spinner size="lg" />
+                  </Td>
+                </Tr>
+              ) : (
+                <Tr>
+                  <Td colSpan={5}>No repositories found</Td>
+                </Tr>
+              )
             ) : (
               paginatedRepositoryList.map((repo, rowIndex) => (
                 <Tr key={rowIndex}>
-                  <Td
-                    select={{
-                      rowIndex,
-                      onSelect: (_event, isSelecting) =>
-                        onSelectRepo(repo, rowIndex, isSelecting),
-                      isSelected: isRepoSelected(repo),
-                      isDisabled: !isRepoSelectable(repo),
-                    }}
-                  />
+                  {!isReadOnlySuperUser && (
+                    <Td
+                      select={{
+                        rowIndex,
+                        onSelect: (_event, isSelecting) =>
+                          onSelectRepo(repo, rowIndex, isSelecting),
+                        isSelected: isRepoSelected(repo),
+                        isDisabled: !isRepoSelectable(repo),
+                      }}
+                    />
+                  )}
                   <Td dataLabel={RepositoryListColumnNames.name}>
                     <Flex alignItems={{default: 'alignItemsCenter'}}>
                       <FlexItem spacer={{default: 'spacerSm'}}>

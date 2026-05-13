@@ -64,6 +64,7 @@ export default function CreateFlowdockNotification(
         <TextInput
           required
           id="flowdock-api-token-field"
+          data-testid="flowdock-api-token-field"
           value={apiTopken}
           onChange={(_event, value) => setAPIToken(value)}
         />
@@ -71,6 +72,7 @@ export default function CreateFlowdockNotification(
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
+          data-testid="notification-title"
           value={title}
           onChange={(_event, value) => setTitle(value)}
         />
@@ -80,6 +82,7 @@ export default function CreateFlowdockNotification(
           isDisabled={!isFormComplete}
           onClick={createNotification}
           variant="primary"
+          data-testid="notification-submit-btn"
         >
           Submit
         </Button>

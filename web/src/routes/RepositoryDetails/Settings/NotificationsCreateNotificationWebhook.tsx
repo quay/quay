@@ -72,6 +72,7 @@ export default function CreateWebhookNotification(
         <TextInput
           required
           id="webhook-url-field"
+          data-testid="webhook-url-field"
           value={url}
           onChange={(_event, value) => setUrl(value)}
         />
@@ -89,6 +90,7 @@ export default function CreateWebhookNotification(
       <FormGroup fieldId="webhook-body" label="POST JSON body template">
         <TextArea
           id="json-body-field"
+          data-testid="webhook-json-body-field"
           value={jsonBody}
           onChange={(_event, value) => setJsonBody(value)}
         />
@@ -96,6 +98,7 @@ export default function CreateWebhookNotification(
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
+          data-testid="notification-title"
           value={title}
           onChange={(_event, value) => setTitle(value)}
         />
@@ -105,6 +108,7 @@ export default function CreateWebhookNotification(
           isDisabled={!isFormComplete}
           onClick={createNotification}
           variant="primary"
+          data-testid="notification-submit-btn"
         >
           Submit
         </Button>

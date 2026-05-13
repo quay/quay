@@ -83,6 +83,7 @@ export default function Actions(props: ActionsProps) {
             isDisabled={props.isDisabled}
             onClick={() => setIsOpen(() => !isOpen)}
             isExpanded={isOpen}
+            data-testid="notifications-actions-dropdown"
           >
             Actions
           </MenuToggle>
@@ -102,6 +103,7 @@ export default function Actions(props: ActionsProps) {
 
           <DropdownItem
             id="bulk-delete-notifications"
+            data-testid="bulk-delete-notifications"
             onClick={() => {
               deleteNotifications(props.selectedItems.map((n) => n.uuid));
             }}
