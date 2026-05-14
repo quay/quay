@@ -694,6 +694,108 @@ test.describe(
       ).toBeVisible({timeout: 15000});
     });
 
+    test('robot wizard search state is isolated from org page search (PROJQUAY-11236)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('searchiso');
+      const repo1 = await api.repository(org.name, 'alpha');
+      const repo2 = await api.repository(org.name, 'beta');
+      const team = await api.team(org.name, 'searchteam');
+
+      // Step 1: Search repositories on the org Repositories tab
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Repositories`,
+      );
+      const repoSearch = authenticatedPage.locator(
+        '#repositorylist-search-input',
+      );
+      await expect(repoSearch).toBeVisible();
+      await repoSearch.fill(repo1.name);
+
+      // Verify the search filtered results
+      await expect(
+        authenticatedPage.getByRole('link', {name: repo1.name}),
+      ).toBeVisible();
+
+      // Step 2: Switch to Robot Accounts tab and open wizard
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Robotaccounts`,
+      );
+      await authenticatedPage
+        .getByRole('button', {name: 'Create robot account'})
+        .click();
+      await expect(
+        authenticatedPage.locator('#create-robot-account-modal'),
+      ).toBeVisible();
+
+      // Fill robot name so wizard navigation is enabled
+      await authenticatedPage
+        .getByTestId('robot-wizard-form-name')
+        .fill('isobot');
+
+      // Navigate to "Add to repository" step
+      const wizardNav = authenticatedPage.locator(
+        'nav[aria-label="Wizard steps"]',
+      );
+      await wizardNav.getByText('Add to repository (optional)').click();
+
+      // Verify wizard repo search is empty (not polluted by org page search)
+      const wizardRepoSearch = authenticatedPage.getByTestId(
+        'robot-wizard-repo-search',
+      );
+      await expect(wizardRepoSearch).toBeVisible();
+      await expect(wizardRepoSearch).toHaveValue('');
+
+      // Both repos should be visible (no filter applied)
+      await expect(
+        authenticatedPage.getByRole('cell', {name: repo1.name}),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('cell', {name: repo2.name}),
+      ).toBeVisible();
+
+      // Type in the wizard's repo search and verify it filters
+      await wizardRepoSearch.fill(repo2.name);
+      await expect(
+        authenticatedPage.getByRole('cell', {name: repo2.name}),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByRole('cell', {name: repo1.name}),
+      ).not.toBeVisible();
+
+      // Navigate to "Add to team" step
+      await wizardNav.getByText('Add to team (optional)').click();
+
+      // Verify wizard team search is empty
+      const wizardTeamSearch = authenticatedPage.getByTestId(
+        'robot-wizard-team-search',
+      );
+      await expect(wizardTeamSearch).toBeVisible();
+      await expect(wizardTeamSearch).toHaveValue('');
+
+      // Team should be visible (no filter applied)
+      await expect(
+        authenticatedPage.getByRole('cell', {name: team.name}),
+      ).toBeVisible();
+
+      // Close the wizard
+      await authenticatedPage.getByTestId('create-robot-cancel').click();
+
+      // Step 3: Go back to Repositories tab and verify search is unchanged
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Repositories`,
+      );
+      const repoSearchAfter = authenticatedPage.locator(
+        '#repositorylist-search-input',
+      );
+      await expect(repoSearchAfter).toBeVisible();
+
+      // The repo list search should still show the original search text
+      // (not polluted by the wizard's search)
+      await expect(repoSearchAfter).toHaveValue(repo1.name);
+    });
+
     test.describe(
       'with ROBOTS_DISALLOW enabled',
       {tag: '@config:ROBOTS_DISALLOW'},
