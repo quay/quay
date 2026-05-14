@@ -612,6 +612,241 @@ test.describe(
       ).toBeDisabled();
     });
 
+    test('cancel sync flow with confirmation modal (PROJQUAY-11175)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrcncl');
+      const robot = await api.robot(org.name, 'cnclbot');
+
+      // Create config and trigger sync-now so the config is in a cancellable state
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Trigger sync-now to put config in SYNC_NOW state
+      await api.raw.triggerOrgMirrorSync(org.name);
+
+      // Mock the GET response to show SYNCING repo counts so the cancel button is enabled
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 2,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 1,
+              CANCEL: 0,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Cancel sync button should be enabled when repos are syncing
+      await expect(
+        authenticatedPage.getByTestId('cancel-sync-button'),
+      ).toBeEnabled();
+
+      // Click cancel sync button — opens confirmation modal
+      await authenticatedPage.getByTestId('cancel-sync-button').click();
+
+      // Verify confirmation modal appears
+      await expect(
+        authenticatedPage.getByText(
+          'Are you sure you want to cancel the current sync operation?',
+        ),
+      ).toBeVisible();
+
+      // Remove the route mock so the cancel API call goes through
+      await authenticatedPage.unrouteAll();
+
+      // Confirm cancellation
+      await authenticatedPage.getByTestId('confirm-cancel-sync-button').click();
+
+      // Verify success message
+      await expect(
+        authenticatedPage.getByText('Sync cancelled successfully').first(),
+      ).toBeVisible();
+
+      // Verify config status is CANCEL via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.sync_status).toBe('CANCEL');
+      // sync_expiration_date should be set (non-null) — signals "needs processing"
+      expect(config?.sync_expiration_date).not.toBeNull();
+    });
+
+    test('cancel sync modal can be dismissed without cancelling', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrcndm');
+      const robot = await api.robot(org.name, 'cndmbot');
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Trigger sync-now to enable cancel button
+      await api.raw.triggerOrgMirrorSync(org.name);
+
+      // Mock to show SYNCING repos so cancel button is enabled
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 1,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 0,
+              CANCEL: 0,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Open cancel modal
+      await authenticatedPage.getByTestId('cancel-sync-button').click();
+
+      await expect(
+        authenticatedPage.getByText(
+          'Are you sure you want to cancel the current sync operation?',
+        ),
+      ).toBeVisible();
+
+      // Dismiss modal by clicking Cancel button (not the confirm button)
+      await authenticatedPage
+        .getByRole('button', {name: 'Cancel', exact: true})
+        .click();
+
+      // Modal should be closed
+      await expect(
+        authenticatedPage.getByText(
+          'Are you sure you want to cancel the current sync operation?',
+        ),
+      ).not.toBeVisible();
+
+      // Config should NOT be cancelled — still in SYNC_NOW state
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.sync_status).not.toBe('CANCEL');
+    });
+
+    test('cancel sync button disabled after status is CANCEL (PROJQUAY-11175)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrpstc');
+      const robot = await api.robot(org.name, 'pstcbot');
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Trigger sync then cancel it via API
+      await api.raw.triggerOrgMirrorSync(org.name);
+      await api.raw.cancelOrgMirrorSync(org.name);
+
+      // Mock the GET response to show CANCEL status counts (no SYNCING/SYNC_NOW)
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 0,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 0,
+              CANCEL: 3,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Cancel sync button should be disabled since no repos are SYNCING/SYNC_NOW
+      await expect(
+        authenticatedPage.getByTestId('cancel-sync-button'),
+      ).toBeDisabled();
+
+      // Status should show Cancelled count
+      const statusDisplay = authenticatedPage.getByTestId(
+        'org-mirror-status-display',
+      );
+      await expect(statusDisplay.getByText('Cancelled: 3')).toBeVisible();
+    });
+
     test('repository filters are preserved on save', async ({
       authenticatedPage,
       api,
