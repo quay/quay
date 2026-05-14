@@ -23,6 +23,16 @@ jobs:
           # Get list of changed files in the PR
           CHANGED_FILES=$(gh pr diff "$PR_NUMBER" --repo "$REPO" --name-only)
 
+          # Skip check for dependency-only updates
+          NON_DEP_FILES=$(echo "$CHANGED_FILES" | grep -cvE \
+            '(^|/)(requirements.*\.txt|setup\.py|setup\.cfg|pyproject\.toml|Pipfile(\.lock)?|package\.json|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|go\.mod|go\.sum|\.pre-commit-config\.yaml)$' \
+            || true)
+
+          if [ "$NON_DEP_FILES" -eq 0 ]; then
+            echo "Dependency-only update detected. Skipping e2e test check."
+            exit 0
+          fi
+
           # Directories and patterns that count as "source code" changes
           # Excludes: tests, docs, config, CI, static assets, agent docs
           SOURCE_CHANGES=$(echo "$CHANGED_FILES" | grep -cE \
@@ -49,14 +59,9 @@ jobs:
             exit 0
           fi
 
-          if [ "$SOURCE_CHANGES" -ge 10 ]; then
-            echo "::error::This PR changes $SOURCE_CHANGES source files but includes no Playwright e2e tests. PRs with 10+ source file changes require e2e test coverage in web/playwright/e2e/."
-            exit 1
-          fi
-
           if [ "$SOURCE_CHANGES" -gt 0 ]; then
-            echo "::warning::This PR changes $SOURCE_CHANGES source files but includes no Playwright e2e tests. Consider adding e2e coverage in web/playwright/e2e/."
-            exit 0
+            echo "::error::This PR changes $SOURCE_CHANGES source files but includes no Playwright e2e tests. PRs with source file changes require e2e test coverage in web/playwright/e2e/."
+            exit 1
           fi
 
           echo "No significant source changes detected."
