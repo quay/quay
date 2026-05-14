@@ -1401,6 +1401,43 @@ test.describe(
       ).toBeVisible();
     });
 
+    test('enables org mirror when only MARKED_FOR_DELETION repos exist (PROJQUAY-10982)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrmfd');
+      const robot = await api.robot(org.name, 'delrbot');
+      const repo = await api.repository(org.name, 'todelete');
+
+      // Delete the repo via API — sets state to MARKED_FOR_DELETION
+      await api.raw.deleteRepository(org.name, repo.name);
+
+      // Navigate to mirroring setup
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Fill in required fields and submit
+      await fillRequiredFields(authenticatedPage, robot.fullName);
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      // Should succeed — MARKED_FOR_DELETION repos must not block creation
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify config exists via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config).not.toBeNull();
+      expect(config?.external_registry_url).toBe('https://quay.io');
+    });
+
     test('cancel delete modal keeps config intact', async ({
       authenticatedPage,
       api,
