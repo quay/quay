@@ -1,0 +1,62 @@
+name: Playwright E2E Test Check
+
+on:
+  pull_request:
+    types: ['opened', 'synchronize', 'reopened']
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  e2e-test-check:
+    runs-on: ubuntu-latest
+    name: e2e test coverage check
+    steps:
+      - name: Check for E2E tests on significant changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+
+          # Get list of changed files in the PR
+          CHANGED_FILES=$(gh pr diff "$PR_NUMBER" --repo "$REPO" --name-only)
+
+          # Directories and patterns that count as "source code" changes
+          # Excludes: tests, docs, config, CI, static assets, agent docs
+          SOURCE_CHANGES=$(echo "$CHANGED_FILES" | grep -cE \
+            '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers|web/src)/' \
+            || true)
+
+          # Subtract files that are themselves tests within source directories
+          TEST_FILES_IN_SOURCE=$(echo "$CHANGED_FILES" | grep -cE \
+            '^(auth|buildman|buildstatus|buildtrigger|data|digest|endpoints|events|features|health|image|notifications|oauth|plans|proxy|storage|util|workers)/test/' \
+            || true)
+
+          SOURCE_CHANGES=$((SOURCE_CHANGES - TEST_FILES_IN_SOURCE))
+
+          # Check if any Playwright e2e test files were added or modified
+          E2E_CHANGES=$(echo "$CHANGED_FILES" | grep -cE \
+            '^web/playwright/e2e/.*\.spec\.ts$' \
+            || true)
+
+          echo "Source code changes: $SOURCE_CHANGES"
+          echo "Playwright e2e test changes: $E2E_CHANGES"
+
+          if [ "$E2E_CHANGES" -gt 0 ]; then
+            echo "Playwright e2e tests were added or updated."
+            exit 0
+          fi
+
+          if [ "$SOURCE_CHANGES" -ge 10 ]; then
+            echo "::error::This PR changes $SOURCE_CHANGES source files but includes no Playwright e2e tests. PRs with 10+ source file changes require e2e test coverage in web/playwright/e2e/."
+            exit 1
+          fi
+
+          if [ "$SOURCE_CHANGES" -gt 0 ]; then
+            echo "::warning::This PR changes $SOURCE_CHANGES source files but includes no Playwright e2e tests. Consider adding e2e coverage in web/playwright/e2e/."
+            exit 0
+          fi
+
+          echo "No significant source changes detected."
