@@ -65,12 +65,20 @@ export function QuayBreadcrumb() {
     //  Eg: /organization/<orgname>/<reponame> or /organization/<orgname>/teams/quay?tab=Teamsandmembership
     else if (existingBreadcrumbs.length == 2) {
       switch (routerBreadcrumb.match.route.path) {
-        case NavigationPath.repositoryDetail:
+        case NavigationPath.repositoryDetail: {
           nextBreadcrumb['title'] = parseRepoNameFromUrl(location.pathname);
+          // Cut the repo path at the /tag/ or /build/ boundary so that a tag
+          // or build name that matches or starts with the repo name does not
+          // cause lastIndexOf to land on the wrong URL segment.
+          const tagSegIdx = location.pathname.lastIndexOf('/tag/');
+          const buildSegIdx = location.pathname.lastIndexOf('/build/');
+          const cutIdx = Math.max(tagSegIdx, buildSegIdx);
           nextBreadcrumb['pathname'] =
-            lastOccurrenceOfSubstring(nextBreadcrumb['title']) +
-            nextBreadcrumb['title'];
+            cutIdx !== -1
+              ? location.pathname.slice(0, cutIdx)
+              : location.pathname;
           break;
+        }
         case NavigationPath.teamMember:
           nextBreadcrumb['title'] = parseTeamNameFromUrl(location.pathname);
           nextBreadcrumb['pathname'] =
