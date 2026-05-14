@@ -495,6 +495,7 @@ setuptools==78.1.1 \
     #   pyyaml
     #   regex
     #   reportlab
+    #   resumablehash
     #   resumablesha256
     #   setuptools-rust
     #   setuptools-scm

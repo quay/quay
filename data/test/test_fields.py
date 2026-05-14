@@ -2,17 +2,10 @@ import base64
 import pickle
 
 import pytest
+import resumablehash
 import resumablesha256
 
 from data.fields import _ALLOWED_UNPICKLE_CLASSES, ResumableSHA256Field
-
-
-def _can_import(module_name: str) -> bool:
-    try:
-        __import__(module_name)
-        return True
-    except ImportError:
-        return False
 
 
 def test_resumable_sha256_field_roundtrip():
@@ -42,14 +35,8 @@ def test_resumable_sha256_field_rejects_malicious_payload():
         field.python_value(malicious)
 
 
-@pytest.mark.skipif(
-    not _can_import("resumablehash"),
-    reason="resumablehash not yet published to PyPI",
-)
 def test_safe_unpickler_allows_resumablehash_sha384():
     """Verify that resumablehash.sha384 objects can be deserialized via the allowlist."""
-    import resumablehash
-
     field = ResumableSHA256Field()
     hasher = resumablehash.sha384()
     hasher.update(b"test data for sha384")
@@ -60,14 +47,8 @@ def test_safe_unpickler_allows_resumablehash_sha384():
     assert restored.hexdigest() == hasher.hexdigest()
 
 
-@pytest.mark.skipif(
-    not _can_import("resumablehash"),
-    reason="resumablehash not yet published to PyPI",
-)
 def test_safe_unpickler_allows_resumablehash_sha512():
     """Verify that resumablehash.sha512 objects can be deserialized via the allowlist."""
-    import resumablehash
-
     field = ResumableSHA256Field()
     hasher = resumablehash.sha512()
     hasher.update(b"test data for sha512")
