@@ -6,7 +6,6 @@ from peewee import IntegrityError
 
 import features
 from data import model
-from data.users.shared import can_create_user
 from oauth.login import OAuthLoginException
 from util.validation import generate_valid_usernames
 
@@ -213,6 +212,8 @@ def _conduct_oauth_login(
 
     # Otherwise, we need to create a new user account.
     blacklisted_domains = config.get("BLACKLISTED_EMAIL_DOMAINS", [])
+    from data.users.shared import can_create_user
+
     if not can_create_user(lemail, blacklisted_domains=blacklisted_domains):
         error_message = "User creation is disabled. Please contact your administrator"
         return _oauthresult(service_name=service_name, error_message=error_message)

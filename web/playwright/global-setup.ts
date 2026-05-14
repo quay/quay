@@ -58,6 +58,10 @@ export const TEST_USERS_OIDC = {
   },
 } as const;
 
+// Separate LDAP test users to avoid naming collisions with Database-auth users.
+// LDAP first-login creates a federated user entry; if the username or email
+// is already taken by a Database-phase user, creation fails. Using distinct
+// usernames/emails ensures clean federated user creation.
 export const TEST_USERS_LDAP = {
   admin: {
     username: 'admin_ldap',
@@ -77,7 +81,7 @@ export const TEST_USERS_LDAP = {
 } as const;
 
 async function globalSetup(config: FullConfig) {
-  const baseURL = config.projects[0].use.baseURL || 'http://localhost:9000';
+  const baseURL = config.projects[0].use.baseURL || 'http://localhost:8080';
 
   console.log(
     `[Global Setup] Starting with baseURL: ${baseURL}, apiURL: ${API_URL}`,
@@ -100,6 +104,7 @@ async function globalSetup(config: FullConfig) {
           const quayConfig = await configResponse.json();
           mailingEnabled = quayConfig?.features?.MAILING === true;
           authType = quayConfig?.config?.AUTHENTICATION_TYPE || 'Database';
+          process.env.QUAY_CONFIG_JSON = JSON.stringify(quayConfig);
           break;
         }
       } catch {

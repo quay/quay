@@ -13,9 +13,10 @@ export default defineConfig({
   // Maximum time one test can run for
   timeout: 60 * 1000,
 
-  // Run tests in parallel (auto-detect optimal worker count based on CPU cores)
+  // Run tests in parallel — fixed at 4 for CI so Quay isn't overwhelmed by
+  // more workers than it can sustain, regardless of runner CPU count.
   fullyParallel: true,
-  workers: undefined,
+  workers: process.env.CI ? 4 : undefined,
 
   // Fail the build on CI if you accidentally left test.only in the source code
   forbidOnly: !!process.env.CI,
@@ -33,7 +34,7 @@ export default defineConfig({
   // Shared settings for all tests
   use: {
     // Base URL for navigation
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
 
     // Accept self-signed certificates (needed for OpenShift CI clusters)
     ignoreHTTPSErrors: true,
@@ -58,7 +59,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: {...devices['Desktop Chrome']},
+      use: {...devices['Desktop Chrome'], channel: 'chromium'},
     },
   ],
 
@@ -70,8 +71,10 @@ export default defineConfig({
       ? undefined
       : {
           command:
-            'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && npm run start:integration',
-          url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:9000',
+            'REACT_QUAY_APP_API_URL=http://localhost:8080 npm run build && ' +
+            'rm -rf ../static/patternfly && mkdir -p ../static/patternfly && cp -r dist/* ../static/patternfly/ && ' +
+            'echo "React deployed to static/patternfly/" && tail -f /dev/null',
+          url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
           reuseExistingServer: true,
           timeout: 120 * 1000,
         },

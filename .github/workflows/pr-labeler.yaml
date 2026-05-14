@@ -8,39 +8,67 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
 
 jobs:
   label-components:
     name: Label Components
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     # Only run on PR events, not review events
     if: github.event_name == 'pull_request_target'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           ref: ${{ github.event.pull_request.base.ref }}
 
       - name: Apply area labels
-        uses: actions/labeler@v6
+        uses: actions/labeler@634933edcd8ababfe52f92936142cc22ac488b1b # v6.0.1
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml
           sync-labels: true
+
+  label-community:
+    name: Label Community Contributions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    if: github.event_name == 'pull_request_target'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Check OWNERS and label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if ! grep -qi "^- ${PR_AUTHOR}$" OWNERS; then
+            gh pr edit "$PR_NUMBER" --add-label "community-contribution"
+          fi
 
   capture-pr-data:
     name: Capture PR Data
     runs-on: ubuntu-latest
     steps:
       - name: Save PR number
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           mkdir -p ./pr-data
-          echo ${{ github.event.pull_request.number }} > ./pr-data/pr_number.txt
+          echo "$PR_NUMBER" > ./pr-data/pr_number.txt
 
       - name: Upload PR data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pr-data-${{ github.event.pull_request.number }}
           path: pr-data/

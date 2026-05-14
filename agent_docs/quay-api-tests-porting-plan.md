@@ -215,7 +215,7 @@ If certain suites can't run with the default CI config, they should be tagged to
 
 ## Phase 3: Cleanup + Clair (future, 5-10 days)
 
-- Remove Docker-image-based job from `qe-tests.yaml` once Playwright tests are stable (2+ weeks)
+- ~~Remove Docker-image-based job from `qe-tests.yaml` once Playwright tests are stable (2+ weeks)~~ DONE — `qe-tests.yaml` and `qe-tests-results.yaml` removed
 - Clair/vulnerability API tests already run in `web-playwright-ci.yaml` (Clair is enabled in the existing CI setup)
 - Remove ported files from quay-tests repo
 
@@ -233,7 +233,7 @@ If certain suites can't run with the default CI config, they should be tagged to
 | `quay-tests/quay-api-tests/cypress/e2e/quay_api_v2_testing.cy.js` | V2 API tests |
 | `quay-tests/quay-api-tests/cypress/e2e/quay_api_testing_all_new_ui.cy.js` | 21 unique immutability tests |
 | `quay/quay:.github/workflows/web-playwright-ci.yaml` | Existing Playwright CI workflow (API tests run here automatically) |
-| `quay/quay:.github/workflows/qe-tests.yaml` | Docker-image-based Cypress job (to be removed in Phase 3) |
+| ~~`quay/quay:.github/workflows/qe-tests.yaml`~~ | ~~Docker-image-based Cypress job~~ (removed in Phase 3) |
 | `quay/quay:.github/actions/setup-quay/action.yaml` | Composite action (may need config inputs for readonly superuser) |
 
 ## ~~Open question~~ Resolved

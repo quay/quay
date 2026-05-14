@@ -3,48 +3,91 @@ on:
   pull_request:
     branches:
       - "*"
-    paths:
-      - "web/**"
-      - ".github/workflows/web-playwright-ci.yaml"
-      - ".github/actions/setup-quay/**"
+
+permissions:
+  contents: read
 
 jobs:
   playwright:
     name: Playwright E2E Tests
-    runs-on: quay-002-small-ubuntu-24-x64
+    runs-on: quay-003-medium-ubuntu-24-x64
+    env:
+      QUAY_HOTRELOAD: "false"
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Quay
         uses: ./.github/actions/setup-quay
         with:
           with-clair: true
           with-keycloak: true
+          with-jaeger: true
+          with-repomirror: true
+          use-gha-cache: false
           extra-config: |
             FEATURE_MAILING: true
             FEATURE_SECURITY_SCANNER: true
             FEATURE_SECURITY_NOTIFICATIONS: true
+            DEFAULT_UI: react
 
-      - name: Set up Node.js with npm caching
-        uses: actions/setup-node@v6
+      - name: Start LDAP server (pre-initialize for later auth swap)
+        run: |
+          docker compose up -d ldap
+          echo "Waiting for LDAP to be ready..."
+          timeout=90
+          while [ $timeout -gt 0 ]; do
+            if docker exec quay-ldap ldapsearch -x -H ldap://localhost:3389 \
+                -b "dc=example,dc=org" -s base &>/dev/null; then
+              echo "LDAP is ready!"
+              break
+            fi
+            sleep 2
+            timeout=$((timeout - 2))
+          done
+          if [ $timeout -le 0 ]; then
+            echo "::error::LDAP failed to initialize within 90 seconds"
+            docker logs quay-ldap
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: 10
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: cd web && npm install
+        run: cd web && pnpm install --frozen-lockfile
 
       - name: Get Playwright version
         id: playwright-version
         run: |
           cd web
-          PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package-lock.json').packages['node_modules/@playwright/test'].version)")
+          PLAYWRIGHT_VERSION=$(node -e "console.log(require('./node_modules/@playwright/test/package.json').version)")
           echo "version=$PLAYWRIGHT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
@@ -61,10 +104,11 @@ jobs:
       - name: Install skopeo for multi-arch image tests
         run: sudo apt-get update && sudo apt-get install -y skopeo
 
-      - name: Run Database auth tests
+      - name: Run Database auth tests (React + Legacy UI)
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/db
-        run: cd web && npx playwright test --grep-invert @auth:OIDC --reporter=blob
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
+        run: cd web && npx playwright test --grep-invert "@auth:OIDC|@auth:LDAP" --reporter=blob
 
       - name: Swap to OIDC authentication
         if: always()
@@ -100,7 +144,44 @@ jobs:
         if: always()
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/oidc
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
         run: cd web && npx playwright test --grep @auth:OIDC --reporter=blob
+
+      - name: Swap to LDAP authentication
+        if: always()
+        run: |
+          pip install pyyaml -q
+          # Merge LDAP config (sets AUTHENTICATION_TYPE: LDAP + connection details)
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            local-dev/ldap/ldap-config.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Merge LDAP-specific feature flags
+          cat > /tmp/ldap-auth-overlay.yaml <<'EOF'
+          FEATURE_TEAM_SYNCING: true
+          FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP: true
+          SUPER_USERS:
+            - admin
+            - admin_ldap
+          EOF
+          python3 .github/actions/setup-quay/merge-yaml.py \
+            local-dev/stack/config.yaml \
+            /tmp/ldap-auth-overlay.yaml \
+            > local-dev/stack/config.yaml.tmp
+          mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+          # Restart Quay and wait for healthy
+          docker restart quay-quay
+          curl -sf --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:8080/health/instance > /dev/null
+          echo "Quay is ready with LDAP auth"
+
+      - name: Run LDAP auth tests
+        if: always()
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-results/ldap
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
+        run: cd web && npx playwright test --grep @auth:LDAP --reporter=blob
 
       - name: Merge test reports
         if: always()
@@ -118,12 +199,14 @@ jobs:
 
       - name: Save PR number
         if: always()
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           mkdir -p ./pr-info
-          echo ${{ github.event.pull_request.number }} > ./pr-info/pr_number.txt
+          echo "$PR_NUMBER" > ./pr-info/pr_number.txt
 
       - name: Upload PR info
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: pr-info
@@ -131,7 +214,7 @@ jobs:
           retention-days: 1
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: playwright-report
@@ -139,12 +222,82 @@ jobs:
           retention-days: 30
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: playwright-test-results
           path: web/test-results/
           retention-days: 30
+
+      - name: Export Jaeger traces
+        if: always()
+        run: |
+          mkdir -p jaeger-traces
+          curl -sf "http://localhost:16686/api/traces?service=quay&limit=50000&lookback=2h" \
+            -o jaeger-traces/traces.json \
+            || echo "::warning::Could not export Jaeger traces"
+
+      - name: Analyze Jaeger traces
+        if: always()
+        continue-on-error: true
+        run: bash .github/scripts/analyze-jaeger-traces.sh
+        env:
+          TRACES_FILE: jaeger-traces/traces.json
+          METRICS_FILE: jaeger-traces/trace-metrics.json
+          COMMIT_SHA: ${{ github.sha }}
+
+      - name: Analyze API endpoint coverage
+        if: always()
+        continue-on-error: true
+        run: python3 .github/scripts/analyze-api-coverage.py
+        env:
+          TRACES_FILE: jaeger-traces/traces.json
+          COVERAGE_FILE: jaeger-traces/api-coverage.json
+          QUAY_API_URL: http://localhost:8080
+          COMMIT_SHA: ${{ github.sha }}
+
+      - name: Upload Jaeger traces
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jaeger-traces
+          path: jaeger-traces/
+          retention-days: 7
+
+      - name: Scan Quay logs for crash-level errors
+        if: always()
+        continue-on-error: true
+        run: |
+          logs=$(docker logs quay-quay 2>&1)
+
+          # Crash signals from core serving processes only.
+          # - stderr tracebacks from gunicorn = process-level crashes (gevent, fork, etc.)
+          # - stdout tracebacks from gunicorn are normal Flask error handling, skip those
+          # - supervisord FATAL = process exceeded restart limit
+          # - Background workers (securityworker, *gcworker, etc.) have expected
+          #   transient failures (Clair not ready, queue empty) — exclude them.
+          crashes=$(echo "$logs" \
+            | grep -E "^(gunicorn-.* stderr|supervisord )" \
+            | grep -cE "Traceback|AssertionError|Segmentation fault|SIGABRT|core dumped|FATAL state|failed to boot" \
+            || true)
+
+          if [ "$crashes" -gt 0 ]; then
+            echo "::warning::Found $crashes crash-level error(s) in Quay core process logs"
+
+            {
+              echo "## Quay Runtime Error Report"
+              echo ""
+              echo "Found **$crashes** crash-level signal(s) in core serving process logs."
+              echo ""
+              echo '```'
+              echo "$logs" \
+                | grep -E "^(gunicorn-.* stderr|supervisord )" \
+                | grep -B2 -A3 "Traceback\|AssertionError\|Segmentation fault\|SIGABRT\|core dumped\|FATAL state\|failed to boot"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            exit 1
+          fi
 
       - name: Collect Quay logs on failure
         if: failure()

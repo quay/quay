@@ -6932,6 +6932,12 @@ SECURITY_TESTS: List[
         "testuser",
         401,
     ),
+    (UserRobotFederation, "GET", {"robot_shortname": "robotname"}, None, None, 401),
+    (UserRobotFederation, "GET", {"robot_shortname": "robotname"}, None, "devtable", 400),
+    (UserRobotFederation, "POST", {"robot_shortname": "robotname"}, None, None, 401),
+    (UserRobotFederation, "POST", {"robot_shortname": "robotname"}, None, "devtable", 400),
+    (UserRobotFederation, "DELETE", {"robot_shortname": "robotname"}, None, None, 401),
+    (UserRobotFederation, "DELETE", {"robot_shortname": "robotname"}, None, "devtable", 400),
     (
         RepositoryTagPullStatistics,
         "GET",

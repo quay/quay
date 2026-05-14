@@ -57,6 +57,11 @@ inputs:
     required: false
     default: 'false'
 
+  with-jaeger:
+    description: 'Start Jaeger and configure OTEL tracing'
+    required: false
+    default: 'false'
+
   with-mailpit:
     description: 'Start Mailpit email testing server'
     required: false
@@ -76,11 +81,11 @@ runs:
   steps:
     - name: Set up Docker Buildx
       if: inputs.build-image == 'true'
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
     - name: Build Quay image (with cache)
       if: inputs.build-image == 'true' && inputs.use-gha-cache == 'true'
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
       with:
         context: .
         load: true
@@ -90,7 +95,7 @@ runs:
 
     - name: Build Quay image (no cache)
       if: inputs.build-image == 'true' && inputs.use-gha-cache != 'true'
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
       with:
         context: .
         load: true
@@ -133,11 +138,26 @@ runs:
         mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
         echo "LDAP configuration merged"
 
+    - name: Configure Jaeger tracing
+      if: inputs.with-jaeger == 'true'
+      shell: bash
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        JAEGER_CONFIG="local-dev/jaeger/jaeger-config.yaml"
+
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${JAEGER_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "Jaeger tracing configuration merged"
+
     - name: Merge extra config file
       if: inputs.extra-config-file != ''
       shell: bash
+      env:
+        EXTRA_CONFIG: ${{ inputs.extra-config-file }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
-        EXTRA_CONFIG="${{ inputs.extra-config-file }}"
         BASE_CONFIG="local-dev/stack/config.yaml"
 
         if [ ! -f "${EXTRA_CONFIG}" ]; then
@@ -147,7 +167,7 @@ runs:
 
         echo "Merging ${EXTRA_CONFIG} into ${BASE_CONFIG}..."
         pip install pyyaml -q
-        python3 ${{ github.action_path }}/merge-yaml.py \
+        python3 "${ACTION_PATH}/merge-yaml.py" \
           "${BASE_CONFIG}" "${EXTRA_CONFIG}" > "${BASE_CONFIG}.tmp"
         mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
         echo "Config merged successfully"
@@ -193,6 +213,21 @@ runs:
           exit 1
         fi
 
+    - name: Start Jaeger
+      if: inputs.with-jaeger == 'true'
+      shell: bash
+      run: |
+        docker compose up -d jaeger
+        echo "Waiting for Jaeger to be ready..."
+        if curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+            http://localhost:16686/api/services > /dev/null 2>&1; then
+          echo "Jaeger is ready!"
+        else
+          echo "::error::Jaeger failed to start"
+          docker logs quay-jaeger 2>&1 | tail -50
+          exit 1
+        fi
+
     - name: Build Angular static files
       shell: bash
       env:
@@ -204,6 +239,22 @@ runs:
         echo "Static files built successfully"
         ls -la static/build/ || echo "Warning: static/build/ directory not found"
 
+    - name: Install pnpm
+      shell: bash
+      run: npm install -g pnpm@10
+
+    - name: Build React static files for nginx
+      shell: bash
+      env:
+        REACT_QUAY_APP_API_URL: http://localhost:8080
+      run: |
+        echo "Building React static files for nginx..."
+        cd web && pnpm install --frozen-lockfile && pnpm run build
+        mkdir -p ../static/patternfly
+        cp -r dist/* ../static/patternfly/
+        echo "React files deployed to static/patternfly/"
+        ls ../static/patternfly/index.html
+
     - name: Start Quay container
       shell: bash
       run: |
@@ -212,10 +263,12 @@ runs:
     - name: Wait for Quay to be ready
       id: healthcheck
       shell: bash
+      env:
+        HEALTH_CHECK_TIMEOUT: ${{ inputs.health-check-timeout }}
       run: |
         echo "Waiting for Quay to be ready..."
 
-        TIMEOUT=${{ inputs.health-check-timeout }}
+        TIMEOUT="${HEALTH_CHECK_TIMEOUT}"
         RETRY_DELAY=2
         MAX_RETRIES=$((TIMEOUT / RETRY_DELAY))
 

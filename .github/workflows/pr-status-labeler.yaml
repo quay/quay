@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Download PR data
-        uses: dawidd6/action-download-artifact@v8
+        uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5fada6c3a9fbc # v8
         with:
           name: pr-data-*
           name_is_regexp: true
@@ -37,10 +37,12 @@ jobs:
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
       - name: Apply all status labels
-        uses: actions/github-script@v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
         with:
           script: |
-            const prNumber = ${{ steps.pr.outputs.number }};
+            const prNumber = parseInt(process.env.PR_NUMBER, 10);
 
             // Get PR details and review decision using GraphQL
             const result = await github.graphql(`

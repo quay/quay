@@ -17,7 +17,7 @@ runs:
         docker ps -a > logs/container-status.txt 2>&1 || true
 
         # Collect logs from any Quay-related container that exists
-        for container in quay-quay quay-db quay-redis quay-clair clair-db quay-ldap quay-repomirror quay-mailpit; do
+        for container in quay-quay quay-db quay-redis quay-clair clair-db quay-ldap quay-repomirror quay-mailpit quay-jaeger; do
           if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
             echo "Collecting logs from ${container}..."
             docker logs "${container}" > "logs/${container}.log" 2>&1 || true
@@ -25,7 +25,7 @@ runs:
         done
 
     - name: Upload logs artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ inputs.artifact-name }}
         path: logs/

@@ -25,7 +25,6 @@ services:
       start_period: 10s
 
   clair-db:
-    user: postgres
     container_name: clair-db
     image: docker.io/library/postgres:18
     command: -c 'max_connections=300'
@@ -96,6 +95,20 @@ services:
       timeout: 10s
       retries: 12
       start_period: 90s
+
+  # Jaeger all-in-one for distributed tracing (optional). Start via:
+  #   make local-dev-up-with-jaeger   (recommended — also merges OTEL config)
+  #   docker compose up -d jaeger     (manual, run make enable-jaeger separately)
+  # UI: http://localhost:16686. OTLP gRPC: 4317, OTLP HTTP: 4318.
+  jaeger:
+    container_name: quay-jaeger
+    image: docker.io/jaegertracing/all-in-one:latest
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Web UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
 
   keycloak:
     container_name: quay-keycloak
@@ -174,7 +187,7 @@ services:
       - "8443:8443"
     environment:
       QUAY_VERSION: local-dev
-      QUAY_HOTRELOAD: "true"
+      QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp
@@ -195,7 +208,7 @@ services:
       - "./local-dev/stack:/quay-registry/conf/stack"
     environment:
       QUAY_VERSION: local-dev
-      QUAY_HOTRELOAD: "true"
+      QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp
