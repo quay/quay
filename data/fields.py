@@ -17,14 +17,25 @@ def random_string(length=16):
     return "".join([random.choice(string.ascii_uppercase + string.digits) for _ in range(length)])
 
 
+_ALLOWED_UNPICKLE_CLASSES = frozenset(
+    {
+        ("resumablesha256", "sha256"),  # legacy: existing sha_state columns
+        ("resumablehash", "sha256"),  # new library name
+        ("resumablehash", "sha384"),
+        ("resumablehash", "sha512"),
+    }
+)
+
+
 class _SafeUnpickler(pickle.Unpickler):
     """
-    Restricted unpickler that only allows deserializing resumablesha256.sha256 objects.
-    Prevents arbitrary code execution via crafted pickle payloads (CVE-2026-32590).
+    Restricted unpickler that only allows deserializing known resumable hash objects.
+    Uses a frozenset-based allowlist of (module, class) pairs to prevent arbitrary code
+    execution via crafted pickle payloads (CVE-2026-32590).
     """
 
     def find_class(self, module, name):
-        if module == "resumablesha256" and name == "sha256":
+        if (module, name) in _ALLOWED_UNPICKLE_CLASSES:
             return super().find_class(module, name)
         raise pickle.UnpicklingError(f"Forbidden class: {module}.{name}")
 
