@@ -6,133 +6,21 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
-  classify-comments:
-    name: Classify PR Comments
-    if: github.event.pull_request.merged == true && github.event.pull_request.user.login == 'quay-devel'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    steps:
-      - name: Classify and post comment metrics
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          DEVLAKE_ENDPOINT: ${{ secrets.DEVLAKE_ENDPOINT }}
-          DEVLAKE_CONNECTION_ID: ${{ secrets.DEVLAKE_CONNECTION_ID }}
-          DEVLAKE_API_KEY: ${{ secrets.DEVLAKE_API_KEY }}
-        with:
-          script: |
-            const prNumber = context.payload.pull_request.number;
-            const prAuthor = context.payload.pull_request.user.login;
-
-            // Fetch all review comments and issue comments
-            const reviewComments = await github.paginate(
-              github.rest.pulls.listReviewComments,
-              { owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber }
-            );
-            const issueComments = await github.paginate(
-              github.rest.issues.listComments,
-              { owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber }
-            );
-
-            const counts = { major: 0, minor: 0, nit: 0, suggestion: 0, question: 0, other: 0 };
-            let total = 0;
-
-            function classifyCodeRabbit(body) {
-              if (body.includes('🟠')) return 'major';
-              if (body.includes('🟡')) return 'minor';
-              return 'other';
-            }
-
-            function classifyHuman(body) {
-              const lower = body.toLowerCase();
-              const majorKw = ['bug', 'breaks', 'broken', 'wrong', 'incorrect', 'security',
-                               'vulnerability', 'crash', 'data loss', 'race condition'];
-              if (majorKw.some(k => lower.includes(k))) return 'major';
-              if (['minor', 'small', 'trivial'].some(k => lower.includes(k))) return 'minor';
-              if (['nit', 'nitpick', 'style', 'formatting', 'whitespace'].some(k => lower.includes(k))) return 'nit';
-              if (['consider', 'could', 'might want', 'suggestion', 'what about',
-                   'how about', 'alternatively'].some(k => lower.includes(k))) return 'suggestion';
-              if (['why', 'what does', 'how does', 'is this'].some(k => lower.includes(k)) ||
-                  lower.trim().endsWith('?')) return 'question';
-              return 'other';
-            }
-
-            for (const comment of [...reviewComments, ...issueComments]) {
-              const author = comment.user.login;
-              if (author === prAuthor) continue;
-              if (author.endsWith('[bot]') && author !== 'coderabbitai[bot]') continue;
-
-              total++;
-              let category;
-              if (author === 'coderabbitai[bot]') {
-                category = classifyCodeRabbit(comment.body || '');
-              } else {
-                category = classifyHuman(comment.body || '');
-              }
-              counts[category]++;
-            }
-
-            const description = JSON.stringify({ ...counts, total_comments: total });
-            const issueKey = `quay-pr-comments-${prNumber}`;
-
-            if (!process.env.DEVLAKE_ENDPOINT || !process.env.DEVLAKE_CONNECTION_ID || !process.env.DEVLAKE_API_KEY) {
-              core.warning('DEVLAKE secrets not configured — skipping POST');
-              return;
-            }
-
-            const url = `${process.env.DEVLAKE_ENDPOINT}/api/plugins/webhook/connections/${process.env.DEVLAKE_CONNECTION_ID}/issues`;
-            const payload = {
-              issueKey,
-              status: 'DONE',
-              originalStatus: 'analyzed',
-              type: 'REQUIREMENT',
-              description,
-            };
-
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 30_000);
-            let response;
-            try {
-              response = await fetch(url, {
-                method: 'POST',
-                signal: controller.signal,
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${process.env.DEVLAKE_API_KEY}`,
-                },
-                body: JSON.stringify(payload),
-              });
-            } finally {
-              clearTimeout(timeout);
-            }
-
-            if (!response.ok) {
-              core.warning(`DevLake POST failed: ${response.status} ${await response.text()}`);
-            } else {
-              core.info(`Posted comment metrics for PR #${prNumber}: ${description}`);
-            }
-
   cyclomatic-complexity:
     name: Cyclomatic Complexity
     if: github.event.pull_request.merged == true && github.event.pull_request.user.login == 'quay-devel'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
-      - name: Compute complexity and post metrics
+      - name: Compute complexity and comment on PR
         env:
           GH_TOKEN: ${{ github.token }}
-          DEVLAKE_ENDPOINT: ${{ secrets.DEVLAKE_ENDPOINT }}
-          DEVLAKE_CONNECTION_ID: ${{ secrets.DEVLAKE_CONNECTION_ID }}
-          DEVLAKE_API_KEY: ${{ secrets.DEVLAKE_API_KEY }}
         run: |
           set -euo pipefail
 
@@ -162,74 +50,68 @@ jobs:
           CHANGED=$(printf '%s\n%s' "$CHANGED_GO" "$CHANGED_PY" | grep -v '^$' || true)
 
           if [ -z "$CHANGED" ]; then
-            MAX_COMPLEXITY=0
-            AVG_COMPLEXITY=0
-            ABOVE_THRESHOLD=0
-            COMPLEXITY_JSON="{}"
-          else
-            pip install lizard --quiet
-
-            # lizard --csv columns (no header): NLOC,CCN,token,PARAM,length,location
-            LIZARD_OUT=$(echo "$CHANGED" | xargs lizard --csv 2>/dev/null || true)
-
-            if [ -z "$LIZARD_OUT" ]; then
-              MAX_COMPLEXITY=0
-              AVG_COMPLEXITY=0
-              ABOVE_THRESHOLD=0
-              COMPLEXITY_JSON="{}"
-            else
-              # Only process data lines (start with a digit)
-              MAX_COMPLEXITY=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{print $2}' | sort -n | tail -1)
-              TOTAL=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{s+=$2} END {print s+0}')
-              COUNT=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{n++} END {print n+0}')
-              AVG_COMPLEXITY=$(awk -v total="$TOTAL" -v count="$COUNT" 'BEGIN {
-                if (count > 0) printf "%.2f", total / count;
-                else print "0"
-              }')
-              ABOVE_THRESHOLD=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/ && $2 > 15 {n++} END {print n+0}')
-
-              COMPLEXITY_JSON=$(jq -n \
-                --argjson max "${MAX_COMPLEXITY:-0}" \
-                --argjson avg "${AVG_COMPLEXITY:-0}" \
-                --argjson above "$ABOVE_THRESHOLD" \
-                --argjson count "$COUNT" \
-                '{max_complexity: $max, avg_complexity: $avg, above_threshold: $above, functions_analyzed: $count}')
-            fi
-          fi
-
-          echo "Complexity results: $COMPLEXITY_JSON"
-
-          if [ -z "${DEVLAKE_ENDPOINT:-}" ] || [ -z "${DEVLAKE_CONNECTION_ID:-}" ] || [ -z "${DEVLAKE_API_KEY:-}" ]; then
-            echo "::warning::DEVLAKE secrets not configured — skipping POST"
+            echo "No Go/Python source files changed — skipping"
             exit 0
           fi
 
-          ISSUE_KEY="quay-pr-complexity-${PR_NUMBER}"
-          URL="${DEVLAKE_ENDPOINT}/api/plugins/webhook/connections/${DEVLAKE_CONNECTION_ID}/issues"
+          pip install lizard --quiet
 
-          PAYLOAD=$(jq -n \
-            --arg issueKey "$ISSUE_KEY" \
-            --arg description "$COMPLEXITY_JSON" \
-            --argjson storyPoint "${MAX_COMPLEXITY:-0}" \
-            '{
-              issueKey: $issueKey,
-              status: "DONE",
-              originalStatus: "analyzed",
-              type: "REQUIREMENT",
-              description: $description,
-              storyPoint: $storyPoint
-            }')
+          # lizard --csv columns (no header): NLOC,CCN,token,PARAM,length,location
+          LIZARD_OUT=$(echo "$CHANGED" | xargs lizard --csv 2>/dev/null || true)
 
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --connect-timeout 10 \
-            --max-time 30 \
-            -X POST "$URL" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${DEVLAKE_API_KEY}" \
-            -d "$PAYLOAD")
-
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "::warning::DevLake POST failed with HTTP ${HTTP_STATUS}"
-          else
-            echo "Posted complexity metrics for PR #${PR_NUMBER}: max=${MAX_COMPLEXITY:-0}"
+          if [ -z "$LIZARD_OUT" ]; then
+            echo "lizard produced no output — skipping"
+            exit 0
           fi
+
+          # Only process data lines (start with a digit)
+          MAX_COMPLEXITY=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{print $2}' | sort -n | tail -1)
+          TOTAL=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{s+=$2} END {print s+0}')
+          COUNT=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{n++} END {print n+0}')
+          AVG_COMPLEXITY=$(awk -v total="$TOTAL" -v count="$COUNT" 'BEGIN {
+            if (count > 0) printf "%.2f", total / count;
+            else print "0"
+          }')
+          ABOVE_THRESHOLD=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/ && $2 > 15 {n++} END {print n+0}')
+
+          # Build the top-5 most complex functions table
+          TOP_FUNCTIONS=$(echo "$LIZARD_OUT" \
+            | awk -F',' '/^[0-9]/{print $2","$6}' \
+            | sort -t',' -k1 -nr \
+            | head -5 \
+            | awk -F',' '{printf "| %s | %s |\n", $2, $1}')
+
+          # Build embedded JSON for DevLake ingestion via GitHub connection
+          METRICS_JSON=$(jq -cn \
+            --argjson max "${MAX_COMPLEXITY:-0}" \
+            --argjson avg "${AVG_COMPLEXITY:-0}" \
+            --argjson above "$ABOVE_THRESHOLD" \
+            --argjson count "$COUNT" \
+            '{max_complexity: $max, avg_complexity: $avg, above_threshold: $above, functions_analyzed: $count}')
+
+          # Post as PR comment — DevLake GitHub connection ingests this into
+          # pull_request_comments.body; Grafana extracts the agent-metrics JSON.
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$(cat <<EOF
+          ## Cyclomatic Complexity Report
+
+          | Metric | Value |
+          |--------|-------|
+          | Functions analyzed | ${COUNT} |
+          | Max complexity | ${MAX_COMPLEXITY} |
+          | Avg complexity | ${AVG_COMPLEXITY} |
+          | Above threshold (>15) | ${ABOVE_THRESHOLD} |
+
+          <details>
+          <summary>Top 5 most complex functions</summary>
+
+          | Function | CCN |
+          |----------|-----|
+          ${TOP_FUNCTIONS}
+
+          </details>
+
+          <!-- agent-metrics:${METRICS_JSON} -->
+          EOF
+          )"
+
+          echo "Posted complexity comment on PR #${PR_NUMBER}: max=${MAX_COMPLEXITY}"
