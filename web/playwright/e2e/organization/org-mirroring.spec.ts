@@ -847,6 +847,122 @@ test.describe(
       await expect(statusDisplay.getByText('Cancelled: 3')).toBeVisible();
     });
 
+    test('cancel sync modal indicates future syncs continue (PROJQUAY-11414)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrcfsc');
+      const robot = await api.robot(org.name, 'cfscbot');
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Trigger sync-now to enable cancel button
+      await api.raw.triggerOrgMirrorSync(org.name);
+
+      // Mock SYNCING repos so cancel button is enabled
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route) => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 1,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 0,
+              CANCEL: 0,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Open cancel modal
+      await authenticatedPage.getByTestId('cancel-sync-button').click();
+
+      // Verify updated modal text: future syncs continue
+      await expect(
+        authenticatedPage.getByText(
+          'Future scheduled syncs will continue as normal.',
+        ),
+      ).toBeVisible();
+
+      // Dismiss without cancelling
+      await authenticatedPage
+        .getByRole('button', {name: 'Cancel', exact: true})
+        .click();
+    });
+
+    test('cancel sync preserves sync_start_date for future syncs (PROJQUAY-11414)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('orgmirrpssd');
+      const robot = await api.robot(org.name, 'pssdbot');
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Record the original sync_start_date
+      const beforeConfig = await api.raw.getOrgMirrorConfig(org.name);
+      const originalSyncStartDate = beforeConfig?.sync_start_date;
+      expect(originalSyncStartDate).not.toBeNull();
+
+      // Trigger sync-now and then cancel via API
+      await api.raw.triggerOrgMirrorSync(org.name);
+      await api.raw.cancelOrgMirrorSync(org.name);
+
+      // Verify sync_start_date is preserved after cancel
+      const afterConfig = await api.raw.getOrgMirrorConfig(org.name);
+      expect(afterConfig?.sync_status).toBe('CANCEL');
+      expect(afterConfig?.sync_start_date).not.toBeNull();
+      expect(afterConfig?.sync_start_date).toBe(originalSyncStartDate);
+
+      // Verify the sync start date field is still populated in the UI
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // The sync start date input should still have a value (not empty)
+      const dateInput = authenticatedPage.getByLabel('Sync start date');
+      await expect(dateInput).not.toHaveValue('');
+    });
+
     test('repository filters are preserved on save', async ({
       authenticatedPage,
       api,
