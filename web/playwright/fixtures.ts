@@ -29,7 +29,7 @@ import {
 } from '@playwright/test';
 import {uniqueName} from './utils/test-utils';
 import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
-import {API_URL} from './utils/config';
+import {API_URL, BASE_URL} from './utils/config';
 import {
   ApiClient,
   PrototypeRole,
@@ -872,6 +872,13 @@ function getTestUsers(config?: QuayConfig | null) {
   return TEST_USERS;
 }
 
+async function setReactUICookie(context: BrowserContext): Promise<void> {
+  const domain = new URL(BASE_URL).hostname;
+  await context.addCookies([
+    {name: 'defaultui', value: 'react', domain, path: '/'},
+  ]);
+}
+
 /**
  * Login a user via API (Database auth) or OIDC browser flow (Keycloak).
  * Detects the auth type from config and uses the appropriate method.
@@ -996,6 +1003,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   userContext: [
     async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
+      await setReactUICookie(context);
       const users = getTestUsers(cachedQuayConfig);
       await loginUser(
         context,
@@ -1012,6 +1020,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   superuserContext: [
     async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
+      await setReactUICookie(context);
       const users = getTestUsers(cachedQuayConfig);
       await loginUser(
         context,
@@ -1028,6 +1037,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   readonlyContext: [
     async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
+      await setReactUICookie(context);
       const users = getTestUsers(cachedQuayConfig);
       await loginUser(
         context,

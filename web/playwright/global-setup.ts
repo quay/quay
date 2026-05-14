@@ -155,8 +155,28 @@ async function globalSetup(config: FullConfig) {
       try {
         console.log(`[Global Setup] Creating ${role} user: ${user.username}`);
         const api = new ApiClient(requestContext);
-        await api.createUser(user.username, user.password, user.email);
-        console.log(`[Global Setup] Created ${role} user: ${user.username}`);
+
+        try {
+          await api.createUser(user.username, user.password, user.email);
+          console.log(`[Global Setup] Created ${role} user: ${user.username}`);
+        } catch (error) {
+          const errorMessage = String(error);
+          if (
+            errorMessage.includes('already exists') ||
+            errorMessage.includes('already taken')
+          ) {
+            console.log(
+              `[Global Setup] ${role} user already exists: ${user.username}`,
+            );
+          } else {
+            throw error;
+          }
+        }
+
+        // Clear user prompts (enter_name, enter_company) so tests aren't
+        // redirected to /updateuser when USER_METADATA is enabled.
+        await api.signIn(user.username, user.password);
+        await api.clearUserPrompts();
 
         // Verify email if mailing is enabled and Mailpit is available
         if (mailpitAvailable) {
@@ -186,19 +206,8 @@ async function globalSetup(config: FullConfig) {
           }
         }
       } catch (error) {
-        const errorMessage = String(error);
-        // User might already exist (400 error with "already exists")
-        if (
-          errorMessage.includes('already exists') ||
-          errorMessage.includes('already taken')
-        ) {
-          console.log(
-            `[Global Setup] ${role} user already exists: ${user.username}`,
-          );
-        } else {
-          console.error(`[Global Setup] Error creating ${role} user: ${error}`);
-          failures.push(`${role} (${user.username}): ${error}`);
-        }
+        console.error(`[Global Setup] Error creating ${role} user: ${error}`);
+        failures.push(`${role} (${user.username}): ${error}`);
       } finally {
         await requestContext.dispose();
       }
