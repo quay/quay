@@ -10,10 +10,7 @@ test.describe('Angular UI Smoke Tests', {tag: ['@legacy-ui', '@smoke']}, () => {
     });
   });
 
-  // Skip: Angular signin form template doesn't render on redhat-3.17 —
-  // the AngularJS route resolves but the directive never attaches the form.
-  // Other smoke tests confirm the Angular app loads and routes correctly.
-  test.skip('sign-in page renders', async ({page}) => {
+  test('sign-in page renders', async ({page}) => {
     await page.goto('/signin/', {waitUntil: 'domcontentloaded'});
     await expect(page.locator('html[ng-app="quay"]')).toBeAttached();
     // Angular signin page has a form with username/password inputs
