@@ -70,14 +70,10 @@ export function QuayBreadcrumb() {
           // Reconstruct from parsed components to avoid substring-search
           // issues when the repo name appears elsewhere in the URL (e.g.
           // tag==repo). Preserve any URL prefix (e.g. OpenShift plugin mode).
-          const urlPrefix = location.pathname.split(
-            /repository|organization/,
-          )[0];
-          nextBreadcrumb[
-            'pathname'
-          ] = `${urlPrefix}repository/${parseOrgNameFromUrl(
-            location.pathname,
-          )}/${nextBreadcrumb['title']}`;
+          const prefix = location.pathname.split(/repository|organization/)[0];
+          const org = parseOrgNameFromUrl(location.pathname);
+          const repo = nextBreadcrumb['title'];
+          nextBreadcrumb['pathname'] = `${prefix}repository/${org}/${repo}`;
           break;
         }
         case NavigationPath.teamMember:
