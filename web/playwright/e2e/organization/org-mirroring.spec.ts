@@ -16,6 +16,7 @@
 
 import {test, expect} from '../../fixtures';
 import {Page} from '@playwright/test';
+import {API_URL} from '../../utils/config';
 
 async function fillRequiredFields(
   page: Page,
@@ -1436,6 +1437,73 @@ test.describe(
       const config = await api.raw.getOrgMirrorConfig(org.name);
       expect(config).not.toBeNull();
       expect(config?.external_registry_url).toBe('https://quay.io');
+    });
+
+    test('deleting mirror config resets org to normal and repos remain accessible (PROJQUAY-11382)', async ({
+      authenticatedPage,
+      authenticatedRequest,
+      api,
+    }) => {
+      const org = await api.organization('orgmirr11382');
+      const robot = await api.robot(org.name, 'rstbot');
+      const repo = await api.repository(org.name, 'mirroredrepo');
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Delete mirror config via UI
+      await authenticatedPage.getByTestId('delete-mirror-button').click();
+      await expect(
+        authenticatedPage
+          .getByText(
+            'Are you sure you want to delete the organization mirror configuration?',
+          )
+          .first(),
+      ).toBeVisible();
+      await authenticatedPage.getByTestId('confirm-delete-button').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration deleted successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify config is gone
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config).toBeNull();
+
+      // Verify repo is still accessible and in NORMAL state
+      const repoResponse = await authenticatedRequest.get(
+        `${API_URL}/api/v1/repository/${org.name}/${repo.name}`,
+      );
+      expect(repoResponse.ok()).toBe(true);
+      const repoBody = await repoResponse.json();
+      expect(repoBody.state).toBe('NORMAL');
+
+      // Verify org settings page shows Normal state
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Organization state').click();
+      await expect(
+        authenticatedPage.getByRole('radio', {name: 'Normal'}),
+      ).toBeChecked();
+      await expect(
+        authenticatedPage.getByRole('radio', {name: 'Mirror'}),
+      ).not.toBeChecked();
     });
 
     test('cancel delete modal keeps config intact', async ({
