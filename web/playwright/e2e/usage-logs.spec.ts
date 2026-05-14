@@ -1,7 +1,43 @@
-import {test, expect} from '../fixtures';
+import {test, expect, type CreatedRepo} from '../fixtures';
 import type {Page} from '@playwright/test';
 import {pushImage} from '../utils/container';
 import {TEST_USERS} from '../global-setup';
+
+interface MockLog {
+  kind: string;
+  metadata: Record<string, unknown>;
+  performer?: {name: string};
+  ip?: string;
+}
+
+async function mockRepoLogsApi(page: Page, repo: CreatedRepo, logs: MockLog[]) {
+  const logsWithDefaults = logs.map((log) => ({
+    datetime: new Date().toISOString(),
+    performer: {name: 'mirror-robot'},
+    ip: '127.0.0.1',
+    ...log,
+  }));
+  await page.route(
+    `**/api/v1/repository/${repo.namespace}/${repo.name}/logs*`,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({logs: logsWithDefaults}),
+      });
+    },
+  );
+  await page.route(
+    `**/api/v1/repository/${repo.namespace}/${repo.name}/aggregatelogs*`,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({aggregated: []}),
+      });
+    },
+  );
+}
 
 async function assertChartLegend(
   page: Page,
@@ -179,6 +215,138 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     await expect(
       table.getByText(/skopeo: authentication required/),
     ).toBeVisible();
+  });
+
+  test.describe('repo mirror sync log null-guard rendering', () => {
+    test('repo_mirror_sync_success omits tags when missing', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await mockRepoLogsApi(authenticatedPage, repo, [
+        {
+          kind: 'repo_mirror_sync_success',
+          metadata: {message: 'registry.example.com/repo'},
+        },
+      ]);
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
+      const table = authenticatedPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
+
+      await expect(
+        table.getByText(
+          'Mirror finished successfully for registry.example.com/repo',
+        ),
+      ).toBeVisible();
+      await expect(table.getByText(/undefined/)).not.toBeAttached();
+      await expect(table.getByText(/\bnull\b/)).not.toBeAttached();
+    });
+
+    test('repo_mirror_sync_success includes tags when present', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await mockRepoLogsApi(authenticatedPage, repo, [
+        {
+          kind: 'repo_mirror_sync_success',
+          metadata: {
+            message: 'registry.example.com/repo',
+            tags: 'latest, v1.0',
+          },
+        },
+      ]);
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
+      const table = authenticatedPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
+
+      await expect(
+        table.getByText(/Mirror finished successfully for/),
+      ).toBeVisible();
+      await expect(table.getByText(/latest, v1\.0/)).toBeVisible();
+    });
+
+    test('repo_mirror_sync_failed omits missing optional fields', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await mockRepoLogsApi(authenticatedPage, repo, [
+        {
+          kind: 'repo_mirror_sync_failed',
+          metadata: {message: 'registry.example.com/repo'},
+        },
+      ]);
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
+      const table = authenticatedPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
+
+      await expect(
+        table.getByText(
+          'Mirror finished unsuccessfully for registry.example.com/repo',
+        ),
+      ).toBeVisible();
+      await expect(table.getByText(/undefined/)).not.toBeAttached();
+      await expect(table.getByText(/\bnull\b/)).not.toBeAttached();
+      await expect(table.getByText(/Not applicable/)).not.toBeAttached();
+    });
+
+    test('repo_mirror_sync_tag_success omits missing stdout/stderr', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await mockRepoLogsApi(authenticatedPage, repo, [
+        {
+          kind: 'repo_mirror_sync_tag_success',
+          metadata: {
+            tag: 'latest',
+            namespace: 'ns',
+            repo: 'myrepo',
+            message: 'ok',
+          },
+        },
+      ]);
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
+      const table = authenticatedPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
+
+      await expect(
+        table.getByText(/Mirror of latest successful/),
+      ).toBeVisible();
+      await expect(table.getByText(/undefined/)).not.toBeAttached();
+      await expect(table.getByText(/\bnull\b/)).not.toBeAttached();
+    });
+
+    test('repo_mirror_sync_tag_failed omits missing stdout/stderr', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository();
+      await mockRepoLogsApi(authenticatedPage, repo, [
+        {
+          kind: 'repo_mirror_sync_tag_failed',
+          metadata: {
+            tag: 'latest',
+            namespace: 'ns',
+            repo: 'myrepo',
+            message: 'failed',
+          },
+        },
+      ]);
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
+      const table = authenticatedPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
+
+      await expect(table.getByText(/Mirror of latest failure/)).toBeVisible();
+      await expect(table.getByText(/undefined/)).not.toBeAttached();
+      await expect(table.getByText(/\bnull\b/)).not.toBeAttached();
+    });
   });
 
   test.describe('chart log kind mapping', {tag: ['@PROJQUAY-11079']}, () => {
