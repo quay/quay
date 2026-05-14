@@ -67,16 +67,17 @@ export function QuayBreadcrumb() {
       switch (routerBreadcrumb.match.route.path) {
         case NavigationPath.repositoryDetail: {
           nextBreadcrumb['title'] = parseRepoNameFromUrl(location.pathname);
-          // Cut the repo path at the /tag/ or /build/ boundary so that a tag
-          // or build name that matches or starts with the repo name does not
-          // cause lastIndexOf to land on the wrong URL segment.
-          const tagSegIdx = location.pathname.lastIndexOf('/tag/');
-          const buildSegIdx = location.pathname.lastIndexOf('/build/');
-          const cutIdx = Math.max(tagSegIdx, buildSegIdx);
-          nextBreadcrumb['pathname'] =
-            cutIdx !== -1
-              ? location.pathname.slice(0, cutIdx)
-              : location.pathname;
+          // Reconstruct from parsed components to avoid substring-search
+          // issues when the repo name appears elsewhere in the URL (e.g.
+          // tag==repo). Preserve any URL prefix (e.g. OpenShift plugin mode).
+          const urlPrefix = location.pathname.split(
+            /repository|organization/,
+          )[0];
+          nextBreadcrumb[
+            'pathname'
+          ] = `${urlPrefix}repository/${parseOrgNameFromUrl(
+            location.pathname,
+          )}/${nextBreadcrumb['title']}`;
           break;
         }
         case NavigationPath.teamMember:
