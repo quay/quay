@@ -4,7 +4,8 @@
  * Ported from Cypress quay_api_testing_all.cy.js and unique tests from
  * quay_api_testing_all_new_ui.cy.js. Covers: repository mirroring,
  * proxy cache, quotas, autoprune policies, logs, health endpoints,
- * service keys, organization mirror, and registry capabilities.
+ * service keys, organization mirror, registry capabilities, repository
+ * signing, pull statistics, and team syncing.
  */
 
 import {test, expect} from '../../fixtures';
@@ -911,3 +912,78 @@ test.describe(
     });
   },
 );
+
+// ---------------------------------------------------------------------------
+// Repository Signing
+// ---------------------------------------------------------------------------
+test.describe('Repository Signing', {tag: ['@api', '@feature:SIGNING']}, () => {
+  test('get signatures for repository', async ({superuserApi, adminClient}) => {
+    const org = await superuserApi.organization('sign');
+    const repo = await superuserApi.repository(org.name, 'repo', 'public');
+
+    const resp = await adminClient.get(
+      `/api/v1/repository/${org.name}/${repo.name}/signatures`,
+    );
+    expect(resp.status()).toBe(200);
+    const body = await resp.json();
+    expect(body).toHaveProperty('signatures');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pull Statistics
+// ---------------------------------------------------------------------------
+test.describe(
+  'Pull Statistics',
+  {tag: ['@api', '@feature:IMAGE_PULL_STATS']},
+  () => {
+    test('tag pull statistics returns 404 for non-existent tag', async ({
+      superuserApi,
+      adminClient,
+    }) => {
+      const org = await superuserApi.organization('pullstats');
+      const repo = await superuserApi.repository(org.name, 'repo', 'public');
+
+      const resp = await adminClient.get(
+        `/api/v1/repository/${org.name}/${repo.name}/tag/latest/pull_statistics`,
+      );
+      expect(resp.status()).toBe(404);
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Team Syncing
+// ---------------------------------------------------------------------------
+test.describe('Team Syncing', {tag: ['@api', '@feature:TEAM_SYNCING']}, () => {
+  test('enable and disable team sync', async ({superuserApi, adminClient}) => {
+    const org = await superuserApi.organization('tsync');
+    const team = await superuserApi.team(org.name, 'syncteam');
+
+    const enableResp = await adminClient.post(
+      `/api/v1/organization/${org.name}/team/${team.name}/syncing`,
+      {group_dn: 'cn=testgroup,dc=example,dc=com'},
+    );
+
+    if (enableResp.status() === 400 || enableResp.status() === 401) {
+      const body = await enableResp.json().catch(() => ({}));
+      const msg = (body.error_message || body.message || '').toLowerCase();
+      const backendMissing =
+        msg.includes('team syncing') ||
+        msg.includes('not supported') ||
+        msg.includes('ldap') ||
+        msg.includes('keystone');
+      test.skip(
+        backendMissing || enableResp.status() === 401,
+        `Team sync unavailable: ${msg || `HTTP ${enableResp.status()}`}`,
+      );
+      return;
+    }
+    expect([200, 201]).toContain(enableResp.status());
+
+    const disableResp = await adminClient.delete(
+      `/api/v1/organization/${org.name}/team/${team.name}/syncing`,
+    );
+    expect([200, 204]).toContain(disableResp.status());
+  });
+});
