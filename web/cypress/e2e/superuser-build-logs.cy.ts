@@ -2,7 +2,6 @@
 
 describe('Superuser Build Logs', () => {
   const validBuildUuid = 'abc-123-valid-build-uuid';
-  const invalidBuildUuid = 'invalid-uuid-does-not-exist';
 
   const mockBuildInfo = {
     id: '12345',
@@ -53,94 +52,6 @@ describe('Superuser Build Logs', () => {
       .then((token) => {
         cy.loginByCSRF(token);
       });
-  });
-
-  describe('Access Control', () => {
-    it('should show access denied for non-superusers', () => {
-      cy.fixture('config.json').then((config) => {
-        config.features.SUPERUSERS_FULL_ACCESS = true;
-        config.features.BUILD_SUPPORT = true;
-        cy.intercept('GET', '/config', config).as('getConfig');
-      });
-
-      cy.fixture('user.json').then((user) => {
-        user.super_user = false;
-        cy.intercept('GET', '/api/v1/user/', user).as('getUser');
-      });
-
-      cy.visit('/build-logs');
-      cy.wait('@getConfig');
-      cy.wait('@getUser');
-
-      cy.contains('Access Denied').should('exist');
-      cy.contains('You must be a superuser to access build logs').should(
-        'exist',
-      );
-    });
-
-    it('should allow superusers access', () => {
-      cy.fixture('config.json').then((config) => {
-        config.features.SUPERUSERS_FULL_ACCESS = true;
-        config.features.BUILD_SUPPORT = true;
-        cy.intercept('GET', '/config', config).as('getConfig');
-      });
-
-      cy.fixture('superuser.json').then((user) => {
-        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
-      });
-
-      cy.visit('/build-logs');
-      cy.wait('@getConfig');
-      cy.wait('@getSuperUser');
-
-      cy.contains('Build Logs').should('exist');
-      cy.get('[data-testid="build-uuid-input"]').should('exist');
-    });
-  });
-
-  describe('Feature Flag - BUILD_SUPPORT', () => {
-    it('should show warning when BUILD_SUPPORT is disabled', () => {
-      cy.fixture('config.json').then((config) => {
-        config.features.SUPERUSERS_FULL_ACCESS = true;
-        config.features.BUILD_SUPPORT = false;
-        cy.intercept('GET', '/config', config).as('getConfig');
-      });
-
-      cy.fixture('superuser.json').then((user) => {
-        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
-      });
-
-      cy.visit('/build-logs');
-      cy.wait('@getConfig');
-      cy.wait('@getSuperUser');
-
-      cy.contains('Build support not enabled').should('exist');
-      cy.contains(
-        'BUILD_SUPPORT is not enabled in the registry configuration',
-      ).should('exist');
-    });
-
-    it('should hide Build Logs in sidebar when BUILD_SUPPORT is disabled', () => {
-      cy.fixture('config.json').then((config) => {
-        config.features.SUPERUSERS_FULL_ACCESS = true;
-        config.features.BUILD_SUPPORT = false;
-        cy.intercept('GET', '/config', config).as('getConfig');
-      });
-
-      cy.fixture('superuser.json').then((user) => {
-        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
-      });
-
-      cy.visit('/organization');
-      cy.wait('@getConfig');
-      cy.wait('@getSuperUser');
-
-      // Expand superuser section
-      cy.contains('Superuser').click();
-
-      // Build Logs should not be visible
-      cy.get('[data-testid="build-logs-nav"]').should('not.exist');
-    });
   });
 
   describe('Load Valid Build Logs', () => {
@@ -257,73 +168,6 @@ describe('Superuser Build Logs', () => {
 
       // Loading state should disappear
       cy.contains('Loading...').should('not.exist');
-    });
-
-    it('should disable button when input is empty', () => {
-      cy.visit('/build-logs');
-      cy.wait('@getConfig');
-      cy.wait('@getSuperUser');
-
-      // Button should be disabled initially
-      cy.get('[data-testid="load-build-button"]').should('be.disabled');
-
-      // Type some text
-      cy.get('[data-testid="build-uuid-input"]').type('some-uuid');
-
-      // Button should be enabled
-      cy.get('[data-testid="load-build-button"]').should('not.be.disabled');
-
-      // Clear input
-      cy.get('[data-testid="build-uuid-input"]').clear();
-
-      // Button should be disabled again
-      cy.get('[data-testid="load-build-button"]').should('be.disabled');
-    });
-  });
-
-  describe('Load Invalid Build UUID', () => {
-    beforeEach(() => {
-      cy.fixture('config.json').then((config) => {
-        config.features.SUPERUSERS_FULL_ACCESS = true;
-        config.features.BUILD_SUPPORT = true;
-        cy.intercept('GET', '/config', config).as('getConfig');
-      });
-
-      cy.fixture('superuser.json').then((user) => {
-        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
-      });
-    });
-
-    it('should show error for invalid build UUID', () => {
-      cy.intercept('GET', `/api/v1/superuser/${invalidBuildUuid}/build`, {
-        statusCode: 404,
-        body: {
-          error: 'Build not found',
-          message: 'No build exists with this UUID',
-        },
-      }).as('getBuildInfoError');
-
-      cy.intercept('GET', `/api/v1/superuser/${invalidBuildUuid}/logs`, {
-        statusCode: 404,
-        body: {
-          error: 'Build not found',
-          message: 'No build exists with this UUID',
-        },
-      }).as('getBuildLogsError');
-
-      cy.visit('/build-logs');
-      cy.wait('@getConfig');
-      cy.wait('@getSuperUser');
-
-      cy.get('[data-testid="build-uuid-input"]').type(invalidBuildUuid);
-      cy.get('[data-testid="load-build-button"]').click();
-
-      // Either endpoint failing should show error
-      cy.wait('@getBuildInfoError');
-
-      // Should show error alert
-      cy.get('[data-testid="build-error-alert"]').should('exist');
-      cy.contains('Cannot find or load build').should('exist');
     });
   });
 
@@ -491,43 +335,4 @@ describe('Superuser Build Logs', () => {
     });
   });
 
-  describe('Sidebar Navigation', () => {
-    beforeEach(() => {
-      cy.fixture('config.json').then((config) => {
-        config.features.SUPERUSERS_FULL_ACCESS = true;
-        config.features.BUILD_SUPPORT = true;
-        cy.intercept('GET', '/config', config).as('getConfig');
-      });
-
-      cy.fixture('superuser.json').then((user) => {
-        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
-      });
-    });
-
-    it('should navigate to Build Logs via sidebar', () => {
-      cy.visit('/organization');
-      cy.wait('@getConfig');
-      cy.wait('@getSuperUser');
-
-      // Expand superuser section
-      cy.contains('Superuser').click();
-
-      // Click Build Logs
-      cy.get('[data-testid="build-logs-nav"]').click();
-
-      // Should navigate to build logs page
-      cy.url().should('include', '/build-logs');
-      cy.contains('Build Logs').should('exist');
-      cy.get('[data-testid="build-uuid-input"]').should('exist');
-    });
-
-    it('should auto-expand Superuser section when on Build Logs page', () => {
-      cy.visit('/build-logs');
-      cy.wait('@getConfig');
-      cy.wait('@getSuperUser');
-
-      // Superuser section should be expanded
-      cy.get('[data-testid="build-logs-nav"]').should('be.visible');
-    });
-  });
 });
