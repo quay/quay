@@ -2,7 +2,7 @@ name: Agent PR Metrics
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [closed]
 
 permissions:
   contents: read
@@ -11,7 +11,7 @@ permissions:
 jobs:
   cyclomatic-complexity:
     name: Cyclomatic Complexity
-    if: github.event.pull_request.user.login == 'quay-devel'
+    if: github.event.pull_request.merged == true && github.event.pull_request.user.login == 'quay-devel'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -89,12 +89,9 @@ jobs:
             --argjson count "$COUNT" \
             '{max_complexity: $max, avg_complexity: $avg, above_threshold: $above, functions_analyzed: $count}')
 
-          # Build comment body — visible table for reviewers, hidden JSON for DevLake.
-          # DevLake GitHub connection ingests this into pull_request_comments.body;
-          # Grafana queries filter by account (github-actions[bot]) and extract
-          # the agent-metrics JSON. This bot comment should be excluded from any
-          # comment-severity analysis to avoid muddying human review metrics.
-          COMMENT_BODY=$(cat <<EOF
+          # Post as PR comment — DevLake GitHub connection ingests this into
+          # pull_request_comments.body; Grafana extracts the agent-metrics JSON.
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$(cat <<EOF
           ## Cyclomatic Complexity Report
 
           | Metric | Value |
@@ -115,20 +112,6 @@ jobs:
 
           <!-- agent-metrics:${METRICS_JSON} -->
           EOF
-          )
+          )"
 
-          # Update existing comment in-place if one exists, otherwise create new.
-          # This avoids duplicate comments on each push and keeps a single entry
-          # for DevLake to ingest (one comment per PR, not one per push).
-          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
-            --paginate --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("agent-metrics:"))) | .id' \
-            | head -1)
-
-          if [ -n "$EXISTING_COMMENT_ID" ]; then
-            gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" \
-              -X PATCH -f body="$COMMENT_BODY" --silent
-            echo "Updated complexity comment (id=${EXISTING_COMMENT_ID}) on PR #${PR_NUMBER}: max=${MAX_COMPLEXITY}"
-          else
-            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$COMMENT_BODY"
-            echo "Posted complexity comment on PR #${PR_NUMBER}: max=${MAX_COMPLEXITY}"
-          fi
+          echo "Posted complexity comment on PR #${PR_NUMBER}: max=${MAX_COMPLEXITY}"
