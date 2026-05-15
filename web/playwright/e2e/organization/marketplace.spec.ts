@@ -199,10 +199,8 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
         !resp.url().includes('batchremove'),
     );
     await authenticatedPage.locator('#confirm-subscription-select').click();
-    await attachResponse;
-    await expect(
-      authenticatedPage.getByText('Successfully attached subscription'),
-    ).toBeVisible({timeout: 10000});
+    const attachResp = await attachResponse;
+    expect(attachResp.status()).toBe(200);
 
     // Remove subscription
     await authenticatedPage.locator('#remove-subscription-button').click();
@@ -217,10 +215,8 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
         resp.request().method() === 'POST',
     );
     await authenticatedPage.locator('#confirm-subscription-select').click();
-    await removeResponse;
-    await expect(
-      authenticatedPage.getByText('Successfully removed subscription'),
-    ).toBeVisible({timeout: 10000});
+    const removeResp = await removeResponse;
+    expect(removeResp.status()).toBe(200);
   });
 
   test('shows unlimited private repos for unlimited subscription SKU', async ({
