@@ -787,7 +787,8 @@ export type QuayFeature =
   | 'SPARSE_INDEX'
   | 'TEAM_SYNCING'
   | 'DIRECT_LOGIN'
-  | 'NONSUPERUSER_TEAM_SYNCING_SETUP';
+  | 'NONSUPERUSER_TEAM_SYNCING_SETUP'
+  | 'BUILD_SUPPORT';
 
 /**
  * Quay configuration from /config endpoint

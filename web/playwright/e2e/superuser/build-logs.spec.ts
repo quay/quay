@@ -4,14 +4,23 @@ test.describe(
   'Superuser Build Logs',
   {tag: ['@superuser', '@feature:BUILD_SUPPORT']},
   () => {
+    test('denies access to non-superusers', async ({authenticatedPage}) => {
+      await authenticatedPage.goto('/build-logs');
+
+      await expect(authenticatedPage.getByText('Access Denied')).toBeVisible();
+      await expect(
+        authenticatedPage.getByText(
+          'You must be a superuser to access build logs',
+        ),
+      ).toBeVisible();
+    });
+
     test('superuser can access build logs page', async ({superuserPage}) => {
       await superuserPage.goto('/build-logs');
 
       await expect(
         superuserPage.getByRole('heading', {name: 'Build Logs', level: 1}),
       ).toBeVisible();
-
-      // UUID input form
       await expect(superuserPage.getByTestId('build-uuid-input')).toBeVisible();
       await expect(
         superuserPage.getByTestId('show-timestamps-checkbox'),
@@ -19,15 +28,27 @@ test.describe(
       await expect(
         superuserPage.getByTestId('load-build-button'),
       ).toBeVisible();
+      await expect(superuserPage.getByTestId('build-logs-nav')).toBeVisible();
     });
 
-    test('load button disabled when UUID input is empty', async ({
+    test('disables load button when input is empty', async ({
       superuserPage,
     }) => {
       await superuserPage.goto('/build-logs');
 
-      const loadBtn = superuserPage.getByTestId('load-build-button');
-      await expect(loadBtn).toBeDisabled();
+      await expect(
+        superuserPage.getByTestId('load-build-button'),
+      ).toBeDisabled();
+
+      await superuserPage.getByTestId('build-uuid-input').fill('some-uuid');
+      await expect(
+        superuserPage.getByTestId('load-build-button'),
+      ).toBeEnabled();
+
+      await superuserPage.getByTestId('build-uuid-input').fill('');
+      await expect(
+        superuserPage.getByTestId('load-build-button'),
+      ).toBeDisabled();
     });
 
     test('shows error for invalid build UUID', async ({superuserPage}) => {
@@ -35,59 +56,93 @@ test.describe(
 
       await superuserPage
         .getByTestId('build-uuid-input')
-        .fill('nonexistent-uuid');
+        .fill('invalid-uuid-does-not-exist');
       await superuserPage.getByTestId('load-build-button').click();
 
       await expect(
         superuserPage.getByTestId('build-error-alert'),
       ).toBeVisible();
-    });
-
-    test('shows error or build info when UUID is submitted', async ({
-      superuserPage,
-      superuserApi,
-    }) => {
-      const org = await superuserApi.organization('subldlogs');
-      const repo = await superuserApi.repository(org.name, 'bldlogs-repo');
-      const build = await superuserApi.build(org.name, repo.name);
-
-      await superuserPage.goto('/build-logs');
-
-      await superuserPage.getByTestId('build-uuid-input').fill(build.buildId);
-      await superuserPage.getByTestId('load-build-button').click();
-
-      // The API may return build info or an error depending on backend support
       await expect(
-        superuserPage
-          .getByText('Build Information')
-          .or(superuserPage.getByTestId('build-error-alert')),
+        superuserPage.getByText('Cannot find or load build'),
       ).toBeVisible();
     });
 
-    test('timestamps checkbox toggles log timestamps', async ({
-      superuserPage,
-    }) => {
+    test('timestamps checkbox defaults to checked', async ({superuserPage}) => {
       await superuserPage.goto('/build-logs');
 
       const checkbox = superuserPage.getByTestId('show-timestamps-checkbox');
-      await expect(checkbox).toBeVisible();
-
-      // Default is checked
       await expect(checkbox).toBeChecked();
 
-      // Uncheck
       await checkbox.click();
       await expect(checkbox).not.toBeChecked();
 
-      // Re-check
       await checkbox.click();
       await expect(checkbox).toBeChecked();
     });
 
-    test('non-superuser sees access denied', async ({authenticatedPage}) => {
-      await authenticatedPage.goto('/build-logs');
+    test('navigates to Build Logs via sidebar', async ({superuserPage}) => {
+      await superuserPage.goto('/organization');
 
-      await expect(authenticatedPage.getByText('Access Denied')).toBeVisible();
+      const superuserNavSection = superuserPage.getByRole('button', {
+        name: 'Superuser',
+      });
+      await superuserNavSection.click();
+
+      await superuserPage.getByTestId('build-logs-nav').click();
+
+      await expect(superuserPage).toHaveURL(/.*\/build-logs.*/);
+      await expect(
+        superuserPage.getByRole('heading', {name: 'Build Logs'}),
+      ).toBeVisible();
+      await expect(superuserPage.getByTestId('build-uuid-input')).toBeVisible();
+    });
+  },
+);
+
+test.describe(
+  'Superuser Build Logs - BUILD_SUPPORT disabled',
+  {tag: ['@superuser', '@feature:SUPERUSERS_FULL_ACCESS']},
+  () => {
+    test('shows warning when BUILD_SUPPORT is disabled', async ({
+      superuserPage,
+      quayConfig,
+    }) => {
+      test.skip(
+        quayConfig?.features?.BUILD_SUPPORT === true,
+        'BUILD_SUPPORT is enabled',
+      );
+
+      await superuserPage.goto('/build-logs');
+
+      await expect(
+        superuserPage.getByText('Build support not enabled'),
+      ).toBeVisible();
+      await expect(
+        superuserPage.getByText(
+          'BUILD_SUPPORT is not enabled in the registry configuration',
+        ),
+      ).toBeVisible();
+    });
+
+    test('hides Build Logs in sidebar when BUILD_SUPPORT is disabled', async ({
+      superuserPage,
+      quayConfig,
+    }) => {
+      test.skip(
+        quayConfig?.features?.BUILD_SUPPORT === true,
+        'BUILD_SUPPORT is enabled',
+      );
+
+      await superuserPage.goto('/organization');
+
+      const superuserNavSection = superuserPage.getByRole('button', {
+        name: 'Superuser',
+      });
+      await superuserNavSection.click();
+
+      await expect(
+        superuserPage.getByTestId('build-logs-nav'),
+      ).not.toBeVisible();
     });
   },
 );
