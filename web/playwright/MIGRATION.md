@@ -734,7 +734,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `fresh-login-oidc.cy.ts` | `auth/fresh-login-oidc.spec.ts` | @auth:OIDC, consolidated 4→2 tests, Cypress file deleted |
 | ✅ | `logout.cy.ts` | `auth/logout.spec.ts` | Consolidated 6→4 tests |
 | ✅ | `manage-team-members.cy.ts` | `organization/team-members.spec.ts` | @organization, 7 tests preserved |
-| ✅ | `marketplace.cy.ts` | `organization/marketplace.spec.ts` | @feature:BILLING, 3→3 tests (mocked: RH_MARKETPLACE config, marketplace/billing APIs), Cypress file deleted |
+| ✅ | `marketplace.cy.ts` | `organization/marketplace.spec.ts` | 3→3 tests, mocked (exception: marketplace/billing APIs require external backend), Cypress file deleted |
 | ✅ | `mirroring.cy.ts` | `repository/mirroring.spec.ts` | @feature:REPO_MIRROR, consolidated 18→5 tests |
 | ✅ | `notification-drawer.cy.ts` | `ui/notification-drawer.spec.ts` | @container |
 | ✅ | `oauth-callback.cy.ts` | `auth/oauth-error.spec.ts`, `auth/oauth-callback.spec.ts` | consolidated 14→8 tests, Cypress file deleted |

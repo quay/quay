@@ -105,16 +105,17 @@ const privateResponse = {
   privateCount: 0,
 };
 
-async function enableMarketplace(page: Page) {
+async function enableMarketplace(page: Page): Promise<void> {
   await page.route('**/config', async (route) => {
     const response = await route.fetch();
     const body = await response.json();
+    body.features.BILLING = true;
     body.features.RH_MARKETPLACE = true;
     await route.fulfill({response, body: JSON.stringify(body)});
   });
 }
 
-test.describe('Marketplace Subscriptions', {tag: ['@feature:BILLING']}, () => {
+test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
   test('lists user marketplace subscriptions', async ({authenticatedPage}) => {
     const username = TEST_USERS.user.username;
 
