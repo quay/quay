@@ -115,23 +115,24 @@ async function enableMarketplace(page: Page): Promise<void> {
   });
 }
 
+async function mockCommonEndpoints(page: Page): Promise<void> {
+  await page.route('**/api/v1/user/marketplace', async (route) => {
+    await route.fulfill({json: marketplaceUserResponse});
+  });
+  await page.route('**/api/v1/user/private', async (route) => {
+    await route.fulfill({json: privateResponse});
+  });
+  await page.route('**/api/v1/user/plan', async (route) => {
+    await route.fulfill({json: plansResponse});
+  });
+}
+
 test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
   test('lists user marketplace subscriptions', async ({authenticatedPage}) => {
     const username = TEST_USERS.user.username;
 
     await enableMarketplace(authenticatedPage);
-    await authenticatedPage.route(
-      '**/api/v1/user/marketplace',
-      async (route) => {
-        await route.fulfill({json: marketplaceUserResponse});
-      },
-    );
-    await authenticatedPage.route('**/api/v1/user/private', async (route) => {
-      await route.fulfill({json: privateResponse});
-    });
-    await authenticatedPage.route('**/api/v1/user/plan', async (route) => {
-      await route.fulfill({json: plansResponse});
-    });
+    await mockCommonEndpoints(authenticatedPage);
 
     await authenticatedPage.goto(`/organization/${username}?tab=Settings`);
     await authenticatedPage.getByText('Billing information').click();
@@ -154,25 +155,14 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
     const org = await api.organization('mktplace');
 
     await enableMarketplace(authenticatedPage);
+    await mockCommonEndpoints(authenticatedPage);
     await authenticatedPage.route('**/api/v1/plans', async (route) => {
       await route.fulfill({json: []});
-    });
-    await authenticatedPage.route('**/api/v1/user/private', async (route) => {
-      await route.fulfill({json: privateResponse});
-    });
-    await authenticatedPage.route('**/api/v1/user/plan', async (route) => {
-      await route.fulfill({json: plansResponse});
     });
     await authenticatedPage.route(
       `**/api/v1/organization/${org.name}/plan`,
       async (route) => {
         await route.fulfill({json: plansResponse});
-      },
-    );
-    await authenticatedPage.route(
-      '**/api/v1/user/marketplace',
-      async (route) => {
-        await route.fulfill({json: marketplaceUserResponse});
       },
     );
     await authenticatedPage.route(
@@ -202,10 +192,17 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
       .locator('#subscription-select-list')
       .getByText('2x MW02701')
       .click();
+    const attachResponse = authenticatedPage.waitForResponse(
+      (resp) =>
+        resp.url().includes(`/organization/${org.name}/marketplace`) &&
+        resp.request().method() === 'POST' &&
+        !resp.url().includes('batchremove'),
+    );
     await authenticatedPage.locator('#confirm-subscription-select').click();
+    await attachResponse;
     await expect(
       authenticatedPage.getByText('Successfully attached subscription'),
-    ).toBeVisible();
+    ).toBeVisible({timeout: 10000});
 
     // Remove subscription
     await authenticatedPage.locator('#remove-subscription-button').click();
@@ -214,10 +211,16 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
       .locator('#subscription-select-list')
       .getByText('2x MW02701')
       .click();
+    const removeResponse = authenticatedPage.waitForResponse(
+      (resp) =>
+        resp.url().includes(`/marketplace/batchremove`) &&
+        resp.request().method() === 'POST',
+    );
     await authenticatedPage.locator('#confirm-subscription-select').click();
+    await removeResponse;
     await expect(
       authenticatedPage.getByText('Successfully removed subscription'),
-    ).toBeVisible();
+    ).toBeVisible({timeout: 10000});
   });
 
   test('shows unlimited private repos for unlimited subscription SKU', async ({
@@ -227,11 +230,9 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
     const org = await api.organization('mktunlim');
 
     await enableMarketplace(authenticatedPage);
+    await mockCommonEndpoints(authenticatedPage);
     await authenticatedPage.route('**/api/v1/plans', async (route) => {
       await route.fulfill({json: []});
-    });
-    await authenticatedPage.route('**/api/v1/user/private', async (route) => {
-      await route.fulfill({json: privateResponse});
     });
     await authenticatedPage.route(
       `**/api/v1/organization/${org.name}/private`,
@@ -239,19 +240,10 @@ test.describe('Marketplace Subscriptions', {tag: ['@marketplace']}, () => {
         await route.fulfill({json: privateResponse});
       },
     );
-    await authenticatedPage.route('**/api/v1/user/plan', async (route) => {
-      await route.fulfill({json: plansResponse});
-    });
     await authenticatedPage.route(
       `**/api/v1/organization/${org.name}/plan`,
       async (route) => {
         await route.fulfill({json: plansResponse});
-      },
-    );
-    await authenticatedPage.route(
-      '**/api/v1/user/marketplace',
-      async (route) => {
-        await route.fulfill({json: marketplaceUserResponse});
       },
     );
     await authenticatedPage.route(
