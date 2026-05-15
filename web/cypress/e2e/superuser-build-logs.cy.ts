@@ -334,5 +334,4 @@ describe('Superuser Build Logs', () => {
       cy.contains('This site is temporarily unavailable').should('not.exist');
     });
   });
-
 });
