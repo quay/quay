@@ -1673,6 +1673,12 @@ class UploadedBlob(BaseModel):
     expires_at = DateTimeField(index=True)
 
 
+class DigestAlias(BaseModel):
+    digest = CharField(max_length=512, unique=True, index=True)
+    image_storage = ForeignKeyField(ImageStorage, backref="digest_aliases")
+    created_at = DateTimeField(default=datetime.utcnow)
+
+
 class BlobUpload(BaseModel):
     repository = ForeignKeyField(Repository)
     repository_id: int
@@ -1687,6 +1693,8 @@ class BlobUpload(BaseModel):
     created = DateTimeField(default=datetime.now, index=True)
     piece_sha_state = ResumableSHA1Field(null=True)
     piece_hashes = Base64BinaryField(null=True)
+    client_hash_state = TextField(null=True)
+    client_hash_algorithm = CharField(max_length=32, null=True)
 
     class Meta:
         database = db
