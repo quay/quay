@@ -67,6 +67,11 @@ inputs:
     required: false
     default: 'true'
 
+  with-georep:
+    description: 'Start Garage S3 and configure geo-replication with two storage regions'
+    required: false
+    default: 'false'
+
 outputs:
   quay-url:
     description: 'URL where Quay is accessible'
@@ -192,11 +197,60 @@ runs:
         rm -f "${INLINE_CONFIG}"
         echo "Inline config merged successfully"
 
+    - name: Configure geo-replication storage
+      if: inputs.with-georep == 'true'
+      shell: bash
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        GEOREP_CONFIG="local-dev/garage/georep-config.yaml"
+
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${GEOREP_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+
+        # Remove the default LocalStorage entry — the replication worker
+        # refuses to start when any backend is LocalStorage.
+        python3 -c "
+        import yaml, sys
+        with open('${BASE_CONFIG}') as f:
+            cfg = yaml.safe_load(f)
+        cfg.get('DISTRIBUTED_STORAGE_CONFIG', {}).pop('default', None)
+        with open('${BASE_CONFIG}', 'w') as f:
+            yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
+        "
+        echo "Geo-replication storage configuration merged (LocalStorage removed)"
+
     - name: Start database services
       shell: bash
       run: |
         docker compose up -d redis quay-db
         docker exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+
+    - name: Start Garage S3
+      if: inputs.with-georep == 'true'
+      shell: bash
+      run: |
+        # HACK: Quay generates S3 pre-signed URLs using the configured hostname
+        # ("garage"). Podman/docker on the runner follows these 302 redirects and
+        # needs to resolve "garage" to reach the Garage container's exposed port.
+        # Adding it to /etc/hosts is the simplest way to bridge container DNS and
+        # host DNS without coupling Garage's lifecycle to Quay's network namespace.
+        echo "127.0.0.1 garage" | sudo tee -a /etc/hosts
+
+        docker compose up -d garage
+        echo "Waiting for Garage to be healthy..."
+        for i in $(seq 1 30); do
+          STATUS=$(docker inspect --format='{{.State.Health.Status}}' quay-garage 2>/dev/null || echo "starting")
+          if [ "${STATUS}" = "healthy" ]; then
+            echo "Garage is healthy!"
+            break
+          fi
+          [ "$i" -eq 30 ] && { echo "::error::Garage failed to become healthy"; docker logs quay-garage 2>&1 | tail -50; exit 1; }
+          sleep 2
+        done
+        GARAGE_CONTAINER=quay-garage CONTAINER_RUNTIME=docker bash local-dev/garage/init-garage.sh
+        echo "Garage S3 initialized with geo-replication buckets"
 
     - name: Start Keycloak
       if: inputs.with-keycloak == 'true'
