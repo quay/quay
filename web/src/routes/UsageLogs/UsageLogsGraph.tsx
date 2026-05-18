@@ -26,6 +26,7 @@ interface UsageLogsGraphProps {
   enabled?: boolean;
 }
 
+/** Renders aggregate usage log data as a bar chart with a scrollable legend below the SVG. */
 export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   // D3 Category20 colors (same as Angular)
   const d3Category20Colors = [
