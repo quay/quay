@@ -11,6 +11,7 @@ from util.security.jwtutil import (
     InvalidTokenError,
     decode,
     exp_max_s_option,
+    is_jwt,
     jwk_dict_to_public_key,
 )
 
@@ -220,6 +221,33 @@ def test_decode_jwt_invalid_algorithm(private_key_pem, public_key, algorithm):
             leeway=60,
         )
     assert ite.match("are not whitelisted")
+
+
+@pytest.mark.parametrize(
+    "typ, expected",
+    [
+        pytest.param("JWT", True, id="typ=JWT"),
+        pytest.param("jwt", True, id="typ=jwt"),
+        pytest.param("at+jwt", True, id="typ=at+jwt"),
+        pytest.param("AT+JWT", True, id="typ=AT+JWT"),
+        pytest.param("at+Jwt", True, id="typ=at+Jwt (mixed case)"),
+        pytest.param("", False, id="typ=empty"),
+        pytest.param("JWS", False, id="typ=JWS"),
+        pytest.param("other", False, id="typ=other"),
+    ],
+)
+def test_is_jwt(private_key_pem, typ, expected):
+    token = jwt.encode(
+        _token_data("aud", "subject", "someissuer"),
+        private_key_pem,
+        "RS256",
+        headers={"typ": typ},
+    )
+    assert is_jwt(token) == expected
+
+
+def test_is_jwt_invalid_token():
+    assert is_jwt("not-a-valid-token") is False
 
 
 @pytest.mark.parametrize("algorithm", [pytest.param("RS256"), pytest.param("RS384")])
