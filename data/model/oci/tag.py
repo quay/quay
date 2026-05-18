@@ -16,8 +16,6 @@ from data.database import (
     Tag,
     TagPullStatistics,
     User,
-    compute_advisory_lock_id,
-    db_advisory_xact_lock,
     db_random_func,
     db_regex_search,
     db_transaction,
@@ -463,34 +461,30 @@ def retarget_tag(
     now_ms = now_ms or get_epoch_timestamp_ms()
 
     with db_transaction():
-        # Acquire an advisory lock keyed on the repository ID to serialize
-        # tag mutations for this repo. Unlike SELECT FOR UPDATE on the
-        # Repository row, advisory locks don't block unrelated reads and
-        # avoid lock-queue pileups under heavy push traffic.
-        lock_id = compute_advisory_lock_id("retarget_tag", manifest.repository_id)
-        db_advisory_xact_lock(lock_id)
-
-        try:
-            repo = Repository.select().where(Repository.id == manifest.repository_id).get()
-        except Repository.DoesNotExist:
-            if raise_on_error:
-                raise RetargetTagException("Repository no longer exists")
-            return None
-
-        # Now safe to read/modify tags - we hold the advisory lock
+        # Lookup an existing tag in the repository with the same name and, if present, mark it
+        # as expired.
         existing_tag = get_tag(manifest.repository_id, tag_name)
         if existing_tag is not None:
+            # Check if the existing tag is immutable
             if features.IMMUTABLE_TAGS and existing_tag.immutable:
                 if raise_on_error:
                     raise ImmutableTagException(tag_name, "overwrite", manifest.repository_id)
                 return None
 
-            delete_tag_notifications_for_tag(existing_tag)
-            Tag.update(lifetime_end_ms=now_ms).where(Tag.id == existing_tag.id).execute()
+            _, okay = set_tag_end_ms(existing_tag, now_ms)
+
+            # TODO: should we retry here and/or use a for-update?
+            if not okay:
+                return None
 
         # Check if tag should be immutable based on manifest label or policies
         immutable = False
         immutable_from_policy = False
+        repo = (
+            Repository.select(Repository.namespace_user)
+            .where(Repository.id == manifest.repository_id)
+            .get()
+        )
         if features.IMMUTABLE_TAGS:
             immutable_from_policy = immutability.evaluate_immutability_policies(
                 manifest.repository_id, repo.namespace_user_id, tag_name
