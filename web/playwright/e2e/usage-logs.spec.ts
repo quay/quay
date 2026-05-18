@@ -291,6 +291,17 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
       const today = new Date().toISOString().slice(0, 10) + 'T12:00:00Z';
 
       await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/logs*`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({logs: [], is_truncated: false}),
+          });
+        },
+      );
+
+      await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/aggregatelogs*`,
         async (route) => {
           await route.fulfill({
@@ -315,6 +326,17 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
       // Legend must be in the dedicated scrollable container, not inside the SVG
       const legendContainer = chart.locator('.usage-logs-legend-container');
       await expect(legendContainer).toBeVisible();
+
+      // Verify legend items from the mocked data appear inside the container
+      await expect(
+        legendContainer.getByText('Create Repository'),
+      ).toBeVisible();
+      await expect(
+        legendContainer.getByText('Delete repository'),
+      ).toBeVisible();
+      await expect(
+        legendContainer.getByText('Create Robot Account'),
+      ).toBeVisible();
 
       // The chart SVG must still be present at full height
       await expect(chart.locator('svg').first()).toBeVisible();
