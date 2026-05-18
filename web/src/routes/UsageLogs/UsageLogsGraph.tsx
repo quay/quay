@@ -163,25 +163,12 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
               x: [new Date(props.starttime), new Date(props.endtime)],
               y: [0, maxRange],
             }}
-            legendAllowWrap
-            legendComponent={
-              <ChartLegend
-                data={getLegendData()}
-                itemsPerRow={6}
-                style={{
-                  labels: {fontSize: 11},
-                }}
-              />
-            }
-            // @ts-expect-error PatternFly's type definitions are incomplete, but "top" works in practice
-            legendPosition="top"
-            legendOrientation="horizontal"
             name="usage-logs-graph"
             padding={{
               bottom: 50,
               left: 80,
               right: 50,
-              top: 120, // More space for legend above chart
+              top: 50,
             }}
             domainPadding={{x: 5 * Object.keys(logData).length}}
             height={500}
@@ -206,6 +193,15 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
               ))}
             </ChartGroup>
           </Chart>
+          <div className="usage-logs-legend-container">
+            <ChartLegend
+              data={getLegendData()}
+              itemsPerRow={6}
+              orientation="horizontal"
+              style={{labels: {fontSize: 11}}}
+              width={1200}
+            />
+          </div>
         </FlexItem>
       </Flex>
     );
