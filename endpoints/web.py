@@ -745,13 +745,16 @@ def request_authorization_code():
     if not oauth_app:
         abort(404)
 
-    # check if user is org admin, if not check for user_assignment_id, then check that user belongs that assignment, if none exit with 401
-    if (
-        not is_org_admin(current_user.db_user(), oauth_app.organization)
-        and get_token_assignment(assignment_uuid, current_user.db_user(), oauth_app.organization)
-        is None
-    ):
-        abort(403)
+    # If PUBLIC_OAUTH_APPS is disabled, require org admin or a pre-assigned token.
+    if not features.PUBLIC_OAUTH_APPS:
+        if (
+            not is_org_admin(current_user.db_user(), oauth_app.organization)
+            and get_token_assignment(
+                assignment_uuid, current_user.db_user(), oauth_app.organization
+            )
+            is None
+        ):
+            abort(403)
 
     if not provider.validate_has_scopes(client_id, current_user.db_user().username, scope):
         if not provider.validate_redirect_uri(client_id, redirect_uri):
