@@ -1,0 +1,58 @@
+name: PR Approval Policy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  approval-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check approval count
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const prAuthor = context.payload.pull_request.user.login;
+            const prNumber = context.payload.pull_request.number;
+            const botUsers = ['quay-devel'];
+            const requiredApprovals = botUsers.includes(prAuthor) ? 2 : 1;
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            const latestReviewByUser = reviews
+              .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
+              .reduce((acc, review) => {
+                if (!acc[review.user.login]) {
+                  acc[review.user.login] = review;
+                }
+                return acc;
+              }, {});
+
+            const approvalCount = Object.values(latestReviewByUser)
+              .filter(r => r.state === 'APPROVED')
+              .filter(r => r.user.login !== prAuthor)
+              .length;
+
+            const passed = approvalCount >= requiredApprovals;
+
+            core.info(`PR #${prNumber} by ${prAuthor}`);
+            core.info(`Approvals: ${approvalCount}/${requiredApprovals}`);
+
+            if (!passed) {
+              const needed = requiredApprovals - approvalCount;
+              core.setFailed(
+                botUsers.includes(prAuthor)
+                  ? `Bot PR requires ${requiredApprovals} approvals (${approvalCount} received, ${needed} more needed)`
+                  : `PR requires ${requiredApprovals} approval (${approvalCount} received, ${needed} more needed)`
+              );
+            }
