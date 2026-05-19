@@ -6,6 +6,7 @@ from urllib.parse import unquote, urlparse
 
 from flask import url_for
 
+import features
 from auth import scopes
 from data.database import (
     OAuthAccessToken,
@@ -239,7 +240,12 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         # Check for a valid client ID.
         oauth_application = self.get_application_for_client_id(client_id)
 
-        if oauth_application is None or not self.is_org_admin_or_has_token_assignment(
+        if oauth_application is None:
+            err = "unauthorized_client"
+            return self._make_redirect_error_response(redirect_uri, err)
+
+        # If PUBLIC_OAUTH_APPS is disabled, require org admin or token assignment.
+        if not features.PUBLIC_OAUTH_APPS and not self.is_org_admin_or_has_token_assignment(
             oauth_application.organization, assignment_uuid
         ):
             err = "unauthorized_client"
