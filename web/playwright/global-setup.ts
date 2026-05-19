@@ -173,19 +173,14 @@ async function globalSetup(config: FullConfig) {
           }
         }
 
-        // Clear user prompts (enter_name, enter_company) so tests aren't
-        // redirected to /updateuser when USER_METADATA is enabled.
-        await api.signIn(user.username, user.password);
-        await api.clearUserPrompts();
-
-        // Verify email if mailing is enabled and Mailpit is available
+        // Verify email before signing in — sign-in returns 403 when
+        // needsEmailVerification is true.
         if (mailpitAvailable) {
           console.log(
             `[Global Setup] Verifying email for ${role} user: ${user.email}`,
           );
           const confirmLink = await mailpit.waitForConfirmationLink(user.email);
           if (confirmLink) {
-            // Email confirmation requires visiting a link — need a browser
             if (!browser) {
               browser = await chromium.launch();
             }
@@ -205,6 +200,11 @@ async function globalSetup(config: FullConfig) {
             );
           }
         }
+
+        // Clear user prompts (enter_name, enter_company) so tests aren't
+        // redirected to /updateuser when USER_METADATA is enabled.
+        await api.signIn(user.username, user.password);
+        await api.clearUserPrompts();
       } catch (error) {
         console.error(`[Global Setup] Error creating ${role} user: ${error}`);
         failures.push(`${role} (${user.username}): ${error}`);

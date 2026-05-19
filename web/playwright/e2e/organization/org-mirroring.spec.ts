@@ -15,7 +15,7 @@
  */
 
 import {test, expect} from '../../fixtures';
-import {Page} from '@playwright/test';
+import type {Page} from '@playwright/test';
 import {API_URL} from '../../utils/config';
 
 async function fillRequiredFields(
@@ -27,7 +27,7 @@ async function fillRequiredFields(
     namespace?: string;
     syncInterval?: string;
   } = {},
-) {
+): Promise<void> {
   const {
     registryType = 'Quay',
     registryUrl = 'https://quay.io',
@@ -90,7 +90,7 @@ test.describe(
     test('shows NORMAL state message when no config exists', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrnorm');
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
@@ -105,7 +105,7 @@ test.describe(
     test('shows mirroring tab only for org admins when feature is enabled', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrvis');
 
       await authenticatedPage.goto(`/organization/${org.name}`);
@@ -119,7 +119,7 @@ test.describe(
     test('settings tab shows organization state with mirror option', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrsett');
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
@@ -139,7 +139,7 @@ test.describe(
     test('navigates from settings mirror state to mirroring tab', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrsnav');
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
@@ -168,7 +168,7 @@ test.describe(
     test('creates new mirror configuration with form validation', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcrt');
       const robot = await api.robot(org.name, 'mirrorbot');
 
@@ -220,7 +220,7 @@ test.describe(
     test('loads and manages existing mirror configuration', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrexst');
       const robot = await api.robot(org.name, 'existbot');
 
@@ -290,7 +290,10 @@ test.describe(
       expect(updatedConfig?.external_namespace).toBe('newnamespace');
     });
 
-    test('triggers sync-now operation', async ({authenticatedPage, api}) => {
+    test('triggers sync-now operation', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
       const org = await api.organization('orgmirrsync');
       const robot = await api.robot(org.name, 'syncbot');
 
@@ -331,7 +334,7 @@ test.describe(
     test('verify connection succeeds with valid config (no credentials)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrverf');
       const robot = await api.robot(org.name, 'verfbot');
 
@@ -364,7 +367,7 @@ test.describe(
     test('verify connection fails with invalid credentials', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrvfal');
       const robot = await api.robot(org.name, 'vfalbot');
 
@@ -399,7 +402,7 @@ test.describe(
     test('deletes mirror configuration with confirmation', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrdel');
       const robot = await api.robot(org.name, 'delbot');
 
@@ -452,14 +455,14 @@ test.describe(
     test('displays error on mirror configuration failure', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrerr');
       const robot = await api.robot(org.name, 'errbot');
 
       // Mock error response for POST to org mirror endpoint
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
-        async (route) => {
+        async (route): Promise<void> => {
           if (route.request().method() === 'POST') {
             await route.fulfill({
               status: 400,
@@ -502,7 +505,7 @@ test.describe(
     test('shows discovered repositories table when config exists', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrrepo');
       const robot = await api.robot(org.name, 'repobot');
 
@@ -534,7 +537,7 @@ test.describe(
     test('toggles enabled checkbox and updates config', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrtgl');
       const robot = await api.robot(org.name, 'tglbot');
 
@@ -583,7 +586,7 @@ test.describe(
     test('cancel sync button is disabled when not syncing', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcanc');
       const robot = await api.robot(org.name, 'cancbot');
 
@@ -615,7 +618,7 @@ test.describe(
     test('cancel sync flow with confirmation modal (PROJQUAY-11175)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcncl');
       const robot = await api.robot(org.name, 'cnclbot');
 
@@ -638,7 +641,7 @@ test.describe(
       // Mock the GET response to show SYNCING repo counts so the cancel button is enabled
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
-        async (route) => {
+        async (route): Promise<void> => {
           if (route.request().method() === 'GET') {
             const response = await route.fetch();
             const body = await response.json();
@@ -703,7 +706,7 @@ test.describe(
     test('cancel sync modal can be dismissed without cancelling', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcndm');
       const robot = await api.robot(org.name, 'cndmbot');
 
@@ -725,7 +728,7 @@ test.describe(
       // Mock to show SYNCING repos so cancel button is enabled
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
-        async (route) => {
+        async (route): Promise<void> => {
           if (route.request().method() === 'GET') {
             const response = await route.fetch();
             const body = await response.json();
@@ -783,7 +786,7 @@ test.describe(
     test('cancel sync button disabled after status is CANCEL (PROJQUAY-11175)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrpstc');
       const robot = await api.robot(org.name, 'pstcbot');
 
@@ -806,7 +809,7 @@ test.describe(
       // Mock the GET response to show CANCEL status counts (no SYNCING/SYNC_NOW)
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
-        async (route) => {
+        async (route): Promise<void> => {
           if (route.request().method() === 'GET') {
             const response = await route.fetch();
             const body = await response.json();
@@ -850,7 +853,7 @@ test.describe(
     test('cancel sync modal indicates future syncs continue (PROJQUAY-11414)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcfsc');
       const robot = await api.robot(org.name, 'cfscbot');
 
@@ -872,7 +875,7 @@ test.describe(
       // Mock SYNCING repos so cancel button is enabled
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
-        async (route) => {
+        async (route): Promise<void> => {
           if (route.request().method() === 'GET') {
             const response = await route.fetch();
             const body = await response.json();
@@ -920,7 +923,7 @@ test.describe(
     test('cancel sync preserves sync_start_date for future syncs (PROJQUAY-11414)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrpssd');
       const robot = await api.robot(org.name, 'pssdbot');
 
@@ -966,7 +969,7 @@ test.describe(
     test('repository filters are preserved on save', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrfilt');
       const robot = await api.robot(org.name, 'filtbot');
 
@@ -1007,7 +1010,7 @@ test.describe(
     test('creates config with Harbor registry type', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrharb');
       const robot = await api.robot(org.name, 'harbbot');
 
@@ -1044,7 +1047,7 @@ test.describe(
     test('changes visibility from private to public and saves', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrpub');
       const robot = await api.robot(org.name, 'pubbot');
 
@@ -1092,7 +1095,7 @@ test.describe(
     test('saves advanced settings (TLS and proxy)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirradv');
       const robot = await api.robot(org.name, 'advbot');
 
@@ -1149,7 +1152,7 @@ test.describe(
     test('saves credentials (username and password)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcred');
       const robot = await api.robot(org.name, 'credbot');
 
@@ -1187,7 +1190,7 @@ test.describe(
     test('clears credentials when username is removed', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrclrc');
       const robot = await api.robot(org.name, 'clrcbot');
 
@@ -1233,7 +1236,10 @@ test.describe(
       expect(afterConfig?.external_registry_username).toBeNull();
     });
 
-    test('validates skopeo timeout range', async ({authenticatedPage, api}) => {
+    test('validates skopeo timeout range', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
       const org = await api.organization('orgmirrskop');
       const robot = await api.robot(org.name, 'skopbot');
 
@@ -1286,7 +1292,7 @@ test.describe(
     test('validates sync interval is a positive number', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrival');
       const robot = await api.robot(org.name, 'ivalbot');
 
@@ -1321,7 +1327,7 @@ test.describe(
     test('cannot enable org mirror when immutability policies exist', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrimm');
       await api.orgImmutabilityPolicy(org.name, 'v.*', true);
 
@@ -1336,7 +1342,7 @@ test.describe(
     test('displays repo sync status counts in State field', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcnts');
       const robot = await api.robot(org.name, 'cntsbot');
 
@@ -1363,7 +1369,7 @@ test.describe(
       // Now intercept with a deterministic mock (no route.fetch race)
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
-        async (route) => {
+        async (route): Promise<void> => {
           if (route.request().method() === 'GET') {
             await route.fulfill({
               status: 200,
@@ -1419,7 +1425,7 @@ test.describe(
     test('displays "No repositories" when all status counts are zero', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrnocnt');
       const robot = await api.robot(org.name, 'nocntbot');
 
@@ -1439,7 +1445,7 @@ test.describe(
       // Mock the config GET response to return all-zero repo_sync_status_counts
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
-        async (route) => {
+        async (route): Promise<void> => {
           if (route.request().method() === 'GET') {
             const response = await route.fetch();
             const body = await response.json();
@@ -1478,7 +1484,7 @@ test.describe(
     test('filters repos by status using dropdown', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrfltst');
       const robot = await api.robot(org.name, 'fltstbot');
 
@@ -1498,7 +1504,7 @@ test.describe(
       // Mock repos list endpoint to return different results based on status filter
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror/repositories*`,
-        async (route) => {
+        async (route): Promise<void> => {
           const url = new URL(route.request().url());
           const status = url.searchParams.get('status');
 
@@ -1591,7 +1597,7 @@ test.describe(
     test('filter reset to "All statuses" shows all repos', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrfrst');
       const robot = await api.robot(org.name, 'frstbot');
 
@@ -1611,7 +1617,7 @@ test.describe(
       // Mock repos list endpoint
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror/repositories*`,
-        async (route) => {
+        async (route): Promise<void> => {
           const url = new URL(route.request().url());
           const status = url.searchParams.get('status');
 
@@ -1679,7 +1685,7 @@ test.describe(
     test('shows empty filter message when no repos match status', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrempt');
       const robot = await api.robot(org.name, 'emptbot');
 
@@ -1699,7 +1705,7 @@ test.describe(
       // Mock repos endpoint — return repos only when unfiltered, empty for CANCEL
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror/repositories*`,
-        async (route) => {
+        async (route): Promise<void> => {
           const url = new URL(route.request().url());
           const status = url.searchParams.get('status');
 
@@ -1756,7 +1762,7 @@ test.describe(
     test('enables org mirror when only MARKED_FOR_DELETION repos exist (PROJQUAY-10982)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrmfd');
       const robot = await api.robot(org.name, 'delrbot');
       const repo = await api.repository(org.name, 'todelete');
@@ -1794,7 +1800,7 @@ test.describe(
       authenticatedPage,
       authenticatedRequest,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirr11382');
       const robot = await api.robot(org.name, 'rstbot');
       const repo = await api.repository(org.name, 'mirroredrepo');
@@ -1860,7 +1866,7 @@ test.describe(
     test('cancel delete modal keeps config intact', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrkeep');
       const robot = await api.robot(org.name, 'keepbot');
 

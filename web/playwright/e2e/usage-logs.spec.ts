@@ -10,7 +10,11 @@ interface MockLog {
   ip?: string;
 }
 
-async function mockRepoLogsApi(page: Page, repo: CreatedRepo, logs: MockLog[]) {
+async function mockRepoLogsApi(
+  page: Page,
+  repo: CreatedRepo,
+  logs: MockLog[],
+): Promise<void> {
   const logsWithDefaults = logs.map((log) => ({
     datetime: new Date().toISOString(),
     performer: {name: 'mirror-robot'},
@@ -19,7 +23,7 @@ async function mockRepoLogsApi(page: Page, repo: CreatedRepo, logs: MockLog[]) {
   }));
   await page.route(
     `**/api/v1/repository/${repo.namespace}/${repo.name}/logs*`,
-    async (route) => {
+    async (route): Promise<void> => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -29,7 +33,7 @@ async function mockRepoLogsApi(page: Page, repo: CreatedRepo, logs: MockLog[]) {
   );
   await page.route(
     `**/api/v1/repository/${repo.namespace}/${repo.name}/aggregatelogs*`,
-    async (route) => {
+    async (route): Promise<void> => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -171,7 +175,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     // Mock logs API to return an org_mirror_sync_failed log with stderr
     await authenticatedPage.route(
       `**/api/v1/organization/${org.name}/logs*`,
-      async (route) => {
+      async (route): Promise<void> => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -196,7 +200,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     );
     await authenticatedPage.route(
       `**/api/v1/organization/${org.name}/aggregatelogs*`,
-      async (route) => {
+      async (route): Promise<void> => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -460,7 +464,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     // Mock 200 response with search_unavailable flag
     await authenticatedPage.route(
       '**/api/v1/organization/*/logs*',
-      async (route) => {
+      async (route): Promise<void> => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -475,7 +479,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     );
     await authenticatedPage.route(
       '**/api/v1/organization/*/aggregatelogs*',
-      async (route) => {
+      async (route): Promise<void> => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -506,7 +510,8 @@ test.describe(
   {tag: ['@logs', '@PROJQUAY-10605']},
   () => {
     // Escape special regex characters in generated names (e.g. dots, plus signs)
-    const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapeRegex = (s: string): string =>
+      s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     test(
       'superuser view shows only repo name in Repository column (not namespace/repo)',
