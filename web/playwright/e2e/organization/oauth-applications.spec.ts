@@ -1,4 +1,5 @@
 import {test, expect} from '../../fixtures';
+import {API_URL} from '../../utils/config';
 
 test.describe('OAuth Applications', {tag: ['@organization']}, () => {
   test('OAuth app lifecycle: create, view, update, delete', async ({
@@ -179,5 +180,33 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     if (secretBefore) {
       expect(updatedApp?.client_secret).not.toBe(secretBefore);
     }
+  });
+
+  test('non-admin user can authorize an OAuth app (PUBLIC_OAUTH_APPS)', async ({
+    authenticatedPage: page,
+    superuserApi,
+  }) => {
+    // Admin creates org + OAuth app — testuser is NOT an admin of this org
+    const org = await superuserApi.organization('public-oauth');
+    const app = await superuserApi.oauthApplication(org.name, 'public-app');
+    const redirectUri = `${API_URL}/oauth/localapp`;
+
+    // Navigate to the OAuth authorize page as the non-admin user
+    await page.goto(
+      `/oauth/authorize?client_id=${app.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo:read&response_type=token`,
+    );
+
+    // Should see the consent page with the authorize button
+    await expect(
+      page.getByRole('button', {name: 'Authorize Application'}),
+    ).toBeVisible();
+
+    // Click "Authorize Application" to grant access
+    await page.getByRole('button', {name: 'Authorize Application'}).click();
+
+    // Should redirect to the local OAuth handler with the token in the URL fragment
+    await page.waitForURL(/\/oauth\/localapp/);
+    const url = page.url();
+    expect(url).toContain('access_token=');
   });
 });
