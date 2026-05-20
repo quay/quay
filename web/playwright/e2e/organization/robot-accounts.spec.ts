@@ -707,9 +707,7 @@ test.describe(
       await authenticatedPage.goto(
         `/organization/${org.name}?tab=Repositories`,
       );
-      const repoSearch = authenticatedPage.locator(
-        '#repositorylist-search-input',
-      );
+      const repoSearch = authenticatedPage.getByPlaceholder('Search by name');
       await expect(repoSearch).toBeVisible();
       await repoSearch.fill(repo1.name);
 
@@ -718,10 +716,11 @@ test.describe(
         authenticatedPage.getByRole('link', {name: repo1.name}),
       ).toBeVisible();
 
-      // Step 2: Switch to Robot Accounts tab and open wizard
-      await authenticatedPage.goto(
-        `/organization/${org.name}?tab=Robotaccounts`,
-      );
+      // Step 2: Switch to Robot Accounts tab via tab click (not goto, to
+      // preserve in-memory search state on the Repositories tab)
+      await authenticatedPage
+        .getByRole('tab', {name: 'Robot accounts'})
+        .click();
       await authenticatedPage
         .getByRole('button', {name: 'Create robot account'})
         .click();
@@ -747,48 +746,37 @@ test.describe(
       await expect(wizardRepoSearch).toBeVisible();
       await expect(wizardRepoSearch).toHaveValue('');
 
-      // Both repos should be visible (no filter applied)
-      await expect(
-        authenticatedPage.getByRole('cell', {name: repo1.name}),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByRole('cell', {name: repo2.name}),
-      ).toBeVisible();
+      // Both repos should be visible (no filter applied).
+      // PatternFly tables may use role="gridcell", so match by text within
+      // the wizard modal instead of relying on the cell role.
+      const modal = authenticatedPage.locator('#create-robot-account-modal');
+      await expect(modal.getByText(repo1.name)).toBeVisible();
+      await expect(modal.getByText(repo2.name)).toBeVisible();
 
       // Type in the wizard's repo search and verify it filters
       await wizardRepoSearch.fill(repo2.name);
-      await expect(
-        authenticatedPage.getByRole('cell', {name: repo2.name}),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByRole('cell', {name: repo1.name}),
-      ).not.toBeVisible();
+      await expect(modal.getByText(repo2.name)).toBeVisible();
+      await expect(modal.getByText(repo1.name)).not.toBeVisible();
 
       // Navigate to "Add to team" step
       await wizardNav.getByText('Add to team (optional)').click();
 
-      // Verify wizard team search is empty
-      const wizardTeamSearch = authenticatedPage.getByTestId(
-        'robot-wizard-team-search',
-      );
+      // Verify wizard team search is empty (FilterWithDropdown uses a
+      // different component, so match by placeholder instead of testId)
+      const wizardTeamSearch = modal.getByPlaceholder('Search, create team');
       await expect(wizardTeamSearch).toBeVisible();
       await expect(wizardTeamSearch).toHaveValue('');
 
       // Team should be visible (no filter applied)
-      await expect(
-        authenticatedPage.getByRole('cell', {name: team.name}),
-      ).toBeVisible();
+      await expect(modal.getByText(team.name)).toBeVisible();
 
       // Close the wizard
       await authenticatedPage.getByTestId('create-robot-cancel').click();
 
-      // Step 3: Go back to Repositories tab and verify search is unchanged
-      await authenticatedPage.goto(
-        `/organization/${org.name}?tab=Repositories`,
-      );
-      const repoSearchAfter = authenticatedPage.locator(
-        '#repositorylist-search-input',
-      );
+      // Step 3: Go back to Repositories tab via tab click (preserves state)
+      await authenticatedPage.getByRole('tab', {name: 'Repositories'}).click();
+      const repoSearchAfter =
+        authenticatedPage.getByPlaceholder('Search by name');
       await expect(repoSearchAfter).toBeVisible();
 
       // The repo list search should still show the original search text

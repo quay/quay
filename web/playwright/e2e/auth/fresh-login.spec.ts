@@ -23,7 +23,7 @@ test.describe(
 
       await page.goto('/usage-logs');
 
-      await expect(page.getByText('Please Verify')).toBeVisible();
+      await expect(page.getByText('Please Verify').first()).toBeVisible();
       await expect(page.locator('#fresh-password')).toBeVisible();
       await expect(
         page.getByText(/verify your password to perform this sensitive/),
@@ -50,10 +50,10 @@ test.describe(
       );
 
       await page.goto('/usage-logs');
-      await expect(page.getByText('Please Verify')).toBeVisible();
+      await expect(page.getByText('Please Verify').first()).toBeVisible();
 
       await page.getByRole('button', {name: 'Cancel'}).click();
-      await expect(page.getByText('Please Verify')).not.toBeVisible();
+      await expect(page.getByText('Please Verify').first()).not.toBeVisible();
     });
 
     test('successful password verification dismisses modal and retries', async ({
@@ -79,13 +79,13 @@ test.describe(
       });
 
       await page.goto('/usage-logs');
-      await expect(page.getByText('Please Verify')).toBeVisible();
+      await expect(page.getByText('Please Verify').first()).toBeVisible();
 
       await page.locator('#fresh-password').fill(TEST_USERS.admin.password);
       await page.getByRole('button', {name: 'Verify'}).click();
 
       // Modal should close after verification
-      await expect(page.getByText('Please Verify')).not.toBeVisible({
+      await expect(page.getByText('Please Verify').first()).not.toBeVisible({
         timeout: 10000,
       });
 

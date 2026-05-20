@@ -963,7 +963,9 @@ export class ApiClient {
     });
     if (!response.ok()) {
       const body = await response.text();
-      throw new Error(`Failed to clear user prompts: ${response.status()} - ${body}`);
+      throw new Error(
+        `Failed to clear user prompts: ${response.status()} - ${body}`,
+      );
     }
   }
 
