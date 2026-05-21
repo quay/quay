@@ -80,6 +80,35 @@ test.describe(
       await expect(checkbox).toBeChecked();
     });
 
+    test('loads and displays real build logs', async ({superuserPage, api}) => {
+      test.setTimeout(180_000);
+
+      const org = await api.organization('sulogs');
+      const repo = await api.repository(org.name, 'build-logs');
+
+      const build = await api.build(
+        org.name,
+        repo.name,
+        'FROM scratch\nLABEL test="superuser-logs"\n',
+      );
+
+      await api.raw.waitForBuildPhase(org.name, repo.name, build.buildId);
+
+      await superuserPage.goto('/build-logs');
+
+      await superuserPage.getByTestId('build-uuid-input').fill(build.buildId);
+      await superuserPage.getByTestId('load-build-button').click();
+
+      await expect(superuserPage.getByText('Build Information')).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(superuserPage.getByText(build.buildId)).toBeVisible();
+
+      await expect(superuserPage.getByTestId('build-logs-display')).toBeVisible(
+        {timeout: 15_000},
+      );
+    });
+
     test('navigates to Build Logs via sidebar', async ({superuserPage}) => {
       await superuserPage.goto('/organization');
 
