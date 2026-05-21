@@ -62,6 +62,11 @@ inputs:
     required: false
     default: 'false'
 
+  with-builds:
+    description: 'Enable container build support with PopenExecutor'
+    required: false
+    default: 'false'
+
   with-mailpit:
     description: 'Start Mailpit email testing server'
     required: false
@@ -192,6 +197,36 @@ runs:
         rm -f "${INLINE_CONFIG}"
         echo "Inline config merged successfully"
 
+    - name: Extract quay-builder binary
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: make local-dev-extract-builder
+
+    - name: Configure build support
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: |
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          local-dev/stack/config.yaml local-dev/builds/builds-config.yaml \
+          > local-dev/stack/config.yaml.tmp
+        mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+        echo "Build support configuration merged"
+
+        # Expose Docker API over TCP so the Quay container can reach it
+        # without bind-mounting the socket (UBI9 tmpfs on /run hides mounts).
+        sudo apt-get install -y -qq socat > /dev/null 2>&1 || true
+        socat TCP-LISTEN:2375,reuseaddr,fork UNIX-CONNECT:/var/run/docker.sock &
+        sleep 1
+        curl -sf http://localhost:2375/version > /dev/null \
+          && echo "Docker TCP proxy ready on port 2375" \
+          || { echo "::error::Docker TCP proxy failed to start"; exit 1; }
+
+        # Export for docker-compose variable substitution (QUAY_DOCKER_HOST in compose env).
+        # Uses a separate var name so the runner's own Docker CLI isn't affected.
+        echo "QUAY_DOCKER_HOST=tcp://host.docker.internal:2375" >> "$GITHUB_ENV"
+        export QUAY_DOCKER_HOST="tcp://host.docker.internal:2375"
+
     - name: Start database services
       shell: bash
       run: |
@@ -281,6 +316,43 @@ runs:
           docker logs quay-quay 2>&1 | tail -100
           exit 1
         fi
+
+    - name: Verify build manager
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: |
+        echo "=== Build Manager Diagnostics ==="
+
+        echo "--- Docker API via TCP from container ---"
+        docker exec quay-quay python3 -c "
+        import urllib.request, json
+        resp = urllib.request.urlopen('http://host.docker.internal:2375/version', timeout=5)
+        data = json.loads(resp.read())
+        print('Docker API reachable, version:', data.get('Version'))
+        " 2>&1 || echo "::warning::Docker TCP API not reachable from container"
+
+        echo "--- quay-builder binary ---"
+        docker exec quay-quay ls -la /quay-registry/local-dev/quay-builder 2>&1 || echo "quay-builder binary not found"
+
+        echo "--- Build config ---"
+        docker exec quay-quay python3 -c "
+        import yaml, os
+        with open('/quay-registry/conf/stack/config.yaml') as f:
+            cfg = yaml.safe_load(f)
+        print('FEATURE_BUILD_SUPPORT:', cfg.get('FEATURE_BUILD_SUPPORT'))
+        print('DOCKER_HOST:', os.environ.get('DOCKER_HOST'))
+        " 2>&1 || echo "Failed to read config"
+
+        echo "--- gRPC port check ---"
+        docker exec quay-quay python3 -c "
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        r = s.connect_ex(('localhost', 50051))
+        print('gRPC port 50051:', 'OPEN' if r == 0 else 'CLOSED')
+        s.close()
+        " 2>&1
+
+        echo "=== End Build Manager Diagnostics ==="
 
     - name: Start Clair
       if: inputs.with-clair == 'true'
