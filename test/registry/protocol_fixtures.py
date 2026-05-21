@@ -1,14 +1,38 @@
 # -*- coding: utf-8 -*-
 
+import copy
 import random
 import string
-from test.registry.fixtures import data_model
-from test.registry.protocol_v1 import V1Protocol
-from test.registry.protocol_v2 import V2Protocol
-from test.registry.protocols import Image, layer_bytes_for_contents
 
 import pytest
 from authlib.jose import jwk as jwklib
+
+from image.oci import OCI_IMAGE_CONFIG_CONTENT_TYPE
+from test.registry.fixtures import data_model
+from test.registry.protocol_v1 import V1Protocol
+from test.registry.protocol_v2 import V2Protocol
+from test.registry.protocols import Artifact, Image, layer_bytes_for_contents
+
+MINIMAL_OCI_ARTIFACT_CONFIG = {
+    "architecture": "amd64",
+    "os": "linux",
+    "rootfs": {"type": "layers", "diff_ids": []},
+    "history": [],
+}
+
+
+@pytest.fixture(scope="session")
+def minimal_oci_artifact():
+    """
+    OCI artifact template with a minimal image config dict (cosign signatures, in-toto, etc.).
+
+    Set bytes, layer_media_type, and artifact_type when building a concrete manifest.
+    """
+    return Artifact(
+        id="minimal_oci_config",
+        config=copy.deepcopy(MINIMAL_OCI_ARTIFACT_CONFIG),
+        config_media_type=OCI_IMAGE_CONFIG_CONTENT_TYPE,
+    )
 
 
 @pytest.fixture(scope="session")
