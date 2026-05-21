@@ -36,7 +36,7 @@ def validate_basic_auth(auth_header):
     assert isinstance(auth_header, str)
     credentials, err = _parse_basic_auth_header(auth_header)
     if err is not None:
-        logger.debug("Got invalid basic auth header: %s", auth_header)
+        logger.debug("Got invalid basic auth header")
         return ValidateResult(AuthKind.basic, missing=True)
 
     auth_username, auth_password_or_token = credentials
@@ -55,7 +55,7 @@ def _parse_basic_auth_header(auth):
     try:
         credentials = [part.decode("utf-8") for part in b64decode(normalized[1]).split(b":", 1)]
     except (TypeError, UnicodeDecodeError, ValueError):
-        logger.exception("Exception when parsing basic auth header: %s", auth)
+        logger.exception("Exception when parsing basic auth header")
         return None, "Could not parse basic auth header"
 
     if len(credentials) != 2:
