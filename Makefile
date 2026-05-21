@@ -40,7 +40,8 @@ registry-test:
 	TEST=true PYTHONPATH="." py.test  \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	-n auto -m 'not e2e' --timeout=3600 --verbose -x \
-	test/registry/registry_tests.py
+	test/registry/registry_tests.py \
+	test/registry/test_cosign_signatures.py
 
 buildman-test:
 	TEST=true PYTHONPATH="." py.test \
