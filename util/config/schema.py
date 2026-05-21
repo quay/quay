@@ -1797,6 +1797,11 @@ CONFIG_SCHEMA = {
             "description": "Whether to allow sparse manifest indexes where not all architectures are required to be present. When enabled, manifests for missing architectures will be skipped instead of raising errors. Defaults to False",
             "x-example": False,
         },
+        "FEATURE_SPAM_DETECTION": {
+            "type": "boolean",
+            "description": "Whether to enable spam detection for repository content. When enabled, a background worker scans repositories against configurable rules and flags suspected spam for review. Defaults to False",
+            "x-example": False,
+        },
         "OTEL_CONFIG": {
             "type": "object",
             "description": "open telemetry config options",

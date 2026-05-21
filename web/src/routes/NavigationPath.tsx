@@ -53,6 +53,7 @@ export enum NavigationPath {
   usageLogs = '/usage-logs',
   messages = '/messages',
   buildLogs = '/build-logs',
+  spamDetection = '/spam-detection',
 
   // Organization detail
   organizationDetail = '/organization/:organizationName',

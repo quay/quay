@@ -912,6 +912,7 @@ class User(BaseModel):
                 OrgMirrorConfig,
                 OrgMirrorRepository,
                 OrganizationContactEmail,
+                QuarantinedRepository,
             } | v22_classes
             delete_instance_filtered(self, User, delete_nullable, skip_transitive_deletes)
 
@@ -1123,6 +1124,7 @@ class Repository(BaseModel):
             TagPullStatistics,
             ManifestPullStatistics,
             OrgMirrorRepository,
+            QuarantinedRepository,
         } | v22_classes
 
         delete_instance_filtered(self, Repository, delete_nullable, skip_transitive_deletes)
@@ -2279,6 +2281,44 @@ class TagNotificationSuccess(BaseModel):
     notification = ForeignKeyField(RepositoryNotification, index=True, null=False)
     tag = ForeignKeyField(Tag, index=True, null=False)
     method = ForeignKeyField(ExternalNotificationMethod, null=False)
+
+
+class SpamDetectionRule(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, unique=True)
+    name = CharField(max_length=255)
+    rule_type = CharField(max_length=50)
+    pattern = TextField(null=True)
+    config = JSONField(null=True, default={})
+    confidence_score = IntegerField(default=50)
+    enabled = BooleanField(default=True, index=True)
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+
+
+class QuarantinedRepository(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, unique=True)
+    repository = ForeignKeyField(Repository, index=True)
+    namespace_name = CharField(max_length=255, index=True)
+    repository_name = CharField(max_length=255)
+    status = CharField(max_length=20, default="flagged", index=True)
+    original_description = TextField(null=True)
+    matched_rules = JSONField(default=[])
+    total_confidence_score = IntegerField(default=0)
+    is_empty = BooleanField(default=False)
+    scan_id = CharField(max_length=36, null=True, index=True)
+    actioned_by = CharField(max_length=255, null=True)
+    actioned_at = DateTimeField(null=True)
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = ((("status", "total_confidence_score"), False),)
 
 
 # Defines a map from full-length index names to the legacy names used in our code

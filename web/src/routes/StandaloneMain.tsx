@@ -64,6 +64,9 @@ const Messages = lazy(() => import('./Superuser/Messages/Messages'));
 const BuildLogs = lazy(() => import('./Superuser/BuildLogs/BuildLogs'));
 const About = lazy(() => import('./About/About'));
 const Security = lazy(() => import('./Security/Security'));
+const SpamDetection = lazy(
+  () => import('./Superuser/SpamDetection/SpamDetection'),
+);
 
 /**
  * Interface for shorthand repository route parameters
@@ -215,6 +218,10 @@ const NavigationRoutes = [
     path: NavigationPath.buildLogs,
     Component: <BuildLogs />,
   },
+  {
+    path: NavigationPath.spamDetection,
+    Component: <SpamDetection />,
+  },
 ];
 
 export function StandaloneMain() {
@@ -310,6 +317,9 @@ export function StandaloneMain() {
               {NavigationRoutes.filter((route) => {
                 if (route.path === NavigationPath.overviewList) {
                   return quayConfig?.features?.BILLING;
+                }
+                if (route.path === NavigationPath.spamDetection) {
+                  return quayConfig?.features?.SPAM_DETECTION;
                 }
                 return true;
               }).map(({path, Component}, key) => (

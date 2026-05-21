@@ -60,6 +60,7 @@ CLIENT_WHITELIST = [
     "DISABLE_ANGULAR_UI",
     "ROBOTS_DISALLOW",
     "FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE",
+    "FEATURE_SPAM_DETECTION",
 ]
 
 
@@ -998,3 +999,5 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to allow sparse manifest indexes where not all architectures are required.
     # When enabled, manifests for missing architectures will be skipped instead of raising errors.
     FEATURE_SPARSE_INDEX = False
+
+    FEATURE_SPAM_DETECTION = False
