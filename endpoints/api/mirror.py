@@ -191,7 +191,6 @@ class RepoMirrorResource(RepositoryParamResource):
             "type": "object",
             "required": ["external_reference", "sync_interval", "sync_start_date", "root_rule"],
             "properties": common_properties,
-            "additionalProperties": False,
         },
         "UpdateMirrorConfig": {
             "description": "Update the repository mirroring configuration.",
