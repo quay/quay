@@ -127,6 +127,7 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
       <DropdownList>
         {props.dropdownItems.map((item) => (
           <DropdownItem
+            component="button"
             data-testid={`${item.name}-permission-type`}
             key={item.name}
             description={item.description}
