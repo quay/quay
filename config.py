@@ -726,6 +726,7 @@ class DefaultConfig(ImmutableConfig):
         "repository_blob_cache_ttl": "60s",
         "catalog_page_cache_ttl": "60s",
         "active_repo_tags_cache_ttl": "120s",
+        "helm_repo_index_cache_ttl": "300s",
         "value_size_limit": "1MiB",
     }
 
@@ -832,6 +833,29 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to allow Helm OCI content types.
     # See: https://helm.sh/docs/topics/registries/
     FEATURE_HELM_OCI_SUPPORT = True
+
+    # Feature Flag: Whether to extract and store Helm chart metadata asynchronously.
+    FEATURE_HELM_CHART_METADATA_EXTRACTION = True
+
+    # Feature Flag: Whether to backfill metadata for Helm charts pushed before this feature.
+    FEATURE_HELM_CHART_METADATA_BACKFILL = True
+
+    # Size limits for Helm chart extraction (bytes).
+    HELM_CHART_MAX_LAYER_SIZE = 20 * 1024 * 1024
+    HELM_CHART_MAX_EXTRACTED_FILE_SIZE = 1 * 1024 * 1024
+    HELM_CHART_MAX_ICON_SIZE = 512 * 1024
+    HELM_CHART_ICON_DOWNLOAD_TIMEOUT = 5
+
+    # Queue name for Helm chart metadata extraction jobs.
+    HELM_CHART_METADATA_QUEUE_NAME = "helmchartmetadata"
+
+    # Backfill worker tuning.
+    HELM_CHART_BACKFILL_WORKER_FREQUENCY = 60 * 60
+    HELM_CHART_BACKFILL_BATCH_SIZE = 500
+    HELM_CHART_BACKFILL_QUEUE_LIMIT = 1000
+
+    # Feature Flag: Whether repositories can serve a Helm repository index (index.yaml).
+    FEATURE_HELM_REPO_INDEX = True
 
     FEATURE_REFERRERS_API = True
 

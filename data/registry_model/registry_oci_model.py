@@ -52,6 +52,20 @@ from util.timedeltastring import convert_to_timedelta
 logger = logging.getLogger(__name__)
 
 
+def _invalidate_helm_index(repository_db_id):
+    """Lazy-import and call invalidate_helm_repo_index_cache, swallowing errors."""
+    try:
+        from data.model.oci.helmrepoindex import invalidate_helm_repo_index_cache
+
+        invalidate_helm_repo_index_cache(repository_db_id)
+    except Exception:
+        logger.warning(
+            "Failed to invalidate helm repo index for repo %s",
+            repository_db_id,
+            exc_info=True,
+        )
+
+
 class OCIModel(RegistryDataInterface):
     """
     OCIModel implements the data model for the registry API using a database schema after it was
@@ -617,6 +631,8 @@ class OCIModel(RegistryDataInterface):
             if tag is None:
                 return (None, None)
 
+            _invalidate_helm_index(repository_ref._db_id)
+
             return (
                 wrapped_manifest,
                 Tag.for_tag(
@@ -699,6 +715,8 @@ class OCIModel(RegistryDataInterface):
                 raise_on_error=True,
             )
 
+            _invalidate_helm_index(repository_ref._db_id)
+
             return Tag.for_tag(tag, self._legacy_image_id_handler)
 
     def delete_tag(self, model_cache, repository_ref, tag_name):
@@ -714,6 +732,8 @@ class OCIModel(RegistryDataInterface):
                 deleted_tag.repository.id, deleted_tag.manifest.digest, model_cache.cache_config
             )
             model_cache.invalidate(manifest_cache_key)
+
+            _invalidate_helm_index(repository_ref._db_id)
 
             return Tag.for_tag(deleted_tag, self._legacy_image_id_handler)
 
@@ -732,6 +752,8 @@ class OCIModel(RegistryDataInterface):
             )
             model_cache.invalidate(manifest_cache_key)
 
+            _invalidate_helm_index(manifest.repository.id)
+
             return [ShallowTag.for_tag(tag) for tag in deleted_tags]
 
     def change_repository_tag_expiration(self, tag, expiration_date):
@@ -742,7 +764,11 @@ class OCIModel(RegistryDataInterface):
         previous expiration timestamp in seconds (if any), and whether the operation succeeded.
         """
         with db_disallow_replica_use():
-            return oci.tag.change_tag_expiration(tag._db_id, expiration_date)
+            result = oci.tag.change_tag_expiration(tag._db_id, expiration_date)
+
+            _invalidate_helm_index(tag.repository.id)
+
+            return result
 
     def change_tag_immutability(self, tag, immutable):
         """
@@ -795,6 +821,8 @@ class OCIModel(RegistryDataInterface):
         """
         with db_disallow_replica_use():
             oci.tag.set_tag_expiration_sec_for_manifest(manifest._db_id, expiration_sec)
+
+        _invalidate_helm_index(manifest.repository.id)
 
     def set_tags_immutability_for_manifest(self, manifest, immutable):
         """

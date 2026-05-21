@@ -304,6 +304,10 @@ repository_gc_queue = WorkQueue(app.config["REPOSITORY_GC_QUEUE_NAME"], tf, has_
 # when a namespace is marked for deletion.
 namespace_gc_queue = WorkQueue(app.config["NAMESPACE_GC_QUEUE_NAME"], tf, has_namespace=False)
 
+helm_chart_metadata_queue = WorkQueue(
+    app.config["HELM_CHART_METADATA_QUEUE_NAME"], tf, has_namespace=True
+)
+
 all_queues = [
     image_replication_queue,
     dockerfile_build_queue,
@@ -311,6 +315,7 @@ all_queues = [
     chunk_cleanup_queue,
     repository_gc_queue,
     namespace_gc_queue,
+    helm_chart_metadata_queue,
 ]
 
 url_scheme_and_hostname = URLSchemeAndHostname(
