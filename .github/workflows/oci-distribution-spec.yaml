@@ -55,7 +55,6 @@ jobs:
       with:
         persist-credentials: false
         repository: opencontainers/distribution-spec
-        ref: v1.1.0-rc1
         path: dist-spec
 
     - name: Set up Go 1.18
