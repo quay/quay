@@ -360,7 +360,7 @@ class UserAuthentication(object):
             else:
                 password = decrypted
 
-        (result, err_msg) = self.state.verify_and_link_user(username_or_email, password)
+        result, err_msg = self.state.verify_and_link_user(username_or_email, password)
         if not result:
             return (result, err_msg)
 
@@ -407,6 +407,9 @@ class UserManager(object):
 
     def is_restricted_user(self, username):
         if not features.RESTRICTED_USERS:
+            return False
+
+        if self.is_superuser(username):
             return False
 
         return self.state.is_restricted_user(username)
