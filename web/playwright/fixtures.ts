@@ -867,7 +867,8 @@ export type QuayFeature =
   | 'DIRECT_LOGIN'
   | 'NONSUPERUSER_TEAM_SYNCING_SETUP'
   | 'BUILD_SUPPORT'
-  | 'STORAGE_REPLICATION';
+  | 'STORAGE_REPLICATION'
+  | 'PUBLIC_OAUTH_APPS';
 
 /**
  * Quay configuration from /config endpoint

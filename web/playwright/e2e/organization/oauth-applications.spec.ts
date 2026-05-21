@@ -182,7 +182,7 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     }
   });
 
-  test('non-admin user can authorize an OAuth app (PUBLIC_OAUTH_APPS)', async ({
+  test('non-admin user can authorize an OAuth app (PUBLIC_OAUTH_APPS)', {tag: ['@feature:PUBLIC_OAUTH_APPS']}, async ({
     authenticatedPage: page,
     superuserApi,
   }) => {
