@@ -117,10 +117,23 @@ app.config.update(environ_config)
 if app.config.get("PROXY_COUNT", 1):
     app.wsgi_app = ProxyFix(app.wsgi_app)  # type: ignore[method-assign]
 
-# Allow user to define a custom storage preference for the local instance.
-_distributed_storage_preference = os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE", "").split()
-if _distributed_storage_preference:
-    app.config["DISTRIBUTED_STORAGE_PREFERENCE"] = _distributed_storage_preference
+
+def apply_storage_replication_config(config):
+    """Apply env var override and validate storage replication settings."""
+    pref = os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE", "").split()
+    if pref:
+        config["DISTRIBUTED_STORAGE_PREFERENCE"] = pref
+
+    if not config.get("DISTRIBUTED_STORAGE_PREFERENCE") and config.get(
+        "FEATURE_STORAGE_REPLICATION", False
+    ):
+        raise Exception(
+            "Missing storage preference for geo-replication. Set DISTRIBUTED_STORAGE_PREFERENCE "
+            "in config.yaml or the QUAY_DISTRIBUTED_STORAGE_PREFERENCE environment variable."
+        )
+
+
+apply_storage_replication_config(app.config)
 
 # Generate a secret key if none was specified.
 if app.config["SECRET_KEY"] is None:
@@ -336,14 +349,6 @@ if os.path.exists(_v2_key_path):
         docker_v2_signing_key = JsonWebKey.import_key(key_file.read())
 else:
     docker_v2_signing_key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
-
-# Check if georeplication is turned on and whether env. variables exist:
-if os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE") is None and app.config.get(
-    "FEATURE_STORAGE_REPLICATION", False
-):
-    raise Exception(
-        "Missing storage preference, did you perhaps forget to define QUAY_DISTRIBUTED_STORAGE_PREFERENCE variable?"
-    )
 
 # Configure the database.
 if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):
