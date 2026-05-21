@@ -132,6 +132,24 @@ secscan_result_duration = Histogram(
     buckets=SECSCAN_RESULT_BUCKETS,
 )
 
+secscan_manifests_claimed = Counter(
+    "quay_secscan_manifests_claimed_total",
+    "manifests claimed for indexing",
+    labelnames=["query_type"],
+)
+
+secscan_manifests_skipped = Counter(
+    "quay_secscan_manifests_skipped_total",
+    "manifests skipped (unsupported, no layers, etc.)",
+    labelnames=["reason"],
+)
+
+secscan_index_errors = Counter(
+    "quay_secscan_index_errors_total",
+    "clair indexing errors",
+    labelnames=["error_type"],
+)
+
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
