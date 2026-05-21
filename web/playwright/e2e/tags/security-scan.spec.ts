@@ -1,7 +1,7 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
-import {pushImage} from '../../utils/container';
+import {pushImage, pushOCIImage} from '../../utils/container';
 
 test.describe(
   'Security Scan',
@@ -184,6 +184,127 @@ test.describe(
         .locator('input[placeholder="Filter Packages..."]')
         .clear();
       await expect(packageRows).toHaveCount(initialCount);
+    });
+  },
+);
+
+test.describe(
+  'OCI Image Security Scan (PROJQUAY-11333)',
+  {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
+  () => {
+    let testRepo: {namespace: string; name: string; fullName: string};
+
+    test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
+      test.setTimeout(180000);
+      if (!cachedContainerAvailable) return;
+
+      const api = new ApiClient(userContext.request);
+      const repoName = `oci-secscan-${Date.now()}`;
+      await api.createRepository(TEST_USERS.user.username, repoName, 'public');
+
+      testRepo = {
+        namespace: TEST_USERS.user.username,
+        name: repoName,
+        fullName: `${TEST_USERS.user.username}/${repoName}`,
+      };
+
+      await pushOCIImage(
+        testRepo.namespace,
+        testRepo.name,
+        'latest',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      // Wait for Clair to scan the OCI image
+      const tags = await api.getTags(testRepo.namespace, testRepo.name);
+      const digest = tags.tags[0].manifest_digest;
+      const deadline = Date.now() + 120000;
+      while (Date.now() < deadline) {
+        try {
+          const sec = await api.getManifestSecurity(
+            testRepo.namespace,
+            testRepo.name,
+            digest,
+          );
+          if (sec.status !== 'queued') break;
+        } catch (e: unknown) {
+          if (e instanceof Error && !e.message.includes('404')) throw e;
+        }
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+    });
+
+    test.afterAll(async ({userContext}) => {
+      if (!testRepo) return;
+      const api = new ApiClient(userContext.request);
+      try {
+        await api.deleteRepository(testRepo.namespace, testRepo.name);
+      } catch {
+        // Ignore cleanup errors
+      }
+    });
+
+    test('OCI-format image is scanned successfully, not marked as unsupported', async ({
+      authenticatedPage,
+    }) => {
+      test.setTimeout(120000);
+      await authenticatedPage.goto(
+        `/repository/${testRepo.fullName}/tag/latest?tab=securityreport`,
+      );
+
+      // Verify Security Report tab exists and is selected
+      await expect(
+        authenticatedPage.getByRole('tab', {name: 'Security Report'}),
+      ).toBeVisible();
+
+      // The fix ensures OCI images are NOT marked as unsupported
+      await expect(
+        authenticatedPage.getByText('Security scan is not supported.'),
+      ).not.toBeVisible();
+
+      // Wait for scan to complete — reload if still queued
+      const scanned = authenticatedPage.getByText(
+        /detected \d+ vulnerabilit|detected no vulnerabilit/,
+      );
+      const deadline = Date.now() + 90000;
+      while (Date.now() < deadline) {
+        if (await scanned.isVisible().catch(() => false)) break;
+        await authenticatedPage.waitForTimeout(5000);
+        await authenticatedPage.reload();
+        await authenticatedPage
+          .getByRole('tab', {name: 'Security Report'})
+          .click();
+      }
+      await expect(scanned).toBeVisible({timeout: 5000});
+
+      await expect(
+        authenticatedPage.locator('[data-testid="vulnerability-chart"]'),
+      ).toBeVisible();
+    });
+
+    test('OCI-format image packages tab renders', async ({
+      authenticatedPage,
+    }) => {
+      test.setTimeout(120000);
+      await authenticatedPage.goto(
+        `/repository/${testRepo.fullName}/tag/latest?tab=packages`,
+      );
+
+      const packages = authenticatedPage.getByText(
+        /recognized \d+ package|does not recognize any package/,
+      );
+      const deadline = Date.now() + 90000;
+      while (Date.now() < deadline) {
+        if (await packages.isVisible().catch(() => false)) break;
+        await authenticatedPage.waitForTimeout(5000);
+        await authenticatedPage.reload();
+      }
+      await expect(packages).toBeVisible({timeout: 5000});
+
+      await expect(
+        authenticatedPage.locator('[data-testid="packages-chart"]'),
+      ).toBeVisible();
     });
   },
 );
