@@ -1,0 +1,16 @@
+driver_id,python_driver,component_type,go_strategy,migration_wave,status,suggested_owner,parity_test_id,risk_notes
+SD-001,LocalStorage,driver,native-sdk,WS3,pending,registryd,PT-STORAGE-LOCAL-001,filesystem semantics and path normalization parity
+SD-002,S3Storage,driver,native-sdk,WS3,pending,registryd,PT-STORAGE-S3-001,baseline for most production installs
+SD-003,GoogleCloudStorage,driver,native-sdk,WS3,pending,registryd,PT-STORAGE-GCS-001,SDK retry behavior differences
+SD-004,RadosGWStorage,driver,s3-compatible-adapter,WS3,pending,registryd,PT-STORAGE-RGW-001,signature compatibility and endpoint quirks
+SD-005,SwiftStorage,driver,native-sdk,WS3,pending,registryd,PT-STORAGE-SWIFT-001,auth and chunk listing compatibility
+SD-006,CloudFrontedS3Storage,driver,s3-compatible-adapter,WS3,pending,registryd,PT-STORAGE-CLOUDFRONT-001,RSA signing and URL expiration behavior
+SD-007,AzureStorage,driver,native-sdk,WS3,pending,registryd,PT-STORAGE-AZURE-001,block blob multipart behavior
+SD-008,RHOCSStorage,driver,s3-compatible-adapter,WS3,pending,registryd,PT-STORAGE-RHOCS-001,S3 compatibility profile drift
+SD-009,CloudFlareS3Storage,driver,s3-compatible-adapter,WS3,pending,registryd,PT-STORAGE-CLOUDFLARE-001,provider-specific auth header handling
+SD-010,MultiCDNStorage,driver,defer,WS3,pending,registryd,PT-STORAGE-MULTICDN-001,multi-provider URL signing and fallback behavior
+SD-011,IBMCloudStorage,driver,s3-compatible-adapter,WS3,pending,registryd,PT-STORAGE-IBM-001,endpoint and signing compatibility
+SD-012,STSS3Storage,driver,s3-compatible-adapter,WS3,pending,registryd,PT-STORAGE-STS-001,credential refresh and role assumption timing
+SD-013,AkamaiS3Storage,driver,s3-compatible-adapter,WS3,pending,registryd,PT-STORAGE-AKAMAI-001,auth and signed URL behavior
+SD-014,DistributedStorage,support-component,native-sdk,WS10,pending,runtime-platform,PT-STORAGE-DIST-001,multi-location routing invariants
+SD-015,DownloadProxy,support-component,native-sdk,WS10,pending,runtime-platform,PT-STORAGE-DLPROXY-001,proxy auth contract and cache headers
