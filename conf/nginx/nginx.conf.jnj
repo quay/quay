@@ -210,6 +210,8 @@ http {
         listen [::]:8080 default;
         {% endif %}
 
+        real_ip_header X-Forwarded-For;
+
         access_log /var/log/nginx/access.log lb_logs;
     }
 }
