@@ -38,6 +38,54 @@ The PR to review: `$ARGUMENTS`
 
 ---
 
+## Phase 0: Multi-Agent Peer Review
+
+This review must be run as a three-reviewer peer review rather than a
+single-agent review.
+
+### Required Orchestration
+
+1. Do only the minimum parent-side setup needed to compose the reviewer prompt.
+   - identify the PR
+   - fetch the PR metadata and diff surface once if needed
+   - do not perform deep review or serial model-specific analysis yourself yet
+2. Launch these three subagents in parallel.
+   - In Cursor, use:
+     - `pr-review-gemini-3-1-pro`
+     - `pr-review-gpt-5-4-high`
+     - `pr-review-claude-4-6-opus-high-thinking`
+   - In Claude Code, use:
+     - `pr-review-haiku`
+     - `pr-review-sonnet`
+     - `pr-review-opus`
+3. Issue all three subagent launches in the same message/tool batch.
+   - Do not launch reviewer 1, wait, then reviewer 2, then reviewer 3.
+   - Do not do additional parent analysis between the three launches.
+   - The launch is only considered parallel if all three subagent `started`
+     events occur before the first reviewer completes.
+4. Give each subagent the same PR target and the same core review mission:
+   - review only the target PR
+   - gather evidence with `gh pr view`, `gh pr diff`, `gh pr checks`, and code inspection
+   - focus on bugs, regressions, migration hazards, performance risks, security issues, and missing tests
+   - avoid style-only comments unless they point to a real defect
+5. Keep the subagents independent. Do not let one subagent's output shape
+   another subagent's review.
+6. Wait for all three reviewers to finish before producing the final report.
+7. Synthesize the findings using the same model family as `pr-review-opus`.
+8. Deduplicate overlapping findings and mark consensus for each item as `1/3`,
+   `2/3`, or `3/3`.
+9. Prefer direct evidence over vote count. If reviewers disagree, inspect the
+   code yourself before deciding what belongs in the final report.
+10. If a subagent fails to run, say so explicitly and lower confidence in the
+   final review.
+11. Add a concise reviewer-comparison summary that explains what each reviewer
+   emphasized, where they disagreed, and whether the multi-agent review added
+   material value over a single strong review.
+12. If the reviewers were not launched in a single batch, say that the run
+    used degraded concurrency.
+
+---
+
 ## Target Scale Context
 
 **CRITICAL**: This review must consider the target scale:
@@ -74,6 +122,20 @@ gh pr view $ARGUMENTS --json title,body,files,additions,deletions,author,baseRef
 
 ```bash
 gh pr diff $ARGUMENTS
+```
+
+After the boxed report, add this appendix:
+
+```text
+## Reviewer Comparison
+- [Reviewer/model 1]: what it emphasized and whether it surfaced anything unique
+- [Reviewer/model 2]: what it emphasized and whether it surfaced anything unique
+- [Reviewer/model 3]: what it emphasized and whether it surfaced anything unique
+
+## Incremental Value
+- Did the multi-agent review materially improve the final result?
+- Which findings, if any, were unique to one reviewer?
+- Would a single strong reviewer likely have been sufficient for this PR?
 ```
 
 ---
