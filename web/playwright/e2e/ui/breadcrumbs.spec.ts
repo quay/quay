@@ -164,6 +164,95 @@ test.describe('Breadcrumbs', {tag: ['@ui', '@breadcrumbs']}, () => {
         `/repository/${org.name}/${repo.name}/tag/${tagName}`,
       );
     });
+
+    test('tag with same name as repo shows correct breadcrumbs (PROJQUAY-9330)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('breadcrumborg');
+      const repo = await api.repository(org.name, 'alpine');
+
+      await pushImage(
+        org.name,
+        repo.name,
+        repo.name,
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}/tag/${repo.name}`,
+      );
+
+      const breadcrumbNav = authenticatedPage.getByTestId(
+        'page-breadcrumbs-list',
+      );
+      await expect(breadcrumbNav).toBeVisible();
+
+      const items = breadcrumbNav.locator('li');
+      await expect(items).toHaveCount(4);
+
+      // Third item: repo name — must link to the repo page, not the tag page
+      await expect(items.nth(2)).toHaveText(repo.name);
+      await expect(items.nth(2).locator('a')).not.toHaveClass(/disabled-link/);
+      await expect(items.nth(2).locator('a')).toHaveAttribute(
+        'href',
+        `/repository/${org.name}/${repo.name}`,
+      );
+
+      // Fourth item: tag name (same as repo name, disabled link)
+      await expect(items.nth(3)).toHaveText(repo.name);
+      await expect(items.nth(3).locator('a')).toHaveClass(/disabled-link/);
+      await expect(items.nth(3).locator('a')).toHaveAttribute(
+        'href',
+        `/repository/${org.name}/${repo.name}/tag/${repo.name}`,
+      );
+    });
+
+    test('tag name that starts with repo name shows correct breadcrumbs (PROJQUAY-9330)', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('breadcrumborg');
+      const repo = await api.repository(org.name, 'alpine');
+      const tagName = 'alpine1';
+
+      await pushImage(
+        org.name,
+        repo.name,
+        tagName,
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
+
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}/tag/${tagName}`,
+      );
+
+      const breadcrumbNav = authenticatedPage.getByTestId(
+        'page-breadcrumbs-list',
+      );
+      await expect(breadcrumbNav).toBeVisible();
+
+      const items = breadcrumbNav.locator('li');
+      await expect(items).toHaveCount(4);
+
+      // Third item: repo name — must link to the repo page
+      await expect(items.nth(2)).toHaveText(repo.name);
+      await expect(items.nth(2).locator('a')).not.toHaveClass(/disabled-link/);
+      await expect(items.nth(2).locator('a')).toHaveAttribute(
+        'href',
+        `/repository/${org.name}/${repo.name}`,
+      );
+
+      // Fourth item: tag name (disabled link, correct path)
+      await expect(items.nth(3)).toHaveText(tagName);
+      await expect(items.nth(3).locator('a')).toHaveClass(/disabled-link/);
+      await expect(items.nth(3).locator('a')).toHaveAttribute(
+        'href',
+        `/repository/${org.name}/${repo.name}/tag/${tagName}`,
+      );
+    });
   });
 
   test.describe('Team breadcrumbs', () => {
