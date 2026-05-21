@@ -104,6 +104,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_AGGREGATED_LOG_COUNT_RETRIEVAL":        true,
 	"FEATURE_ACTION_LOG_ROTATION":                   true,
 	"FEATURE_ASSIGN_OAUTH_TOKEN":                    true,
+	"FEATURE_PUBLIC_OAUTH_APPS":                     true,
 	"FEATURE_AUTO_PRUNE":                            true,
 	"FEATURE_BITBUCKET_BUILD":                       true,
 	"FEATURE_BLACKLISTED_EMAILS":                    true,
