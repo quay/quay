@@ -21,7 +21,7 @@ func runConfig(args []string) int {
 	switch args[0] {
 	case "validate":
 		return runConfigValidate(args[1:])
-	case "help", "-h", "--help":
+	case helpLiteral, "-h", helpFlag:
 		configUsage()
 		return 0
 	default:
