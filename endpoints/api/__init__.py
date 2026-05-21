@@ -653,8 +653,10 @@ def require_fresh_login(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
         user = get_authenticated_user()
-        if not user or user.robot:
+        if not user:
             raise Unauthorized()
+        if user.robot:
+            return func(*args, **kwargs)
 
         if get_validated_oauth_token() or get_sso_token():
             return func(*args, **kwargs)
