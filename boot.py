@@ -100,6 +100,16 @@ def main():
         )
 
     sync_database_with_config(app.config)
+
+    # Initialize Kubernetes SA authentication resources (system org + superuser robot)
+    # This runs after migrations and database sync, ensuring tables exist
+    import features
+
+    if features.KUBERNETES_SA_AUTH and app.config.get("REGISTRY_STATE", "normal") != "readonly":
+        from util.kubernetes_sa_init import initialize_kubernetes_sa_resources
+
+        initialize_kubernetes_sa_resources(app.config)
+
     setup_instance_service_key()
 
     # Record deploy

@@ -69,7 +69,7 @@ class ConfigUserManager(UserManager):
         usernames.append(username)
         new_string = ",".join(usernames)
 
-        if len(new_string) <= self._max_length:
+        if len(new_string) <= self._super_max_length:
             self._superusers_array.value = new_string.encode("utf8")
         else:
             raise Exception("Maximum superuser count reached. Please report this to support.")
