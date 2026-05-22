@@ -419,9 +419,9 @@ six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
     --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
     # via pymemcache
-trove-classifiers==2026.5.7.17 \
-    --hash=sha256:5ec0800de5e2ddbd7c663cb4c0c15328f132dc168813897c18866c5c7b93db33 \
-    --hash=sha256:a04a48f8f0a787cb996514d3969ac7608aa3c60cb15d073c1e02801e60533e80
+trove-classifiers==2026.5.20.19 \
+    --hash=sha256:6e611993987ca9326968ad70452733dadd31471599d39896045b28970a9bb81e \
+    --hash=sha256:7a173916960d0635fcbf610550d2c27bcc9125164d6f397adf46fc1ef6455c7c
     # via hatchling
 vcs-versioning==1.1.1 \
     --hash=sha256:b541e2ba79fc6aaa3850f8a7f88af43d97c1c80649c01142ee4146eddbc599e4 \
@@ -507,3 +507,10 @@ setuptools==78.1.1 \
     #   wrapt
     #   xhtml2pdf
     #   zipp
+setuptools==82.0.1 \
+    --hash=sha256:7d872682c5d01cfde07da7bccc7b65469d3dca203318515ada1de5eda35efbf9 \
+    --hash=sha256:a59e362652f08dcd477c78bb6e7bd9d80a7995bc73ce773050228a348ce2e5bb
+    # via
+    #   pyroscope-io
+    #   python-dateutil
+    #   setuptools-scm
