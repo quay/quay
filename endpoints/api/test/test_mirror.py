@@ -1,5 +1,4 @@
 from datetime import datetime
-from test.fixtures import *
 
 import pytest
 
@@ -7,6 +6,7 @@ from data import model
 from endpoints.api.mirror import RepoMirrorResource
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 
 def _setup_mirror():
@@ -76,6 +76,26 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
 
     config = model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
     assert config.root_rule.rule_value == ["latest", "foo", "bar"]
+
+
+def test_create_mirror_with_unknown_field_succeeds(app):
+    """Regression test: skopeo_timeout_interval is not supported on 3.14 but must be silently
+    stripped rather than causing a 400 (schema rejection) or 500 (TypeError in model call)."""
+    mirror_bot, _ = model.user.create_robot(
+        "unknownfieldbot", model.user.get_namespace_user("devtable")
+    )
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        request_body = {
+            "external_reference": "quay.io/foobar/barbaz",
+            "sync_interval": 100,
+            "sync_start_date": "2019-08-20T17:51:00Z",
+            "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+            "robot_username": "devtable+unknownfieldbot",
+            "skopeo_timeout_interval": 300,
+        }
+        conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 201)
 
 
 def test_get_mirror_does_not_exist(app):
