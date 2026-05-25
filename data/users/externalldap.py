@@ -50,7 +50,7 @@ class _LDAPTraceRedactor:
     """
 
     _BIND_PW_RE = re.compile(
-        r"(SimpleLDAPObject\.simple_bind\s*\n\(\('[^']*',\s*\n\s*')((?:\\.|[^'])*)(')",
+        r"(SimpleLDAPObject\.simple_bind\s*\n\(\('[^']*',\s*\n\s*')((?:\\.|[^'\\])*)(')",
     )
 
     def __init__(self, stream=None):
