@@ -24,7 +24,7 @@ from data.model import (
 
 
 def create_organization(
-    name, email, creating_user, email_required=True, is_possible_abuser=False, contact_email=None
+    name, email, creating_user, is_possible_abuser=False, contact_email=None
 ):
     with db_transaction():
         try:

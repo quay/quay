@@ -240,7 +240,6 @@ class OrganizationList(ApiResource):
                 org_data["name"],
                 org_data.get("email"),
                 user,
-                email_required=features.MAILING,
                 is_possible_abuser=is_possible_abuser,
             )
             log_action(
