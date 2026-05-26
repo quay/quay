@@ -62,6 +62,14 @@ test.describe(
         page.getByRole('button', {name: 'Add new member'}),
       ).not.toBeVisible();
 
+      // The background TeamSynchronizationWorker (60s cycle) populates LDAP
+      // group members asynchronously. Poll with page reload until testuser_ldap
+      // appears in the member table (data-testid={member.name} on the <Td>).
+      await expect(async () => {
+        await page.reload();
+        await expect(page.getByTestId('testuser_ldap')).toBeVisible();
+      }).toPass({timeout: 90_000, intervals: [10_000]});
+
       // Remove sync
       await page.getByRole('button', {name: 'Remove synchronization'}).click();
       await expect(
