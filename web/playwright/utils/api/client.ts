@@ -954,6 +954,21 @@ export class ApiClient {
     return response.ok();
   }
 
+  async clearUserPrompts(): Promise<void> {
+    const token = await this.getToken();
+    const response = await this.request.put(`${API_URL}/api/v1/user/`, {
+      timeout: 5000,
+      headers: {'X-CSRF-Token': token},
+      data: {given_name: 'Test', family_name: 'User'},
+    });
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to clear user prompts: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
   // Auth methods
 
   async signIn(username: string, password: string): Promise<void> {
