@@ -135,7 +135,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     // Mock logs API to return an org_mirror_sync_failed log with stderr
     await authenticatedPage.route(
       `**/api/v1/organization/${org.name}/logs*`,
-      async (route) => {
+      async (route): Promise<void> => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -160,7 +160,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     );
     await authenticatedPage.route(
       `**/api/v1/organization/${org.name}/aggregatelogs*`,
-      async (route) => {
+      async (route): Promise<void> => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -180,6 +180,121 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
       table.getByText(/skopeo: authentication required/),
     ).toBeVisible();
   });
+
+  test.describe(
+    'repo mirror sync log rendering',
+    {tag: ['@feature:REPO_MIRROR']},
+    () => {
+      test('successful mirror sync logs render without undefined or null', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        test.setTimeout(180_000);
+        const org = await api.organization('logsyncok');
+        const repo = await api.repository(org.name, 'logsyncokr');
+        const robot = await api.robot(org.name, 'logsyncokbot');
+        await api.setMirrorState(org.name, repo.name);
+
+        const syncStartDate = new Date();
+        syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+        await api.raw.createMirrorConfig(org.name, repo.name, {
+          external_reference: 'quay.io/quay/busybox',
+          sync_interval: 86400,
+          sync_start_date: syncStartDate
+            .toISOString()
+            .replace(/\.\d{3}Z$/, 'Z'),
+          root_rule: {rule_kind: 'tag_glob_csv', rule_value: ['latest']},
+          robot_username: robot.fullName,
+          skopeo_timeout_interval: 300,
+          is_enabled: true,
+          verify_tls: true,
+        });
+
+        await api.raw.triggerMirrorSync(org.name, repo.name);
+
+        await expect
+          .poll(
+            async () => {
+              const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
+              const status = cfg?.sync_status ?? 'UNKNOWN';
+              if (status === 'FAIL') {
+                throw new Error('Mirror sync failed unexpectedly');
+              }
+              return status;
+            },
+            {timeout: 120_000, intervals: [5_000, 10_000, 15_000]},
+          )
+          .toBe('SUCCESS');
+
+        await authenticatedPage.goto(
+          `/repository/${org.name}/${repo.name}?tab=logs`,
+        );
+        const table = authenticatedPage.getByTestId('usage-logs-table');
+        await expect(table).toBeVisible();
+
+        await expect(
+          table.getByText(/Mirror finished successfully/),
+        ).toBeVisible();
+        await expect(
+          table.getByText(/Mirror of latest successful/),
+        ).toBeVisible();
+
+        await expect(table.getByText(/undefined/)).not.toBeAttached();
+        await expect(table.getByText(/\bnull\b/)).not.toBeAttached();
+      });
+
+      test('failed mirror sync logs render without undefined or null', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        test.setTimeout(180_000);
+        const org = await api.organization('logsyncfail');
+        const repo = await api.repository(org.name, 'logsyncfailr');
+        const robot = await api.robot(org.name, 'logsyncfailbot');
+        await api.setMirrorState(org.name, repo.name);
+
+        const syncStartDate = new Date();
+        syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+        await api.raw.createMirrorConfig(org.name, repo.name, {
+          external_reference: 'nonexistent.invalid/nope',
+          sync_interval: 86400,
+          sync_start_date: syncStartDate
+            .toISOString()
+            .replace(/\.\d{3}Z$/, 'Z'),
+          root_rule: {rule_kind: 'tag_glob_csv', rule_value: ['latest']},
+          robot_username: robot.fullName,
+          skopeo_timeout_interval: 300,
+          is_enabled: true,
+          verify_tls: false,
+        });
+
+        await api.raw.triggerMirrorSync(org.name, repo.name);
+
+        await expect
+          .poll(
+            async () => {
+              const cfg = await api.raw.getMirrorConfig(org.name, repo.name);
+              return cfg?.sync_status ?? 'UNKNOWN';
+            },
+            {timeout: 120_000, intervals: [5_000, 10_000, 15_000]},
+          )
+          .toBe('FAIL');
+
+        await authenticatedPage.goto(
+          `/repository/${org.name}/${repo.name}?tab=logs`,
+        );
+        const table = authenticatedPage.getByTestId('usage-logs-table');
+        await expect(table).toBeVisible();
+
+        await expect(
+          table.getByText(/Mirror finished unsuccessfully/),
+        ).toBeVisible();
+
+        await expect(table.getByText(/undefined/)).not.toBeAttached();
+        await expect(table.getByText(/\bnull\b/)).not.toBeAttached();
+      });
+    },
+  );
 
   test.describe('chart log kind mapping', {tag: ['@PROJQUAY-11079']}, () => {
     test(
@@ -292,7 +407,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     // Mock 200 response with search_unavailable flag
     await authenticatedPage.route(
       '**/api/v1/organization/*/logs*',
-      async (route) => {
+      async (route): Promise<void> => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -307,7 +422,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     );
     await authenticatedPage.route(
       '**/api/v1/organization/*/aggregatelogs*',
-      async (route) => {
+      async (route): Promise<void> => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -332,3 +447,81 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     ).toBeVisible();
   });
 });
+
+test.describe(
+  'Usage Logs Repository column namespace deduplication',
+  {tag: ['@logs', '@PROJQUAY-10605']},
+  () => {
+    // Escape special regex characters in generated names (e.g. dots, plus signs)
+    const escapeRegex = (s: string): string =>
+      s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    test(
+      'superuser view shows only repo name in Repository column (not namespace/repo)',
+      {tag: '@superuser'},
+      async ({superuserPage, superuserApi}) => {
+        // Creating a repo generates a real create_repo log with {namespace, repo} metadata
+        const repo = await superuserApi.repository();
+        const orgName = repo.fullName.split('/')[0];
+        const repoName = repo.fullName.split('/')[1];
+
+        // Superuser usage logs page — isSuperuser=true, shows Namespace + Repository columns
+        await superuserPage.goto('/usage-logs');
+
+        const table = superuserPage.getByTestId('usage-logs-table');
+        await expect(table).toBeVisible();
+
+        // Filter to find our specific log entry
+        await superuserPage.getByPlaceholder('Filter logs').fill(repoName);
+        await superuserPage.waitForTimeout(500);
+
+        // Scope to td cells with exact text to avoid matching Description column.
+        // Escape regex metacharacters in case generated names contain them.
+        const repoNameCell = table
+          .locator('td')
+          .filter({hasText: new RegExp(`^${escapeRegex(repoName)}$`)});
+        await expect(repoNameCell.first()).toBeVisible();
+        await expect(
+          table.locator('td').filter({
+            hasText: new RegExp(
+              `^${escapeRegex(orgName)}/${escapeRegex(repoName)}$`,
+            ),
+          }),
+        ).not.toBeVisible();
+      },
+    );
+
+    test('non-superuser view shows full namespace/repo in Repository column', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // Creating a repo generates a real create_repo log with {namespace, repo} metadata
+      const repo = await api.repository();
+      const orgName = repo.fullName.split('/')[0];
+      const repoName = repo.fullName.split('/')[1];
+
+      // Org-level logs — isSuperuser=false, no Namespace column, Repository shows full path
+      await authenticatedPage.goto(`/organization/${orgName}?tab=Logs`);
+
+      const table = authenticatedPage.getByTestId('usage-logs-table');
+      await expect(table).toBeVisible();
+
+      // Filter to find the create_repo log entry
+      await authenticatedPage.getByPlaceholder('Filter logs').fill(repoName);
+      await authenticatedPage.waitForTimeout(500);
+
+      // Scope to td cells with exact text. Use .first() to avoid strict mode
+      // violation if multiple log rows exist for the same repo.
+      await expect(
+        table
+          .locator('td')
+          .filter({
+            hasText: new RegExp(
+              `^${escapeRegex(orgName)}/${escapeRegex(repoName)}$`,
+            ),
+          })
+          .first(),
+      ).toBeVisible();
+    });
+  },
+);
