@@ -6,6 +6,7 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
+from peewee import OperationalError
 
 from app import storage
 from data import model
@@ -1348,3 +1349,122 @@ def test_prune_tags_skips_immutable_tags(initialized_db):
     remaining_names = [t.name for t in remaining_tags]
     assert len(remaining_names) == 1
     assert "immutable-1" in remaining_names
+
+
+def test_update_autoprune_task_deadlock_retry(initialized_db):
+    """Test that update_autoprune_task retries on deadlock errors with exponential backoff."""
+    # Setup: create a test task
+    org = model.organization.get_organization("sellnsmall")
+    model.autoprune.create_autoprune_task(org.id)
+    task = model.autoprune.fetch_autoprune_task_by_namespace_id(org.id)
+    assert task is not None
+
+    # Test Case A: Deadlock on first attempt, success on retry
+    with (
+        patch("data.model.autoprune.AutoPruneTaskStatus.save") as mock_save,
+        patch("data.model.autoprune.time.sleep") as mock_sleep,
+    ):
+        mock_save.side_effect = [OperationalError("deadlock detected"), None]
+        model.autoprune.update_autoprune_task(task, "running")
+        assert mock_save.call_count == 2
+        assert mock_sleep.call_count == 1
+        mock_sleep.assert_called_with(0.1)
+
+    # Test Case B: Transaction abort on first attempt, success on retry
+    with (
+        patch("data.model.autoprune.AutoPruneTaskStatus.save") as mock_save,
+        patch("data.model.autoprune.time.sleep") as mock_sleep,
+    ):
+        mock_save.side_effect = [
+            OperationalError("current transaction is aborted"),
+            None,
+        ]
+        model.autoprune.update_autoprune_task(task, "running")
+        assert mock_save.call_count == 2
+        assert mock_sleep.call_count == 1
+
+    # Test Case C: Multiple retries with exponential backoff
+    with (
+        patch("data.model.autoprune.AutoPruneTaskStatus.save") as mock_save,
+        patch("data.model.autoprune.time.sleep") as mock_sleep,
+        patch("data.model.autoprune.AutoPruneTaskStatus.get") as mock_get,
+    ):
+        # First save fails, then 2 retries fail, then success on 4th attempt
+        mock_save.side_effect = [
+            OperationalError("deadlock detected"),
+            OperationalError("deadlock detected"),
+            OperationalError("deadlock detected"),
+            None,
+        ]
+        # Mock get to return task for refetch
+        mock_get.return_value = task
+        model.autoprune.update_autoprune_task(task, "running")
+        assert mock_save.call_count == 4
+        assert mock_sleep.call_count == 3
+        # Verify exponential backoff: 0.1s, 0.2s, 0.4s
+        assert mock_sleep.call_args_list[0][0][0] == 0.1
+        assert mock_sleep.call_args_list[1][0][0] == 0.2
+        assert mock_sleep.call_args_list[2][0][0] == 0.4
+        # Verify task refetch happens 3 times (once per retry after initial attempt)
+        assert mock_get.call_count == 3
+
+    # Test Case D: Max retries exceeded
+    with (
+        patch("data.model.autoprune.AutoPruneTaskStatus.save") as mock_save,
+        patch("data.model.autoprune.time.sleep") as mock_sleep,
+        patch("data.model.autoprune.AutoPruneTaskStatus.get") as mock_get,
+    ):
+        # All 4 attempts fail with deadlock
+        mock_save.side_effect = OperationalError("deadlock detected")
+        mock_get.return_value = task
+
+        with pytest.raises(Exception) as exc_info:
+            model.autoprune.update_autoprune_task(task, "success")
+
+        assert "Error updating autoprune task" in str(exc_info.value)
+        assert str(org.id) in str(exc_info.value)
+        assert "success" in str(exc_info.value)
+        assert mock_save.call_count == 4
+        assert mock_sleep.call_count == 3
+
+    # Test Case E: Non-retryable OperationalError
+    with (
+        patch("data.model.autoprune.AutoPruneTaskStatus.save") as mock_save,
+        patch("data.model.autoprune.time.sleep") as mock_sleep,
+    ):
+        # Error without "deadlock" or "transaction is aborted" should not retry
+        mock_save.side_effect = OperationalError("connection lost")
+
+        with pytest.raises(Exception) as exc_info:
+            model.autoprune.update_autoprune_task(task, "running")
+
+        assert "Error updating autoprune task" in str(exc_info.value)
+        # Should fail immediately without retries
+        assert mock_save.call_count == 1
+        assert mock_sleep.call_count == 0
+
+    # Test Case F: DoesNotExist during save
+    with patch("data.model.autoprune.AutoPruneTaskStatus.save") as mock_save:
+        mock_save.side_effect = AutoPruneTaskStatus.DoesNotExist()
+        result = model.autoprune.update_autoprune_task(task, "running")
+        assert result is None
+        assert mock_save.call_count == 1
+
+    # Test Case G: Task refetch on retry (already covered in Test Case C)
+    # This validates the critical refetch logic for PostgreSQL transaction context
+
+    # Test Case H: DoesNotExist during refetch
+    with (
+        patch("data.model.autoprune.AutoPruneTaskStatus.save") as mock_save,
+        patch("data.model.autoprune.time.sleep") as mock_sleep,
+        patch("data.model.autoprune.AutoPruneTaskStatus.get") as mock_get,
+    ):
+        # First save fails with deadlock, refetch fails with DoesNotExist
+        mock_save.side_effect = [OperationalError("deadlock detected")]
+        mock_get.side_effect = AutoPruneTaskStatus.DoesNotExist()
+
+        result = model.autoprune.update_autoprune_task(task, "running")
+        assert result is None
+        assert mock_save.call_count == 1
+        assert mock_get.call_count == 1
+        assert mock_sleep.call_count == 1
