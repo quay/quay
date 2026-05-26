@@ -346,20 +346,19 @@ class Organization(ApiResource):
                     {"invoice_email_address": new_email, "namespace": orgname},
                 )
 
-            if "email" in org_data and org_data["email"] != org.email:
+            if "email" in org_data:
                 new_email = org_data["email"]
-                old_email = org.email
+                current_contact = model.organization.get_contact_email(org)
+                old_email = current_contact or org.email
 
-                if model.user.find_user_by_email(new_email):
-                    raise request_error(message="E-mail address already used")
-
-                logger.debug("Changing email address for organization: %s", org.username)
-                model.user.update_email(org, new_email)
-                log_action(
-                    "org_change_email",
-                    orgname,
-                    {"email": new_email, "namespace": orgname, "old_email": old_email},
-                )
+                if new_email != old_email:
+                    logger.debug("Changing email address for organization: %s", org.username)
+                    model.organization.set_contact_email(org, new_email)
+                    log_action(
+                        "org_change_email",
+                        orgname,
+                        {"email": new_email, "namespace": orgname, "old_email": old_email},
+                    )
 
             if features.CHANGE_TAG_EXPIRATION and "tag_expiration_s" in org_data:
                 logger.debug(
