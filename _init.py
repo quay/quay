@@ -51,7 +51,7 @@ def _get_version_number_changelog():
     try:
         with open(os.path.join(ROOT_DIR, "CHANGELOG.md")) as f:
             for line in f:
-                if line[0:5] == "## [v":
+                if line.startswith("## [v"):
                     return line.split("[")[1].split("]")[0]
     except IOError:
         return ""
