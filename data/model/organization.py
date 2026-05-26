@@ -35,9 +35,10 @@ def create_organization(
             new_org.organization = True
             new_org.save()
 
-            if contact_email:
+            effective_contact = contact_email or email
+            if effective_contact:
                 OrganizationContactEmail.create(
-                    organization=new_org, contact_email=contact_email
+                    organization=new_org, contact_email=effective_contact
                 )
 
             owners_team = team.create_team("owners", new_org, "admin")
@@ -239,9 +240,7 @@ def set_contact_email(org, contact_email):
 
 
 def delete_contact_email(org):
-    OrganizationContactEmail.delete().where(
-        OrganizationContactEmail.organization == org
-    ).execute()
+    OrganizationContactEmail.delete().where(OrganizationContactEmail.organization == org).execute()
 
 
 def find_organizations_by_contact_email(contact_email):

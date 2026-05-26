@@ -188,7 +188,8 @@ class TestOrganizationContactEmail:
 
     def test_create_with_email(self, initialized_db):
         """Test creating an OrganizationContactEmail with a contact email."""
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("rawcreateorg1", None, admin)
         record = OrganizationContactEmail.create(
             organization=org, contact_email="contact@example.com"
         )
@@ -197,14 +198,16 @@ class TestOrganizationContactEmail:
 
     def test_create_with_null_email(self, initialized_db):
         """Test creating an OrganizationContactEmail with a null contact email."""
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("rawcreateorg2", None, admin)
         record = OrganizationContactEmail.create(organization=org, contact_email=None)
         assert record.contact_email is None
         assert record.organization_id == org.id
 
     def test_unique_constraint_on_organization(self, initialized_db):
         """Test that only one contact email record can exist per organization."""
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("rawcreateorg3", None, admin)
         OrganizationContactEmail.create(organization=org, contact_email="first@example.com")
 
         with pytest.raises(IntegrityError):
@@ -212,9 +215,9 @@ class TestOrganizationContactEmail:
 
     def test_multiple_orgs_can_share_email(self, initialized_db):
         """Test that multiple organizations can have the same contact email."""
-        org1 = get_organization("buynlarge")
         admin = get_user("devtable")
-        org2 = create_organization("testsharedorg", "shared@example.com", admin)
+        org1 = create_organization("sharedorg1", None, admin)
+        org2 = create_organization("sharedorg2", None, admin)
 
         shared_email = "shared@example.com"
         record1 = OrganizationContactEmail.create(organization=org1, contact_email=shared_email)
@@ -229,35 +232,41 @@ class TestContactEmailCRUD:
     """Tests for contact_email CRUD functions."""
 
     def test_get_contact_email_returns_none_when_not_set(self, initialized_db):
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("crudorg1", None, admin)
         assert get_contact_email(org) is None
 
     def test_get_contact_email_returns_email_when_set(self, initialized_db):
-        org = get_organization("buynlarge")
-        OrganizationContactEmail.create(organization=org, contact_email="test@example.com")
+        admin = get_user("devtable")
+        org = create_organization("crudorg2", None, admin)
+        set_contact_email(org, "test@example.com")
         assert get_contact_email(org) == "test@example.com"
 
     def test_set_contact_email_creates_new_record(self, initialized_db):
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("crudorg3", None, admin)
         record = set_contact_email(org, "new@example.com")
         assert record.contact_email == "new@example.com"
         assert get_contact_email(org) == "new@example.com"
 
     def test_set_contact_email_updates_existing_record(self, initialized_db):
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("crudorg4", None, admin)
         set_contact_email(org, "first@example.com")
         set_contact_email(org, "second@example.com")
         assert get_contact_email(org) == "second@example.com"
 
     def test_delete_contact_email_removes_record(self, initialized_db):
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("crudorg5", None, admin)
         set_contact_email(org, "delete@example.com")
         assert get_contact_email(org) == "delete@example.com"
         delete_contact_email(org)
         assert get_contact_email(org) is None
 
     def test_delete_contact_email_noop_when_not_set(self, initialized_db):
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("crudorg6", None, admin)
         delete_contact_email(org)
         assert get_contact_email(org) is None
 
@@ -301,9 +310,7 @@ class TestCreateOrganizationContactEmail:
 
     def test_create_org_with_contact_email(self, initialized_db):
         admin = get_user("devtable")
-        org = create_organization(
-            "contactorg1", None, admin, contact_email="contact@example.com"
-        )
+        org = create_organization("contactorg1", None, admin, contact_email="contact@example.com")
         assert get_contact_email(org) == "contact@example.com"
 
     def test_create_org_without_contact_email(self, initialized_db):

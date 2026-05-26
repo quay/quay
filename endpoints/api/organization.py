@@ -114,9 +114,15 @@ def org_view(o, teams):
         is_admin = True
         is_member = True
 
+    org_email = o.email
+    if o.organization:
+        contact_email = model.organization.get_contact_email(o)
+        if contact_email is not None:
+            org_email = contact_email
+
     view = {
         "name": o.username,
-        "email": o.email if is_admin or can_view_as_superuser else "",
+        "email": org_email if is_admin or can_view_as_superuser else "",
         "avatar": avatar.get_data_for_user(o),
         "is_admin": is_admin,
         "is_member": is_member,
