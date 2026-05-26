@@ -1121,9 +1121,8 @@ class Recovery(ApiResource):
             orgs = list(model.organization.find_organizations_by_contact_email(email))
             if orgs:
                 for org in orgs:
-                    contact_email = model.organization.get_contact_email(org)
                     admin_users = model.organization.get_admin_users(org)
-                    send_org_recovery_email(org, admin_users, contact_email=contact_email)
+                    send_org_recovery_email(org, admin_users, contact_email=email)
                 return {
                     "status": "org",
                     "orgemail": email,
