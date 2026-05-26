@@ -1,7 +1,7 @@
 name: PR Approval Policy
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
   pull_request_review:
     types: [submitted, dismissed]
@@ -9,9 +9,10 @@ on:
 permissions:
   pull-requests: read
   contents: read
+  statuses: write
 
 jobs:
-  approval-policy:
+  check-approvals:
     runs-on: ubuntu-latest
     steps:
       - name: Check approval count
@@ -20,6 +21,7 @@ jobs:
           script: |
             const prAuthor = context.payload.pull_request.user.login;
             const prNumber = context.payload.pull_request.number;
+            const headSha = context.payload.pull_request.head.sha;
             const botUsers = ['quay-devel'];
             const requiredApprovals = botUsers.includes(prAuthor) ? 2 : 1;
 
@@ -48,11 +50,17 @@ jobs:
             core.info(`PR #${prNumber} by ${prAuthor}`);
             core.info(`Approvals: ${approvalCount}/${requiredApprovals}`);
 
-            if (!passed) {
-              const needed = requiredApprovals - approvalCount;
-              core.setFailed(
-                botUsers.includes(prAuthor)
-                  ? `Bot PR requires ${requiredApprovals} approvals (${approvalCount} received, ${needed} more needed)`
-                  : `PR requires ${requiredApprovals} approval (${approvalCount} received, ${needed} more needed)`
-              );
-            }
+            const description = passed
+              ? `${approvalCount}/${requiredApprovals} approvals received`
+              : botUsers.includes(prAuthor)
+                ? `Bot PR requires ${requiredApprovals} approvals (${approvalCount} received)`
+                : `PR requires ${requiredApprovals} approval (${approvalCount} received)`;
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: headSha,
+              state: passed ? 'success' : 'failure',
+              context: 'approval-policy',
+              description: description
+            });
