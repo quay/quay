@@ -4,6 +4,23 @@ import {TEST_USERS} from '../../global-setup';
 
 test.describe('Organization Settings', {tag: ['@organization']}, () => {
   test.describe('General Settings', {tag: ['@feature:USER_METADATA']}, () => {
+    test('displays contact email after org creation, not internal UUID', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('emaildisplay');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+      const emailInput = authenticatedPage.locator('#org-settings-email');
+      await expect(emailInput).toBeVisible();
+
+      // The settings page must show the contact email provided at creation,
+      // not the internal UUID stored in User.email (PROJQUAY-6975).
+      const value = await emailInput.inputValue();
+      expect(value).toBe(org.email);
+    });
+
     test('validates email and saves settings', async ({
       authenticatedPage,
       api,
