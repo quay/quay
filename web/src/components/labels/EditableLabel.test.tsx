@@ -57,4 +57,25 @@ describe('EditableLabel', () => {
     const input = screen.getByRole('textbox');
     expect(input).toHaveAttribute('aria-invalid', 'true');
   });
+
+  it('calls onEditComplete with current value when clicking outside', async () => {
+    const onEditComplete = vi.fn();
+    const {rerender} = render(
+      <EditableLabel
+        value=""
+        setValue={vi.fn()}
+        onEditComplete={onEditComplete}
+      />,
+    );
+    await userEvent.click(screen.getByText('Add new label'));
+    rerender(
+      <EditableLabel
+        value="new=label"
+        setValue={vi.fn()}
+        onEditComplete={onEditComplete}
+      />,
+    );
+    fireEvent.mouseDown(document.body);
+    expect(onEditComplete).toHaveBeenCalledWith('new=label');
+  });
 });
