@@ -907,10 +907,10 @@ test.describe(
       // Open cancel modal
       await authenticatedPage.getByTestId('cancel-sync-button').click();
 
-      // Verify updated modal text: future syncs continue
+      // Verify modal text about cancelling syncs
       await expect(
         authenticatedPage.getByText(
-          'Future scheduled syncs will continue as normal.',
+          'in-progress and scheduled syncs will be stopped',
         ),
       ).toBeVisible();
 
