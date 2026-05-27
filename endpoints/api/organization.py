@@ -73,6 +73,8 @@ def _validate_upstream_registry(upstream_registry, insecure=False):
     except SSRFBlockedError:
         raise request_error(SSRF_GENERIC_ERROR)
     except ValueError as e:
+        if "Cannot resolve hostname" in str(e):
+            return
         raise request_error(str(e))
 
 
