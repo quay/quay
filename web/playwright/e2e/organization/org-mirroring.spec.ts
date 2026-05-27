@@ -1289,7 +1289,7 @@ test.describe(
       api,
     }): Promise<void> => {
       const org = await api.organization('orgmirrival');
-      const robot = await api.robot(org.name, 'ivalbot');
+      await api.robot(org.name, 'ivalbot');
 
       await authenticatedPage.goto(
         `/organization/${org.name}?tab=Mirroring&setup=true`,

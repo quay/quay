@@ -228,13 +228,6 @@ test.describe(
         'Robot for Docker config test',
       );
 
-      // Get server hostname from config
-      const configResponse = await authenticatedRequest.get(
-        `${API_URL}/config`,
-      );
-      const config = await configResponse.json();
-      const serverHostname = config.config.SERVER_HOSTNAME;
-
       // Get robot token from API
       const robotResponse = await authenticatedRequest.get(
         `${API_URL}/api/v1/organization/${org.name}/robots/${robot.shortname}`,

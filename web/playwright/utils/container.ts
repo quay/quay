@@ -5,7 +5,7 @@
  * to the registry during e2e tests. Supports both podman and docker.
  */
 
-import {exec, execFileSync, execSync} from 'child_process';
+import {exec, execFileSync} from 'child_process';
 import {promisify} from 'util';
 import {API_URL} from './config';
 

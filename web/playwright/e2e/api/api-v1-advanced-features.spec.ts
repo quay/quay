@@ -61,7 +61,7 @@ test.describe(
       // Get mirror config and verify update
       const mirrorCfg = await client.getMirrorConfig(org.name, repo.name);
       expect(mirrorCfg).not.toBeNull();
-      expect(mirrorCfg!.sync_interval).toBe(7200);
+      expect(mirrorCfg?.sync_interval).toBe(7200);
 
       // Sync-now (204 expected)
       await client.triggerMirrorSync(org.name, repo.name);
@@ -106,7 +106,7 @@ test.describe('Proxy Cache', {tag: ['@api', '@feature:PROXY_CACHE']}, () => {
     // Get proxy cache config
     const proxyCfg = await client.getProxyCacheConfig(org.name);
     expect(proxyCfg).not.toBeNull();
-    expect(proxyCfg!.upstream_registry).toContain('quay.io');
+    expect(proxyCfg?.upstream_registry).toContain('quay.io');
 
     // Delete proxy cache config -- deleteProxyCacheConfig already
     // verifies the DELETE request succeeded (throws on failure)
@@ -738,8 +738,8 @@ test.describe(
       // Get and verify
       const mirrorCfg = await client.getOrgMirrorConfig(org.name);
       expect(mirrorCfg).not.toBeNull();
-      expect(mirrorCfg!.external_registry_url).toContain('https://quay.io');
-      expect(mirrorCfg!.sync_interval).toBe(3600);
+      expect(mirrorCfg?.external_registry_url).toContain('https://quay.io');
+      expect(mirrorCfg?.sync_interval).toBe(3600);
 
       // Sync-now
       await client.triggerOrgMirrorSync(org.name);

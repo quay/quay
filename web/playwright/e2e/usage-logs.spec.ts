@@ -477,13 +477,11 @@ test.describe(
 
         // Scope to td cells with exact text to avoid matching Description column.
         // Escape regex metacharacters in case generated names contain them.
-        const fullNameCell = table
-          .locator('td')
-          .filter({
-            hasText: new RegExp(
-              `^${escapeRegex(orgName)}/${escapeRegex(repoName)}$`,
-            ),
-          });
+        const fullNameCell = table.locator('td').filter({
+          hasText: new RegExp(
+            `^${escapeRegex(orgName)}/${escapeRegex(repoName)}$`,
+          ),
+        });
         await expect(fullNameCell.first()).toBeVisible();
       },
     );
