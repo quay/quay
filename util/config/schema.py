@@ -1848,8 +1848,8 @@ CONFIG_SCHEMA = {
         },
         "FEATURE_PUBLIC_OAUTH_APPS": {
             "type": "boolean",
-            "description": "When enabled, any authenticated user can authorize OAuth applications regardless of organization membership",
-            "x-example": True,
+            "description": "When enabled, any authenticated user can authorize OAuth applications regardless of organization membership. Administrators should review the security considerations in the documentation before enabling.",
+            "x-example": False,
         },
         "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
             "type": "object",
