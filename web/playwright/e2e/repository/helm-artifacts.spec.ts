@@ -12,7 +12,7 @@
  */
 
 import {test, expect} from '../../fixtures';
-import {pushHelmChart, isHelmAvailable} from '../../utils/container';
+import {pushHelmChart} from '../../utils/container';
 
 test.describe(
   'Helm Chart OCI Artifacts',
@@ -23,11 +23,6 @@ test.describe(
         authenticatedPage,
         api,
       }) => {
-        // Skip if helm CLI is not available
-        if (!(await isHelmAvailable())) {
-          test.skip(true, 'helm CLI not available');
-        }
-
         // Create organization
         const org = await api.organization('helmcharts');
 
@@ -65,21 +60,12 @@ test.describe(
         await expect(
           firstRow.locator('[data-label="Visibility"]'),
         ).toBeVisible();
-
-        // Note: Visual distinction between Helm charts and container images (badges/icons)
-        // will be added in future UI enhancements. Current test verifies core functionality:
-        // Helm charts are successfully stored and displayed in repository lists.
       });
 
       test('Test 2.1b: displays Helm chart in global repository view', async ({
         authenticatedPage,
         api,
       }) => {
-        // Skip if helm CLI is not available
-        if (!(await isHelmAvailable())) {
-          test.skip(true, 'helm CLI not available');
-        }
-
         // Create organization
         const org = await api.organization('globalhelm');
 
@@ -127,11 +113,6 @@ test.describe(
         authenticatedPage,
         api,
       }) => {
-        // Skip if helm CLI is not available
-        if (!(await isHelmAvailable())) {
-          test.skip(true, 'helm CLI not available');
-        }
-
         // Create organization
         const org = await api.organization('helmdetails');
 
@@ -171,21 +152,12 @@ test.describe(
 
         // Verify the pushed tag appears in the tags list
         await expect(tagsPanel).toContainText('12.1.5');
-
-        // Note: Chart.yaml metadata display (chart name, version, appVersion, description)
-        // will be added in future UI work. Current test verifies Helm charts are stored
-        // as OCI artifacts and tags are correctly displayed in the UI.
       });
 
       test('Test 2.2b: repository details shows correct information fields', async ({
         authenticatedPage,
         api,
       }) => {
-        // Skip if helm CLI is not available
-        if (!(await isHelmAvailable())) {
-          test.skip(true, 'helm CLI not available');
-        }
-
         // Create organization
         const org = await api.organization('helminfo');
 
@@ -227,10 +199,6 @@ test.describe(
 
         // Verify repository name is displayed
         await expect(infoPanel).toContainText('redis-chart');
-
-        // Note: Chart.yaml metadata (description, appVersion, dependencies) display
-        // is planned for future UI implementation. Current test ensures repository
-        // information tab loads correctly for Helm chart artifacts.
       });
     });
 
@@ -239,11 +207,6 @@ test.describe(
         authenticatedPage,
         api,
       }) => {
-        // Skip if helm CLI is not available
-        if (!(await isHelmAvailable())) {
-          test.skip(true, 'helm CLI not available');
-        }
-
         // Create organization
         const org = await api.organization('helmpull');
 
@@ -280,21 +243,12 @@ test.describe(
           name: /Information/,
         });
         await expect(infoPanel).toBeVisible();
-
-        // Note: Helm-specific pull instructions (helm pull oci://...) will be added
-        // in future UI work. Current test verifies Information tab accessibility for
-        // Helm chart repositories.
       });
 
       test('Test 2.3b: pull instructions accessible from multiple views', async ({
         authenticatedPage,
         api,
       }) => {
-        // Skip if helm CLI is not available
-        if (!(await isHelmAvailable())) {
-          test.skip(true, 'helm CLI not available');
-        }
-
         // Create organization
         const org = await api.organization('helminstructions');
 
@@ -330,21 +284,12 @@ test.describe(
           });
           await expect(panel).toBeVisible();
         }
-
-        // Note: When real Helm charts are pushed, pull instructions should be
-        // consistently accessible and formatted correctly across all relevant views.
-        // The instructions should use `helm pull oci://` syntax, not `docker pull`.
       });
 
       test('Test 2.3c: repository shows appropriate artifact type indication', async ({
         authenticatedPage,
         api,
       }) => {
-        // Skip if helm CLI is not available
-        if (!(await isHelmAvailable())) {
-          test.skip(true, 'helm CLI not available');
-        }
-
         // Create organization
         const org = await api.organization('helmtype');
 
@@ -377,10 +322,6 @@ test.describe(
         // Both repositories should be visible
         await expect(table).toContainText('kafka-chart');
         await expect(table).toContainText('regular-image');
-
-        // Note: Visual distinction UI (icons/badges) for Helm charts vs container images
-        // is planned for future implementation. Current test verifies both artifact types
-        // coexist correctly in the repository list without rendering errors.
       });
     });
 
@@ -389,11 +330,6 @@ test.describe(
         api,
         adminClient,
       }) => {
-        // Skip if helm CLI is not available
-        if (!(await isHelmAvailable())) {
-          test.skip(true, 'helm CLI not available');
-        }
-
         // Create organization
         const org = await api.organization('helmapi');
 
@@ -425,10 +361,6 @@ test.describe(
 
         // Verify basic repository metadata is present
         expect(body.is_public).toBeDefined();
-
-        // Note: Additional Helm-specific API metadata (Chart.yaml fields, OCI artifact
-        // media types) may be exposed in future API enhancements. Current test verifies
-        // Helm charts are stored as valid OCI artifacts accessible via the API.
       });
     });
   },
