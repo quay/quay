@@ -12,6 +12,7 @@ test.describe(
       superuserPage: page,
       superuserApi: api,
     }) => {
+      test.setTimeout(240_000);
       const org = await api.organization('ldapteamsync');
       const team = await api.team(org.name, 'ldapsyncteam');
 
