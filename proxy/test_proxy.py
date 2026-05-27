@@ -416,3 +416,14 @@ class TestProxySSRFProtection(unittest.TestCase):
         with HTTMock(docker_registry_mock):
             proxy = Proxy(config, "library/postgres")
         self.assertIsNotNone(proxy.base_url)
+
+    def test_allowlisted_private_ip_allowed(self):
+        config = self._make_config("10.0.0.1")
+        original = app.config.get("SSRF_ALLOWED_HOSTS", [])
+        app.config["SSRF_ALLOWED_HOSTS"] = ["10.0.0.0/8"]
+        try:
+            with HTTMock(docker_registry_mock):
+                proxy = Proxy(config, "library/postgres")
+            self.assertIsNotNone(proxy.base_url)
+        finally:
+            app.config["SSRF_ALLOWED_HOSTS"] = original

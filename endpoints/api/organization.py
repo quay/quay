@@ -1087,6 +1087,7 @@ class OrganizationProxyCacheConfig(ApiResource):
                 upstream_registry_password=data.get("upstream_registry_password"),
                 expiration_s=data.get("expiration_s", 86400),
                 insecure=data.get("insecure", False),
+                allowed_hosts=_get_ssrf_allowed_hosts(),
             )
             if config is not None:
                 log_action(
