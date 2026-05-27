@@ -12,6 +12,7 @@ from data.database import ProxyCacheConfig, User
 from data.encryption import FieldEncrypter
 from data.fields import LazyEncryptedValue
 from proxy import Proxy, UpstreamRegistryError, parse_www_auth
+from util.security.ssrf import SSRFBlockedError
 
 ANONYMOUS_TOKEN = "anonymous-token"
 USER_TOKEN = "user-token"
@@ -368,3 +369,50 @@ class TestProxy(unittest.TestCase):
             with pytest.raises(UpstreamRegistryError) as excinfo:
                 proxy.blob_exists(digest=DIGEST_404)
         self.assertIn("404", str(excinfo.value))
+
+
+class TestProxySSRFProtection(unittest.TestCase):
+    """Defense-in-depth SSRF validation in Proxy constructor (CVE-2026-32591)."""
+
+    def _make_config(self, hostname, insecure=False):
+        return ProxyCacheConfig(
+            upstream_registry=hostname,
+            organization=User(username="cache-org", organization=True),
+            insecure=insecure,
+        )
+
+    def test_private_ip_rejected(self):
+        config = self._make_config("10.0.0.1")
+        with pytest.raises(SSRFBlockedError):
+            Proxy(config, "library/postgres")
+
+    def test_loopback_rejected(self):
+        config = self._make_config("127.0.0.1")
+        with pytest.raises(SSRFBlockedError):
+            Proxy(config, "library/postgres")
+
+    def test_aws_metadata_rejected(self):
+        config = self._make_config("169.254.169.254")
+        with pytest.raises(SSRFBlockedError):
+            Proxy(config, "library/postgres")
+
+    def test_localhost_rejected(self):
+        config = self._make_config("localhost")
+        with pytest.raises(SSRFBlockedError):
+            Proxy(config, "library/postgres")
+
+    def test_kubernetes_hostname_rejected(self):
+        config = self._make_config("kubernetes.default.svc")
+        with pytest.raises(SSRFBlockedError):
+            Proxy(config, "library/postgres")
+
+    def test_hostname_with_namespace_extracts_correctly(self):
+        config = self._make_config("10.0.0.1/myorg")
+        with pytest.raises(SSRFBlockedError):
+            Proxy(config, "library/postgres")
+
+    def test_valid_registry_allowed(self):
+        config = self._make_config("docker.io")
+        with HTTMock(docker_registry_mock):
+            proxy = Proxy(config, "library/postgres")
+        self.assertIsNotNone(proxy.base_url)
