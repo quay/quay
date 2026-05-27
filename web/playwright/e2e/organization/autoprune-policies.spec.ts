@@ -1,5 +1,6 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
+import {pushImage} from '../../utils/container';
 
 test.describe(
   'Organization Auto-Prune Policies',
@@ -192,6 +193,279 @@ test.describe(
         await expect(
           authenticatedPage.getByText('Successfully deleted auto-prune policy'),
         ).not.toBeVisible({timeout: 10000});
+      }
+    });
+  },
+);
+
+test.describe(
+  'Organization Auto-Prune Functional Verification',
+  {tag: ['@organization', '@feature:AUTO_PRUNE', '@container']},
+  () => {
+    const user = TEST_USERS.user;
+
+    test('tag-count org-level pruning removes excess tags', async ({
+      api,
+      userClient,
+    }) => {
+      test.slow();
+      const org = await api.organization('prunecnt');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v2', user.username, user.password);
+
+      const tagsBefore = await api.raw.getTags(org.name, repo.name);
+      expect(tagsBefore.tags).toHaveLength(2);
+
+      const createResp = await userClient.post(
+        `/api/v1/organization/${org.name}/autoprunepolicy/`,
+        {method: 'number_of_tags', value: 1},
+      );
+      expect(createResp.status()).toBe(201);
+      const {uuid: policyUuid} = await createResp.json();
+
+      try {
+        await expect(async () => {
+          const tags = await api.raw.getTags(org.name, repo.name);
+          expect(tags.tags).toHaveLength(1);
+          expect(tags.tags[0].name).toBe('v2');
+        }).toPass({timeout: 120_000, intervals: [5_000]});
+      } finally {
+        await userClient.delete(
+          `/api/v1/organization/${org.name}/autoprunepolicy/${policyUuid}`,
+        );
+      }
+    });
+
+    test('time-based org-level pruning removes old tags', async ({
+      api,
+      userClient,
+    }) => {
+      test.slow();
+      const org = await api.organization('pruneage');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+
+      const createResp = await userClient.post(
+        `/api/v1/organization/${org.name}/autoprunepolicy/`,
+        {method: 'creation_date', value: '2m'},
+      );
+      expect(createResp.status()).toBe(201);
+      const {uuid: policyUuid} = await createResp.json();
+
+      try {
+        await expect(async () => {
+          const tags = await api.raw.getTags(org.name, repo.name);
+          expect(tags.tags).toHaveLength(0);
+        }).toPass({timeout: 180_000, intervals: [10_000]});
+      } finally {
+        await userClient.delete(
+          `/api/v1/organization/${org.name}/autoprunepolicy/${policyUuid}`,
+        );
+      }
+    });
+
+    test('pruned tags appear in tag history', async ({api, userClient}) => {
+      test.slow();
+      const org = await api.organization('prunehist');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v2', user.username, user.password);
+
+      const createResp = await userClient.post(
+        `/api/v1/organization/${org.name}/autoprunepolicy/`,
+        {method: 'number_of_tags', value: 1},
+      );
+      expect(createResp.status()).toBe(201);
+      const {uuid: policyUuid} = await createResp.json();
+
+      try {
+        await expect(async () => {
+          const tags = await api.raw.getTags(org.name, repo.name);
+          expect(tags.tags).toHaveLength(1);
+          expect(tags.tags[0].name).toBe('v2');
+        }).toPass({timeout: 120_000, intervals: [5_000]});
+
+        const history = await api.raw.getTags(org.name, repo.name, {
+          onlyActiveTags: false,
+        });
+        const deletedV1 = history.tags.find(
+          (t) => t.name === 'v1' && t.end_ts != null,
+        );
+        expect(deletedV1).toBeDefined();
+      } finally {
+        await userClient.delete(
+          `/api/v1/organization/${org.name}/autoprunepolicy/${policyUuid}`,
+        );
+      }
+    });
+
+    test('user namespace tag-count pruning removes excess tags', async ({
+      api,
+      userClient,
+    }) => {
+      test.slow();
+      const username = user.username;
+      const repoName = `pruneusr${Date.now()}`;
+
+      await api.raw.createRepository(username, repoName, 'private');
+
+      try {
+        await pushImage(username, repoName, 'v1', user.username, user.password);
+        await pushImage(username, repoName, 'v2', user.username, user.password);
+
+        const createResp = await userClient.post(
+          '/api/v1/user/autoprunepolicy/',
+          {method: 'number_of_tags', value: 1},
+        );
+        expect(createResp.status()).toBe(201);
+        const {uuid: policyUuid} = await createResp.json();
+
+        try {
+          await expect(async () => {
+            const tags = await api.raw.getTags(username, repoName);
+            expect(tags.tags).toHaveLength(1);
+            expect(tags.tags[0].name).toBe('v2');
+          }).toPass({timeout: 120_000, intervals: [5_000]});
+        } finally {
+          await userClient.delete(`/api/v1/user/autoprunepolicy/${policyUuid}`);
+        }
+      } finally {
+        await api.raw.deleteRepository(username, repoName);
+      }
+    });
+
+    test('user namespace time-based pruning removes old tags', async ({
+      api,
+      userClient,
+    }) => {
+      test.slow();
+      const username = user.username;
+      const repoName = `pruneusrage${Date.now()}`;
+
+      await api.raw.createRepository(username, repoName, 'private');
+
+      try {
+        await pushImage(username, repoName, 'v1', user.username, user.password);
+
+        const createResp = await userClient.post(
+          '/api/v1/user/autoprunepolicy/',
+          {method: 'creation_date', value: '2m'},
+        );
+        expect(createResp.status()).toBe(201);
+        const {uuid: policyUuid} = await createResp.json();
+
+        try {
+          await expect(async () => {
+            const tags = await api.raw.getTags(username, repoName);
+            expect(tags.tags).toHaveLength(0);
+          }).toPass({timeout: 180_000, intervals: [10_000]});
+        } finally {
+          await userClient.delete(`/api/v1/user/autoprunepolicy/${policyUuid}`);
+        }
+      } finally {
+        await api.raw.deleteRepository(username, repoName);
+      }
+    });
+
+    test('combined org + repo policies both take effect', async ({
+      api,
+      userClient,
+    }) => {
+      test.slow();
+      const org = await api.organization('prunecomb');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v2', user.username, user.password);
+
+      const orgResp = await userClient.post(
+        `/api/v1/organization/${org.name}/autoprunepolicy/`,
+        {method: 'number_of_tags', value: 1},
+      );
+      expect(orgResp.status()).toBe(201);
+      const {uuid: orgPolicyUuid} = await orgResp.json();
+
+      const repoResp = await userClient.post(
+        `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/`,
+        {method: 'creation_date', value: '2m'},
+      );
+      expect(repoResp.status()).toBe(201);
+      const {uuid: repoPolicyUuid} = await repoResp.json();
+
+      try {
+        // Tag-count policy prunes v1 first
+        await expect(async () => {
+          const tags = await api.raw.getTags(org.name, repo.name);
+          expect(tags.tags).toHaveLength(1);
+          expect(tags.tags[0].name).toBe('v2');
+        }).toPass({timeout: 120_000, intervals: [5_000]});
+
+        // Time-based policy eventually prunes v2
+        await expect(async () => {
+          const tags = await api.raw.getTags(org.name, repo.name);
+          expect(tags.tags).toHaveLength(0);
+        }).toPass({timeout: 180_000, intervals: [10_000]});
+      } finally {
+        await userClient.delete(
+          `/api/v1/organization/${org.name}/autoprunepolicy/${orgPolicyUuid}`,
+        );
+        await userClient.delete(
+          `/api/v1/repository/${org.name}/${repo.name}/autoprunepolicy/${repoPolicyUuid}`,
+        );
+      }
+    });
+
+    test('multiple user-namespace policies both take effect', async ({
+      api,
+      userClient,
+    }) => {
+      test.slow();
+      const username = user.username;
+      const repoName = `prunemulti${Date.now()}`;
+
+      await api.raw.createRepository(username, repoName, 'private');
+
+      try {
+        await pushImage(username, repoName, 'v1', user.username, user.password);
+        await pushImage(username, repoName, 'v2', user.username, user.password);
+
+        const countResp = await userClient.post(
+          '/api/v1/user/autoprunepolicy/',
+          {method: 'number_of_tags', value: 1},
+        );
+        expect(countResp.status()).toBe(201);
+        const {uuid: countUuid} = await countResp.json();
+
+        const ageResp = await userClient.post('/api/v1/user/autoprunepolicy/', {
+          method: 'creation_date',
+          value: '2m',
+        });
+        expect(ageResp.status()).toBe(201);
+        const {uuid: ageUuid} = await ageResp.json();
+
+        try {
+          // Tag-count policy prunes v1 first
+          await expect(async () => {
+            const tags = await api.raw.getTags(username, repoName);
+            expect(tags.tags).toHaveLength(1);
+            expect(tags.tags[0].name).toBe('v2');
+          }).toPass({timeout: 120_000, intervals: [5_000]});
+
+          // Time-based policy eventually prunes v2
+          await expect(async () => {
+            const tags = await api.raw.getTags(username, repoName);
+            expect(tags.tags).toHaveLength(0);
+          }).toPass({timeout: 180_000, intervals: [10_000]});
+        } finally {
+          await userClient.delete(`/api/v1/user/autoprunepolicy/${countUuid}`);
+          await userClient.delete(`/api/v1/user/autoprunepolicy/${ageUuid}`);
+        }
+      } finally {
+        await api.raw.deleteRepository(username, repoName);
       }
     });
   },
