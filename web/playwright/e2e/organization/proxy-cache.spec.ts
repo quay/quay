@@ -212,6 +212,14 @@ test.describe(
           .getByText('The provided registry URL is not allowed')
           .first(),
       ).toBeVisible();
+
+      await expect(
+        authenticatedPage.getByTestId('save-proxy-cache-btn'),
+      ).toBeEnabled();
+
+      await expect(
+        authenticatedPage.getByTestId('delete-proxy-cache-btn'),
+      ).toBeDisabled();
     });
 
     test('proxy cache tab not visible for user namespaces', async ({
