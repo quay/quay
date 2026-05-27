@@ -76,6 +76,12 @@ except ImportError:
     _has_fixtures = False
 
 
+@pytest.fixture()
+def template_app(app):
+    app.template_folder = os.path.join(REPO_ROOT, "templates")
+    yield app
+
+
 @pytest.mark.skipif(not _has_fixtures, reason="test.fixtures unavailable (missing Flask deps)")
 class TestTemplateRendering:
     @pytest.mark.parametrize(
@@ -85,7 +91,7 @@ class TestTemplateRendering:
             "message.html",
         ],
     )
-    def test_template_renders_with_local_styles(self, template_name, app):
+    def test_template_renders_with_local_styles(self, template_name, template_app):
         from flask import render_template
 
         local_styles = [
@@ -97,7 +103,7 @@ class TestTemplateRendering:
             "BRANDING": {"logo": "/static/img/quay_logo.png"},
         }
 
-        with app.app_context():
+        with template_app.app_context():
             html = render_template(
                 template_name,
                 external_styles=local_styles,
@@ -114,7 +120,7 @@ class TestTemplateRendering:
                 domain not in html
             ), f"{template_name} rendered with hardcoded CDN domain {domain}"
 
-    def test_error_template_renders_with_local_styles(self, app):
+    def test_error_template_renders_with_local_styles(self, template_app):
         from flask import render_template
 
         local_styles = [
@@ -128,7 +134,7 @@ class TestTemplateRendering:
             },
         }
 
-        with app.app_context():
+        with template_app.app_context():
             html = render_template(
                 "500.html",
                 external_styles=local_styles,
