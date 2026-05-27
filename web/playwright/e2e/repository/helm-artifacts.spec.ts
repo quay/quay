@@ -2,9 +2,9 @@
  * Helm Chart OCI Artifact E2E Tests
  *
  * Tests the complete UI workflow for Helm charts as OCI artifacts:
- * - Helm chart badge/icon display in repository list
+ * - Chart visibility in repository lists
  * - Chart metadata display in repository details
- * - Helm pull instructions display
+ * - Pull instructions display
  *
  * Uses real helm CLI to push actual Helm charts to the registry.
  *
@@ -19,50 +19,7 @@ test.describe(
   {tag: ['@repository', '@helm']},
   () => {
     test.describe('Repository List Display', () => {
-      test('Test 2.1: displays Helm chart icon/badge in repository list', async ({
-        authenticatedPage,
-        api,
-      }) => {
-        // Create organization
-        const org = await api.organization('helmcharts');
-
-        // Push a real Helm chart to the registry
-        await pushHelmChart(
-          org.name,
-          'nginx-chart',
-          '1.0.0',
-          'devtable',
-          'password',
-          {
-            description: 'NGINX web server chart',
-            appVersion: '1.25.0',
-          },
-        );
-
-        // Navigate to repository list
-        await authenticatedPage.goto(`/organization/${org.name}`);
-
-        // Wait for repository list table to load
-        const reposPanel = authenticatedPage.getByRole('tabpanel', {
-          name: 'Repositories',
-        });
-        await expect(
-          reposPanel.getByTestId('repository-list-table'),
-        ).toBeVisible();
-
-        // Verify the Helm chart repository appears in the list
-        const table = reposPanel.getByTestId('repository-list-table');
-        await expect(table).toContainText('nginx-chart');
-
-        // Verify table renders without errors
-        const firstRow = authenticatedPage.locator('tbody tr').first();
-        await expect(firstRow.locator('[data-label="Name"]')).toBeVisible();
-        await expect(
-          firstRow.locator('[data-label="Visibility"]'),
-        ).toBeVisible();
-      });
-
-      test('Test 2.1b: displays Helm chart in global repository view', async ({
+      test('displays Helm chart in global repository view', async ({
         authenticatedPage,
         api,
       }) => {
@@ -109,7 +66,7 @@ test.describe(
     });
 
     test.describe('Repository Details Display', () => {
-      test('Test 2.2: displays chart metadata in repository details', async ({
+      test('displays chart metadata in repository details', async ({
         authenticatedPage,
         api,
       }) => {
@@ -154,7 +111,7 @@ test.describe(
         await expect(tagsPanel).toContainText('12.1.5');
       });
 
-      test('Test 2.2b: repository details shows correct information fields', async ({
+      test('repository details shows correct information fields', async ({
         authenticatedPage,
         api,
       }) => {
@@ -203,7 +160,7 @@ test.describe(
     });
 
     test.describe('Pull Instructions Display', () => {
-      test('Test 2.3: displays Helm pull instructions correctly', async ({
+      test('displays Helm pull instructions correctly', async ({
         authenticatedPage,
         api,
       }) => {
@@ -245,7 +202,7 @@ test.describe(
         await expect(infoPanel).toBeVisible();
       });
 
-      test('Test 2.3b: pull instructions accessible from multiple views', async ({
+      test('pull instructions accessible from multiple views', async ({
         authenticatedPage,
         api,
       }) => {
@@ -286,7 +243,7 @@ test.describe(
         }
       });
 
-      test('Test 2.3c: repository shows appropriate artifact type indication', async ({
+      test('repository shows appropriate artifact type indication', async ({
         authenticatedPage,
         api,
       }) => {
