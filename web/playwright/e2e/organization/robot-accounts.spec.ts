@@ -790,15 +790,24 @@ test.describe(
         api,
       }) => {
         const org = await api.organization('robotloginorg');
+        const repo = await api.repository(org.name, 'logintestrepo');
         const robot = await api.robot(
           org.name,
           'loginbot',
           'Robot for login test',
         );
 
+        await api.repositoryPermission(
+          org.name,
+          repo.name,
+          'user',
+          robot.fullName,
+          'write',
+        );
+
         await pushImage(
           org.name,
-          'logintestrepo',
+          repo.name,
           'latest',
           robot.fullName,
           robot.token,
