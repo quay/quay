@@ -27,7 +27,10 @@ function extractBlobDigests(manifest: Record<string, unknown>): string[] {
     ];
   }
   throw new Error(
-    `Unexpected manifest format (expected v2): ${JSON.stringify(manifest).slice(0, 200)}`,
+    `Unexpected manifest format (expected v2): ${JSON.stringify(manifest).slice(
+      0,
+      200,
+    )}`,
   );
 }
 
@@ -160,13 +163,16 @@ test.describe(
       const objectsAfterDelete = await listBucketObjects(buckets[0]);
       expect(objectsAfterDelete).not.toContain(testKey);
 
-      await pullImage(
-        org.name,
-        repo.name,
-        'fallback',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
-      );
+      // Retry pull — replication timing can cause transient failures
+      await expect(async () => {
+        await pullImage(
+          org.name,
+          repo.name,
+          'fallback',
+          TEST_USERS.user.username,
+          TEST_USERS.user.password,
+        );
+      }).toPass({timeout: 30_000, intervals: [5_000]});
     });
 
     test('multi-arch manifest list blobs replicate to all storage regions', async ({

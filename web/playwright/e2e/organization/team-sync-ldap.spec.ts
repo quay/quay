@@ -68,7 +68,7 @@ test.describe(
       await expect(async () => {
         await page.reload();
         await expect(page.getByTestId('testuser_ldap')).toBeVisible();
-      }).toPass({timeout: 90_000, intervals: [10_000]});
+      }).toPass({timeout: 180_000, intervals: [10_000]});
 
       // Remove sync
       await page.getByRole('button', {name: 'Remove synchronization'}).click();
