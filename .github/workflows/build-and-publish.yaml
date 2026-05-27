@@ -88,6 +88,11 @@ jobs:
             IdentityFile "~/.ssh/id_builder_s390x"
           END
 
+      - name: Clean up remote builders
+        run: |
+          ssh builder-ppc64le "docker system prune -af --volumes" || true
+          ssh builder-s390x "docker system prune -af --volumes" || true
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         with:
