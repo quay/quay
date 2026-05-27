@@ -58,6 +58,7 @@ objects:
     name: ${NAME}-clusterip-service
     labels:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+      ${{PROMETHEUS_SCRAPING_ENABLE_LABEL_KEY}}: ${{PROMETHEUS_SCRAPING_ENABLE_LABEL_VALUE}}
   spec:
     type: ClusterIP
     ports:
@@ -382,4 +383,8 @@ parameters:
   - name: QUAY_APP_GRPC_ENABLE_LABEL_KEY
     value: quay_grpc_endpoint
   - name: QUAY_APP_GRPC_ENABLE_LABEL_VALUE
+    value: "enabled"
+  - name: PROMETHEUS_SCRAPING_ENABLE_LABEL_KEY
+    value: "prometheus_monitoring"
+  - name: PROMETHEUS_SCRAPING_ENABLE_LABEL_VALUE
     value: "enabled"
