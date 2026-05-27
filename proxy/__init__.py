@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 import requests
 from requests.exceptions import RequestException
 
-from app import model_cache
+from app import app, model_cache
 from data.cache import cache_key
 from data.database import ProxyCacheConfig
 from util.security.ssrf import validate_external_registry_url
@@ -64,7 +64,9 @@ class Proxy:
         if config.insecure:
             url = f"http://{hostname}"
 
-        validate_external_registry_url(url, resolve_dns=False)
+        validate_external_registry_url(
+            url, resolve_dns=False, allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", [])
+        )
 
         self.base_url = url
         self._session = requests.Session()
