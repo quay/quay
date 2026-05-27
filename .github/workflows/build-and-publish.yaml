@@ -90,8 +90,8 @@ jobs:
 
       - name: Clean up remote builders
         run: |
-          ssh builder-ppc64le "docker system prune -af --volumes" || true
-          ssh builder-s390x "docker system prune -af --volumes" || true
+          ssh builder-ppc64le "docker system prune -af" || true
+          ssh builder-s390x "docker system prune -af" || true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
