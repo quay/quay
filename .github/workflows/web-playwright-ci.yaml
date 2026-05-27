@@ -115,7 +115,16 @@ jobs:
 
       - name: Install Helm CLI for Helm OCI artifact tests
         run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          HELM_VERSION=v3.17.0
+          HELM_TARBALL=helm-${HELM_VERSION}-linux-amd64.tar.gz
+          HELM_URL=https://get.helm.sh/${HELM_TARBALL}
+          HELM_SHA256=c54bc9b719de0b3ff30ad120d57c61eb7f475e0e4b4a4de0d4e51d2cca07a186
+
+          curl -fsSL ${HELM_URL} -o ${HELM_TARBALL}
+          echo "${HELM_SHA256}  ${HELM_TARBALL}" | sha256sum -c -
+          tar -xzf ${HELM_TARBALL}
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          rm -rf linux-amd64 ${HELM_TARBALL}
           helm version
 
       - name: Run Database auth tests (React + Legacy UI)
