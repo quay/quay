@@ -1,6 +1,7 @@
 import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {API_URL} from '../../utils/config';
+import {pushImage, pullImage} from '../../utils/container';
 
 test.describe(
   'Robot Accounts',
@@ -782,6 +783,83 @@ test.describe(
       // The repo list search should still show the original search text
       // (not polluted by the wizard's search)
       await expect(repoSearchAfter).toHaveValue(repo1.name);
+    });
+
+    test.describe('robot credential execution', {tag: ['@container']}, () => {
+      test('robot credentials can authenticate via container login', async ({
+        api,
+      }) => {
+        const org = await api.organization('robotloginorg');
+        const robot = await api.robot(
+          org.name,
+          'loginbot',
+          'Robot for login test',
+        );
+
+        await pushImage(
+          org.name,
+          'logintestrepo',
+          'latest',
+          robot.fullName,
+          robot.token,
+        );
+      });
+
+      test('robot credentials can push and pull images', async ({api}) => {
+        const org = await api.organization('robotpushpullorg');
+        const repo = await api.repository(org.name, 'pushpullrepo');
+        const robot = await api.robot(
+          org.name,
+          'pushpullbot',
+          'Robot for push/pull test',
+        );
+
+        await api.repositoryPermission(
+          org.name,
+          repo.name,
+          'user',
+          robot.fullName,
+          'write',
+        );
+
+        await pushImage(
+          org.name,
+          repo.name,
+          'v1.0',
+          robot.fullName,
+          robot.token,
+        );
+
+        await pullImage(
+          org.name,
+          repo.name,
+          'v1.0',
+          robot.fullName,
+          robot.token,
+        );
+      });
+
+      test('robot token format is valid and non-empty', async ({
+        authenticatedRequest,
+        api,
+      }) => {
+        const org = await api.organization('robottokenorg');
+        const robot = await api.robot(
+          org.name,
+          'tokenbot',
+          'Robot for token validation',
+        );
+
+        expect(robot.fullName).toMatch(/^.+\+.+$/);
+        expect(robot.token).toBeTruthy();
+        expect(robot.token.length).toBeGreaterThan(0);
+
+        const robotResponse = await authenticatedRequest.get(
+          `${API_URL}/api/v1/organization/${org.name}/robots/${robot.shortname}`,
+        );
+        const robotData = await robotResponse.json();
+        expect(robotData.token).toBe(robot.token);
+      });
     });
 
     test.describe(

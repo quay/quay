@@ -81,6 +81,7 @@ export interface CreatedRobot {
   orgName: string;
   shortname: string;
   fullName: string;
+  token: string;
 }
 
 /**
@@ -327,7 +328,11 @@ export class TestApi {
     // Robot names can't have dashes, only underscores
     const shortname = uniqueName(namePrefix).replace(/-/g, '_');
 
-    await this.client.createRobot(orgName, shortname, description);
+    const result = await this.client.createRobot(
+      orgName,
+      shortname,
+      description,
+    );
 
     this.cleanupStack.push(async () => {
       try {
@@ -341,6 +346,7 @@ export class TestApi {
       orgName,
       shortname,
       fullName: `${orgName}+${shortname}`,
+      token: result.token,
     };
   }
 
