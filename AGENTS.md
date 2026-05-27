@@ -6,11 +6,11 @@ AI-optimized guide for working with Project Quay container registry.
 
 Enterprise container registry supporting Docker Registry Protocol v2, OCI spec v1.1. Provides authentication, ACLs, team management, geo-replicated storage, and security scanning via Clair.
 
-**Stack:** Python 3.12, Flask, SQLAlchemy, PostgreSQL, Redis, Alembic migrations
+**Stack:** Python 3.12, Flask, Peewee ORM, PostgreSQL, Redis, Alembic migrations (via SQLAlchemy bridge)
 
 **Frontend:** Legacy Angular (`static/js/`) + New React/PatternFly (`web/`) - see `web/AGENTS.md` for React details
 
-**Config:** YAML at `conf/stack/config.yaml` (local dev), validated via JSON Schema
+**Config:** YAML at `local-dev/stack/config.yaml` (host) / `conf/stack/config.yaml` (container), validated via JSON Schema
 
 ## Quick Commands
 
@@ -35,7 +35,8 @@ make types-test                      # Type checking (mypy)
 
 - `endpoints/api/` - REST API v1 (Flask)
 - `endpoints/v2/` - OCI/Docker registry protocol
-- `data/model/` - SQLAlchemy models
+- `data/database.py` - Peewee model class definitions (schema source of truth)
+- `data/model/` - Query and business-logic modules
 - `data/migrations/` - Alembic migrations
 - `workers/` - Background job processors
 - `auth/` - Authentication & authorization
