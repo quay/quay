@@ -71,77 +71,78 @@ class TestNoHardcodedCDN:
 try:
     from test.fixtures import *
 
-    class TestTemplateRendering:
-        @pytest.mark.parametrize(
-            "template_name",
-            [
-                "generatedtoken.html",
-                "message.html",
-            ],
-        )
-        def test_template_renders_with_local_styles(self, template_name, app):
-            from flask import render_template
-
-            local_styles = [
-                "/static/ldn/font-awesome.css-abc123",
-                "/static/ldn/bootstrap.min.css-def456",
-            ]
-
-            config_set = {
-                "BRANDING": {"logo": "/static/img/quay_logo.png"},
-            }
-
-            with app.app_context():
-                html = render_template(
-                    template_name,
-                    external_styles=local_styles,
-                    config_set=config_set,
-                    onprem=True,
-                    message="Test message",
-                )
-
-            for style_url in local_styles:
-                assert (
-                    style_url in html
-                ), f"{template_name} did not render local style URL {style_url}"
-
-            for domain in EXTERNAL_CDN_DOMAINS:
-                assert (
-                    domain not in html
-                ), f"{template_name} rendered with hardcoded CDN domain {domain}"
-
-        def test_error_template_renders_with_local_styles(self, app):
-            from flask import render_template
-
-            local_styles = [
-                "/static/ldn/font-awesome.css-abc123",
-                "/static/ldn/bootstrap.min.css-def456",
-            ]
-
-            config_set = {
-                "BRANDING": {
-                    "logo": "/static/img/quay_logo.png",
-                },
-            }
-
-            with app.app_context():
-                html = render_template(
-                    "500.html",
-                    external_styles=local_styles,
-                    config_set=config_set,
-                    onprem=True,
-                    has_billing=False,
-                )
-
-            for style_url in local_styles:
-                assert (
-                    style_url in html
-                ), f"500.html (extends error.html) did not render local style URL {style_url}"
-
-            for domain in EXTERNAL_CDN_DOMAINS:
-                assert (
-                    domain not in html
-                ), f"500.html (extends error.html) rendered with hardcoded CDN domain {domain}"
-
+    _has_fixtures = True
 except ImportError:
-    pass
+    _has_fixtures = False
+
+
+@pytest.mark.skipif(not _has_fixtures, reason="test.fixtures unavailable (missing Flask deps)")
+class TestTemplateRendering:
+    @pytest.mark.parametrize(
+        "template_name",
+        [
+            "generatedtoken.html",
+            "message.html",
+        ],
+    )
+    def test_template_renders_with_local_styles(self, template_name, app):
+        from flask import render_template
+
+        local_styles = [
+            "/static/ldn/font-awesome.css-abc123",
+            "/static/ldn/bootstrap.min.css-def456",
+        ]
+
+        config_set = {
+            "BRANDING": {"logo": "/static/img/quay_logo.png"},
+        }
+
+        with app.app_context():
+            html = render_template(
+                template_name,
+                external_styles=local_styles,
+                config_set=config_set,
+                onprem=True,
+                message="Test message",
+            )
+
+        for style_url in local_styles:
+            assert style_url in html, f"{template_name} did not render local style URL {style_url}"
+
+        for domain in EXTERNAL_CDN_DOMAINS:
+            assert (
+                domain not in html
+            ), f"{template_name} rendered with hardcoded CDN domain {domain}"
+
+    def test_error_template_renders_with_local_styles(self, app):
+        from flask import render_template
+
+        local_styles = [
+            "/static/ldn/font-awesome.css-abc123",
+            "/static/ldn/bootstrap.min.css-def456",
+        ]
+
+        config_set = {
+            "BRANDING": {
+                "logo": "/static/img/quay_logo.png",
+            },
+        }
+
+        with app.app_context():
+            html = render_template(
+                "500.html",
+                external_styles=local_styles,
+                config_set=config_set,
+                onprem=True,
+                has_billing=False,
+            )
+
+        for style_url in local_styles:
+            assert (
+                style_url in html
+            ), f"500.html (extends error.html) did not render local style URL {style_url}"
+
+        for domain in EXTERNAL_CDN_DOMAINS:
+            assert (
+                domain not in html
+            ), f"500.html (extends error.html) rendered with hardcoded CDN domain {domain}"
