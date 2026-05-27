@@ -5,7 +5,7 @@
  * to the registry during e2e tests. Supports both podman and docker.
  */
 
-import {exec, execFileSync, execSync} from 'child_process';
+import {exec, execFileSync} from 'child_process';
 import {promisify} from 'util';
 import {API_URL} from './config';
 
@@ -194,6 +194,33 @@ export function orasAttach(
       filePath,
     ],
     {stdio: 'pipe', timeout: 60_000},
+  );
+}
+
+/**
+ * Push an image in OCI manifest format to the registry using skopeo.
+ *
+ * Uses `--format=oci` to guarantee the manifest uses the OCI content type,
+ * which exercises a different code path in the security scanner than
+ * Docker v2 schema 2 manifests.
+ *
+ * @example
+ * ```typescript
+ * await pushOCIImage('myorg', 'myrepo', 'latest', 'testuser', 'password');
+ * ```
+ */
+export async function pushOCIImage(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  const targetImage = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
+  const sourceImage = 'quay.io/prometheus/busybox:latest';
+
+  await retryPush(
+    `skopeo copy --format=oci --override-os=linux --override-arch=amd64 docker://${sourceImage} docker://${targetImage} --dest-tls-verify=false --dest-creds=${username}:${password}`,
   );
 }
 

@@ -15,7 +15,8 @@
  */
 
 import {test, expect} from '../../fixtures';
-import {Page} from '@playwright/test';
+import type {Page} from '@playwright/test';
+import {API_URL} from '../../utils/config';
 
 async function fillRequiredFields(
   page: Page,
@@ -26,7 +27,7 @@ async function fillRequiredFields(
     namespace?: string;
     syncInterval?: string;
   } = {},
-) {
+): Promise<void> {
   const {
     registryType = 'Quay',
     registryUrl = 'https://quay.io',
@@ -89,7 +90,7 @@ test.describe(
     test('shows NORMAL state message when no config exists', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrnorm');
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
@@ -104,7 +105,7 @@ test.describe(
     test('shows mirroring tab only for org admins when feature is enabled', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrvis');
 
       await authenticatedPage.goto(`/organization/${org.name}`);
@@ -118,7 +119,7 @@ test.describe(
     test('settings tab shows organization state with mirror option', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrsett');
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
@@ -138,7 +139,7 @@ test.describe(
     test('navigates from settings mirror state to mirroring tab', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrsnav');
 
       await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
@@ -167,7 +168,7 @@ test.describe(
     test('creates new mirror configuration with form validation', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcrt');
       const robot = await api.robot(org.name, 'mirrorbot');
 
@@ -219,7 +220,7 @@ test.describe(
     test('loads and manages existing mirror configuration', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrexst');
       const robot = await api.robot(org.name, 'existbot');
 
@@ -289,7 +290,10 @@ test.describe(
       expect(updatedConfig?.external_namespace).toBe('newnamespace');
     });
 
-    test('triggers sync-now operation', async ({authenticatedPage, api}) => {
+    test('triggers sync-now operation', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
       const org = await api.organization('orgmirrsync');
       const robot = await api.robot(org.name, 'syncbot');
 
@@ -330,7 +334,7 @@ test.describe(
     test('verify connection succeeds with valid config (no credentials)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrverf');
       const robot = await api.robot(org.name, 'verfbot');
 
@@ -363,7 +367,7 @@ test.describe(
     test('verify connection fails with invalid credentials', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrvfal');
       const robot = await api.robot(org.name, 'vfalbot');
 
@@ -398,7 +402,7 @@ test.describe(
     test('deletes mirror configuration with confirmation', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrdel');
       const robot = await api.robot(org.name, 'delbot');
 
@@ -451,14 +455,14 @@ test.describe(
     test('displays error on mirror configuration failure', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrerr');
       const robot = await api.robot(org.name, 'errbot');
 
       // Mock error response for POST to org mirror endpoint
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
-        async (route) => {
+        async (route): Promise<void> => {
           if (route.request().method() === 'POST') {
             await route.fulfill({
               status: 400,
@@ -501,7 +505,7 @@ test.describe(
     test('shows discovered repositories table when config exists', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrrepo');
       const robot = await api.robot(org.name, 'repobot');
 
@@ -533,7 +537,7 @@ test.describe(
     test('toggles enabled checkbox and updates config', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrtgl');
       const robot = await api.robot(org.name, 'tglbot');
 
@@ -582,7 +586,7 @@ test.describe(
     test('cancel sync button is disabled when not syncing', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcanc');
       const robot = await api.robot(org.name, 'cancbot');
 
@@ -611,10 +615,356 @@ test.describe(
       ).toBeDisabled();
     });
 
+    test('cancel sync flow with confirmation modal (PROJQUAY-11175)', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
+      const org = await api.organization('orgmirrcncl');
+      const robot = await api.robot(org.name, 'cnclbot');
+
+      // Create config and trigger sync-now so the config is in a cancellable state
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Trigger sync-now to put config in SYNC_NOW state
+      await api.raw.triggerOrgMirrorSync(org.name);
+
+      // Mock the GET response to show SYNCING repo counts so the cancel button is enabled
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route): Promise<void> => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 2,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 1,
+              CANCEL: 0,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Cancel sync button should be enabled when repos are syncing
+      await expect(
+        authenticatedPage.getByTestId('cancel-sync-button'),
+      ).toBeEnabled();
+
+      // Click cancel sync button — opens confirmation modal
+      await authenticatedPage.getByTestId('cancel-sync-button').click();
+
+      // Verify confirmation modal appears
+      await expect(
+        authenticatedPage.getByText(
+          'Are you sure you want to cancel the current sync operation?',
+        ),
+      ).toBeVisible();
+
+      // Remove the route mock so the cancel API call goes through
+      await authenticatedPage.unrouteAll();
+
+      // Confirm cancellation
+      await authenticatedPage.getByTestId('confirm-cancel-sync-button').click();
+
+      // Verify success message
+      await expect(
+        authenticatedPage.getByText('Sync cancelled successfully').first(),
+      ).toBeVisible();
+
+      // Verify config status is CANCEL via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.sync_status).toBe('CANCEL');
+      // sync_expiration_date should be set (non-null) — signals "needs processing"
+      expect(config?.sync_expiration_date).not.toBeNull();
+    });
+
+    test('cancel sync modal can be dismissed without cancelling', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
+      const org = await api.organization('orgmirrcndm');
+      const robot = await api.robot(org.name, 'cndmbot');
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Trigger sync-now to enable cancel button
+      await api.raw.triggerOrgMirrorSync(org.name);
+
+      // Mock to show SYNCING repos so cancel button is enabled
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route): Promise<void> => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 1,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 0,
+              CANCEL: 0,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Open cancel modal
+      await authenticatedPage.getByTestId('cancel-sync-button').click();
+
+      await expect(
+        authenticatedPage.getByText(
+          'Are you sure you want to cancel the current sync operation?',
+        ),
+      ).toBeVisible();
+
+      // Dismiss modal by clicking Cancel button (not the confirm button)
+      await authenticatedPage
+        .getByRole('button', {name: 'Cancel', exact: true})
+        .click();
+
+      // Modal should be closed
+      await expect(
+        authenticatedPage.getByText(
+          'Are you sure you want to cancel the current sync operation?',
+        ),
+      ).not.toBeVisible();
+
+      // Config should NOT be cancelled — still in SYNC_NOW state
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config?.sync_status).not.toBe('CANCEL');
+    });
+
+    test('cancel sync button disabled after status is CANCEL (PROJQUAY-11175)', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
+      const org = await api.organization('orgmirrpstc');
+      const robot = await api.robot(org.name, 'pstcbot');
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Trigger sync then cancel it via API
+      await api.raw.triggerOrgMirrorSync(org.name);
+      await api.raw.cancelOrgMirrorSync(org.name);
+
+      // Mock the GET response to show CANCEL status counts (no SYNCING/SYNC_NOW)
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route): Promise<void> => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 0,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 0,
+              CANCEL: 3,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Cancel sync button should be disabled since no repos are SYNCING/SYNC_NOW
+      await expect(
+        authenticatedPage.getByTestId('cancel-sync-button'),
+      ).toBeDisabled();
+
+      // Status should show Cancelled count
+      const statusDisplay = authenticatedPage.getByTestId(
+        'org-mirror-status-display',
+      );
+      await expect(statusDisplay.getByText('Cancelled: 3')).toBeVisible();
+    });
+
+    test('cancel sync modal indicates future syncs continue (PROJQUAY-11414)', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
+      const org = await api.organization('orgmirrcfsc');
+      const robot = await api.robot(org.name, 'cfscbot');
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Trigger sync-now to enable cancel button
+      await api.raw.triggerOrgMirrorSync(org.name);
+
+      // Mock SYNCING repos so cancel button is enabled
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/mirror`,
+        async (route): Promise<void> => {
+          if (route.request().method() === 'GET') {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.repo_sync_status_counts = {
+              SUCCESS: 0,
+              SYNCING: 1,
+              FAIL: 0,
+              NEVER_RUN: 0,
+              SYNC_NOW: 0,
+              CANCEL: 0,
+            };
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(body),
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Open cancel modal
+      await authenticatedPage.getByTestId('cancel-sync-button').click();
+
+      // Verify modal text about cancelling syncs
+      await expect(
+        authenticatedPage.getByText(
+          'in-progress and scheduled syncs will be stopped',
+        ),
+      ).toBeVisible();
+
+      // Dismiss without cancelling
+      await authenticatedPage
+        .getByRole('button', {name: 'Cancel', exact: true})
+        .click();
+    });
+
+    test('cancel sync preserves sync_start_date for future syncs (PROJQUAY-11414)', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
+      const org = await api.organization('orgmirrpssd');
+      const robot = await api.robot(org.name, 'pssdbot');
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 60);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      // Trigger sync-now and then cancel via API
+      await api.raw.triggerOrgMirrorSync(org.name);
+      await api.raw.cancelOrgMirrorSync(org.name);
+
+      // Verify sync_start_date is still present after cancel (the backend may
+      // reschedule, so the exact value can differ from the original).
+      const afterConfig = await api.raw.getOrgMirrorConfig(org.name);
+      expect(afterConfig?.sync_status).toBe('CANCEL');
+      expect(afterConfig?.sync_start_date).not.toBeNull();
+
+      // Verify the sync start date field is still populated in the UI
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // The sync start date input should still have a value (not empty)
+      const dateInput = authenticatedPage.getByLabel('Sync start date');
+      await expect(dateInput).not.toHaveValue('');
+    });
+
     test('repository filters are preserved on save', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrfilt');
       const robot = await api.robot(org.name, 'filtbot');
 
@@ -655,7 +1005,7 @@ test.describe(
     test('creates config with Harbor registry type', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrharb');
       const robot = await api.robot(org.name, 'harbbot');
 
@@ -692,7 +1042,7 @@ test.describe(
     test('changes visibility from private to public and saves', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrpub');
       const robot = await api.robot(org.name, 'pubbot');
 
@@ -740,7 +1090,7 @@ test.describe(
     test('saves advanced settings (TLS and proxy)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirradv');
       const robot = await api.robot(org.name, 'advbot');
 
@@ -797,7 +1147,7 @@ test.describe(
     test('saves credentials (username and password)', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcred');
       const robot = await api.robot(org.name, 'credbot');
 
@@ -835,7 +1185,7 @@ test.describe(
     test('clears credentials when username is removed', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrclrc');
       const robot = await api.robot(org.name, 'clrcbot');
 
@@ -881,7 +1231,10 @@ test.describe(
       expect(afterConfig?.external_registry_username).toBeNull();
     });
 
-    test('validates skopeo timeout range', async ({authenticatedPage, api}) => {
+    test('validates skopeo timeout range', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
       const org = await api.organization('orgmirrskop');
       const robot = await api.robot(org.name, 'skopbot');
 
@@ -934,9 +1287,9 @@ test.describe(
     test('validates sync interval is a positive number', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrival');
-      const robot = await api.robot(org.name, 'ivalbot');
+      await api.robot(org.name, 'ivalbot');
 
       await authenticatedPage.goto(
         `/organization/${org.name}?tab=Mirroring&setup=true`,
@@ -969,7 +1322,7 @@ test.describe(
     test('cannot enable org mirror when immutability policies exist', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrimm');
       await api.orgImmutabilityPolicy(org.name, 'v.*', true);
 
@@ -984,7 +1337,7 @@ test.describe(
     test('displays repo sync status counts in State field', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrcnts');
       const robot = await api.robot(org.name, 'cntsbot');
 
@@ -1011,7 +1364,7 @@ test.describe(
       // Now intercept with a deterministic mock (no route.fetch race)
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
-        async (route) => {
+        async (route): Promise<void> => {
           if (route.request().method() === 'GET') {
             await route.fulfill({
               status: 200,
@@ -1067,7 +1420,7 @@ test.describe(
     test('displays "No repositories" when all status counts are zero', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrnocnt');
       const robot = await api.robot(org.name, 'nocntbot');
 
@@ -1087,7 +1440,7 @@ test.describe(
       // Mock the config GET response to return all-zero repo_sync_status_counts
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror`,
-        async (route) => {
+        async (route): Promise<void> => {
           if (route.request().method() === 'GET') {
             const response = await route.fetch();
             const body = await response.json();
@@ -1126,7 +1479,7 @@ test.describe(
     test('filters repos by status using dropdown', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrfltst');
       const robot = await api.robot(org.name, 'fltstbot');
 
@@ -1146,7 +1499,7 @@ test.describe(
       // Mock repos list endpoint to return different results based on status filter
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror/repositories*`,
-        async (route) => {
+        async (route): Promise<void> => {
           const url = new URL(route.request().url());
           const status = url.searchParams.get('status');
 
@@ -1239,7 +1592,7 @@ test.describe(
     test('filter reset to "All statuses" shows all repos', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrfrst');
       const robot = await api.robot(org.name, 'frstbot');
 
@@ -1259,7 +1612,7 @@ test.describe(
       // Mock repos list endpoint
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror/repositories*`,
-        async (route) => {
+        async (route): Promise<void> => {
           const url = new URL(route.request().url());
           const status = url.searchParams.get('status');
 
@@ -1327,7 +1680,7 @@ test.describe(
     test('shows empty filter message when no repos match status', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrempt');
       const robot = await api.robot(org.name, 'emptbot');
 
@@ -1347,7 +1700,7 @@ test.describe(
       // Mock repos endpoint — return repos only when unfiltered, empty for CANCEL
       await authenticatedPage.route(
         `**/api/v1/organization/${org.name}/mirror/repositories*`,
-        async (route) => {
+        async (route): Promise<void> => {
           const url = new URL(route.request().url());
           const status = url.searchParams.get('status');
 
@@ -1401,10 +1754,114 @@ test.describe(
       ).toBeVisible();
     });
 
+    test('enables org mirror when only MARKED_FOR_DELETION repos exist (PROJQUAY-10982)', async ({
+      authenticatedPage,
+      api,
+    }): Promise<void> => {
+      const org = await api.organization('orgmirrmfd');
+      const robot = await api.robot(org.name, 'delrbot');
+      const repo = await api.repository(org.name, 'todelete');
+
+      // Delete the repo via API — sets state to MARKED_FOR_DELETION
+      await api.raw.deleteRepository(org.name, repo.name);
+
+      // Navigate to mirroring setup
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Mirroring&setup=true`,
+      );
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Fill in required fields and submit
+      await fillRequiredFields(authenticatedPage, robot.fullName);
+      await authenticatedPage.getByTestId('submit-button').click();
+
+      // Should succeed — MARKED_FOR_DELETION repos must not block creation
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration saved successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify config exists via API
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config).not.toBeNull();
+      expect(config?.external_registry_url).toBe('https://quay.io');
+    });
+
+    test('deleting mirror config resets org to normal and repos remain accessible (PROJQUAY-11382)', async ({
+      authenticatedPage,
+      authenticatedRequest,
+      api,
+    }): Promise<void> => {
+      const org = await api.organization('orgmirr11382');
+      const robot = await api.robot(org.name, 'rstbot');
+
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createOrgMirrorConfig(org.name, {
+        external_registry_type: 'quay',
+        external_registry_url: 'https://quay.io',
+        external_namespace: 'projectquay',
+        robot_username: robot.fullName,
+        visibility: 'private',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Mirroring`);
+
+      await expect(
+        authenticatedPage.getByTestId('org-mirror-form'),
+      ).toBeVisible();
+
+      // Delete mirror config via UI
+      await authenticatedPage.getByTestId('delete-mirror-button').click();
+      await expect(
+        authenticatedPage
+          .getByText(
+            'Are you sure you want to delete the organization mirror configuration?',
+          )
+          .first(),
+      ).toBeVisible();
+      await authenticatedPage.getByTestId('confirm-delete-button').click();
+
+      await expect(
+        authenticatedPage
+          .getByText('Organization mirror configuration deleted successfully')
+          .first(),
+      ).toBeVisible();
+
+      // Verify config is gone
+      const config = await api.raw.getOrgMirrorConfig(org.name);
+      expect(config).toBeNull();
+
+      // Verify org is back to NORMAL by creating a repo (would fail if still MIRROR)
+      const repo = await api.repository(org.name, 'postresetrepo');
+      const repoResponse = await authenticatedRequest.get(
+        `${API_URL}/api/v1/repository/${org.name}/${repo.name}`,
+      );
+      expect(repoResponse.ok()).toBe(true);
+      const repoBody = await repoResponse.json();
+      expect(repoBody.state).toBe('NORMAL');
+
+      // Verify org settings page shows Normal state
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      await authenticatedPage.getByText('Organization state').click();
+      await expect(
+        authenticatedPage.getByRole('radio', {name: 'Normal'}),
+      ).toBeChecked();
+      await expect(
+        authenticatedPage.getByRole('radio', {name: 'Mirror'}),
+      ).not.toBeChecked();
+    });
+
     test('cancel delete modal keeps config intact', async ({
       authenticatedPage,
       api,
-    }) => {
+    }): Promise<void> => {
       const org = await api.organization('orgmirrkeep');
       const robot = await api.robot(org.name, 'keepbot');
 
