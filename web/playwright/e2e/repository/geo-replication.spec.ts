@@ -122,7 +122,7 @@ test.describe(
       await waitForReplication(digests.map(digestToS3Key), buckets);
     });
 
-    test('pull succeeds when primary blob is deleted (fallback to replica)', async ({
+    test('pull succeeds when replica blob is deleted (data survives single-region loss)', async ({
       api,
       authenticatedRequest,
     }) => {
@@ -156,23 +156,25 @@ test.describe(
       const expectedKeys = digests.map(digestToS3Key);
       await waitForReplication(expectedKeys, buckets);
 
-      // Delete one blob from one bucket to test fallback
+      // Delete from the last bucket (non-preferred replica).
+      // Quay's _location_aware always serves from the preferred location
+      // (DISTRIBUTED_STORAGE_PREFERENCE[0]) when it's in the placements list,
+      // so deleting from a non-preferred replica verifies replication happened
+      // while ensuring the pull still succeeds through the preferred path.
+      const replicaBucket = buckets[buckets.length - 1];
       const testKey = expectedKeys[0];
-      await deleteObject(buckets[0], testKey);
+      await deleteObject(replicaBucket, testKey);
 
-      const objectsAfterDelete = await listBucketObjects(buckets[0]);
+      const objectsAfterDelete = await listBucketObjects(replicaBucket);
       expect(objectsAfterDelete).not.toContain(testKey);
 
-      // Retry pull — replication timing can cause transient failures
-      await expect(async () => {
-        await pullImage(
-          org.name,
-          repo.name,
-          'fallback',
-          TEST_USERS.user.username,
-          TEST_USERS.user.password,
-        );
-      }).toPass({timeout: 30_000, intervals: [5_000]});
+      await pullImage(
+        org.name,
+        repo.name,
+        'fallback',
+        TEST_USERS.user.username,
+        TEST_USERS.user.password,
+      );
     });
 
     test('multi-arch manifest list blobs replicate to all storage regions', async ({
