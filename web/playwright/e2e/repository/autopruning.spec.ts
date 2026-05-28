@@ -501,7 +501,9 @@ test.describe(
       }).toPass({timeout: 120_000, intervals: [5_000]});
     });
 
-    test.skip('repo-level time-based pruning removes old tags', async ({api}) => {
+    test.skip('repo-level time-based pruning removes old tags', async ({
+      api,
+    }) => {
       test.slow();
       const org = await api.organization('repopruneage');
       const repo = await api.repository(org.name, 'prunetest');
