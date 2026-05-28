@@ -3,6 +3,7 @@ import json
 import pytest
 
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+from image.docker.schema2.list import DockerSchema2ManifestList
 from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.oci.index import MalformedIndex, OCIIndex, OCIIndexBuilder
 from image.oci.manifest import OCIManifest
@@ -119,6 +120,21 @@ DOCKER_SCHEMA2_CHILD_BYTES = json.dumps(
     }
 ).encode("utf-8")
 
+DOCKER_SCHEMA2_MANIFEST_LIST_CHILD_BYTES = json.dumps(
+    {
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+        "manifests": [
+            {
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f",
+                "size": 7143,
+                "platform": {"architecture": "amd64", "os": "linux"},
+            },
+        ],
+    }
+).encode("utf-8")
+
 OCI_CHILD_BYTES = json.dumps(
     {
         "schemaVersion": 2,
@@ -169,6 +185,11 @@ MIXED_MEDIA_TYPE_INDEX_BYTES = json.dumps(
                     "os": "linux",
                 },
             },
+            {
+                "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+                "size": len(DOCKER_SCHEMA2_MANIFEST_LIST_CHILD_BYTES),
+                "digest": "sha256:ddd444",
+            },
         ],
     }
 ).encode("utf-8")
@@ -184,6 +205,7 @@ def test_oci_index_with_mixed_docker_and_oci_children():
         "sha256:aaa111",
         "sha256:bbb222",
         "sha256:ccc333",
+        "sha256:ddd444",
     ]
 
     retriever = ContentRetrieverForTesting(
@@ -191,16 +213,19 @@ def test_oci_index_with_mixed_docker_and_oci_children():
             "sha256:aaa111": DOCKER_SCHEMA2_CHILD_BYTES,
             "sha256:bbb222": OCI_CHILD_BYTES,
             "sha256:ccc333": OCI_CHILD_BYTES,
+            "sha256:ddd444": DOCKER_SCHEMA2_MANIFEST_LIST_CHILD_BYTES,
         }
     )
 
     manifests = index.manifests(retriever)
-    assert len(manifests) == 3
+    assert len(manifests) == 4
 
     assert isinstance(manifests[0].manifest_obj, DockerSchema2Manifest)
     assert manifests[0].manifest_obj.media_type == DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 
     assert isinstance(manifests[1].manifest_obj, OCIManifest)
     assert isinstance(manifests[2].manifest_obj, OCIManifest)
+
+    assert isinstance(manifests[3].manifest_obj, DockerSchema2ManifestList)
 
     assert index.amd64_linux_manifest_digest == "sha256:aaa111"
