@@ -109,7 +109,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y skopeo
 
       - name: Install regctl for CLI interop tests
-        uses: regclient/actions/regctl-installer@main
+        uses: regclient/actions/regctl-installer@1b705e32d40851370799ea5814e83d0a5f6a70dc # v0.1.0
 
       - name: Run Database auth tests (React + Legacy UI)
         env:
