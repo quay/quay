@@ -348,3 +348,67 @@ export async function isOrasAvailable(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Check if skopeo CLI is available on the system.
+ */
+export async function isSkopeoAvailable(): Promise<boolean> {
+  try {
+    await execAsync('skopeo --version');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if regctl CLI is available on the system.
+ */
+export async function isRegctlAvailable(): Promise<boolean> {
+  try {
+    await execAsync('regctl version');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * List tags for a repository using skopeo.
+ *
+ * @returns Array of tag name strings
+ */
+export async function skopeoListTags(
+  namespace: string,
+  repo: string,
+  username: string,
+  password: string,
+): Promise<string[]> {
+  const ref = `docker://${REGISTRY_HOST}/${namespace}/${repo}`;
+  const {stdout} = await execAsync(
+    `skopeo list-tags ${ref} --tls-verify=false --creds=${username}:${password}`,
+  );
+  const result = JSON.parse(stdout);
+  return result.Tags ?? [];
+}
+
+/**
+ * List tags for a repository using regctl.
+ *
+ * @returns Array of tag name strings
+ */
+export async function regctlListTags(
+  namespace: string,
+  repo: string,
+  username: string,
+  password: string,
+): Promise<string[]> {
+  const ref = `${REGISTRY_HOST}/${namespace}/${repo}`;
+  const {stdout} = await execAsync(
+    `regctl tag ls ${ref} --tls-verify=false --user ${username}:${password}`,
+  );
+  return stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
