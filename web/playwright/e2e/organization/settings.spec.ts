@@ -570,7 +570,7 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
         await saveButton.click();
 
         await expect(
-          authenticatedPage.getByText('E-mail address already used'),
+          authenticatedPage.getByText('E-mail address already used').first(),
         ).toBeVisible();
       });
     },
