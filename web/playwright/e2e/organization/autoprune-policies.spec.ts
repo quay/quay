@@ -352,7 +352,9 @@ test.describe(
       }).toPass({timeout: 180_000, intervals: [10_000]});
     });
 
-    test.skip('multiple user-namespace policies both take effect', async ({api}) => {
+    test.skip('multiple user-namespace policies both take effect', async ({
+      api,
+    }) => {
       test.slow();
       const username = user.username;
       const repoName = `prunemulti${Date.now()}`;
