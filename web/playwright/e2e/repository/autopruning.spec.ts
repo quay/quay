@@ -15,7 +15,6 @@
  */
 
 import {test, expect} from '../../fixtures';
-import {API_URL} from '../../utils/config';
 import {TEST_USERS} from '../../global-setup';
 import {pushImage, pushMultiArchImage} from '../../utils/container';
 
