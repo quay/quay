@@ -221,6 +221,71 @@ def test_mirror_unsigned_images(run_skopeo_mock, initialized_db, app):
 
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+@mock.patch("util.repomirror.skopeomirror.os.path.exists")
+def test_mirror_signed_images_only(path_exists_mock, run_skopeo_mock, initialized_db, app):
+    """
+    Test that strict policy is enforced when unsigned_images is False (default).
+    This ensures that only signed images are accepted when the checkbox is not selected.
+    """
+
+    # Mock that the strict policy file exists
+    path_exists_mock.return_value = True
+
+    mirror, repo = create_mirror_repo_robot(
+        ["latest"], external_registry_config={"verify_tls": False, "unsigned_images": False}
+    )
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "list-tags",
+                "--tls-verify=False",
+                "docker://registry.example.com/namespace/repository",
+            ],
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
+        },
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "--policy",
+                "/conf/containers-policy-strict.json",
+                "copy",
+                "--all",
+                "--remove-signatures",
+                "--src-tls-verify=False",
+                "--dest-tls-verify=True",
+                "--dest-creds",
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/repo:latest",
+            ],
+            "results": SkopeoResults(True, [], "stdout", "stderr"),
+        },
+    ]
+
+    def skopeo_test(args, proxy, timeout=300):
+        try:
+            skopeo_call = skopeo_calls.pop(0)
+            _assert_skopeo_args(args, skopeo_call["args"])
+            assert proxy == {}
+
+            return skopeo_call["results"]
+        except Exception as e:
+            skopeo_calls.append(skopeo_call)
+            raise e
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    worker = RepoMirrorWorker()
+    worker._process_mirrors()
+
+    assert [] == skopeo_calls
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_successful_disabled_sync_now(run_skopeo_mock, initialized_db, app):
     """
     Disabled mirrors still allow "sync now".

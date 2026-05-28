@@ -23,6 +23,9 @@ SKOPEO_TIMEOUT_SECONDS = 300
 
 _FILESYSTEM_TRANSPORTS = frozenset({"oci-archive", "oci", "dir", "docker-archive"})
 
+# Path to strict policy file that rejects unsigned images
+STRICT_POLICY_PATH = "/conf/containers-policy-strict.json"
+
 
 def _registry_netloc(image: str) -> Optional[str]:
     """Return the registry hostname for an image URI, or None for filesystem transports.
@@ -98,6 +101,21 @@ class SkopeoMirror(object):
 
     # No DB calls here: This will be called from a separate worker that has no connection except
     # to/from the mirror worker
+    def _get_policy_args(self, unsigned_images: bool) -> list:
+        """Return skopeo policy arguments based on unsigned_images flag."""
+        if unsigned_images:
+            # Allow unsigned images - skip signature verification
+            return ["--insecure-policy"]
+        else:
+            # Enforce signature verification using strict policy
+            if not os.path.exists(STRICT_POLICY_PATH):
+                raise FileNotFoundError(
+                    f"Strict policy file not found at {STRICT_POLICY_PATH}. "
+                    f"Cannot enforce signature verification as required by unsigned_images=False. "
+                    f"Verify container deployment and volume mounts."
+                )
+            return ["--policy", STRICT_POLICY_PATH]
+
     def copy(
         self,
         src_image,
@@ -117,8 +135,7 @@ class SkopeoMirror(object):
         args = ["/usr/bin/skopeo"]
         if verbose_logs:
             args = args + ["--debug"]
-        if unsigned_images:
-            args = args + ["--insecure-policy"]
+        args = args + self._get_policy_args(unsigned_images)
 
         args = args + [
             "copy",
@@ -241,8 +258,7 @@ class SkopeoMirror(object):
         args = ["/usr/bin/skopeo"]
         if verbose_logs:
             args = args + ["--debug"]
-        if unsigned_images:
-            args = args + ["--insecure-policy"]
+        args = args + self._get_policy_args(unsigned_images)
         args = args + [
             "copy",
             "--preserve-digests",
