@@ -280,6 +280,7 @@ test.describe(
       const username = user.username;
       const repoName = `pruneusr${Date.now()}`;
 
+      await api.raw.deleteAllUserAutoPrunePolicies();
       await api.raw.createRepository(username, repoName, 'private');
 
       try {
@@ -305,6 +306,7 @@ test.describe(
       const username = user.username;
       const repoName = `pruneusrage${Date.now()}`;
 
+      await api.raw.deleteAllUserAutoPrunePolicies();
       await api.raw.createRepository(username, repoName, 'private');
 
       try {
@@ -351,6 +353,7 @@ test.describe(
       const username = user.username;
       const repoName = `prunemulti${Date.now()}`;
 
+      await api.raw.deleteAllUserAutoPrunePolicies();
       await api.raw.createRepository(username, repoName, 'private');
 
       try {

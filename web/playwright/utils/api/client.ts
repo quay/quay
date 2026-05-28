@@ -2204,6 +2204,30 @@ export class ApiClient {
     }
   }
 
+  async listUserAutoPrunePolicies(): Promise<{uuid: string}[]> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/user/autoprunepolicy/`,
+      {timeout: 5000},
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to list user auto-prune policies: ${response.status()} - ${body}`,
+      );
+    }
+
+    const data = await response.json();
+    return data.policies ?? [];
+  }
+
+  async deleteAllUserAutoPrunePolicies(): Promise<void> {
+    const policies = await this.listUserAutoPrunePolicies();
+    for (const p of policies) {
+      await this.deleteUserAutoPrunePolicy(p.uuid);
+    }
+  }
+
   async createUserAutoPrunePolicy(
     policy: AutoPrunePolicy,
   ): Promise<{uuid: string}> {
