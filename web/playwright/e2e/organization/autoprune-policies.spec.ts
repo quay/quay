@@ -227,9 +227,7 @@ test.describe(
       }).toPass({timeout: 120_000, intervals: [5_000]});
     });
 
-    test.skip('time-based org-level pruning removes old tags', async ({
-      api,
-    }) => {
+    test('time-based org-level pruning removes old tags', async ({api}) => {
       test.slow();
       const org = await api.organization('pruneage');
       const repo = await api.repository(org.name, 'prunetest');
@@ -275,7 +273,7 @@ test.describe(
       expect(deletedV1).toBeDefined();
     });
 
-    test.skip('user namespace tag-count pruning removes excess tags', async ({
+    test('user namespace tag-count pruning removes excess tags', async ({
       api,
     }) => {
       test.slow();
@@ -300,7 +298,7 @@ test.describe(
       }
     });
 
-    test.skip('user namespace time-based pruning removes old tags', async ({
+    test('user namespace time-based pruning removes old tags', async ({
       api,
     }) => {
       test.slow();
@@ -312,7 +310,7 @@ test.describe(
       try {
         await pushImage(username, repoName, 'v1', user.username, user.password);
 
-        await api.userAutoPrunePolicy({method: 'creation_date', value: '2m'});
+        await api.userAutoPrunePolicy({method: 'creation_date', value: '10s'});
 
         await expect(async () => {
           const tags = await api.raw.getTags(username, repoName);
@@ -339,19 +337,16 @@ test.describe(
       });
       await api.repoAutoPrunePolicy(org.name, repo.name, {
         method: 'creation_date',
-        value: '1w',
+        value: '10s',
       });
 
       await expect(async () => {
         const tags = await api.raw.getTags(org.name, repo.name);
-        expect(tags.tags).toHaveLength(1);
-        expect(tags.tags[0].name).toBe('v2');
+        expect(tags.tags).toHaveLength(0);
       }).toPass({timeout: 120_000, intervals: [5_000]});
     });
 
-    test.skip('multiple user-namespace policies both take effect', async ({
-      api,
-    }) => {
+    test('multiple user-namespace policies both take effect', async ({api}) => {
       test.slow();
       const username = user.username;
       const repoName = `prunemulti${Date.now()}`;
@@ -362,21 +357,22 @@ test.describe(
         await pushImage(username, repoName, 'v1', user.username, user.password);
         await pushImage(username, repoName, 'v2', user.username, user.password);
 
+        // Create tag-count policy first and verify it prunes
         await api.userAutoPrunePolicy({method: 'number_of_tags', value: 1});
-        await api.userAutoPrunePolicy({method: 'creation_date', value: '2m'});
 
-        // Tag-count policy prunes v1 first
         await expect(async () => {
           const tags = await api.raw.getTags(username, repoName);
           expect(tags.tags).toHaveLength(1);
           expect(tags.tags[0].name).toBe('v2');
         }).toPass({timeout: 120_000, intervals: [5_000]});
 
-        // Time-based policy eventually prunes v2
+        // Add time-based policy — remaining tag is already >10s old
+        await api.userAutoPrunePolicy({method: 'creation_date', value: '10s'});
+
         await expect(async () => {
           const tags = await api.raw.getTags(username, repoName);
           expect(tags.tags).toHaveLength(0);
-        }).toPass({timeout: 180_000, intervals: [10_000]});
+        }).toPass({timeout: 120_000, intervals: [5_000]});
       } finally {
         await api.raw.deleteRepository(username, repoName);
       }

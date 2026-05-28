@@ -501,9 +501,7 @@ test.describe(
       }).toPass({timeout: 120_000, intervals: [5_000]});
     });
 
-    test.skip('repo-level time-based pruning removes old tags', async ({
-      api,
-    }) => {
+    test('repo-level time-based pruning removes old tags', async ({api}) => {
       test.slow();
       const org = await api.organization('repopruneage');
       const repo = await api.repository(org.name, 'prunetest');
@@ -677,13 +675,12 @@ test.describe(
       });
       await api.repoAutoPrunePolicy(org.name, repo.name, {
         method: 'creation_date',
-        value: '1w',
+        value: '10s',
       });
 
       await expect(async () => {
         const tags = await api.raw.getTags(org.name, repo.name);
-        expect(tags.tags).toHaveLength(1);
-        expect(tags.tags[0].name).toBe('v2');
+        expect(tags.tags).toHaveLength(0);
       }).toPass({timeout: 120_000, intervals: [5_000]});
     });
 
