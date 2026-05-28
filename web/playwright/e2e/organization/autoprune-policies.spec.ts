@@ -236,7 +236,7 @@ test.describe(
 
       await api.orgAutoPrunePolicy(org.name, {
         method: 'creation_date',
-        value: '2m',
+        value: '10s',
       });
 
       await expect(async () => {
@@ -335,7 +335,7 @@ test.describe(
       });
       await api.repoAutoPrunePolicy(org.name, repo.name, {
         method: 'creation_date',
-        value: '2m',
+        value: '10s',
       });
 
       // Tag-count policy prunes v1 first

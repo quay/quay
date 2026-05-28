@@ -511,7 +511,7 @@ test.describe(
 
       await api.repoAutoPrunePolicy(org.name, repo.name, {
         method: 'creation_date',
-        value: '2m',
+        value: '10s',
       });
 
       await expect(async () => {
@@ -526,6 +526,21 @@ test.describe(
       const normalRepo = await api.repository(org.name, 'normalrepo');
       const mirrorRepo = await api.repository(org.name, 'mirrorrepo');
 
+      await pushImage(
+        org.name,
+        mirrorRepo.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        mirrorRepo.name,
+        'v2',
+        user.username,
+        user.password,
+      );
+
       await api.raw.changeRepositoryState(org.name, mirrorRepo.name, 'MIRROR');
 
       await pushImage(
@@ -538,20 +553,6 @@ test.describe(
       await pushImage(
         org.name,
         normalRepo.name,
-        'v2',
-        user.username,
-        user.password,
-      );
-      await pushImage(
-        org.name,
-        mirrorRepo.name,
-        'v1',
-        user.username,
-        user.password,
-      );
-      await pushImage(
-        org.name,
-        mirrorRepo.name,
         'v2',
         user.username,
         user.password,
@@ -673,7 +674,7 @@ test.describe(
       });
       await api.repoAutoPrunePolicy(org.name, repo.name, {
         method: 'creation_date',
-        value: '2m',
+        value: '10s',
       });
 
       // Tag-count policy prunes v1 first
