@@ -46,11 +46,11 @@ make integration-test
 
 ### E2E Tests (Frontend)
 ```bash
-# Cypress (legacy)
-cd web && npm run test:integration
+# Playwright (all new E2E tests must use Playwright)
+cd web && pnpm run test:e2e
 
-# Playwright (new)
-cd web && npm run test:e2e
+# Cypress (legacy — do not add new Cypress tests)
+cd web && pnpm run test:integration
 ```
 
 ## Test Database
@@ -116,5 +116,5 @@ def test_user_creation(initialized_db):
 - `data/model/test/` - Model tests
 - `auth/test/` - Auth tests
 - `workers/test/` - Worker tests
-- `web/cypress/` - Frontend Cypress tests
-- `web/playwright/` - Frontend Playwright tests
+- `web/cypress/` - Frontend Cypress tests (legacy — do not add new tests here)
+- `web/playwright/` - Frontend Playwright tests (all new E2E tests go here)
