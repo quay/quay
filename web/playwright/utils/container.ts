@@ -404,9 +404,8 @@ export async function regctlListTags(
   password: string,
 ): Promise<string[]> {
   const ref = `${REGISTRY_HOST}/${namespace}/${repo}`;
-  const {stdout} = await execAsync(
-    `regctl tag ls ${ref} --tls-verify=false --user ${username}:${password}`,
-  );
+  const hostCfg = `reg=${REGISTRY_HOST},user=${username},pass=${password},tls=disabled`;
+  const {stdout} = await execAsync(`regctl tag ls --host ${hostCfg} ${ref}`);
   return stdout
     .split('\n')
     .map((line) => line.trim())
