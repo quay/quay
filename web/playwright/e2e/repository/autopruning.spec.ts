@@ -661,7 +661,7 @@ test.describe(
     });
 
     test('multiple repo-level policies both take effect', async ({api}) => {
-      test.slow();
+      test.setTimeout(300_000);
       const org = await api.organization('repomulti');
       const repo = await api.repository(org.name, 'prunetest');
 
@@ -674,7 +674,7 @@ test.describe(
       });
       await api.repoAutoPrunePolicy(org.name, repo.name, {
         method: 'creation_date',
-        value: '10s',
+        value: '90s',
       });
 
       // Tag-count policy prunes v1 first

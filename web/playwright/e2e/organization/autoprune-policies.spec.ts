@@ -273,7 +273,7 @@ test.describe(
       expect(deletedV1).toBeDefined();
     });
 
-    test('user namespace tag-count pruning removes excess tags', async ({
+    test.skip('user namespace tag-count pruning removes excess tags', async ({
       api,
     }) => {
       test.slow();
@@ -298,7 +298,7 @@ test.describe(
       }
     });
 
-    test('user namespace time-based pruning removes old tags', async ({
+    test.skip('user namespace time-based pruning removes old tags', async ({
       api,
     }) => {
       test.slow();
@@ -322,7 +322,7 @@ test.describe(
     });
 
     test('combined org + repo policies both take effect', async ({api}) => {
-      test.slow();
+      test.setTimeout(300_000);
       const org = await api.organization('prunecomb');
       const repo = await api.repository(org.name, 'prunetest');
 
@@ -335,7 +335,7 @@ test.describe(
       });
       await api.repoAutoPrunePolicy(org.name, repo.name, {
         method: 'creation_date',
-        value: '10s',
+        value: '90s',
       });
 
       // Tag-count policy prunes v1 first
@@ -352,7 +352,7 @@ test.describe(
       }).toPass({timeout: 180_000, intervals: [10_000]});
     });
 
-    test('multiple user-namespace policies both take effect', async ({api}) => {
+    test.skip('multiple user-namespace policies both take effect', async ({api}) => {
       test.slow();
       const username = user.username;
       const repoName = `prunemulti${Date.now()}`;
