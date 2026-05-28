@@ -187,6 +187,12 @@ def docker_registry_mock(url, request):
 
 class TestProxy(unittest.TestCase):
     def setUp(self):
+        self._dns_patcher = mock.patch(
+            "util.security.ssrf._getaddrinfo",
+            return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
+        )
+        self._dns_patcher.start()
+
         registry_url = "docker.io"
 
         self.config = ProxyCacheConfig(
@@ -212,6 +218,9 @@ class TestProxy(unittest.TestCase):
             upstream_registry_password=password,
             organization=User(username="cache-org", organization=True),
         )
+
+    def tearDown(self):
+        self._dns_patcher.stop()
 
     def test_anonymous_auth_sets_session_token(self):
         with HTTMock(docker_registry_mock):

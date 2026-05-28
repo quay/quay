@@ -53,6 +53,27 @@ from proxy import Proxy, UpstreamRegistryError
 from util.marketplace import MarketplaceSubscriptionApi
 from util.names import parse_robot_username
 from util.request import get_request_ip
+from util.security.ssrf import SSRFBlockedError, validate_upstream_registry
+
+# Generic error for SSRF rejections; avoids leaking internal network topology.
+_PROXY_CACHE_SSRF_ERROR = "The provided upstream registry is not allowed"
+
+
+def _get_ssrf_allowed_hosts():
+    return app.config.get("SSRF_ALLOWED_HOSTS", [])
+
+
+def _validate_proxy_cache_upstream_registry(upstream_registry):
+    try:
+        validate_upstream_registry(
+            upstream_registry,
+            allowed_hosts=_get_ssrf_allowed_hosts(),
+        )
+    except SSRFBlockedError:
+        raise request_error(_PROXY_CACHE_SSRF_ERROR)
+    except ValueError as e:
+        raise request_error(str(e))
+
 
 logger = logging.getLogger(__name__)
 
@@ -1054,6 +1075,7 @@ class OrganizationProxyCacheConfig(ApiResource):
                 )
 
         data = request.get_json()
+        _validate_proxy_cache_upstream_registry(data.get("upstream_registry"))
 
         try:
             config = model.proxy_cache.create_proxy_cache_config(
@@ -1063,6 +1085,7 @@ class OrganizationProxyCacheConfig(ApiResource):
                 upstream_registry_password=data.get("upstream_registry_password"),
                 expiration_s=data.get("expiration_s", 86400),
                 insecure=data.get("insecure", False),
+                allowed_hosts=_get_ssrf_allowed_hosts(),
             )
             if config is not None:
                 log_action(
@@ -1139,6 +1162,7 @@ class ProxyCacheConfigValidation(ApiResource):
             pass
 
         data = request.get_json()
+        _validate_proxy_cache_upstream_registry(data.get("upstream_registry"))
 
         # filter None values
         data = {k: v for k, v in data.items() if v is not None}

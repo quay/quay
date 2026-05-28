@@ -7,7 +7,11 @@ from unittest.mock import patch
 
 import pytest
 
-from util.security.ssrf import SSRFBlockedError, validate_external_registry_url
+from util.security.ssrf import (
+    SSRFBlockedError,
+    validate_external_registry_url,
+    validate_upstream_registry,
+)
 
 
 class TestSSRFBlockedError:
@@ -382,3 +386,33 @@ class TestSSRFAllowlist:
                     "https://registry.internal",
                     allowed_hosts=["192.168.0.0/16"],
                 )
+
+
+class TestValidateUpstreamRegistry:
+    """Tests for validate_upstream_registry() used by proxy cache."""
+
+    def test_bare_hostname_with_namespace_path(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+            validate_upstream_registry("docker.io/library")
+
+    def test_url_form_hostname(self):
+        with patch("util.security.ssrf._getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("93.184.216.34", 0))]
+            validate_upstream_registry("https://registry.example.com")
+
+    def test_localhost_rejected(self):
+        with pytest.raises(SSRFBlockedError):
+            validate_upstream_registry("localhost", resolve_dns=False)
+
+    def test_private_ip_rejected(self):
+        with pytest.raises(SSRFBlockedError):
+            validate_upstream_registry("10.0.0.1", resolve_dns=False)
+
+    def test_aws_metadata_ip_rejected(self):
+        with pytest.raises(SSRFBlockedError):
+            validate_upstream_registry("169.254.169.254", resolve_dns=False)
+
+    def test_empty_rejected(self):
+        with pytest.raises(ValueError, match="required"):
+            validate_upstream_registry("")

@@ -2,6 +2,7 @@ import features
 from data.database import DEFAULT_PROXY_CACHE_EXPIRATION, ProxyCacheConfig, User
 from data.model import DataModelException, InvalidProxyCacheConfigException
 from data.model.organization import get_organization
+from util.security.ssrf import validate_upstream_registry
 
 
 def has_proxy_cache_config(org_name):
@@ -19,10 +20,20 @@ def create_proxy_cache_config(
     upstream_registry_password=None,
     expiration_s=DEFAULT_PROXY_CACHE_EXPIRATION,
     insecure=False,
+    allowed_hosts=None,
 ):
     """
     Creates proxy cache configuration for the given organization name
     """
+    # Validate hostname to prevent SSRF (CWE-918) - defense-in-depth.
+    # DNS resolution is skipped here; the API layer performs the full check.
+    try:
+        validate_upstream_registry(
+            upstream_registry, resolve_dns=False, allowed_hosts=allowed_hosts
+        )
+    except ValueError as e:
+        raise DataModelException(str(e))
+
     if features.ORG_MIRROR:
         from data.model.org_mirror import is_namespace_org_mirrored
 

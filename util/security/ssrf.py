@@ -248,3 +248,56 @@ def validate_external_registry_url(
                     ip_str,
                 )
                 raise SSRFBlockedError("URL resolves to a private or reserved IP address")
+
+
+def _parse_upstream_registry_hostname(upstream_registry: str) -> str:
+    """
+    Extract the hostname from a proxy cache upstream registry identifier.
+
+    Accepts bare hostnames (docker.io), hostnames with namespace paths
+    (docker.io/library), or URLs with a scheme (https://registry.example.com).
+    """
+    if not upstream_registry or not isinstance(upstream_registry, str):
+        raise ValueError("Upstream registry is required")
+
+    upstream_registry = upstream_registry.strip()
+    if not upstream_registry:
+        raise ValueError("Upstream registry is required")
+
+    if "://" in upstream_registry:
+        parsed = urlparse(upstream_registry)
+        hostname = parsed.hostname
+        if not hostname:
+            raise ValueError("Upstream registry must include a hostname")
+        return hostname
+
+    hostname = upstream_registry.split("/", 1)[0].strip()
+    if not hostname:
+        raise ValueError("Upstream registry must include a hostname")
+    return hostname
+
+
+def validate_upstream_registry(
+    upstream_registry: str,
+    resolve_dns: bool = True,
+    allowed_hosts: Optional[List[str]] = None,
+) -> None:
+    """
+    Validate a proxy cache upstream registry hostname to prevent SSRF (CWE-918).
+
+    Args:
+        upstream_registry: Upstream registry identifier (hostname, hostname/path, or URL)
+        resolve_dns: Whether to resolve hostnames via DNS and check resulting IPs
+        allowed_hosts: Optional list of hostnames or CIDR ranges that bypass the
+            blocklist (from SSRF_ALLOWED_HOSTS config)
+
+    Raises:
+        SSRFBlockedError: If blocked by SSRF protection
+        ValueError: If the identifier is invalid or DNS resolution fails
+    """
+    hostname = _parse_upstream_registry_hostname(upstream_registry)
+    validate_external_registry_url(
+        f"https://{hostname}",
+        resolve_dns=resolve_dns,
+        allowed_hosts=allowed_hosts,
+    )

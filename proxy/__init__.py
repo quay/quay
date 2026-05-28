@@ -11,9 +11,10 @@ from urllib.parse import urlencode
 import requests
 from requests.exceptions import RequestException
 
-from app import model_cache
+from app import app, model_cache
 from data.cache import cache_key
 from data.database import ProxyCacheConfig
+from util.security.ssrf import SSRFBlockedError, validate_upstream_registry
 
 WWW_AUTHENTICATE_REGEX = re.compile(r'(\w+)[=] ?"?([^",]+)"?')
 TOKEN_VALIDITY_LIFETIME_S = 60 * 60  # 1 hour, in seconds - Quay's default
@@ -54,6 +55,17 @@ class Proxy:
     ):
         self._config = config
         self._validation = validation
+
+        # Re-validate at connection time to prevent TOCTOU/DNS rebinding (CWE-918).
+        try:
+            validate_upstream_registry(
+                config.upstream_registry,
+                allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+            )
+        except SSRFBlockedError:
+            raise UpstreamRegistryError("The upstream registry hostname is not allowed")
+        except ValueError as e:
+            raise UpstreamRegistryError(str(e))
 
         hostname = REGISTRY_URLS.get(
             config.upstream_registry_hostname,
