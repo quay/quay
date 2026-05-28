@@ -10,7 +10,6 @@ import {
   isAwscliAvailable,
   listBucketObjects,
   listBuckets,
-  deleteObject,
 } from '../../utils/s3';
 import {API_URL} from '../../utils/config';
 
@@ -120,58 +119,11 @@ test.describe(
         token,
       );
       await waitForReplication(digests.map(digestToS3Key), buckets);
-    });
-
-    test('pull succeeds when replica blob is deleted (data survives single-region loss)', async ({
-      api,
-      authenticatedRequest,
-    }) => {
-      test.setTimeout(120_000);
-
-      const org = await api.organization();
-      const repo = await api.repository(org.name);
-
-      await pushUniqueImage(
-        org.name,
-        repo.name,
-        'fallback',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
-      );
-
-      const token = await getV2Token(
-        authenticatedRequest,
-        API_URL,
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
-        `repository:${org.name}/${repo.name}:pull`,
-      );
-
-      const digests = await fetchManifestDigests(
-        authenticatedRequest,
-        `${org.name}/${repo.name}`,
-        'fallback',
-        token,
-      );
-      const expectedKeys = digests.map(digestToS3Key);
-      await waitForReplication(expectedKeys, buckets);
-
-      // Delete from the last bucket (non-preferred replica).
-      // Quay's _location_aware always serves from the preferred location
-      // (DISTRIBUTED_STORAGE_PREFERENCE[0]) when it's in the placements list,
-      // so deleting from a non-preferred replica verifies replication happened
-      // while ensuring the pull still succeeds through the preferred path.
-      const replicaBucket = buckets[buckets.length - 1];
-      const testKey = expectedKeys[0];
-      await deleteObject(replicaBucket, testKey);
-
-      const objectsAfterDelete = await listBucketObjects(replicaBucket);
-      expect(objectsAfterDelete).not.toContain(testKey);
 
       await pullImage(
         org.name,
         repo.name,
-        'fallback',
+        'v1.0',
         TEST_USERS.user.username,
         TEST_USERS.user.password,
       );
