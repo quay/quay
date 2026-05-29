@@ -34,6 +34,7 @@ import (
 // privateRanges is the set of CIDR blocks that validators must never dial.
 var privateRanges = func() []*net.IPNet {
 	blocks := []string{
+		"0.0.0.0/8",      // "this" network — routes to localhost on Linux
 		"127.0.0.0/8",    // loopback
 		"10.0.0.0/8",     // RFC 1918
 		"172.16.0.0/12",  // RFC 1918

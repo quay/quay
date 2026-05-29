@@ -10,6 +10,7 @@ import (
 // TestIsSafeHost verifies that private and reserved addresses are rejected.
 func TestIsSafeHost(t *testing.T) {
 	blocked := []string{
+		"0.0.0.0",
 		"127.0.0.1",
 		"localhost",
 		"10.0.0.1",
