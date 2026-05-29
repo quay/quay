@@ -10,6 +10,7 @@
  */
 
 import {test as base, expect} from '../../fixtures';
+import type {Page} from '@playwright/test';
 
 const test = base;
 
@@ -68,9 +69,9 @@ const STATUS_DATA = {
 };
 
 async function setupServiceStatusMock(
-  page: import('@playwright/test').Page,
+  page: Page,
   data: typeof STATUS_DATA,
-) {
+): Promise<void> {
   await page.route('**/config', async (route) => {
     const response = await route.fetch();
     const body = await response.json();
