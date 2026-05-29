@@ -794,7 +794,8 @@ test.describe(
       }) => {
         const org = await api.organization('paginateteam');
 
-        for (let i = 0; i < ITEM_COUNT; i++) {
+        // Orgs start with an auto-created "owners" team
+        for (let i = 0; i < ITEM_COUNT - 1; i++) {
           await api.team(org.name, `team${String(i).padStart(2, '0')}`);
         }
 
