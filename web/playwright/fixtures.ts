@@ -1318,3 +1318,10 @@ export {uniqueName} from './utils/test-utils';
 
 export {mailpit} from './utils/mailpit';
 export type {MailpitMessage, MailpitMessagesResponse} from './utils/mailpit';
+
+// ============================================================================
+// Webhook: Re-export from utils
+// ============================================================================
+
+export {WebhookReceiver} from './utils/webhook';
+export type {WebhookRequest} from './utils/webhook';
