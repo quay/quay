@@ -1,5 +1,4 @@
 import {test, expect, WebhookReceiver} from '../../fixtures';
-import type {WebhookRequest} from '../../fixtures';
 
 test.describe(
   'Webhook Delivery Verification',

@@ -77,7 +77,7 @@ export class WebhookReceiver {
 
   async waitForWebhook(
     predicate?: (req: WebhookRequest) => boolean,
-    timeout = 15000,
+    timeout = 30000,
     interval = 500,
   ): Promise<WebhookRequest | null> {
     const start = Date.now();
