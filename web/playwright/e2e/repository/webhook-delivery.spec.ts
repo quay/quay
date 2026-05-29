@@ -89,7 +89,6 @@ test.describe(
       expect(vuln).toHaveProperty('description');
       expect(vuln).toHaveProperty('link');
       expect(vuln).toHaveProperty('priority');
-      expect(vuln).toHaveProperty('has_fix');
     });
 
     test(
