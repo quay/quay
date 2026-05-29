@@ -189,6 +189,9 @@ describe('Repository Mirroring', () => {
       cy.get('[data-testid="username-input"]').should('have.value', '');
       cy.get('[data-testid="password-input"]').should('have.value', '');
 
+      // Verify sync start date input has aria-label (PROJQUAY-11521)
+      cy.get('input[aria-label="Sync start date"]').should('exist');
+
       // Check button says "Enable Mirror"
       cy.get('[data-testid="submit-button"]').should(
         'contain.text',
@@ -352,6 +355,9 @@ describe('Repository Mirroring', () => {
       );
       cy.get('[data-testid="username-input"]').should('have.value', 'testuser');
       cy.get('[data-testid="sync-interval-input"]').should('have.value', '1');
+
+      // Verify sync start date input has aria-label (PROJQUAY-11521)
+      cy.get('input[aria-label="Sync start date"]').should('exist');
 
       // Check button says "Update Mirror"
       cy.get('[data-testid="submit-button"]').should(
