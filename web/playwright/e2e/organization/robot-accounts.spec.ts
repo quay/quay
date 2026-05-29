@@ -785,6 +785,153 @@ test.describe(
       await expect(repoSearchAfter).toHaveValue(repo1.name);
     });
 
+    test.describe('pagination with large datasets', () => {
+      const ITEM_COUNT = 21;
+
+      test('pagination in "Add to team" wizard step with >20 teams', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('paginateteam');
+
+        for (let i = 0; i < ITEM_COUNT; i++) {
+          await api.team(org.name, `team${String(i).padStart(2, '0')}`);
+        }
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+
+        await authenticatedPage
+          .getByRole('button', {name: 'Create robot account'})
+          .click();
+        await expect(
+          authenticatedPage.locator('#create-robot-account-modal'),
+        ).toBeVisible();
+
+        await authenticatedPage
+          .getByTestId('robot-wizard-form-name')
+          .fill('paginatebot');
+
+        const wizardNav = authenticatedPage.locator(
+          'nav[aria-label="Wizard steps"]',
+        );
+        await wizardNav.getByText('Add to team (optional)').click();
+
+        const modal = authenticatedPage.locator('#create-robot-account-modal');
+        const paginationInfo = modal
+          .locator('.pf-v6-c-pagination__total-items')
+          .first();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+
+        await modal
+          .getByRole('button', {name: 'Go to next page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(
+          `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+        );
+
+        await modal
+          .getByRole('button', {name: 'Go to previous page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+      });
+
+      test('pagination in "Add to repository" wizard step with >20 repos', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('paginaterepo');
+
+        for (let i = 0; i < ITEM_COUNT; i++) {
+          await api.repository(org.name, `repo${String(i).padStart(2, '0')}`);
+        }
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+
+        await authenticatedPage
+          .getByRole('button', {name: 'Create robot account'})
+          .click();
+        await expect(
+          authenticatedPage.locator('#create-robot-account-modal'),
+        ).toBeVisible();
+
+        await authenticatedPage
+          .getByTestId('robot-wizard-form-name')
+          .fill('paginatebot');
+
+        const wizardNav = authenticatedPage.locator(
+          'nav[aria-label="Wizard steps"]',
+        );
+        await wizardNav.getByText('Add to repository (optional)').click();
+
+        const modal = authenticatedPage.locator('#create-robot-account-modal');
+        const paginationInfo = modal
+          .locator('.pf-v6-c-pagination__total-items')
+          .first();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+
+        await modal
+          .getByRole('button', {name: 'Go to next page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(
+          `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+        );
+
+        await modal
+          .getByRole('button', {name: 'Go to previous page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+      });
+
+      test('pagination in robot account table with >20 robots', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('paginaterobots');
+
+        for (let i = 0; i < ITEM_COUNT; i++) {
+          await api.robot(org.name, `bot${String(i).padStart(2, '0')}`);
+        }
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+
+        await expect(
+          authenticatedPage.getByTestId('robot-accounts-table'),
+        ).toBeVisible();
+
+        const tabPanel = authenticatedPage.getByRole('tabpanel', {
+          name: 'Robot accounts',
+        });
+        const paginationInfo = tabPanel
+          .locator('.pf-v6-c-pagination__total-items')
+          .first();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+
+        await tabPanel
+          .getByRole('button', {name: 'Go to next page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(
+          `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+        );
+
+        await tabPanel
+          .getByRole('button', {name: 'Go to previous page'})
+          .first()
+          .click();
+        await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+      });
+    });
+
     test.describe('robot credential execution', {tag: ['@container']}, () => {
       test('robot credentials can authenticate via container login', async ({
         api,
