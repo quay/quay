@@ -32,6 +32,7 @@ import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
 import {API_URL, BASE_URL} from './utils/config';
 import {
   ApiClient,
+  AutoPrunePolicy,
   PrototypeRole,
   RawApiClient,
   RepositoryVisibility,
@@ -724,6 +725,75 @@ export class TestApi {
       namespace,
       repoName,
     };
+  }
+
+  /**
+   * Create an auto-prune policy for an organization.
+   * Automatically deleted after test.
+   */
+  async orgAutoPrunePolicy(
+    orgName: string,
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string; orgName: string}> {
+    const result = await this.client.createOrgAutoPrunePolicy(orgName, policy);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOrgAutoPrunePolicy(orgName, result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid, orgName};
+  }
+
+  /**
+   * Create an auto-prune policy for a repository.
+   * Automatically deleted after test.
+   */
+  async repoAutoPrunePolicy(
+    namespace: string,
+    repoName: string,
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string; namespace: string; repoName: string}> {
+    const result = await this.client.createRepoAutoPrunePolicy(
+      namespace,
+      repoName,
+      policy,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepoAutoPrunePolicy(
+          namespace,
+          repoName,
+          result.uuid,
+        );
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid, namespace, repoName};
+  }
+
+  /**
+   * Create an auto-prune policy for the current user.
+   * Automatically deleted after test.
+   */
+  async userAutoPrunePolicy(policy: AutoPrunePolicy): Promise<{uuid: string}> {
+    const result = await this.client.createUserAutoPrunePolicy(policy);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteUserAutoPrunePolicy(result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid};
   }
 
   /**
