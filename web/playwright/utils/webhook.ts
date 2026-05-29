@@ -1,5 +1,5 @@
 import * as http from 'node:http';
-import * as net from 'node:net';
+import type {AddressInfo} from 'node:net';
 
 export interface WebhookRequest {
   method: string;
@@ -49,7 +49,7 @@ export class WebhookReceiver {
       this.server!.listen(0, '0.0.0.0', () => resolve());
     });
 
-    this.port = (this.server.address() as net.AddressInfo).port;
+    this.port = (this.server.address() as AddressInfo).port;
   }
 
   async stop(): Promise<void> {
