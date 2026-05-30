@@ -85,6 +85,7 @@ func runServe(args []string) int {
 		Addr:              listenAddr,
 		Handler:           app,
 		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 		BaseContext:       func(_ net.Listener) context.Context { return ctx },
 	}
 
