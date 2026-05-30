@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,7 +21,7 @@ func TestBootstrapDatabase_FreshDB(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	if err := bootstrapDatabase(ctx, db, dbPath); err != nil {
+	if err := bootstrapDatabase(ctx, db, dbPath, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 
@@ -43,10 +44,10 @@ func TestBootstrapDatabase_ExistingDB(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	if err := bootstrapDatabase(ctx, db, dbPath); err != nil {
+	if err := bootstrapDatabase(ctx, db, dbPath, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	if err := bootstrapDatabase(ctx, db, dbPath); err != nil {
+	if err := bootstrapDatabase(ctx, db, dbPath, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -61,12 +62,12 @@ func TestBootstrapAdminUser_CreatesUser(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	if err := dbcore.InitDatabase(ctx, db, os.Stderr); err != nil {
+	if err := dbcore.InitDatabase(ctx, db, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 
 	authDir := filepath.Join(dir, "auth")
-	created, err := bootstrapAdminUser(ctx, db, "admin", authDir)
+	created, err := bootstrapAdminUser(ctx, db, "admin", authDir, io.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,15 +109,15 @@ func TestBootstrapAdminUser_SkipsExisting(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	if err := dbcore.InitDatabase(ctx, db, os.Stderr); err != nil {
+	if err := dbcore.InitDatabase(ctx, db, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 
 	authDir := filepath.Join(dir, "auth")
-	if _, err := bootstrapAdminUser(ctx, db, "admin", authDir); err != nil {
+	if _, err := bootstrapAdminUser(ctx, db, "admin", authDir, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	created, err := bootstrapAdminUser(ctx, db, "admin", authDir)
+	created, err := bootstrapAdminUser(ctx, db, "admin", authDir, io.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +136,7 @@ func TestBootstrapAdminUser_ReadsPreSeededPassword(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	if err := dbcore.InitDatabase(ctx, db, os.Stderr); err != nil {
+	if err := dbcore.InitDatabase(ctx, db, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 
@@ -143,7 +144,7 @@ func TestBootstrapAdminUser_ReadsPreSeededPassword(t *testing.T) {
 	os.MkdirAll(authDir, 0o750)
 	os.WriteFile(filepath.Join(authDir, "admin-password"), []byte("my-chosen-password"), 0o600)
 
-	created, err := bootstrapAdminUser(ctx, db, "admin", authDir)
+	created, err := bootstrapAdminUser(ctx, db, "admin", authDir, io.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
