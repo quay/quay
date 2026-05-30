@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -51,31 +52,31 @@ func runServe(ctx context.Context, args []string) int {
 
 	resolved, err := resolveServeConfig(opts)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		slog.Error("config error", "err", err)
 		return 1
 	}
 
 	db, err := dbcore.OpenSQLite(resolved.dbPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error opening database: %v\n", err)
+		slog.Error("error opening database", "err", err)
 		return 1
 	}
 	defer func() { _ = db.Close() }()
 
-	if err := bootstrapDatabase(ctx, db, resolved.dbPath, os.Stderr); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	if err := bootstrapDatabase(ctx, db, resolved.dbPath); err != nil {
+		slog.Error("bootstrap database error", "err", err)
 		return 1
 	}
 
 	authDir := filepath.Join(filepath.Dir(resolved.dbPath), "auth")
-	if _, err := bootstrapAdminUser(ctx, db, opts.adminUsername, authDir, os.Stderr); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	if _, err := bootstrapAdminUser(ctx, db, opts.adminUsername, authDir); err != nil {
+		slog.Error("bootstrap admin user error", "err", err)
 		return 1
 	}
 
 	srv, useHTTPS, certPath, keyPath, err := buildServer(ctx, resolved, db, opts.addr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		slog.Error("server build error", "err", err)
 		return 1
 	}
 
@@ -83,8 +84,7 @@ func runServe(ctx context.Context, args []string) int {
 	if useHTTPS {
 		scheme = "https"
 	}
-	fmt.Fprintf(os.Stderr, "registry listening on %s://%s (storage: %s, db: %s)\n",
-		scheme, opts.addr, resolved.storagePath, resolved.dbPath)
+	slog.Info("registry listening", "scheme", scheme, "addr", opts.addr, "storage", resolved.storagePath, "db", resolved.dbPath)
 
 	return startAndWait(ctx, srv, useHTTPS, certPath, keyPath)
 }
@@ -282,7 +282,7 @@ func ensureServeTLS(cfg *config.Config, dbPath string, srv *http.Server) (certPa
 		if hostname == "" {
 			hostname = defaultHostname
 		}
-		fmt.Fprintf(os.Stderr, "generating self-signed certificate for %s\n", hostname)
+		slog.Info("generating self-signed certificate", "hostname", hostname)
 		if err = registry.GenerateSelfSignedCert(hostname, certPath, keyPath); err != nil {
 			return "", "", fmt.Errorf("generating certificate: %w", err)
 		}
@@ -307,23 +307,23 @@ func startAndWait(ctx context.Context, srv *http.Server, useHTTPS bool, certPath
 	select {
 	case err := <-errCh:
 		if !errors.Is(err, http.ErrServerClosed) {
-			fmt.Fprintf(os.Stderr, "server error: %v\n", err)
+			slog.Error("server error", "err", err)
 			return 1
 		}
 		return 0
 	case <-ctx.Done():
 	}
 
-	fmt.Fprintln(os.Stderr, "\nshutting down...")
+	slog.Info("shutting down")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		fmt.Fprintf(os.Stderr, "shutdown error: %v\n", err)
+		slog.Error("shutdown error", "err", err)
 		return 1
 	}
 
-	fmt.Fprintln(os.Stderr, "stopped")
+	slog.Info("stopped")
 	return 0
 }

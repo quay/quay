@@ -6,7 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -36,7 +36,6 @@ type installer struct {
 	quadlet *system.QuadletManager
 	env     *system.Env
 	fs      system.FileSystem
-	out     io.Writer
 }
 
 func runInstall(ctx context.Context, args []string) int {
@@ -45,13 +44,13 @@ func runInstall(ctx context.Context, args []string) int {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		slog.Error("invalid arguments", "err", err)
 		return 1
 	}
 
 	env, err := system.NewEnv()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		slog.Error("environment error", "err", err)
 		return 1
 	}
 
@@ -64,7 +63,6 @@ func runInstall(ctx context.Context, args []string) int {
 		quadlet: &system.QuadletManager{FS: fs, Env: env},
 		env:     env,
 		fs:      fs,
-		out:     os.Stderr,
 	}
 
 	return inst.run(ctx, opts)
@@ -73,48 +71,46 @@ func runInstall(ctx context.Context, args []string) int {
 func (inst *installer) run(ctx context.Context, opts installOpts) int {
 	imageRef, err := inst.resolveImage(ctx, opts.imageArchive, opts.image)
 	if err != nil {
-		fmt.Fprintf(inst.out, "error: %v\n", err)
+		slog.Error("image resolution failed", "err", err)
 		return 1
 	}
 
 	if inst.quadlet.Exists(quadletServiceName) {
 		if err := inst.upgrade(ctx, imageRef); err != nil {
-			fmt.Fprintf(inst.out, "error: %v\n", err)
+			slog.Error("upgrade failed", "err", err)
 			return 1
 		}
 	} else {
 		if err := inst.freshInstall(ctx, opts, imageRef); err != nil {
-			fmt.Fprintf(inst.out, "error: %v\n", err)
+			slog.Error("install failed", "err", err)
 			return 1
 		}
 	}
 
 	healthURL := fmt.Sprintf("https://%s:8443/healthz", opts.hostname)
 	certPath := filepath.Join(opts.dataDir, "ssl.cert")
-	fmt.Fprintln(inst.out, "waiting for registry to start...")
+	slog.Info("waiting for registry to start")
 	if err := inst.waitForHealth(ctx, healthURL, certPath, 30*time.Second); err != nil {
-		fmt.Fprintf(inst.out, "error: health check failed: %v\n", err)
-		fmt.Fprintln(inst.out, "check: systemctl status quay")
+		slog.Error("health check failed", "err", err)
 		return 1
 	}
 
 	credPath := filepath.Join(opts.dataDir, "credentials")
-	fmt.Fprintf(inst.out, "\nregistry running at https://%s:8443\n", opts.hostname)
-	fmt.Fprintf(inst.out, "credentials: %s\n", credPath)
+	slog.Info("registry running", "url", fmt.Sprintf("https://%s:8443", opts.hostname), "credentials", credPath)
 	return 0
 }
 
 func (inst *installer) resolveImage(ctx context.Context, archive, image string) (string, error) {
 	if archive != "" {
-		fmt.Fprintf(inst.out, "loading container image from %s\n", archive)
+		slog.Info("loading container image", "archive", archive)
 		ref, err := inst.images.Load(ctx, archive)
 		if err != nil {
 			return "", fmt.Errorf("loading image: %w", err)
 		}
-		fmt.Fprintf(inst.out, "loaded image: %s\n", ref)
+		slog.Info("loaded image", "ref", ref)
 		return ref, nil
 	}
-	fmt.Fprintf(inst.out, "pulling container image %s\n", image)
+	slog.Info("pulling container image", "image", image)
 	if err := inst.images.Pull(ctx, image); err != nil {
 		return "", fmt.Errorf("pulling image: %w", err)
 	}
@@ -122,9 +118,9 @@ func (inst *installer) resolveImage(ctx context.Context, archive, image string) 
 }
 
 func (inst *installer) upgrade(ctx context.Context, imageRef string) error {
-	fmt.Fprintln(inst.out, "existing installation detected — upgrading...")
+	slog.Info("existing installation detected, upgrading")
 
-	fmt.Fprintln(inst.out, "stopping registry...")
+	slog.Info("stopping registry")
 	if err := inst.systemd.Stop(ctx, quadletServiceName); err != nil {
 		return fmt.Errorf("stop service: %w", err)
 	}
@@ -132,7 +128,7 @@ func (inst *installer) upgrade(ctx context.Context, imageRef string) error {
 	if err := inst.quadlet.UpdateImage(quadletServiceName, imageRef); err != nil {
 		return fmt.Errorf("update quadlet: %w", err)
 	}
-	fmt.Fprintf(inst.out, "updated quadlet: %s\n", inst.env.QuadletPath(quadletServiceName))
+	slog.Info("updated quadlet", "path", inst.env.QuadletPath(quadletServiceName))
 
 	if err := inst.systemd.DaemonReload(ctx); err != nil {
 		return fmt.Errorf("reload systemd: %w", err)
@@ -159,7 +155,7 @@ func (inst *installer) freshInstall(ctx context.Context, opts installOpts, image
 	if err := inst.quadlet.Install(quadletServiceName, spec); err != nil {
 		return fmt.Errorf("install quadlet: %w", err)
 	}
-	fmt.Fprintf(inst.out, "quadlet: %s\n", inst.env.QuadletPath(quadletServiceName))
+	slog.Info("quadlet installed", "path", inst.env.QuadletPath(quadletServiceName))
 
 	if err := inst.systemd.DaemonReload(ctx); err != nil {
 		return fmt.Errorf("reload systemd: %w", err)

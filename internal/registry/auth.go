@@ -4,18 +4,18 @@ package registry
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/distribution/distribution/v3/registry/auth"
 	"github.com/quay/quay/internal/dal/daldb"
-	"github.com/sirupsen/logrus"
 )
 
 func init() {
 	if err := auth.Register("quaydb", auth.InitFunc(newAccessController)); err != nil {
-		logrus.Errorf("failed to register quaydb auth: %v", err)
+		slog.Error("failed to register quaydb auth", "err", err)
 	}
 }
 
@@ -75,7 +75,7 @@ func (ac *accessController) Authorized(req *http.Request, access ...auth.Access)
 	}
 
 	if !authenticated {
-		logrus.WithField("username", username).Debug("authentication failed")
+		slog.Debug("authentication failed", "username", username)
 		return nil, &challenge{
 			realm: ac.realm,
 			err:   auth.ErrAuthenticationFailure,
