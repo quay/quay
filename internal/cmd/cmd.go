@@ -25,8 +25,6 @@ func Run(args []string) int {
 		return runConfig(args[2:])
 	case "install":
 		return runInstall(args[2:])
-	case "db":
-		return runDBPublic(args[2:])
 	case "serve":
 		return runServe(args[2:])
 	case versionLiteral:
@@ -46,7 +44,6 @@ func usage() {
 
 commands:
   install           Set up or upgrade registry (Quadlet service)
-  db version        Print the current database schema version
   config            Configuration tools (validate)
   serve             Start the OCI container registry
   version           Print version information`)
