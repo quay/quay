@@ -2,8 +2,11 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 const (
@@ -20,13 +23,16 @@ func Run(args []string) int {
 		return 1
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	switch args[1] {
 	case "config":
-		return runConfig(args[2:])
+		return runConfig(ctx, args[2:])
 	case "install":
-		return runInstall(args[2:])
+		return runInstall(ctx, args[2:])
 	case "serve":
-		return runServe(args[2:])
+		return runServe(ctx, args[2:])
 	case versionLiteral:
 		return runVersion()
 	case helpLiteral, "-h", helpFlag:

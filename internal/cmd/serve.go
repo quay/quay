@@ -9,10 +9,8 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/distribution/distribution/v3/configuration"
@@ -42,7 +40,7 @@ type resolvedConfig struct {
 	dbPath      string
 }
 
-func runServe(args []string) int {
+func runServe(ctx context.Context, args []string) int {
 	opts, err := parseServeOpts(args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -64,7 +62,6 @@ func runServe(args []string) int {
 	}
 	defer func() { _ = db.Close() }()
 
-	ctx := context.Background()
 	if err := bootstrapDatabase(ctx, db, resolved.dbPath, os.Stderr); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
@@ -75,9 +72,6 @@ func runServe(args []string) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	srv, useHTTPS, certPath, keyPath, err := buildServer(ctx, resolved, db, opts.addr)
 	if err != nil {
@@ -92,7 +86,7 @@ func runServe(args []string) int {
 	fmt.Fprintf(os.Stderr, "registry listening on %s://%s (storage: %s, db: %s)\n",
 		scheme, opts.addr, resolved.storagePath, resolved.dbPath)
 
-	return startAndWait(ctx, stop, srv, useHTTPS, certPath, keyPath)
+	return startAndWait(ctx, srv, useHTTPS, certPath, keyPath)
 }
 
 // --- Flag parsing ---
@@ -300,7 +294,7 @@ func ensureServeTLS(cfg *config.Config, dbPath string, srv *http.Server) (certPa
 
 // --- Server lifecycle ---
 
-func startAndWait(ctx context.Context, stop context.CancelFunc, srv *http.Server, useHTTPS bool, certPath, keyPath string) int {
+func startAndWait(ctx context.Context, srv *http.Server, useHTTPS bool, certPath, keyPath string) int {
 	errCh := make(chan error, 1)
 	go func() {
 		if useHTTPS {
@@ -320,7 +314,6 @@ func startAndWait(ctx context.Context, stop context.CancelFunc, srv *http.Server
 	case <-ctx.Done():
 	}
 
-	stop()
 	fmt.Fprintln(os.Stderr, "\nshutting down...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

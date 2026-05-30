@@ -6,13 +6,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
 
 	"github.com/quay/quay/internal/config"
 )
 
-func runConfig(args []string) int {
+func runConfig(ctx context.Context, args []string) int {
 	if len(args) == 0 {
 		configUsage()
 		return 1
@@ -20,7 +19,7 @@ func runConfig(args []string) int {
 
 	switch args[0] {
 	case "validate":
-		return runConfigValidate(args[1:])
+		return runConfigValidate(ctx, args[1:])
 	case helpLiteral, "-h", helpFlag:
 		configUsage()
 		return 0
@@ -75,14 +74,11 @@ func parseConfigValidateFlags(args []string) (configValidateOpts, int, bool) {
 	return configValidateOpts{configPath: *configPath, mode: *mode}, 0, true
 }
 
-func runConfigValidate(args []string) int {
+func runConfigValidate(ctx context.Context, args []string) int {
 	opts, code, ok := parseConfigValidateFlags(args)
 	if !ok {
 		return code
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
 
 	cfg, err := config.Load(opts.configPath)
 	if err != nil {

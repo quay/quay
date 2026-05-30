@@ -10,10 +10,8 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/quay/quay/internal/registry"
@@ -41,7 +39,7 @@ type installer struct {
 	out     io.Writer
 }
 
-func runInstall(args []string) int {
+func runInstall(ctx context.Context, args []string) int {
 	opts, err := parseInstallOpts(args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -50,9 +48,6 @@ func runInstall(args []string) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	env, err := system.NewEnv()
 	if err != nil {
