@@ -198,6 +198,133 @@ func CleanOldBackups(dbPath string, keep int) error {
 	return nil
 }
 
+// ListMigrations prints the available migration files to w.
+func ListMigrations(w io.Writer) {
+	entries, err := schema.MigrationFiles.ReadDir("sqlite/migrations")
+	if err != nil {
+		return
+	}
+	found := false
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
+			if !found {
+				fmt.Fprintln(w, "Pending migrations:")
+				found = true
+			}
+			fmt.Fprintf(w, "  - %s\n", e.Name())
+		}
+	}
+	if !found {
+		fmt.Fprintln(w, "No migration files found.")
+	}
+}
+
+// ApplyMigrations reads embedded SQL migration files and applies them in
+// filename order to bring the database from currentVersion to targetVersion.
+// Each migration runs in its own transaction and must contain a
+// "-- revision: <id>" comment identifying the alembic version it produces.
+func ApplyMigrations(ctx context.Context, db *sql.DB, currentVersion, targetVersion string, w io.Writer) error {
+	entries, err := schema.MigrationFiles.ReadDir("sqlite/migrations")
+	if err != nil {
+		return fmt.Errorf("read migrations directory: %w", err)
+	}
+
+	var migrationFiles []string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
+			continue
+		}
+		migrationFiles = append(migrationFiles, e.Name())
+	}
+
+	if len(migrationFiles) == 0 {
+		return fmt.Errorf("no migration files found")
+	}
+
+	fmt.Fprintf(w, "Found %d migration file(s)\n", len(migrationFiles))
+
+	applied := 0
+	for _, filename := range migrationFiles {
+		sqlBytes, err := schema.MigrationFiles.ReadFile("sqlite/migrations/" + filename)
+		if err != nil {
+			return fmt.Errorf("read migration %s: %w", filename, err)
+		}
+
+		migrationSQL := string(sqlBytes)
+		revisionID, err := extractRevisionID(migrationSQL)
+		if err != nil {
+			return fmt.Errorf("migration %s: %w", filename, err)
+		}
+
+		if revisionID == currentVersion {
+			continue
+		}
+
+		fmt.Fprintf(w, "Applying: %s (revision %s)\n", filename, revisionID)
+
+		if err := applyMigrationTx(ctx, db, migrationSQL, revisionID); err != nil {
+			return fmt.Errorf("apply migration %s: %w", filename, err)
+		}
+
+		applied++
+		currentVersion = revisionID
+		fmt.Fprintf(w, "Applied: %s\n", filename)
+
+		if currentVersion == targetVersion {
+			break
+		}
+	}
+
+	if currentVersion != targetVersion {
+		return fmt.Errorf("migrations completed but version mismatch: current=%s target=%s", currentVersion, targetVersion)
+	}
+
+	fmt.Fprintf(w, "Migration complete: %d migration(s) applied\n", applied)
+	return nil
+}
+
+func applyMigrationTx(ctx context.Context, db *sql.DB, migrationSQL, revisionID string) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op after commit
+
+	for _, stmt := range splitStatements(migrationSQL) {
+		trimmed := strings.TrimSpace(stmt)
+		if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("execute SQL: %w", err)
+		}
+	}
+
+	if _, err := tx.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", revisionID); err != nil {
+		return fmt.Errorf("update alembic_version: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+func extractRevisionID(migrationSQL string) (string, error) {
+	for _, line := range strings.Split(migrationSQL, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "-- revision:") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) != 2 {
+				return "", fmt.Errorf("malformed revision comment: %s", line)
+			}
+			id := strings.TrimSpace(parts[1])
+			if id == "" {
+				return "", fmt.Errorf("empty revision ID in comment: %s", line)
+			}
+			return id, nil
+		}
+	}
+	return "", fmt.Errorf("missing '-- revision: <id>' comment")
+}
+
 // splitStatements splits a SQL script on semicolons, trimming whitespace
 // and discarding empty entries.
 func splitStatements(rawSQL string) []string {
