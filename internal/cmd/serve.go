@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"crypto/tls"
 	"database/sql"
 	"errors"
 	"flag"
@@ -145,7 +144,7 @@ func ensureServeTLS(cfg *config.Config, dbPath string, useHTTPS bool, srv *http.
 		}
 	}
 
-	srv.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	srv.TLSConfig = registry.SecureTLSConfig()
 	return certPath, keyPath, nil
 }
 

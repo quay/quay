@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"crypto/rand"
-	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
 	"flag"
@@ -358,10 +357,12 @@ func waitForHealth(url, certPath string, timeout time.Duration) error {
 	if !pool.AppendCertsFromPEM(caCert) {
 		return fmt.Errorf("parse TLS certificate: %s", certPath)
 	}
+	tlsCfg := registry.SecureTLSConfig()
+	tlsCfg.RootCAs = pool
 	client := &http.Client{
 		Timeout: 2 * time.Second,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12},
+			TLSClientConfig: tlsCfg,
 		},
 	}
 

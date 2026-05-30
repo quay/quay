@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"flag"
 	"fmt"
@@ -12,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/quay/quay/internal/registry"
 )
 
 func runUpgrade(args []string) int {
@@ -160,10 +161,12 @@ func waitForHealthCheck(url, certPath string, timeout time.Duration) error {
 	if !pool.AppendCertsFromPEM(caCert) {
 		return fmt.Errorf("parse TLS certificate: %s", certPath)
 	}
+	tlsCfg := registry.SecureTLSConfig()
+	tlsCfg.RootCAs = pool
 	client := &http.Client{
 		Timeout: 2 * time.Second,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12},
+			TLSClientConfig: tlsCfg,
 		},
 	}
 	ctx := context.Background()
