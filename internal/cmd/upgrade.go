@@ -55,7 +55,11 @@ func runUpgrade(args []string) int {
 	}
 
 	// 4. Update Quadlet file with new image.
-	quadletPath := resolveQuadletPath(isRoot)
+	quadletPath, err := resolveQuadletPath(isRoot)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error resolving quadlet path: %v\n", err)
+		return 1
+	}
 	if err := updateQuadletImage(quadletPath, resolvedImage); err != nil {
 		fmt.Fprintf(os.Stderr, "error updating quadlet: %v\n", err)
 		return 1
@@ -95,15 +99,15 @@ func systemctlArgs(isRoot bool) []string {
 	return []string{"--user"}
 }
 
-func resolveQuadletPath(isRoot bool) string {
+func resolveQuadletPath(isRoot bool) (string, error) {
 	if isRoot {
-		return "/etc/containers/systemd/quay.container"
+		return "/etc/containers/systemd/quay.container", nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return filepath.Join(".", ".config", "containers", "systemd", "quay.container")
+		return "", fmt.Errorf("determine home directory: %w", err)
 	}
-	return filepath.Join(home, ".config", "containers", "systemd", "quay.container")
+	return filepath.Join(home, ".config", "containers", "systemd", "quay.container"), nil
 }
 
 func updateQuadletImage(quadletPath, newImage string) error {
