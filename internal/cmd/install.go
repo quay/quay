@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -134,10 +135,44 @@ func validateInstallFlags(fs *flag.FlagSet, hostname, sslCert, sslKey string) er
 		fs.Usage()
 		return fmt.Errorf("--hostname is required")
 	}
+	if err := validateHostname(hostname); err != nil {
+		return fmt.Errorf("invalid hostname: %w", err)
+	}
 	if (sslCert == "") != (sslKey == "") {
 		return fmt.Errorf("--ssl-cert and --ssl-key must both be provided together")
 	}
 	return nil
+}
+
+func validateHostname(hostname string) error {
+	if len(hostname) > 253 {
+		return fmt.Errorf("exceeds 253 characters (got %d)", len(hostname))
+	}
+	if net.ParseIP(hostname) != nil {
+		return nil
+	}
+	labels := strings.Split(hostname, ".")
+	for _, label := range labels {
+		if len(label) == 0 {
+			return fmt.Errorf("contains empty label")
+		}
+		if len(label) > 63 {
+			return fmt.Errorf("label %q exceeds 63 characters", label)
+		}
+		if !isAlphanumeric(label[0]) || !isAlphanumeric(label[len(label)-1]) {
+			return fmt.Errorf("label %q must start and end with alphanumeric character", label)
+		}
+		for _, c := range label {
+			if !isAlphanumeric(byte(c)) && c != '-' {
+				return fmt.Errorf("label %q contains invalid character %q", label, c)
+			}
+		}
+	}
+	return nil
+}
+
+func isAlphanumeric(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
 }
 
 func loadOrPullImage(imageArchive, image string) (string, error) {
