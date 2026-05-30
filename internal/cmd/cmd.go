@@ -27,12 +27,8 @@ func Run(args []string) int {
 		return runInstall(args[2:])
 	case "db":
 		return runDBPublic(args[2:])
-	case "_db":
-		return runDB(args[2:])
 	case "serve":
 		return runServe(args[2:])
-	case "upgrade":
-		return runUpgrade(args[2:])
 	case versionLiteral:
 		return runVersion()
 	case helpLiteral, "-h", helpFlag:
@@ -49,8 +45,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, `usage: quay <command> [flags]
 
 commands:
-  install           Set up registry (database, certs, user, Quadlet service)
-  upgrade           Upgrade registry to a new version
+  install           Set up or upgrade registry (Quadlet service)
   db version        Print the current database schema version
   config            Configuration tools (validate)
   serve             Start the OCI container registry

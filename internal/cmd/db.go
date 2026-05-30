@@ -32,44 +32,11 @@ func runDBPublic(args []string) int {
 	}
 }
 
-// runDB handles the internal "_db" subcommand (init, version, upgrade).
-func runDB(args []string) int {
-	if len(args) == 0 {
-		dbUsage()
-		return 1
-	}
-
-	switch args[0] {
-	case "init":
-		return runDBInit(args[1:])
-	case versionLiteral:
-		return runDBVersion(args[1:])
-	case "upgrade":
-		return runDBUpgrade(args[1:])
-	case helpLiteral, "-h", helpFlag:
-		dbUsage()
-		return 0
-	default:
-		fmt.Fprintf(os.Stderr, "unknown db command: %s\n", args[0])
-		dbUsage()
-		return 1
-	}
-}
-
 func dbPublicUsage() {
 	fmt.Fprintln(os.Stderr, `usage: quay db <command> [flags]
 
 commands:
   version           Print the current schema version`)
-}
-
-func dbUsage() {
-	fmt.Fprintln(os.Stderr, `usage: quay _db <command> [flags]
-
-commands:
-  init              Create a fresh SQLite database with schema and seed data
-  version           Print the current schema version
-  upgrade           Apply pending schema migrations`)
 }
 
 // loadDBPath reads the config and extracts the SQLite file path from DB_URI.
@@ -110,36 +77,6 @@ func resolveConfigPath(flagValue string) string {
 	return "config.yaml"
 }
 
-func runDBInit(args []string) int {
-	fs := flag.NewFlagSet("db init", flag.ContinueOnError)
-	configPath := fs.String("config", "", "path to config.yaml (default: $QUAY_CONFIG or ./config.yaml)")
-	if err := fs.Parse(args); err != nil {
-		return 1
-	}
-
-	dbPath, err := loadDBPath(resolveConfigPath(*configPath))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	}
-
-	db, err := dbcore.OpenSQLite(dbPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	}
-	defer func() { _ = db.Close() }()
-
-	ctx := context.Background()
-	if err := dbcore.InitDatabase(ctx, db, os.Stdout); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	}
-
-	fmt.Fprintf(os.Stdout, "Database: %s\n", dbPath)
-	return 0
-}
-
 func runDBVersion(args []string) int {
 	fs := flag.NewFlagSet("db version", flag.ContinueOnError)
 	configPath := fs.String("config", "", "path to config.yaml (default: $QUAY_CONFIG or ./config.yaml)")
@@ -172,82 +109,5 @@ func runDBVersion(args []string) int {
 	}
 
 	fmt.Fprintf(os.Stdout, "Schema version: %s\n", ver)
-	return 0
-}
-
-func runDBUpgrade(args []string) int {
-	fs := flag.NewFlagSet("db upgrade", flag.ContinueOnError)
-	configPath := fs.String("config", "", "path to config.yaml (default: $QUAY_CONFIG or ./config.yaml)")
-	dryRun := fs.Bool("dry-run", false, "preview migrations without applying")
-	if err := fs.Parse(args); err != nil {
-		return 1
-	}
-
-	dbPath, err := loadDBPath(resolveConfigPath(*configPath))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	}
-
-	db, err := dbcore.OpenSQLite(dbPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	}
-	defer func() { _ = db.Close() }()
-
-	ctx := context.Background()
-
-	ver, err := dbcore.SchemaVersion(ctx, db)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	}
-
-	if ver == "" {
-		fmt.Fprintln(os.Stderr, "error: database has no schema version; use 'quay db init' first")
-		return 1
-	}
-
-	// Check if the database is already at the target version.
-	if ver == dbcore.TargetVersion {
-		if *dryRun {
-			fmt.Fprintf(os.Stdout, "Current version: %s\nNo pending migrations.\n", ver)
-		} else {
-			fmt.Fprintf(os.Stdout, "Schema version: %s (up to date)\n", ver)
-		}
-		return 0
-	}
-
-	// Version mismatch — database needs upgrading.
-	if *dryRun {
-		fmt.Fprintf(os.Stdout, "Current version: %s\nTarget version:  %s\n", ver, dbcore.TargetVersion)
-		dbcore.ListMigrations(os.Stdout)
-		return 0
-	}
-
-	// Backup before any upgrade attempt.
-	backupPath, err := dbcore.BackupDatabase(ctx, db, dbPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating backup: %v\n", err)
-		return 1
-	}
-	fmt.Fprintf(os.Stdout, "Backup: %s\n", backupPath)
-
-	// Verify integrity after backup.
-	if err := dbcore.IntegrityCheck(ctx, db); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	}
-
-	if err := dbcore.ApplyMigrations(ctx, db, ver, dbcore.TargetVersion, os.Stdout); err != nil {
-		fmt.Fprintf(os.Stderr, "error applying migrations: %v\n", err)
-		return 1
-	}
-
-	// Clean old backups, keep last 3.
-	_ = dbcore.CleanOldBackups(dbPath, 3)
-
-	fmt.Fprintf(os.Stdout, "Schema version: %s (up to date)\n", dbcore.TargetVersion)
 	return 0
 }
