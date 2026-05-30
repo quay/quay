@@ -29,8 +29,11 @@ const defaultHostname = "localhost"
 
 func runServe(args []string) int {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
-	configPath := fs.String("config", "", "path to config.yaml (default: $QUAY_CONFIG or ./config.yaml)")
-	addr := fs.String("addr", "", "listen address override (default from config or :8443)")
+	configPath := fs.String("config", "", "path to config.yaml (optional, overrides flags)")
+	dataDir := fs.String("data-dir", ".", "root directory for DB, storage, certs")
+	hostname := fs.String("hostname", "localhost", "server hostname for TLS SANs")
+	addr := fs.String("addr", ":8443", "listen address")
+	adminUsername := fs.String("admin-username", "admin", "admin username (first run only)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -38,26 +41,44 @@ func runServe(args []string) int {
 		return 1
 	}
 
-	// Load config.
-	cfg, err := config.Load(resolveConfigPath(*configPath))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	}
+	var cfg *config.Config
+	var storagePath, dbPath string
 
-	// Resolve storage path from config.
-	resolvedConfig := resolveConfigPath(*configPath)
-	storagePath, err := resolveStoragePath(cfg, resolvedConfig)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	}
+	if *configPath != "" {
+		var err error
+		resolved := resolveConfigPath(*configPath)
+		cfg, err = config.Load(resolved)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			return 1
+		}
+		storagePath, err = resolveStoragePath(cfg, resolved)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			return 1
+		}
+		dbPath, err = loadDBPath(resolved)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			return 1
+		}
+	} else {
+		absDir, err := filepath.Abs(*dataDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error resolving data dir: %v\n", err)
+			return 1
+		}
+		storagePath = filepath.Join(absDir, "storage")
+		dbPath = filepath.Join(absDir, "quay.db")
 
-	// Open SQLite for auth queries.
-	dbPath, err := loadDBPath(resolvedConfig)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
+		for _, dir := range []string{absDir, storagePath} {
+			if err := os.MkdirAll(dir, 0o750); err != nil {
+				fmt.Fprintf(os.Stderr, "error creating directory %s: %v\n", dir, err)
+				return 1
+			}
+		}
+
+		cfg = buildDefaultConfig(*hostname, storagePath)
 	}
 
 	db, err := dbcore.OpenSQLite(dbPath)
@@ -67,14 +88,21 @@ func runServe(args []string) int {
 	}
 	defer func() { _ = db.Close() }()
 
-	// Build distribution config.
-	listenAddr := ":8443"
-	if *addr != "" {
-		listenAddr = *addr
+	ctx := context.Background()
+	if err := bootstrapDatabase(ctx, db, dbPath); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
 	}
+
+	authDir := filepath.Join(filepath.Dir(dbPath), "auth")
+	if _, err := bootstrapAdminUser(ctx, db, *adminUsername, authDir); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+
+	listenAddr := *addr
 	distCfg := buildDistConfig(storagePath, cfg, db, listenAddr)
 
-	// Root context canceled on SIGINT/SIGTERM.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -92,7 +120,6 @@ func runServe(args []string) int {
 		BaseContext:       func(_ net.Listener) context.Context { return ctx },
 	}
 
-	// TLS setup.
 	useHTTPS := cfg.PreferredURLScheme == "https"
 	certPath, keyPath, err := ensureServeTLS(cfg, dbPath, useHTTPS, srv)
 	if err != nil {
@@ -122,6 +149,24 @@ func buildDistConfig(storagePath string, cfg *config.Config, db *sql.DB, listenA
 	}
 	distCfg.HTTP.Addr = listenAddr
 	return distCfg
+}
+
+func buildDefaultConfig(hostname, storagePath string) *config.Config {
+	return &config.Config{
+		Server: config.Server{
+			ServerHostname:     hostname,
+			PreferredURLScheme: "https",
+		},
+		Storage: config.Storage{
+			DistributedStorageConfig: config.StorageEntries{
+				"default": {
+					Driver: "LocalStorage",
+					Params: map[string]any{"storage_path": storagePath},
+				},
+			},
+			DefaultTagExpiration: "2w",
+		},
+	}
 }
 
 func ensureServeTLS(cfg *config.Config, dbPath string, useHTTPS bool, srv *http.Server) (certPath, keyPath string, err error) {
