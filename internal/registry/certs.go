@@ -48,7 +48,7 @@ func GenerateSelfSignedCert(hostname, certPath, keyPath string) error {
 		return fmt.Errorf("create certificate: %w", err)
 	}
 
-	certFile, err := os.Create(certPath) //nolint:gosec // path from caller
+	certFile, err := os.OpenFile(certPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) //nolint:gosec // path from caller
 	if err != nil {
 		return fmt.Errorf("create cert file: %w", err)
 	}

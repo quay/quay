@@ -142,7 +142,7 @@ func BackupDatabase(ctx context.Context, db *sql.DB, dbPath string) (string, err
 	}
 	defer func() { _ = src.Close() }()
 
-	dst, err := os.Create(backupPath) //nolint:gosec // path derived from dbPath
+	dst, err := os.OpenFile(backupPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) //nolint:gosec // path derived from dbPath
 	if err != nil {
 		return "", fmt.Errorf("create backup: %w", err)
 	}
