@@ -9,3 +9,6 @@ INSERT INTO "user" (uuid, username, password_hash, email, verified,
   last_invalid_login, removed_tag_expiration_s, enabled, creation_date)
 VALUES (?, ?, ?, ?, 1, 0, 0, 0, 0, datetime('now'), 1209600, 1, datetime('now'))
 RETURNING id;
+
+-- name: CountUsers :one
+SELECT count(*) FROM "user" WHERE organization = 0 AND robot = 0;

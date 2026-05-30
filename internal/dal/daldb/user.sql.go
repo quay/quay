@@ -10,6 +10,17 @@ import (
 	"database/sql"
 )
 
+const countUsers = `-- name: CountUsers :one
+SELECT count(*) FROM "user" WHERE organization = 0 AND robot = 0
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAdminUser = `-- name: CreateAdminUser :one
 INSERT INTO "user" (uuid, username, password_hash, email, verified,
   organization, robot, invoice_email, invalid_login_attempts,
