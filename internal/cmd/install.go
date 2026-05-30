@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"crypto/x509"
-	"database/sql"
 	"flag"
 	"fmt"
 	"net"
@@ -16,10 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-
-	"github.com/quay/quay/internal/dal/daldb"
-	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/registry"
 )
 
@@ -32,11 +28,6 @@ func runInstall(args []string) int {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
 	hostname := fs.String("hostname", "", "server hostname for TLS and config (required)")
 	dataDir := fs.String("data-dir", "/var/lib/quay", "directory for database, storage, and certs")
-	adminUser := fs.String("admin-username", "admin", "admin username")
-	adminEmail := fs.String("admin-email", "", "admin email (default: admin@<hostname>)")
-	adminPass := fs.String("admin-password", "", "admin password (auto-generated if empty)")
-	sslCert := fs.String("ssl-cert", "", "path to custom TLS certificate")
-	sslKey := fs.String("ssl-key", "", "path to custom TLS key")
 	imageArchive := fs.String("image-archive", "", "path to container image tar (offline mode)")
 	image := fs.String("image", defaultImage, "container image to use")
 
@@ -44,33 +35,9 @@ func runInstall(args []string) int {
 		return 1
 	}
 
-	if err := validateInstallFlags(fs, *hostname, *sslCert, *sslKey); err != nil {
+	if err := validateInstallFlags(fs, *hostname); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
-	}
-
-	passwordGenerated := false
-	if *adminPass == "" {
-		generated, err := generatePassword(32)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error generating password: %v\n", err)
-			return 1
-		}
-		*adminPass = generated
-		passwordGenerated = true
-	}
-
-	if *adminEmail == "" {
-		*adminEmail = fmt.Sprintf("%s@%s", *adminUser, *hostname)
-	}
-
-	// Create directory structure.
-	storageDir := filepath.Join(*dataDir, "storage")
-	for _, dir := range []string{*dataDir, storageDir} {
-		if err := os.MkdirAll(dir, 0o750); err != nil {
-			fmt.Fprintf(os.Stderr, "error creating directory %s: %v\n", dir, err)
-			return 1
-		}
 	}
 
 	// Load or pull container image. Use the resolved reference for the Quadlet
@@ -81,66 +48,142 @@ func runInstall(args []string) int {
 		return 1
 	}
 
-	// Generate config, init DB, create admin user.
-	dbPath := filepath.Join(*dataDir, "quay.db")
-	configPath := filepath.Join(*dataDir, "config.yaml")
-	certPath := filepath.Join(*dataDir, "ssl.cert")
-	keyPath := filepath.Join(*dataDir, "ssl.key")
-
-	if err := writeConfig(configPath, *hostname); err != nil {
-		fmt.Fprintf(os.Stderr, "error writing config: %v\n", err)
-		return 1
-	}
-	fmt.Fprintf(os.Stderr, "config: %s\n", configPath)
-
-	if err := initDBAndUser(dbPath, *adminUser, *adminEmail, *adminPass); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	}
-	fmt.Fprintf(os.Stderr, "database: %s\n", dbPath)
-	fmt.Fprintf(os.Stderr, "admin user: %s\n", *adminUser)
-
-	// Show generated credentials immediately so they aren't lost if a later step fails.
-	if passwordGenerated {
-		fmt.Fprintf(os.Stderr, "admin credentials: %s / %s\n", *adminUser, *adminPass)
-	}
-
-	// TLS certificates.
-	if err := setupCertificates(*sslCert, *sslKey, certPath, keyPath, *hostname); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	// Check if Quadlet file already exists.
+	isRoot := os.Getuid() == 0
+	quadletPath, err := resolveQuadletPath(isRoot)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error resolving quadlet path: %v\n", err)
 		return 1
 	}
 
-	// Write Quadlet file and start service.
-	if err := installQuadlet(resolvedImage, *dataDir); err != nil {
-		fmt.Fprintf(os.Stderr, "error installing service: %v\n", err)
-		return 1
+	if _, err := os.Stat(quadletPath); err == nil {
+		// Upgrade path: Quadlet exists, update the image.
+		fmt.Fprintln(os.Stderr, "existing installation detected — upgrading...")
+
+		svcArgs := systemctlArgs(isRoot)
+
+		// Stop the service.
+		fmt.Fprintln(os.Stderr, "stopping registry...")
+		if err := runCmd("systemctl", append(svcArgs, "stop", quadletServiceName)...); err != nil {
+			fmt.Fprintf(os.Stderr, "error stopping service: %v\n", err)
+			return 1
+		}
+
+		// Update Quadlet file with new image.
+		if err := updateQuadletImage(quadletPath, resolvedImage); err != nil {
+			fmt.Fprintf(os.Stderr, "error updating quadlet: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(os.Stderr, "updated quadlet: %s\n", quadletPath)
+
+		// Reload and start.
+		if err := runCmd("systemctl", append(svcArgs, "daemon-reload")...); err != nil {
+			fmt.Fprintf(os.Stderr, "error reloading systemd: %v\n", err)
+			return 1
+		}
+		if err := runCmd("systemctl", append(svcArgs, "start", quadletServiceName)...); err != nil {
+			fmt.Fprintf(os.Stderr, "error starting service: %v\n", err)
+			return 1
+		}
+	} else {
+		// Fresh install: Create directory structure and Quadlet file.
+		storageDir := filepath.Join(*dataDir, "storage")
+		for _, dir := range []string{*dataDir, storageDir} {
+			if err := os.MkdirAll(dir, 0o750); err != nil {
+				fmt.Fprintf(os.Stderr, "error creating directory %s: %v\n", dir, err)
+				return 1
+			}
+		}
+
+		// Write Quadlet file and start service.
+		if err := installQuadlet(resolvedImage, *dataDir, *hostname); err != nil {
+			fmt.Fprintf(os.Stderr, "error installing service: %v\n", err)
+			return 1
+		}
 	}
 
 	// Health check.
+	credPath := filepath.Join(*dataDir, "credentials")
+	healthURL := fmt.Sprintf("https://%s:8443/healthz", *hostname)
+	certPath := filepath.Join(*dataDir, "ssl.cert")
+
 	fmt.Fprintln(os.Stderr, "waiting for registry to start...")
-	if err := waitForHealth(fmt.Sprintf("https://%s:8443/healthz", *hostname), certPath, 30*time.Second); err != nil {
+	if err := waitForHealth(healthURL, certPath, 30*time.Second); err != nil {
 		fmt.Fprintf(os.Stderr, "error: health check failed: %v\n", err)
 		fmt.Fprintln(os.Stderr, "check: systemctl status quay")
 		return 1
 	}
 
 	fmt.Fprintf(os.Stderr, "\nregistry running at https://%s:8443\n", *hostname)
+	fmt.Fprintf(os.Stderr, "credentials: %s\n", credPath)
 	return 0
 }
 
-func validateInstallFlags(fs *flag.FlagSet, hostname, sslCert, sslKey string) error {
+func systemctlArgs(isRoot bool) []string {
+	if isRoot {
+		return nil
+	}
+	return []string{"--user"}
+}
+
+func resolveQuadletPath(isRoot bool) (string, error) {
+	if isRoot {
+		return "/etc/containers/systemd/quay.container", nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("determine home directory: %w", err)
+	}
+	return filepath.Join(home, ".config", "containers", "systemd", "quay.container"), nil
+}
+
+func updateQuadletImage(quadletPath, newImage string) error {
+	data, err := os.ReadFile(quadletPath) //nolint:gosec // path from known quadlet location
+	if err != nil {
+		return fmt.Errorf("read quadlet: %w", err)
+	}
+
+	var updated []string
+	found := false
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "Image=") {
+			updated = append(updated, "Image="+newImage)
+			found = true
+		} else {
+			updated = append(updated, line)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("scan quadlet: %w", err)
+	}
+	if !found {
+		return fmt.Errorf("no Image= directive found in %s", quadletPath)
+	}
+
+	return os.WriteFile(quadletPath, []byte(strings.Join(updated, "\n")+"\n"), 0o600) //nolint:gosec // quadlet path is known
+}
+
+func readHostnameFromConfig(configPath string) string {
+	data, err := os.ReadFile(configPath) //nolint:gosec // path from known data dir
+	if err != nil {
+		return defaultHostname
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(line, "SERVER_HOSTNAME:") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "SERVER_HOSTNAME:"))
+		}
+	}
+	return defaultHostname
+}
+
+func validateInstallFlags(fs *flag.FlagSet, hostname string) error {
 	if hostname == "" {
 		fs.Usage()
 		return fmt.Errorf("--hostname is required")
 	}
-	if err := validateHostname(hostname); err != nil {
-		return fmt.Errorf("invalid hostname: %w", err)
-	}
-	if (sslCert == "") != (sslKey == "") {
-		return fmt.Errorf("--ssl-cert and --ssl-key must both be provided together")
-	}
-	return nil
+	return validateHostname(hostname)
 }
 
 func validateHostname(hostname string) error {
@@ -219,74 +262,7 @@ func parseLoadedImageRef(output string) string {
 	return ""
 }
 
-func writeConfig(configPath, hostname string) error {
-	configContent := fmt.Sprintf(`SERVER_HOSTNAME: %s
-PREFERRED_URL_SCHEME: https
-DB_URI: sqlite:///quay.db
-DISTRIBUTED_STORAGE_CONFIG:
-  default:
-    - LocalStorage
-    - storage_path: storage
-DEFAULT_TAG_EXPIRATION: 2w
-`, hostname)
-
-	return os.WriteFile(configPath, []byte(configContent), 0o600)
-}
-
-func initDBAndUser(dbPath, adminUser, adminEmail, adminPass string) error {
-	db, err := dbcore.OpenSQLite(dbPath)
-	if err != nil {
-		return fmt.Errorf("opening database: %w", err)
-	}
-	defer func() { _ = db.Close() }()
-
-	ctx := context.Background()
-	if err := dbcore.InitDatabase(ctx, db, os.Stderr); err != nil {
-		return fmt.Errorf("initializing database: %w", err)
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(adminPass), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("hashing password: %w", err)
-	}
-
-	uuid, err := generateUUID()
-	if err != nil {
-		return fmt.Errorf("generating UUID: %w", err)
-	}
-
-	queries := daldb.New(db)
-	if _, err := queries.CreateAdminUser(ctx, daldb.CreateAdminUserParams{
-		Uuid:         sql.NullString{String: uuid, Valid: true},
-		Username:     adminUser,
-		PasswordHash: sql.NullString{String: string(hash), Valid: true},
-		Email:        adminEmail,
-	}); err != nil {
-		return fmt.Errorf("creating admin user: %w", err)
-	}
-
-	return nil
-}
-
-func setupCertificates(sslCert, sslKey, certPath, keyPath, hostname string) error {
-	if sslCert != "" && sslKey != "" {
-		if err := copyFile(sslCert, certPath); err != nil {
-			return fmt.Errorf("copying cert: %w", err)
-		}
-		if err := copyFile(sslKey, keyPath); err != nil {
-			return fmt.Errorf("copying key: %w", err)
-		}
-		fmt.Fprintln(os.Stderr, "tls: copied user-provided certificate")
-	} else {
-		if err := registry.GenerateSelfSignedCert(hostname, certPath, keyPath); err != nil {
-			return fmt.Errorf("generating certificate: %w", err)
-		}
-		fmt.Fprintf(os.Stderr, "tls: generated self-signed certificate for %s\n", hostname)
-	}
-	return nil
-}
-
-func installQuadlet(image, dataDir string) error {
+func installQuadlet(image, dataDir, hostname string) error {
 	isRoot := os.Getuid() == 0
 
 	var quadletDir string
@@ -312,11 +288,11 @@ After=network-online.target
 Image=%s
 Volume=%s:/data:Z
 PublishPort=8443:8443
-Exec=serve --config /data/config.yaml
+Exec=serve --data-dir /data --hostname %s
 
 [Install]
 WantedBy=default.target
-`, image, dataDir)
+`, image, dataDir, hostname)
 
 	quadletPath := filepath.Join(quadletDir, "quay.container")
 	if err := os.WriteFile(quadletPath, []byte(quadletContent), 0o600); err != nil {
@@ -390,14 +366,6 @@ func runCmd(name string, args ...string) error {
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
-}
-
-func copyFile(src, dst string) error {
-	data, err := os.ReadFile(src) //nolint:gosec // CLI tool, path from caller
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(dst, data, 0o600) //nolint:gosec // data from known source file
 }
 
 // generatePassword creates a random password of the given length.
