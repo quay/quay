@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -234,6 +235,39 @@ func startAndWait(ctx context.Context, stop context.CancelFunc, srv *http.Server
 
 	fmt.Fprintln(os.Stderr, "stopped")
 	return 0
+}
+
+func loadDBPath(configPath string) (string, error) {
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return "", fmt.Errorf("load config: %w", err)
+	}
+
+	if cfg.DBURI == "" {
+		return "", fmt.Errorf("DB_URI not set in config")
+	}
+
+	if !strings.HasPrefix(cfg.DBURI, "sqlite:///") {
+		return "", fmt.Errorf("DB_URI must start with sqlite:/// for db commands (got %s)", cfg.DBURI)
+	}
+
+	dbPath := strings.TrimPrefix(cfg.DBURI, "sqlite:///")
+
+	if !filepath.IsAbs(dbPath) {
+		dbPath = filepath.Join(filepath.Dir(configPath), dbPath)
+	}
+
+	return dbPath, nil
+}
+
+func resolveConfigPath(flagValue string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	if env := os.Getenv("QUAY_CONFIG"); env != "" {
+		return env
+	}
+	return "config.yaml"
 }
 
 // resolveStoragePath extracts the filesystem storage path from config.
