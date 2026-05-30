@@ -81,9 +81,13 @@ func runServe(args []string) int {
 
 	app := handlers.NewApp(ctx, distCfg)
 
+	mux := http.NewServeMux()
+	mux.Handle("/healthz", newHealthHandler(db))
+	mux.Handle("/", app)
+
 	srv := &http.Server{
 		Addr:              listenAddr,
-		Handler:           app,
+		Handler:           mux,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
 		BaseContext:       func(_ net.Listener) context.Context { return ctx },

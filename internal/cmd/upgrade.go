@@ -78,7 +78,7 @@ func runUpgrade(args []string) int {
 
 	// 6. Health check.
 	hostname := readHostnameFromConfig(filepath.Join(*dataDir, "config.yaml"))
-	healthURL := fmt.Sprintf("https://%s:8443/v2/", hostname)
+	healthURL := fmt.Sprintf("https://%s:8443/healthz", hostname)
 	certPath := filepath.Join(*dataDir, "ssl.cert")
 
 	fmt.Fprintln(os.Stderr, "waiting for registry...")
@@ -176,7 +176,7 @@ func waitForHealthCheck(url, certPath string, timeout time.Duration) error {
 		resp, err := client.Do(req)
 		if err == nil {
 			_ = resp.Body.Close()
-			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusUnauthorized {
+			if resp.StatusCode == http.StatusOK {
 				return nil
 			}
 		}

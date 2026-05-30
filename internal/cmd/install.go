@@ -120,7 +120,7 @@ func runInstall(args []string) int {
 
 	// Health check.
 	fmt.Fprintln(os.Stderr, "waiting for registry to start...")
-	if err := waitForHealth(fmt.Sprintf("https://%s:8443/v2/", *hostname), certPath, 30*time.Second); err != nil {
+	if err := waitForHealth(fmt.Sprintf("https://%s:8443/healthz", *hostname), certPath, 30*time.Second); err != nil {
 		fmt.Fprintf(os.Stderr, "error: health check failed: %v\n", err)
 		fmt.Fprintln(os.Stderr, "check: systemctl status quay")
 		return 1
@@ -375,7 +375,7 @@ func waitForHealth(url, certPath string, timeout time.Duration) error {
 		resp, err := client.Do(req)
 		if err == nil {
 			_ = resp.Body.Close()
-			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusUnauthorized {
+			if resp.StatusCode == http.StatusOK {
 				return nil
 			}
 		}
