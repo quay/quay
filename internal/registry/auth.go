@@ -43,6 +43,11 @@ func newAccessController(options map[string]interface{}) (auth.AccessController,
 	}, nil
 }
 
+// dummyHash is a valid bcrypt hash used when the user is not found, so that
+// bcrypt.CompareHashAndPassword always runs and timing is constant regardless
+// of whether the username exists.
+var dummyHash = []byte("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy")
+
 func (ac *accessController) Authorized(req *http.Request, access ...auth.Access) (*auth.Grant, error) {
 	username, password, ok := req.BasicAuth()
 	if !ok {
@@ -52,32 +57,25 @@ func (ac *accessController) Authorized(req *http.Request, access ...auth.Access)
 		}
 	}
 
+	var (
+		hashToCompare []byte
+		authenticated bool
+	)
+
 	user, err := ac.queries.GetUserByUsername(req.Context(), username)
-	if err != nil {
-		logrus.WithField("username", username).Debug("user not found")
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   auth.ErrAuthenticationFailure,
-		}
+	if err != nil || !user.Enabled || !user.PasswordHash.Valid {
+		hashToCompare = dummyHash
+	} else {
+		hashToCompare = []byte(user.PasswordHash.String)
 	}
 
-	if !user.Enabled {
-		logrus.WithField("username", username).Debug("user disabled")
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   auth.ErrAuthenticationFailure,
-		}
+	if bcrypt.CompareHashAndPassword(hashToCompare, []byte(password)) == nil &&
+		err == nil && user.Enabled && user.PasswordHash.Valid {
+		authenticated = true
 	}
 
-	if !user.PasswordHash.Valid {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   auth.ErrAuthenticationFailure,
-		}
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash.String), []byte(password)); err != nil {
-		logrus.WithField("username", username).Debug("invalid password")
+	if !authenticated {
+		logrus.WithField("username", username).Debug("authentication failed")
 		return nil, &challenge{
 			realm: ac.realm,
 			err:   auth.ErrAuthenticationFailure,
