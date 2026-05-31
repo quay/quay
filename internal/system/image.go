@@ -17,10 +17,12 @@ type PodmanLoader struct {
 	runner CommandRunner
 }
 
+// NewPodmanLoader returns a PodmanLoader that delegates to runner.
 func NewPodmanLoader(runner CommandRunner) *PodmanLoader {
 	return &PodmanLoader{runner: runner}
 }
 
+// Load imports a container image from a tar archive via podman load.
 func (p *PodmanLoader) Load(ctx context.Context, archivePath string) (string, error) {
 	output, err := p.runner.Output(ctx, "podman", "load", "-i", archivePath)
 	if err != nil {
@@ -33,6 +35,7 @@ func (p *PodmanLoader) Load(ctx context.Context, archivePath string) (string, er
 	return ref, nil
 }
 
+// Pull fetches a container image from a remote registry via podman pull.
 func (p *PodmanLoader) Pull(ctx context.Context, image string) error {
 	if err := p.runner.Run(ctx, "podman", "pull", image); err != nil {
 		return fmt.Errorf("podman pull: %w", err)

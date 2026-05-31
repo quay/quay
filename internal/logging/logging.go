@@ -1,3 +1,4 @@
+// Package logging provides structured logging via slog with a logrus compatibility bridge.
 package logging
 
 import (
@@ -25,9 +26,9 @@ func Setup(level, format string, w io.Writer) error {
 
 // ResolveConfig returns the effective log level and format by applying the
 // precedence chain: CLI flags > config.yaml > env vars > defaults.
-func ResolveConfig(flagLevel, flagFormat, cfgLevel, cfgFormat string) (string, string) {
-	level := resolveValue(flagLevel, cfgLevel, envLevel(), "info")
-	format := resolveValue(flagFormat, cfgFormat, envFormat(), "json")
+func ResolveConfig(flagLevel, flagFormat, cfgLevel, cfgFormat string) (level, format string) {
+	level = resolveValue(flagLevel, cfgLevel, envLevel(), levelInfo)
+	format = resolveValue(flagFormat, cfgFormat, envFormat(), formatJSON)
 	return level, format
 }
 
@@ -44,16 +45,21 @@ func resolveValue(flag, cfg, env, fallback string) string {
 	return fallback
 }
 
+const (
+	formatJSON = "json"
+	formatText = "text"
+)
+
 func envLevel() string {
 	if strings.EqualFold(os.Getenv("DEBUGLOG"), "true") {
-		return "debug"
+		return levelDebug
 	}
 	return ""
 }
 
 func envFormat() string {
 	if strings.EqualFold(os.Getenv("JSONLOG"), "true") {
-		return "json"
+		return formatJSON
 	}
 	return ""
 }
@@ -66,9 +72,9 @@ func newHandler(level, format string, w io.Writer) (slog.Handler, error) {
 	opts := &slog.HandlerOptions{Level: lvl}
 
 	switch strings.ToLower(format) {
-	case "json":
+	case formatJSON:
 		return slog.NewJSONHandler(w, opts), nil
-	case "text":
+	case formatText:
 		return slog.NewTextHandler(w, opts), nil
 	default:
 		return nil, fmt.Errorf("invalid log format %q: must be json or text", format)

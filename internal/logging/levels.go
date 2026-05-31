@@ -8,13 +8,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	levelDebug = "debug"
+	levelInfo  = "info"
+	levelWarn  = "warn"
+)
+
+// ParseLevel converts a string log level name to the corresponding slog.Level.
 func ParseLevel(s string) (slog.Level, error) {
 	switch strings.ToLower(s) {
-	case "debug":
+	case levelDebug:
 		return slog.LevelDebug, nil
-	case "info":
+	case levelInfo:
 		return slog.LevelInfo, nil
-	case "warn", "warning":
+	case levelWarn, "warning":
 		return slog.LevelWarn, nil
 	case "error":
 		return slog.LevelError, nil

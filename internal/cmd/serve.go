@@ -25,7 +25,10 @@ import (
 	"github.com/quay/quay/internal/registry"
 )
 
-const defaultHostname = "localhost"
+const (
+	defaultHostname = "localhost"
+	schemeHTTPS     = "https"
+)
 
 type serveOpts struct {
 	configPath    string
@@ -50,7 +53,7 @@ func runServe(ctx context.Context, args []string) int {
 		return 1
 	}
 
-	resolved, err := resolveServeConfig(opts)
+	resolved, err := resolveServeConfig(&opts)
 	if err != nil {
 		slog.Error("config error", "err", err)
 		return 1
@@ -82,7 +85,7 @@ func runServe(ctx context.Context, args []string) int {
 
 	scheme := "http"
 	if useHTTPS {
-		scheme = "https"
+		scheme = schemeHTTPS
 	}
 	slog.Info("registry listening", "scheme", scheme, "addr", opts.addr, "storage", resolved.storagePath, "db", resolved.dbPath)
 
@@ -114,7 +117,7 @@ func parseServeOpts(args []string) (serveOpts, error) {
 
 // --- Config resolution ---
 
-func resolveServeConfig(opts serveOpts) (*resolvedConfig, error) {
+func resolveServeConfig(opts *serveOpts) (*resolvedConfig, error) {
 	if opts.configPath != "" {
 		return resolveFromConfigFile(opts.configPath)
 	}
@@ -210,7 +213,7 @@ func buildDefaultConfig(hostname, storagePath string) *config.Config {
 	return &config.Config{
 		Server: config.Server{
 			ServerHostname:     hostname,
-			PreferredURLScheme: "https",
+			PreferredURLScheme: schemeHTTPS,
 		},
 		Storage: config.Storage{
 			DistributedStorageConfig: config.StorageEntries{
@@ -240,7 +243,7 @@ func buildServer(ctx context.Context, resolved *resolvedConfig, db *sql.DB, list
 		BaseContext:       func(_ net.Listener) context.Context { return ctx },
 	}
 
-	useHTTPS = resolved.cfg.PreferredURLScheme == "https"
+	useHTTPS = resolved.cfg.PreferredURLScheme == schemeHTTPS
 	if useHTTPS {
 		certPath, keyPath, err = ensureServeTLS(resolved.cfg, resolved.dbPath, srv)
 		if err != nil {

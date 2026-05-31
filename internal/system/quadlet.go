@@ -20,6 +20,7 @@ type QuadletManager struct {
 	env *Env
 }
 
+// NewQuadletManager returns a QuadletManager backed by fs and env.
 func NewQuadletManager(fs FileSystem, env *Env) *QuadletManager {
 	return &QuadletManager{fs: fs, env: env}
 }

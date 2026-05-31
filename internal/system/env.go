@@ -10,6 +10,7 @@ import (
 // Mode distinguishes root vs user-level installation.
 type Mode int
 
+// Installation modes.
 const (
 	RootMode Mode = iota
 	UserMode

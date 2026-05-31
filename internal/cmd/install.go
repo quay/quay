@@ -226,17 +226,17 @@ func validateHostname(hostname string) error {
 	}
 	labels := strings.Split(hostname, ".")
 	for _, label := range labels {
-		if len(label) == 0 {
+		if label == "" {
 			return fmt.Errorf("contains empty label")
 		}
 		if len(label) > 63 {
 			return fmt.Errorf("label %q exceeds 63 characters", label)
 		}
-		if !isAlphanumeric(label[0]) || !isAlphanumeric(label[len(label)-1]) {
+		if !isAlphanumeric(rune(label[0])) || !isAlphanumeric(rune(label[len(label)-1])) {
 			return fmt.Errorf("label %q must start and end with alphanumeric character", label)
 		}
 		for _, c := range label {
-			if !isAlphanumeric(byte(c)) && c != '-' {
+			if !isAlphanumeric(c) && c != '-' {
 				return fmt.Errorf("label %q contains invalid character %q", label, c)
 			}
 		}
@@ -244,6 +244,6 @@ func validateHostname(hostname string) error {
 	return nil
 }
 
-func isAlphanumeric(c byte) bool {
+func isAlphanumeric(c rune) bool {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
 }

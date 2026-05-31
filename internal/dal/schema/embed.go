@@ -3,7 +3,6 @@ package schema
 
 import (
 	"embed"
-	_ "embed"
 )
 
 // QuaySchemaSQL contains CREATE TABLE and CREATE INDEX statements for all Quay tables.
