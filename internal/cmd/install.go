@@ -54,13 +54,13 @@ func runInstall(ctx context.Context, args []string) int {
 		return 1
 	}
 
-	runner := &system.ExecRunner{Out: os.Stderr}
+	runner := system.NewExecRunner(os.Stderr)
 	fs := system.OSFS{}
 
 	inst := &installer{
-		images:  &system.PodmanLoader{Runner: runner},
-		systemd: &system.SystemdManager{Runner: runner, Env: env},
-		quadlet: &system.QuadletManager{FS: fs, Env: env},
+		images:  system.NewPodmanLoader(runner),
+		systemd: system.NewSystemdManager(runner, env),
+		quadlet: system.NewQuadletManager(fs, env),
 		env:     env,
 		fs:      fs,
 	}

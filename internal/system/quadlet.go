@@ -16,20 +16,24 @@ type QuadletSpec struct {
 
 // QuadletManager handles Quadlet .container files.
 type QuadletManager struct {
-	FS  FileSystem
-	Env *Env
+	fs  FileSystem
+	env *Env
+}
+
+func NewQuadletManager(fs FileSystem, env *Env) *QuadletManager {
+	return &QuadletManager{fs: fs, env: env}
 }
 
 // Exists returns true if the Quadlet file for service already exists.
 func (q *QuadletManager) Exists(service string) bool {
-	_, err := q.FS.Stat(q.Env.QuadletPath(service))
+	_, err := q.fs.Stat(q.env.QuadletPath(service))
 	return err == nil
 }
 
 // Install writes a new Quadlet .container file.
 func (q *QuadletManager) Install(service string, spec QuadletSpec) error {
-	dir := q.Env.QuadletDir()
-	if err := q.FS.MkdirAll(dir, 0o750); err != nil {
+	dir := q.env.QuadletDir()
+	if err := q.fs.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create quadlet dir: %w", err)
 	}
 
@@ -47,8 +51,8 @@ Exec=serve --data-dir /data --hostname %s
 WantedBy=default.target
 `, spec.Image, spec.DataDir, spec.Port, spec.Port, spec.Hostname)
 
-	path := q.Env.QuadletPath(service)
-	if err := q.FS.WriteFile(path, []byte(content), 0o600); err != nil {
+	path := q.env.QuadletPath(service)
+	if err := q.fs.WriteFile(path, []byte(content), 0o600); err != nil {
 		return fmt.Errorf("write quadlet: %w", err)
 	}
 	return nil
@@ -56,8 +60,8 @@ WantedBy=default.target
 
 // UpdateImage replaces the Image= directive in an existing Quadlet file.
 func (q *QuadletManager) UpdateImage(service, newImage string) error {
-	path := q.Env.QuadletPath(service)
-	data, err := q.FS.ReadFile(path)
+	path := q.env.QuadletPath(service)
+	data, err := q.fs.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read quadlet: %w", err)
 	}
@@ -81,5 +85,5 @@ func (q *QuadletManager) UpdateImage(service, newImage string) error {
 		return fmt.Errorf("no Image= directive found in %s", path)
 	}
 
-	return q.FS.WriteFile(path, []byte(strings.Join(updated, "\n")+"\n"), 0o600)
+	return q.fs.WriteFile(path, []byte(strings.Join(updated, "\n")+"\n"), 0o600)
 }

@@ -13,29 +13,33 @@ type ServiceManager interface {
 
 // SystemdManager implements ServiceManager using systemctl.
 type SystemdManager struct {
-	Runner CommandRunner
-	Env    *Env
+	runner CommandRunner
+	env    *Env
+}
+
+func NewSystemdManager(runner CommandRunner, env *Env) *SystemdManager {
+	return &SystemdManager{runner: runner, env: env}
 }
 
 func (s *SystemdManager) DaemonReload(ctx context.Context) error {
-	return s.Runner.Run(ctx, "systemctl", append(s.Env.SystemctlArgs(), "daemon-reload")...)
+	return s.runner.Run(ctx, "systemctl", append(s.env.SystemctlArgs(), "daemon-reload")...)
 }
 
 func (s *SystemdManager) Enable(ctx context.Context, service string) error {
-	return s.Runner.Run(ctx, "systemctl", append(s.Env.SystemctlArgs(), "enable", "--now", service)...)
+	return s.runner.Run(ctx, "systemctl", append(s.env.SystemctlArgs(), "enable", "--now", service)...)
 }
 
 func (s *SystemdManager) Start(ctx context.Context, service string) error {
-	return s.Runner.Run(ctx, "systemctl", append(s.Env.SystemctlArgs(), "start", service)...)
+	return s.runner.Run(ctx, "systemctl", append(s.env.SystemctlArgs(), "start", service)...)
 }
 
 func (s *SystemdManager) Stop(ctx context.Context, service string) error {
-	return s.Runner.Run(ctx, "systemctl", append(s.Env.SystemctlArgs(), "stop", service)...)
+	return s.runner.Run(ctx, "systemctl", append(s.env.SystemctlArgs(), "stop", service)...)
 }
 
 func (s *SystemdManager) EnableLinger(ctx context.Context) error {
-	if s.Env.Mode == RootMode || s.Env.Username == "" {
+	if s.env.Mode == RootMode || s.env.Username == "" {
 		return nil
 	}
-	return s.Runner.Run(ctx, "loginctl", "enable-linger", s.Env.Username)
+	return s.runner.Run(ctx, "loginctl", "enable-linger", s.env.Username)
 }

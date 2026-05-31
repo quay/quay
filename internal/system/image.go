@@ -14,11 +14,15 @@ type ImageLoader interface {
 
 // PodmanLoader implements ImageLoader using podman.
 type PodmanLoader struct {
-	Runner CommandRunner
+	runner CommandRunner
+}
+
+func NewPodmanLoader(runner CommandRunner) *PodmanLoader {
+	return &PodmanLoader{runner: runner}
 }
 
 func (p *PodmanLoader) Load(ctx context.Context, archivePath string) (string, error) {
-	output, err := p.Runner.Output(ctx, "podman", "load", "-i", archivePath)
+	output, err := p.runner.Output(ctx, "podman", "load", "-i", archivePath)
 	if err != nil {
 		return "", fmt.Errorf("podman load: %w", err)
 	}
@@ -30,7 +34,7 @@ func (p *PodmanLoader) Load(ctx context.Context, archivePath string) (string, er
 }
 
 func (p *PodmanLoader) Pull(ctx context.Context, image string) error {
-	if err := p.Runner.Run(ctx, "podman", "pull", image); err != nil {
+	if err := p.runner.Run(ctx, "podman", "pull", image); err != nil {
 		return fmt.Errorf("podman pull: %w", err)
 	}
 	return nil

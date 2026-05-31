@@ -16,19 +16,23 @@ type CommandRunner interface {
 
 // ExecRunner implements CommandRunner using os/exec.
 type ExecRunner struct {
-	Out io.Writer
+	out io.Writer
+}
+
+func NewExecRunner(out io.Writer) *ExecRunner {
+	return &ExecRunner{out: out}
 }
 
 func (r *ExecRunner) Run(ctx context.Context, name string, args ...string) error {
 	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // CLI tool, args from flags
-	cmd.Stdout = r.Out
-	cmd.Stderr = r.Out
+	cmd.Stdout = r.out
+	cmd.Stderr = r.out
 	return cmd.Run()
 }
 
 func (r *ExecRunner) Output(ctx context.Context, name string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // CLI tool, args from flags
-	cmd.Stderr = r.Out
+	cmd.Stderr = r.out
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
