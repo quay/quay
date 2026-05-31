@@ -8,10 +8,23 @@ import (
 	"log/slog"
 )
 
-// Bootstrap initializes a new database or upgrades an existing one to
-// TargetVersion. It is safe to call on every startup — it is a no-op
-// when the schema is already current.
-func Bootstrap(ctx context.Context, db *sql.DB, dbPath string) error {
+// Setup opens the SQLite database at dbPath and ensures the schema is
+// current. On a fresh database it initializes the schema; on an existing
+// one it applies any pending migrations. Safe to call on every startup.
+// The caller owns the returned *sql.DB and must close it.
+func Setup(ctx context.Context, dbPath string) (*sql.DB, error) {
+	db, err := OpenSQLite(dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("open: %w", err)
+	}
+	if err := ensureSchema(ctx, db, dbPath); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
+func ensureSchema(ctx context.Context, db *sql.DB, dbPath string) error {
 	var tableCount int
 	err := db.QueryRowContext(ctx,
 		"SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",

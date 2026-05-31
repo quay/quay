@@ -37,17 +37,12 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		return 1
 	}
 
-	db, err := dbcore.OpenSQLite(resolved.DBPath)
+	db, err := dbcore.Setup(ctx, resolved.DBPath)
 	if err != nil {
-		slog.Error("error opening database", "err", err)
+		slog.Error("database setup error", "err", err)
 		return 1
 	}
 	defer func() { _ = db.Close() }()
-
-	if err := dbcore.Bootstrap(ctx, db, resolved.DBPath); err != nil {
-		slog.Error("bootstrap database error", "err", err)
-		return 1
-	}
 
 	authDir := filepath.Join(filepath.Dir(resolved.DBPath), "auth")
 	if _, err := bootstrap.AdminUser(ctx, db, adminUsername, authDir); err != nil {
