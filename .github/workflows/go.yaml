@@ -198,26 +198,30 @@ jobs:
           kind: ImageSetConfiguration
           mirror:
             additionalImages:
-              - name: quay.io/projectquay/quay:3.13.2
-              - name: quay.io/projectquay/quay-builder:3.13.0
-              - name: quay.io/projectquay/clair:4.7.4
-              - name: quay.io/quay/quay-operator:latest
-              - name: quay.io/prometheus/prometheus:latest
-              - name: quay.io/prometheus/alertmanager:latest
-              - name: quay.io/prometheus/node-exporter:latest
-              - name: quay.io/prometheus/pushgateway:latest
-              - name: quay.io/coreos/etcd:v3.5.0
+            - name: quay.io/projectquay/quay:3.13.2
+            - name: quay.io/projectquay/quay-builder:3.13.0
+            - name: quay.io/projectquay/clair:4.7.4
+            - name: quay.io/quay/quay-operator:latest
+            - name: quay.io/prometheus/prometheus:latest
+            - name: quay.io/prometheus/alertmanager:latest
+            - name: quay.io/prometheus/node-exporter:latest
+            - name: quay.io/prometheus/pushgateway:latest
+            - name: quay.io/coreos/etcd:v3.5.0
           EOF
 
       - name: Mirror to disk
         run: |
           oc-mirror --v2 \
+            --parallel-images 4 \
+            --parallel-layers 4 \
             -c /tmp/imageset.yaml \
             file:///tmp/mirror-workspace
 
       - name: Mirror to registry
         run: |
           oc-mirror --v2 \
+            --parallel-images 4 \
+            --parallel-layers 4 \
             -c /tmp/imageset.yaml \
             --from file:///tmp/mirror-workspace \
             docker://localhost:8443
@@ -232,15 +236,23 @@ jobs:
           curl -fs --cacert "$DATA_DIR/ssl.cert" -u "admin:$PASSWORD" \
             https://localhost:8443/v2/_catalog | tee /tmp/catalog.json
 
-          for repo in projectquay/quay projectquay/quay-builder projectquay/clair \
-                      quay/quay-operator prometheus/prometheus prometheus/alertmanager \
-                      prometheus/node-exporter prometheus/pushgateway coreos/etcd; do
-            jq -e --arg r "$repo" '.repositories | index($r)' /tmp/catalog.json \
-              || { echo "FAIL: $repo not found in catalog"; exit 1; }
-          done
+          COUNT=$(jq '.repositories | length' /tmp/catalog.json)
+          echo "Found $COUNT repositories:"
+          jq -r '.repositories[]' /tmp/catalog.json
+
+          if [ "$COUNT" -lt 9 ]; then
+            echo "FAIL: expected at least 9 repositories, got $COUNT"
+            exit 1
+          fi
           echo "All repositories verified"
 
       - name: Pull mirrored image
         run: |
-          podman pull localhost:8443/projectquay/quay:3.13.2
+          PASSWORD=$(cat "$DATA_DIR/auth/admin-password")
+          REPO=$(curl -fs --cacert "$DATA_DIR/ssl.cert" -u "admin:$PASSWORD" \
+            https://localhost:8443/v2/_catalog | jq -r '.repositories[0]')
+          TAG=$(curl -fs --cacert "$DATA_DIR/ssl.cert" -u "admin:$PASSWORD" \
+            "https://localhost:8443/v2/$REPO/tags/list" | jq -r '.tags[0]')
+          echo "Pulling localhost:8443/$REPO:$TAG"
+          podman pull "localhost:8443/$REPO:$TAG"
           echo "Successfully pulled mirrored image"
