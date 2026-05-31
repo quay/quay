@@ -10,47 +10,6 @@ import (
 	"github.com/quay/quay/internal/dal/dbcore"
 )
 
-func TestBootstrapDatabase_FreshDB(t *testing.T) {
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "test.db")
-	db, err := dbcore.OpenSQLite(dbPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-
-	ctx := t.Context()
-	if err := bootstrapDatabase(ctx, db, dbPath); err != nil {
-		t.Fatal(err)
-	}
-
-	ver, err := dbcore.SchemaVersion(ctx, db)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ver != dbcore.TargetVersion {
-		t.Errorf("version = %q, want %q", ver, dbcore.TargetVersion)
-	}
-}
-
-func TestBootstrapDatabase_ExistingDB(t *testing.T) {
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "test.db")
-	db, err := dbcore.OpenSQLite(dbPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-
-	ctx := t.Context()
-	if err := bootstrapDatabase(ctx, db, dbPath); err != nil {
-		t.Fatal(err)
-	}
-	if err := bootstrapDatabase(ctx, db, dbPath); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestBootstrapAdminUser_CreatesUser(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")

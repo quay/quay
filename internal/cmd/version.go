@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 )
@@ -10,7 +11,18 @@ import (
 //	go build -ldflags "-X github.com/quay/quay/internal/cmd.version=v1.0.0"
 var version = ""
 
-func runVersion() {
+func newVersionCmd() *Command {
+	return &Command{
+		Name:     "version",
+		Synopsis: "Print version information",
+		Run: func(_ context.Context, _ *Command, _ []string) int {
+			printVersion()
+			return 0
+		},
+	}
+}
+
+func printVersion() {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		fmt.Println("quay (no build info available)")
@@ -29,8 +41,6 @@ func runVersion() {
 	fmt.Printf("  go:       %s\n", info.GoVersion)
 }
 
-// vcsOr returns the module version from build info, falling back to def
-// when the version is empty or "(devel)".
 func vcsOr(info *debug.BuildInfo, def string) string {
 	if info.Main.Version != "" && info.Main.Version != "(devel)" {
 		return info.Main.Version

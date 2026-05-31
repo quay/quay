@@ -1,4 +1,4 @@
-package cmd
+package registry
 
 import (
 	"context"
@@ -12,7 +12,8 @@ type healthHandler struct {
 	db *sql.DB
 }
 
-func newHealthHandler(db *sql.DB) *healthHandler {
+// NewHealthHandler returns an HTTP handler that reports database liveness.
+func NewHealthHandler(db *sql.DB) http.Handler {
 	return &healthHandler{db: db}
 }
 

@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"crypto/x509"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -38,16 +37,41 @@ type installer struct {
 	fs      system.FileSystem
 }
 
-func runInstall(ctx context.Context, args []string) int {
-	opts, err := parseInstallOpts(args)
-	if err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return 0
-		}
-		slog.Error("invalid arguments", "err", err)
-		return 1
-	}
+func newInstallCmd() *Command {
+	fs := flag.NewFlagSet("install", flag.ContinueOnError)
+	hostname := fs.String("hostname", "", "server hostname for TLS and config (required)")
+	dataDir := fs.String("data-dir", "/var/lib/quay", "directory for database, storage, and certs")
+	imageArchive := fs.String("image-archive", "", "path to container image tar (offline mode)")
+	image := fs.String("image", defaultImage, "container image to use")
 
+	return &Command{
+		Name:     "install",
+		Synopsis: "Set up or upgrade registry (Quadlet service)",
+		Flags:    fs,
+		Run: func(ctx context.Context, cmd *Command, _ []string) int {
+			if *hostname == "" {
+				fmt.Fprintln(os.Stderr, "error: -hostname is required")
+				cmd.Usage(os.Stderr)
+				return 1
+			}
+			if err := validateHostname(*hostname); err != nil {
+				fmt.Fprintf(os.Stderr, "error: invalid hostname: %v\n", err)
+				return 1
+			}
+
+			opts := installOpts{
+				hostname:     *hostname,
+				dataDir:      *dataDir,
+				imageArchive: *imageArchive,
+				image:        *image,
+			}
+
+			return runInstall(ctx, opts)
+		},
+	}
+}
+
+func runInstall(ctx context.Context, opts installOpts) int {
 	env, err := system.NewEnv()
 	if err != nil {
 		slog.Error("environment error", "err", err)
@@ -186,35 +210,6 @@ func (inst *installer) waitForHealth(ctx context.Context, url, certPath string, 
 		Transport: &http.Transport{TLSClientConfig: tlsCfg},
 	}
 	return system.WaitForHealth(ctx, client, url, timeout)
-}
-
-// --- Flag parsing and validation ---
-
-func parseInstallOpts(args []string) (installOpts, error) {
-	fs := flag.NewFlagSet("install", flag.ContinueOnError)
-	hostname := fs.String("hostname", "", "server hostname for TLS and config (required)")
-	dataDir := fs.String("data-dir", "/var/lib/quay", "directory for database, storage, and certs")
-	imageArchive := fs.String("image-archive", "", "path to container image tar (offline mode)")
-	image := fs.String("image", defaultImage, "container image to use")
-
-	if err := fs.Parse(args); err != nil {
-		return installOpts{}, err
-	}
-
-	if *hostname == "" {
-		fs.Usage()
-		return installOpts{}, fmt.Errorf("--hostname is required")
-	}
-	if err := validateHostname(*hostname); err != nil {
-		return installOpts{}, fmt.Errorf("invalid hostname: %w", err)
-	}
-
-	return installOpts{
-		hostname:     *hostname,
-		dataDir:      *dataDir,
-		imageArchive: *imageArchive,
-		image:        *image,
-	}, nil
 }
 
 func validateHostname(hostname string) error {

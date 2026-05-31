@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -15,50 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/quay/quay/internal/dal/daldb"
-	"github.com/quay/quay/internal/dal/dbcore"
 )
-
-func bootstrapDatabase(ctx context.Context, db *sql.DB, dbPath string) error {
-	var tableCount int
-	err := db.QueryRowContext(ctx,
-		"SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
-	).Scan(&tableCount)
-	if err != nil {
-		return fmt.Errorf("check tables: %w", err)
-	}
-
-	if tableCount == 0 {
-		slog.Info("initializing database")
-		if err := dbcore.InitDatabase(ctx, db, io.Discard); err != nil {
-			return fmt.Errorf("init database: %w", err)
-		}
-		return nil
-	}
-
-	ver, err := dbcore.SchemaVersion(ctx, db)
-	if err != nil {
-		return fmt.Errorf("schema version: %w", err)
-	}
-
-	if ver == dbcore.TargetVersion {
-		return nil
-	}
-
-	slog.Info("upgrading database", "from", ver, "to", dbcore.TargetVersion)
-
-	backupPath, err := dbcore.BackupDatabase(ctx, db, dbPath)
-	if err != nil {
-		return fmt.Errorf("backup: %w", err)
-	}
-	slog.Info("database backup created", "path", backupPath)
-
-	if err := dbcore.ApplyMigrations(ctx, db, ver, dbcore.TargetVersion, io.Discard); err != nil {
-		return fmt.Errorf("migrate (restore from %s): %w", backupPath, err)
-	}
-
-	_ = dbcore.CleanOldBackups(dbPath, 3)
-	return nil
-}
 
 func bootstrapAdminUser(ctx context.Context, db *sql.DB, username, authDir string) (bool, error) {
 	q := daldb.New(db)

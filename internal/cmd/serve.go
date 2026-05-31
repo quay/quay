@@ -44,15 +44,31 @@ type resolvedConfig struct {
 	dbPath      string
 }
 
-func runServe(ctx context.Context, args []string) int {
-	opts, err := parseServeOpts(args)
-	if err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return 0
-		}
-		return 1
-	}
+func newServeCmd() *Command {
+	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
+	configPath := fs.String("config", "", "path to config.yaml (optional, overrides flags)")
+	dataDir := fs.String("data-dir", ".", "root directory for DB, storage, certs")
+	hostname := fs.String("hostname", "localhost", "server hostname for TLS SANs")
+	addr := fs.String("addr", ":8443", "listen address")
+	adminUsername := fs.String("admin-username", "admin", "admin username (first run only)")
 
+	return &Command{
+		Name:     "serve",
+		Synopsis: "Start the OCI container registry",
+		Flags:    fs,
+		Run: func(ctx context.Context, _ *Command, _ []string) int {
+			return runServe(ctx, serveOpts{
+				configPath:    *configPath,
+				dataDir:       *dataDir,
+				hostname:      *hostname,
+				addr:          *addr,
+				adminUsername: *adminUsername,
+			})
+		},
+	}
+}
+
+func runServe(ctx context.Context, opts serveOpts) int {
 	resolved, err := resolveServeConfig(&opts)
 	if err != nil {
 		slog.Error("config error", "err", err)
@@ -66,7 +82,7 @@ func runServe(ctx context.Context, args []string) int {
 	}
 	defer func() { _ = db.Close() }()
 
-	if err := bootstrapDatabase(ctx, db, resolved.dbPath); err != nil {
+	if err := dbcore.Bootstrap(ctx, db, resolved.dbPath); err != nil {
 		slog.Error("bootstrap database error", "err", err)
 		return 1
 	}
@@ -90,29 +106,6 @@ func runServe(ctx context.Context, args []string) int {
 	slog.Info("registry listening", "scheme", scheme, "addr", opts.addr, "storage", resolved.storagePath, "db", resolved.dbPath)
 
 	return startAndWait(ctx, srv, useHTTPS, certPath, keyPath)
-}
-
-// --- Flag parsing ---
-
-func parseServeOpts(args []string) (serveOpts, error) {
-	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
-	configPath := fs.String("config", "", "path to config.yaml (optional, overrides flags)")
-	dataDir := fs.String("data-dir", ".", "root directory for DB, storage, certs")
-	hostname := fs.String("hostname", "localhost", "server hostname for TLS SANs")
-	addr := fs.String("addr", ":8443", "listen address")
-	adminUsername := fs.String("admin-username", "admin", "admin username (first run only)")
-
-	if err := fs.Parse(args); err != nil {
-		return serveOpts{}, err
-	}
-
-	return serveOpts{
-		configPath:    *configPath,
-		dataDir:       *dataDir,
-		hostname:      *hostname,
-		addr:          *addr,
-		adminUsername: *adminUsername,
-	}, nil
 }
 
 // --- Config resolution ---
@@ -232,7 +225,7 @@ func buildServer(ctx context.Context, resolved *resolvedConfig, db *sql.DB, list
 	app := handlers.NewApp(ctx, distCfg)
 
 	mux := http.NewServeMux()
-	mux.Handle("/healthz", newHealthHandler(db))
+	mux.Handle("/healthz", registry.NewHealthHandler(db))
 	mux.Handle("/", app)
 
 	srv = &http.Server{
