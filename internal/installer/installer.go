@@ -162,6 +162,22 @@ func (inst *Installer) freshInstall(ctx context.Context, cfg Config, imageRef st
 }
 
 func (inst *Installer) waitForHealth(ctx context.Context, url, certPath string, timeout time.Duration) error {
+	deadline := time.After(timeout)
+
+	// Wait for the container to generate the TLS certificate.
+	for {
+		if _, err := inst.fs.Stat(certPath); err == nil {
+			break
+		}
+		select {
+		case <-deadline:
+			return fmt.Errorf("timed out waiting for certificate: %s", certPath)
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+
 	caCert, err := inst.fs.ReadFile(certPath)
 	if err != nil {
 		return fmt.Errorf("read TLS certificate: %w", err)
