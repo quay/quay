@@ -425,6 +425,8 @@ enable-splunk:
 GO_BINARY_NAME = quay
 GO_BUILD_DIR = bin
 GO_CMD_DIR = cmd/quay
+GO_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
+GO_LDFLAGS = $(if $(GO_VERSION),-ldflags "-X github.com/quay/quay/internal/cmd.version=$(GO_VERSION)")
 
 SCHEMA_DIR := internal/dal/schema
 SCHEMA_TMP := /tmp/quay-schema-tmp
@@ -481,7 +483,7 @@ go-schema-check:
 
 go-build:
 	@mkdir -p $(GO_BUILD_DIR)
-	go build -o $(GO_BUILD_DIR)/$(GO_BINARY_NAME) ./$(GO_CMD_DIR)
+	go build $(GO_LDFLAGS) -o $(GO_BUILD_DIR)/$(GO_BINARY_NAME) ./$(GO_CMD_DIR)
 
 go-test:
 	go test -cover -race ./...

@@ -45,7 +45,8 @@ func Run(args []string) int {
 	case "serve":
 		return runServe(ctx, remaining[2:])
 	case versionLiteral:
-		return runVersion()
+		runVersion()
+		return 0
 	case helpLiteral, "-h", helpFlag:
 		usage()
 		return 0
