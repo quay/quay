@@ -135,7 +135,7 @@ func (inst *Installer) upgrade(ctx context.Context, imageRef string) error {
 
 func (inst *Installer) freshInstall(ctx context.Context, cfg Config, imageRef string) error {
 	for _, dir := range []string{cfg.DataDir, filepath.Join(cfg.DataDir, "storage")} {
-		if err := inst.fs.MkdirAll(dir, 0o770); err != nil {
+		if err := inst.fs.MkdirAll(dir, 0o750); err != nil {
 			return fmt.Errorf("create directory %s: %w", dir, err)
 		}
 	}
