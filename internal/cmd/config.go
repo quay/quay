@@ -12,7 +12,7 @@ import (
 
 func newConfigCmd() *Command {
 	return &Command{
-		Name:     "config",
+		Name:     "config", //nolint:goconst // command name, not a shared constant
 		Synopsis: "Configuration tools (validate)",
 		Subcommands: []*Command{
 			newConfigValidateCmd(),
@@ -21,12 +21,12 @@ func newConfigCmd() *Command {
 }
 
 func newConfigValidateCmd() *Command {
-	fs := flag.NewFlagSet("validate", flag.ContinueOnError)
+	fs := flag.NewFlagSet("validate", flag.ContinueOnError) //nolint:goconst // FlagSet name, not a shared constant
 	configPath := fs.String("config", "", "path to config.yaml or config directory")
 	mode := fs.String("mode", "offline", "validation mode: offline or online")
 
 	return &Command{
-		Name:     "validate",
+		Name:     "validate", //nolint:goconst // command name matches FlagSet name by design
 		Synopsis: "Validate configuration",
 		Flags:    fs,
 		Run: func(ctx context.Context, cmd *Command, _ []string) int {

@@ -57,7 +57,7 @@ func newServeCmd() *Command {
 		Synopsis: "Start the OCI container registry",
 		Flags:    fs,
 		Run: func(ctx context.Context, _ *Command, _ []string) int {
-			return runServe(ctx, serveOpts{
+			return runServe(ctx, &serveOpts{
 				configPath:    *configPath,
 				dataDir:       *dataDir,
 				hostname:      *hostname,
@@ -68,8 +68,8 @@ func newServeCmd() *Command {
 	}
 }
 
-func runServe(ctx context.Context, opts serveOpts) int {
-	resolved, err := resolveServeConfig(&opts)
+func runServe(ctx context.Context, opts *serveOpts) int {
+	resolved, err := resolveServeConfig(opts)
 	if err != nil {
 		slog.Error("config error", "err", err)
 		return 1

@@ -27,15 +27,13 @@ type Command struct {
 // Execute dispatches to a subcommand or parses flags and calls Run.
 func (c *Command) Execute(ctx context.Context, args []string) int {
 	if len(args) > 0 {
-		if args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
+		if isHelp(args[0]) {
 			c.Usage(os.Stderr)
 			return 0
 		}
-		for _, sub := range c.Subcommands {
-			if args[0] == sub.Name {
-				c.propagateFlags(sub)
-				return sub.Execute(ctx, args[1:])
-			}
+		if sub := c.findSubcommand(args[0]); sub != nil {
+			c.propagateFlags(sub)
+			return sub.Execute(ctx, args[1:])
 		}
 	}
 
@@ -53,11 +51,9 @@ func (c *Command) Execute(ctx context.Context, args []string) int {
 	// After parsing, remaining args may start with a subcommand.
 	// This handles: quay -log-level=debug serve
 	if len(args) > 0 && len(c.Subcommands) > 0 {
-		for _, sub := range c.Subcommands {
-			if args[0] == sub.Name {
-				c.propagateFlags(sub)
-				return sub.Execute(ctx, args[1:])
-			}
+		if sub := c.findSubcommand(args[0]); sub != nil {
+			c.propagateFlags(sub)
+			return sub.Execute(ctx, args[1:])
 		}
 		if c.Run == nil {
 			fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
@@ -79,6 +75,19 @@ func (c *Command) Execute(ctx context.Context, args []string) int {
 	}
 
 	return c.Run(ctx, c, args)
+}
+
+func (c *Command) findSubcommand(name string) *Command {
+	for _, sub := range c.Subcommands {
+		if name == sub.Name {
+			return sub
+		}
+	}
+	return nil
+}
+
+func isHelp(arg string) bool {
+	return arg == "help" || arg == "-h" || arg == "--help"
 }
 
 // propagateFlags registers the parent's flag definitions on the child's
