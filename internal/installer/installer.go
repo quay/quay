@@ -35,6 +35,7 @@ type Config struct {
 // as a Quadlet systemd service.
 type Installer struct {
 	images  system.ImageLoader
+	runner  system.CommandRunner
 	systemd system.ServiceManager
 	quadlet *system.QuadletManager
 	env     *system.Env
@@ -54,6 +55,7 @@ func New(stderr io.Writer) (*Installer, error) {
 
 	return &Installer{
 		images:  system.NewPodmanLoader(runner),
+		runner:  runner,
 		systemd: system.NewSystemdManager(runner, env),
 		quadlet: system.NewQuadletManager(fs, env),
 		env:     env,
@@ -83,6 +85,7 @@ func (inst *Installer) Run(ctx context.Context, cfg Config) error {
 	certPath := filepath.Join(cfg.DataDir, "ssl.cert")
 	slog.Info("waiting for registry to start")
 	if err := inst.waitForHealth(ctx, healthURL, certPath, 30*time.Second); err != nil {
+		inst.dumpContainerLogs(ctx)
 		return fmt.Errorf("health check: %w", err)
 	}
 
@@ -132,7 +135,7 @@ func (inst *Installer) upgrade(ctx context.Context, imageRef string) error {
 
 func (inst *Installer) freshInstall(ctx context.Context, cfg Config, imageRef string) error {
 	for _, dir := range []string{cfg.DataDir, filepath.Join(cfg.DataDir, "storage")} {
-		if err := inst.fs.MkdirAll(dir, 0o750); err != nil {
+		if err := inst.fs.MkdirAll(dir, 0o770); err != nil {
 			return fmt.Errorf("create directory %s: %w", dir, err)
 		}
 	}
@@ -193,4 +196,10 @@ func (inst *Installer) waitForHealth(ctx context.Context, url, certPath string, 
 		Transport: &http.Transport{TLSClientConfig: tlsCfg},
 	}
 	return system.WaitForHealth(ctx, client, url, timeout)
+}
+
+func (inst *Installer) dumpContainerLogs(ctx context.Context) {
+	slog.Info("dumping container logs for diagnostics")
+	_ = inst.runner.Run(ctx, "podman", "logs", quadletServiceName)
+	_ = inst.runner.Run(ctx, "systemctl", "status", quadletServiceName)
 }
