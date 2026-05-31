@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/quay/quay/internal/installer"
-	"github.com/quay/quay/internal/system"
 )
 
 func newInstallCmd() *Command {
@@ -39,22 +38,11 @@ func runInstall(ctx context.Context, hostname, dataDir, imageArchive, image stri
 		return 1
 	}
 
-	env, err := system.NewEnv()
+	inst, err := installer.New(os.Stderr)
 	if err != nil {
-		slog.Error("environment error", "err", err)
+		slog.Error("installer setup failed", "err", err)
 		return 1
 	}
-
-	runner := system.NewExecRunner(os.Stderr)
-	fs := system.OSFS{}
-
-	inst := installer.New(
-		system.NewPodmanLoader(runner),
-		system.NewSystemdManager(runner, env),
-		system.NewQuadletManager(fs, env),
-		env,
-		fs,
-	)
 
 	if err := inst.Run(ctx, installer.Config{
 		Hostname:     hostname,

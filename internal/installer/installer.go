@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"path/filepath"
@@ -40,15 +41,24 @@ type Installer struct {
 	fs      system.FileSystem
 }
 
-// New creates an Installer with the given system dependencies.
-func New(images system.ImageLoader, systemd system.ServiceManager, quadlet *system.QuadletManager, env *system.Env, fs system.FileSystem) *Installer {
+// New detects the runtime environment and creates an Installer with the
+// appropriate system backends.
+func New(stderr io.Writer) (*Installer, error) {
+	env, err := system.NewEnv()
+	if err != nil {
+		return nil, fmt.Errorf("detect environment: %w", err)
+	}
+
+	runner := system.NewExecRunner(stderr)
+	fs := system.OSFS{}
+
 	return &Installer{
-		images:  images,
-		systemd: systemd,
-		quadlet: quadlet,
+		images:  system.NewPodmanLoader(runner),
+		systemd: system.NewSystemdManager(runner, env),
+		quadlet: system.NewQuadletManager(fs, env),
 		env:     env,
 		fs:      fs,
-	}
+	}, nil
 }
 
 // Run performs an install or upgrade based on whether a Quadlet unit already
