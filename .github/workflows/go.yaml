@@ -147,49 +147,54 @@ jobs:
     needs: [build]
     timeout-minutes: 30
     steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
       - name: Download quay binary
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: quay-binary
           path: bin/
 
-      - name: Set up environment
-        run: echo "DATA_DIR=${{ runner.temp }}/quay-data" >> "$GITHUB_ENV"
+      - name: Build container image
+        run: |
+          chmod +x bin/quay
+          podman build -f Dockerfile.mirror -t quay-mirror:test .
+
+      - name: Save image archive
+        run: podman save quay-mirror:test -o /tmp/quay-mirror.tar
+
+      - name: Install registry
+        run: |
+          sudo bin/quay install \
+            -hostname=localhost \
+            -data-dir=/var/lib/quay \
+            -image-archive=/tmp/quay-mirror.tar
+
+      - name: Trust registry TLS certificate
+        run: |
+          sudo install -m 644 /var/lib/quay/ssl.cert /usr/local/share/ca-certificates/quay.crt
+          sudo update-ca-certificates
+
+          sudo mkdir -p /etc/containers/certs.d/localhost:8443
+          sudo install -m 644 /var/lib/quay/ssl.cert /etc/containers/certs.d/localhost:8443/ca.crt
+
+      - name: Set up auth
+        run: |
+          PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
+          mkdir -p ~/.docker
+          echo '{"auths":{"localhost:8443":{"auth":"'$(echo -n "admin:$PASSWORD" | base64)'"}}}' \
+            > ~/.docker/config.json
 
       - name: Install oc-mirror
         run: |
-          chmod +x bin/quay
           curl -fsSL -o /tmp/oc-mirror.tar.gz \
             https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/oc-mirror.tar.gz
           sudo tar xzf /tmp/oc-mirror.tar.gz -C /usr/local/bin oc-mirror
           sudo chmod 755 /usr/local/bin/oc-mirror
           oc-mirror version
-
-      - name: Start registry
-        run: |
-          bin/quay --log-level=debug serve \
-            -hostname=localhost \
-            -data-dir="$DATA_DIR" \
-            -addr=:8443 &
-
-          curl -fs --cacert "$DATA_DIR/ssl.cert" --retry 30 --retry-delay 1 --retry-all-errors \
-            https://localhost:8443/healthz
-          echo "Registry healthy"
-
-      - name: Trust registry TLS certificate
-        run: |
-          sudo install -m 644 "$DATA_DIR/ssl.cert" /usr/local/share/ca-certificates/quay.crt
-          sudo update-ca-certificates
-
-          sudo mkdir -p /etc/containers/certs.d/localhost:8443
-          sudo install -m 644 "$DATA_DIR/ssl.cert" /etc/containers/certs.d/localhost:8443/ca.crt
-
-      - name: Set up auth
-        run: |
-          PASSWORD=$(cat "$DATA_DIR/auth/admin-password")
-          mkdir -p ~/.docker
-          echo '{"auths":{"localhost:8443":{"auth":"'$(echo -n "admin:$PASSWORD" | base64)'"}}}' \
-            > ~/.docker/config.json
 
       - name: Write ImageSetConfiguration
         run: |
@@ -227,13 +232,12 @@ jobs:
             docker://localhost:8443
 
       - name: Verify healthz
-        run: |
-          curl -fs --cacert "$DATA_DIR/ssl.cert" https://localhost:8443/healthz
+        run: curl -fs https://localhost:8443/healthz
 
       - name: Verify mirrored repositories
         run: |
-          PASSWORD=$(cat "$DATA_DIR/auth/admin-password")
-          curl -fs --cacert "$DATA_DIR/ssl.cert" -u "admin:$PASSWORD" \
+          PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
+          curl -fs -u "admin:$PASSWORD" \
             https://localhost:8443/v2/_catalog | tee /tmp/catalog.json
 
           COUNT=$(jq '.repositories | length' /tmp/catalog.json)
@@ -248,10 +252,10 @@ jobs:
 
       - name: Pull mirrored image
         run: |
-          PASSWORD=$(cat "$DATA_DIR/auth/admin-password")
-          REPO=$(curl -fs --cacert "$DATA_DIR/ssl.cert" -u "admin:$PASSWORD" \
+          PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
+          REPO=$(curl -fs -u "admin:$PASSWORD" \
             https://localhost:8443/v2/_catalog | jq -r '.repositories[0]')
-          TAG=$(curl -fs --cacert "$DATA_DIR/ssl.cert" -u "admin:$PASSWORD" \
+          TAG=$(curl -fs -u "admin:$PASSWORD" \
             "https://localhost:8443/v2/$REPO/tags/list" | jq -r '.tags[0]')
           echo "Pulling localhost:8443/$REPO:$TAG"
           podman pull "localhost:8443/$REPO:$TAG"
