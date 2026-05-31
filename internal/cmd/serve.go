@@ -256,6 +256,7 @@ func buildServer(ctx context.Context, resolved *resolvedConfig, db *sql.DB, list
 
 func buildDistConfig(storagePath string, cfg *config.Config, db *sql.DB, listenAddr string) *configuration.Configuration {
 	distCfg := &configuration.Configuration{
+		Catalog: configuration.Catalog{MaxEntries: 1000},
 		Storage: configuration.Storage{
 			"filesystem": configuration.Parameters{
 				"rootdirectory": storagePath,
