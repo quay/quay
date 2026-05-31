@@ -151,8 +151,8 @@ func (inst *Installer) freshInstall(ctx context.Context, cfg Config, imageRef st
 	if err := inst.systemd.DaemonReload(ctx); err != nil {
 		return fmt.Errorf("reload systemd: %w", err)
 	}
-	if err := inst.systemd.Enable(ctx, quadletServiceName); err != nil {
-		return fmt.Errorf("enable service: %w", err)
+	if err := inst.systemd.Start(ctx, quadletServiceName); err != nil {
+		return fmt.Errorf("start service: %w", err)
 	}
 
 	if inst.env.Mode == system.UserMode {

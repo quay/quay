@@ -5,7 +5,6 @@ import "context"
 // ServiceManager abstracts systemd service operations.
 type ServiceManager interface {
 	DaemonReload(ctx context.Context) error
-	Enable(ctx context.Context, service string) error
 	Start(ctx context.Context, service string) error
 	Stop(ctx context.Context, service string) error
 	EnableLinger(ctx context.Context) error
@@ -25,11 +24,6 @@ func NewSystemdManager(runner CommandRunner, env *Env) *SystemdManager {
 // DaemonReload runs systemctl daemon-reload.
 func (s *SystemdManager) DaemonReload(ctx context.Context) error {
 	return s.runner.Run(ctx, "systemctl", append(s.env.SystemctlArgs(), "daemon-reload")...)
-}
-
-// Enable enables and starts a systemd service.
-func (s *SystemdManager) Enable(ctx context.Context, service string) error {
-	return s.runner.Run(ctx, "systemctl", append(s.env.SystemctlArgs(), "enable", "--now", service)...)
 }
 
 // Start starts a systemd service.
