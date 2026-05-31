@@ -260,3 +260,21 @@ jobs:
           echo "Pulling localhost:8443/$REPO:$TAG"
           podman pull "localhost:8443/$REPO:$TAG"
           echo "Successfully pulled mirrored image"
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-diagnostics
+          sudo podman logs systemd-quay > /tmp/e2e-diagnostics/container.log 2>&1 || true
+          sudo journalctl -u quay.service --no-pager > /tmp/e2e-diagnostics/systemd.log 2>&1 || true
+          sudo systemctl status quay.service > /tmp/e2e-diagnostics/service-status.txt 2>&1 || true
+          sudo ls -la /var/lib/quay/ > /tmp/e2e-diagnostics/data-dir.txt 2>&1 || true
+          sudo cat /etc/containers/systemd/quay.container > /tmp/e2e-diagnostics/quadlet.txt 2>&1 || true
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-mirror-diagnostics
+          path: /tmp/e2e-diagnostics/
+          retention-days: 7
