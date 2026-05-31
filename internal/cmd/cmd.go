@@ -2,40 +2,40 @@
 package cmd
 
 import (
-	"fmt"
+	"context"
+	"flag"
 	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/quay/quay/internal/logging"
 )
 
-// Run is the CLI entry point. It dispatches to subcommands based on os.Args
-// and returns the process exit code.
+// Run is the CLI entry point. It constructs the command tree and returns
+// the process exit code.
 func Run(args []string) int {
-	if len(args) < 2 {
-		usage()
-		return 1
+	fs := flag.NewFlagSet("quay", flag.ContinueOnError)
+	logLevel := fs.String("log-level", "", "log level: debug, info, warn, error (default: info)")
+	logFormat := fs.String("log-format", "", "log format: json, text (default: json)")
+
+	root := &Command{
+		Name:     "quay",
+		Synopsis: "OCI container registry",
+		Flags:    fs,
+		Subcommands: []*Command{
+			newInstallCmd(),
+			newConfigCmd(),
+			newServeCmd(),
+			newVersionCmd(),
+		},
+		AfterParse: func() error {
+			level, format := logging.ResolveConfig(*logLevel, *logFormat, "", "")
+			return logging.Setup(level, format, os.Stderr)
+		},
 	}
 
-	switch args[1] {
-	case "config":
-		return runConfig(args[2:])
-	case "serve":
-		return runServe(args[2:])
-	case "version":
-		return runVersion()
-	case "help", "-h", "--help":
-		usage()
-		return 0
-	default:
-		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[1])
-		usage()
-		return 1
-	}
-}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-func usage() {
-	fmt.Fprintln(os.Stderr, `usage: quay <command> [flags]
-
-commands:
-  config            Configuration tools (validate)
-  serve             Start a minimal OCI container registry
-  version           Print version information`)
+	return root.Execute(ctx, args[1:])
 }

@@ -20,7 +20,7 @@ max-line-length = 100
 branch = true
 
 [tool.coverage.report]
-omit = ['test/**', 'venv/**', '**/test/**']
+omit = ['test/**', 'venv/**', '**/test/**', 'tools/**']
 
 [tool.pyright]
 stubPath = 'mypy_stubs'
