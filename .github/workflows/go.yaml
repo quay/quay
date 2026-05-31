@@ -178,11 +178,11 @@ jobs:
 
       - name: Trust registry TLS certificate
         run: |
-          sudo cp "$DATA_DIR/ssl.cert" /usr/local/share/ca-certificates/quay.crt
+          sudo install -m 644 "$DATA_DIR/ssl.cert" /usr/local/share/ca-certificates/quay.crt
           sudo update-ca-certificates
 
           sudo mkdir -p /etc/containers/certs.d/localhost:8443
-          sudo cp "$DATA_DIR/ssl.cert" /etc/containers/certs.d/localhost:8443/ca.crt
+          sudo install -m 644 "$DATA_DIR/ssl.cert" /etc/containers/certs.d/localhost:8443/ca.crt
 
       - name: Set up auth
         run: |
