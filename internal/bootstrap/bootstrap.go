@@ -1,4 +1,5 @@
-package cmd
+// Package bootstrap provides first-run initialization for the registry.
+package bootstrap
 
 import (
 	"context"
@@ -16,7 +17,10 @@ import (
 	"github.com/quay/quay/internal/dal/daldb"
 )
 
-func bootstrapAdminUser(ctx context.Context, db *sql.DB, username, authDir string) (bool, error) {
+// AdminUser creates the initial admin user if no users exist in the database.
+// It returns true if a user was created, false if users already exist.
+// authDir is the directory where the admin-password file is stored.
+func AdminUser(ctx context.Context, db *sql.DB, username, authDir string) (bool, error) {
 	q := daldb.New(db)
 
 	count, err := q.CountUsers(ctx)

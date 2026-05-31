@@ -1,4 +1,4 @@
-package cmd
+package bootstrap
 
 import (
 	"io"
@@ -10,7 +10,7 @@ import (
 	"github.com/quay/quay/internal/dal/dbcore"
 )
 
-func TestBootstrapAdminUser_CreatesUser(t *testing.T) {
+func TestAdminUser_CreatesUser(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")
 	db, err := dbcore.OpenSQLite(dbPath)
@@ -25,7 +25,7 @@ func TestBootstrapAdminUser_CreatesUser(t *testing.T) {
 	}
 
 	authDir := filepath.Join(dir, "auth")
-	created, err := bootstrapAdminUser(ctx, db, "admin", authDir)
+	created, err := AdminUser(ctx, db, "admin", authDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestBootstrapAdminUser_CreatesUser(t *testing.T) {
 	}
 }
 
-func TestBootstrapAdminUser_SkipsExisting(t *testing.T) {
+func TestAdminUser_SkipsExisting(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")
 	db, err := dbcore.OpenSQLite(dbPath)
@@ -72,10 +72,10 @@ func TestBootstrapAdminUser_SkipsExisting(t *testing.T) {
 	}
 
 	authDir := filepath.Join(dir, "auth")
-	if _, err := bootstrapAdminUser(ctx, db, "admin", authDir); err != nil {
+	if _, err := AdminUser(ctx, db, "admin", authDir); err != nil {
 		t.Fatal(err)
 	}
-	created, err := bootstrapAdminUser(ctx, db, "admin", authDir)
+	created, err := AdminUser(ctx, db, "admin", authDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestBootstrapAdminUser_SkipsExisting(t *testing.T) {
 	}
 }
 
-func TestBootstrapAdminUser_ReadsPreSeededPassword(t *testing.T) {
+func TestAdminUser_ReadsPreSeededPassword(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")
 	db, err := dbcore.OpenSQLite(dbPath)
@@ -102,7 +102,7 @@ func TestBootstrapAdminUser_ReadsPreSeededPassword(t *testing.T) {
 	os.MkdirAll(authDir, 0o750)
 	os.WriteFile(filepath.Join(authDir, "admin-password"), []byte("my-chosen-password"), 0o600)
 
-	created, err := bootstrapAdminUser(ctx, db, "admin", authDir)
+	created, err := AdminUser(ctx, db, "admin", authDir)
 	if err != nil {
 		t.Fatal(err)
 	}
