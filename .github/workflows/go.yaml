@@ -146,14 +146,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     timeout-minutes: 30
-    env:
-      DATA_DIR: ${{ runner.temp }}/quay-data
     steps:
       - name: Download quay binary
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: quay-binary
           path: bin/
+
+      - name: Set up environment
+        run: echo "DATA_DIR=${{ runner.temp }}/quay-data" >> "$GITHUB_ENV"
 
       - name: Install oc-mirror
         run: |
