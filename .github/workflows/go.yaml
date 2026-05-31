@@ -80,6 +80,13 @@ jobs:
       - name: Build
         run: make go-build
 
+      - name: Upload binary
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: quay-binary
+          path: bin/quay
+          retention-days: 1
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -133,3 +140,103 @@ jobs:
 
       - name: Check schema drift
         run: make go-schema-check
+
+  e2e-mirror:
+    name: E2E Mirror
+    runs-on: ubuntu-latest
+    needs: [build]
+    timeout-minutes: 30
+    steps:
+      - name: Download quay binary
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: quay-binary
+          path: bin/
+
+      - name: Install oc-mirror
+        run: |
+          chmod +x bin/quay
+          curl -fsSL -o /tmp/oc-mirror.tar.gz \
+            https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/oc-mirror.tar.gz
+          sudo tar xzf /tmp/oc-mirror.tar.gz -C /usr/local/bin oc-mirror
+          sudo chmod 755 /usr/local/bin/oc-mirror
+          oc-mirror version
+
+      - name: Start registry
+        run: |
+          sudo bin/quay --log-level=debug serve \
+            -hostname=localhost \
+            -data-dir=/var/lib/quay \
+            -addr=:8443 &
+
+          curl -fs --cacert /var/lib/quay/ssl.cert --retry 30 --retry-delay 1 --retry-all-errors \
+            https://localhost:8443/healthz
+          echo "Registry healthy"
+
+      - name: Trust registry TLS certificate
+        run: |
+          sudo cp /var/lib/quay/ssl.cert /usr/local/share/ca-certificates/quay.crt
+          sudo update-ca-certificates
+
+          sudo mkdir -p /etc/containers/certs.d/localhost:8443
+          sudo cp /var/lib/quay/ssl.cert /etc/containers/certs.d/localhost:8443/ca.crt
+
+      - name: Set up auth
+        run: |
+          PASSWORD=$(sudo cat /var/lib/quay/auth/password)
+          mkdir -p ~/.docker
+          echo '{"auths":{"localhost:8443":{"auth":"'$(echo -n "admin:$PASSWORD" | base64)'"}}}' \
+            > ~/.docker/config.json
+
+      - name: Write ImageSetConfiguration
+        run: |
+          cat > /tmp/imageset.yaml <<'EOF'
+          apiVersion: mirror.openshift.io/v2alpha1
+          kind: ImageSetConfiguration
+          mirror:
+            additionalImages:
+              - name: quay.io/projectquay/quay:3.13.2
+              - name: quay.io/projectquay/quay-builder:3.13.0
+              - name: quay.io/projectquay/clair:4.7.4
+              - name: quay.io/quay/quay-operator:latest
+              - name: quay.io/prometheus/prometheus:latest
+              - name: quay.io/prometheus/alertmanager:latest
+              - name: quay.io/prometheus/node-exporter:latest
+              - name: quay.io/prometheus/pushgateway:latest
+              - name: quay.io/coreos/etcd:v3.5.0
+          EOF
+
+      - name: Mirror to disk
+        run: |
+          oc-mirror --v2 \
+            -c /tmp/imageset.yaml \
+            file:///tmp/mirror-workspace
+
+      - name: Mirror to registry
+        run: |
+          oc-mirror --v2 \
+            -c /tmp/imageset.yaml \
+            --from file:///tmp/mirror-workspace \
+            docker://localhost:8443
+
+      - name: Verify healthz
+        run: curl -fs --cacert /var/lib/quay/ssl.cert https://localhost:8443/healthz
+
+      - name: Verify mirrored repositories
+        run: |
+          PASSWORD=$(sudo cat /var/lib/quay/auth/password)
+          curl -fs --cacert /var/lib/quay/ssl.cert -u "admin:$PASSWORD" \
+            https://localhost:8443/v2/_catalog | tee /tmp/catalog.json
+
+          for repo in projectquay/quay projectquay/quay-builder projectquay/clair \
+                      quay/quay-operator prometheus/prometheus prometheus/alertmanager \
+                      prometheus/node-exporter prometheus/pushgateway coreos/etcd; do
+            jq -e --arg r "$repo" '.repositories | index($r)' /tmp/catalog.json \
+              || { echo "FAIL: $repo not found in catalog"; exit 1; }
+          done
+          echo "All repositories verified"
+
+      - name: Pull mirrored image
+        run: |
+          podman pull localhost:8443/projectquay/quay:3.13.2
+          echo "Successfully pulled mirrored image"
