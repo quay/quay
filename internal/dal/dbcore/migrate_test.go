@@ -2,7 +2,6 @@ package dbcore
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,7 +18,7 @@ func TestInitDatabase(t *testing.T) {
 	defer db.Close()
 
 	var buf bytes.Buffer
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if err := InitDatabase(ctx, db, &buf); err != nil {
 		t.Fatalf("InitDatabase: %v", err)
@@ -60,7 +59,7 @@ func TestInitDatabase_RejectsExisting(t *testing.T) {
 	}
 	defer db.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// First init should succeed.
 	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
@@ -85,7 +84,7 @@ func TestSchemaVersion_EmptyDB(t *testing.T) {
 	}
 	defer db.Close()
 
-	ver, err := SchemaVersion(context.Background(), db)
+	ver, err := SchemaVersion(t.Context(), db)
 	if err != nil {
 		t.Fatalf("SchemaVersion on empty db: %v", err)
 	}
@@ -102,7 +101,7 @@ func TestIntegrityCheck(t *testing.T) {
 	}
 	defer db.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
 		t.Fatalf("InitDatabase: %v", err)
 	}

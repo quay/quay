@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -22,7 +21,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 	}
 	db.SetMaxOpenConns(1)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create minimal user table matching Quay schema.
 	_, err = db.ExecContext(ctx, `CREATE TABLE "user" (
@@ -79,7 +78,7 @@ func TestAuthorized_ValidCredentials(t *testing.T) {
 	defer db.Close()
 	ac := newTestController(t, db)
 
-	req := httptest.NewRequestWithContext(context.Background(), "GET", "/v2/", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), "GET", "/v2/", http.NoBody)
 	req.SetBasicAuth("admin", "correct-password")
 
 	grant, err := ac.Authorized(req)
@@ -96,7 +95,7 @@ func TestAuthorized_WrongPassword(t *testing.T) {
 	defer db.Close()
 	ac := newTestController(t, db)
 
-	req := httptest.NewRequestWithContext(context.Background(), "GET", "/v2/", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), "GET", "/v2/", http.NoBody)
 	req.SetBasicAuth("admin", "wrong-password")
 
 	_, err := ac.Authorized(req)
@@ -111,7 +110,7 @@ func TestAuthorized_UnknownUser(t *testing.T) {
 	defer db.Close()
 	ac := newTestController(t, db)
 
-	req := httptest.NewRequestWithContext(context.Background(), "GET", "/v2/", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), "GET", "/v2/", http.NoBody)
 	req.SetBasicAuth("nobody", "password")
 
 	_, err := ac.Authorized(req)
@@ -126,7 +125,7 @@ func TestAuthorized_DisabledUser(t *testing.T) {
 	defer db.Close()
 	ac := newTestController(t, db)
 
-	req := httptest.NewRequestWithContext(context.Background(), "GET", "/v2/", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), "GET", "/v2/", http.NoBody)
 	req.SetBasicAuth("disabled", "correct-password")
 
 	_, err := ac.Authorized(req)
@@ -141,7 +140,7 @@ func TestAuthorized_NoAuthHeader(t *testing.T) {
 	defer db.Close()
 	ac := newTestController(t, db)
 
-	req := httptest.NewRequestWithContext(context.Background(), "GET", "/v2/", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), "GET", "/v2/", http.NoBody)
 	// No BasicAuth set.
 
 	_, err := ac.Authorized(req)

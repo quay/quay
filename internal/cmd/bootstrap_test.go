@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -20,7 +19,7 @@ func TestBootstrapDatabase_FreshDB(t *testing.T) {
 	}
 	defer db.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	if err := bootstrapDatabase(ctx, db, dbPath); err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +42,7 @@ func TestBootstrapDatabase_ExistingDB(t *testing.T) {
 	}
 	defer db.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	if err := bootstrapDatabase(ctx, db, dbPath); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +60,7 @@ func TestBootstrapAdminUser_CreatesUser(t *testing.T) {
 	}
 	defer db.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	if err := dbcore.InitDatabase(ctx, db, io.Discard); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +107,7 @@ func TestBootstrapAdminUser_SkipsExisting(t *testing.T) {
 	}
 	defer db.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	if err := dbcore.InitDatabase(ctx, db, io.Discard); err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +134,7 @@ func TestBootstrapAdminUser_ReadsPreSeededPassword(t *testing.T) {
 	}
 	defer db.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	if err := dbcore.InitDatabase(ctx, db, io.Discard); err != nil {
 		t.Fatal(err)
 	}
