@@ -146,6 +146,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     timeout-minutes: 30
+    env:
+      DATA_DIR: ${{ runner.temp }}/quay-data
     steps:
       - name: Download quay binary
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -164,26 +166,26 @@ jobs:
 
       - name: Start registry
         run: |
-          sudo bin/quay --log-level=debug serve \
+          bin/quay --log-level=debug serve \
             -hostname=localhost \
-            -data-dir=/var/lib/quay \
+            -data-dir="$DATA_DIR" \
             -addr=:8443 &
 
-          curl -fs --cacert /var/lib/quay/ssl.cert --retry 30 --retry-delay 1 --retry-all-errors \
+          curl -fs --cacert "$DATA_DIR/ssl.cert" --retry 30 --retry-delay 1 --retry-all-errors \
             https://localhost:8443/healthz
           echo "Registry healthy"
 
       - name: Trust registry TLS certificate
         run: |
-          sudo cp /var/lib/quay/ssl.cert /usr/local/share/ca-certificates/quay.crt
+          sudo cp "$DATA_DIR/ssl.cert" /usr/local/share/ca-certificates/quay.crt
           sudo update-ca-certificates
 
           sudo mkdir -p /etc/containers/certs.d/localhost:8443
-          sudo cp /var/lib/quay/ssl.cert /etc/containers/certs.d/localhost:8443/ca.crt
+          sudo cp "$DATA_DIR/ssl.cert" /etc/containers/certs.d/localhost:8443/ca.crt
 
       - name: Set up auth
         run: |
-          PASSWORD=$(sudo cat /var/lib/quay/auth/password)
+          PASSWORD=$(cat "$DATA_DIR/auth/admin-password")
           mkdir -p ~/.docker
           echo '{"auths":{"localhost:8443":{"auth":"'$(echo -n "admin:$PASSWORD" | base64)'"}}}' \
             > ~/.docker/config.json
@@ -220,12 +222,13 @@ jobs:
             docker://localhost:8443
 
       - name: Verify healthz
-        run: curl -fs --cacert /var/lib/quay/ssl.cert https://localhost:8443/healthz
+        run: |
+          curl -fs --cacert "$DATA_DIR/ssl.cert" https://localhost:8443/healthz
 
       - name: Verify mirrored repositories
         run: |
-          PASSWORD=$(sudo cat /var/lib/quay/auth/password)
-          curl -fs --cacert /var/lib/quay/ssl.cert -u "admin:$PASSWORD" \
+          PASSWORD=$(cat "$DATA_DIR/auth/admin-password")
+          curl -fs --cacert "$DATA_DIR/ssl.cert" -u "admin:$PASSWORD" \
             https://localhost:8443/v2/_catalog | tee /tmp/catalog.json
 
           for repo in projectquay/quay projectquay/quay-builder projectquay/clair \
