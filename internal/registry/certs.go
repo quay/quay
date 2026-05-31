@@ -9,7 +9,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"math/big"
 	"net"
 	"os"
 	"time"
@@ -24,18 +23,12 @@ func GenerateSelfSignedCert(hostname, certPath, keyPath string) error {
 		return fmt.Errorf("generate key: %w", err)
 	}
 
-	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
-	if err != nil {
-		return fmt.Errorf("generate serial: %w", err)
-	}
-
 	template := x509.Certificate{
-		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: hostname},
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(10 * 365 * 24 * time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		Subject:     pkix.Name{CommonName: hostname},
+		NotBefore:   time.Now(),
+		NotAfter:    time.Now().Add(10 * 365 * 24 * time.Hour),
+		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
 
 	if ip := net.ParseIP(hostname); ip != nil {
