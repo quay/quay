@@ -231,7 +231,7 @@ for (const ecosystem of ECOSYSTEMS) {
 
       test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
         test.setTimeout(300_000);
-        if (!cachedContainerAvailable) return;
+        test.skip(!cachedContainerAvailable, 'No container runtime available');
 
         const api = new ApiClient(userContext.request);
         const repoName = `secscan-${ecosystem.name
