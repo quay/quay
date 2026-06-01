@@ -56,11 +56,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",
-    "start:integration": "serve -s dist -l 9000",
-    "quay:dump": "${CLIENT:=docker} exec quay-db pg_dump -U quay -d quay --clean --if-exists > ./test-data/quay-db-data.txt && ${CLIENT:=docker} cp quay-quay:/datastorage/registry/. ./test-data/quay-storage-data",
-    "quay:seed": "pnpm run quay:seed-db && pnpm run quay:seed-storage",
-    "quay:seed-db": "${CLIENT:=docker} exec -i quay-db psql quay -U quay -v ON_ERROR_STOP=1 < ./test-data/quay-db-data.txt",
-    "quay:seed-storage": "${CLIENT:=docker} cp ./test-data/quay-storage-data/. quay-quay:/datastorage/registry"
+    "start:integration": "serve -s dist -l 9000"
   },
   "browserslist": {
     "production": [

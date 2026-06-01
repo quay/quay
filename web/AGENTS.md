@@ -45,7 +45,6 @@ web/
 │   │   ├── axios.ts         # Configured Axios instance (CSRF tokens)
 │   │   └── utils.ts         # Common utilities
 │   └── assets/              # Static assets
-├── test-data/              # CI seed data (DB dump, storage blobs)
 ├── webpack.dev.js           # Dev server + proxy config
 ├── webpack.prod.js          # Production build
 └── webpack.plugin.js        # OpenShift Console plugin build
