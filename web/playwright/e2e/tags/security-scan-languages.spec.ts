@@ -2,260 +2,94 @@ import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
 import {pushExternalImage} from '../../utils/container';
-import type {Page} from '@playwright/test';
 
 /**
  * Language/distro-specific Clair vulnerability scanning tests.
  *
- * Migrated from Cypress OCP-71140 through OCP-73428 in quay-tests.
- * Each test pushes a known-vulnerable image for a specific ecosystem,
- * waits for Clair to scan it, then verifies the Security Report UI
- * displays a vulnerability count > 0.
- *
- * Specific CVE assertions are soft-checked (logged, not hard-failed)
- * because the CI Clair instance loads a fresh vulnerability database
- * on every run and the exact CVEs matched depend on updater timing
- * and upstream database content.
+ * Migrated from Cypress quay-tests. Each test pushes a known-vulnerable
+ * image for a specific ecosystem, waits for Clair to scan it, then
+ * verifies the Security Report UI shows vulnerabilities were detected.
  */
-
-const SCAN_TIMEOUT_MS = 180_000;
-const SCAN_POLL_MS = 5_000;
-
-type Vulnerability = [advisory: string, pkg: string, severity: string];
-
-type ScanResult =
-  | {status: 'scanned'}
-  | {status: 'failed'; reason: string}
-  | {status: 'unsupported'}
-  | {status: 'manifest_layer_too_large'}
-  | {status: 'timeout'};
 
 interface EcosystemConfig {
   name: string;
-  ocpId: string;
   sourceImage: string;
   tag: string;
-  copyAll?: boolean;
-  arch?: string;
-  knownVulnerabilities?: Vulnerability[];
 }
 
 const ECOSYSTEMS: EcosystemConfig[] = [
   {
     name: 'Golang',
-    ocpId: 'OCP-71140',
-    sourceImage: 'quay.io/quay-qetest/golang-migrate',
-    tag: 'v4.15.2',
-    knownVulnerabilities: [
-      ['CVE-2023-24538', 'stdlib', 'Critical'],
-      ['CVE-2024-34156', 'stdlib', 'High'],
-    ],
+    sourceImage: 'quay.io/projectquay/golang',
+    tag: '1.17',
   },
   {
     name: 'NodeJS',
-    ocpId: 'OCP-71146',
-    sourceImage: 'quay.io/quay-qetest/nodejs-test-image',
-    tag: 'latest',
-    knownVulnerabilities: [
-      ['CVE-2016-7099', 'nodejs010-nodejs', 'High'],
-      ['CVE-2015-0278', 'nodejs010-libuv', 'Medium'],
-    ],
+    sourceImage: 'quay.io/centos7/nodejs-10-centos7',
+    tag: '10',
   },
   {
     name: 'Ruby',
-    ocpId: 'OCP-71191',
-    sourceImage: 'quay.io/quay-qetest/ruby',
-    tag: '3.3.5-bullseye',
-    knownVulnerabilities: [
-      ['GHSA-2rxp-v6pw-ch6m', 'rexml', 'High'],
-      ['CVE-2024-49761', 'rexml', 'High'],
-    ],
+    sourceImage: 'quay.io/centos7/ruby-25-centos7',
+    tag: '2.5',
   },
   {
     name: 'Java',
-    ocpId: 'OCP-71211',
-    sourceImage: 'quay.io/quay-qetest/clair-java-test',
-    tag: 'latest',
-    knownVulnerabilities: [['GHSA-2qrg-x229-3v8q', 'log4j:log4j', 'Critical']],
+    sourceImage: 'quay.io/wildfly/wildfly-centos7',
+    tag: '24.0',
   },
   {
     name: 'Python',
-    ocpId: 'OCP-71217',
-    sourceImage: 'quay.io/quay-qetest/python3-test-image',
-    tag: 'latest',
-    knownVulnerabilities: [
-      ['CVE-2024-9287', 'python3.10-minimal', 'Medium'],
-      ['CVE-2024-0450', 'libpython3.10-stdlib', 'Medium'],
-    ],
+    sourceImage: 'quay.io/centos7/python-38-centos7',
+    tag: 'centos7',
   },
   {
     name: 'Dotnet',
-    ocpId: 'OCP-71487',
-    sourceImage: 'quay.io/quay-qetest/clair-dotnet-test',
-    tag: 'latest',
-    knownVulnerabilities: [['CVE-2024-43485', 'System.Text.Json', 'High']],
+    sourceImage: 'quay.io/contrast/agent-dotnet-core',
+    tag: '5.0.5',
   },
   {
     name: 'Oracle Linux',
-    ocpId: 'OCP-73423',
-    sourceImage: 'quay.io/quay-qetest/oraclelinux',
-    tag: 'latest',
-    knownVulnerabilities: [
-      ['ELSA-2021-1989', 'bind-export-libs', 'High'],
-      ['ELSA-2023-5455', 'glibc-common', 'High'],
-      ['ELSA-2023-5455', 'glibc-all-langpacks', 'High'],
-      ['ELSA-2023-1405', 'openssl-libs', 'High'],
-      ['ELSA-2023-3591', 'python3-libs', 'High'],
-    ],
+    sourceImage: 'quay.io/nvlab/oraclelinux',
+    tag: '7.8',
   },
   {
     name: 'Amazon Linux',
-    ocpId: 'OCP-73424',
-    sourceImage: 'quay.io/quay-qetest/amazonlinux',
-    tag: 'latest',
-    knownVulnerabilities: [
-      ['ALAS2-2022-1764', 'expat', 'Critical'],
-      ['ALAS2-2024-2521', 'libcrypt', 'High'],
-      ['ALAS2-2023-1980', 'python-libs', 'High'],
-      ['ALAS2-2023-1935', 'openssl-libs', 'High'],
-      ['ALAS2-2023-1980', 'python', 'High'],
-    ],
+    sourceImage: 'quay.io/toolbx-images/amazonlinux-toolbox',
+    tag: '2',
   },
   {
     name: 'Ubuntu',
-    ocpId: 'OCP-73426',
-    sourceImage: 'quay.io/quay-qetest/ubuntu',
-    tag: 'latest',
-    copyAll: true,
-    arch: 'linux on amd64',
-    knownVulnerabilities: [
-      ['CVE-2023-4911', 'libc-bin', 'High'],
-      ['CVE-2023-4911', 'libc6', 'High'],
-      ['CVE-2022-3602', 'libssl3', 'High'],
-      ['CVE-2022-3786', 'libssl3', 'High'],
-    ],
+    sourceImage: 'quay.io/toolbx/ubuntu-toolbox',
+    tag: '20.04',
   },
   {
     name: 'Debian',
-    ocpId: 'OCP-73427',
-    sourceImage: 'quay.io/quay-qetest/debian',
-    tag: 'latest',
-    copyAll: true,
-    arch: 'linux on amd64',
-    knownVulnerabilities: [
-      ['CVE-2016-2781', 'coreutils', 'Medium'],
-      ['CVE-2024-26461', 'libkrb5-3', 'Low'],
-      ['TEMP-0841856-B18BAF', 'bash', 'Low'],
-    ],
+    sourceImage: 'quay.io/toolbx-images/debian-toolbox',
+    tag: '12',
   },
   {
     name: 'Alpine',
-    ocpId: 'OCP-73428',
-    sourceImage: 'quay.io/quay-qetest/alpine',
-    tag: 'latest',
-    copyAll: true,
-    arch: 'linux on 386',
-    knownVulnerabilities: [
-      ['CVE-2022-37434', 'zlib', 'Critical'],
-      ['CVE-2023-0286', 'libssl1.1', 'High'],
-      ['CVE-2023-0286', 'libcrypto1.1', 'High'],
-      ['CVE-2022-30065', 'busybox', 'High'],
-      ['CVE-2022-30065', 'ssl_client', 'High'],
-    ],
+    sourceImage: 'quay.io/jitesoft/alpine',
+    tag: '3.18.12',
   },
 ];
 
-async function waitForScan(
-  api: ApiClient,
-  namespace: string,
-  repo: string,
-  digest: string,
-): Promise<ScanResult> {
-  const deadline = Date.now() + SCAN_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    try {
-      const sec = await api.getManifestSecurity(namespace, repo, digest);
-      if (sec.status === 'queued') {
-        await new Promise((r) => setTimeout(r, SCAN_POLL_MS));
-        continue;
-      }
-      if (sec.status === 'failed') {
-        return {status: 'failed', reason: 'Clair scan status: failed'};
-      }
-      if (sec.status === 'unsupported') {
-        return {status: 'unsupported'};
-      }
-      if (sec.status === 'manifest_layer_too_large') {
-        return {status: 'manifest_layer_too_large'};
-      }
-      return {status: 'scanned'};
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes('404')) {
-        await new Promise((r) => setTimeout(r, SCAN_POLL_MS));
-        continue;
-      }
-      if (msg.includes('500') || msg.includes('520')) {
-        return {status: 'failed', reason: `Clair API error: ${msg}`};
-      }
-      throw e;
-    }
-  }
-  return {status: 'timeout'};
-}
-
-async function selectArchitecture(page: Page, arch: string): Promise<void> {
-  const archSelect = page.getByTestId('arch-select');
-  await archSelect.waitFor({state: 'visible', timeout: 60_000});
-  await archSelect.click();
-  await page.getByTestId('arch-option').filter({hasText: arch}).click();
-}
-
-async function softCheckVulnerability(
-  page: Page,
-  advisory: string,
-  pkg: string,
-  severity: string,
-): Promise<boolean> {
-  const filterInput = page.locator(
-    'input[placeholder="Filter Vulnerabilities..."]',
-  );
-  await filterInput.fill(advisory);
-
-  const row = page
-    .locator('tbody tr')
-    .filter({hasText: advisory})
-    .filter({hasText: pkg});
-
-  try {
-    await expect(row).toBeVisible({timeout: 5_000});
-    await expect(row.locator('td[data-label="Severity"]')).toContainText(
-      severity,
-    );
-    await filterInput.clear();
-    return true;
-  } catch {
-    await filterInput.clear();
-    return false;
-  }
-}
-
 for (const ecosystem of ECOSYSTEMS) {
   test.describe(
-    `${ecosystem.name} Security Scan (${ecosystem.ocpId})`,
+    `${ecosystem.name} Security Scan`,
     {
       tag: [
         '@tags',
         '@container',
         '@feature:SECURITY_SCANNER',
         '@slow',
-        `@${ecosystem.ocpId}`,
         '@PROJQUAY-11630',
       ],
     },
     () => {
       let testRepo: {namespace: string; name: string; fullName: string};
-      let scanResult: ScanResult;
+      let scanOk: boolean;
 
       test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
         test.setTimeout(600_000);
@@ -284,19 +118,18 @@ for (const ecosystem of ECOSYSTEMS) {
           ecosystem.tag,
           TEST_USERS.user.username,
           TEST_USERS.user.password,
-          ecosystem.copyAll,
         );
 
         const tags = await api.getTags(testRepo.namespace, testRepo.name);
         const tag = tags.tags.find((t) => t.name === ecosystem.tag);
         if (!tag) throw new Error(`Tag ${ecosystem.tag} not found after push`);
 
-        scanResult = await waitForScan(
-          api,
+        const scanResult = await api.waitForScan(
           testRepo.namespace,
           testRepo.name,
           tag.manifest_digest,
         );
+        scanOk = scanResult.status === 'scanned';
       });
 
       test.afterAll(async ({userContext}) => {
@@ -314,21 +147,12 @@ for (const ecosystem of ECOSYSTEMS) {
       }) => {
         test.setTimeout(120_000);
 
-        expect(
-          scanResult?.status,
-          'Clair scan must complete successfully',
-        ).toBe('scanned');
+        expect(scanOk, 'Clair scan must complete successfully').toBeTruthy();
 
         await authenticatedPage.goto(
           `/repository/${testRepo.fullName}/tag/${ecosystem.tag}?tab=securityreport`,
         );
 
-        if (ecosystem.arch) {
-          await selectArchitecture(authenticatedPage, ecosystem.arch);
-        }
-
-        // Wait for the scan report to render — poll with reload if needed.
-        // Also detect scan failure/unsupported states in the UI.
         const scanned = authenticatedPage.getByText(
           /detected \d+ vulnerabilit/,
         );
@@ -359,57 +183,26 @@ for (const ecosystem of ECOSYSTEMS) {
           await authenticatedPage
             .getByRole('tab', {name: 'Security Report'})
             .click();
-          if (ecosystem.arch) {
-            await selectArchitecture(authenticatedPage, ecosystem.arch);
-          }
         }
 
-        // Primary assertion: Clair detected vulnerabilities (count > 0).
         await expect(scanned).toBeVisible({timeout: 5_000});
 
         await expect(
           authenticatedPage.locator('[data-testid="vulnerability-chart"]'),
         ).toBeVisible();
-
-        // Soft-check known CVEs — log results but don't fail the test.
-        // These depend on Clair's vulnerability database content which
-        // varies between environments and over time.
-        if (ecosystem.knownVulnerabilities?.length) {
-          const results: string[] = [];
-          for (const [
-            advisory,
-            pkg,
-            severity,
-          ] of ecosystem.knownVulnerabilities) {
-            const found = await softCheckVulnerability(
-              authenticatedPage,
-              advisory,
-              pkg,
-              severity,
-            );
-            results.push(
-              `${advisory} (${pkg}): ${found ? 'FOUND' : 'MISSING'}`,
-            );
-          }
-          test.info().annotations.push({
-            type: 'cve-check',
-            description: results.join('; '),
-          });
-        }
       });
     },
   );
 }
 
 test.describe(
-  'Oracle Linux Generic Scan (OCP-73425)',
+  'Oracle Linux Generic Scan',
   {
     tag: [
       '@tags',
       '@container',
       '@feature:SECURITY_SCANNER',
       '@slow',
-      '@OCP-73425',
       '@PROJQUAY-11630',
     ],
   },
@@ -431,17 +224,17 @@ test.describe(
       };
 
       await pushExternalImage(
-        'quay.io/quay-qetest/oraclelinux:latest',
+        'quay.io/nvlab/oraclelinux:7.8',
         testRepo.namespace,
         testRepo.name,
-        'latest',
+        '7.8',
         TEST_USERS.user.username,
         TEST_USERS.user.password,
       );
 
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
-      await waitForScan(api, testRepo.namespace, testRepo.name, digest);
+      await api.waitForScan(testRepo.namespace, testRepo.name, digest);
     });
 
     test.afterAll(async ({userContext}) => {
@@ -462,12 +255,12 @@ test.describe(
       await authenticatedPage.goto(`/repository/${testRepo.fullName}?tab=tags`);
 
       await expect(
-        authenticatedPage.getByRole('link', {name: 'latest'}),
+        authenticatedPage.getByRole('link', {name: '7.8'}),
       ).toBeVisible();
 
       const securityCell = authenticatedPage
         .locator('tr')
-        .filter({hasText: 'latest'})
+        .filter({hasText: '7.8'})
         .locator('td')
         .nth(3);
 

@@ -2,7 +2,7 @@
  * API utilities for Playwright e2e tests
  */
 
-export {ApiClient} from './client';
+export {ApiClient, type ScanResult} from './client';
 export {RawApiClient} from './raw-client';
 export {
   initializeSuperuser,

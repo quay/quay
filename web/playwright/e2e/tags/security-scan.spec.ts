@@ -2,7 +2,6 @@ import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
 import {pushImage, pushOCIImage} from '../../utils/container';
-import {waitForSecurityScan} from '../../utils/security';
 
 test.describe(
   'Security Scan',
@@ -33,13 +32,7 @@ test.describe(
 
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
-      await waitForSecurityScan(
-        api,
-        testRepo.namespace,
-        testRepo.name,
-        digest,
-        120_000,
-      );
+      await api.waitForScan(testRepo.namespace, testRepo.name, digest, 120_000);
     });
 
     test.afterAll(async ({userContext}) => {
@@ -215,13 +208,7 @@ test.describe(
 
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
-      await waitForSecurityScan(
-        api,
-        testRepo.namespace,
-        testRepo.name,
-        digest,
-        120_000,
-      );
+      await api.waitForScan(testRepo.namespace, testRepo.name, digest, 120_000);
     });
 
     test.afterAll(async ({userContext}) => {
