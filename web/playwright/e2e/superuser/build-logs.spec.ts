@@ -80,7 +80,11 @@ test.describe(
       await expect(checkbox).toBeChecked();
     });
 
-    test('loads and displays real build logs', async ({superuserPage, api}) => {
+    test('loads and displays real build logs', async ({
+      superuserPage,
+      superuserApi,
+      api,
+    }) => {
       test.setTimeout(180_000);
 
       const org = await api.organization('sulogs');
@@ -93,6 +97,9 @@ test.describe(
       );
 
       await api.raw.waitForBuildPhase(org.name, repo.name, build.buildId);
+
+      // Re-sign in to refresh the superuser session (stales during build wait)
+      await superuserApi.raw.signIn('admin', 'password');
 
       await superuserPage.goto('/build-logs');
 
