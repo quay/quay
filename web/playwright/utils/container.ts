@@ -271,6 +271,38 @@ export async function pushMultiArchImage(
 }
 
 /**
+ * Push an image from an external registry to the test registry using skopeo.
+ *
+ * Unlike {@link pushImage} (which always copies busybox), this function
+ * copies an arbitrary source image — useful for language-specific security
+ * scanning tests that need images with known CVEs.
+ *
+ * @param sourceImage - Full source reference, e.g. 'quay.io/quay-qetest/golang-migrate:v4.15.2'
+ * @param namespace   - Destination namespace/org
+ * @param repo        - Destination repository name
+ * @param tag         - Destination tag
+ * @param username    - Registry credentials
+ * @param password    - Registry credentials
+ * @param copyAll     - Pass true to copy the entire multi-arch manifest list (skopeo --all)
+ */
+export async function pushExternalImage(
+  sourceImage: string,
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+  copyAll = false,
+): Promise<void> {
+  const targetImage = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
+  const allFlag = copyAll ? '--all' : '';
+
+  await retryPush(
+    `skopeo copy ${allFlag} docker://${sourceImage} docker://${targetImage} --dest-tls-verify=false --dest-creds=${username}:${password}`.trim(),
+  );
+}
+
+/**
  * Attach an OCI artifact to a repository using oras.
  *
  * @param namespace - Organization/namespace

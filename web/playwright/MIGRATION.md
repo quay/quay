@@ -775,3 +775,4 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `theme-switcher.cy.ts` | `ui/theme-switcher.spec.ts` | |
 | ✅ | `update-user.cy.ts` | `user/update-user.spec.ts` | @feature:USER_METADATA, consolidated 7→3 tests (OAuth tests TODO) |
 | ✅ | `usage-logs.cy.ts` | `usage-logs.spec.ts`, `superuser/usage-logs.spec.ts` | @logs, @feature:SUPERUSERS_FULL_ACCESS, consolidated 13→10 tests |
+| ✅ | quay-tests OCP-71140..OCP-73428 | `tags/security-scan-languages.spec.ts` | @feature:SECURITY_SCANNER, @container, @slow, 14 language/distro Clair scan tests migrated from quay-tests Cypress suite |
