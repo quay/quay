@@ -2,6 +2,7 @@ import {test, expect} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
 import {pushImage, pushOCIImage} from '../../utils/container';
+import {waitForSecurityScan} from '../../utils/security';
 
 test.describe(
   'Security Scan',
@@ -30,19 +31,15 @@ test.describe(
         TEST_USERS.user.password,
       );
 
-      // Wait for Clair to scan the image (poll until status != queued)
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
-      const deadline = Date.now() + 120000;
-      while (Date.now() < deadline) {
-        const sec = await api.getManifestSecurity(
-          testRepo.namespace,
-          testRepo.name,
-          digest,
-        );
-        if (sec.status !== 'queued') break;
-        await new Promise((r) => setTimeout(r, 5000));
-      }
+      await waitForSecurityScan(
+        api,
+        testRepo.namespace,
+        testRepo.name,
+        digest,
+        120_000,
+      );
     });
 
     test.afterAll(async ({userContext}) => {
@@ -216,23 +213,15 @@ test.describe(
         TEST_USERS.user.password,
       );
 
-      // Wait for Clair to scan the OCI image
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
-      const deadline = Date.now() + 120000;
-      while (Date.now() < deadline) {
-        try {
-          const sec = await api.getManifestSecurity(
-            testRepo.namespace,
-            testRepo.name,
-            digest,
-          );
-          if (sec.status !== 'queued') break;
-        } catch (e: unknown) {
-          if (e instanceof Error && !e.message.includes('404')) throw e;
-        }
-        await new Promise((r) => setTimeout(r, 5000));
-      }
+      await waitForSecurityScan(
+        api,
+        testRepo.namespace,
+        testRepo.name,
+        digest,
+        120_000,
+      );
     });
 
     test.afterAll(async ({userContext}) => {
