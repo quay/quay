@@ -70,8 +70,8 @@ const ECOSYSTEMS: EcosystemConfig[] = [
   },
   {
     name: 'Alpine',
-    sourceImage: 'quay.io/jitesoft/alpine',
-    tag: '3.18.12',
+    sourceImage: 'quay.io/libpod/alpine',
+    tag: '3.2',
   },
 ];
 
