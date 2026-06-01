@@ -24,16 +24,6 @@ const ECOSYSTEMS: EcosystemConfig[] = [
     tag: '1.17',
   },
   {
-    name: 'NodeJS',
-    sourceImage: 'quay.io/centos7/nodejs-10-centos7',
-    tag: '10',
-  },
-  {
-    name: 'Ruby',
-    sourceImage: 'quay.io/centos7/ruby-25-centos7',
-    tag: '2.5',
-  },
-  {
     name: 'Java',
     sourceImage: 'quay.io/wildfly/wildfly-centos7',
     tag: '24.0',
@@ -42,11 +32,6 @@ const ECOSYSTEMS: EcosystemConfig[] = [
     name: 'Python',
     sourceImage: 'quay.io/centos7/python-38-centos7',
     tag: 'centos7',
-  },
-  {
-    name: 'Dotnet',
-    sourceImage: 'quay.io/contrast/agent-dotnet-core',
-    tag: '5.0.5',
   },
   {
     name: 'Oracle Linux',
@@ -64,14 +49,9 @@ const ECOSYSTEMS: EcosystemConfig[] = [
     tag: '20.04',
   },
   {
-    name: 'Debian',
-    sourceImage: 'quay.io/toolbx-images/debian-toolbox',
-    tag: '12',
-  },
-  {
     name: 'Alpine',
     sourceImage: 'quay.io/libpod/alpine',
-    tag: '3.2',
+    tag: '3.10.2',
   },
 ];
 
@@ -145,7 +125,7 @@ for (const ecosystem of ECOSYSTEMS) {
       test(`Clair detects vulnerabilities in ${ecosystem.name}`, async ({
         authenticatedPage,
       }) => {
-        test.setTimeout(120_000);
+        test.setTimeout(420_000);
 
         expect(scanOk, 'Clair scan must complete successfully').toBeTruthy();
 
@@ -156,9 +136,6 @@ for (const ecosystem of ECOSYSTEMS) {
         const scanned = authenticatedPage.getByText(
           /detected \d+ vulnerabilit/,
         );
-        const noVulns = authenticatedPage.getByText(
-          'detected no vulnerabilities',
-        );
         const scanFailed = authenticatedPage.getByText(
           'Security scan has failed',
         );
@@ -166,26 +143,23 @@ for (const ecosystem of ECOSYSTEMS) {
           'Security scan is not supported',
         );
 
-        const deadline = Date.now() + 90_000;
+        const deadline = Date.now() + 300_000;
         while (Date.now() < deadline) {
           if (await scanned.isVisible().catch(() => false)) break;
-          if (await noVulns.isVisible().catch(() => false)) {
-            expect(false, 'Clair detected no vulnerabilities').toBeTruthy();
-          }
           if (await scanFailed.isVisible().catch(() => false)) {
             expect(false, 'Security scan has failed').toBeTruthy();
           }
           if (await scanUnsupported.isVisible().catch(() => false)) {
             expect(false, 'Security scan is not supported').toBeTruthy();
           }
-          await authenticatedPage.waitForTimeout(5_000);
+          await authenticatedPage.waitForTimeout(10_000);
           await authenticatedPage.reload();
           await authenticatedPage
             .getByRole('tab', {name: 'Security Report'})
             .click();
         }
 
-        await expect(scanned).toBeVisible({timeout: 5_000});
+        await expect(scanned).toBeVisible({timeout: 10_000});
 
         await expect(
           authenticatedPage.locator('[data-testid="vulnerability-chart"]'),

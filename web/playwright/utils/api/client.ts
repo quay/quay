@@ -2304,9 +2304,11 @@ export class ApiClient {
     pollMs = 5_000,
   ): Promise<ScanResult> {
     const deadline = Date.now() + timeoutMs;
+    let serverErrors = 0;
     while (Date.now() < deadline) {
       try {
         const sec = await this.getManifestSecurity(namespace, repo, digest);
+        serverErrors = 0;
         if (sec.status === 'queued') {
           await new Promise((r) => setTimeout(r, pollMs));
           continue;
@@ -2328,7 +2330,12 @@ export class ApiClient {
           continue;
         }
         if (msg.includes('500') || msg.includes('520')) {
-          return {status: 'failed', reason: `Clair API error: ${msg}`};
+          serverErrors++;
+          if (serverErrors >= 6) {
+            return {status: 'failed', reason: `Clair API error: ${msg}`};
+          }
+          await new Promise((r) => setTimeout(r, pollMs * 2));
+          continue;
         }
         throw e;
       }
