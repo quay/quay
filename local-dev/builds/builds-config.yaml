@@ -1,0 +1,14 @@
+FEATURE_BUILD_SUPPORT: true
+BUILD_MANAGER:
+  - ephemeral
+  - ORCHESTRATOR:
+      REDIS_HOST: quay-redis
+      REDIS_PORT: 6379
+    EXECUTORS:
+      - EXECUTOR: popen
+        BUILDER_BINARY_LOCATION: /quay-registry/local-dev/quay-builder
+        NAME: ci-builder
+        CONTAINER_RUNTIME: docker
+        INSECURE: true
+        DEBUG: true
+        SETUP_TIME: 120
