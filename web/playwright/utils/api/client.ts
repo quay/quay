@@ -2325,11 +2325,13 @@ export class ApiClient {
         return {status: 'scanned'};
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        if (msg.includes('404')) {
+        const statusMatch = msg.match(/: (\d{3}) -/);
+        const httpStatus = statusMatch ? parseInt(statusMatch[1], 10) : 0;
+        if (httpStatus === 404) {
           await new Promise((r) => setTimeout(r, pollMs));
           continue;
         }
-        if (msg.includes('500') || msg.includes('520')) {
+        if (httpStatus === 500 || httpStatus === 520) {
           serverErrors++;
           if (serverErrors >= 6) {
             return {status: 'failed', reason: `Clair API error: ${msg}`};

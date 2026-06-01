@@ -8,9 +8,10 @@ test.describe(
   {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
   () => {
     let testRepo: {namespace: string; name: string; fullName: string};
+    let scanOk: boolean;
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
-      if (!cachedContainerAvailable) return;
+      test.skip(!cachedContainerAvailable, 'No container runtime available');
 
       const api = new ApiClient(userContext.request);
       const repoName = `secscan-${Date.now()}`;
@@ -32,7 +33,13 @@ test.describe(
 
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
-      await api.waitForScan(testRepo.namespace, testRepo.name, digest, 120_000);
+      const scanResult = await api.waitForScan(
+        testRepo.namespace,
+        testRepo.name,
+        digest,
+        120_000,
+      );
+      scanOk = scanResult.status === 'scanned';
     });
 
     test.afterAll(async ({userContext}) => {
@@ -48,6 +55,8 @@ test.describe(
     test('shows security scan results for a pushed image', async ({
       authenticatedPage,
     }) => {
+      expect(scanOk, 'Clair scan must complete successfully').toBeTruthy();
+
       // Verify Security column visible on tags page
       await authenticatedPage.goto(`/repository/${testRepo.fullName}?tab=tags`);
       await expect(
@@ -183,10 +192,11 @@ test.describe(
   {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
   () => {
     let testRepo: {namespace: string; name: string; fullName: string};
+    let scanOk: boolean;
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
       test.setTimeout(180000);
-      if (!cachedContainerAvailable) return;
+      test.skip(!cachedContainerAvailable, 'No container runtime available');
 
       const api = new ApiClient(userContext.request);
       const repoName = `oci-secscan-${Date.now()}`;
@@ -208,7 +218,13 @@ test.describe(
 
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
-      await api.waitForScan(testRepo.namespace, testRepo.name, digest, 120_000);
+      const scanResult = await api.waitForScan(
+        testRepo.namespace,
+        testRepo.name,
+        digest,
+        120_000,
+      );
+      scanOk = scanResult.status === 'scanned';
     });
 
     test.afterAll(async ({userContext}) => {
@@ -225,6 +241,7 @@ test.describe(
       authenticatedPage,
     }) => {
       test.setTimeout(120000);
+      expect(scanOk, 'Clair scan must complete successfully').toBeTruthy();
       await authenticatedPage.goto(
         `/repository/${testRepo.fullName}/tag/latest?tab=securityreport`,
       );
@@ -263,6 +280,7 @@ test.describe(
       authenticatedPage,
     }) => {
       test.setTimeout(120000);
+      expect(scanOk, 'Clair scan must complete successfully').toBeTruthy();
       await authenticatedPage.goto(
         `/repository/${testRepo.fullName}/tag/latest?tab=packages`,
       );
