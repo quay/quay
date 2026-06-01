@@ -688,10 +688,12 @@ class LDAPUsers(FederatedUsers):
         if err is not None:
             return (False, err)
 
-        if not next(it, False):
-            return (False, "Group does not exist or is empty")
-
-        return (True, None)
+        try:
+            if not next(it, False):
+                return (False, "Group does not exist or is empty")
+            return (True, None)
+        finally:
+            it.close()
 
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
         try:

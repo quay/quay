@@ -692,6 +692,40 @@ class TestLDAP(unittest.TestCase):
             self.assertTrue(result)
             self.assertIsNone(err)
 
+    def test_check_group_lookup_args_closes_generator(self):
+        """Verify generator is explicitly closed to release LDAP connection."""
+        with mock_ldap() as ldap_users:
+            generator_closed = [False]
+            original_iterate = ldap_users.iterate_group_members
+
+            class TrackingGenerator:
+                def __init__(self, gen):
+                    self._gen = gen
+
+                def __iter__(self):
+                    return self
+
+                def __next__(self):
+                    return next(self._gen)
+
+                def close(self):
+                    generator_closed[0] = True
+                    self._gen.close()
+
+            def tracking_iterate(*args, **kwargs):
+                it, err = original_iterate(*args, **kwargs)
+                if it is None:
+                    return (it, err)
+                return (TrackingGenerator(it), err)
+
+            ldap_users.iterate_group_members = tracking_iterate
+
+            (result, err) = ldap_users.check_group_lookup_args(
+                {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
+            )
+            self.assertTrue(result)
+            self.assertTrue(generator_closed[0], "Generator was not explicitly closed")
+
     def test_metadata(self):
         with mock_ldap() as ldap:
             assert "base_dn" in ldap.service_metadata()
