@@ -111,7 +111,7 @@ FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest@sha256:449f3e1b0a9
 RUN npm install -g pnpm@10
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/pnpm-lock.yaml web/.npmrc  ./
-RUN CYPRESS_INSTALL_BINARY=0 pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 COPY --chown=1001:0 web .
 RUN pnpm run --silent build
 

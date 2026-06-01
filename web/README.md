@@ -50,13 +50,13 @@ npm test
 Launches the test runner in the interactive watch mode.\
 See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-### Integration Tests
+### E2E Tests
 
-Integration tests are ran via [Cypress](https://docs.cypress.io/). The URL under test defaults to `http://localhost:9000` and can be overriden with the `baseUrl` parameter in the `cypress.config.ts` file.
+E2E tests use [Playwright](https://playwright.dev/). See `web/playwright/` for tests and configuration.
 
 To run tests locally:
-- Start the application with `npm start`
-- When application has started run the tests with `npm run test:integration`
+- Start the application with `pnpm start`
+- Run the tests with `pnpm run test:e2e`
 
 ## Building for Production
 

@@ -106,7 +106,7 @@ cd web && npx playwright test                   # All Playwright E2E tests
 cd web && npx playwright test e2e/some.spec.ts  # Single E2E test
 ```
 
-- **E2E / full-flow tests:** Use Playwright for all new tests (`web/playwright/e2e/`). Cypress tests in the repo are legacy — do not add new Cypress tests.
+- **E2E / full-flow tests:** Use Playwright for all new tests (`web/playwright/e2e/`). All E2E tests use Playwright (`web/playwright/e2e/`).
 - **Pure unit logic:** Use Vitest only for utilities and data transformers with no UI interaction.
 
 See [agent_docs/testing.md](agent_docs/testing.md) for test fixtures, database

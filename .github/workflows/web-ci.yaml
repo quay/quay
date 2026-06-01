@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 jobs:
-  cypress:
-    name: Cypress Tests
+  integration:
+    name: Integration Tests
     runs-on: ubuntu-22.04
     steps:
 
@@ -54,7 +54,7 @@ jobs:
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: 3.12
-        cache: 'pip'
+        cache: pip
         cache-dependency-path: requirements-dev.txt
 
     - name: Install dependencies
@@ -67,59 +67,6 @@ jobs:
         docker restart quay-quay
         sleep 30
         make integration-test
-
-    - name: Apply extra config options
-      run:  |
-        cat web/cypress/test/extra-config.yaml >> local-dev/stack/config.yaml
-        docker restart quay-quay
-        sleep 30
-
-    - name: Set up Node.js
-      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-      with:
-        node-version: '22'
-
-    - name: Install pnpm (for Cypress job)
-      uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-      with:
-        version: 10
-        run_install: false
-
-    - name: Install web dependencies
-      run: cd web && pnpm install --frozen-lockfile
-
-    - name: Install Cypress binary
-      run: cd web && npx cypress install
-
-    - name: Cypress run
-      uses: cypress-io/github-action@dace029018fcdf86e0df89a31bc3cfa5b32570d8 # v7.3.0
-      with:
-        browser: chrome
-        install: false
-        build: pnpm run build
-        start: pnpm run start:integration
-        wait-on: 'http://localhost:9000'
-        wait-on-timeout: 120
-        working-directory: web
-      env:
-        REACT_QUAY_APP_API_URL: http://localhost:8080
-
-    - name: Save PR number
-      if: always() && github.event_name == 'pull_request'
-      env:
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: |
-        mkdir -p ./test-results
-        echo "$PR_NUMBER" > ./test-results/pr_number.txt
-
-    - name: Upload test results
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-      if: always() && github.event_name == 'pull_request'
-      with:
-        name: test-results
-        path: |
-          web/cypress/reports/ctrf-report.json
-          test-results/pr_number.txt
 
     - name: Create report
       run: |
@@ -134,10 +81,8 @@ jobs:
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: failure()
       with:
-        name: cypress-debug
+        name: integration-debug
         path: |
-          web/cypress/screenshots
-          web/cypress/videos
           logs/
 
   frontend-plugin:
