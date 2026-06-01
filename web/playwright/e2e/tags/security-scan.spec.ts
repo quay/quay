@@ -8,9 +8,10 @@ test.describe(
   {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
   () => {
     let testRepo: {namespace: string; name: string; fullName: string};
+    let scanOk: boolean;
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
-      if (!cachedContainerAvailable) return;
+      test.skip(!cachedContainerAvailable, 'No container runtime available');
 
       const api = new ApiClient(userContext.request);
       const repoName = `secscan-${Date.now()}`;
@@ -30,19 +31,15 @@ test.describe(
         TEST_USERS.user.password,
       );
 
-      // Wait for Clair to scan the image (poll until status != queued)
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
-      const deadline = Date.now() + 120000;
-      while (Date.now() < deadline) {
-        const sec = await api.getManifestSecurity(
-          testRepo.namespace,
-          testRepo.name,
-          digest,
-        );
-        if (sec.status !== 'queued') break;
-        await new Promise((r) => setTimeout(r, 5000));
-      }
+      const scanResult = await api.waitForScan(
+        testRepo.namespace,
+        testRepo.name,
+        digest,
+        120_000,
+      );
+      scanOk = scanResult.status === 'scanned';
     });
 
     test.afterAll(async ({userContext}) => {
@@ -58,6 +55,8 @@ test.describe(
     test('shows security scan results for a pushed image', async ({
       authenticatedPage,
     }) => {
+      expect(scanOk, 'Clair scan must complete successfully').toBeTruthy();
+
       // Verify Security column visible on tags page
       await authenticatedPage.goto(`/repository/${testRepo.fullName}?tab=tags`);
       await expect(
@@ -193,10 +192,11 @@ test.describe(
   {tag: ['@tags', '@container', '@feature:SECURITY_SCANNER']},
   () => {
     let testRepo: {namespace: string; name: string; fullName: string};
+    let scanOk: boolean;
 
     test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
       test.setTimeout(180000);
-      if (!cachedContainerAvailable) return;
+      test.skip(!cachedContainerAvailable, 'No container runtime available');
 
       const api = new ApiClient(userContext.request);
       const repoName = `oci-secscan-${Date.now()}`;
@@ -216,23 +216,15 @@ test.describe(
         TEST_USERS.user.password,
       );
 
-      // Wait for Clair to scan the OCI image
       const tags = await api.getTags(testRepo.namespace, testRepo.name);
       const digest = tags.tags[0].manifest_digest;
-      const deadline = Date.now() + 120000;
-      while (Date.now() < deadline) {
-        try {
-          const sec = await api.getManifestSecurity(
-            testRepo.namespace,
-            testRepo.name,
-            digest,
-          );
-          if (sec.status !== 'queued') break;
-        } catch (e: unknown) {
-          if (e instanceof Error && !e.message.includes('404')) throw e;
-        }
-        await new Promise((r) => setTimeout(r, 5000));
-      }
+      const scanResult = await api.waitForScan(
+        testRepo.namespace,
+        testRepo.name,
+        digest,
+        120_000,
+      );
+      scanOk = scanResult.status === 'scanned';
     });
 
     test.afterAll(async ({userContext}) => {
@@ -249,6 +241,7 @@ test.describe(
       authenticatedPage,
     }) => {
       test.setTimeout(120000);
+      expect(scanOk, 'Clair scan must complete successfully').toBeTruthy();
       await authenticatedPage.goto(
         `/repository/${testRepo.fullName}/tag/latest?tab=securityreport`,
       );
@@ -287,6 +280,7 @@ test.describe(
       authenticatedPage,
     }) => {
       test.setTimeout(120000);
+      expect(scanOk, 'Clair scan must complete successfully').toBeTruthy();
       await authenticatedPage.goto(
         `/repository/${testRepo.fullName}/tag/latest?tab=packages`,
       );

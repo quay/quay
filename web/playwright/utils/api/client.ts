@@ -2296,6 +2296,55 @@ export class ApiClient {
     return response.json();
   }
 
+  async waitForScan(
+    namespace: string,
+    repo: string,
+    digest: string,
+    timeoutMs = 180_000,
+    pollMs = 5_000,
+  ): Promise<ScanResult> {
+    const deadline = Date.now() + timeoutMs;
+    let serverErrors = 0;
+    while (Date.now() < deadline) {
+      try {
+        const sec = await this.getManifestSecurity(namespace, repo, digest);
+        serverErrors = 0;
+        if (sec.status === 'queued') {
+          await new Promise((r) => setTimeout(r, pollMs));
+          continue;
+        }
+        if (sec.status === 'failed') {
+          return {status: 'failed', reason: 'Clair scan status: failed'};
+        }
+        if (sec.status === 'unsupported') {
+          return {status: 'unsupported'};
+        }
+        if (sec.status === 'manifest_layer_too_large') {
+          return {status: 'manifest_layer_too_large'};
+        }
+        return {status: 'scanned'};
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        const statusMatch = msg.match(/: (\d{3}) -/);
+        const httpStatus = statusMatch ? parseInt(statusMatch[1], 10) : 0;
+        if (httpStatus === 404) {
+          await new Promise((r) => setTimeout(r, pollMs));
+          continue;
+        }
+        if (httpStatus === 500 || httpStatus === 520) {
+          serverErrors++;
+          if (serverErrors >= 6) {
+            return {status: 'failed', reason: `Clair API error: ${msg}`};
+          }
+          await new Promise((r) => setTimeout(r, pollMs * 2));
+          continue;
+        }
+        throw e;
+      }
+    }
+    return {status: 'timeout'};
+  }
+
   // Organization mirror methods
 
   async createOrgMirrorConfig(
@@ -2658,6 +2707,13 @@ export class ApiClient {
     }
   }
 }
+
+export type ScanResult =
+  | {status: 'scanned'}
+  | {status: 'failed'; reason: string}
+  | {status: 'unsupported'}
+  | {status: 'manifest_layer_too_large'}
+  | {status: 'timeout'};
 
 export interface OAuthApp {
   name: string;
