@@ -22,6 +22,7 @@
     "js-sha1": "^0.6.0",
     "mini-css-extract-plugin": "^2.7.6",
     "null-loader": "^4.0.1",
+    "pretty-bytes": "5.6.0",
     "process": "^0.11.10",
     "react": "^18.2.0",
     "react-hook-form": "^7.60.0",
@@ -49,18 +50,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:integration": "cypress run",
     "test:api": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --grep @api",
     "test:e2e": "playwright test",
     "test:e2e:no-api": "playwright test --grep-invert @api",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",
-    "start:integration": "serve -s dist -l 9000",
-    "quay:dump": "${CLIENT:=docker} exec quay-db pg_dump -U quay -d quay --clean --if-exists > ./cypress/test/quay-db-data.txt && ${CLIENT:=docker} cp quay-quay:/datastorage/registry/. ./cypress/test/quay-storage-data",
-    "quay:seed": "pnpm run quay:seed-db && pnpm run quay:seed-storage",
-    "quay:seed-db": "${CLIENT:=docker} exec -i quay-db psql quay -U quay -v ON_ERROR_STOP=1 < ./cypress/test/quay-db-data.txt",
-    "quay:seed-storage": "${CLIENT:=docker} cp ./cypress/test/quay-storage-data/. quay-quay:/datastorage/registry"
+    "start:integration": "serve -s dist -l 9000"
   },
   "browserslist": {
     "production": [
@@ -90,7 +86,6 @@
     "copy-webpack-plugin": "^10.2.4",
     "css-loader": "^6.11.0",
     "css-minimizer-webpack-plugin": "^5.0.1",
-    "cypress-ctrf-json-reporter": "^0.0.13",
     "dotenv-webpack": "^8.0.1",
     "eslint": "^8.56.0",
     "eslint-config-airbnb": "^19.0.4",
@@ -125,9 +120,6 @@
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.8.1",
     "webpack-merge": "^5.10.0"
-  },
-  "optionalDependencies": {
-    "cypress": "^13.13.2"
   },
   "overrides": {
     "axios": "^1.15.2",
