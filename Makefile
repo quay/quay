@@ -242,7 +242,8 @@ enable-builds: local-dev-extract-builder
 
 .PHONY: update-testdata
 update-testdata: local-dev-clean node_modules | build-image-quay
-	$(DOCKER_COMPOSE) rm -fsv quay-db quay
+	$(DOCKER_COMPOSE) stop quay-db quay || true
+	$(DOCKER) rm -f quay-quay quay-db || true
 	$(DOCKER) volume rm -f quay_quay-db-data
 	$(DOCKER_COMPOSE) up -d redis quay-db
 	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
@@ -316,7 +317,8 @@ local-dev-down:
 
 .PHONY: local-dev-reset-db
 local-dev-reset-db:
-	$(DOCKER_COMPOSE) rm -fsv quay-db quay
+	$(DOCKER_COMPOSE) stop quay-db quay || true
+	$(DOCKER) rm -f quay-quay quay-db || true
 	$(DOCKER) volume rm -f quay_quay-db-data
 	$(DOCKER_COMPOSE) up -d quay-db
 	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
