@@ -276,12 +276,10 @@ class V4SecurityScanner(SecurityScannerInterface):
     ):
         # TODO(alecmerdler): Filter out any `Manifests` that are still being uploaded
         def not_indexed_query():
-            return Manifest.select(can_use_read_replica=True).where(
-                ~fn.EXISTS(
-                    ManifestSecurityStatus.select().where(
-                        ManifestSecurityStatus.manifest == Manifest.id
-                    )
-                )
+            return (
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
+                .join(ManifestSecurityStatus, JOIN.LEFT_OUTER)
+                .where(ManifestSecurityStatus.id >> None)
             )
 
         def index_error_query():
