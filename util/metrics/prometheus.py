@@ -132,6 +132,46 @@ secscan_result_duration = Histogram(
     buckets=SECSCAN_RESULT_BUCKETS,
 )
 
+# Helm chart extraction metrics
+helm_extraction_duration = Histogram(
+    "quay_helm_extraction_duration_seconds",
+    "time to extract metadata from a Helm chart archive",
+    labelnames=["status"],
+)
+
+helm_extraction_total = Counter(
+    "quay_helm_extractions_total",
+    "total Helm chart extraction attempts",
+    labelnames=["status"],
+)
+
+helm_extraction_chart_size = Histogram(
+    "quay_helm_extraction_chart_size_bytes",
+    "compressed size of Helm chart layers processed",
+    buckets=(
+        1024,  # 1 KiB
+        4096,  # 4 KiB
+        16384,  # 16 KiB
+        65536,  # 64 KiB
+        262144,  # 256 KiB
+        1048576,  # 1 MiB
+        4194304,  # 4 MiB
+        10485760,  # 10 MiB
+        20971520,  # 20 MiB
+        float("inf"),
+    ),
+)
+
+helm_backfill_enqueued = Counter(
+    "quay_helm_backfill_enqueued_total",
+    "number of pre-existing Helm charts enqueued by the backfill worker",
+)
+
+helm_backfill_remaining = Gauge(
+    "quay_helm_backfill_remaining",
+    "number of Helm chart manifests still awaiting backfill",
+)
+
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
 ONE_DAY_IN_SECONDS = 60 * 60 * 24

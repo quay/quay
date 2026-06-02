@@ -501,3 +501,83 @@ def test_write_manifest_by_tagname_immutable_returns_409(client, app):
         assert "immutable" in error["message"].lower()
         assert "detail" in error
         assert "latest" in error["detail"]["message"]
+
+
+class TestHelmChartEnqueue:
+    """Tests for conditional Helm chart metadata queue enqueue on manifest push."""
+
+    def _make_mock_manifest(self, config_media_type="application/vnd.oci.image.config.v1+json"):
+        m = Mock()
+        m._db_id = 42
+        m.digest = "sha256:abc123"
+        m.config_media_type = config_media_type
+        m.media_type = "application/vnd.oci.image.manifest.v1+json"
+        return m
+
+    def _make_mock_repo_ref(self):
+        repo_ref = Mock()
+        repo_ref._db_id = 7
+        return repo_ref
+
+    @patch("endpoints.v2.manifest.image_pushes")
+    @patch("endpoints.v2.manifest.spawn_notification")
+    @patch("endpoints.v2.manifest.track_and_log")
+    @patch("endpoints.v2.manifest._validate_schema1_manifest")
+    @patch("endpoints.v2.manifest._write_manifest")
+    @patch("endpoints.v2.manifest.helm_chart_metadata_queue")
+    def test_helm_manifest_enqueues_extraction(
+        self, mock_queue, mock_write, mock_validate, mock_track, mock_notify, mock_pushes, app
+    ):
+        m = self._make_mock_manifest(config_media_type="application/vnd.cncf.helm.config.v1+json")
+        repo_ref = self._make_mock_repo_ref()
+        mock_write.return_value = (repo_ref, m, Mock())
+
+        with toggle_feature("HELM_CHART_METADATA_EXTRACTION", True):
+            from endpoints.v2.manifest import _write_manifest_and_log
+
+            _write_manifest_and_log("devtable", "helmrepo", "latest", Mock())
+
+        mock_queue.put.assert_called_once()
+        call_args = json.loads(mock_queue.put.call_args[0][1])
+        assert call_args["manifest_id"] == 42
+        assert call_args["repository_id"] == 7
+
+    @patch("endpoints.v2.manifest.image_pushes")
+    @patch("endpoints.v2.manifest.spawn_notification")
+    @patch("endpoints.v2.manifest.track_and_log")
+    @patch("endpoints.v2.manifest._validate_schema1_manifest")
+    @patch("endpoints.v2.manifest._write_manifest")
+    @patch("endpoints.v2.manifest.helm_chart_metadata_queue")
+    def test_non_helm_manifest_does_not_enqueue(
+        self, mock_queue, mock_write, mock_validate, mock_track, mock_notify, mock_pushes, app
+    ):
+        m = self._make_mock_manifest(config_media_type="application/vnd.oci.image.config.v1+json")
+        repo_ref = self._make_mock_repo_ref()
+        mock_write.return_value = (repo_ref, m, Mock())
+
+        with toggle_feature("HELM_CHART_METADATA_EXTRACTION", True):
+            from endpoints.v2.manifest import _write_manifest_and_log
+
+            _write_manifest_and_log("devtable", "imagerepo", "latest", Mock())
+
+        mock_queue.put.assert_not_called()
+
+    @patch("endpoints.v2.manifest.image_pushes")
+    @patch("endpoints.v2.manifest.spawn_notification")
+    @patch("endpoints.v2.manifest.track_and_log")
+    @patch("endpoints.v2.manifest._validate_schema1_manifest")
+    @patch("endpoints.v2.manifest._write_manifest")
+    @patch("endpoints.v2.manifest.helm_chart_metadata_queue")
+    def test_helm_manifest_not_enqueued_when_feature_disabled(
+        self, mock_queue, mock_write, mock_validate, mock_track, mock_notify, mock_pushes, app
+    ):
+        m = self._make_mock_manifest(config_media_type="application/vnd.cncf.helm.config.v1+json")
+        repo_ref = self._make_mock_repo_ref()
+        mock_write.return_value = (repo_ref, m, Mock())
+
+        with toggle_feature("HELM_CHART_METADATA_EXTRACTION", False):
+            from endpoints.v2.manifest import _write_manifest_and_log
+
+            _write_manifest_and_log("devtable", "helmrepo", "latest", Mock())
+
+        mock_queue.put.assert_not_called()

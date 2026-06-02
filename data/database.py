@@ -949,6 +949,8 @@ class User(BaseModel):
                 OrgMirrorConfig,
                 OrgMirrorRepository,
                 OrganizationContactEmail,
+                HelmChartMetadata,
+                HelmRepoIndexConfig,
             } | v22_classes
             delete_instance_filtered(self, User, delete_nullable, skip_transitive_deletes)
 
@@ -1160,6 +1162,8 @@ class Repository(BaseModel):
             TagPullStatistics,
             ManifestPullStatistics,
             OrgMirrorRepository,
+            HelmChartMetadata,
+            HelmRepoIndexConfig,
         } | v22_classes
 
         delete_instance_filtered(self, Repository, delete_nullable, skip_transitive_deletes)
@@ -2316,6 +2320,70 @@ class TagNotificationSuccess(BaseModel):
     notification = ForeignKeyField(RepositoryNotification, index=True, null=False)
     tag = ForeignKeyField(Tag, index=True, null=False)
     method = ForeignKeyField(ExternalNotificationMethod, null=False)
+
+
+class HelmChartMetadata(BaseModel):
+    """
+    Stores extracted metadata from Helm chart OCI artifacts. Populated asynchronously
+    by the HelmChartMetadataWorker after a Helm chart manifest is pushed.
+    """
+
+    manifest = ForeignKeyField(Manifest, unique=True, on_delete="CASCADE")
+    repository = ForeignKeyField(Repository, index=True)
+
+    chart_name = CharField(max_length=255)
+    chart_version = CharField(max_length=255)
+    app_version = CharField(max_length=255, null=True)
+    api_version = CharField(max_length=16)
+    description = TextField(null=True)
+    kube_version = CharField(max_length=255, null=True)
+    chart_type = CharField(max_length=32, null=True)
+    home = CharField(max_length=2048, null=True)
+    icon_url = CharField(max_length=2048, null=True)
+    deprecated = BooleanField(default=False)
+
+    sources = JSONField(default=[])
+    maintainers = JSONField(default=[])
+    chart_dependencies = JSONField(default=[])
+    keywords = JSONField(default=[])
+    annotations = JSONField(default={})
+
+    chart_yaml = TextField()
+    readme = TextField(null=True)
+    values_yaml = TextField(null=True)
+    values_schema_json = TextField(null=True)
+    provenance = TextField(null=True)
+    provenance_key_id = CharField(max_length=64, null=True)
+    provenance_hash_algorithm = CharField(max_length=32, null=True)
+    provenance_signature_date = CharField(max_length=64, null=True)
+
+    icon_data = TextField(null=True)
+    icon_media_type = CharField(max_length=128, null=True)
+
+    file_tree = JSONField(default=[])
+    image_references = JSONField(default=[])
+
+    extraction_status = CharField(max_length=32, default="pending", index=True)
+    extraction_error = TextField(null=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+
+
+class HelmRepoIndexConfig(BaseModel):
+    """
+    Per-repository configuration for serving a Helm repository index (index.yaml).
+    Stored in a separate table to avoid DDL on the large repository table.
+    """
+
+    repository = ForeignKeyField(Repository, unique=True, on_delete="CASCADE")
+    enabled = BooleanField(default=False)
+    tag_pattern = CharField(max_length=256, null=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
 
 
 # Defines a map from full-length index names to the legacy names used in our code

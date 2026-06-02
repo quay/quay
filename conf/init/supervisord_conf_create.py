@@ -61,6 +61,8 @@ def registry_services():
         "autopruneworker": {"autostart": "true"},
         "proxycacheblobworker": {"autostart": "true"},
         "pullstatsredisflushworker": {"autostart": "true"},
+        "helmchartworker": {"autostart": "true"},
+        "helmchartbackfillworker": {"autostart": "true"},
     }
 
 
@@ -102,6 +104,8 @@ def config_services():
         "autopruneworker": {"autostart": "false"},
         "proxycacheblobworker": {"autostart": "false"},
         "pullstatsredisflushworker": {"autostart": "false"},
+        "helmchartworker": {"autostart": "false"},
+        "helmchartbackfillworker": {"autostart": "false"},
     }
 
 
