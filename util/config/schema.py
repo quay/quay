@@ -215,6 +215,17 @@ CONFIG_SCHEMA = {
             "description": "Whether emails are enabled. Defaults to True",
             "x-example": True,
         },
+        "FEATURE_SKIP_EMAIL_CONFIRMATION": {
+            "type": "boolean",
+            "description": (
+                "Whether to skip email confirmation requirement for repository notifications. "
+                "When False (default), users must confirm email addresses before they can receive "
+                "repository notifications. When True, email notifications can be sent to any address "
+                "without confirmation. Only enable this in trusted enterprise environments with "
+                "internal email addresses. Defaults to False for security."
+            ),
+            "x-example": False,
+        },
         "MAIL_SERVER": {
             "type": "string",
             "description": "The SMTP server to use for sending e-mails. Only required if FEATURE_MAILING is set to true.",
