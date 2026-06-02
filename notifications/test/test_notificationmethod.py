@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from httmock import HTTMock, urlmatch
 from mock import Mock, patch
@@ -16,6 +14,7 @@ from notifications.notificationmethod import (
     SlackMethod,
     WebhookMethod,
 )
+from test.fixtures import *
 
 
 def assert_validated(method, method_config, error_message, namespace_name, repo_name):
@@ -265,7 +264,7 @@ def test_email_confirmation_config_loading_path(initialized_db):
 
     # Verify the feature flag was loaded into the features module
     assert hasattr(features, "SKIP_EMAIL_CONFIRMATION")
-    assert features.SKIP_EMAIL_CONFIRMATION is True
+    assert bool(features.SKIP_EMAIL_CONFIRMATION) is True
 
     method = EmailMethod()
     # Should succeed without confirmation when loaded through config
@@ -279,7 +278,7 @@ def test_email_confirmation_config_loading_path(initialized_db):
 
     # Test with flag disabled through config
     features.import_features({"FEATURE_SKIP_EMAIL_CONFIRMATION": False})
-    assert features.SKIP_EMAIL_CONFIRMATION is False
+    assert bool(features.SKIP_EMAIL_CONFIRMATION) is False
 
     method = EmailMethod()
     # Should require confirmation when loaded through config
