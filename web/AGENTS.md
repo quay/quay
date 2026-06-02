@@ -45,9 +45,6 @@ web/
 │   │   ├── axios.ts         # Configured Axios instance (CSRF tokens)
 │   │   └── utils.ts         # Common utilities
 │   └── assets/              # Static assets
-├── cypress/
-│   ├── e2e/                 # Integration tests
-│   └── fixtures/            # Test data
 ├── webpack.dev.js           # Dev server + proxy config
 ├── webpack.prod.js          # Production build
 └── webpack.plugin.js        # OpenShift Console plugin build

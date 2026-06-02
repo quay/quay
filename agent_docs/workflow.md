@@ -86,7 +86,7 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 | **openshift-ci-robot** | JIRA lifecycle plugin | Validates ticket refs, transitions status (ASSIGNED→POST→MODIFIED), supports `/cherrypick` for backports |
 | **coderabbitai[bot]** | AI code review | Runs 7 pre-merge checks with `chill` profile. Flags are generally valid — fix or reply with rationale |
 | **codecov[bot]** | Coverage reporting | Reports coverage diffs. Project baseline ~72% |
-| **github-actions[bot]** | CI results | Cypress/Playwright reports, Surge preview links |
+| **github-actions[bot]** | CI results | Playwright reports, Surge preview links |
 
 ### CodeRabbit Pre-merge Checks
 
@@ -108,7 +108,7 @@ Four bots interact with PRs. Understanding their roles helps respond correctly.
 | Unit tests | Run failing test locally, fix code |
 | Types (mypy) | Fix type annotations |
 | Registry tests | `make registry-test` locally |
-| Cypress/Playwright | `cd web && pnpm run test:e2e` |
+| Playwright | `cd web && pnpm run test:e2e` |
 | PR Lint | Fix PR title to match regex |
 
 ## Session Setup
