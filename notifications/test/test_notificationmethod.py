@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from httmock import HTTMock, urlmatch
 from mock import Mock, patch
@@ -16,6 +14,7 @@ from notifications.notificationmethod import (
     SlackMethod,
     WebhookMethod,
 )
+from test.fixtures import *
 
 
 def assert_validated(method, method_config, error_message, namespace_name, repo_name):
@@ -210,3 +209,43 @@ def test_perform_http_call(method, method_config, netloc, initialized_db):
         )
 
     assert url_hit[0]
+
+
+def test_email_requires_confirmation_by_default(initialized_db):
+    """
+    Verify that email validation requires confirmed authorization when
+    FEATURE_SKIP_EMAIL_CONFIRMATION is False (default).
+    """
+    from data.model import config as model_config
+
+    with patch.dict(model_config.app_config, {"FEATURE_SKIP_EMAIL_CONFIRMATION": False}):
+        import features
+
+        features.import_features(model_config.app_config)
+
+        method = EmailMethod()
+
+        # Email without confirmation should fail validation
+        with pytest.raises(CannotValidateNotificationMethodException) as exc:
+            method.validate("devtable", "simple", {"email": "test@example.com"})
+
+        assert "not authorized to receive notifications" in str(exc.value)
+
+
+def test_email_skips_confirmation_when_feature_enabled(initialized_db):
+    """
+    Verify that email validation bypasses confirmation check when
+    FEATURE_SKIP_EMAIL_CONFIRMATION is True.
+    """
+    from data.model import config as model_config
+
+    with patch.dict(model_config.app_config, {"FEATURE_SKIP_EMAIL_CONFIRMATION": True}):
+        import features
+
+        features.import_features(model_config.app_config)
+
+        method = EmailMethod()
+
+        # Email without confirmation should pass validation
+        # This should NOT raise an exception
+        method.validate("devtable", "simple", {"email": "test@example.com"})
