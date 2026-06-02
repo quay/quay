@@ -2,24 +2,34 @@
 
 ## Database Stack
 
-- **PostgreSQL 12.1** - Primary database
-- **SQLAlchemy** - ORM
-- **Alembic** - Migrations
+- **PostgreSQL** - Primary database
+- **Peewee** - ORM (model classes defined in `data/database.py`)
+- **Alembic** - Migrations (via `data/model/sqlalchemybridge.py` which converts Peewee models to SQLAlchemy metadata)
 - **Redis** - Caching, sessions, build logs
 
-## Key Models
+## Data Layer Structure
 
-Located in `data/model/`:
+**Model class definitions** (User, Repository, Manifest, Tag, ImageStorage,
+etc.) all live in `data/database.py`. This single file is the schema source of
+truth.
 
-- `user.py` - User, FederatedLogin, Team, TeamMember
-- `repository.py` - Repository, RepositoryPermission, Star
-- `tag.py` - Tag, TagManifest, ManifestLabel
-- `image.py` - Image, ImageStorage, DerivedStorageForImage
-- `organization.py` - Organization, OrganizationMember
-- `build.py` - RepositoryBuild, RepositoryBuildTrigger
-- `notification.py` - Notification, RepositoryNotification
-- `appspecifictoken.py` - AppSpecificAuthToken
-- `log.py` - LogEntry, LogEntry2, LogEntry3
+**Query and business-logic modules** live in `data/model/`:
+
+- `user.py` - User, FederatedLogin, Team, TeamMember queries
+- `repository.py` - Repository, RepositoryPermission, Star queries
+- `organization.py` - Organization, OrganizationMember queries
+- `blob.py` - Blob operations
+- `storage.py` - ImageStorage management
+- `build.py` - RepositoryBuild, RepositoryBuildTrigger queries
+- `notification.py` - Notification, RepositoryNotification queries
+- `appspecifictoken.py` - AppSpecificAuthToken queries
+- `log.py` - LogEntry queries
+- `gc.py` - Garbage collection logic
+- `proxy_cache.py` - Pull-through cache config
+- `autoprune.py` - Auto-pruning policies
+- `namespacequota.py` - Namespace quota enforcement
+- `immutability.py` - Tag immutability rules
+- `oci/` - OCI-specific operations (tag, manifest, blob, label)
 
 ## Schema Changes
 
@@ -60,7 +70,7 @@ from data.database import db_transaction
 
 # Use context manager for transactions
 with db_transaction() as db:
-    user = db.query(User).filter_by(username='admin').first()
+    user = User.select().where(User.username == 'admin').get_or_none()
 ```
 
 ## Local Dev Database
@@ -83,7 +93,10 @@ make test_postgres TESTS=test/test_file.py
 
 ## Key Files
 
-- `data/database.py` - Database connection, session management
-- `data/model/__init__.py` - Model imports
+- `data/database.py` - Peewee model class definitions (schema source of truth)
+- `data/model/` - Query and business-logic modules
+- `data/model/oci/` - OCI-specific model operations
+- `data/model/sqlalchemybridge.py` - Peewee-to-SQLAlchemy bridge for Alembic
+- `data/registry_model/` - Registry abstraction layer between models and v2 endpoints
 - `data/migrations/env.py` - Alembic environment
 - `data/migrations/versions/` - Migration files

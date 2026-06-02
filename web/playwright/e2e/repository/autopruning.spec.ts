@@ -15,7 +15,8 @@
  */
 
 import {test, expect} from '../../fixtures';
-import {API_URL} from '../../utils/config';
+import {TEST_USERS} from '../../global-setup';
+import {pushImage, pushMultiArchImage} from '../../utils/container';
 
 test.describe(
   'Repository Auto-Prune Policies',
@@ -467,6 +468,254 @@ test.describe(
       await expect(
         authenticatedPage.getByText(/unexpected issue occurred/i),
       ).toBeVisible();
+    });
+  },
+);
+
+test.describe(
+  'Repository Auto-Prune Functional Verification',
+  {tag: ['@repository', '@feature:AUTO_PRUNE', '@container']},
+  () => {
+    const user = TEST_USERS.user;
+
+    test('repo-level tag-count pruning removes excess tags', async ({api}) => {
+      test.slow();
+      const org = await api.organization('repoprunecnt');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v2', user.username, user.password);
+
+      const tagsBefore = await api.raw.getTags(org.name, repo.name);
+      expect(tagsBefore.tags).toHaveLength(2);
+
+      await api.repoAutoPrunePolicy(org.name, repo.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        expect(tags.tags).toHaveLength(1);
+        expect(tags.tags[0].name).toBe('v2');
+      }).toPass({timeout: 120_000, intervals: [5_000]});
+    });
+
+    test('repo-level time-based pruning removes old tags', async ({api}) => {
+      test.slow();
+      const org = await api.organization('repopruneage');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+
+      await api.repoAutoPrunePolicy(org.name, repo.name, {
+        method: 'creation_date',
+        value: '10s',
+      });
+
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        expect(tags.tags).toHaveLength(0);
+      }).toPass({timeout: 180_000, intervals: [10_000]});
+    });
+
+    test('auto-pruning does not affect mirror repos', async ({api}) => {
+      test.slow();
+      const org = await api.organization('prunemirror');
+      const normalRepo = await api.repository(org.name, 'normalrepo');
+      const mirrorRepo = await api.repository(org.name, 'mirrorrepo');
+
+      await pushImage(
+        org.name,
+        mirrorRepo.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        mirrorRepo.name,
+        'v2',
+        user.username,
+        user.password,
+      );
+
+      await api.raw.changeRepositoryState(org.name, mirrorRepo.name, 'MIRROR');
+
+      await pushImage(
+        org.name,
+        normalRepo.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        normalRepo.name,
+        'v2',
+        user.username,
+        user.password,
+      );
+
+      await api.orgAutoPrunePolicy(org.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+
+      // Normal repo should get pruned
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, normalRepo.name);
+        expect(tags.tags).toHaveLength(1);
+      }).toPass({timeout: 120_000, intervals: [5_000]});
+
+      // Mirror repo should retain both tags
+      const mirrorTags = await api.raw.getTags(org.name, mirrorRepo.name);
+      expect(mirrorTags.tags).toHaveLength(2);
+    });
+
+    test('multi-arch image pruning by tag count', async ({api}) => {
+      test.slow();
+      const org = await api.organization('prunearch');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushMultiArchImage(
+        org.name,
+        repo.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+      await pushMultiArchImage(
+        org.name,
+        repo.name,
+        'v2',
+        user.username,
+        user.password,
+      );
+
+      await api.orgAutoPrunePolicy(org.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        const activeNames = tags.tags.map((t) => t.name);
+        expect(activeNames).not.toContain('v1');
+        expect(activeNames).toContain('v2');
+      }).toPass({timeout: 150_000, intervals: [5_000]});
+    });
+
+    test('regex tag pattern limits which tags are pruned', async ({api}) => {
+      test.slow();
+      const org = await api.organization('pruneregex');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(
+        org.name,
+        repo.name,
+        'release-1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        repo.name,
+        'release-2',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        repo.name,
+        'dev-1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org.name,
+        repo.name,
+        'dev-2',
+        user.username,
+        user.password,
+      );
+
+      await api.repoAutoPrunePolicy(org.name, repo.name, {
+        method: 'number_of_tags',
+        value: 1,
+        tagPattern: '^dev-',
+        tagPatternMatches: true,
+      });
+
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        const names = tags.tags.map((t) => t.name).sort();
+        // Both release tags should remain untouched
+        expect(names).toContain('release-1');
+        expect(names).toContain('release-2');
+        // Only the newest dev tag should remain
+        expect(names).toContain('dev-2');
+        expect(names).not.toContain('dev-1');
+      }).toPass({timeout: 120_000, intervals: [5_000]});
+    });
+
+    test('multiple repo-level policies coexist without interference', async ({
+      api,
+    }) => {
+      test.slow();
+      const org = await api.organization('repomulti');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v2', user.username, user.password);
+
+      await api.repoAutoPrunePolicy(org.name, repo.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+      await api.repoAutoPrunePolicy(org.name, repo.name, {
+        method: 'creation_date',
+        value: '10s',
+      });
+
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        expect(tags.tags).toHaveLength(0);
+      }).toPass({timeout: 120_000, intervals: [5_000]});
+    });
+
+    test('policy removal stops pruning', async ({api}) => {
+      test.slow();
+      const org = await api.organization('prunestop');
+      const repo = await api.repository(org.name, 'prunetest');
+
+      await pushImage(org.name, repo.name, 'v1', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v2', user.username, user.password);
+
+      const policy = await api.orgAutoPrunePolicy(org.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+
+      // Wait for pruning to take effect
+      await expect(async () => {
+        const tags = await api.raw.getTags(org.name, repo.name);
+        expect(tags.tags).toHaveLength(1);
+      }).toPass({timeout: 120_000, intervals: [5_000]});
+
+      // Manually delete the policy mid-test
+      await api.raw.deleteOrgAutoPrunePolicy(org.name, policy.uuid);
+
+      // Push new tags — they should not be pruned
+      await pushImage(org.name, repo.name, 'v3', user.username, user.password);
+      await pushImage(org.name, repo.name, 'v4', user.username, user.password);
+
+      // Wait two pruner cycles, tags should remain
+      await new Promise((r) => setTimeout(r, 90_000));
+      const tagsAfter = await api.raw.getTags(org.name, repo.name);
+      const names = tagsAfter.tags.map((t) => t.name).sort();
+      expect(names).toContain('v3');
+      expect(names).toContain('v4');
     });
   },
 );

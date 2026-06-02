@@ -37,7 +37,7 @@ type Config struct {
 // Load reads a config file from disk and parses it. path may be a file or a
 // directory containing config.yaml.
 func Load(path string) (*Config, error) {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) //nolint:gosec // path is a user-provided config file
 	if err != nil {
 		return nil, fmt.Errorf("config: stat %s: %w", path, err)
 	}

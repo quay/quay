@@ -2,95 +2,73 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"flag"
-	"fmt"
-	"net"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"log/slog"
+	"path/filepath"
 
-	"github.com/distribution/distribution/v3/configuration"
-	"github.com/distribution/distribution/v3/registry/handlers"
-
-	// Registers the filesystem storage driver with the distribution driver factory.
-	_ "github.com/distribution/distribution/v3/registry/storage/driver/filesystem"
+	"github.com/quay/quay/internal/bootstrap"
+	"github.com/quay/quay/internal/config"
+	"github.com/quay/quay/internal/dal/dbcore"
+	"github.com/quay/quay/internal/server"
 )
 
-func runServe(args []string) int {
+func newServeCmd() *Command {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
-	addr := fs.String("addr", "127.0.0.1:5000", "listen address (host:port)")
-	root := fs.String("root", "/var/lib/registry", "root directory for image storage")
-	if err := fs.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return 0
-		}
-		return 1
-	}
+	configPath := fs.String("config", "", "path to config.yaml (optional, overrides flags)")
+	dataDir := fs.String("data-dir", ".", "root directory for DB, storage, certs")
+	hostname := fs.String("hostname", "localhost", "server hostname for TLS SANs")
+	addr := fs.String("addr", ":8443", "listen address")
+	adminUsername := fs.String("admin-username", "admin", "admin username (first run only)")
 
-	// Minimal distribution config: filesystem storage with delete support.
-	// Auth, TLS, and metrics are left unconfigured for local use.
-	cfg := &configuration.Configuration{
-		Storage: configuration.Storage{
-			"filesystem": configuration.Parameters{
-				"rootdirectory": *root,
-			},
-			"delete": configuration.Parameters{
-				"enabled": true,
-			},
+	return &Command{
+		Name:     "serve",
+		Synopsis: "Start the OCI container registry",
+		Flags:    fs,
+		Run: func(ctx context.Context, _ *Command, _ []string) int {
+			return runServe(ctx, *configPath, *dataDir, *hostname, *addr, *adminUsername)
 		},
 	}
+}
 
-	cfg.HTTP.Addr = *addr
-
-	// Root context canceled on SIGINT/SIGTERM; propagates to the
-	// distribution app and all in-flight HTTP requests.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	// NewApp wires up all OCI Distribution Spec endpoints (/v2/, manifests,
-	// blobs, uploads, tags, catalog). The context enables cancellation.
-	app := handlers.NewApp(ctx, cfg)
-
-	srv := &http.Server{
-		Addr:              *addr,
-		Handler:           app,
-		ReadHeaderTimeout: 10 * time.Second,
-
-		// Derive request contexts from root so shutdown cancels in-flight requests.
-		BaseContext: func(_ net.Listener) context.Context { return ctx },
-	}
-
-	errCh := make(chan error, 1)
-	go func() {
-		fmt.Fprintf(os.Stderr, "registry listening on %s (storage: %s)\n", *addr, *root)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- err
-		}
-	}()
-
-	select {
-	case err := <-errCh:
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
-	case <-ctx.Done():
-	}
-
-	stop() // Restore default signal handling; second Ctrl-C kills immediately.
-
-	fmt.Fprintln(os.Stderr, "\nshutting down...")
-
-	// Fresh context for graceful drain; the root context is already canceled.
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		fmt.Fprintf(os.Stderr, "shutdown error: %v\n", err)
+func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUsername string) int {
+	resolved, err := config.Resolve(configPath, dataDir, hostname)
+	if err != nil {
+		slog.Error("config error", "err", err)
 		return 1
 	}
 
-	fmt.Fprintln(os.Stderr, "stopped")
-	return 0
+	db, err := dbcore.Setup(ctx, resolved.DBPath)
+	if err != nil {
+		slog.Error("database setup error", "err", err)
+		return 1
+	}
+	defer func() { _ = db.Close() }()
+
+	authDir := filepath.Join(filepath.Dir(resolved.DBPath), "auth")
+	if _, err := bootstrap.AdminUser(ctx, db, adminUsername, authDir); err != nil {
+		slog.Error("bootstrap admin user error", "err", err)
+		return 1
+	}
+
+	srv, err := server.New(ctx, &server.Config{
+		ListenAddr:      addr,
+		StoragePath:     resolved.StoragePath,
+		Hostname:        resolved.Config.ServerHostname,
+		PreferredScheme: resolved.Config.PreferredURLScheme,
+		DBPath:          resolved.DBPath,
+		DB:              db,
+	})
+	if err != nil {
+		slog.Error("server build error", "err", err)
+		return 1
+	}
+
+	slog.Info("registry listening",
+		"scheme", srv.Scheme(),
+		"addr", srv.Addr(),
+		"storage", resolved.StoragePath,
+		"db", resolved.DBPath,
+	)
+
+	return srv.ListenAndServe(ctx)
 }

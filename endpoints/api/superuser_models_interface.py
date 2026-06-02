@@ -138,7 +138,7 @@ class RepositoryBuild(
             "tags": self.job_config.get("docker_tags", []),
             "manual_user": self.job_config.get("manual_user", None),
             "is_writer": self.can_write,
-            "trigger": self.trigger.to_dict(),
+            "trigger": self.trigger.to_dict() if self.trigger else None,
             "trigger_metadata": (
                 self.job_config.get("trigger_metadata", None) if self.can_read else None
             ),

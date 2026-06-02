@@ -725,7 +725,7 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `account-settings.cy.ts` | `user/account-settings.spec.ts` | @user, @feature:BILLING, @feature:MAILING, @feature:CHANGE_TAG_EXPIRATION, consolidated 31→20 tests |
 | ✅ | `autopruning.cy.ts` | `repository/autopruning.spec.ts` | @feature:AUTO_PRUNE, Cypress file deleted |
 | ✅ | `breadcrumbs.cy.ts` | `ui/breadcrumbs.spec.ts` | |
-| ⬚ | `builds.cy.ts` | | |
+| ✅ | `builds.cy.ts` | `repository/builds.spec.ts` | @feature:BUILD_SUPPORT, @feature:REPO_MIRROR, real builds via PopenExecutor, mock-only trigger/fixture tests dropped, Cypress file deleted |
 | ✅ | `create-account.cy.ts` | `auth/create-account.spec.ts` | @feature:MAILING, @feature:QUOTA_MANAGEMENT, consolidated 10→6 tests |
 | ✅ | `default-permissions.cy.ts` | `organization/default-permissions.spec.ts` | |
 | ✅ | `external-login.cy.ts` | `auth/external-login.spec.ts` | @auth:OIDC, consolidated 6→3 tests, Cypress file deleted |
@@ -755,9 +755,9 @@ Track migration progress from Cypress to Playwright.
 | ✅ | `robot-accounts.cy.ts` | `organization/robot-accounts.spec.ts` | Consolidated 12→4 tests |
 | ✅ | `security-report.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 11→3 tests, Cypress file deleted |
 | ✅ | `security-scanner-feature-toggle.cy.ts` | `tags/security-scan.spec.ts` | @feature:SECURITY_SCANNER, @container, consolidated 12→3 tests, Cypress file deleted |
-| ⬚ | `service-status.cy.ts` | | |
+| ✅ | `service-status.cy.ts` | `ui/service-status.spec.ts` | @feature:BILLING (mocked), 2→2 tests, uses page.route() for external StatusPage CDN, Cypress file deleted |
 | ✅ | `signin.cy.ts` | `auth/signin.spec.ts` | @feature:MAILING, @auth:Database, @feature:SUPERUSERS_FULL_ACCESS, consolidated 30→18 tests |
-| 🚧 | `superuser-build-logs.cy.ts` | `superuser/build-logs.spec.ts` | Partial: 12→8 tests (access control, button state, error handling, sidebar nav, BUILD_SUPPORT disabled, checkbox toggle). Build-dependent tests (load/display logs, timestamps with data, loading state, empty logs, object messages PROJQUAY-9714) not migrated |
+| ✅ | `superuser-build-logs.cy.ts` | `superuser/build-logs.spec.ts` | @feature:BUILD_SUPPORT, 12→9 tests, real build logs via PopenExecutor, mock-only fixture tests dropped, Cypress file deleted |
 | ✅ | `superuser-change-log.cy.ts` | `superuser/change-log.spec.ts` | Superuser required, 7→2 tests (access control in framework.spec.ts) |
 | ✅ | `superuser-framework.cy.ts` | `superuser/framework.spec.ts` | Superuser required, consolidated 7→4 tests |
 | ✅ | `superuser-messages.cy.ts` | `superuser/messages.spec.ts` | Superuser required, consolidated 14→6 tests |

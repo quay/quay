@@ -2,100 +2,59 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
 
 	"github.com/quay/quay/internal/config"
 )
 
-func runConfig(args []string) int {
-	if len(args) == 0 {
-		configUsage()
-		return 1
-	}
-
-	switch args[0] {
-	case "validate":
-		return runConfigValidate(args[1:])
-	case "help", "-h", "--help":
-		configUsage()
-		return 0
-	default:
-		fmt.Fprintf(os.Stderr, "unknown config subcommand: %s\n", args[0])
-		configUsage()
-		return 1
+func newConfigCmd() *Command {
+	return &Command{
+		Name:     "config", //nolint:goconst // command name, not a shared constant
+		Synopsis: "Configuration tools (validate)",
+		Subcommands: []*Command{
+			newConfigValidateCmd(),
+		},
 	}
 }
 
-func configUsage() {
-	fmt.Fprintln(os.Stderr, `usage: quay config <subcommand> [flags]
-
-subcommands:
-  validate          Validate configuration`)
-}
-
-// configValidateOpts holds the parsed flags for "quay config validate".
-type configValidateOpts struct {
-	configPath string
-	mode       string
-}
-
-// parseConfigValidateFlags parses and validates the flag set for
-// "quay config validate". It returns the parsed options, an exit code,
-// and whether parsing succeeded. On failure the caller should return
-// the exit code without running business logic.
-func parseConfigValidateFlags(args []string) (configValidateOpts, int, bool) {
-	fs := flag.NewFlagSet("quay config validate", flag.ContinueOnError)
-
+func newConfigValidateCmd() *Command {
+	fs := flag.NewFlagSet("validate", flag.ContinueOnError) //nolint:goconst // FlagSet name, not a shared constant
 	configPath := fs.String("config", "", "path to config.yaml or config directory")
 	mode := fs.String("mode", "offline", "validation mode: offline or online")
 
-	if err := fs.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return configValidateOpts{}, 0, false
-		}
-		return configValidateOpts{}, 1, false
+	return &Command{
+		Name:     "validate", //nolint:goconst // command name matches FlagSet name by design
+		Synopsis: "Validate configuration",
+		Flags:    fs,
+		Run: func(ctx context.Context, cmd *Command, _ []string) int {
+			if *configPath == "" {
+				fmt.Fprintln(os.Stderr, "error: -config flag is required")
+				cmd.Usage(os.Stderr)
+				return 1
+			}
+			if *mode != "offline" && *mode != "online" {
+				fmt.Fprintf(os.Stderr, "error: -mode must be \"offline\" or \"online\", got %q\n", *mode)
+				return 1
+			}
+			return runConfigValidate(ctx, *configPath, *mode)
+		},
 	}
-
-	if *configPath == "" {
-		fmt.Fprintln(os.Stderr, "error: -config flag is required")
-		fs.Usage()
-		return configValidateOpts{}, 1, false
-	}
-
-	if *mode != "offline" && *mode != "online" {
-		fmt.Fprintf(os.Stderr, "error: -mode must be \"offline\" or \"online\", got %q\n", *mode)
-		return configValidateOpts{}, 1, false
-	}
-
-	return configValidateOpts{configPath: *configPath, mode: *mode}, 0, true
 }
 
-func runConfigValidate(args []string) int {
-	opts, code, ok := parseConfigValidateFlags(args)
-	if !ok {
-		return code
-	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-
-	cfg, err := config.Load(opts.configPath)
+func runConfigValidate(ctx context.Context, configPath, mode string) int {
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
 
-	valOpts := config.ValidateOptions{Mode: opts.mode}
+	valOpts := config.ValidateOptions{Mode: mode}
 
-	if opts.mode == "online" {
-		// configPath may be a file path rather than a directory; derive
-		// the parent directory so cert loading can walk the config dir.
-		configDir := opts.configPath
+	if mode == "online" {
+		configDir := configPath
 		info, statErr := os.Stat(configDir)
 		if statErr == nil && !info.IsDir() {
 			configDir = filepath.Dir(configDir)
