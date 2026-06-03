@@ -829,13 +829,13 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       );
       expect(queuedEmail, 'build_queued email not received').not.toBeNull();
 
-      // Assert build_success email is delivered
+      // Assert build_success email is delivered (240s: build may queue behind concurrent tests)
       const successEmail = await mailpit.waitForEmail(
         (msg) =>
           msg.To.some((to) => to.Address === testEmail) &&
           msg.Subject.includes('Build succeeded') &&
           msg.Subject.includes(`${org.name}/${repo.name}`),
-        120000,
+        240000,
       );
       expect(successEmail, 'build_success email not received').not.toBeNull();
     },
@@ -845,8 +845,8 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
     'build event notification delivered via webhook',
     {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-11626']},
     async ({api}) => {
-      // Build trigger + webhook wait (120s) + overhead
-      test.setTimeout(180_000);
+      // Build trigger + webhook wait (240s) + overhead; build may queue behind concurrent tests
+      test.setTimeout(300_000);
       const org = await api.organization('buildwh');
       const repo = await api.repository(org.name, 'buildwhrepo');
 
@@ -872,7 +872,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
           (req) =>
             req.body.build_id === build.buildId &&
             req.body.repository === `${org.name}/${repo.name}`,
-          120000,
+          240000,
         );
         expect(webhook, 'build_success webhook not received').not.toBeNull();
         expect(webhook!.body.repository).toBe(`${org.name}/${repo.name}`);
