@@ -817,7 +817,11 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       );
 
       // Trigger a build — LABEL ensures a layer is produced so Quay marks it build_success
-      await api.build(org.name, repo.name, 'FROM scratch\nLABEL build="notification-test"\n');
+      await api.build(
+        org.name,
+        repo.name,
+        'FROM scratch\nLABEL build="notification-test"\n',
+      );
 
       // Assert build_queued email is delivered
       const queuedEmail = await mailpit.waitForEmail(
@@ -865,7 +869,11 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         );
 
         // Trigger a build — LABEL ensures a layer is produced so Quay marks it build_success
-        const build = await api.build(org.name, repo.name, 'FROM scratch\nLABEL build="notification-test"\n');
+        const build = await api.build(
+          org.name,
+          repo.name,
+          'FROM scratch\nLABEL build="notification-test"\n',
+        );
 
         // Wait for webhook delivery and verify payload
         const webhook = await receiver.waitForWebhook(
