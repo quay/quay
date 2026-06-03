@@ -861,18 +861,18 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
         );
 
         // Trigger a build
-        await api.build(org.name, repo.name, 'FROM scratch\n');
+        const build = await api.build(org.name, repo.name, 'FROM scratch\n');
 
         // Wait for webhook delivery and verify payload
         const webhook = await receiver.waitForWebhook(
           (req) =>
-            typeof req.body.build_id === 'string' &&
+            req.body.build_id === build.buildId &&
             req.body.repository === `${org.name}/${repo.name}`,
           120000,
         );
         expect(webhook, 'build_success webhook not received').not.toBeNull();
         expect(webhook!.body.repository).toBe(`${org.name}/${repo.name}`);
-        expect(typeof webhook!.body.build_id).toBe('string');
+        expect(webhook!.body.build_id).toBe(build.buildId);
       } finally {
         await receiver.stop();
       }
