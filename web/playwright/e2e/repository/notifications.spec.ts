@@ -740,6 +740,8 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
     'build event notifications delivered via email',
     {tag: ['@feature:BUILD_SUPPORT', '@feature:MAILING', '@PROJQUAY-11626']},
     async ({authenticatedPage, api}) => {
+      // Auth flow + build_queued wait (60s) + build_success wait (120s) + overhead
+      test.setTimeout(300_000);
       const org = await api.organization('buildmail');
       const repo = await api.repository(org.name, 'buildmailrepo');
       const testEmail = `${uniqueName('build')}@example.com`;
@@ -843,6 +845,8 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
     'build event notification delivered via webhook',
     {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-11626']},
     async ({api}) => {
+      // Build trigger + webhook wait (120s) + overhead
+      test.setTimeout(180_000);
       const org = await api.organization('buildwh');
       const repo = await api.repository(org.name, 'buildwhrepo');
 
