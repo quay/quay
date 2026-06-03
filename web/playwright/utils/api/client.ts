@@ -885,6 +885,9 @@ export class ApiClient {
       );
     }
 
+    // Creating a user auto-logs in, which rotates the server-side CSRF token.
+    this.csrfToken = null;
+
     const result = await response.json();
     return {
       username: result.username || username,

@@ -230,3 +230,6 @@ IMAGE_EXPIRY_TRIGGER: FeatureNameValue
 UI_MODELCARD: FeatureNameValue
 
 OTEL_TRACING: FeatureNameValue
+
+# Feature Flag: If set to true, enables programmatic bootstrap token creation via API
+PROGRAMMATIC_BOOTSTRAP: FeatureNameValue

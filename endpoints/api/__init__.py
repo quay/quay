@@ -848,6 +848,7 @@ import endpoints.api.mirrorhealth
 import endpoints.api.namespacequota
 import endpoints.api.org_mirror
 import endpoints.api.organization
+import endpoints.api.organization_application_tokens
 import endpoints.api.permission
 import endpoints.api.policy
 import endpoints.api.prototype

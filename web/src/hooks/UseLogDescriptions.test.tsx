@@ -500,6 +500,34 @@ describe('UseLogDescriptions', () => {
     });
   });
 
+  describe('oauth token events', () => {
+    it('create_oauth_api_token', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.create_oauth_api_token({
+          application_name: 'MyApp',
+          scope: 'repo:read',
+          auth_method: 'bootstrap',
+        }),
+      );
+      expect(text).toContain('MyApp');
+      expect(text).toContain('repo:read');
+      expect(text).toContain('bootstrap');
+    });
+
+    it('revoke_oauth_api_token', () => {
+      const desc = getDescriptions();
+      const text = renderDescription(
+        desc.revoke_oauth_api_token({
+          oauth_token_uuid: 'abc-123',
+          client_id: 'client-456',
+        }),
+      );
+      expect(text).toContain('abc-123');
+      expect(text).toContain('client-456');
+    });
+  });
+
   describe('quota events', () => {
     it('org_create_quota', () => {
       const desc = getDescriptions();

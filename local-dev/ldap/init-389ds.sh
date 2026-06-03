@@ -4,33 +4,38 @@
 #
 # All authenticated operations use LDAPI (Unix socket) with root autobind
 # to avoid dependency on the Directory Manager password.
+#
+# NOTE: dscontainer -r has a two-phase startup on first run:
+#   1. Installation phase — temporarily starts slapd, configures it, stops it
+#   2. Run phase — starts slapd permanently
+# We must wait for phase 2 to complete before running dsconf commands.
 
 set -e
 
 LDAPI_URI="ldapi://%2Fdata%2Frun%2Fslapd-localhost.socket"
 
-echo "Waiting for 389 DS to start..."
-timeout=30
+echo "Waiting for 389 DS to be fully ready (LDAPI)..."
+timeout=60
 while [ $timeout -gt 0 ]; do
-    if ldapsearch -x -H ldap://localhost:3389 -b "" -s base &>/dev/null; then
+    if dsconf "$LDAPI_URI" backend suffix list &>/dev/null; then
         echo "389 DS is ready!"
         break
     fi
-    sleep 1
-    timeout=$((timeout - 1))
+    sleep 2
+    timeout=$((timeout - 2))
 done
 
-if [ $timeout -eq 0 ]; then
-    echo "ERROR: 389 DS failed to start"
+if [ $timeout -le 0 ]; then
+    echo "ERROR: 389 DS failed to become ready via LDAPI"
     exit 1
 fi
 
 # Check if backend already exists
-if dsconf localhost backend suffix list | grep -q "dc=example,dc=org"; then
+if dsconf "$LDAPI_URI" backend suffix list | grep -q "dc=example,dc=org"; then
     echo "Backend already exists, skipping creation"
 else
     echo "Creating backend for dc=example,dc=org..."
-    dsconf localhost backend create --suffix "dc=example,dc=org" --be-name userroot
+    dsconf "$LDAPI_URI" backend create --suffix "dc=example,dc=org" --be-name userroot
 fi
 
 # Add a custom user-modifiable schema attribute for LDAP group membership queries.

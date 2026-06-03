@@ -34,6 +34,7 @@ from app import (
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.basic import has_basic_auth
+from auth.bootstrap import BootstrapAuthError, validate_bootstrap_auth
 from auth.decorators import process_auth_or_cookie, process_oauth, require_session_login
 from auth.permissions import (
     AdministerOrganizationPermission,
@@ -50,10 +51,14 @@ from buildtrigger.triggerutil import TriggerProviderException
 from config import frontend_visible_config
 from data import model
 from data.database import User, db, random_string_generator
+from data.model import oauth as oauth_model
 from data.model.oauth import (
+    MAX_TOKENS_PER_APPLICATION,
     assign_token_to_user,
     get_oauth_application_for_client_id,
     get_token_assignment,
+    normalize_scope,
+    validate_expiration,
 )
 from data.model.organization import is_org_admin
 from data.model.user import get_nonrobot_user, get_user
@@ -1129,6 +1134,217 @@ def user_initialize():
         response = jsonify({"message": "Failed to initialize user: " + str(ex)})
         response.status_code = 400
         return response
+
+
+@web.route("/api/v1/bootstrap/token", methods=["POST"])
+@route_show_if(features.PROGRAMMATIC_BOOTSTRAP)
+def bootstrap_token():
+    """
+    Create an OAuth token via bootstrap authentication.
+
+    Requires FEATURE_PROGRAMMATIC_BOOTSTRAP to be enabled.
+    Only superusers are authorized to use this endpoint.
+    """
+    body = request.get_json() or {}
+
+    try:
+        auth_result = validate_bootstrap_auth()
+    except BootstrapAuthError as e:
+        response = jsonify({"message": e.message})
+        response.status_code = e.status_code
+        return response
+
+    user = auth_result.user
+    auth_method = auth_result.auth_method
+
+    scope_string = body.get("scope")
+    if not scope_string or not isinstance(scope_string, str):
+        response = jsonify({"message": "Missing or invalid 'scope' field"})
+        response.status_code = 400
+        return response
+
+    normalized_scope = normalize_scope(scope_string)
+    if not scopes.validate_scope_string(normalized_scope):
+        response = jsonify({"message": "Invalid scope: %s" % scope_string})
+        response.status_code = 400
+        return response
+
+    application_name = body.get("application_name", "bootstrap")
+
+    try:
+        expiration = validate_expiration(body.get("expiration", 315576000))
+    except ValueError as e:
+        response = jsonify({"message": str(e)})
+        response.status_code = 400
+        return response
+
+    application = oauth_model.get_or_create_application(application_name, user)
+
+    active_count = oauth_model.count_active_tokens(application)
+    if active_count >= MAX_TOKENS_PER_APPLICATION:
+        response = jsonify(
+            {
+                "message": "Token limit reached: maximum %d non-expired tokens per application"
+                % MAX_TOKENS_PER_APPLICATION
+            }
+        )
+        response.status_code = 400
+        return response
+
+    token_record, access_token = oauth_model.create_oauth_api_token(
+        application=application,
+        user=user,
+        scope=normalized_scope,
+        expiration_seconds=expiration,
+    )
+
+    # Audit log
+    log_action(
+        "create_oauth_api_token",
+        user.username,
+        metadata={
+            "oauth_token_uuid": token_record.uuid,
+            "scope": normalized_scope,
+            "application_name": application_name,
+            "auth_method": auth_method,
+            "client_id": application.client_id,
+        },
+        performer=user,
+    )
+
+    return (
+        jsonify(
+            {
+                "token": access_token,
+                "uuid": token_record.uuid,
+                "application_name": application_name,
+                "client_id": application.client_id,
+                "scope": normalized_scope,
+                "expires_at": token_record.expires_at.isoformat() + "Z",
+            }
+        ),
+        200,
+    )
+
+
+@web.route("/api/v1/bootstrap/tokens", methods=["GET"])
+@route_show_if(features.PROGRAMMATIC_BOOTSTRAP)
+def bootstrap_tokens_list():
+    """
+    List all bootstrap-created OAuth tokens.
+
+    Requires FEATURE_PROGRAMMATIC_BOOTSTRAP to be enabled.
+    Only superusers are authorized.
+    """
+    try:
+        auth_result = validate_bootstrap_auth()
+    except BootstrapAuthError as e:
+        response = jsonify({"message": e.message})
+        response.status_code = e.status_code
+        return response
+
+    expired_param = request.args.get("expired")
+    expired = None
+    if expired_param is not None:
+        if expired_param.lower() == "true":
+            expired = True
+        elif expired_param.lower() == "false":
+            expired = False
+        else:
+            response = jsonify({"message": "Invalid 'expired' param: must be 'true' or 'false'"})
+            response.status_code = 400
+            return response
+
+    expires_before = _parse_iso8601(request.args.get("expires_before"))
+    expires_after = _parse_iso8601(request.args.get("expires_after"))
+    if expires_before is False or expires_after is False:
+        response = jsonify(
+            {"message": "Invalid datetime format. Expected ISO 8601 (e.g. 2026-06-10T00:00:00Z)"}
+        )
+        response.status_code = 400
+        return response
+
+    tokens, next_page_token = oauth_model.list_bootstrap_tokens(
+        expired=expired,
+        expires_before=expires_before,
+        expires_after=expires_after,
+        page_token=request.args.get("page_token"),
+    )
+
+    now = datetime.utcnow()
+    result = {
+        "tokens": [_bootstrap_token_view(t, now) for t in tokens],
+    }
+    if next_page_token:
+        result["next_page"] = next_page_token
+
+    return jsonify(result), 200
+
+
+@web.route("/api/v1/bootstrap/tokens/<token_uuid>", methods=["DELETE"])
+@route_show_if(features.PROGRAMMATIC_BOOTSTRAP)
+def bootstrap_token_delete(token_uuid):
+    """
+    Delete a bootstrap-created OAuth token.
+
+    Requires FEATURE_PROGRAMMATIC_BOOTSTRAP to be enabled.
+    Only superusers are authorized.
+    """
+    try:
+        auth_result = validate_bootstrap_auth()
+    except BootstrapAuthError as e:
+        response = jsonify({"message": e.message})
+        response.status_code = e.status_code
+        return response
+
+    token = oauth_model.delete_bootstrap_token(token_uuid)
+    if token is None:
+        response = jsonify({"message": "Token not found"})
+        response.status_code = 404
+        return response
+
+    log_action(
+        "revoke_oauth_api_token",
+        auth_result.user.username,
+        metadata={
+            "oauth_token_uuid": token_uuid,
+            "scope": token.scope,
+            "application_name": token.application.name,
+            "auth_method": auth_result.auth_method,
+        },
+        performer=auth_result.user,
+    )
+
+    return "", 204
+
+
+def _parse_iso8601(value):
+    if value is None:
+        return None
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    return False
+
+
+def _bootstrap_token_view(token, now):
+    view = {
+        "uuid": token.uuid,
+        "scope": token.scope,
+        "application_name": token.application.name,
+        "client_id": token.application.client_id,
+        "authorized_user": token.authorized_user.username,
+        "created_by": None,
+        "created": token.created.isoformat() + "Z" if token.created else None,
+        "expires_at": token.expires_at.isoformat() + "Z" if token.expires_at else None,
+        "last_accessed": token.last_accessed.isoformat() + "Z" if token.last_accessed else None,
+        "expired": token.expires_at <= now if token.expires_at else False,
+    }
+    if token.created_by:
+        view["created_by"] = token.created_by.username
+    return view
 
 
 @web.route("/config", methods=["GET", "OPTIONS"])
