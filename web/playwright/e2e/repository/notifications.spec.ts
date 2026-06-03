@@ -1,4 +1,4 @@
-import {test, expect, mailpit} from '../../fixtures';
+import {test, expect, mailpit, uniqueName, WebhookReceiver} from '../../fixtures';
 
 test.describe('Repository Notifications', {tag: ['@repository']}, () => {
   test('renders and expands notification details', async ({
@@ -729,4 +729,146 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       ).toContain(skipped);
     }
   });
+
+  test(
+    'build event notifications delivered via email',
+    {tag: ['@feature:BUILD_SUPPORT', '@feature:MAILING', '@PROJQUAY-11626']},
+    async ({authenticatedPage, api}) => {
+      const org = await api.organization('buildmail');
+      const repo = await api.repository(org.name, 'buildmailrepo');
+      const testEmail = `${uniqueName('build')}@example.com`;
+
+      // Navigate to notifications tab and create build_success email notification via UI
+      // to trigger and complete the email authorization flow.
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=settings`,
+      );
+      await authenticatedPage
+        .getByTestId('settings-tab-eventsandnotifications')
+        .click();
+
+      await authenticatedPage
+        .getByRole('button', {name: 'Create notification'})
+        .click();
+      await authenticatedPage
+        .getByTestId('notification-event-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Image build success'})
+        .click();
+      await authenticatedPage
+        .getByTestId('notification-method-dropdown')
+        .click();
+      await authenticatedPage
+        .getByRole('menuitem', {name: 'Email Notification'})
+        .click();
+      await authenticatedPage
+        .getByTestId('notification-email')
+        .fill(testEmail);
+      await authenticatedPage
+        .getByTestId('notification-title')
+        .fill('Build Success Email');
+      await authenticatedPage.getByTestId('notification-submit-btn').click();
+
+      // Authorization modal — send the confirmation email
+      await expect(
+        authenticatedPage.getByText('Email Authorization'),
+      ).toBeVisible();
+      await authenticatedPage.getByTestId('send-authorized-email-btn').click();
+
+      // Wait for the verification email in Mailpit (filtered by testEmail for parallel safety)
+      const authEmail = await mailpit.waitForEmail(
+        (msg) =>
+          msg.To.some((to) => to.Address === testEmail) &&
+          msg.Subject.toLowerCase().includes('verify'),
+        15000,
+      );
+      expect(authEmail, 'authorization email not received').not.toBeNull();
+
+      // Confirm the email address
+      const confirmLink = await mailpit.extractLink(authEmail!.ID);
+      expect(confirmLink, 'confirmation link not found in email').not.toBeNull();
+      const confirmPage = await authenticatedPage.context().newPage();
+      await confirmPage.goto(confirmLink!);
+      await confirmPage.close();
+
+      // Wait for the notification to appear as confirmed
+      await expect(
+        authenticatedPage.locator('tbody', {hasText: 'Build Success Email'}),
+      ).toBeVisible({timeout: 15000});
+
+      // Create build_queued notification via API — email is now authorized for this repo
+      await api.notification(
+        org.name,
+        repo.name,
+        'build_queued',
+        'email',
+        {email: testEmail},
+        'Build Queued Email',
+      );
+
+      // Trigger a build
+      await api.build(org.name, repo.name, 'FROM scratch\n');
+
+      // Assert build_queued email is delivered
+      const queuedEmail = await mailpit.waitForEmail(
+        (msg) =>
+          msg.To.some((to) => to.Address === testEmail) &&
+          msg.Subject.includes('Build queued') &&
+          msg.Subject.includes(`${org.name}/${repo.name}`),
+        60000,
+      );
+      expect(queuedEmail, 'build_queued email not received').not.toBeNull();
+
+      // Assert build_success email is delivered
+      const successEmail = await mailpit.waitForEmail(
+        (msg) =>
+          msg.To.some((to) => to.Address === testEmail) &&
+          msg.Subject.includes('Build succeeded') &&
+          msg.Subject.includes(`${org.name}/${repo.name}`),
+        120000,
+      );
+      expect(successEmail, 'build_success email not received').not.toBeNull();
+    },
+  );
+
+  test(
+    'build event notification delivered via webhook',
+    {tag: ['@feature:BUILD_SUPPORT', '@PROJQUAY-11626']},
+    async ({api}) => {
+      const org = await api.organization('buildwh');
+      const repo = await api.repository(org.name, 'buildwhrepo');
+
+      const receiver = new WebhookReceiver();
+      await receiver.start();
+
+      try {
+        // Create webhook notification for build_success event
+        await api.notification(
+          org.name,
+          repo.name,
+          'build_success',
+          'webhook',
+          {url: receiver.getUrl()},
+          'Build Success Webhook',
+        );
+
+        // Trigger a build
+        await api.build(org.name, repo.name, 'FROM scratch\n');
+
+        // Wait for webhook delivery and verify payload
+        const webhook = await receiver.waitForWebhook(
+          (req) =>
+            typeof req.body.build_id === 'string' &&
+            req.body.repository === `${org.name}/${repo.name}`,
+          120000,
+        );
+        expect(webhook, 'build_success webhook not received').not.toBeNull();
+        expect(webhook!.body.repository).toBe(`${org.name}/${repo.name}`);
+        expect(typeof webhook!.body.build_id).toBe('string');
+      } finally {
+        await receiver.stop();
+      }
+    },
+  );
 });
