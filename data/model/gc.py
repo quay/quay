@@ -293,31 +293,35 @@ def garbage_collect_repo(repo):
 
 def _run_garbage_collection(context):
     """
-    Runs the garbage collection loop. Unreferenced Manifests, images and blobs are processed in an iterative
-    fashion, while manifest labels are deleted in bulk to speed up the gc process.
+    Runs garbage collection in two phases: first discovers all manifests, blobs and labels
+    in the manifest tree via BFS, then deletes them iteratively. Labels are deleted in bulk.
     """
 
+    # Phase 1: Walk the manifest tree level-by-level, collecting blobs and labels.
+    discovered = set()
+    to_discover = set(context.manifest_ids)
+
+    while to_discover:
+        batch = list(to_discover)
+        discovered.update(to_discover)
+
+        for manifest_blob in ManifestBlob.select().where(ManifestBlob.manifest << batch):
+            context.add_blob_id(manifest_blob.blob_id)
+
+        for manifest_label in ManifestLabel.select().where(ManifestLabel.manifest << batch):
+            context.add_label_id(manifest_label.label_id)
+
+        to_discover = set()
+        for connector in ManifestChild.select().where(ManifestChild.manifest << batch):
+            if connector.child_manifest_id not in discovered:
+                context.add_manifest_id(connector.child_manifest_id)
+                to_discover.add(connector.child_manifest_id)
+
+    # Phase 2: Delete manifests, labels and blobs.
     has_changes = True
 
     while has_changes:
         has_changes = False
-
-        manifest_id_list = list(context.manifest_ids)
-        if manifest_id_list:
-            for manifest_blob in ManifestBlob.select().where(
-                ManifestBlob.manifest << manifest_id_list
-            ):
-                context.add_blob_id(manifest_blob.blob_id)
-            # Add child manifests to be GCed.
-            for connector in ManifestChild.select().where(
-                ManifestChild.manifest << manifest_id_list
-            ):
-                context.add_manifest_id(connector.child_manifest_id)
-            # Add the labels to be GCed.
-            for manifest_label in ManifestLabel.select().where(
-                ManifestLabel.manifest << manifest_id_list
-            ):
-                context.add_label_id(manifest_label.label_id)
 
         # GC all manifests encountered.
         for manifest_id in list(context.manifest_ids):
@@ -553,37 +557,6 @@ def _garbage_collect_manifest(manifest_id, context):
     gc_table_rows_deleted.labels(table="Manifest").inc()
 
     return True
-
-
-def _check_label_used(label_id):
-    assert label_id is not None
-
-    with db_transaction():
-        # Check if the label is referenced by another manifest or tag manifest.
-        try:
-            ManifestLabel.select().where(ManifestLabel.label == label_id).get()
-            return True
-        except ManifestLabel.DoesNotExist:
-            pass
-
-    return False
-
-
-def _garbage_collect_label(label_id, context):
-    assert label_id is not None
-
-    # We can now delete the label.
-    with db_transaction():
-        if _check_label_used(label_id):
-            return False
-
-        result = Label.delete().where(Label.id == label_id).execute() == 1
-
-    if result:
-        context.mark_label_id_removed(label_id)
-        gc_table_rows_deleted.labels(table="Label").inc(result)
-
-    return result
 
 
 def _bulk_garbage_collect_labels(context):
