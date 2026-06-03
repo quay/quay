@@ -455,6 +455,64 @@ def test_manifest_iterator(
         assert count != 0
 
 
+def test_manifest_iterator_not_indexed_uses_left_join(initialized_db, set_secscan_config):
+    """
+    Verify that the not_indexed_query uses a LEFT JOIN to find manifests
+    without a ManifestSecurityStatus row, and that manifests with an
+    existing status are excluded.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    all_manifests = list(Manifest.select())
+    assert len(all_manifests) >= 2
+
+    # Clear any existing security status rows
+    ManifestSecurityStatus.delete().execute()
+
+    min_id = Manifest.select(fn.Min(Manifest.id)).scalar()
+    max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
+    reindex_threshold = datetime.utcnow() - timedelta(
+        seconds=application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"]
+    )
+
+    # With no ManifestSecurityStatus rows, every manifest should be yielded
+    iterator = secscan._get_manifest_iterator(
+        {"state": "abc"}, min_id, max_id, reindex_threshold=reindex_threshold
+    )
+    not_indexed_ids = {candidate.id for candidate, _, _ in iterator}
+    assert not_indexed_ids == {m.id for m in all_manifests}
+
+    # Index half of the manifests
+    indexed_manifests = all_manifests[: len(all_manifests) // 2]
+    unindexed_manifests = all_manifests[len(all_manifests) // 2 :]
+    for manifest in indexed_manifests:
+        ManifestSecurityStatus.create(
+            manifest=manifest,
+            repository=manifest.repository,
+            error_json={},
+            index_status=IndexStatus.COMPLETED,
+            indexer_hash="abc",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=datetime.utcnow(),
+            metadata_json={},
+        )
+
+    # Only the unindexed half should appear from the not_indexed_query path.
+    # The other query paths (error, stale, reindex) may also yield the indexed
+    # manifests, so collect all yielded IDs and verify the unindexed ones are
+    # present.
+    iterator = secscan._get_manifest_iterator(
+        {"state": "abc"}, min_id, max_id, reindex_threshold=reindex_threshold
+    )
+    yielded_ids = {candidate.id for candidate, _, _ in iterator}
+    expected_unindexed = {m.id for m in unindexed_manifests}
+    assert expected_unindexed.issubset(yielded_ids)
+
+    # Indexed manifests with matching hash and recent timestamp should NOT
+    # appear (no reindex needed)
+    expected_indexed = {m.id for m in indexed_manifests}
+    assert expected_indexed.isdisjoint(yielded_ids)
+
+
 def test_perform_indexing_needs_reindexing_within_reindex_threshold(
     initialized_db, set_secscan_config
 ):
