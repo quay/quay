@@ -1,4 +1,10 @@
-import {test, expect, mailpit, uniqueName, WebhookReceiver} from '../../fixtures';
+import {
+  test,
+  expect,
+  mailpit,
+  uniqueName,
+  WebhookReceiver,
+} from '../../fixtures';
 
 test.describe('Repository Notifications', {tag: ['@repository']}, () => {
   test('renders and expands notification details', async ({
@@ -762,9 +768,7 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       await authenticatedPage
         .getByRole('menuitem', {name: 'Email Notification'})
         .click();
-      await authenticatedPage
-        .getByTestId('notification-email')
-        .fill(testEmail);
+      await authenticatedPage.getByTestId('notification-email').fill(testEmail);
       await authenticatedPage
         .getByTestId('notification-title')
         .fill('Build Success Email');
@@ -787,7 +791,10 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
 
       // Confirm the email address
       const confirmLink = await mailpit.extractLink(authEmail!.ID);
-      expect(confirmLink, 'confirmation link not found in email').not.toBeNull();
+      expect(
+        confirmLink,
+        'confirmation link not found in email',
+      ).not.toBeNull();
       const confirmPage = await authenticatedPage.context().newPage();
       await confirmPage.goto(confirmLink!);
       await confirmPage.close();
