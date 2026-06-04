@@ -139,3 +139,4 @@ bin/
 .claude/implementation
 .claude/poll-state/
 .claude/session-state/
+.claude/scheduled_tasks.lock
