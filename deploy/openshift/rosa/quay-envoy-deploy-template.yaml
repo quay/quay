@@ -179,10 +179,10 @@ objects:
             name: ${{RLS_CONFIG_CONFIGMAP}}
 parameters:
 - name: ENVOY_IMAGE
-  value: ""
+  value: "docker.io/envoyproxy/envoy"
   displayName: Envoy container image
 - name: ENVOY_IMAGE_TAG
-  value: ""
+  value: "v1.35-latest"
   displayName: Envoy image tag
 - name: ENVOY_REPLICAS
   value: "1"
@@ -206,10 +206,10 @@ parameters:
   value: "info"
   displayName: Envoy log level
 - name: RLS_IMAGE
-  value: ""
+  value: "docker.io/envoyproxy/ratelimit"
   displayName: Rate limit service container image
 - name: RLS_IMAGE_TAG
-  value: ""
+  value: "latest"
   displayName: Rate limit service image tag
 - name: RLS_REPLICAS
   value: "1"
@@ -227,7 +227,7 @@ parameters:
   value: "quay-rls-config"
   displayName: Name of the RLS config ConfigMap
 - name: RLS_REDIS_URL
-  value: ""
+  value: "redis:6379"
   displayName: Redis URL for rate limit counters
 - name: RLS_LOG_LEVEL
   value: "info"
