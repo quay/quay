@@ -543,6 +543,11 @@ class DefaultConfig(ImmutableConfig):
     # Minimum number of seconds before re-indexing a manifest with the security scanner.
     SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 300
 
+    # Security scanner V2 worker (lock-free, uses FOR UPDATE SKIP LOCKED)
+    FEATURE_SECURITY_SCANNER_V2 = False
+    SECURITY_SCANNER_V2_INDEXING_INTERVAL = 30
+    SECURITY_SCANNER_V2_BATCH_SIZE = 50
+
     # Maximum layer size allowed for indexing.
     SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE = None
 
