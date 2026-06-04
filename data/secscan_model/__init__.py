@@ -42,7 +42,7 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
 
     def perform_indexing_v2(self, batch_size):
         if self._model_v2 is not None:
-            self._model_v2.perform_indexing(batch_size)
+            self._model_v2.perform_indexing(batch_size=batch_size)
 
     def perform_indexing(self, next_token=None, batch_size=None):
         if next_token is not None:
@@ -64,13 +64,6 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
             return info
 
         return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
-
-    def register_model_cleanup_callbacks(self, data_model_config):
-        return self._model.register_model_cleanup_callbacks(data_model_config)
-
-    @property
-    def legacy_api_handler(self):
-        raise NotImplementedError
 
     def lookup_notification_page(self, notification_id, page_index=None):
         return self._model.lookup_notification_page(notification_id, page_index)

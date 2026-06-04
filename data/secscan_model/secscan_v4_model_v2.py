@@ -18,6 +18,7 @@ from data.database import (
 )
 from data.registry_model import registry_model
 from data.registry_model.datatypes import Manifest as ManifestDataType
+from data.secscan_model.interface import SecurityScannerIndexerInterface
 from data.secscan_model.secscan_v4_model import IndexReportState, _has_container_layers
 from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from util.metrics.prometheus import (
@@ -43,7 +44,7 @@ STALE_IN_PROGRESS_HOURS = 6
 TAG_LIMIT = 100
 
 
-class V4SecurityScannerV2:
+class V4SecurityScannerV2(SecurityScannerIndexerInterface):
     def __init__(self, app, instance_keys, storage):
         self.app = app
         self.storage = storage
@@ -67,7 +68,10 @@ class V4SecurityScannerV2:
             max_layer_size=app.config.get("SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE", None),
         )
 
-    def perform_indexing(self, batch_size):
+    def perform_indexing_recent_manifests(self, batch_size=None):
+        pass
+
+    def perform_indexing(self, start_token=None, batch_size=None):
         cycle_start = time.monotonic()
 
         try:

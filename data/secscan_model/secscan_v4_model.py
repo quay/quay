@@ -92,13 +92,6 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
     def perform_indexing_recent_manifests(self, batch_size=None):
         return None
 
-    def register_model_cleanup_callbacks(self, data_model_config):
-        pass
-
-    @property
-    def legacy_api_handler(self):
-        raise NotImplementedError("Unsupported for this security scanner version")
-
     def lookup_notification_page(self, notification_id, page_index=None):
         return None
 
@@ -803,13 +796,6 @@ class V4SecurityScanner(SecurityScannerInterface):
                     Metadata={},
                 ),
             )
-
-    def register_model_cleanup_callbacks(self, data_model_config):
-        pass
-
-    @property
-    def legacy_api_handler(self):
-        raise NotImplementedError("Unsupported for this security scanner version")
 
     def garbage_collect_manifest_report(self, manifest_digest):
         def manifest_digest_exists():
