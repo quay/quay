@@ -124,6 +124,11 @@ objects:
   spec:
     replicas: ${{RLS_REPLICAS}}
     revisionHistoryLimit: 10
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 0
+        maxSurge: 1
     selector:
       matchLabels:
         app: quay-rls
@@ -219,7 +224,7 @@ parameters:
   value: "256Mi"
   displayName: RLS memory limit
 - name: RLS_CONFIG_CONFIGMAP
-  value: "quay-envoy-config"
+  value: "quay-rls-config"
   displayName: Name of the RLS config ConfigMap
 - name: RLS_REDIS_URL
   value: ""
