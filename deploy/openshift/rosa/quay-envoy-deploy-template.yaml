@@ -197,7 +197,7 @@ parameters:
   value: "512Mi"
   displayName: Envoy memory limit
 - name: ENVOY_CONFIG_CONFIGMAP
-  value: "quay-envoy-proxy-config"
+  value: "quay-envoy-config"
   displayName: Name of the Envoy config ConfigMap
 - name: ENVOY_TLS_SECRET
   value: "quay-py3-config-secret"
