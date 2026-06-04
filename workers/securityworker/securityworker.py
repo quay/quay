@@ -4,9 +4,8 @@ import threading
 import time
 
 import features
-from app import app, instance_keys, storage
+from app import app
 from data.secscan_model import secscan_model
-from data.secscan_model.secscan_v4_model_v2 import V4SecurityScannerV2
 from endpoints.v2 import v2_bp
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
@@ -28,8 +27,7 @@ class SecurityWorker(Worker):
         self.add_operation(self._index_in_scanner, interval)
         self.add_operation(self._index_recent_manifests_in_scanner, interval)
 
-        if app.config.get("FEATURE_SECURITY_SCANNER_V2", False):
-            self._scanner_v2 = V4SecurityScannerV2(app, instance_keys, storage)
+        if self._model.v2_enabled:
             v2_interval = app.config.get(
                 "SECURITY_SCANNER_V2_INDEXING_INTERVAL", DEFAULT_INDEXING_INTERVAL
             )
@@ -67,7 +65,7 @@ class SecurityWorker(Worker):
 
     def _index_v2(self):
         batch_size = app.config.get("SECURITY_SCANNER_V2_BATCH_SIZE", 50)
-        self._scanner_v2.perform_indexing(batch_size)
+        self._model.perform_indexing_v2(batch_size)
 
 
 def create_gunicorn_worker():

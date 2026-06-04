@@ -11,22 +11,38 @@ from data.secscan_model.interface import (
 from data.secscan_model.secscan_v4_model import NoopV4SecurityScanner
 from data.secscan_model.secscan_v4_model import ScanToken as V4ScanToken
 from data.secscan_model.secscan_v4_model import V4SecurityScanner
+from data.secscan_model.secscan_v4_model_v2 import V4SecurityScannerV2
 
 logger = logging.getLogger(__name__)
 
 
 class SecurityScannerModelProxy(SecurityScannerInterface):
     def configure(self, app, instance_keys, storage):
+        self._model_v2 = None
+
         try:
             self._model = V4SecurityScanner(app, instance_keys, storage)
         except InvalidConfigurationException:
             self._model = NoopV4SecurityScanner()
 
+        if app.config.get("FEATURE_SECURITY_SCANNER_V2", False):
+            self._model_v2 = V4SecurityScannerV2(app, instance_keys, storage)
+
         logger.info("===============================")
         logger.info("Using split secscan model: `%s`", [self._model])
+        if self._model_v2:
+            logger.info("Using V2 secscan indexer: `%s`", self._model_v2)
         logger.info("===============================")
 
         return self
+
+    @property
+    def v2_enabled(self):
+        return self._model_v2 is not None
+
+    def perform_indexing_v2(self, batch_size):
+        if self._model_v2 is not None:
+            self._model_v2.perform_indexing(batch_size)
 
     def perform_indexing(self, next_token=None, batch_size=None):
         if next_token is not None:
