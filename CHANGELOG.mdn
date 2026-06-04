@@ -1,16 +1,31 @@
 ## Red Hat Quay Release Notes
 
-[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/$QUAY_VERSION/html/red_hat_quay_release_notes/index)
 
+
+<a name="v3.17.3"></a>
+## [v3.17.3] - 2026-06-02
+### [Redhat-3.17] PROJQUAY-10909: Gc
+- [0ae93fc7a](https://github.com/quay/quay/commit/0ae93fc7abd6cce69b92e0d403ec1bba0a1af8bf): Fix race conditions in proxy cache and GC code ([#5461](https://github.com/quay/quay/issues/5461))
+### [Redhat-3.17] PROJQUAY-11235: Fix(Templates)
+- [cd281df35](https://github.com/quay/quay/commit/cd281df35246433138d8f025a194321f26d98270): remove hardcoded external CDN references ([#6060](https://github.com/quay/quay/issues/6060))
+### [Redhat-3.17] PROJQUAY-11586: Nginx
+- [07428bcab](https://github.com/quay/quay/commit/07428bcab044b1d1a9e9386a23505f24dd231353): Add proper forwarding of IP addresses when nginx is bound to 8080 ([#6037](https://github.com/quay/quay/issues/6037))
 
 <a name="v3.17.2"></a>
-## [v3.17.2] - 2026-05-15
+## [v3.17.2] - 2026-05-27
+### NO-ISSUE: Chore
+- [89f6574c4](https://github.com/quay/quay/commit/89f6574c47ccc7c227992e1eb53fd15cca17e436): adding resolved links back into web/package-lock.json ([#6034](https://github.com/quay/quay/issues/6034))
 ### NO-ISSUE: Chore(Ci)
 - [0a3f38e3f](https://github.com/quay/quay/commit/0a3f38e3f0c88da2456941e5c04d95ef305495d0): backport GitHub Actions workflow changes to redhat-3.17 ([#5977](https://github.com/quay/quay/issues/5977))
 ### NO-ISSUE: Chore(Deps)
 - [7a2eb7ca9](https://github.com/quay/quay/commit/7a2eb7ca97330ed42a7e5a209f041d612bb1f908): Regenerate requirements-build.txt for redhat-3.17 ([#5777](https://github.com/quay/quay/issues/5777))
+### NO-ISSUE: Fix(Web)
+- [836484415](https://github.com/quay/quay/commit/83648441564cf2dfb760a10694611760bce4e41b): restore pinned versions in package-lock.json with resolved URLs ([#6035](https://github.com/quay/quay/issues/6035))
 ### PROJQUAY-11345: Chore(Deps)
 - [3c11703ec](https://github.com/quay/quay/commit/3c11703ec7fb44534a1c9e2eee8e6e02d88117ad): bump pillow and follow-redirects [redhat-3.17] ([#5968](https://github.com/quay/quay/issues/5968))
+### [Redhat-3.17] NO-ISSUE: Chore(Testing)
+- [6291b2b24](https://github.com/quay/quay/commit/6291b2b248be216a10589d92358b86176ba10197): Adding additional e2e tests ([#6000](https://github.com/quay/quay/issues/6000)) ([#6047](https://github.com/quay/quay/issues/6047))
 ### [Redhat-3.17] NO-ISSUE: Chore(Web)
 - [b94acc64d](https://github.com/quay/quay/commit/b94acc64db2785fd5c70f76d2a33f89650d20d43): add Phase 8b Vitest unit tests for 12 remaining hooks ([#5939](https://github.com/quay/quay/issues/5939))
 ### [Redhat-3.17] NO-ISSUE: Test(Api)
@@ -18,6 +33,8 @@
 ### [Redhat-3.17] NO-ISSUE: Test(E2e)
 - [cc564df22](https://github.com/quay/quay/commit/cc564df2216fa960db4e71e91e58bbdecbf66c4c): backport Cypress to Playwright e2e test migrations ([#5824](https://github.com/quay/quay/issues/5824))
 ### [Redhat-3.17] NO-ISSUE: Test(Web)
+- [58e98609f](https://github.com/quay/quay/commit/58e98609f5fb7cc0e882dc04e0a196a0009693ae): migrate marketplace Cypress tests to Playwright ([#6019](https://github.com/quay/quay/issues/6019))
+- [d276390c3](https://github.com/quay/quay/commit/d276390c317e1320df40d6cc874062ac710393e6): partial migration of superuser-build-logs Cypress tests to Playwright ([#5996](https://github.com/quay/quay/issues/5996))
 - [d09e5cad4](https://github.com/quay/quay/commit/d09e5cad4f548fca21be811716b469e946b0b208): backport Playwright tests from master ([#5879](https://github.com/quay/quay/issues/5879))
 - [0a820ad0e](https://github.com/quay/quay/commit/0a820ad0e5119772ae537271e4fd4145bbbca9ea): add Playwright e2e tests for full React UI coverage ([#5840](https://github.com/quay/quay/issues/5840))
 - [74cfc5577](https://github.com/quay/quay/commit/74cfc55770dbd1fa58585557b2a5a690d31179e2): add Phase 7 unit tests for components with logic ([#5831](https://github.com/quay/quay/issues/5831))
@@ -27,6 +44,8 @@
 - [1eaaa9885](https://github.com/quay/quay/commit/1eaaa9885e6609636bd145c80902fd11725df8a2): exclude deleted repos from org mirror validation ([#5754](https://github.com/quay/quay/issues/5754))
 ### [Redhat-3.17] PROJQUAY-11175: Fix
 - [64dfb638e](https://github.com/quay/quay/commit/64dfb638e1e17014fe7e3b3da140701ec6573cff): prevent infinite loop when cancelling org mirror sync ([#5632](https://github.com/quay/quay/issues/5632))
+### [Redhat-3.17] PROJQUAY-11190: Fix(Data)
+- [448326c8a](https://github.com/quay/quay/commit/448326c8a47a739a4daafd3fc227a8c88f475af3): prevent RCE via unsafe pickle deserialization ([#5998](https://github.com/quay/quay/issues/5998))
 ### [Redhat-3.17] PROJQUAY-11205: Fix(Auth)
 - [4c35d0484](https://github.com/quay/quay/commit/4c35d04843f6a27a98f0d9243fe0dd9720012321): accept RFC 9068 at+jwt tokens in is_jwt routing ([#5664](https://github.com/quay/quay/issues/5664))
 ### [Redhat-3.17] PROJQUAY-11208
@@ -62,17 +81,22 @@
 ### [Redhat-3.17] PROJQUAY-11442: Fix(Ui)
 - [aa5989ad5](https://github.com/quay/quay/commit/aa5989ad55e5c89940d34f0eb96a11c5e505577e): fix manifest track line on unrelated pages ([#5883](https://github.com/quay/quay/issues/5883))
 ### [Redhat-3.17] PROJQUAY-11474: Chore(Web)
+- [76a500f59](https://github.com/quay/quay/commit/76a500f5996c92226ec83e842df68a8bcd6fbe8b): remove es5-ext transitive dependency ([#6006](https://github.com/quay/quay/issues/6006))
 - [a0cfe154c](https://github.com/quay/quay/commit/a0cfe154cede4eb218c0dd14ab5a2a29adbc8606): remove es5-ext transitive dependency ([#5897](https://github.com/quay/quay/issues/5897))
 ### [Redhat-3.17] PROJQUAY-11476: Fix(Security)
 - [d21412e2b](https://github.com/quay/quay/commit/d21412e2b4204a10c055bedaa865715608954196): CVE-2026-33894 ([#5908](https://github.com/quay/quay/issues/5908))
 ### [Redhat-3.17] PROJQUAY-11485: Fix(Web)
 - [0f0d78b65](https://github.com/quay/quay/commit/0f0d78b6565e326c057fe0dd19b4d63e81a38ffb): treat all 4xx as org-mirror-not-configured in proxy cache UI ([#5928](https://github.com/quay/quay/issues/5928))
+### [Redhat-3.17] PROJQUAY-11493: Chore(Web)
+- [5206f228a](https://github.com/quay/quay/commit/5206f228a52bc3086db8976d0536cd82ffa1387c): bump axios to 1.15.2 ([#5995](https://github.com/quay/quay/issues/5995))
 ### [Redhat-3.17] PROJQUAY-11502: Fix(Ui)
 - [179de5eb7](https://github.com/quay/quay/commit/179de5eb7c45b0e858bee1b7299b9dbb391a9c19): show empty state instead of spinner when repository search has no results ([#5940](https://github.com/quay/quay/issues/5940))
 ### [Redhat-3.17] PROJQUAY-11504: Fix(Mirror)
 - [e4efc9496](https://github.com/quay/quay/commit/e4efc9496099bb84df3414aaa7226de93d29702a): fix cancel mirror log showing null and Not applicable ([#5941](https://github.com/quay/quay/issues/5941))
 ### [Redhat-3.17] PROJQUAY-11513: Chore(Deps)
 - [bad892c7f](https://github.com/quay/quay/commit/bad892c7fc3b4089c0d7794f61c706e23ccb8070): Bump cryptography to version 46.0.7 ([#5984](https://github.com/quay/quay/issues/5984))
+### [Redhat-3.17] PROJQUAY-11523: Fix(Mirroring)
+- [534546621](https://github.com/quay/quay/commit/53454662194ac95e0b2615bcc9f5516821b830c8): prevent credential wipe on mirror config update ([#5962](https://github.com/quay/quay/issues/5962))
 ### [Redhat-3.17] PROJQUAY-11532: Fix(Nginx)
 - [b9981e54d](https://github.com/quay/quay/commit/b9981e54ddb3c41e2a671c9cc9882421e92e9ecd): return 502 instead of 404 when backend is unreachable ([#5965](https://github.com/quay/quay/issues/5965))
 ### [Redhat-3.17] PROJQUAY-11543: Fix(Auth)
@@ -612,6 +636,53 @@
 - [a8e2011e3](https://github.com/quay/quay/commit/a8e2011e35447897cab670a97d8f8af13532e7f8): allow global readonly superusers to see all repositories ([#5309](https://github.com/quay/quay/issues/5309))
 ### [Redhat-3.17] PROJQUAY-9750: Fix(Ui)
 - [c870d358b](https://github.com/quay/quay/commit/c870d358bddd19d517f158f90bcb32d2e281d14d): replace datetime-local inputs with PatternFly DatePicker + TimePicker ([#5354](https://github.com/quay/quay/issues/5354))
+
+<a name="v3.16.4"></a>
+## [v3.16.4] - 2026-05-19
+### Fix
+- [dcba31f6e](https://github.com/quay/quay/commit/dcba31f6ef64cae2188abc924639258b1d3c22d4): add react-redux to package.json to fix hermetic Konflux build ([#5936](https://github.com/quay/quay/issues/5936))
+### NO-ISSUE: Chore(Deps)
+- [358ec0277](https://github.com/quay/quay/commit/358ec027702b3d3a6bfae78f9027723b07f6c28e): Regenerate requirements-build.txt for redhat-3.16 ([#5778](https://github.com/quay/quay/issues/5778))
+### PROJQUAY-11018: Deps
+- [afe09e869](https://github.com/quay/quay/commit/afe09e86905b604db4c94005f6b637d9ecec65dd): Bump pgx to v5 [quay-3.16] ([#5701](https://github.com/quay/quay/issues/5701))
+### PROJQUAY-11233: Deps
+- [9616ac6a0](https://github.com/quay/quay/commit/9616ac6a05c835aac1fd713c8ce218131a6a45bd): Bump go-jose to v4.1.4 [redhat-3.16] ([#5873](https://github.com/quay/quay/issues/5873))
+### Revert "[Redhat-3.16] PROJQUAY-10845: Secscan
+- [20097e5e8](https://github.com/quay/quay/commit/20097e5e894639079e6abbe93318a81dbeef8fc0): Skip sending artifact images for scanning" ([#6018](https://github.com/quay/quay/issues/6018))
+### [Redhat-3.16] NO-ISSUE: Test(Web)
+- [4547f42e7](https://github.com/quay/quay/commit/4547f42e740c93e8e5810d85b670a7ed4599daed): backport Playwright tests from master ([#5880](https://github.com/quay/quay/issues/5880))
+### [Redhat-3.16] PROJQUAY-10845: Secscan
+- [4f692e372](https://github.com/quay/quay/commit/4f692e3723eacad0265d29d97d239916f4843f88): Skip sending artifact images for scanning ([#5327](https://github.com/quay/quay/issues/5327))
+### [Redhat-3.16] PROJQUAY-10884: Feat(Web)
+- [250d77f50](https://github.com/quay/quay/commit/250d77f503d324243de12b6d0113d3683d0169fe): backport PatternFly v5 to v6 migration to redhat-3.16 ([#5581](https://github.com/quay/quay/issues/5581))
+### [Redhat-3.16] PROJQUAY-10928
+- [1d05adfb3](https://github.com/quay/quay/commit/1d05adfb315536dbe09c4f97584e0344f98c4774): fix CVE-2026-29074 ([#5756](https://github.com/quay/quay/issues/5756))
+### [Redhat-3.16] PROJQUAY-10989: Deps
+- [fb7debebc](https://github.com/quay/quay/commit/fb7debebc2f692be3d27093e4389441333fb2c06): updated pyOpenSSL to 26.0.0 ([#5709](https://github.com/quay/quay/issues/5709))
+### [Redhat-3.16] PROJQUAY-11086: Deps
+- [732330aa9](https://github.com/quay/quay/commit/732330aa9e51e0752167ef57b8d10f8959aafde3): updated immutable version to 5.1.5 ([#5639](https://github.com/quay/quay/issues/5639))
+### [Redhat-3.16] PROJQUAY-11190: Fix(Data)
+- [65acbb0d2](https://github.com/quay/quay/commit/65acbb0d2308deb07e0cd7016991fbe32739a6b8): prevent RCE via unsafe pickle deserialization ([#5999](https://github.com/quay/quay/issues/5999))
+### [Redhat-3.16] PROJQUAY-11285: Chore(Web)
+- [b3820193f](https://github.com/quay/quay/commit/b3820193fe8ea5e33daa40c29eab0f8faa2c1ad3): bump axios to 1.15.0 ([#5949](https://github.com/quay/quay/issues/5949))
+### [Redhat-3.16] PROJQUAY-11324: Fix(Actionlog)
+- [f710a6e2f](https://github.com/quay/quay/commit/f710a6e2f082c21a6396e5b76ea3faba39835761): LogRotateWorker fails to archive logs due to a `TypeError` in `distributedstorage.py` ([#5737](https://github.com/quay/quay/issues/5737))
+### [Redhat-3.16] PROJQUAY-11334: Fix(Config-Tool)
+- [f0cc068f7](https://github.com/quay/quay/commit/f0cc068f7cada69675d0435379bd27967030e9b8): remove malformed struct tag space on DistributedStorageArgs.Signature ([#5773](https://github.com/quay/quay/issues/5773))
+### [Redhat-3.16] PROJQUAY-11435: Fix(Auth)
+- [649a9f0eb](https://github.com/quay/quay/commit/649a9f0eb38eecfaf29a72b08d833e7ac2259e32): accept RFC 9068 at+jwt tokens in is_jwt routing ([#5857](https://github.com/quay/quay/issues/5857))
+### [Redhat-3.16] PROJQUAY-11473: Chore(Web)
+- [0de3794d0](https://github.com/quay/quay/commit/0de3794d093965046cd04cb870763a44810af829): remove es5-ext transitive dependency ([#5899](https://github.com/quay/quay/issues/5899))
+### [Redhat-3.16] PROJQUAY-11477: Fix(Security)
+- [08d3f556c](https://github.com/quay/quay/commit/08d3f556c4d91097c06851af5639fb0bb49f540d): CVE-2026-33894 ([#5909](https://github.com/quay/quay/issues/5909))
+### [Redhat-3.16] PROJQUAY-11512: Chore(Deps)
+- [98b3640b0](https://github.com/quay/quay/commit/98b3640b01f69cfcdb59c12c5c687bde637fe028): Bump cryptography to version 46.0.7 ([#5985](https://github.com/quay/quay/issues/5985))
+### [Redhat-3.16] PROJQUAY-11544: Chore(Deps)
+- [5848deae4](https://github.com/quay/quay/commit/5848deae4343c66bbd9dab80e0e625cac4a34f35): bump pillow and follow-redirects ([#5971](https://github.com/quay/quay/issues/5971))
+### [Redhat-3.16] PROJQUAY-11544: Fix(Auth)
+- [bcec05c87](https://github.com/quay/quay/commit/bcec05c87690e23a85055706455771511f8d4a39): OIDCUsers.has_password_set returns False to bypass fresh-login check ([#5970](https://github.com/quay/quay/issues/5970))
+### [Redhat-3.16] PROJQUAY-11579: Fix(Web)
+- [39c8816de](https://github.com/quay/quay/commit/39c8816dece5c156bd90e841d5d48bf77746f821): use PatternFly background token instead of hardcoded dark color ([#6015](https://github.com/quay/quay/issues/6015))
 
 <a name="v3.16.3"></a>
 ## [v3.16.3] - 2026-04-02
@@ -1283,6 +1354,37 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### [Redhat-3.15] Ui
 - [8bc4c4e6b](https://github.com/quay/quay/commit/8bc4c4e6b1d9f18e1ea129b3fa3ddcbe6dfad48f): loading repository list immediately (PROJQUAY-5752) ([#4088](https://github.com/quay/quay/issues/4088))
 - [0ec617c12](https://github.com/quay/quay/commit/0ec617c127d8036805ba54dd6efaa6de8614fc85): Add notification drawer to ui (PROJQUAY-6305) ([#4020](https://github.com/quay/quay/issues/4020))
+
+<a name="v3.14.8"></a>
+## [v3.14.8] - 2026-05-24
+### NO-ISSUE: Chore(Deps)
+- [64ee7bbc3](https://github.com/quay/quay/commit/64ee7bbc3a84f37f76254ccb93cbc0e95492f86b): Regenerate requirements-build.txt for redhat-3.14 ([#5780](https://github.com/quay/quay/issues/5780))
+### PROJQUAY-11155
+- [927735b7a](https://github.com/quay/quay/commit/927735b7ac26f2fe008e3fef92b5326d912db867): Bump google.golang.org/grpc to v1.79.3 ([#5921](https://github.com/quay/quay/issues/5921))
+### PROJQUAY-11216: Fix(Mirror)
+- [eb60821ea](https://github.com/quay/quay/commit/eb60821eab1af9738a791ba6ccbc74ab3f342e7c): strip skopeo_timeout_interval without rejecting request [redhat-3.14] ([#6039](https://github.com/quay/quay/issues/6039))
+### PROJQUAY-11342: Chore(Deps)
+- [259c91d3c](https://github.com/quay/quay/commit/259c91d3c97074a42f56b3d4861adc8df8870a42): bump pillow and follow-redirects [redhat-3.14] ([#5973](https://github.com/quay/quay/issues/5973))
+### PROJQUAY-11440: Deps
+- [2fa8d1987](https://github.com/quay/quay/commit/2fa8d1987fa170355bc317399ced3e162767fcbc): Bump go-jose to v4.1.4 [redhat-3.14] ([#5875](https://github.com/quay/quay/issues/5875))
+### [Redhat-3.14] PROJQUAY-10927
+- [1c7da88ce](https://github.com/quay/quay/commit/1c7da88ce6fb844fc7cc7a377d482efe4a49a01d): fix CVE-2026-29074 ([#5758](https://github.com/quay/quay/issues/5758))
+### [Redhat-3.14] PROJQUAY-10987: Deps
+- [94bd9bb34](https://github.com/quay/quay/commit/94bd9bb3472b2a7c5546c8901b1312bd4b335d56): updated pyOpenSSL to 26.0.0 ([#5716](https://github.com/quay/quay/issues/5716))
+### [Redhat-3.14] PROJQUAY-11190: Fix(Data)
+- [930ef8f55](https://github.com/quay/quay/commit/930ef8f557f2a90a7b02bf9b113ffc99ccf1db18): prevent RCE via unsafe pickle deserialization ([#6002](https://github.com/quay/quay/issues/6002))
+### [Redhat-3.14] PROJQUAY-11283: Chore(Web)
+- [c5655bc10](https://github.com/quay/quay/commit/c5655bc10b1fd7c9f8781026187971fa5611fd7b): bump axios to 1.15.0 ([#5951](https://github.com/quay/quay/issues/5951))
+### [Redhat-3.14] PROJQUAY-11299: Deps
+- [a2892b439](https://github.com/quay/quay/commit/a2892b439544f46f57c5322ab71ea389823e78b1): Bump pgx to v5 [quay-3.15] ([#5712](https://github.com/quay/quay/issues/5712))
+### [Redhat-3.14] PROJQUAY-11335: Fix(Config-Tool)
+- [f3e7670cb](https://github.com/quay/quay/commit/f3e7670cb226e176a4ef879fd854bc6ed939e99b): remove malformed struct tag space on DistributedStorageArgs.Signature ([#5774](https://github.com/quay/quay/issues/5774))
+### [Redhat-3.14] PROJQUAY-11473: Chore(Web)
+- [d6325c912](https://github.com/quay/quay/commit/d6325c912503ff8f01174ff455eb27af064b3f3e): remove es5-ext transitive dependency ([#5901](https://github.com/quay/quay/issues/5901))
+### [Redhat-3.14] PROJQUAY-11490: Chore(Web)
+- [8d234d034](https://github.com/quay/quay/commit/8d234d0342d761e61d40da3c0ea05ccbf49666f1): bump axios to 1.15.2 ([#6024](https://github.com/quay/quay/issues/6024))
+### [Redhat-3.14] PROJQUAY-11510: Chore(Deps)
+- [c987d00c2](https://github.com/quay/quay/commit/c987d00c24df755c7adb2b34ef2ce134b60f3d0b): Bump cryptography to version 46.0.7 ([#5987](https://github.com/quay/quay/issues/5987))
 
 <a name="v3.14.7"></a>
 ## [v3.14.7] - 2026-04-06
@@ -1962,6 +2064,25 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### [Redhat-3.13] Validator
 - [785a8bd6c](https://github.com/quay/quay/commit/785a8bd6c05067c20a65304b20155753d9ecc309): Remove logging of database password (PROJQUAY-8059) ([#3335](https://github.com/quay/quay/issues/3335))
 
+<a name="v3.12.18"></a>
+## [v3.12.18] - 2026-05-19
+### PROJQUAY-11340: Chore(Deps)
+- [eddf0f02e](https://github.com/quay/quay/commit/eddf0f02e1af56b6127d5b9ddf36ce152d1a2e52): bump pillow and follow-redirects [redhat-3.12] ([#5974](https://github.com/quay/quay/issues/5974))
+### PROJQUAY-11417
+- [05247e6e2](https://github.com/quay/quay/commit/05247e6e2e6478078d5c18bda1960b5de08022ca): bump node-forge version to 1.4.0 ([#5922](https://github.com/quay/quay/issues/5922))
+### PROJQUAY-11470: Deps
+- [6ed90b9a9](https://github.com/quay/quay/commit/6ed90b9a964f0bd74b9dd1d3d8edeb93c17404bb): Bump go-jose to v4.1.4 [redhat-3.12] ([#5888](https://github.com/quay/quay/issues/5888))
+### [Redhat-3.12] PROJQUAY-11190: Fix(Data)
+- [43c333cd7](https://github.com/quay/quay/commit/43c333cd7034711c13409ad53551cf113e737d88): prevent RCE via unsafe pickle deserialization ([#6003](https://github.com/quay/quay/issues/6003))
+### [Redhat-3.12] PROJQUAY-11281: Chore(Web)
+- [eb0f8ee23](https://github.com/quay/quay/commit/eb0f8ee230a7b7528cdc4e80f595e957c6c5f6ee): bump axios to 1.15.0 ([#5952](https://github.com/quay/quay/issues/5952))
+### [Redhat-3.12] PROJQUAY-11473: Chore(Web)
+- [e30e2848c](https://github.com/quay/quay/commit/e30e2848c874a8fca8e77ab235ec4678186fb804): remove es5-ext transitive dependency ([#5902](https://github.com/quay/quay/issues/5902))
+### [Redhat-3.12] PROJQUAY-11488: Chore(Web)
+- [0fdc7bbf2](https://github.com/quay/quay/commit/0fdc7bbf227d920973bb519c45da7b1711fdd4e9): bump axios to 1.15.2 ([#6025](https://github.com/quay/quay/issues/6025))
+### [Redhat-3.12] PROJQUAY-11508: Chore(Deps)
+- [87e475848](https://github.com/quay/quay/commit/87e4758486fe62bdcc28a2591d2819306bd81c72): Bump cryptography to version 46.0.7 ([#5988](https://github.com/quay/quay/issues/5988))
+
 <a name="v3.12.17"></a>
 ## [v3.12.17] - 2026-04-20
 ### NO-ISSUE: Chore(Deps)
@@ -2111,7 +2232,7 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [c5f1e718b](https://github.com/quay/quay/commit/c5f1e718b8a2c17a9d0230c8b5d14d3b87b9a3db): bump gunicorn (PROJQUAY-8726) ([#3733](https://github.com/quay/quay/issues/3733))
 
 <a name="v3.12.8"></a>
-## [v3.12.8] - 2025-02-11
+## [v3.12.8] - 2025-02-07
 ### Deps
 - [6420527c9](https://github.com/quay/quay/commit/6420527c935b7cc2a3f30d67165a6c9ee706928b): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3629](https://github.com/quay/quay/issues/3629)) ([#3639](https://github.com/quay/quay/issues/3639))
 ### [Redhat-3.12] Chore
@@ -2441,14 +2562,14 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [1a5e5d37f](https://github.com/quay/quay/commit/1a5e5d37fd71de19303f31830a2636f308a8fc34): bump gunicorn (PROJQUAY-8726) ([#3734](https://github.com/quay/quay/issues/3734))
 
 <a name="v3.11.9"></a>
-## [v3.11.9] - 2025-02-12
+## [v3.11.9] - 2025-02-07
 ### Deps
 - [a4a607a27](https://github.com/quay/quay/commit/a4a607a276fa5accc71b9f06b626d97bb6b0f4fc): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3629](https://github.com/quay/quay/issues/3629)) ([#3638](https://github.com/quay/quay/issues/3638))
 ### [Redhat-3.11] Chore
 - [84bf7f890](https://github.com/quay/quay/commit/84bf7f890da9df89708e959120b7dfd04efeb5b9): fix for wide open ssh for vsi for Z ([#3646](https://github.com/quay/quay/issues/3646))
 
 <a name="v3.11.8"></a>
-## [v3.11.8] - 2025-01-27
+## [v3.11.8] - 2025-01-07
 ### Dep
 - [bf6570225](https://github.com/quay/quay/commit/bf6570225c0d13b17b4d5cc1d5d9767c9d38d013): updating jinja2 to 3.1.5 (PROJQUAY-8375) ([#3547](https://github.com/quay/quay/issues/3547))
 ### Ui
@@ -2696,6 +2817,25 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [5286c33f8](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd0](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
 
+<a name="v3.10.22"></a>
+## [v3.10.22] - 2026-05-20
+### PROJQUAY-11339: Chore(Deps)
+- [ab5817716](https://github.com/quay/quay/commit/ab5817716c53088255ab70f13ea32ba3a56ce48c): bump pillow and follow-redirects [redhat-3.10] ([#5975](https://github.com/quay/quay/issues/5975))
+### [Redhat-3.10] Chore(Web)
+- [97f1ba211](https://github.com/quay/quay/commit/97f1ba2114b2c52dde38aa366cf7651ffd5cf2dc): remove es5-ext transitive dependency (PROJQUAY-11473) ([#5903](https://github.com/quay/quay/issues/5903))
+### [Redhat-3.10] Deps
+- [126f7f3ad](https://github.com/quay/quay/commit/126f7f3ad7261bdcd880fd641f796077d8468fee): Bump go-jose to v4.1.4 (PROJQUAY-11471) ([#5896](https://github.com/quay/quay/issues/5896))
+### [Redhat-3.10] PROJQUAY-11190: Fix(Data)
+- [38a85c8d8](https://github.com/quay/quay/commit/38a85c8d8047aa56906ca13fa1c168f538d6b107): prevent RCE via unsafe pickle deserialization ([#6004](https://github.com/quay/quay/issues/6004))
+### [Redhat-3.10] PROJQUAY-11280: Chore(Web)
+- [07500ae0b](https://github.com/quay/quay/commit/07500ae0bcb9001c6a67d78c26b94d8750fb9120): bump axios to 1.15.0 ([#5953](https://github.com/quay/quay/issues/5953))
+### [Redhat-3.10] PROJQUAY-11418: Fix(Security)
+- [52c8a373a](https://github.com/quay/quay/commit/52c8a373a02f39f705a30e8b35c94b5aa9b90d6e): bump node forge to 1.4.0 ([#5925](https://github.com/quay/quay/issues/5925))
+### [Redhat-3.10] PROJQUAY-11487: Chore(Web)
+- [6b7ad61b5](https://github.com/quay/quay/commit/6b7ad61b51008ff26544a822c0688dc425f36ff4): bump axios to 1.15.2 ([#6026](https://github.com/quay/quay/issues/6026))
+### [Redhat-3.10] PROJQUAY-11507: Chore(Deps)
+- [d5ed97e88](https://github.com/quay/quay/commit/d5ed97e88020761338dbeaf02f519e34b790964e): Bump cryptography to version 46.0.7 ([#5989](https://github.com/quay/quay/issues/5989))
+
 <a name="v3.10.21"></a>
 ## [v3.10.21] - 2026-04-20
 ### NO-ISSUE: Chore(Deps)
@@ -2836,7 +2976,7 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [714a8fc1e](https://github.com/quay/quay/commit/714a8fc1e0dcb14dab700a99377ee2b3ce6dee23): bump gunicorn (PROJQUAY-8726) ([#3735](https://github.com/quay/quay/issues/3735))
 
 <a name="v3.10.9"></a>
-## [v3.10.9] - 2025-02-13
+## [v3.10.9] - 2025-02-06
 ### [Redhat-3.10] Deps
 - [1028df4f0](https://github.com/quay/quay/commit/1028df4f00167a5cbe158e2fe146ea01cf446a73): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3637](https://github.com/quay/quay/issues/3637))
 
@@ -4209,7 +4349,7 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Dev
 - [d3cc640fe](https://github.com/quay/quay/commit/d3cc640fef64d673ae0c8ff9aef84aad13562c45): Update Clair for dev (PROJQUAY-4461) ([#1528](https://github.com/quay/quay/issues/1528))
 - [04af141a4](https://github.com/quay/quay/commit/04af141a49fa231157d91f20f04ab498e307228d): Add pre-commit script to run black (PROJQUAY-4039) ([#1432](https://github.com/quay/quay/issues/1432))
-### Doc 
+### Doc
 - [34cd7d091](https://github.com/quay/quay/commit/34cd7d09188cabe90af78ed6ef7b3cb048cfe309): update Instructions for Deploying on OpenShift ([#1537](https://github.com/quay/quay/issues/1537))
 ### Dockerfile
 - [f0f31e0b7](https://github.com/quay/quay/commit/f0f31e0b7a864c5322c6d7981d9f4afa4ad8e8e3): use nodejs ubi8 image to build frontends ([#1355](https://github.com/quay/quay/issues/1355))
@@ -4971,10 +5111,12 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Release
 - [9dd55deed](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.17.2...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.17.3...HEAD
+[v3.17.3]: https://github.com/quay/quay/compare/v3.17.2...v3.17.3
 [v3.17.2]: https://github.com/quay/quay/compare/v3.17.1...v3.17.2
 [v3.17.1]: https://github.com/quay/quay/compare/v3.17.0...v3.17.1
-[v3.17.0]: https://github.com/quay/quay/compare/v3.16.3...v3.17.0
+[v3.17.0]: https://github.com/quay/quay/compare/v3.16.4...v3.17.0
+[v3.16.4]: https://github.com/quay/quay/compare/v3.16.3...v3.16.4
 [v3.16.3]: https://github.com/quay/quay/compare/v3.16.2...v3.16.3
 [v3.16.2]: https://github.com/quay/quay/compare/v3.16.1...v3.16.2
 [v3.16.1]: https://github.com/quay/quay/compare/v3.16.0...v3.16.1
@@ -4983,7 +5125,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.15.3]: https://github.com/quay/quay/compare/v3.15.2...v3.15.3
 [v3.15.2]: https://github.com/quay/quay/compare/v3.15.1...v3.15.2
 [v3.15.1]: https://github.com/quay/quay/compare/v3.15.0...v3.15.1
-[v3.15.0]: https://github.com/quay/quay/compare/v3.14.7...v3.15.0
+[v3.15.0]: https://github.com/quay/quay/compare/v3.14.8...v3.15.0
+[v3.14.8]: https://github.com/quay/quay/compare/v3.14.7...v3.14.8
 [v3.14.7]: https://github.com/quay/quay/compare/v3.14.6...v3.14.7
 [v3.14.6]: https://github.com/quay/quay/compare/v3.14.5...v3.14.6
 [v3.14.5]: https://github.com/quay/quay/compare/v3.14.4...v3.14.5
@@ -5003,7 +5146,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.13.3]: https://github.com/quay/quay/compare/v3.13.2...v3.13.3
 [v3.13.2]: https://github.com/quay/quay/compare/v3.13.1...v3.13.2
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
-[v3.13.0]: https://github.com/quay/quay/compare/v3.12.17...v3.13.0
+[v3.13.0]: https://github.com/quay/quay/compare/v3.12.18...v3.13.0
+[v3.12.18]: https://github.com/quay/quay/compare/v3.12.17...v3.12.18
 [v3.12.17]: https://github.com/quay/quay/compare/v3.12.16...v3.12.17
 [v3.12.16]: https://github.com/quay/quay/compare/v3.12.15...v3.12.16
 [v3.12.15]: https://github.com/quay/quay/compare/v3.12.14...v3.12.15
@@ -5035,7 +5179,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.21...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.22...v3.11.0
+[v3.10.22]: https://github.com/quay/quay/compare/v3.10.21...v3.10.22
 [v3.10.21]: https://github.com/quay/quay/compare/v3.10.20...v3.10.21
 [v3.10.20]: https://github.com/quay/quay/compare/v3.10.19...v3.10.20
 [v3.10.19]: https://github.com/quay/quay/compare/v3.10.18...v3.10.19
