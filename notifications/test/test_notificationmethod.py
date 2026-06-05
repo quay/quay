@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from httmock import HTTMock, urlmatch
 from mock import Mock, patch
@@ -16,6 +14,7 @@ from notifications.notificationmethod import (
     SlackMethod,
     WebhookMethod,
 )
+from test.fixtures import *
 
 
 def assert_validated(method, method_config, error_message, namespace_name, repo_name):
@@ -210,3 +209,88 @@ def test_perform_http_call(method, method_config, netloc, initialized_db):
         )
 
     assert url_hit[0]
+
+
+def test_email_requires_confirmation_by_default(initialized_db, monkeypatch):
+    """
+    Verify that email validation requires confirmed authorization when
+    FEATURE_SKIP_EMAIL_CONFIRMATION is False (default).
+    """
+    import features
+
+    # Directly patch the features module attribute to avoid global state pollution
+    monkeypatch.setattr(features, "SKIP_EMAIL_CONFIRMATION", False)
+
+    method = EmailMethod()
+    assert_validated(
+        method,
+        {"email": "test@example.com"},
+        "The specified e-mail address is not authorized to receive notifications for this repository",
+        "devtable",
+        "simple",
+    )
+
+
+def test_email_skips_confirmation_when_feature_enabled(initialized_db, monkeypatch):
+    """
+    Verify that email validation bypasses confirmation check when
+    FEATURE_SKIP_EMAIL_CONFIRMATION is True.
+    """
+    import features
+
+    # Directly patch the features module attribute to avoid global state pollution
+    monkeypatch.setattr(features, "SKIP_EMAIL_CONFIRMATION", True)
+
+    method = EmailMethod()
+    assert_validated(
+        method,
+        {"email": "test@example.com"},
+        None,
+        "devtable",
+        "simple",
+    )
+
+
+def test_email_confirmation_config_loading_path(initialized_db, monkeypatch):
+    """
+    Verify that FEATURE_SKIP_EMAIL_CONFIRMATION is properly wired through the
+    config loading path, ensuring the flag exists in DefaultConfig, CONFIG_SCHEMA,
+    and correctly affects EmailMethod validation behavior.
+    """
+    import features
+    from config import DefaultConfig
+    from util.config.schema import CONFIG_SCHEMA
+
+    assert hasattr(DefaultConfig, "FEATURE_SKIP_EMAIL_CONFIRMATION")
+    assert DefaultConfig.FEATURE_SKIP_EMAIL_CONFIRMATION is False
+
+    assert "FEATURE_SKIP_EMAIL_CONFIRMATION" in CONFIG_SCHEMA["properties"]
+
+    # Record original value so monkeypatch restores it on teardown (even on failure)
+    original = getattr(features, "SKIP_EMAIL_CONFIRMATION", False)
+    monkeypatch.setattr(features, "SKIP_EMAIL_CONFIRMATION", original)
+
+    features.import_features({"FEATURE_SKIP_EMAIL_CONFIRMATION": True})
+    assert hasattr(features, "SKIP_EMAIL_CONFIRMATION")
+    assert bool(features.SKIP_EMAIL_CONFIRMATION) is True
+
+    method = EmailMethod()
+    assert_validated(
+        method,
+        {"email": "test@example.com"},
+        None,
+        "devtable",
+        "simple",
+    )
+
+    features.import_features({"FEATURE_SKIP_EMAIL_CONFIRMATION": False})
+    assert bool(features.SKIP_EMAIL_CONFIRMATION) is False
+
+    method = EmailMethod()
+    assert_validated(
+        method,
+        {"email": "test@example.com"},
+        "The specified e-mail address is not authorized to receive notifications for this repository",
+        "devtable",
+        "simple",
+    )
