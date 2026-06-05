@@ -153,8 +153,18 @@ objects:
             value: ${RLS_LOG_LEVEL}
           - name: REDIS_SOCKET_TYPE
             value: tcp
+          - name: REDIS_HOST
+            valueFrom:
+              secretKeyRef:
+                name: ${{RLS_REDIS_SECRET}}
+                key: db.endpoint
+          - name: REDIS_PORT
+            valueFrom:
+              secretKeyRef:
+                name: ${{RLS_REDIS_SECRET}}
+                key: db.port
           - name: REDIS_URL
-            value: ${RLS_REDIS_URL}
+            value: "$(REDIS_HOST):$(REDIS_PORT)"
           - name: REDIS_DB
             value: "0"
           - name: RUNTIME_ROOT
@@ -226,9 +236,9 @@ parameters:
 - name: RLS_CONFIG_CONFIGMAP
   value: "quay-rls-config"
   displayName: Name of the RLS config ConfigMap
-- name: RLS_REDIS_URL
-  value: "redis:6379"
-  displayName: Redis URL for rate limit counters
+- name: RLS_REDIS_SECRET
+  value: "quay-rls-redis"
+  displayName: K8s Secret containing Redis connection details (keys db.endpoint and db.port)
 - name: RLS_LOG_LEVEL
   value: "info"
   displayName: RLS log level
