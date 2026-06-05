@@ -587,7 +587,7 @@ def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
         expected_blobs_removed_from_storage = set()
         preferred = storage.preferred_locations[0]
 
-        # Check that existing uploadedblobs has an object in storage and collect ids
+        # Check that existing uploadedblobs has an object in storage
         for repo in database.Repository.select().order_by(database.Repository.id):
             for uploadedblob in UploadedBlob.select().where(UploadedBlob.repository == repo):
                 assert storage.exists(
@@ -616,15 +616,15 @@ def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
                     .count()
                 )
 
-                # if not has_depedent_manifestblob and not has_dependent_uploadedblobs:
-                #    expected_blobs_removed_from_storage.add(uploadedblob.blob)
+                if not has_depedent_manifestblob and not has_dependent_uploadedblobs:
+                    expected_blobs_removed_from_storage.add(uploadedblob.blob)
 
             assert model.gc.purge_repository(repo, force=True)
 
-            for removed_blob_from_storage in expected_blobs_removed_from_storage:
-                assert not storage.exists(
-                    {preferred}, storage.blob_path(removed_blob_from_storage.content_checksum)
-                )
+        for removed_blob_from_storage in expected_blobs_removed_from_storage:
+            assert not storage.exists(
+                {preferred}, storage.blob_path(removed_blob_from_storage.content_checksum)
+            )
 
 
 def test_delete_manifests_with_subject(initialized_db):
