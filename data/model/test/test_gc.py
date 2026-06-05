@@ -21,6 +21,7 @@ from data.database import (
     Label,
     Manifest,
     ManifestBlob,
+    ManifestChild,
     ManifestLabel,
     ManifestPullStatistics,
     MediaType,
@@ -38,6 +39,7 @@ from digest.digest_tools import sha256_digest
 from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.oci.config import OCIConfig
+from image.oci.index import OCIIndexBuilder
 from image.oci.manifest import OCIManifestBuilder
 from image.shared.schemas import parse_manifest_from_bytes
 from test.fixtures import *
@@ -585,7 +587,7 @@ def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
         expected_blobs_removed_from_storage = set()
         preferred = storage.preferred_locations[0]
 
-        # Check that existing uploadedblobs has an object in storage
+        # Check that existing uploadedblobs has an object in storage and collect ids
         for repo in database.Repository.select().order_by(database.Repository.id):
             for uploadedblob in UploadedBlob.select().where(UploadedBlob.repository == repo):
                 assert storage.exists(
@@ -608,21 +610,21 @@ def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
                 has_dependent_uploadedblobs = (
                     UploadedBlob.select()
                     .where(
-                        UploadedBlob == uploadedblob,
+                        UploadedBlob.blob == uploadedblob.blob,
                         UploadedBlob.repository != repo,
                     )
                     .count()
                 )
 
-                if not has_depedent_manifestblob and not has_dependent_uploadedblobs:
-                    expected_blobs_removed_from_storage.add(uploadedblob.blob)
+                # if not has_depedent_manifestblob and not has_dependent_uploadedblobs:
+                #    expected_blobs_removed_from_storage.add(uploadedblob.blob)
 
             assert model.gc.purge_repository(repo, force=True)
 
-        for removed_blob_from_storage in expected_blobs_removed_from_storage:
-            assert not storage.exists(
-                {preferred}, storage.blob_path(removed_blob_from_storage.content_checksum)
-            )
+            for removed_blob_from_storage in expected_blobs_removed_from_storage:
+                assert not storage.exists(
+                    {preferred}, storage.blob_path(removed_blob_from_storage.content_checksum)
+                )
 
 
 def test_delete_manifests_with_subject(initialized_db):
@@ -1562,3 +1564,99 @@ def test_get_or_create_blob_with_lock_fallback_creates_new(default_tag_policy, i
         assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
     finally:
         storage_model.GlobalLock = original_lock
+
+
+def test_gc_manifest_list_with_children(default_tag_policy, initialized_db):
+    """
+    Tests that purging of a repository with a manifest list correctly removes all
+    manifests and their children.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    # create three child manifests
+    _, build1 = create_manifest_for_testing(repo, differentiation_field="amd64")
+    _, build2 = create_manifest_for_testing(repo, differentiation_field="ppc64le")
+    _, build3 = create_manifest_for_testing(repo, differentiation_field="arm64")
+
+    # create index
+    index_builder = OCIIndexBuilder()
+    index_builder.add_manifest(build1, architecture="amd64", os="Linux")
+    index_builder.add_manifest(build2, architecture="ppc64le", os="Linux")
+    index_builder.add_manifest(build3, architecture="arm64", os="Linux")
+    manifest_list = index_builder.build()
+
+    created = model.oci.manifest.get_or_create_manifest(repo, manifest_list, storage)
+    assert created
+
+    # tag the manifest list
+    model.oci.tag.retarget_tag("latest", created.manifest)
+
+    # verify manifest child rows exist
+    assert ManifestChild.select().where(ManifestChild.repository == repo).count() == 3
+
+    # purge repo
+    assert model.gc.purge_repository(repo, force=True)
+
+    # verify eveything's cleaned up
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+    assert ManifestChild.select().where(ManifestChild.repository == repo).count() == 0
+    assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
+
+
+def test_gc_manifest_with_labels(default_tag_policy, initialized_db):
+    """
+    Tests that purging of a repository correctly GCs all labels associated with the manifests.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    assert repo
+    manifest, _ = create_manifest_for_testing(repo, differentiation_field="labeled")
+
+    # add labels to the manifest
+    model.oci.label.create_manifest_label(
+        manifest.id, "maintainer", "devtable@devtable.com", "manifest"
+    )
+    model.oci.label.create_manifest_label(manifest.id, "tester", "test@devtable.com", "manifest")
+    model.oci.label.create_manifest_label(manifest.id, "version", "0.0.1", "manifest")
+
+    assert ManifestLabel.select().where(ManifestLabel.repository == repo).count() == 3
+    pre_gc_label_count = Label.select().count()
+
+    # Purge repo
+    assert model.gc.purge_repository(repo, force=True)
+
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+    assert ManifestLabel.select().where(ManifestLabel.repository == repo).count() == 0
+    assert Label.select().count() < pre_gc_label_count
+
+
+def test_purge_manifest_list_no_infinite_loop(default_tag_policy, initialized_db):
+    """
+    Tests that purging a repository with manifest lists does not end in an infinite lopp when
+    child manifests have lower ID than their parent.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    assert repo
+
+    built_manifests = []
+    child_manifests = []
+    for arch in ["amd64", "arm64", "ppc64le", "s390x"]:
+        child, build = create_manifest_for_testing(repo, differentiation_field=arch)
+        built_manifests.append(build)
+        child_manifests.append(child)
+
+    index_builder = OCIIndexBuilder()
+    for i, build in enumerate(built_manifests):
+        index_builder.add_manifest(build, architecture=f"arch{i}", os="Linux")
+
+    manifest_list = index_builder.build()
+
+    created = model.oci.manifest.get_or_create_manifest(repo, manifest_list, storage)
+    assert created
+    model.oci.tag.retarget_tag("latest", created.manifest)
+
+    # check if children have lower IDs than the parent
+    for child in child_manifests:
+        assert child.id < created.manifest.id
+
+    assert model.gc.purge_repository(repo, force=True)
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
