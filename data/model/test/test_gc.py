@@ -1660,3 +1660,82 @@ def test_purge_manifest_list_no_infinite_loop(default_tag_policy, initialized_db
 
     assert model.gc.purge_repository(repo, force=True)
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
+
+
+def test_gc_shared_label_survives_partial_gc(default_tag_policy, initialized_db):
+    """
+    Tests that labels shared across multiple images survive the GC process and are not
+    deleted during garbage collection.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    manifest1, _ = create_manifest_for_testing(repo, differentiation_field="shared1")
+    manifest2, _ = create_manifest_for_testing(repo, differentiation_field="shared1")
+
+    model.oci.tag.retarget_tag("tag1", manifest1)
+    model.oci.tag.retarget_tag("tag2", manifest1)
+
+    # add same label to both manifests
+    label1 = model.oci.label.create_manifest_label(
+        manifest1.id, "shared-key", "shared-value", "manifest"
+    )
+    label2 = model.oci.label.create_manifest_label(
+        manifest2.id, "shared-key", "shared-value", "manifest"
+    )
+
+    # verify that label exists
+    assert Label.select().where(Label.id == label1.id).exists()
+    assert Label.select().where(Label.id == label2.id).exists()
+
+    # delete tag1, GC manifest1
+    with assert_gc_integrity(expect_storage_removed=True):
+        delete_tag(repo, "tag1", expect_gc=True)
+
+    # verify that label2 survived
+    assert Label.select().where(Label.id == label2.id).exists()
+
+
+def test_gc_manifest_list_partial_gc_child_in_use(default_tag_policy, initialized_db):
+    """
+    Tests that child images still in use by other manifests are not deleted when one of the
+    parent's manifest list gets GCed.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    # create child manifests
+    child_shared, build_shared = create_manifest_for_testing(repo, differentiation_field="shared")
+    child_only1, build_only1 = create_manifest_for_testing(repo, differentiation_field="only1")
+    child_only2, build_only2 = create_manifest_for_testing(repo, differentiation_field="only2")
+
+    # create two different manifest lists that share the child image
+    index_builder1 = OCIIndexBuilder()
+    index_builder1.add_manifest(build_shared, architecture="amd64", os="linux")
+    index_builder1.add_manifest(build_only1, architecture="arm64", os="linux")
+    list1 = index_builder1.build()
+
+    index_builder2 = OCIIndexBuilder()
+    index_builder2.add_manifest(build_shared, architecture="amd64", os="linux")
+    index_builder2.add_manifest(build_only2, architecture="s390x", os="linux")
+    list2 = index_builder2.build()
+
+    created1 = model.oci.manifest.get_or_create_manifest(repo, list1, storage)
+    created2 = model.oci.manifest.get_or_create_manifest(repo, list2, storage)
+    assert created1
+    assert created2
+
+    model.oci.tag.retarget_tag("tag1", created1.manifest)
+    model.oci.tag.retarget_tag("tag2", created2.manifest)
+
+    # delete tag 1, GC manifest 1
+    now = datetime.utcnow()
+    with freeze_time(now + timedelta(minutes=5)):
+        delete_tag(repo, "tag1", perform_gc=True, expect_gc=True)
+
+    # shared child must survive
+    assert Manifest.select().where(Manifest.id == child_shared.id).exists()
+
+    # child_only1 should be deleted
+    assert not Manifest.select().where(Manifest.id == child_only1.id).exists()
+
+    # child_only2 must survive
+    assert Manifest.select().where(Manifest.id == child_only2.id).exists()
