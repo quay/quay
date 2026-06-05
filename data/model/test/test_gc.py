@@ -1670,29 +1670,30 @@ def test_gc_shared_label_survives_partial_gc(default_tag_policy, initialized_db)
     repo = model.repository.create_repository("devtable", "newrepo", None)
 
     manifest1, _ = create_manifest_for_testing(repo, differentiation_field="shared1")
-    manifest2, _ = create_manifest_for_testing(repo, differentiation_field="shared1")
+    manifest2, _ = create_manifest_for_testing(repo, differentiation_field="shared2")
 
     model.oci.tag.retarget_tag("tag1", manifest1)
-    model.oci.tag.retarget_tag("tag2", manifest1)
+    model.oci.tag.retarget_tag("tag2", manifest2)
 
     # add same label to both manifests
-    label1 = model.oci.label.create_manifest_label(
-        manifest1.id, "shared-key", "shared-value", "manifest"
+    label = Label.create(
+        key="shared-key",
+        value="shared-value",
+        source_type=Label.source_type.get_id("manifest"),
+        media_type=Label.media_type.get_id("text/plain"),
     )
-    label2 = model.oci.label.create_manifest_label(
-        manifest2.id, "shared-key", "shared-value", "manifest"
-    )
-
-    # verify that label exists
-    assert Label.select().where(Label.id == label1.id).exists()
-    assert Label.select().where(Label.id == label2.id).exists()
+    ManifestLabel.create(manifest=manifest1.id, label=label, repository=repo)
+    ManifestLabel.create(manifest=manifest2.id, label=label, repository=repo)
 
     # delete tag1, GC manifest1
-    with assert_gc_integrity(expect_storage_removed=True):
+    now = datetime.utcnow()
+    with freeze_time(now + timedelta(minutes=5)):
         delete_tag(repo, "tag1", expect_gc=True)
 
-    # verify that label2 survived
-    assert Label.select().where(Label.id == label2.id).exists()
+    # verify that label survived
+    assert Label.select().where(Label.id == label.id).exists()
+    assert not ManifestLabel.select().where(ManifestLabel.manifest == manifest1.id).exists()
+    assert ManifestLabel.select().where(ManifestLabel.manifest == manifest2.id).exists()
 
 
 def test_gc_manifest_list_partial_gc_child_in_use(default_tag_policy, initialized_db):
