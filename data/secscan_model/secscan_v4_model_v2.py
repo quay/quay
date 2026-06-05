@@ -179,15 +179,16 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
         now = datetime.utcnow()
         for candidate in candidates:
             try:
-                ManifestSecurityStatus.create(
-                    manifest=candidate.id,
-                    repository=candidate.repository_id,
-                    index_status=IndexStatus.IN_PROGRESS,
-                    indexer_hash="in_progress_v2",
-                    indexer_version=IndexerVersion.V4,
-                    last_indexed=now,
-                    metadata_json={},
-                )
+                with db_transaction():
+                    ManifestSecurityStatus.create(
+                        manifest=candidate.id,
+                        repository=candidate.repository_id,
+                        index_status=IndexStatus.IN_PROGRESS,
+                        indexer_hash="in_progress_v2",
+                        indexer_version=IndexerVersion.V4,
+                        last_indexed=now,
+                        metadata_json={},
+                    )
                 claimed.append(candidate)
                 if len(claimed) >= batch_size:
                     break
