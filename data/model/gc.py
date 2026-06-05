@@ -183,6 +183,21 @@ def _purge_repository_contents(repo):
     """
     logger.debug("Purging repository %s", repo)
 
+    # We need to break manifest child-parent relationship here. Child images contain ids that are lower than
+    # their parents. If only child images are picked up during chunking, they will not be able to be deleted
+    # because their parent's entry in ManifestChild table will continue to exist. This will cause an endless
+    # loop of constantly enqueueing the same manifests over and over.
+    # The operation is safe because the repository is already marked for deletion and cannot be modified in
+    # any way.
+    ManifestChild.delete().where(ManifestChild.repository == repo).execute()
+
+    # We also delete all UploadedBlob references for the deleted repository at once. This stops potential leaks
+    # later on and also speeds up the GC process becuase we're doing one DELETE at a time instead of doing it
+    # for each individual blob. However, we still have the same _is_blob_orphaned check so this change has no impact
+    # on preserving shared blobs.
+    # The operation is safe because we're only deleting entries related to the deleted repository.
+    UploadedBlob.delete().where(UploadedBlob.repository == repo).execute()
+
     # Purge via all the tags.
     while True:
         found = False
