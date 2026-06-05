@@ -50,7 +50,7 @@
     "@types/jquery": "^2.0.40",
     "@types/showdown": "^1.4.32",
     "angular-mocks": "1.6.4",
-    "css-loader": "0.25.0",
+    "css-loader": "0.28.11",
     "file-loader": "^6.2.0",
     "html-loader": "^0.4.5",
     "jasmine-core": "^2.5.2",
@@ -72,7 +72,7 @@
     "ts-node": "^3.0.6",
     "tslint": "^5.4.3",
     "typescript": "3.6.3",
-    "webpack": "4.41.0",
+    "webpack": "4.47.0",
     "webpack-bundle-analyzer": "3.5.2",
     "webpack-cli": "3.3.9"
   },
