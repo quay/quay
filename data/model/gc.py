@@ -191,13 +191,6 @@ def _purge_repository_contents(repo):
     # any way.
     ManifestChild.delete().where(ManifestChild.repository == repo).execute()
 
-    # We also delete all UploadedBlob references for the deleted repository at once. This stops potential leaks
-    # later on and also speeds up the GC process becuase we're doing one DELETE at a time instead of doing it
-    # for each individual blob. However, we still have the same _is_blob_orphaned check so this change has no impact
-    # on preserving shared blobs.
-    # The operation is safe because we're only deleting entries related to the deleted repository.
-    UploadedBlob.delete().where(UploadedBlob.repository == repo).execute()
-
     # Purge via all the tags.
     while True:
         found = False
@@ -566,7 +559,7 @@ def _garbage_collect_manifest(manifest_id, context):
 
 def _bulk_garbage_collect_labels(context):
     """
-    Bulk deletes all labels which are part of a specific manifest.
+    Bulk deletes all labels which are part of a specific context.
     """
     label_ids = set(context.label_ids)
     if not label_ids:
