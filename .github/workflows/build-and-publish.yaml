@@ -134,10 +134,11 @@ jobs:
           ibmcloud plugin install vpc-infrastructure
 
       - name: Delete VPC security group rule
+        env:
+          SG_ID: ${{ secrets.SG_ID }}
+          SG_RULE_ID: ${{ needs.build-amd64-ppc64le-s390x.outputs.sg_rule_id }}
         run: |
-          ibmcloud is security-group-rule-delete \
-            ${{ secrets.SG_ID }} \
-            ${{ needs.build-amd64-ppc64le-s390x.outputs.sg_rule_id }} -f
+          ibmcloud is security-group-rule-delete "$SG_ID" "$SG_RULE_ID" -f
 
   build-arm64:
     name: Build ARM64 image
