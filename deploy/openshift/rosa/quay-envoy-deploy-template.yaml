@@ -1,0 +1,234 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: quay-envoy-deploy-template
+objects:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: quay-envoy-svc
+    labels:
+      app: quay-envoy
+  spec:
+    type: NodePort
+    externalTrafficPolicy: Local
+    ports:
+    - name: https
+      protocol: TCP
+      port: 8443
+      targetPort: 8443
+    selector:
+      app: quay-envoy
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: quay-envoy
+    labels:
+      app: quay-envoy
+    annotations:
+      ignore-check.kube-linter.io/unset-cpu-requirements: "no cpu limits"
+  spec:
+    replicas: ${{ENVOY_REPLICAS}}
+    revisionHistoryLimit: 10
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 0
+        maxSurge: 1
+    selector:
+      matchLabels:
+        app: quay-envoy
+    template:
+      metadata:
+        labels:
+          app: quay-envoy
+      spec:
+        nodeSelector:
+          part-of: quay
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: quay-envoy
+                topologyKey: topology.kubernetes.io/zone
+        containers:
+        - name: envoy
+          image: ${ENVOY_IMAGE}:${ENVOY_IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          command: ["envoy"]
+          args: ["-c", "/etc/envoy/envoy.yaml", "--log-level", "${ENVOY_LOG_LEVEL}"]
+          ports:
+          - containerPort: 8443
+            name: https
+          - containerPort: 9901
+            name: admin
+          volumeMounts:
+          - name: config
+            mountPath: /etc/envoy
+          - name: tls
+            mountPath: /etc/envoy/tls
+            readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 9901
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 9901
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: ${{ENVOY_CPU_REQUEST}}
+              memory: ${{ENVOY_MEMORY_REQUEST}}
+            limits:
+              memory: ${{ENVOY_MEMORY_LIMIT}}
+        volumes:
+        - name: config
+          configMap:
+            name: ${{ENVOY_CONFIG_CONFIGMAP}}
+        - name: tls
+          secret:
+            secretName: ${{ENVOY_TLS_SECRET}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: quay-rls-service
+    labels:
+      app: quay-rls
+  spec:
+    ports:
+    - name: grpc
+      protocol: TCP
+      port: 8081
+      targetPort: 8081
+    selector:
+      app: quay-rls
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: quay-rls
+    labels:
+      app: quay-rls
+    annotations:
+      ignore-check.kube-linter.io/unset-cpu-requirements: "no cpu limits"
+  spec:
+    replicas: ${{RLS_REPLICAS}}
+    revisionHistoryLimit: 10
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 0
+        maxSurge: 1
+    selector:
+      matchLabels:
+        app: quay-rls
+    template:
+      metadata:
+        labels:
+          app: quay-rls
+      spec:
+        nodeSelector:
+          part-of: quay
+        containers:
+        - name: quay-rls
+          image: ${RLS_IMAGE}:${RLS_IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: 8081
+            name: grpc
+          env:
+          - name: USE_STATSD
+            value: "false"
+          - name: LOG_LEVEL
+            value: ${RLS_LOG_LEVEL}
+          - name: REDIS_SOCKET_TYPE
+            value: tcp
+          - name: REDIS_URL
+            value: ${RLS_REDIS_URL}
+          - name: REDIS_DB
+            value: "0"
+          - name: RUNTIME_ROOT
+            value: /data
+          - name: RUNTIME_SUBDIRECTORY
+            value: ratelimit
+          - name: RUNTIME_WATCH_ROOT
+            value: "false"
+          volumeMounts:
+          - name: config
+            mountPath: /data/ratelimit/config/config.yaml
+            subPath: config.yaml
+          resources:
+            requests:
+              cpu: ${{RLS_CPU_REQUEST}}
+              memory: ${{RLS_MEMORY_REQUEST}}
+            limits:
+              memory: ${{RLS_MEMORY_LIMIT}}
+        volumes:
+        - name: config
+          configMap:
+            name: ${{RLS_CONFIG_CONFIGMAP}}
+parameters:
+- name: ENVOY_IMAGE
+  value: "docker.io/envoyproxy/envoy"
+  displayName: Envoy container image
+- name: ENVOY_IMAGE_TAG
+  value: "v1.35-latest"
+  displayName: Envoy image tag
+- name: ENVOY_REPLICAS
+  value: "1"
+  displayName: Number of Envoy replicas
+- name: ENVOY_CPU_REQUEST
+  value: "500m"
+  displayName: Envoy CPU request
+- name: ENVOY_MEMORY_REQUEST
+  value: "256Mi"
+  displayName: Envoy memory request
+- name: ENVOY_MEMORY_LIMIT
+  value: "512Mi"
+  displayName: Envoy memory limit
+- name: ENVOY_CONFIG_CONFIGMAP
+  value: "quay-envoy-config"
+  displayName: Name of the Envoy config ConfigMap
+- name: ENVOY_TLS_SECRET
+  value: "quay-py3-config-secret"
+  displayName: Secret containing TLS cert and key
+- name: ENVOY_LOG_LEVEL
+  value: "info"
+  displayName: Envoy log level
+- name: RLS_IMAGE
+  value: "docker.io/envoyproxy/ratelimit"
+  displayName: Rate limit service container image
+- name: RLS_IMAGE_TAG
+  value: "latest"
+  displayName: Rate limit service image tag
+- name: RLS_REPLICAS
+  value: "1"
+  displayName: Number of RLS replicas
+- name: RLS_CPU_REQUEST
+  value: "100m"
+  displayName: RLS CPU request
+- name: RLS_MEMORY_REQUEST
+  value: "128Mi"
+  displayName: RLS memory request
+- name: RLS_MEMORY_LIMIT
+  value: "256Mi"
+  displayName: RLS memory limit
+- name: RLS_CONFIG_CONFIGMAP
+  value: "quay-rls-config"
+  displayName: Name of the RLS config ConfigMap
+- name: RLS_REDIS_URL
+  value: "redis:6379"
+  displayName: Redis URL for rate limit counters
+- name: RLS_LOG_LEVEL
+  value: "info"
+  displayName: RLS log level
