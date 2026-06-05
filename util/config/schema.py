@@ -826,6 +826,21 @@ CONFIG_SCHEMA = {
             "description": "A base64 encoded string used to sign JWT(s) on Clair V4 requests. If 'None' jwt signing will not occur.",
             "x-example": "PSK",
         },
+        "FEATURE_SECURITY_SCANNER_V2": {
+            "type": "boolean",
+            "description": "Whether to enable the V2 lock-free security scanner indexer using PostgreSQL FOR UPDATE SKIP LOCKED for work distribution. Defaults to False",
+            "x-example": False,
+        },
+        "SECURITY_SCANNER_V2_BATCH_SIZE": {
+            "type": "number",
+            "description": "The number of manifests to claim per indexing cycle in the V2 security scanner. Defaults to 50.",
+            "x-example": 50,
+        },
+        "SECURITY_SCANNER_V2_INDEXING_INTERVAL": {
+            "type": "number",
+            "description": "The number of seconds between indexing cycles in the V2 security scanner. Defaults to 30.",
+            "x-example": 30,
+        },
         # Repository mirroring
         "REPO_MIRROR_INTERVAL": {
             "type": "number",
