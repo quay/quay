@@ -97,6 +97,7 @@ linters:
     paths:
       - .*\.pb\.go$
       - vendor
+      - node_modules
       - config-tool
       - third_party$
       - builtin$
@@ -113,6 +114,7 @@ formatters:
     paths:
       - .*\.pb\.go$
       - vendor
+      - node_modules
       - config-tool
       - third_party$
       - builtin$

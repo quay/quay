@@ -85,6 +85,10 @@ func (m *mockStore) GetManifestDigest(_ context.Context, _ int64, _ digest.Diges
 	return "", errNotImplemented
 }
 
+func (m *mockStore) GetManifestContent(_ context.Context, _ digest.Digest) ([]byte, error) {
+	return nil, errNotImplemented
+}
+
 func (m *mockStore) BlobExists(_ context.Context, _ digest.Digest) (bool, error) {
 	return false, errNotImplemented
 }

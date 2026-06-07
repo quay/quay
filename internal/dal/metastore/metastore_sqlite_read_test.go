@@ -1,6 +1,7 @@
 package metastore_test
 
 import (
+	"bytes"
 	"context"
 	"path/filepath"
 	"testing"
@@ -118,6 +119,41 @@ func TestGetManifestDigest(t *testing.T) {
 	}
 
 	_, err = store.GetManifestDigest(ctx, repoID, digest.FromString("missing"))
+	if err == nil {
+		t.Fatal("expected error for nonexistent manifest")
+	}
+}
+
+func TestGetManifestContent(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	name := oci.RepositoryName{Namespace: "ns", Name: "repo"}
+	repoID, err := store.EnsureRepository(ctx, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := []byte(`{"schemaVersion":2}`)
+	dgst := digest.FromBytes(content)
+
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    dgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   content,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := store.GetManifestContent(ctx, dgst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, content) {
+		t.Errorf("GetManifestContent = %s, want %s", got, content)
+	}
+
+	_, err = store.GetManifestContent(ctx, digest.FromString("missing"))
 	if err == nil {
 		t.Fatal("expected error for nonexistent manifest")
 	}

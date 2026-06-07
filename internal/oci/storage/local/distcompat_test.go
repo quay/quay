@@ -3,6 +3,7 @@ package local
 import (
 	"bytes"
 	"errors"
+	"io"
 	"path/filepath"
 	"testing"
 
@@ -217,6 +218,57 @@ func TestDistDriver_MetadataLink_PutContent_NoOp(t *testing.T) {
 	linkPath := "/docker/registry/v2/repositories/lib/test/_layers/sha256/aabb/link"
 	if err := dd.PutContent(ctx, linkPath, []byte("sha256:aabb")); err != nil {
 		t.Fatalf("PutContent on link should be no-op, got error: %v", err)
+	}
+}
+
+func TestDistDriver_ManifestBlobFallbackFromMetadata(t *testing.T) {
+	dd, _, store := setupDistTest(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestContent := []byte(`{"schemaVersion":2}`)
+	manifestDgst := digest.FromBytes(manifestContent)
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    manifestDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   manifestContent,
+		Tag:       "latest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	blobPath := "/docker/registry/v2/blobs/sha256/" + manifestDgst.Encoded()[:2] + "/" + manifestDgst.Encoded() + "/data"
+
+	got, err := dd.GetContent(ctx, blobPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, manifestContent) {
+		t.Errorf("GetContent = %s, want %s", got, manifestContent)
+	}
+
+	rc, err := dd.Reader(ctx, blobPath, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rc.Close() }()
+	read, err := io.ReadAll(rc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(read, manifestContent) {
+		t.Errorf("Reader = %s, want %s", read, manifestContent)
+	}
+
+	info, err := dd.Stat(ctx, blobPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Size() != int64(len(manifestContent)) {
+		t.Errorf("Stat size = %d, want %d", info.Size(), len(manifestContent))
 	}
 }
 

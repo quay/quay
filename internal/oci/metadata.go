@@ -21,6 +21,7 @@ type MetadataStore interface {
 	GetRepositoryID(ctx context.Context, name RepositoryName) (int64, error)
 	GetTagDigest(ctx context.Context, repoID int64, tag string) (digest.Digest, error)
 	GetManifestDigest(ctx context.Context, repoID int64, dgst digest.Digest) (digest.Digest, error)
+	GetManifestContent(ctx context.Context, dgst digest.Digest) ([]byte, error)
 	BlobExists(ctx context.Context, dgst digest.Digest) (bool, error)
 	BlobLinkedToRepo(ctx context.Context, repoID int64, dgst digest.Digest) (bool, error)
 	ListTags(ctx context.Context, repoID int64) ([]string, error)

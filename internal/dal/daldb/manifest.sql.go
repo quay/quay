@@ -102,6 +102,17 @@ func (q *Queries) GetManifestByDigest(ctx context.Context, arg GetManifestByDige
 	return i, err
 }
 
+const getManifestContentByDigest = `-- name: GetManifestContentByDigest :one
+SELECT manifest_bytes FROM manifest WHERE digest = ? LIMIT 1
+`
+
+func (q *Queries) GetManifestContentByDigest(ctx context.Context, digest string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getManifestContentByDigest, digest)
+	var manifest_bytes string
+	err := row.Scan(&manifest_bytes)
+	return manifest_bytes, err
+}
+
 const linkManifestBlob = `-- name: LinkManifestBlob :exec
 INSERT OR IGNORE INTO manifestblob (repository_id, manifest_id, blob_id)
 VALUES (?, ?, ?)

@@ -94,10 +94,12 @@ func InitDatabase(ctx context.Context, db *sql.DB, w io.Writer) error {
 
 	var seedRows int
 	// Count rows in known seed tables to give a rough summary.
-	seedTables := []string{"mediatype", "logentrykind", "visibility", "repositorykind", "tagkind",
+	seedTables := []string{
+		"mediatype", "logentrykind", "visibility", "repositorykind", "tagkind",
 		"loginservice", "buildtriggerservice", "accesstokenkind", "notificationkind",
 		"externalnotificationevent", "externalnotificationmethod", "quayregion", "quayservice",
-		"imagestoragelocation", "imagestoragetransformation", "imagestoragesignaturekind", "labelsourcetype"}
+		"imagestoragelocation", "imagestoragetransformation", "imagestoragesignaturekind", "labelsourcetype",
+	}
 	for _, t := range seedTables {
 		var n int
 		_ = db.QueryRowContext(ctx, fmt.Sprintf("SELECT count(*) FROM %q", t)).Scan(&n)
@@ -325,10 +327,20 @@ func extractRevisionID(migrationSQL string) (string, error) {
 	return "", fmt.Errorf("missing '-- revision: <id>' comment")
 }
 
-// splitStatements splits a SQL script on semicolons, trimming whitespace
-// and discarding empty entries.
+// splitStatements splits a SQL script on semicolons, trimming whitespace and
+// discarding empty entries. It strips full-line "--" comments only; semicolons
+// in inline comments are still treated as statement delimiters.
 func splitStatements(rawSQL string) []string {
-	raw := strings.Split(rawSQL, ";")
+	var withoutComments strings.Builder
+	for _, line := range strings.Split(rawSQL, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "--") {
+			continue
+		}
+		withoutComments.WriteString(line)
+		withoutComments.WriteByte('\n')
+	}
+
+	raw := strings.Split(withoutComments.String(), ";")
 	stmts := make([]string, 0, len(raw))
 	for _, s := range raw {
 		s = strings.TrimSpace(s)
