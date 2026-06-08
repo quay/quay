@@ -20,6 +20,7 @@ def _create_ldap(
     global_readonly_superuser_filter=None,
     enable_caching=False,
     cache_ttl=60.0,
+    enable_pooling=True,
 ):
     base_dn = ["dc=quay", "dc=io"]
     admin_dn = "uid=testy,ou=employees,dc=quay,dc=io"
@@ -47,6 +48,7 @@ def _create_ldap(
         ldap_global_readonly_superuser_filter=global_readonly_superuser_filter,
         enable_caching=enable_caching,
         cache_ttl=cache_ttl,
+        connection_pooling=enable_pooling,
     )
     return ldap
 
@@ -60,6 +62,7 @@ def mock_ldap(
     global_readonly_superuser_filter=None,
     enable_caching=False,
     cache_ttl=60.0,
+    enable_pooling=True,
 ):
     mock_data = {
         "dc=quay,dc=io": {"dc": ["quay", "io"]},
@@ -352,6 +355,7 @@ def mock_ldap(
                 global_readonly_superuser_filter=global_readonly_superuser_filter,
                 enable_caching=enable_caching,
                 cache_ttl=cache_ttl,
+                enable_pooling=enable_pooling,
             )
     finally:
         mockldap.stop()
@@ -688,6 +692,40 @@ class TestLDAP(unittest.TestCase):
             )
             self.assertTrue(result)
             self.assertIsNone(err)
+
+    def test_check_group_lookup_args_closes_generator(self):
+        """Verify generator is explicitly closed to release LDAP connection."""
+        with mock_ldap() as ldap_users:
+            generator_closed = [False]
+            original_iterate = ldap_users.iterate_group_members
+
+            class TrackingGenerator:
+                def __init__(self, gen):
+                    self._gen = gen
+
+                def __iter__(self):
+                    return self
+
+                def __next__(self):
+                    return next(self._gen)
+
+                def close(self):
+                    generator_closed[0] = True
+                    self._gen.close()
+
+            def tracking_iterate(*args, **kwargs):
+                it, err = original_iterate(*args, **kwargs)
+                if it is None:
+                    return (it, err)
+                return (TrackingGenerator(it), err)
+
+            ldap_users.iterate_group_members = tracking_iterate
+
+            (result, err) = ldap_users.check_group_lookup_args(
+                {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
+            )
+            self.assertTrue(result)
+            self.assertTrue(generator_closed[0], "Generator was not explicitly closed")
 
     def test_metadata(self):
         with mock_ldap() as ldap:
@@ -1158,6 +1196,407 @@ class TestLDAPCache(unittest.TestCase):
 
             # Verify cache has the entry
             self.assertEqual(ldap._cache.size(), 1)
+
+
+class TestLDAPConnectionPool(unittest.TestCase):
+    def setUp(self):
+        setup_database_for_testing(self)
+        self.app = app.test_client()
+        self.ctx = app.test_request_context()
+        self.ctx.__enter__()
+
+    def tearDown(self):
+        finished_database_for_testing(self)
+        self.ctx.__exit__(True, None, None)
+
+    def test_pool_lazy_init(self):
+        """Pool queue is not created until first get_connection call."""
+        from data.users.externalldap import LDAPConnectionPool
+
+        builder = MagicMock()
+        pool = LDAPConnectionPool(builder, pool_size=5)
+        self.assertIsNone(pool._queue)
+
+    def test_pool_reuses_connections(self):
+        """Connections are returned to pool and reused on next checkout."""
+        with mock_ldap(enable_pooling=True) as ldap_users:
+            (result1, _) = ldap_users.get_user("someuser")
+            self.assertEqual(result1.username, "someuser")
+            self.assertEqual(ldap_users._ldap._total_created, 1)
+
+            (result2, _) = ldap_users.get_user("someuser")
+            self.assertEqual(result2.username, "someuser")
+            self.assertEqual(ldap_users._ldap._total_created, 1)
+
+    def test_pool_resilient_after_not_found(self):
+        """Pool still functions correctly after a not-found lookup."""
+        with mock_ldap(enable_pooling=True) as ldap_users:
+            ldap_users.get_user("someuser")
+
+            (result, err) = ldap_users.get_user("nonexistentuser")
+            self.assertIsNone(result)
+
+            (result2, _) = ldap_users.get_user("someuser")
+            self.assertEqual(result2.username, "someuser")
+
+    def test_pool_verify_credentials_uses_bind_and_revert(self):
+        """verify_credentials routes through pool.verify_bind when pooling is enabled."""
+        with mock_ldap(enable_pooling=True) as ldap_users:
+            from data.users.externalldap import LDAPConnectionPool
+
+            self.assertIsInstance(ldap_users._ldap, LDAPConnectionPool)
+            with patch.object(
+                ldap_users._ldap, "verify_bind", wraps=ldap_users._ldap.verify_bind
+            ) as mock_vb:
+                (result, _) = ldap_users.verify_and_link_user("someuser", "somepass")
+                self.assertEqual(result.username, "someuser")
+                mock_vb.assert_called_once()
+
+    def test_pool_disabled_fallback(self):
+        """With pooling disabled, behavior is identical to LDAPConnectionBuilder."""
+        with mock_ldap(enable_pooling=False) as ldap_users:
+            from data.users.externalldap import LDAPConnectionBuilder
+
+            self.assertIsInstance(ldap_users._ldap, LDAPConnectionBuilder)
+
+            (result, _) = ldap_users.get_user("someuser")
+            self.assertEqual(result.username, "someuser")
+
+    def test_pool_iterate_group_members(self):
+        """Team sync iteration works through pooled connections."""
+        with mock_ldap(enable_pooling=True) as ldap_users:
+            (it, err) = ldap_users.iterate_group_members(
+                {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
+            )
+            self.assertIsNone(err)
+            results = list(it)
+            self.assertEqual(5, len(results))
+
+    def test_pool_ping(self):
+        """Ping works through pooled connections."""
+        with mock_ldap(enable_pooling=True) as ldap_users:
+            (ok, err) = ldap_users.ping()
+            self.assertTrue(ok)
+            self.assertIsNone(err)
+
+    def test_pool_bind_and_revert_valid(self):
+        """Bind-and-revert verifies valid credentials through the pool."""
+        with mock_ldap(enable_pooling=True) as ldap_users:
+            (result, _) = ldap_users.verify_and_link_user("someuser", "somepass")
+            self.assertEqual(result.username, "someuser")
+
+    def test_pool_bind_and_revert_invalid(self):
+        """Bind-and-revert rejects invalid credentials."""
+        with mock_ldap(enable_pooling=True) as ldap_users:
+            (result, err) = ldap_users.verify_and_link_user("someuser", "wrongpass")
+            self.assertIsNone(result)
+            self.assertEqual(err, "Invalid username or password.")
+
+    def test_pool_bind_and_revert_empty_password(self):
+        """Empty password is rejected before reaching the pool."""
+        with mock_ldap(enable_pooling=True) as ldap_users:
+            (result, err) = ldap_users.verify_and_link_user("someuser", "")
+            self.assertIsNone(result)
+            self.assertEqual(err, "Anonymous binding not allowed.")
+
+    def test_pool_disabled_uses_direct_connection(self):
+        """With pooling disabled, verify_credentials uses direct LDAPConnection."""
+        with mock_ldap(enable_pooling=False) as ldap_users:
+            (result, _) = ldap_users.verify_and_link_user("someuser", "somepass")
+            self.assertEqual(result.username, "someuser")
+
+            (result, err) = ldap_users.verify_and_link_user("someuser", "wrongpass")
+            self.assertIsNone(result)
+            self.assertEqual(err, "Invalid username or password.")
+
+    def test_pool_bind_and_revert_restores_admin_identity(self):
+        """After bind-and-revert, the pooled connection is rebound as admin
+        and can perform admin searches (not stuck as the user)."""
+        with mock_ldap(enable_pooling=True) as ldap_users:
+            # Login as someuser — this does bind-and-revert internally
+            (result, _) = ldap_users.verify_and_link_user("someuser", "somepass")
+            self.assertEqual(result.username, "someuser")
+
+            # Now do an admin operation that requires the admin bind.
+            # If the connection were still bound as someuser, this would
+            # fail because the admin search uses the pooled connection.
+            (result2, _) = ldap_users.get_user("testy")
+            self.assertEqual(result2.username, "testy")
+
+            # Do it again with a different user to prove the pool isn't
+            # leaking the first user's identity
+            (result3, _) = ldap_users.verify_and_link_user("secondaryuser", "somepass")
+            self.assertEqual(result3.username, "secondaryuser")
+
+            # Admin search still works
+            (result4, _) = ldap_users.get_user("someuser")
+            self.assertEqual(result4.username, "someuser")
+
+
+class TestLDAPConnectionPoolEdgeCases(unittest.TestCase):
+    """Tests for pool edge cases that can't be exercised through mockldap alone."""
+
+    def _make_pool(self, pool_size=2, max_wait=0.1, lifetime=300):
+        from data.users.externalldap import LDAPConnectionPool
+
+        builder = MagicMock()
+
+        def make_wrapper():
+            wrapper = MagicMock()
+            wrapper.__enter__ = MagicMock(return_value=MagicMock())
+            return wrapper
+
+        builder.get_connection.side_effect = lambda: make_wrapper()
+        pool = LDAPConnectionPool(
+            builder, pool_size=pool_size, max_wait=max_wait, connection_lifetime=lifetime
+        )
+        return pool, builder
+
+    def test_overflow_when_pool_exhausted(self):
+        """When all connections are checked out and none return in time,
+        an overflow connection is created with a warning."""
+        import time
+
+        from data.users.externalldap import LDAPConnectionPool, _PoolEntry
+
+        pool, builder = self._make_pool(pool_size=2, max_wait=0.1)
+
+        # Fill pool to capacity
+        conn1 = pool._checkout()
+        conn2 = pool._checkout()
+        self.assertEqual(pool._total_created, 2)
+
+        # Next checkout should wait, timeout, and create overflow
+        overflow = pool._checkout()
+        self.assertTrue(overflow.is_overflow)
+        self.assertEqual(pool._total_created, 3)
+
+        # Return overflow — it should be discarded, not pooled
+        pool._return(overflow)
+        self.assertEqual(pool._total_created, 2)
+
+        # Return the real ones
+        pool._return(conn1)
+        pool._return(conn2)
+
+    def test_lifetime_rotation_on_checkout(self):
+        """Expired connections are discarded and replaced on checkout."""
+        import time
+
+        from data.users.externalldap import _PoolEntry
+
+        pool, builder = self._make_pool(pool_size=2, lifetime=1)
+
+        # Create and return a connection
+        entry = pool._checkout()
+        pool._return(entry)
+
+        # Simulate time passing beyond lifetime
+        queued = pool._queue.get()
+        queued.created_at = time.monotonic() - 100
+        queued.lifetime_jitter = 1.0
+        pool._queue.put(queued)
+
+        # Next checkout should rotate it
+        new_entry = pool._checkout()
+        self.assertIsNot(new_entry.conn, queued.conn)
+
+    def test_lifetime_rotation_on_return(self):
+        """Expired connections are discarded on return, not put back in pool."""
+        import time
+
+        from data.users.externalldap import _PoolEntry
+
+        pool, builder = self._make_pool(pool_size=2, lifetime=1)
+
+        entry = pool._checkout()
+        entry.created_at = time.monotonic() - 100
+        entry.lifetime_jitter = 1.0
+
+        pool._return(entry)
+        self.assertTrue(pool._queue.empty())
+
+    def test_health_check_replaces_dead_connection(self):
+        """Idle connections that fail health check are replaced."""
+        import time
+
+        from data.users.externalldap import _PoolEntry
+
+        pool, builder = self._make_pool(pool_size=2)
+
+        entry = pool._checkout()
+        pool._return(entry)
+
+        # Simulate idle > 30s
+        queued = pool._queue.get()
+        queued.last_used = time.monotonic() - 60
+        queued.conn.search_s.side_effect = Exception("connection dead")
+        pool._queue.put(queued)
+
+        # Checkout should detect dead connection and create new one
+        new_entry = pool._checkout()
+        self.assertIsNot(new_entry.conn, queued.conn)
+
+    def test_verify_bind_admin_rebind_failure_discards_connection(self):
+        """If admin rebind fails after valid user bind, connection is discarded."""
+        pool, builder = self._make_pool(pool_size=2)
+
+        entry = pool._checkout()
+        pool._return(entry)
+
+        conn = pool._queue.get()
+        bind_call_count = [0]
+        original_conn = conn.conn
+
+        def side_effect_bind(dn, pw):
+            bind_call_count[0] += 1
+            if bind_call_count[0] == 2:
+                raise ldap.SERVER_DOWN("connection lost")
+
+        original_conn.simple_bind_s = MagicMock(side_effect=side_effect_bind)
+        pool._queue.put(conn)
+
+        # verify_bind should succeed (user bind works) but discard the connection
+        result = pool.verify_bind("uid=user,dc=test", "pass")
+        self.assertTrue(result)
+        self.assertTrue(pool._queue.empty())
+
+    def test_verify_bind_invalid_creds_rebind_failure_discards(self):
+        """If admin rebind fails after invalid user bind, connection is discarded."""
+        pool, builder = self._make_pool(pool_size=2)
+
+        entry = pool._checkout()
+        pool._return(entry)
+
+        conn = pool._queue.get()
+        original_conn = conn.conn
+        bind_call_count = [0]
+
+        def side_effect_bind(dn, pw):
+            bind_call_count[0] += 1
+            if bind_call_count[0] == 1:
+                raise ldap.INVALID_CREDENTIALS("wrong password")
+            raise ldap.SERVER_DOWN("connection lost during rebind")
+
+        original_conn.simple_bind_s = MagicMock(side_effect=side_effect_bind)
+        pool._queue.put(conn)
+
+        result = pool.verify_bind("uid=user,dc=test", "wrongpass")
+        self.assertFalse(result)
+        self.assertTrue(pool._queue.empty())
+
+    def test_verify_bind_connection_error_discards_and_raises(self):
+        """If user bind raises a connection error, connection is discarded
+        and the error is propagated."""
+        pool, builder = self._make_pool(pool_size=2)
+
+        entry = pool._checkout()
+        pool._return(entry)
+
+        conn = pool._queue.get()
+        conn.conn.simple_bind_s = MagicMock(side_effect=ldap.SERVER_DOWN("gone"))
+        pool._queue.put(conn)
+
+        with self.assertRaises(ldap.SERVER_DOWN):
+            pool.verify_bind("uid=user,dc=test", "pass")
+        self.assertTrue(pool._queue.empty())
+
+    def test_discard_handles_unbind_exception(self):
+        """_discard swallows exceptions from unbind_s."""
+        from data.users.externalldap import _PoolEntry
+
+        pool, builder = self._make_pool()
+        entry = _PoolEntry(conn=MagicMock())
+        entry.conn.unbind_s.side_effect = Exception("already closed")
+
+        pool._total_created = 1
+        pool._discard(entry)
+        self.assertEqual(pool._total_created, 0)
+
+    def test_context_manager_discards_on_exception(self):
+        """Connection is discarded (not returned) when an exception occurs
+        inside the context manager."""
+        pool, builder = self._make_pool(pool_size=2)
+
+        entry = pool._checkout()
+        pool._return(entry)
+        self.assertFalse(pool._queue.empty())
+
+        try:
+            with pool.get_connection():
+                raise ldap.SERVER_DOWN("simulated failure")
+        except ldap.SERVER_DOWN:
+            pass
+
+        self.assertTrue(pool._queue.empty())
+
+
+class TestLDAPPasswordRedaction(unittest.TestCase):
+    """
+    Unit tests for password redaction
+    """
+
+    def _make_bind_trace(self, dn, password):
+        return (
+            f"*** <ldap.ldapobject.SimpleLDAPObject object at 0x7f> "
+            f"ldaps://ldap.example.com - SimpleLDAPObject.simple_bind\n"
+            f"(('{dn}',\n"
+            f"  '{password}',\n"
+            f"  None,\n"
+            f"  None),\n"
+            f" {{}})\n"
+        )
+
+    def test_redacts_simple_password(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(self._make_bind_trace("uid=user,dc=example", "s3cret"))
+        output = buf.getvalue()
+
+        self.assertNotIn("s3cret", output)
+        self.assertIn("*****", output)
+        self.assertIn("uid=user,dc=example", output)
+
+    def test_redacts_complex_password(self):
+        buf = StringIO()
+        super_secret_password = "#HRx-u9r>W+?.?QTtN_X"
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(self._make_bind_trace("uid=user,dc=example", super_secret_password))
+        output = buf.getvalue()
+
+        self.assertNotIn(super_secret_password, output)
+        self.assertIn("*****", output)
+        self.assertIn("uid=user,dc=example", output)
+
+    def test_redacts_passwords_with_escaped_quotes(self):
+        buf = StringIO()
+        super_secret_password = "pa'ssword"
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        redactor.write(self._make_bind_trace("uid=user,dc=example", super_secret_password))
+        output = buf.getvalue()
+
+        self.assertNotIn(super_secret_password, output)
+        self.assertIn("*****", output)
+        self.assertIn("uid=user,dc=example", output)
+
+    def test_trace_pass_unchanged(self):
+        buf = StringIO()
+        redactor = _LDAPTraceRedactor(stream=buf)
+
+        search_trace = "*** <ldap...> - SimpleLDAPObject.search_ext\n(('dc=example',), {})\n"
+        redactor.write(search_trace)
+
+        self.assertEqual(buf.getvalue(), search_trace)
+
+    def test_flush_delegates_to_stream(self):
+        mock_stream = MagicMock()
+        redactor = _LDAPTraceRedactor(stream=mock_stream)
+        redactor.flush()
+
+        mock_stream.flush.assert_called_once()
 
 
 if __name__ == "__main__":
