@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from endpoints.api.superuser_models_interface import BuildTrigger
 

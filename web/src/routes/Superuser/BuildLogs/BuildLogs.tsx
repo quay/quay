@@ -22,7 +22,8 @@ export default function BuildLogs() {
   const [showTimestamps, setShowTimestamps] = useState<boolean>(true);
 
   const {isSuperUser} = useSuperuserPermissions();
-  const {config: quayConfig, isLoading: configLoading} = useQuayConfigWithLoading();
+  const {config: quayConfig, isLoading: configLoading} =
+    useQuayConfigWithLoading();
   const {loading: userLoading} = useCurrentUser();
   const {
     data: build,
