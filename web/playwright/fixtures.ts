@@ -29,9 +29,10 @@ import {
 } from '@playwright/test';
 import {uniqueName} from './utils/test-utils';
 import {TEST_USERS, TEST_USERS_OIDC, TEST_USERS_LDAP} from './global-setup';
-import {API_URL, BASE_URL} from './utils/config';
+import {API_URL} from './utils/config';
 import {
   ApiClient,
+  AutoPrunePolicy,
   PrototypeRole,
   RawApiClient,
   RepositoryVisibility,
@@ -81,6 +82,7 @@ export interface CreatedRobot {
   orgName: string;
   shortname: string;
   fullName: string;
+  token: string;
 }
 
 /**
@@ -327,7 +329,11 @@ export class TestApi {
     // Robot names can't have dashes, only underscores
     const shortname = uniqueName(namePrefix).replace(/-/g, '_');
 
-    await this.client.createRobot(orgName, shortname, description);
+    const result = await this.client.createRobot(
+      orgName,
+      shortname,
+      description,
+    );
 
     this.cleanupStack.push(async () => {
       try {
@@ -341,6 +347,7 @@ export class TestApi {
       orgName,
       shortname,
       fullName: `${orgName}+${shortname}`,
+      token: result.token,
     };
   }
 
@@ -721,6 +728,75 @@ export class TestApi {
   }
 
   /**
+   * Create an auto-prune policy for an organization.
+   * Automatically deleted after test.
+   */
+  async orgAutoPrunePolicy(
+    orgName: string,
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string; orgName: string}> {
+    const result = await this.client.createOrgAutoPrunePolicy(orgName, policy);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteOrgAutoPrunePolicy(orgName, result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid, orgName};
+  }
+
+  /**
+   * Create an auto-prune policy for a repository.
+   * Automatically deleted after test.
+   */
+  async repoAutoPrunePolicy(
+    namespace: string,
+    repoName: string,
+    policy: AutoPrunePolicy,
+  ): Promise<{uuid: string; namespace: string; repoName: string}> {
+    const result = await this.client.createRepoAutoPrunePolicy(
+      namespace,
+      repoName,
+      policy,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteRepoAutoPrunePolicy(
+          namespace,
+          repoName,
+          result.uuid,
+        );
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid, namespace, repoName};
+  }
+
+  /**
+   * Create an auto-prune policy for the current user.
+   * Automatically deleted after test.
+   */
+  async userAutoPrunePolicy(policy: AutoPrunePolicy): Promise<{uuid: string}> {
+    const result = await this.client.createUserAutoPrunePolicy(policy);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteUserAutoPrunePolicy(result.uuid);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {uuid: result.uuid};
+  }
+
+  /**
    * Create an OAuth application in an organization.
    * Automatically deleted after test.
    */
@@ -873,13 +949,6 @@ function getTestUsers(config?: QuayConfig | null) {
   return TEST_USERS;
 }
 
-async function setReactUICookie(context: BrowserContext): Promise<void> {
-  const domain = new URL(BASE_URL).hostname;
-  await context.addCookies([
-    {name: 'defaultui', value: 'react', domain, path: '/'},
-  ]);
-}
-
 /**
  * Login a user via API (Database auth) or OIDC browser flow (Keycloak).
  * Detects the auth type from config and uses the appropriate method.
@@ -1004,7 +1073,6 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   userContext: [
     async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      await setReactUICookie(context);
       const users = getTestUsers(cachedQuayConfig);
       await loginUser(
         context,
@@ -1021,7 +1089,6 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   superuserContext: [
     async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      await setReactUICookie(context);
       const users = getTestUsers(cachedQuayConfig);
       await loginUser(
         context,
@@ -1038,7 +1105,6 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   readonlyContext: [
     async ({browser, cachedQuayConfig}, use) => {
       const context = await browser.newContext();
-      await setReactUICookie(context);
       const users = getTestUsers(cachedQuayConfig);
       await loginUser(
         context,
@@ -1053,15 +1119,20 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   cachedQuayConfig: [
-    // eslint-disable-next-line no-empty-pattern
-    async ({}, use) => {
-      const raw = process.env.QUAY_CONFIG_JSON;
-      if (!raw) {
-        throw new Error(
-          'QUAY_CONFIG_JSON not set -- globalSetup must run before workers',
-        );
+    async ({playwright}, use) => {
+      const request = await playwright.request.newContext({
+        ignoreHTTPSErrors: true,
+      });
+      try {
+        const response = await request.get(`${API_URL}/config`);
+        if (!response.ok()) {
+          throw new Error(`Failed to fetch Quay config: ${response.status()}`);
+        }
+        const config = (await response.json()) as QuayConfig;
+        await use(config);
+      } finally {
+        await request.dispose();
       }
-      await use(JSON.parse(raw) as QuayConfig);
     },
     {scope: 'worker'},
   ],
@@ -1127,7 +1198,6 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   api: async ({authenticatedRequest, quayConfig}, use) => {
     const client = new ApiClient(authenticatedRequest);
     const users = getTestUsers(quayConfig);
-    client.setCredentials(users.user.username, users.user.password);
     const testApi = new TestApi(client, users.user.username);
     await use(testApi);
     await testApi.cleanup();
@@ -1311,3 +1381,10 @@ export {uniqueName} from './utils/test-utils';
 
 export {mailpit} from './utils/mailpit';
 export type {MailpitMessage, MailpitMessagesResponse} from './utils/mailpit';
+
+// ============================================================================
+// Webhook: Re-export from utils
+// ============================================================================
+
+export {WebhookReceiver} from './utils/webhook';
+export type {WebhookRequest} from './utils/webhook';
