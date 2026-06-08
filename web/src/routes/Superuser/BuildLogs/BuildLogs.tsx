@@ -12,7 +12,8 @@ import {
 } from '@patternfly/react-core';
 import {useFetchBuildLogsSuperuser} from 'src/hooks/UseBuildLogs';
 import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
 
 export default function BuildLogs() {
@@ -21,13 +22,22 @@ export default function BuildLogs() {
   const [showTimestamps, setShowTimestamps] = useState<boolean>(true);
 
   const {isSuperUser} = useSuperuserPermissions();
-  const quayConfig = useQuayConfig();
+  const {config: quayConfig, isLoading: configLoading} = useQuayConfigWithLoading();
+  const {loading: userLoading} = useCurrentUser();
   const {
     data: build,
     isLoading,
     isError,
     error,
   } = useFetchBuildLogsSuperuser(submittedUuid);
+
+  if (configLoading || userLoading) {
+    return (
+      <PageSection hasBodyWrapper={false}>
+        <Spinner size="lg" aria-label="Loading" />
+      </PageSection>
+    );
+  }
 
   // Check if BUILD_SUPPORT is enabled
   if (!quayConfig?.features?.BUILD_SUPPORT) {

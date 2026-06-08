@@ -67,6 +67,21 @@ test.describe(
       ).toBeVisible();
     });
 
+    test('timestamps checkbox remains checked after initial load', async ({
+      superuserPage,
+    }) => {
+      await superuserPage.goto('/build-logs');
+
+      // Wait for loading to finish (spinner should disappear)
+      await expect(superuserPage.getByLabel('Loading')).not.toBeVisible({
+        timeout: 10_000,
+      });
+
+      const checkbox = superuserPage.getByTestId('show-timestamps-checkbox');
+      await expect(checkbox).toBeVisible();
+      await expect(checkbox).toBeChecked();
+    });
+
     test('timestamps checkbox defaults to checked', async ({superuserPage}) => {
       await superuserPage.goto('/build-logs');
 
