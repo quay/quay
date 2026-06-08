@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: quay-py3-deploy-template
+  name: quay-app
 objects:
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: Role
@@ -140,8 +140,6 @@ objects:
           ports:
           - containerPort: 8443
             name: https
-          - containerPort: 55443
-            name: grpc
           - containerPort: 9091
             name: metrics
           volumeMounts:
