@@ -1631,7 +1631,7 @@ def test_gc_manifest_with_labels(default_tag_policy, initialized_db):
 
 def test_purge_manifest_list_no_infinite_loop(default_tag_policy, initialized_db):
     """
-    Tests that purging a repository with manifest lists does not end in an infinite lopp when
+    Tests that purging a repository with manifest lists does not end in an infinite loop when
     child manifests have lower ID than their parent.
     """
     repo = model.repository.create_repository("devtable", "newrepo", None)
@@ -1639,14 +1639,34 @@ def test_purge_manifest_list_no_infinite_loop(default_tag_policy, initialized_db
 
     built_manifests = []
     child_manifests = []
-    for arch in ["amd64", "arm64", "ppc64le", "s390x"]:
+
+    # create a massive manifest list that contains 15 child image
+    # Quay's batching process uses up to 10 manifests in a batch
+    test_architectures = [
+        "amd64",
+        "386",
+        "arm64",
+        "arm",
+        "ppc64le",
+        "ppc64",
+        "s390x",
+        "mips64le",
+        "mips64",
+        "mipsle",
+        "mips",
+        "riscv64",
+        "loong64",
+        "sparc64",
+        "wasm",
+    ]
+    for arch in test_architectures:
         child, build = create_manifest_for_testing(repo, differentiation_field=arch)
         built_manifests.append(build)
         child_manifests.append(child)
 
     index_builder = OCIIndexBuilder()
     for i, build in enumerate(built_manifests):
-        index_builder.add_manifest(build, architecture=f"arch{i}", os="Linux")
+        index_builder.add_manifest(build, architecture=test_architectures[i], os="Linux")
 
     manifest_list = index_builder.build()
 
