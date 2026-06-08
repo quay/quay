@@ -4,7 +4,7 @@ import urllib
 from collections import namedtuple
 from datetime import datetime, timedelta
 
-from peewee import JOIN, IntegrityError, fn
+from peewee import JOIN, IntegrityError, OperationalError, fn
 
 import features
 from data.database import (
@@ -194,6 +194,9 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                 if len(claimed) >= batch_size:
                     break
             except IntegrityError:
+                continue
+            except OperationalError:
+                logger.debug("Manifest %d skipped due to lock conflict", candidate.id)
                 continue
 
         return claimed
