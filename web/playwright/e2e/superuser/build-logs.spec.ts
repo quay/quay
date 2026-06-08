@@ -1,4 +1,5 @@
 import {test, expect} from '../../fixtures';
+import {API_URL} from '../../utils/config';
 
 test.describe(
   'Superuser Build Logs',
@@ -114,6 +115,23 @@ test.describe(
       await expect(superuserPage.getByTestId('build-logs-display')).toBeVisible(
         {timeout: 15_000},
       );
+    });
+
+    test('superuser build API returns trigger:null for triggerless builds @superuser @feature:BUILD_SUPPORT', async ({
+      superuserRequest,
+      api,
+    }) => {
+      const org = await api.organization('sunotrigger');
+      const repo = await api.repository(org.name, 'notrigger-repo');
+      const build = await api.build(org.name, repo.name);
+
+      const response = await superuserRequest.get(
+        `${API_URL}/api/v1/superuser/${build.buildId}/build`,
+      );
+      expect(response.status()).toBe(200);
+
+      const body = await response.json();
+      expect(body).toHaveProperty('trigger', null);
     });
 
     test('navigates to Build Logs via sidebar', async ({superuserPage}) => {
