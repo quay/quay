@@ -96,7 +96,7 @@ objects:
     progressDeadlineSeconds: ${{PROGRESS_DEADLINE_SECONDS}}
     revisionHistoryLimit: ${{REVISION_HISTORY_LIMITS}}
     strategy:
-      type: ${{STRATEGY_TYPE}}
+      type: RollingUpdate
       rollingUpdate:
         maxUnavailable: ${{MAX_UNAVAILABLE}}
         maxSurge: ${{MAX_SURGE}}
@@ -266,9 +266,6 @@ parameters:
   - name: REVISION_HISTORY_LIMITS
     value: "10"
     displayName: deployment revision history limits
-  - name: STRATEGY_TYPE
-    value: "RollingUpdate"
-    displayName: deployment strategy
   - name: MAX_SURGE
     value: "1"
     displayName: deployment max surge

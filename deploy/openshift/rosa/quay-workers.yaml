@@ -96,7 +96,7 @@ objects:
     progressDeadlineSeconds: ${{PROGRESS_DEADLINE_SECONDS}}
     revisionHistoryLimit: ${{REVISION_HISTORY_LIMITS}}
     strategy:
-      type: ${{STRATEGY_TYPE}}
+      type: RollingUpdate
       rollingUpdate:
         maxUnavailable: ${{MAX_UNAVAILABLE}}
         maxSurge: ${{MAX_SURGE}}
@@ -138,8 +138,6 @@ objects:
           - /quay-registry/quay-entrypoint.sh
           - ${{QUAY_ENTRYPOINT}}
           ports:
-          - containerPort: 8443
-            name: https
           - containerPort: 55443
             name: grpc
           - containerPort: 9091
@@ -249,9 +247,6 @@ parameters:
   - name: REVISION_HISTORY_LIMITS
     value: "10"
     displayName: deployment revision history limits
-  - name: STRATEGY_TYPE
-    value: "RollingUpdate"
-    displayName: deployment strategy
   - name: MAX_SURGE
     value: "1"
     displayName: deployment max surge
@@ -315,7 +310,7 @@ parameters:
     displayName: quay services whitelist
     description: Comma-separated list of supervisord services to enable. If empty, all default services run.
   - name: QUAY_OVERRIDE_SERVICES
-    value: ""
+    value: "gunicorn-registry=false,gunicorn-web=false,gunicorn-secscan=false"
     displayName: quay services override
     description: Comma-separated list of service=true/false overrides. Applied after QUAY_SERVICES. Example "builder=false,repomirrorworker=true"
 
