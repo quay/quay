@@ -2549,6 +2549,33 @@ CONFIG_SCHEMA = {
         "x-example": 10,
         "x-reference": None,
     },
+    "LDAP_CONNECTION_POOLING": {
+        "type": "boolean",
+        "description": "Enable admin LDAP connection pooling to reuse connections across requests. Set false to fall back to per-request connections. Defaults to True.",
+        "x-example": True,
+        "x-reference": None,
+    },
+    "LDAP_POOL_SIZE": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Maximum number of pooled admin LDAP connections per worker process. Defaults to 10.",
+        "x-example": 10,
+        "x-reference": None,
+    },
+    "LDAP_POOL_MAX_WAIT": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Seconds to wait for a pooled LDAP connection before creating an overflow connection. Defaults to 5.0.",
+        "x-example": 5.0,
+        "x-reference": None,
+    },
+    "LDAP_POOL_CONNECTION_LIFETIME": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "description": "Maximum age in seconds of a pooled LDAP connection before it is rotated. Defaults to 300.",
+        "x-example": 300,
+        "x-reference": None,
+    },
     "GLOBAL_PROMETHEUS_STATS_FREQUENCY": {
         "type": "number",
         "description": "Frequency to report metrics to Push gateway. Defaults to 3600 seconds",
