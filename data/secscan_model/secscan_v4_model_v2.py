@@ -122,7 +122,8 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             query = (
                 ManifestSecurityStatus.select()
                 .where(
-                    (
+                    (ManifestSecurityStatus.index_status == IndexStatus.PENDING)
+                    | (
                         (ManifestSecurityStatus.index_status == IndexStatus.FAILED)
                         & (ManifestSecurityStatus.last_indexed < reindex_threshold)
                     )

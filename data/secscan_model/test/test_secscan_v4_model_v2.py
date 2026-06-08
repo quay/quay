@@ -100,6 +100,22 @@ class TestFindAndClaimBatch:
                 metadata_json={},
             )
 
+    def test_claims_pending(self, initialized_db, scanner):
+        reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
+        stale_threshold = datetime.utcnow() - timedelta(hours=6)
+
+        self._create_mss_for_all(IndexStatus.PENDING)
+
+        manifest_count = Manifest.select().count()
+        claimed = scanner._find_and_claim_batch(
+            manifest_count, reindex_threshold, stale_threshold, "abc"
+        )
+        assert len(claimed) == manifest_count
+
+        for mss in ManifestSecurityStatus.select():
+            assert mss.index_status == IndexStatus.IN_PROGRESS
+            assert mss.indexer_hash == "in_progress_v2"
+
     def test_claims_failed_past_threshold(self, initialized_db, scanner):
         reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
         stale_threshold = datetime.utcnow() - timedelta(hours=6)
