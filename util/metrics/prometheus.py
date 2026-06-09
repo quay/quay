@@ -132,6 +132,30 @@ secscan_result_duration = Histogram(
     buckets=SECSCAN_RESULT_BUCKETS,
 )
 
+secscan_v2_manifests_claimed = Histogram(
+    "quay_secscan_v2_manifests_claimed_per_cycle",
+    "number of manifests claimed per indexing cycle by the V2 security worker",
+    buckets=(0, 1, 5, 10, 25, 50, 100, 250, INF),
+)
+
+secscan_v2_scan_duration = Histogram(
+    "quay_secscan_v2_scan_duration_seconds",
+    "duration of a single manifest scan (Clair API call) by the V2 security worker",
+    buckets=(0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, INF),
+)
+
+secscan_v2_scan_result = Counter(
+    "quay_secscan_v2_scan_result_total",
+    "count of scan results by outcome for the V2 security worker",
+    labelnames=["result"],
+)
+
+secscan_v2_cycle_duration = Histogram(
+    "quay_secscan_v2_cycle_duration_seconds",
+    "duration of a complete V2 security worker indexing cycle",
+    buckets=(1, 5, 10, 30, 60, 120, 300, 600, INF),
+)
+
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
 ONE_DAY_IN_SECONDS = 60 * 60 * 24

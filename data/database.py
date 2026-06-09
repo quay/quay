@@ -2181,6 +2181,7 @@ class IndexStatus(IntEnum):
     MANIFEST_LAYER_TOO_LARGE = -3
     MANIFEST_UNSUPPORTED = -2
     FAILED = -1
+    PENDING = 0
     IN_PROGRESS = 1
     COMPLETED = 2
 
