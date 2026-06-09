@@ -1,4 +1,5 @@
 import {test, expect} from '../../fixtures';
+import {API_URL} from '../../utils/config';
 
 test.describe(
   'Superuser Build Logs',
@@ -80,6 +81,34 @@ test.describe(
       const checkbox = superuserPage.getByTestId('show-timestamps-checkbox');
       await expect(checkbox).toBeVisible();
       await expect(checkbox).toBeChecked();
+    });
+
+    test('loads a triggerless build without 500 error', async ({
+      superuserPage,
+      superuserRequest,
+      api,
+    }) => {
+      const org = await api.organization('sunotrigger');
+      const repo = await api.repository(org.name, 'notrigger');
+      const build = await api.build(org.name, repo.name);
+
+      // API layer: verify the fix — trigger is null, not a 500
+      const response = await superuserRequest.get(
+        `${API_URL}/api/v1/superuser/${build.buildId}/build`,
+      );
+      expect(response.status()).toBe(200);
+      const body = await response.json();
+      expect(body).toHaveProperty('trigger', null);
+
+      // UI layer: verify Build Logs page renders the build without crashing
+      await superuserPage.goto('/build-logs');
+      await superuserPage.getByTestId('build-uuid-input').fill(build.buildId);
+      await superuserPage.getByTestId('load-build-button').click();
+
+      await expect(superuserPage.getByText('Build Information')).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(superuserPage.getByText(build.buildId)).toBeVisible();
     });
 
     test('timestamps checkbox defaults to checked', async ({superuserPage}) => {
