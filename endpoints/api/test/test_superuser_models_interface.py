@@ -27,7 +27,9 @@ def test_build_trigger_to_dict_returns_none_without_trigger(trigger, expected):
 
 @patch("endpoints.api.superuser_models_interface.BuildTriggerHandler")
 def test_build_trigger_to_dict_returns_dict_with_valid_trigger(mock_handler_cls):
-    trigger = MagicMock(uuid="abc-123", service=MagicMock(name="github"))
+    service = MagicMock()
+    service.name = "github"
+    trigger = MagicMock(uuid="abc-123", service=service)
     handler = MagicMock()
     handler.config = {"build_source": "https://github.com/org/repo"}
     handler.is_active.return_value = True
