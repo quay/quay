@@ -117,21 +117,32 @@ test.describe(
       );
     });
 
-    test('superuser build API returns trigger:null for triggerless builds @superuser @feature:BUILD_SUPPORT', async ({
+    test('loads a triggerless build without crashing', async ({
+      superuserPage,
       superuserRequest,
       api,
     }) => {
       const org = await api.organization('sunotrigger');
-      const repo = await api.repository(org.name, 'notrigger-repo');
+      const repo = await api.repository(org.name, 'notrigger');
       const build = await api.build(org.name, repo.name);
 
+      // API layer: verify trigger is null (the fix under test)
       const response = await superuserRequest.get(
         `${API_URL}/api/v1/superuser/${build.buildId}/build`,
       );
       expect(response.status()).toBe(200);
-
       const body = await response.json();
       expect(body).toHaveProperty('trigger', null);
+
+      // UI layer: verify the page renders the build without crashing
+      await superuserPage.goto('/build-logs');
+      await superuserPage.getByTestId('build-uuid-input').fill(build.buildId);
+      await superuserPage.getByTestId('load-build-button').click();
+
+      await expect(superuserPage.getByText('Build Information')).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(superuserPage.getByText(build.buildId)).toBeVisible();
     });
 
     test('navigates to Build Logs via sidebar', async ({superuserPage}) => {
