@@ -5,7 +5,7 @@
  * to the registry during e2e tests. Supports both podman and docker.
  */
 
-import {exec, execFileSync} from 'child_process';
+import {exec, execFileSync, execSync} from 'child_process';
 import {promisify} from 'util';
 import {API_URL} from './config';
 
@@ -48,7 +48,7 @@ async function detectContainerRuntime(): Promise<string | null> {
 }
 
 /**
- * Execute a shell command, retrying with exponential backoff on failure.
+ * Execute a shell command, retrying with fixed 1s delays on failure.
  *
  * @param cmd - Shell command to run
  * @param maxAttempts - Maximum number of attempts (default: 5)
@@ -61,7 +61,7 @@ async function retryPush(cmd: string, maxAttempts = 5): Promise<void> {
       return;
     } catch (err) {
       lastErr = err;
-      await new Promise((r) => setTimeout(r, 500 * 2 ** i));
+      await new Promise((r) => setTimeout(r, 1000));
     }
   }
   throw lastErr;
@@ -117,8 +117,10 @@ export async function pushImage(
   // Quay's backend committing the repo, especially with many parallel workers.
   await retryPush(`${runtime} push ${image} ${tlsFlag}`.trim());
 
-  // Cleanup local image
-  await execAsync(`${runtime} rmi ${image}`);
+  // Cleanup local image (skip in CI — ephemeral runners don't need disk reclaimed)
+  if (!process.env.CI) {
+    await execAsync(`${runtime} rmi ${image}`);
+  }
 }
 
 /**
@@ -197,17 +199,50 @@ export function orasAttach(
   );
 }
 
+const userAuthFiles = new Map<string, string>();
+
+function getAuthFile(username: string): string {
+  if (!userAuthFiles.has(username)) {
+    const safeName = username.replace(/[^a-zA-Z0-9_-]/g, '_');
+    userAuthFiles.set(username, `/tmp/quay-auth-${safeName}.json`);
+  }
+  return userAuthFiles.get(username)!;
+}
+
+function credsFlag(
+  runtime: string,
+  username: string,
+  password: string,
+): string {
+  if (runtime === 'podman') {
+    return `--creds=${username}:${password}`;
+  }
+  return '';
+}
+
+async function ensureLogin(
+  runtime: string,
+  username: string,
+  password: string,
+  tlsFlag: string,
+): Promise<void> {
+  if (runtime !== 'podman') {
+    const authFile = getAuthFile(username);
+    await execAsync(
+      `${runtime} --config $(dirname ${authFile}) login ${REGISTRY_HOST} -u ${username} -p ${password} ${tlsFlag}`.trim(),
+    );
+  }
+}
+
+function authFileFlag(runtime: string, username: string): string {
+  if (runtime !== 'podman') {
+    return `--config $(dirname ${getAuthFile(username)})`;
+  }
+  return '';
+}
+
 /**
  * Push an image in OCI manifest format to the registry using skopeo.
- *
- * Uses `--format=oci` to guarantee the manifest uses the OCI content type,
- * which exercises a different code path in the security scanner than
- * Docker v2 schema 2 manifests.
- *
- * @example
- * ```typescript
- * await pushOCIImage('myorg', 'myrepo', 'latest', 'testuser', 'password');
- * ```
  */
 export async function pushOCIImage(
   namespace: string,
@@ -218,10 +253,38 @@ export async function pushOCIImage(
 ): Promise<void> {
   const targetImage = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
   const sourceImage = 'quay.io/prometheus/busybox:latest';
-
   await retryPush(
     `skopeo copy --format=oci --override-os=linux --override-arch=amd64 docker://${sourceImage} docker://${targetImage} --dest-tls-verify=false --dest-creds=${username}:${password}`,
   );
+}
+
+/**
+ * Pull an image from the registry using podman or docker.
+ */
+export async function pullImage(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  const runtime = await detectContainerRuntime();
+  if (!runtime) {
+    throw new Error('No container runtime available (podman or docker)');
+  }
+
+  const image = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
+  const tlsFlag = runtime === 'podman' ? '--tls-verify=false' : '';
+
+  await ensureLogin(runtime, username, password, tlsFlag);
+
+  const creds = credsFlag(runtime, username, password);
+  const authCfg = authFileFlag(runtime, username);
+
+  await execAsync(
+    `${runtime} ${authCfg} pull ${image} ${creds} ${tlsFlag}`.trim(),
+  );
+  await execAsync(`${runtime} rmi ${image}`).catch(() => undefined);
 }
 
 /**
@@ -234,4 +297,67 @@ export async function isOrasAvailable(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Check if skopeo CLI is available on the system.
+ */
+export async function isSkopeoAvailable(): Promise<boolean> {
+  try {
+    await execAsync('skopeo --version');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if regctl CLI is available on the system.
+ */
+export async function isRegctlAvailable(): Promise<boolean> {
+  try {
+    await execAsync('regctl version');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * List tags for a repository using skopeo.
+ *
+ * @returns Array of tag name strings
+ */
+export async function skopeoListTags(
+  namespace: string,
+  repo: string,
+  username: string,
+  password: string,
+): Promise<string[]> {
+  const ref = `docker://${REGISTRY_HOST}/${namespace}/${repo}`;
+  const {stdout} = await execAsync(
+    `skopeo list-tags ${ref} --tls-verify=false --creds=${username}:${password}`,
+  );
+  const result = JSON.parse(stdout);
+  return result.Tags ?? [];
+}
+
+/**
+ * List tags for a repository using regctl.
+ *
+ * @returns Array of tag name strings
+ */
+export async function regctlListTags(
+  namespace: string,
+  repo: string,
+  username: string,
+  password: string,
+): Promise<string[]> {
+  const ref = `${REGISTRY_HOST}/${namespace}/${repo}`;
+  const hostCfg = `reg=${REGISTRY_HOST},user=${username},pass=${password},tls=disabled`;
+  const {stdout} = await execAsync(`regctl tag ls --host ${hostCfg} ${ref}`);
+  return stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 }
