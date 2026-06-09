@@ -21,6 +21,7 @@ from data.database import (
     Label,
     Manifest,
     ManifestBlob,
+    ManifestChild,
     ManifestLabel,
     ManifestPullStatistics,
     MediaType,
@@ -38,6 +39,7 @@ from digest.digest_tools import sha256_digest
 from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.oci.config import OCIConfig
+from image.oci.index import OCIIndexBuilder
 from image.oci.manifest import OCIManifestBuilder
 from image.shared.schemas import parse_manifest_from_bytes
 from test.fixtures import *
@@ -608,7 +610,7 @@ def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
                 has_dependent_uploadedblobs = (
                     UploadedBlob.select()
                     .where(
-                        UploadedBlob == uploadedblob,
+                        UploadedBlob.blob == uploadedblob.blob,
                         UploadedBlob.repository != repo,
                     )
                     .count()
@@ -1562,3 +1564,199 @@ def test_get_or_create_blob_with_lock_fallback_creates_new(default_tag_policy, i
         assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
     finally:
         storage_model.GlobalLock = original_lock
+
+
+def test_gc_manifest_list_with_children(default_tag_policy, initialized_db):
+    """
+    Tests that purging of a repository with a manifest list correctly removes all
+    manifests and their children.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    # create three child manifests
+    _, build1 = create_manifest_for_testing(repo, differentiation_field="amd64")
+    _, build2 = create_manifest_for_testing(repo, differentiation_field="ppc64le")
+    _, build3 = create_manifest_for_testing(repo, differentiation_field="arm64")
+
+    # create index
+    index_builder = OCIIndexBuilder()
+    index_builder.add_manifest(build1, architecture="amd64", os="Linux")
+    index_builder.add_manifest(build2, architecture="ppc64le", os="Linux")
+    index_builder.add_manifest(build3, architecture="arm64", os="Linux")
+    manifest_list = index_builder.build()
+
+    created = model.oci.manifest.get_or_create_manifest(repo, manifest_list, storage)
+    assert created
+
+    # tag the manifest list
+    model.oci.tag.retarget_tag("latest", created.manifest)
+
+    # verify manifest child rows exist
+    assert ManifestChild.select().where(ManifestChild.repository == repo).count() == 3
+
+    # purge repo
+    assert model.gc.purge_repository(repo, force=True)
+
+    # verify eveything's cleaned up
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+    assert ManifestChild.select().where(ManifestChild.repository == repo).count() == 0
+    assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
+
+
+def test_gc_manifest_with_labels(default_tag_policy, initialized_db):
+    """
+    Tests that purging of a repository correctly GCs all labels associated with the manifests.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    assert repo
+    manifest, _ = create_manifest_for_testing(repo, differentiation_field="labeled")
+
+    # add labels to the manifest
+    model.oci.label.create_manifest_label(
+        manifest.id, "maintainer", "devtable@devtable.com", "manifest"
+    )
+    model.oci.label.create_manifest_label(manifest.id, "tester", "test@devtable.com", "manifest")
+    model.oci.label.create_manifest_label(manifest.id, "version", "0.0.1", "manifest")
+
+    assert ManifestLabel.select().where(ManifestLabel.repository == repo).count() == 3
+    pre_gc_label_count = Label.select().count()
+
+    # Purge repo
+    assert model.gc.purge_repository(repo, force=True)
+
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+    assert ManifestLabel.select().where(ManifestLabel.repository == repo).count() == 0
+    assert Label.select().count() < pre_gc_label_count
+
+
+def test_purge_manifest_list_no_infinite_loop(default_tag_policy, initialized_db):
+    """
+    Tests that purging a repository with manifest lists does not end in an infinite loop when
+    child manifests have lower ID than their parent.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    assert repo
+
+    built_manifests = []
+    child_manifests = []
+
+    # create a massive manifest list that contains 15 child image
+    # Quay's batching process uses up to 10 manifests in a batch
+    test_architectures = [
+        "amd64",
+        "386",
+        "arm64",
+        "arm",
+        "ppc64le",
+        "ppc64",
+        "s390x",
+        "mips64le",
+        "mips64",
+        "mipsle",
+        "mips",
+        "riscv64",
+        "loong64",
+        "sparc64",
+        "wasm",
+    ]
+    for arch in test_architectures:
+        child, build = create_manifest_for_testing(repo, differentiation_field=arch)
+        built_manifests.append(build)
+        child_manifests.append(child)
+
+    index_builder = OCIIndexBuilder()
+    for i, build in enumerate(built_manifests):
+        index_builder.add_manifest(build, architecture=test_architectures[i], os="Linux")
+
+    manifest_list = index_builder.build()
+
+    created = model.oci.manifest.get_or_create_manifest(repo, manifest_list, storage)
+    assert created
+    model.oci.tag.retarget_tag("latest", created.manifest)
+
+    # check if children have lower IDs than the parent
+    for child in child_manifests:
+        assert child.id < created.manifest.id
+
+    assert model.gc.purge_repository(repo, force=True)
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+
+
+def test_gc_shared_label_survives_partial_gc(default_tag_policy, initialized_db):
+    """
+    Tests that labels shared across multiple images survive the GC process and are not
+    deleted during garbage collection.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    manifest1, _ = create_manifest_for_testing(repo, differentiation_field="shared1")
+    manifest2, _ = create_manifest_for_testing(repo, differentiation_field="shared2")
+
+    model.oci.tag.retarget_tag("tag1", manifest1)
+    model.oci.tag.retarget_tag("tag2", manifest2)
+
+    # add same label to both manifests
+    label = Label.create(
+        key="shared-key",
+        value="shared-value",
+        source_type=Label.source_type.get_id("manifest"),
+        media_type=Label.media_type.get_id("text/plain"),
+    )
+    ManifestLabel.create(manifest=manifest1.id, label=label, repository=repo)
+    ManifestLabel.create(manifest=manifest2.id, label=label, repository=repo)
+
+    # delete tag1, GC manifest1
+    now = datetime.utcnow()
+    with freeze_time(now + timedelta(minutes=5)):
+        delete_tag(repo, "tag1", expect_gc=True)
+
+    # verify that label survived
+    assert Label.select().where(Label.id == label.id).exists()
+    assert not ManifestLabel.select().where(ManifestLabel.manifest == manifest1.id).exists()
+    assert ManifestLabel.select().where(ManifestLabel.manifest == manifest2.id).exists()
+
+
+def test_gc_manifest_list_partial_gc_child_in_use(default_tag_policy, initialized_db):
+    """
+    Tests that child images still in use by other manifests are not deleted when one of the
+    parent's manifest list gets GCed.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    # create child manifests
+    child_shared, build_shared = create_manifest_for_testing(repo, differentiation_field="shared")
+    child_only1, build_only1 = create_manifest_for_testing(repo, differentiation_field="only1")
+    child_only2, build_only2 = create_manifest_for_testing(repo, differentiation_field="only2")
+
+    # create two different manifest lists that share the child image
+    index_builder1 = OCIIndexBuilder()
+    index_builder1.add_manifest(build_shared, architecture="amd64", os="linux")
+    index_builder1.add_manifest(build_only1, architecture="arm64", os="linux")
+    list1 = index_builder1.build()
+
+    index_builder2 = OCIIndexBuilder()
+    index_builder2.add_manifest(build_shared, architecture="amd64", os="linux")
+    index_builder2.add_manifest(build_only2, architecture="s390x", os="linux")
+    list2 = index_builder2.build()
+
+    created1 = model.oci.manifest.get_or_create_manifest(repo, list1, storage)
+    created2 = model.oci.manifest.get_or_create_manifest(repo, list2, storage)
+    assert created1
+    assert created2
+
+    model.oci.tag.retarget_tag("tag1", created1.manifest)
+    model.oci.tag.retarget_tag("tag2", created2.manifest)
+
+    # delete tag 1, GC manifest 1
+    now = datetime.utcnow()
+    with freeze_time(now + timedelta(minutes=5)):
+        delete_tag(repo, "tag1", perform_gc=True, expect_gc=True)
+
+    # shared child must survive
+    assert Manifest.select().where(Manifest.id == child_shared.id).exists()
+
+    # child_only1 should be deleted
+    assert not Manifest.select().where(Manifest.id == child_only1.id).exists()
+
+    # child_only2 must survive
+    assert Manifest.select().where(Manifest.id == child_only2.id).exists()
