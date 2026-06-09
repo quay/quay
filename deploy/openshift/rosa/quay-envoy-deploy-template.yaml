@@ -20,6 +20,20 @@ objects:
       targetPort: 8443
     selector:
       app: quay-envoy
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: quay-envoy-metrics
+    labels:
+      app: quay-envoy
+  spec:
+    ports:
+    - name: metrics
+      protocol: TCP
+      port: 9901
+      targetPort: 9901
+    selector:
+      app: quay-envoy
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -111,6 +125,10 @@ objects:
       protocol: TCP
       port: 8081
       targetPort: 8081
+    - name: metrics
+      protocol: TCP
+      port: 9090
+      targetPort: 9090
     selector:
       app: quay-rls
 - apiVersion: apps/v1
@@ -146,9 +164,13 @@ objects:
           ports:
           - containerPort: 8081
             name: grpc
+          - containerPort: 9090
+            name: metrics
           env:
           - name: USE_STATSD
             value: "false"
+          - name: USE_PROMETHEUS
+            value: "true"
           - name: LOG_LEVEL
             value: ${RLS_LOG_LEVEL}
           - name: REDIS_SOCKET_TYPE
