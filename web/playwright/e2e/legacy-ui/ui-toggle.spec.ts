@@ -25,19 +25,23 @@ test.describe('UI Toggle', {tag: ['@legacy-ui', '@smoke']}, () => {
   });
 
   test('toggling from React to Angular and back', async ({page}) => {
-    await page.goto('/react', {waitUntil: 'domcontentloaded'});
+    // networkidle lets React finish its async auth-check redirect cycle
+    // (API call → 401 → /signin) before we navigate away, preventing
+    // ERR_ABORTED races and stale cache responses on the next goto.
+    await page.goto('/react', {waitUntil: 'networkidle'});
     await expect(page.locator('#root')).toBeAttached({timeout: 15000});
 
-    // /angular sets cookie and redirects to /. Reload to ensure nginx
-    // re-evaluates the cookie and serves Angular instead of cached React.
-    await page.goto('/angular', {waitUntil: 'domcontentloaded'});
-    await page.reload({waitUntil: 'domcontentloaded'});
+    // /angular sets cookie and redirects to /. The redirected page may
+    // serve cached React HTML; networkidle lets it settle, then reload
+    // forces nginx to re-evaluate the cookie and proxy to Flask/Angular.
+    await page.goto('/angular', {waitUntil: 'networkidle'});
+    await page.reload({waitUntil: 'networkidle'});
     await expect(page.locator('html[ng-app="quay"]')).toBeAttached({
       timeout: 15000,
     });
 
-    await page.goto('/react', {waitUntil: 'domcontentloaded'});
-    await page.reload({waitUntil: 'domcontentloaded'});
+    await page.goto('/react', {waitUntil: 'networkidle'});
+    await page.reload({waitUntil: 'networkidle'});
     await expect(page.locator('#root')).toBeAttached({timeout: 15000});
     await expect(page.locator('html[ng-app="quay"]')).not.toBeAttached();
   });
