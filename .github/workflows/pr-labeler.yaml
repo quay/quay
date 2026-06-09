@@ -46,15 +46,25 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event.pull_request.base.ref }}
 
-      - name: Check OWNERS and label
+      - name: Check org membership, OWNERS, and label
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          if ! grep -qi "^- ${PR_AUTHOR}$" OWNERS; then
-            gh pr edit "$PR_NUMBER" --add-label "community-contribution"
+          BOTS="openshift-ci[bot] openshift-merge-robot openshift-cherrypick-robot"
+          for bot in $BOTS; do
+            if [[ "$PR_AUTHOR" == "$bot" ]]; then
+              exit 0
+            fi
+          done
+          if gh api "orgs/quay/public_members/${PR_AUTHOR}" --silent 2>/dev/null; then
+            exit 0
           fi
+          if grep -qi "^- ${PR_AUTHOR}$" OWNERS; then
+            exit 0
+          fi
+          gh pr edit "$PR_NUMBER" --add-label "community-contribution"
 
   capture-pr-data:
     name: Capture PR Data
