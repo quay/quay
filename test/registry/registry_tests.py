@@ -1998,7 +1998,8 @@ def test_login(
             ],
             True,
         ),
-        # Basic pull with invalid endpoint.
+        # Basic pull with invalid endpoint. If super user full access is turned on, this should succeed
+        # regardless whether the namespace exists or not.
         (
             "devtable",
             "password",
@@ -2010,7 +2011,7 @@ def test_login(
                     {
                         "type": "repository",
                         "name": "someinvalid/devtable/simple",
-                        "actions": [],
+                        "actions": ["pull"],
                     },
                 ]
             ),
@@ -2169,6 +2170,39 @@ def test_login_scopes(
     )
     assert payload is not None
     assert payload["access"] == expected_access
+
+
+def test_login_scopes_when_superuser_full_access_disabled(
+    v2_protocol, liveserver_session, app_reloader, registry_server_executor, liveserver
+):
+    """
+    Tests that super users do not have access to a non-existent namespace/repo if SUPERUSERS_FULL_ACCESS
+    is disabled.
+    """
+    username = "devtable"
+    password = "password"
+    scopes = ["repository:somerepo/that/doesnt/exist:pull"]
+    expect_success = True
+    expected_access = [
+        {
+            "type": "repository",
+            "name": "somerepo/that/doesnt/exist",
+            "actions": [],
+        }
+    ]
+
+    with FeatureFlagValue("SUPERUSERS_FULL_ACCESS", False, registry_server_executor.on(liveserver)):
+        response = v2_protocol.login(liveserver_session, username, password, scopes, expect_success)
+        if not expect_success:
+            return
+
+        # Validate the returned token
+        encoded = response.json()["token"]
+        payload = decode_bearer_header(
+            "Bearer " + encoded, instance_keys, {"SERVER_HOSTNAME": "localhost:5000"}
+        )
+        assert payload is not None
+        assert payload["access"] == expected_access
 
 
 def test_push_pull_same_blobs(pusher, puller, liveserver_session, app_reloader):
