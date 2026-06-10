@@ -26,7 +26,10 @@ from endpoints.api.mirrorhealth import RepositoryMirrorHealth
 from endpoints.api.namespacequota import *
 from endpoints.api.org_mirror import *  # type: ignore[no-redef]
 from endpoints.api.organization import *  # type: ignore[assignment,no-redef]
-from endpoints.api.organization_application_tokens import *
+from endpoints.api.organization_application_tokens import (
+    OrganizationApplicationToken,
+    OrganizationApplicationTokens,
+)
 from endpoints.api.permission import *  # type: ignore[no-redef]
 from endpoints.api.policy import *
 from endpoints.api.prototype import *
