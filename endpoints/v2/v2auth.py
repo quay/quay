@@ -374,7 +374,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                 if (
                     CreateRepositoryPermission(namespace).can()
                     and user is not None
-                    and model.user.get_namespace_user(namespace) is not None
+                    and namespace_exists is not None
                 ):
                     if (
                         features.RESTRICTED_USERS
