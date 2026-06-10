@@ -265,6 +265,19 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
     if repository_ref is not None and repository_ref.state == RepositoryState.MARKED_FOR_DELETION:
         raise Unknown(message="Unknown repository")
 
+    # Ensure that the namespace where we want to push the repo exists,
+    # If the namespace doesn't exist and we dont have namespace creation enabled,
+    # exit immediately with empty scopes.
+    namespace_exists = model.user.get_namespace_user(namespace) is not None
+    if not namespace_exists and not app.config.get("CREATE_NAMESPACE_ON_PUSH", False):
+        return scopeResult(
+            actions=[],
+            namespace=namespace,
+            repository=reponame,
+            registry_and_repo=registry_and_repo,
+            tuf_root=_get_tuf_root(repository_ref, namespace, reponame),
+        )
+
     if "push" in requested_actions:
         # Check if there is a valid user or token, as otherwise the repository cannot be
         # accessed.
@@ -342,7 +355,11 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                         except model.DataModelException as ex:
                             raise Unsupported(message="Cannot create organization")
 
-                if CreateRepositoryPermission(namespace).can() and user is not None:
+                if (
+                    CreateRepositoryPermission(namespace).can()
+                    and user is not None
+                    and model.user.get_namespace_user(namespace) is not None
+                ):
                     if (
                         features.RESTRICTED_USERS
                         and usermanager.is_restricted_user(user.username)
