@@ -1962,8 +1962,7 @@ def test_login(
             ],
             True,
         ),
-        # Basic pull with invalid endpoint. If super user full access is turned on, this should succeed
-        # regardless whether the namespace exists or not.
+        # Basic pull with invalid endpoint.
         (
             "devtable",
             "password",
@@ -1975,7 +1974,7 @@ def test_login(
                     {
                         "type": "repository",
                         "name": "someinvalid/devtable/simple",
-                        "actions": ["pull"],
+                        "actions": [],
                     },
                 ]
             ),
