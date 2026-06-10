@@ -1,4 +1,5 @@
-import {test, expect} from '../../fixtures';
+import {test, expect, uniqueName, mailpit} from '../../fixtures';
+import {ApiClient} from '../../utils/api';
 import {TEST_USERS} from '../../global-setup';
 
 test.describe('Account Settings', {tag: ['@user']}, () => {
@@ -178,19 +179,44 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
       // Click generate password button
       await authenticatedPage.locator('#cli-password-button').click();
 
-      // Enter correct password
-      await authenticatedPage
-        .locator('#delete-confirmation-input')
-        .fill(password);
-      await authenticatedPage.locator('#submit').click();
-      await authenticatedPage.waitForLoadState('networkidle');
+      // Submit password with retry — the previous wrong-password test
+      // increments invalid_login_attempts and Quay's exponential backoff
+      // can reject the next attempt with HTTP 429.
+      const credentialsHeading = authenticatedPage.getByRole('heading', {
+        name: `Credentials for ${username}`,
+      });
+      const rateLimitError = authenticatedPage.getByText(
+        'Too many login attempts',
+      );
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await authenticatedPage
+          .locator('#delete-confirmation-input')
+          .fill(password);
+        await authenticatedPage.locator('#submit').click();
+        await authenticatedPage.waitForLoadState('networkidle');
+
+        if (
+          await expect(credentialsHeading)
+            .toBeVisible({timeout: 2000})
+            .then(() => true)
+            .catch(() => false)
+        ) {
+          break;
+        }
+
+        if (
+          await expect(rateLimitError)
+            .toBeVisible({timeout: 1000})
+            .then(() => true)
+            .catch(() => false)
+        ) {
+          await authenticatedPage.waitForTimeout(2000 * (attempt + 1));
+        }
+      }
 
       // Credentials modal should appear
-      await expect(
-        authenticatedPage.getByRole('heading', {
-          name: `Credentials for ${username}`,
-        }),
-      ).toBeVisible();
+      await expect(credentialsHeading).toBeVisible();
 
       // Verify all credential format tabs exist
       await expect(
@@ -715,5 +741,57 @@ test.describe('Account Settings', {tag: ['@user']}, () => {
         }),
       ).toBeVisible();
     });
+  });
+});
+
+test.describe('User Self-Delete', {tag: ['@user', '@auth:Database']}, () => {
+  test('user can delete their own account via settings', async ({
+    browser,
+    superuserRequest,
+    quayConfig,
+  }) => {
+    const delUsername = uniqueName('delme');
+    const password = 'testpassword123';
+    const email = `${delUsername}@example.com`;
+    const mailingEnabled = quayConfig?.features?.MAILING === true;
+
+    const superApi = new ApiClient(superuserRequest);
+    await superApi.createUser(delUsername, password, email);
+
+    const context = await browser.newContext();
+
+    if (mailingEnabled) {
+      const confirmLink = await mailpit.waitForConfirmationLink(email);
+      if (confirmLink) {
+        const page = await context.newPage();
+        await page.goto(confirmLink);
+        await page.close();
+      }
+    }
+
+    const api = new ApiClient(context.request);
+    await api.signIn(delUsername, password);
+
+    const page = await context.newPage();
+    try {
+      await page.goto(`/user/${delUsername}?tab=Settings`);
+
+      await page.getByRole('button', {name: 'Delete account'}).click();
+      await expect(page.getByTestId('delete-account-modal')).toBeVisible();
+
+      await page.locator('#delete-confirmation-input').fill(delUsername);
+      await expect(page.getByTestId('delete-account-confirm')).toBeEnabled();
+      await page.getByTestId('delete-account-confirm').click();
+
+      await expect(page).toHaveURL(/\/signin/, {timeout: 10_000});
+    } finally {
+      await page.close();
+      await context.close();
+      try {
+        await superApi.deleteUser(delUsername);
+      } catch {
+        // User already deleted — expected on success
+      }
+    }
   });
 });
