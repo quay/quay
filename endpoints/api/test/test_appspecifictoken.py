@@ -598,3 +598,38 @@ class TestAppTokenBootstrapAuth:
                 headers={"Content-Type": "application/json"},
             )
             assert resp.status_code == 403
+
+    def test_post_missing_json_body(self, app, initialized_db):
+        """POST with no JSON body returns 400."""
+        _enable_bootstrap(app)
+
+        with app.test_request_context():
+            url = api.url_for(AppTokens)
+
+        with app.test_client() as client:
+            resp = client.post(
+                url,
+                headers={
+                    "Authorization": _basic_auth_header("devtable", "password"),
+                    "Content-Type": "application/json",
+                },
+            )
+            assert resp.status_code == 400
+
+    def test_post_invalid_json_body(self, app, initialized_db):
+        """POST with JSON missing required 'title' field returns 400."""
+        _enable_bootstrap(app)
+
+        with app.test_request_context():
+            url = api.url_for(AppTokens)
+
+        with app.test_client() as client:
+            resp = client.post(
+                url,
+                data=json.dumps({}),
+                headers={
+                    "Authorization": _basic_auth_header("devtable", "password"),
+                    "Content-Type": "application/json",
+                },
+            )
+            assert resp.status_code == 400
