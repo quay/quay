@@ -18,13 +18,13 @@ def upgrade(op, tables, tester):
     op.add_column("oauthaccesstoken", sa.Column("last_accessed", sa.DateTime(), nullable=True))
     op.add_column("oauthaccesstoken", sa.Column("created", sa.DateTime(), nullable=True))
 
-    op.create_foreign_key(
-        "fk_oauthaccesstoken_created_by_id",
-        "oauthaccesstoken",
-        "user",
-        ["created_by_id"],
-        ["id"],
-    )
+    with op.batch_alter_table("oauthaccesstoken") as batch_op:
+        batch_op.create_foreign_key(
+            "fk_oauthaccesstoken_created_by_id",
+            "user",
+            ["created_by_id"],
+            ["id"],
+        )
 
     op.bulk_insert(
         tables.logentrykind,
@@ -50,9 +50,8 @@ def downgrade(op, tables, tester):
         )
     )
 
-    op.drop_constraint("fk_oauthaccesstoken_created_by_id", "oauthaccesstoken", type_="foreignkey")
-
     with op.batch_alter_table("oauthaccesstoken") as batch_op:
+        batch_op.drop_constraint("fk_oauthaccesstoken_created_by_id", type_="foreignkey")
         batch_op.drop_column("created")
         batch_op.drop_column("last_accessed")
         batch_op.drop_column("created_by_id")
