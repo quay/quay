@@ -1506,6 +1506,11 @@ CONFIG_SCHEMA = {
             "description": "If set to true, the first User account may be created via API /api/v1/user/initialize",
             "x-example": False,
         },
+        "FEATURE_PROGRAMMATIC_BOOTSTRAP": {
+            "type": "boolean",
+            "description": "If set to true, superusers can create OAuth tokens via Basic Auth without UI interaction. Defaults to False",
+            "x-example": False,
+        },
         # OCI artifact types
         "ALLOWED_OCI_ARTIFACT_TYPES": {
             "type": "object",

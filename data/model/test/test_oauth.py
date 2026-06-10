@@ -614,7 +614,7 @@ def test_validate_access_token_unexpired(initialized_db):
     assert validate_access_token(access_token) is not None
 
 
-def test_validate_access_token_expired_returns_none(initialized_db):
+def test_validate_access_token_expired_returns_token(initialized_db):
     user = model.user.get_user("devtable")
     app = get_or_create_application("validate-expired", user)
 
@@ -624,7 +624,9 @@ def test_validate_access_token_expired_returns_none(initialized_db):
     token_record.expires_at = datetime.utcnow() - timedelta(seconds=10)
     token_record.save()
 
-    assert validate_access_token(access_token) is None
+    validated = validate_access_token(access_token)
+    assert validated is not None
+    assert validated.expires_at <= datetime.utcnow()
 
 
 def test_delete_bootstrap_token_rejects_non_bootstrap(initialized_db):

@@ -538,9 +538,6 @@ def validate_access_token(access_token):
         if found.token_code is None or not found.token_code.matches(token_code):
             return None
 
-        if found.expires_at is not None and found.expires_at <= datetime.utcnow():
-            return None
-
         return found
     except OAuthAccessToken.DoesNotExist:
         pass

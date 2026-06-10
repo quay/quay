@@ -10,6 +10,7 @@ from datetime import timedelta
 import pytz
 from flask import request, session
 from flask_restful import abort
+from jsonschema import ValidationError, validate
 
 import features
 from app import app, authentication
@@ -38,9 +39,8 @@ from endpoints.api import (
     require_user_admin,
     resource,
     show_if,
-    validate_json_request,
 )
-from endpoints.exception import FreshLoginRequired, Unauthorized
+from endpoints.exception import FreshLoginRequired, InvalidRequest, Unauthorized
 from util.parsing import truthy_bool
 from util.timedeltastring import convert_to_timedelta
 
@@ -140,8 +140,8 @@ class AppTokens(ApiResource):
 
     @require_scope(scopes.ADMIN_USER)
     @add_method_metadata("requires_fresh_login", True)
+    @add_method_metadata("request_schema", "NewToken")
     @nickname("createAppToken")
-    @validate_json_request("NewToken")
     def post(self):
         """
         Create a new app specific token for user.
@@ -158,14 +158,24 @@ class AppTokens(ApiResource):
                 raise Unauthorized()
             if not _has_fresh_login(user):
                 raise FreshLoginRequired()
-        else:
+        elif features.PROGRAMMATIC_BOOTSTRAP:
             try:
                 auth_result = validate_bootstrap_auth()
                 user = auth_result.user
             except BootstrapAuthError as e:
                 abort(e.status_code, message=e.message)
+        else:
+            raise Unauthorized()
 
-        title = request.get_json()["title"]
+        json_data = request.get_json()
+        if json_data is None:
+            raise InvalidRequest("Missing JSON body")
+        try:
+            validate(json_data, self.schemas["NewToken"])
+        except ValidationError as ex:
+            raise InvalidRequest(str(ex))
+
+        title = json_data["title"]
         token = model.appspecifictoken.create_token(user, title)
 
         log_action(
