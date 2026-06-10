@@ -5,7 +5,7 @@
  * to the registry during e2e tests. Supports both podman and docker.
  */
 
-import {exec, execFileSync, execSync} from 'child_process';
+import {exec, execFileSync} from 'child_process';
 import {promisify} from 'util';
 import {API_URL} from './config';
 
@@ -121,6 +121,86 @@ export async function pushImage(
   if (!process.env.CI) {
     await execAsync(`${runtime} rmi ${image}`);
   }
+}
+
+/**
+ * Push an image with a unique layer to the registry, guaranteeing
+ * unique blob digests (no deduplication with prior pushes).
+ */
+export async function pushUniqueImage(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  const runtime = await detectContainerRuntime();
+  if (!runtime) {
+    throw new Error('No container runtime available (podman or docker)');
+  }
+
+  const image = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
+  const tlsFlag = runtime === 'podman' ? '--tls-verify=false' : '';
+  const loginKey = `${runtime}:${REGISTRY_HOST}:${username}`;
+
+  if (!loggedInRegistries.has(loginKey)) {
+    await execAsync(
+      `${runtime} login ${REGISTRY_HOST} -u ${username} -p ${password} ${tlsFlag}`.trim(),
+    );
+    loggedInRegistries.add(loginKey);
+  }
+
+  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const tmpDir = `/tmp/quay-unique-img-${uniqueId}`;
+  await execAsync(
+    `mkdir -p ${tmpDir} && echo "${uniqueId}" > ${tmpDir}/unique && ` +
+      `printf 'FROM busybox\\nCOPY unique /unique\\n' > ${tmpDir}/Dockerfile`,
+  );
+  try {
+    // --format docker is podman-only (forces Docker v2 manifest instead of OCI).
+    // Docker always produces Docker v2 format natively, so skip the flag there.
+    const formatFlag = runtime === 'podman' ? '--format docker' : '';
+    await execAsync(
+      `${runtime} build ${formatFlag} --tag ${image} ${tmpDir}`.trim(),
+    );
+    await retryPush(`${runtime} push ${image} ${tlsFlag}`.trim());
+  } finally {
+    await execAsync(`rm -rf ${tmpDir}`).catch(() => undefined);
+    if (!process.env.CI) {
+      await execAsync(`${runtime} rmi ${image}`).catch(() => undefined);
+    }
+  }
+}
+
+/**
+ * Pull an image from the registry. Removes it afterwards to avoid
+ * polluting the local image store during tests.
+ */
+export async function pullImage(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  const runtime = await detectContainerRuntime();
+  if (!runtime) {
+    throw new Error('No container runtime available (podman or docker)');
+  }
+
+  const image = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
+  const tlsFlag = runtime === 'podman' ? '--tls-verify=false' : '';
+  const loginKey = `${runtime}:${REGISTRY_HOST}:${username}`;
+
+  if (!loggedInRegistries.has(loginKey)) {
+    await execAsync(
+      `${runtime} login ${REGISTRY_HOST} -u ${username} -p ${password} ${tlsFlag}`.trim(),
+    );
+    loggedInRegistries.add(loginKey);
+  }
+
+  await execAsync(`${runtime} pull ${image} ${tlsFlag}`.trim());
+  await execAsync(`${runtime} rmi ${image}`).catch(() => undefined);
 }
 
 /**

@@ -13,6 +13,9 @@ jobs:
     runs-on: quay-003-medium-ubuntu-24-x64
     env:
       QUAY_HOTRELOAD: "false"
+      AWS_ACCESS_KEY_ID: GKe2e0123456789abcdef01234
+      AWS_SECRET_ACCESS_KEY: e2e0123456789abcdef0123456789abcdef0123456789abcdef01234567890ab
+      S3_ENDPOINT: http://localhost:3900
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -26,6 +29,7 @@ jobs:
           with-keycloak: true
           with-jaeger: true
           with-repomirror: true
+          with-georep: true
           use-gha-cache: false
           extra-config: |
             FEATURE_MAILING: true
