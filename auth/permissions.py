@@ -282,7 +282,7 @@ class QuayDeferredPermissionUser(Identity):
 
             self._superuser_checked = True
 
-        # Super users can do anything on the repositories so we can simply return here if
+        # Super users can do anything on the registry so we can simply return here if
         # full access is enabled
         if self._superuser_loaded and features.SUPERUSERS_FULL_ACCESS:
             if permission.namespace or permission.repo_name:
@@ -338,7 +338,11 @@ class QuayDeferredPermissionUser(Identity):
                 return super(QuayDeferredPermissionUser, self).can(permission)
 
         # Lazy-load the namespace-wide-only permissions.
-        if perm_namespace and perm_namespace not in self._namespace_wide_loaded:
+        if (
+            perm_namespace
+            and perm_namespace not in self._namespace_wide_loaded
+            and not self._all_namespaces_loaded
+        ):
             self._populate_namespace_wide_provides(user_object, perm_namespace)
             self._namespace_wide_loaded.add(perm_namespace)
 
