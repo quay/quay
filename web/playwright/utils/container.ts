@@ -173,37 +173,6 @@ export async function pushUniqueImage(
 }
 
 /**
- * Pull an image from the registry. Removes it afterwards to avoid
- * polluting the local image store during tests.
- */
-export async function pullImage(
-  namespace: string,
-  repo: string,
-  tag: string,
-  username: string,
-  password: string,
-): Promise<void> {
-  const runtime = await detectContainerRuntime();
-  if (!runtime) {
-    throw new Error('No container runtime available (podman or docker)');
-  }
-
-  const image = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
-  const tlsFlag = runtime === 'podman' ? '--tls-verify=false' : '';
-  const loginKey = `${runtime}:${REGISTRY_HOST}:${username}`;
-
-  if (!loggedInRegistries.has(loginKey)) {
-    await execAsync(
-      `${runtime} login ${REGISTRY_HOST} -u ${username} -p ${password} ${tlsFlag}`.trim(),
-    );
-    loggedInRegistries.add(loginKey);
-  }
-
-  await execAsync(`${runtime} pull ${image} ${tlsFlag}`.trim());
-  await execAsync(`${runtime} rmi ${image}`).catch(() => undefined);
-}
-
-/**
  * Check if a container runtime (podman or docker) is available
  *
  * @returns true if podman or docker is available
