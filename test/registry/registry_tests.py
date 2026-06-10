@@ -2264,7 +2264,7 @@ def test_login_scopes_when_superuser_full_access_enabled_create_repositories_on_
 ):
     """
     Tests that super users have access to a non-existent namespace/repo if SUPERUSERS_FULL_ACCESS
-    is enabled and CREATE_NAMESPACE_ON_PUSH is .
+    is enabled and CREATE_NAMESPACE_ON_PUSH is enabled.
     """
     with ConfigChange(
         "CREATE_NAMESPACE_ON_PUSH", True, registry_server_executor.on(liveserver), liveserver
