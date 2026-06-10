@@ -1738,8 +1738,8 @@ def test_tags_disabled_namespace(
         ("devtable", "buynlarge", "baserepo", "buynlarge/baserepo", None),
         # Unsuccessful mount, unknown repo.
         ("devtable", "devtable", "baserepo", "unknown/repohere", Failures.UNAUTHORIZED_FOR_MOUNT),
-        # Unsuccessful mount, no access.
-        ("public", "public", "baserepo", "public/baserepo", Failures.UNAUTHORIZED_FOR_MOUNT),
+        # Successful mount, super user has access to everything if FEATURE_SUPERUSERS_FULl_ACCESS is set
+        ("public", "public", "baserepo", "public/baserepo", None),
     ],
 )
 def test_blob_mounting(
@@ -1796,6 +1796,50 @@ def test_blob_mounting(
             "latest",
             basic_images,
             credentials=("devtable", "password"),
+        )
+
+
+def test_blob_mounting_when_superuser_full_access_disabled(
+    manifest_protocol,
+    pusher,
+    basic_images,
+    liveserver_session,
+    app_reloader,
+    registry_server_executor,
+    liveserver,
+):
+    # push as a public user
+    pusher.push(
+        liveserver_session,
+        "public",
+        "baserepo",
+        "latest",
+        basic_images,
+        credentials=("public", "password"),
+    )
+
+    # disable SUPERUSERS_FULL_ACCESS
+    with FeatureFlagValue("SUPERUSERS_FULL_ACCESS", False, registry_server_executor.on(liveserver)):
+        options = ProtocolOptions()
+        options.scopes = [
+            "repository:devtable/newrepo:push,pull",
+            "repository:public/baserepo:pull",
+        ]
+        options.mount_blobs = {
+            "sha256:" + hashlib.sha256(image.bytes).hexdigest(): "public/baserepo"
+            for image in basic_images
+        }
+
+        # Super user without full access should fail to mount
+        manifest_protocol.push(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            basic_images,
+            credentials=("devtable", "password"),
+            options=options,
+            expected_failure=Failures.UNAUTHORIZED_FOR_MOUNT,
         )
 
 
