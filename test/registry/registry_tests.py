@@ -1702,7 +1702,7 @@ def test_tags_disabled_namespace(
         ("devtable", "buynlarge", "baserepo", "buynlarge/baserepo", None),
         # Unsuccessful mount, unknown repo.
         ("devtable", "devtable", "baserepo", "unknown/repohere", Failures.UNAUTHORIZED_FOR_MOUNT),
-        # Successful mount, super user has access to everything if FEATURE_SUPERUSERS_FULl_ACCESS is set
+        # Successful mount, super user has access to everything if FEATURE_SUPERUSERS_FULL_ACCESS is set
         ("public", "public", "baserepo", "public/baserepo", None),
     ],
 )
