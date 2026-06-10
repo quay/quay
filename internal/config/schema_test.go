@@ -132,6 +132,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_OTEL_TRACING":                          true,
 	"FEATURE_PARTIAL_USER_AUTOCOMPLETE":             true,
 	"FEATURE_PERMANENT_SESSIONS":                    true,
+	"FEATURE_PROGRAMMATIC_BOOTSTRAP":                true,
 	"FEATURE_PUBLIC_CATALOG":                        true,
 	"FEATURE_QUOTA_MANAGEMENT":                      true,
 	"FEATURE_QUOTA_SUPPRESS_FAILURES":               true,
