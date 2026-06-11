@@ -169,6 +169,7 @@ jobs:
           cat > /tmp/ldap-auth-overlay.yaml <<'EOF'
           FEATURE_TEAM_SYNCING: true
           FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP: true
+          STAGGER_WORKERS: false
           SUPER_USERS:
             - admin
             - admin_ldap

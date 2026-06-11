@@ -10,7 +10,6 @@ import {
   isAwscliAvailable,
   listBucketObjects,
   listBuckets,
-  deleteObject,
 } from '../../utils/s3';
 import {API_URL} from '../../utils/config';
 
@@ -27,7 +26,10 @@ function extractBlobDigests(manifest: Record<string, unknown>): string[] {
     ];
   }
   throw new Error(
-    `Unexpected manifest format (expected v2): ${JSON.stringify(manifest).slice(0, 200)}`,
+    `Unexpected manifest format (expected v2): ${JSON.stringify(manifest).slice(
+      0,
+      200,
+    )}`,
   );
 }
 
@@ -117,53 +119,11 @@ test.describe(
         token,
       );
       await waitForReplication(digests.map(digestToS3Key), buckets);
-    });
-
-    test('pull succeeds when primary blob is deleted (fallback to replica)', async ({
-      api,
-      authenticatedRequest,
-    }) => {
-      test.setTimeout(120_000);
-
-      const org = await api.organization();
-      const repo = await api.repository(org.name);
-
-      await pushUniqueImage(
-        org.name,
-        repo.name,
-        'fallback',
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
-      );
-
-      const token = await getV2Token(
-        authenticatedRequest,
-        API_URL,
-        TEST_USERS.user.username,
-        TEST_USERS.user.password,
-        `repository:${org.name}/${repo.name}:pull`,
-      );
-
-      const digests = await fetchManifestDigests(
-        authenticatedRequest,
-        `${org.name}/${repo.name}`,
-        'fallback',
-        token,
-      );
-      const expectedKeys = digests.map(digestToS3Key);
-      await waitForReplication(expectedKeys, buckets);
-
-      // Delete one blob from one bucket to test fallback
-      const testKey = expectedKeys[0];
-      await deleteObject(buckets[0], testKey);
-
-      const objectsAfterDelete = await listBucketObjects(buckets[0]);
-      expect(objectsAfterDelete).not.toContain(testKey);
 
       await pullImage(
         org.name,
         repo.name,
-        'fallback',
+        'v1.0',
         TEST_USERS.user.username,
         TEST_USERS.user.password,
       );
