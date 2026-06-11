@@ -520,11 +520,12 @@ describe('UseLogDescriptions', () => {
       const text = renderDescription(
         desc.revoke_oauth_api_token({
           oauth_token_uuid: 'abc-123',
+          application_name: 'My App',
           client_id: 'client-456',
         }),
       );
       expect(text).toContain('abc-123');
-      expect(text).toContain('client-456');
+      expect(text).toContain('My App');
     });
   });
 
