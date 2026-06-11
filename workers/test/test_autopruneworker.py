@@ -1371,7 +1371,7 @@ def test_update_autoprune_task_deadlock_retry(initialized_db, monkeypatch):
     save_calls = [0]
     sleep_calls = []
 
-    def mock_save_deadlock_once(self):
+    def mock_save_deadlock_once(self, **kwargs):
         save_calls[0] += 1
         if save_calls[0] == 1:
             raise OperationalError("deadlock detected")
@@ -1390,7 +1390,7 @@ def test_update_autoprune_task_deadlock_retry(initialized_db, monkeypatch):
     sleep_calls = []
 
     # Test Case B: Multiple retries with exponential backoff
-    def mock_save_deadlock_three_times(self):
+    def mock_save_deadlock_three_times(self, **kwargs):
         save_calls[0] += 1
         if save_calls[0] <= 3:
             raise OperationalError("deadlock detected")
@@ -1408,7 +1408,7 @@ def test_update_autoprune_task_deadlock_retry(initialized_db, monkeypatch):
     sleep_calls = []
 
     # Test Case C: Max retries exceeded
-    def mock_save_always_deadlock(self):
+    def mock_save_always_deadlock(self, **kwargs):
         save_calls[0] += 1
         raise OperationalError("deadlock detected")
 
@@ -1427,7 +1427,7 @@ def test_update_autoprune_task_deadlock_retry(initialized_db, monkeypatch):
     sleep_calls = []
 
     # Test Case D: Non-retryable OperationalError
-    def mock_save_connection_lost(self):
+    def mock_save_connection_lost(self, **kwargs):
         save_calls[0] += 1
         raise OperationalError("connection lost")
 
@@ -1444,7 +1444,7 @@ def test_update_autoprune_task_deadlock_retry(initialized_db, monkeypatch):
     save_calls = [0]
 
     # Test Case E: DoesNotExist during save
-    def mock_save_does_not_exist(self):
+    def mock_save_does_not_exist(self, **kwargs):
         save_calls[0] += 1
         raise AutoPruneTaskStatus.DoesNotExist()
 
@@ -1461,7 +1461,7 @@ def test_update_autoprune_task_deadlock_retry(initialized_db, monkeypatch):
     task = model.autoprune.fetch_autoprune_task_by_namespace_id(user.id)
 
     # Test Case F: DoesNotExist during refetch
-    def mock_save_deadlock_for_refetch(self):
+    def mock_save_deadlock_for_refetch(self, **kwargs):
         save_calls[0] += 1
         if save_calls[0] == 1:
             raise OperationalError("deadlock detected")
