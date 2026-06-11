@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
+import pytest
+
 from auth.scopes import READ_REPO
 from data import model
 from data.model._basequery import update_last_accessed
@@ -13,7 +15,9 @@ from data.model.oauth import (
     get_or_create_application,
     list_application_tokens,
     list_bootstrap_tokens,
+    normalize_scope,
     validate_access_token,
+    validate_expiration,
 )
 from test.fixtures import *
 
@@ -637,3 +641,38 @@ def test_delete_bootstrap_token_rejects_non_bootstrap(initialized_db):
     token_record, _ = create_oauth_api_token(regular_app, user, "repo:read")
 
     assert delete_bootstrap_token(token_record.uuid) is None
+
+
+def test_normalize_scope_comma_separated():
+    assert normalize_scope("repo:read,repo:write") == "repo:read repo:write"
+
+
+def test_normalize_scope_space_separated():
+    assert normalize_scope("repo:read repo:write") == "repo:read repo:write"
+
+
+def test_normalize_scope_mixed_separators():
+    assert normalize_scope("repo:read, repo:write  repo:admin") == "repo:read repo:write repo:admin"
+
+
+def test_validate_expiration_positive_int():
+    assert validate_expiration(3600) == 3600
+
+
+def test_validate_expiration_positive_float():
+    assert validate_expiration(3600.5) == 3600
+
+
+def test_validate_expiration_zero_raises():
+    with pytest.raises(ValueError, match="positive"):
+        validate_expiration(0)
+
+
+def test_validate_expiration_negative_raises():
+    with pytest.raises(ValueError, match="positive"):
+        validate_expiration(-1)
+
+
+def test_validate_expiration_string_raises():
+    with pytest.raises(ValueError, match="positive"):
+        validate_expiration("3600")

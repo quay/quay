@@ -548,3 +548,105 @@ class TestBootstrapTokenDelete:
                     headers={"Authorization": _basic_auth_header("public", "password")},
                 )
                 assert resp.status_code == 401
+
+
+class TestBootstrapTokenLimit:
+    """Tests for token-per-application limit enforcement."""
+
+    def test_token_limit_enforced(self, app, initialized_db):
+        _enable_bootstrap(app)
+
+        with app.test_client() as client:
+            auth_result = _make_superuser_result()
+            with (
+                patch("endpoints.web.validate_bootstrap_auth", return_value=auth_result),
+                patch("endpoints.web.log_action"),
+                patch("endpoints.web.MAX_TOKENS_PER_APPLICATION", 2),
+                patch("endpoints.web.oauth_model.count_active_tokens", return_value=2),
+            ):
+                resp = client.post(
+                    "/api/v1/bootstrap/token",
+                    json={"scope": "repo:read"},
+                    headers={"Authorization": _basic_auth_header("devtable", "password")},
+                )
+                assert resp.status_code == 400
+                assert "limit" in resp.get_json()["message"].lower()
+
+
+class TestBootstrapTokenListFilters:
+    """Tests for list endpoint query parameter edge cases."""
+
+    def _create_token(self, client, auth_result, scope="repo:read", app_name="filter-test"):
+        with (
+            patch("endpoints.web.validate_bootstrap_auth", return_value=auth_result),
+            patch("endpoints.web.log_action"),
+        ):
+            resp = client.post(
+                "/api/v1/bootstrap/token",
+                json={"scope": scope, "application_name": app_name},
+                headers={"Authorization": _basic_auth_header("devtable", "password")},
+            )
+            assert resp.status_code == 200
+            return resp.get_json()
+
+    def test_list_expired_true(self, app, initialized_db):
+        _enable_bootstrap(app)
+
+        with app.test_client() as client:
+            auth_result = _make_superuser_result()
+            with patch("endpoints.web.validate_bootstrap_auth", return_value=auth_result):
+                resp = client.get(
+                    "/api/v1/bootstrap/tokens?expired=true",
+                    headers={"Authorization": _basic_auth_header("devtable", "password")},
+                )
+                assert resp.status_code == 200
+                assert "tokens" in resp.get_json()
+
+    def test_list_invalid_datetime_format(self, app, initialized_db):
+        _enable_bootstrap(app)
+
+        with app.test_client() as client:
+            auth_result = _make_superuser_result()
+            with patch("endpoints.web.validate_bootstrap_auth", return_value=auth_result):
+                resp = client.get(
+                    "/api/v1/bootstrap/tokens?expires_before=not-a-date",
+                    headers={"Authorization": _basic_auth_header("devtable", "password")},
+                )
+                assert resp.status_code == 400
+                assert "ISO 8601" in resp.get_json()["message"]
+
+    def test_list_valid_datetime_filters(self, app, initialized_db):
+        _enable_bootstrap(app)
+
+        with app.test_client() as client:
+            auth_result = _make_superuser_result()
+            self._create_token(client, auth_result)
+
+            with patch("endpoints.web.validate_bootstrap_auth", return_value=auth_result):
+                resp = client.get(
+                    "/api/v1/bootstrap/tokens?expires_before=2099-01-01T00:00:00Z&expires_after=2020-01-01T00:00:00Z",
+                    headers={"Authorization": _basic_auth_header("devtable", "password")},
+                )
+                assert resp.status_code == 200
+
+    def test_list_pagination_next_page(self, app, initialized_db):
+        _enable_bootstrap(app)
+
+        with app.test_client() as client:
+            auth_result = _make_superuser_result()
+            for _ in range(3):
+                self._create_token(client, auth_result)
+
+            with (
+                patch("endpoints.web.validate_bootstrap_auth", return_value=auth_result),
+                patch(
+                    "endpoints.web.oauth_model.list_bootstrap_tokens",
+                    return_value=([], "next-page-cursor"),
+                ),
+            ):
+                resp = client.get(
+                    "/api/v1/bootstrap/tokens",
+                    headers={"Authorization": _basic_auth_header("devtable", "password")},
+                )
+                assert resp.status_code == 200
+                assert resp.get_json()["next_page"] == "next-page-cursor"

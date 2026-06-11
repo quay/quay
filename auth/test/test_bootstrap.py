@@ -295,6 +295,66 @@ class TestValidateBootstrapAuth:
                     validate_bootstrap_auth()
                 assert exc_info.value.status_code == 401
 
+    def test_unsupported_scheme(self, flask_app):
+        """Unsupported Authorization scheme (e.g. Digest) returns 401."""
+        with flask_app.test_request_context(headers={"Authorization": "Digest abc123"}):
+            with (
+                patch("auth.bootstrap.features") as mock_features,
+                patch("auth.bootstrap.app", flask_app),
+            ):
+                mock_features.PROGRAMMATIC_BOOTSTRAP = True
+                with pytest.raises(BootstrapAuthError) as exc_info:
+                    validate_bootstrap_auth()
+                assert exc_info.value.status_code == 401
+                assert "Unsupported" in exc_info.value.message
+
+    def test_malformed_auth_header_empty_credential(self, flask_app):
+        """Authorization header with scheme but empty credential returns 401."""
+        with flask_app.test_request_context(headers={"Authorization": "Basic "}):
+            with (
+                patch("auth.bootstrap.features") as mock_features,
+                patch("auth.bootstrap.app", flask_app),
+            ):
+                mock_features.PROGRAMMATIC_BOOTSTRAP = True
+                with pytest.raises(BootstrapAuthError) as exc_info:
+                    validate_bootstrap_auth()
+                assert exc_info.value.status_code == 401
+
+    def test_basic_auth_no_colon_in_credentials(self, flask_app):
+        """Basic Auth credential without colon separator returns 401."""
+        import base64
+
+        bad_cred = base64.b64encode(b"nocolon").decode("ascii")
+        with flask_app.test_request_context(headers={"Authorization": f"Basic {bad_cred}"}):
+            with (
+                patch("auth.bootstrap.features") as mock_features,
+                patch("auth.bootstrap.app", flask_app),
+            ):
+                mock_features.PROGRAMMATIC_BOOTSTRAP = True
+                with pytest.raises(BootstrapAuthError) as exc_info:
+                    validate_bootstrap_auth()
+                assert exc_info.value.status_code == 401
+                assert "format" in exc_info.value.message.lower()
+
+    def test_ldap_disabled_user(self, flask_app, disabled_user):
+        """LDAP user with disabled account returns 401."""
+        flask_app.config["AUTHENTICATION_TYPE"] = "LDAP"
+        with flask_app.test_request_context(
+            headers={"Authorization": _basic_auth_header("disabledldap", "password")}
+        ):
+            with (
+                patch("auth.bootstrap.features") as mock_features,
+                patch("auth.bootstrap.app", flask_app),
+                patch("auth.bootstrap.authentication") as mock_auth,
+            ):
+                mock_features.PROGRAMMATIC_BOOTSTRAP = True
+                mock_auth.verify_and_link_user.return_value = (disabled_user, None)
+
+                with pytest.raises(BootstrapAuthError) as exc_info:
+                    validate_bootstrap_auth()
+                assert exc_info.value.status_code == 401
+                assert "disabled" in exc_info.value.message
+
 
 class TestOIDCBootstrapAuth:
     """Tests for OIDC JWT bearer token authentication."""
@@ -584,3 +644,61 @@ class TestOIDCBootstrapAuth:
                     validate_bootstrap_auth()
                 assert exc_info.value.status_code == 401
                 assert exc_info.value.message == "OIDC login failed"
+
+    def test_oidc_extract_identity_failure(self, oidc_flask_app, mock_oidc_service):
+        """OAuthLoginException from get_sub_username_email_from_token returns 401."""
+        from oauth.login import OAuthLoginException
+
+        decoded_jwt = {"sub": "oidc-user-123", "preferred_username": "user", "email": "u@test.com"}
+        with oidc_flask_app.test_request_context(
+            headers={"Authorization": "Bearer valid.jwt.token"}
+        ):
+            with (
+                patch("auth.bootstrap.features") as mock_features,
+                patch("auth.bootstrap.app", oidc_flask_app),
+                patch("auth.bootstrap._get_oidc_service", return_value=mock_oidc_service),
+                patch("auth.bootstrap.get_sub_username_email_from_token") as mock_extract,
+            ):
+                mock_features.PROGRAMMATIC_BOOTSTRAP = True
+                mock_oidc_service.decode_user_jwt.return_value = decoded_jwt
+                mock_extract.side_effect = OAuthLoginException("Missing required claim")
+
+                with pytest.raises(BootstrapAuthError) as exc_info:
+                    validate_bootstrap_auth()
+                assert exc_info.value.status_code == 401
+                assert "identity" in exc_info.value.message.lower()
+
+    def test_oidc_login_returns_null_user(self, oidc_flask_app, mock_oidc_service):
+        """_conduct_oauth_login returns no user_obj raises 401."""
+        decoded_jwt = {"sub": "oidc-user-123", "preferred_username": "ghost", "email": "g@test.com"}
+        with oidc_flask_app.test_request_context(
+            headers={"Authorization": "Bearer valid.jwt.token"}
+        ):
+            with (
+                patch("auth.bootstrap.features") as mock_features,
+                patch("auth.bootstrap.app", oidc_flask_app),
+                patch("auth.bootstrap._get_oidc_service", return_value=mock_oidc_service),
+                patch("auth.bootstrap.get_sub_username_email_from_token") as mock_extract,
+                patch("auth.bootstrap._conduct_oauth_login") as mock_login,
+            ):
+                mock_features.PROGRAMMATIC_BOOTSTRAP = True
+                mock_oidc_service.decode_user_jwt.return_value = decoded_jwt
+                mock_extract.return_value = ("oidc-user-123", "ghost", "g@test.com", {})
+                mock_login.return_value = _mock_login_result(user_obj=None)
+
+                with pytest.raises(BootstrapAuthError) as exc_info:
+                    validate_bootstrap_auth()
+                assert exc_info.value.status_code == 401
+                assert "did not return a user" in exc_info.value.message
+
+    def test_get_oidc_service_returns_first_match(self, oidc_flask_app, mock_oidc_service):
+        """_get_oidc_service iterates services and returns the first OIDCLoginService."""
+        from auth.bootstrap import _get_oidc_service
+        from oauth.oidc import OIDCLoginService
+
+        non_oidc = MagicMock(spec=[])
+        oidc_mock = MagicMock(spec=OIDCLoginService)
+        with patch("auth.bootstrap.oauth_login") as mock_oauth_login:
+            mock_oauth_login.services = [non_oidc, oidc_mock]
+            result = _get_oidc_service()
+            assert result == oidc_mock

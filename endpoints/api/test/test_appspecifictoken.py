@@ -485,28 +485,27 @@ class TestAppTokenBootstrapAuth:
                 )
 
     def test_bootstrap_feature_flag_disabled_blocks_bootstrap(self, app, initialized_db):
-        """Feature flag disabled blocks bootstrap auth."""
+        """Feature flag disabled blocks bootstrap auth.
+
+        When PROGRAMMATIC_BOOTSTRAP is off, a request without a session identity
+        falls through to Unauthorized (401) because the bootstrap elif branch
+        is never entered.
+        """
         import features as features_module
 
         features_module.PROGRAMMATIC_BOOTSTRAP.value = False
         app.config["FEATURE_PROGRAMMATIC_BOOTSTRAP"] = False
 
         with app.test_client() as client:
-            with patch(
-                "endpoints.api.appspecifictokens.validate_bootstrap_auth",
-                side_effect=BootstrapAuthError(
-                    "FEATURE_PROGRAMMATIC_BOOTSTRAP is not enabled", 403
-                ),
-            ):
-                conduct_api_call(
-                    client,
-                    AppTokens,
-                    "POST",
-                    None,
-                    {"title": "Should Fail"},
-                    403,
-                    headers={"Authorization": _basic_auth_header("devtable", "password")},
-                )
+            conduct_api_call(
+                client,
+                AppTokens,
+                "POST",
+                None,
+                {"title": "Should Fail"},
+                401,
+                headers={"Authorization": _basic_auth_header("devtable", "password")},
+            )
 
     def test_standard_auth_works_with_feature_flag_disabled(self, app, initialized_db):
         """Standard fresh-login auth works even when bootstrap feature flag is disabled."""
