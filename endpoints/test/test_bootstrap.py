@@ -191,7 +191,7 @@ class TestBootstrapToken:
 
         with app.test_client() as client:
             with patch(
-                "auth.bootstrap.validate_bootstrap_auth",
+                "endpoints.web.validate_bootstrap_auth",
                 side_effect=BootstrapAuthError("Superuser access required", 401),
             ):
                 resp = client.post(
@@ -207,7 +207,7 @@ class TestBootstrapToken:
 
         with app.test_client() as client:
             with patch(
-                "auth.bootstrap.validate_bootstrap_auth",
+                "endpoints.web.validate_bootstrap_auth",
                 side_effect=BootstrapAuthError("Invalid credentials", 401),
             ):
                 resp = client.post(

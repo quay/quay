@@ -9,7 +9,6 @@ from datetime import timedelta
 
 import pytz
 from flask import request, session
-from flask_restful import abort
 from jsonschema import ValidationError, validate
 
 import features
@@ -162,8 +161,8 @@ class AppTokens(ApiResource):
             try:
                 auth_result = validate_bootstrap_auth()
                 user = auth_result.user
-            except BootstrapAuthError as e:
-                abort(e.status_code, message=e.message)
+            except BootstrapAuthError:
+                raise Unauthorized()
         else:
             raise Unauthorized()
 
