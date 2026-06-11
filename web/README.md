@@ -1,6 +1,6 @@
 # Quay UI
 
-UI for Quay based on React and Patternfly framework 
+UI for Quay based on React and Patternfly framework
 
 ## Installation
 
@@ -27,7 +27,7 @@ Open [http://localhost:9000](http://localhost:9000) to view it in the browser.
 The page will reload if you make edits.\
 You will also see any lint errors in the console.
 
-By default the UI connects to the quay backend for API. If you don't have 
+By default the UI connects to the quay backend for API. If you don't have
 a backend or want to develop without a backend you can set the environment
 variable `MOCK_API=true` before running `npm start`.
 
@@ -38,7 +38,7 @@ Add the following to your `config.yaml` in Quay
 CORS_ORIGIN: "http://localhost:9000"
 ```
 
-If you are using `docker-compose` for local development, you can add this to `local-dev/stack/config.yaml` 
+If you are using `docker-compose` for local development, you can add this to `local-dev/stack/config.yaml`
 in the Quay repo.
 
 ## Testing
@@ -50,13 +50,13 @@ npm test
 Launches the test runner in the interactive watch mode.\
 See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-### Integration Tests
+### E2E Tests
 
-Integration tests are ran via [Cypress](https://docs.cypress.io/). The URL under test defaults to `http://localhost:9000` and can be overriden with the `baseUrl` parameter in the `cypress.config.ts` file.
+E2E tests use [Playwright](https://playwright.dev/). See `web/playwright/` for tests and configuration.
 
 To run tests locally:
-- Start the application with `npm start`
-- When application has started run the tests with `npm run test:integration`
+- Start the application with `pnpm start`
+- Run the tests with `pnpm run test:e2e`
 
 ## Building for Production
 

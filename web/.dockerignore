@@ -44,8 +44,6 @@ typings/
 
 # testing
 /coverage
-cypress/
-cypress.config.ts
 playwright/
 playwright.config.ts
 playwright-report/
