@@ -22,9 +22,11 @@ jobs:
         fetch-depth: 0  # need full history for diff
 
     - name: Check for suspicious migration revision IDs
+      env:
+        BASE_REF: ${{ github.base_ref }}
       run: |
         # Get newly added migration files in this PR
-        NEW_FILES=$(git diff --name-only --diff-filter=A origin/${{ github.base_ref }}...HEAD -- 'data/migrations/versions/*.py' || true)
+        NEW_FILES=$(git diff --name-only --diff-filter=A origin/$BASE_REF...HEAD -- 'data/migrations/versions/*.py' || true)
 
         if [ -z "$NEW_FILES" ]; then
           echo "No new migration files found — nothing to check."
