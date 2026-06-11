@@ -1004,7 +1004,7 @@ export function useLogDescriptions() {
       return (
         <>
           Revoked OAuth API token {wrapVariable(metadata.oauth_token_uuid)} from
-          application with client ID {wrapVariable(metadata.client_id)}
+          application {wrapVariable(metadata.application_name)}
         </>
       );
     },

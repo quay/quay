@@ -147,14 +147,16 @@ class OrganizationApplicationTokens(ApiResource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
+        user = get_authenticated_user()
+        if user is None:
+            raise Unauthorized()
+
         active_count = oauth_model.count_active_tokens(application)
         if active_count >= MAX_TOKENS_PER_APPLICATION:
             return {
                 "message": "Token limit reached: maximum %d non-expired tokens per application"
                 % MAX_TOKENS_PER_APPLICATION
             }, 400
-
-        user = get_authenticated_user()
 
         token_record, access_token = oauth_model.create_oauth_api_token(
             application=application,
@@ -215,6 +217,7 @@ class OrganizationApplicationToken(ApiResource):
             orgname,
             metadata={
                 "oauth_token_uuid": token_uuid,
+                "application_name": application.name,
                 "client_id": application.client_id,
             },
         )
