@@ -209,4 +209,21 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     const url = page.url();
     expect(url).toContain('access_token=');
   });
+
+  test('non-admin user cannot create OAuth apps', async ({
+    superuserApi,
+    userClient,
+  }) => {
+    // Create org as superuser so testuser is NOT an admin
+    const org = await superuserApi.organization('no-create-oauth');
+
+    // Attempt to create an OAuth app as the non-admin user
+    const response = await userClient.post(
+      `/api/v1/organization/${org.name}/applications`,
+      {name: 'should-fail', redirect_uri: '', application_uri: ''},
+    );
+
+    // Should be forbidden — only org admins can manage OAuth apps
+    expect(response.status()).toBe(403);
+  });
 });
