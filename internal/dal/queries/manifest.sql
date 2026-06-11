@@ -23,5 +23,14 @@ DELETE FROM manifestblob WHERE manifest_id = ?;
 INSERT OR IGNORE INTO manifestchild (repository_id, manifest_id, child_manifest_id)
 VALUES (?, ?, ?);
 
+-- name: DeleteManifestLabels :exec
+DELETE FROM manifestlabel WHERE manifest_id = ?;
+
+-- name: DeleteManifestChildren :exec
+DELETE FROM manifestchild WHERE manifest_id = ? OR child_manifest_id = ?;
+
+-- name: DeleteManifestSecurityStatus :exec
+DELETE FROM manifestsecuritystatus WHERE manifest_id = ?;
+
 -- name: CountManifests :one
 SELECT COUNT(*) FROM manifest;

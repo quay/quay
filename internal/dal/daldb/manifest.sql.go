@@ -38,6 +38,38 @@ func (q *Queries) DeleteManifestBlobs(ctx context.Context, manifestID int64) err
 	return err
 }
 
+const deleteManifestChildren = `-- name: DeleteManifestChildren :exec
+DELETE FROM manifestchild WHERE manifest_id = ? OR child_manifest_id = ?
+`
+
+type DeleteManifestChildrenParams struct {
+	ManifestID      int64 `json:"manifest_id"`
+	ChildManifestID int64 `json:"child_manifest_id"`
+}
+
+func (q *Queries) DeleteManifestChildren(ctx context.Context, arg DeleteManifestChildrenParams) error {
+	_, err := q.db.ExecContext(ctx, deleteManifestChildren, arg.ManifestID, arg.ChildManifestID)
+	return err
+}
+
+const deleteManifestLabels = `-- name: DeleteManifestLabels :exec
+DELETE FROM manifestlabel WHERE manifest_id = ?
+`
+
+func (q *Queries) DeleteManifestLabels(ctx context.Context, manifestID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteManifestLabels, manifestID)
+	return err
+}
+
+const deleteManifestSecurityStatus = `-- name: DeleteManifestSecurityStatus :exec
+DELETE FROM manifestsecuritystatus WHERE manifest_id = ?
+`
+
+func (q *Queries) DeleteManifestSecurityStatus(ctx context.Context, manifestID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteManifestSecurityStatus, manifestID)
+	return err
+}
+
 const getManifestByDigest = `-- name: GetManifestByDigest :one
 SELECT id, repository_id, digest, media_type_id, manifest_bytes
 FROM manifest

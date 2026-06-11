@@ -10,6 +10,30 @@ import (
 	"database/sql"
 )
 
+const deleteTagsByManifest = `-- name: DeleteTagsByManifest :exec
+DELETE FROM tag WHERE manifest_id = ?
+`
+
+func (q *Queries) DeleteTagsByManifest(ctx context.Context, manifestID sql.NullInt64) error {
+	_, err := q.db.ExecContext(ctx, deleteTagsByManifest, manifestID)
+	return err
+}
+
+const expireActiveTag = `-- name: ExpireActiveTag :execresult
+UPDATE tag SET lifetime_end_ms = ?
+WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL
+`
+
+type ExpireActiveTagParams struct {
+	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
+	RepositoryID  int64         `json:"repository_id"`
+	Name          string        `json:"name"`
+}
+
+func (q *Queries) ExpireActiveTag(ctx context.Context, arg ExpireActiveTagParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, expireActiveTag, arg.LifetimeEndMs, arg.RepositoryID, arg.Name)
+}
+
 const getTagsByRepository = `-- name: GetTagsByRepository :many
 SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
 FROM tag

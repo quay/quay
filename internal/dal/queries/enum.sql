@@ -10,5 +10,8 @@ SELECT id FROM repositorykind WHERE name = ?;
 -- name: GetTagKindByName :one
 SELECT id FROM tagkind WHERE name = ?;
 
+-- name: GetAllMediaTypes :many
+SELECT id, name FROM mediatype;
+
 -- name: GetAlembicVersion :one
 SELECT version_num FROM alembic_version LIMIT 1;

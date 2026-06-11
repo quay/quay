@@ -48,6 +48,24 @@ func (q *Queries) CreateAdminUser(ctx context.Context, arg CreateAdminUserParams
 	return id, err
 }
 
+const ensureUser = `-- name: EnsureUser :one
+INSERT INTO "user" (username, email, verified, organization, robot,
+  invoice_email, invalid_login_attempts, last_invalid_login,
+  removed_tag_expiration_s, enabled)
+VALUES (?1, ?1 || '@namespace.local', 1, 0, 0, 0, 0, datetime('now'), 1209600, 1)
+ON CONFLICT (username) DO UPDATE SET username = excluded.username
+RETURNING id
+`
+
+// Creates a synthetic user row for namespace resolution. Mirror-registry
+// namespaces map 1:1 to user rows; these are not real login accounts.
+func (q *Queries) EnsureUser(ctx context.Context, username string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, ensureUser, username)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, uuid, username, password_hash, email, enabled
 FROM "user"
