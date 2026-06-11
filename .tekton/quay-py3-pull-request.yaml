@@ -26,7 +26,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/quayio-tenant/quay-py3/quay-py3:on-pr-{{revision}}
+    value: '{{ ecr_registry_url }}/quay-py3-backup-staging:on-pr-{{revision}}'
   - name: image-expires-after
     value: 5d
   - name: dockerfile
