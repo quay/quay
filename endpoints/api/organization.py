@@ -1215,6 +1215,8 @@ class ProxyCacheConfigValidation(ApiResource):
                 return "Valid", 202
             if response.status_code == 401:
                 return "Anonymous", 202
+        except SSRFBlockedError:
+            raise request_error(SSRF_GENERIC_ERROR)
         except UpstreamRegistryError as e:
             raise request_error(
                 message="Failed login to remote registry. Please verify entered details and try again."
