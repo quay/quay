@@ -230,3 +230,5 @@ IMAGE_EXPIRY_TRIGGER: FeatureNameValue
 UI_MODELCARD: FeatureNameValue
 
 OTEL_TRACING: FeatureNameValue
+
+SPAM_DETECTION: FeatureNameValue

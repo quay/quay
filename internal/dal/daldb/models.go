@@ -506,6 +506,24 @@ type Proxycacheconfig struct {
 	Insecure                 bool           `json:"insecure"`
 }
 
+type Quarantinedrepository struct {
+	ID                   int64          `json:"id"`
+	Uuid                 string         `json:"uuid"`
+	RepositoryID         int64          `json:"repository_id"`
+	NamespaceName        string         `json:"namespace_name"`
+	RepositoryName       string         `json:"repository_name"`
+	Status               string         `json:"status"`
+	OriginalDescription  sql.NullString `json:"original_description"`
+	MatchedRules         sql.NullString `json:"matched_rules"`
+	TotalConfidenceScore int64          `json:"total_confidence_score"`
+	IsEmpty              bool           `json:"is_empty"`
+	ScanID               sql.NullString `json:"scan_id"`
+	ActionedBy           sql.NullString `json:"actioned_by"`
+	ActionedAt           sql.NullTime   `json:"actioned_at"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
+}
+
 type Quayregion struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
@@ -760,6 +778,19 @@ type Servicekeyapproval struct {
 	ApprovalType string        `json:"approval_type"`
 	ApprovedDate time.Time     `json:"approved_date"`
 	Notes        string        `json:"notes"`
+}
+
+type Spamdetectionrule struct {
+	ID              int64          `json:"id"`
+	Uuid            string         `json:"uuid"`
+	Name            string         `json:"name"`
+	RuleType        string         `json:"rule_type"`
+	Pattern         sql.NullString `json:"pattern"`
+	Config          sql.NullString `json:"config"`
+	ConfidenceScore int64          `json:"confidence_score"`
+	Enabled         bool           `json:"enabled"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 type Star struct {
