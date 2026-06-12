@@ -9,8 +9,11 @@ from app import docker_v2_signing_key, storage
 from data.database import (
     ImageStorage,
     ImageStorageLocation,
+    IndexerVersion,
+    IndexStatus,
     ManifestBlob,
     ManifestChild,
+    ManifestSecurityStatus,
     Tag,
     get_epoch_timestamp_ms,
 )
@@ -712,3 +715,54 @@ def test_is_manifest_present_with_none_bytes(initialized_db):
 
     mock_manifest = MockManifest()
     assert is_manifest_present(mock_manifest) is False
+
+
+@pytest.fixture()
+def with_secscan_v2(app):
+    import features as features_module
+
+    app.config["FEATURE_SECURITY_SCANNER_V2"] = True
+    features_module.import_features(app.config)
+    yield
+    app.config["FEATURE_SECURITY_SCANNER_V2"] = False
+    features_module.import_features(app.config)
+
+
+class TestPendingSecurityStatus:
+    def test_creates_pending_mss_when_feature_enabled(self, initialized_db, with_secscan_v2):
+        repository = create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repository)
+
+        mss = ManifestSecurityStatus.get(ManifestSecurityStatus.manifest == manifest)
+        assert mss.index_status == IndexStatus.PENDING
+        assert mss.indexer_hash == ""
+        assert mss.indexer_version == IndexerVersion.V4
+        assert mss.repository_id == repository.id
+
+    def test_no_mss_when_feature_disabled(self, initialized_db):
+        repository = create_repository("devtable", "newrepo", None)
+        manifest, _ = create_manifest_for_testing(repository)
+
+        assert (
+            not ManifestSecurityStatus.select()
+            .where(ManifestSecurityStatus.manifest == manifest)
+            .exists()
+        )
+
+    def test_mss_failure_does_not_block_push(self, initialized_db, with_secscan_v2):
+        from unittest import mock
+
+        repository = create_repository("devtable", "newrepo", None)
+
+        with mock.patch(
+            "data.model.oci.manifest.ManifestSecurityStatus.create",
+            side_effect=Exception("db error"),
+        ):
+            manifest, _ = create_manifest_for_testing(repository)
+
+        assert manifest is not None
+        assert (
+            not ManifestSecurityStatus.select()
+            .where(ManifestSecurityStatus.manifest == manifest)
+            .exists()
+        )

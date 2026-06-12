@@ -10,9 +10,12 @@ from peewee import IntegrityError
 import features
 from data.database import (
     ExternalNotificationEvent,
+    IndexerVersion,
+    IndexStatus,
     Manifest,
     ManifestBlob,
     ManifestChild,
+    ManifestSecurityStatus,
     Repository,
     RepositoryNotification,
     Tag,
@@ -286,7 +289,7 @@ def get_or_create_manifest(
     if existing is not None:
         return CreatedManifest(manifest=existing, newly_created=False, labels_to_apply=None)
 
-    return _create_manifest(
+    result = _create_manifest(
         repository_id,
         manifest_interface_instance,
         storage,
@@ -295,6 +298,9 @@ def get_or_create_manifest(
         raise_on_error=raise_on_error,
         retriever=retriever,
     )
+    if result is not None:
+        _create_pending_security_status(result.manifest)
+    return result
 
 
 def _create_manifest(
@@ -554,3 +560,27 @@ def _build_blob_map(
             blob_map[EMPTY_LAYER_BLOB_DIGEST] = shared_blob
 
     return blob_map
+
+
+def _create_pending_security_status(manifest):
+    if not features.SECURITY_SCANNER_V2:
+        return
+
+    try:
+        ManifestSecurityStatus.create(
+            manifest=manifest.id,
+            repository=manifest.repository_id,
+            index_status=IndexStatus.PENDING,
+            indexer_hash="",
+            indexer_version=IndexerVersion.V4,
+            error_json={},
+            metadata_json={},
+        )
+    except IntegrityError:
+        pass
+    except Exception:
+        logger.warning(
+            "Failed to create PENDING ManifestSecurityStatus for manifest %s",
+            manifest.id,
+            exc_info=True,
+        )
