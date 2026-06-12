@@ -17,7 +17,7 @@ import (
 
 // TargetVersion is the alembic HEAD revision this binary was built against.
 // Updated by make go-schema when schema changes.
-const TargetVersion = "c3d4e5f6a7b8"
+const TargetVersion = "6bf52175d3fc"
 
 // InitDatabase creates a fresh SQLite database by executing the embedded DDL
 // and seed data. It returns an error if the database file already contains

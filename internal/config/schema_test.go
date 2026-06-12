@@ -101,6 +101,14 @@ var knownUnmapped = map[string]bool{
 	"SECURITY_SCANNER_V2_BATCH_SIZE":          true,
 	"SECURITY_SCANNER_V2_INDEXING_INTERVAL":   true,
 
+	// Spam detection extras
+	"SPAM_DETECTION_POLL_PERIOD":           true,
+	"SPAM_DETECTION_BATCH_SIZE":            true,
+	"SPAM_DETECTION_SLEEP_BETWEEN_BATCHES": true,
+	"SPAM_DETECTION_MIN_CONFIDENCE":        true,
+	"SPAM_DETECTION_DRY_RUN":               true,
+	"SPAM_DETECTION_MAX_REPOS":             true,
+
 	// Feature flags not yet mapped
 	"FEATURE_ADVERTISE_V2":                          true,
 	"FEATURE_EXTENDED_ACTION_LOGGING":               true,
@@ -145,6 +153,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_RESTRICTED_USERS":                      true,
 	"FEATURE_RESTRICTED_V1_PUSH":                    true,
 	"FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX":  true,
+	"FEATURE_SPAM_DETECTION":                        true,
 	"FEATURE_SPARSE_INDEX":                          true,
 	"FEATURE_SUPERUSERS_FULL_ACCESS":                true,
 	"FEATURE_SUPERUSERS_ORG_CREATION_ONLY":          true,

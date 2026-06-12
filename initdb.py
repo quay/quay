@@ -604,6 +604,10 @@ def initialize_database():
     LogEntryKind.create(name="org_change_quota_limit")
     LogEntryKind.create(name="org_delete_quota_limit")
 
+    LogEntryKind.create(name="spam_repo_quarantined")
+    LogEntryKind.create(name="spam_repo_restored")
+    LogEntryKind.create(name="spam_repo_dismissed")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
@@ -660,6 +664,8 @@ def initialize_database():
     NotificationKind.create(name="quota_error")
 
     NotificationKind.create(name="assigned_authorization")
+
+    NotificationKind.create(name="repo_spam_quarantined")
 
     QuayRegion.create(name="us")
     QuayService.create(name="quay")
@@ -1562,6 +1568,8 @@ WHITELISTED_EMPTY_MODELS = [
     "NamespaceImmutabilityPolicy",
     "RepositoryImmutabilityPolicy",
     "OrganizationContactEmail",
+    "SpamDetectionRule",
+    "QuarantinedRepository",
 ]
 
 

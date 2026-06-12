@@ -1760,3 +1760,31 @@ def test_gc_manifest_list_partial_gc_child_in_use(default_tag_policy, initialize
 
     # child_only2 must survive
     assert Manifest.select().where(Manifest.id == child_only2.id).exists()
+
+
+def test_purge_repository_cleans_quarantine_records(default_tag_policy, initialized_db):
+    from data.database import QuarantinedRepository
+    from data.model.repository import get_repository
+    from data.model.spam import create_quarantined_repo
+
+    repo = get_repository("devtable", "simple")
+    create_quarantined_repo(
+        repository=repo.id,
+        namespace_name="devtable",
+        repo_name="simple",
+        original_description="desc",
+        matched_rules=[],
+        total_confidence=80,
+        is_empty=False,
+        scan_id="scan-gc",
+    )
+    assert (
+        QuarantinedRepository.select().where(QuarantinedRepository.repository == repo.id).exists()
+    )
+
+    model.gc.purge_repository(repo, force=True)
+    assert (
+        not QuarantinedRepository.select()
+        .where(QuarantinedRepository.repository == repo.id)
+        .exists()
+    )

@@ -394,6 +394,18 @@ autostart = {{ config['autopruneworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:spamdetectionworker]
+environment=
+  PYTHONPATH=%(ENV_PYTHONPATH)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/spamdetectionworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.spamdetectionworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.spamdetectionworker
+{% endif -%}
+autostart = {{ config['spamdetectionworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:proxycacheblobworker]
 environment=
   PYTHONPATH=%(ENV_PYTHONPATH)s
