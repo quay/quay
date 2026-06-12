@@ -88,6 +88,9 @@ class QuayDeferredPermissionUser(Identity):
         self._personal_loaded = False
 
         self._superuser_loaded = False
+
+        # TODO (ibazulic): In a future fix, we should think about adding the global read only super user
+        # short circuit, like we did for the real super user. This flag is intended for that future use.
         self._readonly_superuser_loaded = False
 
         self._superuser_checked = False
