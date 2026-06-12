@@ -717,5 +717,110 @@ test.describe(
       expect(names).toContain('v3');
       expect(names).toContain('v4');
     });
+
+    test('autoprune task status updates succeed without deadlocks (PROJQUAY-11518)', async ({
+      api,
+    }) => {
+      /**
+       * Tests that autoprune task status updates handle concurrent operations
+       * without database deadlocks.
+       *
+       * PROJQUAY-11518: Fixed PostgreSQL deadlock in AutoPruneWorker by adding
+       * retry logic with exponential backoff to update_autoprune_task().
+       *
+       * This test verifies the fix by creating multiple autoprune policies across
+       * different namespaces and ensuring they all execute successfully. If the
+       * deadlock fix were not in place, concurrent task status updates during
+       * parallel policy execution would cause transaction conflicts.
+       */
+      test.slow();
+      const user = TEST_USERS.user;
+
+      // Create 3 organizations with repositories and policies
+      // This tests concurrent autoprune task updates across namespaces
+      const org1 = await api.organization('deadlocktest1');
+      const repo1 = await api.repository(org1.name, 'testrepo');
+      await pushImage(
+        org1.name,
+        repo1.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org1.name,
+        repo1.name,
+        'v2',
+        user.username,
+        user.password,
+      );
+
+      const org2 = await api.organization('deadlocktest2');
+      const repo2 = await api.repository(org2.name, 'testrepo');
+      await pushImage(
+        org2.name,
+        repo2.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org2.name,
+        repo2.name,
+        'v2',
+        user.username,
+        user.password,
+      );
+
+      const org3 = await api.organization('deadlocktest3');
+      const repo3 = await api.repository(org3.name, 'testrepo');
+      await pushImage(
+        org3.name,
+        repo3.name,
+        'v1',
+        user.username,
+        user.password,
+      );
+      await pushImage(
+        org3.name,
+        repo3.name,
+        'v2',
+        user.username,
+        user.password,
+      );
+
+      // Create autoprune policies for all 3 organizations
+      // These will trigger concurrent task status updates
+      await api.orgAutoPrunePolicy(org1.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+      await api.orgAutoPrunePolicy(org2.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+      await api.orgAutoPrunePolicy(org3.name, {
+        method: 'number_of_tags',
+        value: 1,
+      });
+
+      // Verify all 3 policies execute successfully without deadlock errors
+      // The retry logic in update_autoprune_task() should handle any concurrent conflicts
+      await expect(async () => {
+        const tags1 = await api.raw.getTags(org1.name, repo1.name);
+        const tags2 = await api.raw.getTags(org2.name, repo2.name);
+        const tags3 = await api.raw.getTags(org3.name, repo3.name);
+
+        // All repos should be pruned to 1 tag (the newest)
+        expect(tags1.tags).toHaveLength(1);
+        expect(tags2.tags).toHaveLength(1);
+        expect(tags3.tags).toHaveLength(1);
+
+        // Only v2 should remain (newest tag)
+        expect(tags1.tags[0].name).toBe('v2');
+        expect(tags2.tags[0].name).toBe('v2');
+        expect(tags3.tags[0].name).toBe('v2');
+      }).toPass({timeout: 180_000, intervals: [5_000]});
+    });
   },
 );

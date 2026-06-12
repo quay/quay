@@ -1,7 +1,10 @@
 import json
 import logging.config
 import re
+import time
 from enum import Enum
+
+from peewee import OperationalError
 
 from data.database import AutoPruneTaskStatus
 from data.database import NamespaceAutoPrunePolicy as NamespaceAutoPrunePolicyTable
@@ -514,15 +517,53 @@ def create_autoprune_task(namespace_id):
 
 
 def update_autoprune_task(task, task_status):
-    try:
-        task.status = task_status
-        task.save(only=[AutoPruneTaskStatus.status])
-    except AutoPruneTaskStatus.DoesNotExist:
-        return None
-    except Exception as err:
-        raise Exception(
-            f"Error updating autoprune task for namespace id: {task.namespace_id}, task_status: {task_status} with error as: {str(err)}"
-        )
+    """
+    Update autoprune task status with retry logic for deadlock handling.
+
+    Retries up to 3 times with exponential backoff when PostgreSQL deadlocks occur.
+    Total of 4 attempts (1 initial + 3 retries) with backoff delays of 0.1s, 0.2s, 0.4s.
+    """
+    max_retries = 3  # number of retries after the initial attempt
+    namespace_id = task.namespace_id  # Store namespace_id for error messages
+
+    for attempt in range(max_retries + 1):
+        try:
+            # Refetch task in each attempt to ensure fresh transaction context
+            # This is critical for PostgreSQL which aborts transactions after errors
+            if attempt > 0:
+                try:
+                    task = AutoPruneTaskStatus.get(AutoPruneTaskStatus.namespace == namespace_id)
+                except AutoPruneTaskStatus.DoesNotExist:
+                    return None
+
+            task.status = task_status
+            task.save(only=[AutoPruneTaskStatus.status])
+            return
+        except AutoPruneTaskStatus.DoesNotExist:
+            return None
+        except OperationalError as err:
+            error_msg = str(err).lower()
+            # Check if this is a deadlock error or transaction abort
+            if (
+                "deadlock" in error_msg or "transaction is aborted" in error_msg
+            ) and attempt < max_retries:
+                # Exponential backoff: 0.1s, 0.2s, 0.4s
+                backoff = 0.1 * (2**attempt)
+                logger.warning(
+                    "Database error updating autoprune task for namespace %s (attempt %d/%d), retrying in %.1fs: %s",
+                    namespace_id,
+                    attempt + 1,
+                    max_retries + 1,
+                    backoff,
+                    str(err)[:100],
+                )
+                time.sleep(backoff)
+                continue
+
+            # Not a retryable error or max retries exceeded
+            raise Exception(
+                f"Error updating autoprune task for namespace id: {namespace_id}, task_status: {task_status} with error as: {str(err)}"
+            ) from err
 
 
 def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
