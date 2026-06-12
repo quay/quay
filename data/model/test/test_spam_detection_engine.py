@@ -1,6 +1,6 @@
 import uuid
-from concurrent.futures import TimeoutError
 from datetime import datetime, timedelta
+from queue import Empty
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,13 +9,13 @@ from data.database import QuarantinedRepository, Repository, SpamDetectionRule
 from data.model.repository import get_repository
 from data.model.spam import create_quarantined_repo, create_spam_detection_rule
 from data.model.spam_detection_engine import (
-    REGEX_EVAL_TIMEOUT_SECS,
     RuleEvaluator,
     RuleMatch,
     ScanConfig,
     ScanReport,
     SpamScanner,
     _regex_search_with_timeout,
+    _RegexProcessEvaluator,
 )
 from test.fixtures import *
 
@@ -45,6 +45,16 @@ def make_repo(name="test-repo", description="some description", repo_id=1):
     repo.description = description
     repo.id = repo_id
     return repo
+
+
+@pytest.fixture(autouse=True)
+def stop_regex_evaluator():
+    import data.model.spam_detection_engine as engine
+
+    original_evaluator = engine._regex_evaluator
+    yield
+    engine._regex_evaluator.stop()
+    engine._regex_evaluator = original_evaluator
 
 
 class TestScanConfig:
@@ -583,29 +593,43 @@ class TestRegexTimeout:
 
         pattern = re.compile(r"xyz123", re.IGNORECASE)
         result = _regex_search_with_timeout(pattern, "hello world", timeout=2)
-        assert result is None
+        assert result is False
 
-    def test_timeout_replaces_executor_and_recovers(self):
+    def test_timeout_restarts_process_and_recovers(self):
         import re
-        from concurrent.futures import Future
 
         import data.model.spam_detection_engine as engine
 
-        old_executor = engine._regex_executor
-        mock_executor = MagicMock()
-        mock_future = MagicMock(spec=Future)
-        mock_future.result.side_effect = TimeoutError()
-        mock_executor.submit.return_value = mock_future
-        engine._regex_executor = mock_executor
+        request_queue = MagicMock()
+        response_queue = MagicMock()
+        response_queue.get.side_effect = Empty()
+        restarted_request_queue = MagicMock()
+        restarted_response_queue = MagicMock()
+
+        process = MagicMock()
+        process.is_alive.return_value = True
+        restarted_process = MagicMock()
+        restarted_process.is_alive.return_value = True
+
+        context = MagicMock()
+        context.Queue.side_effect = [
+            request_queue,
+            response_queue,
+            restarted_request_queue,
+            restarted_response_queue,
+        ]
+        context.Process.side_effect = [process, restarted_process]
+        evaluator = _RegexProcessEvaluator(context=context)
+        engine._regex_evaluator = evaluator
 
         pattern = re.compile(r"test", re.IGNORECASE)
         result = _regex_search_with_timeout(pattern, "test text", timeout=1)
         assert result is None
-        assert engine._regex_executor is not mock_executor
-        mock_executor.shutdown.assert_called_once_with(wait=False)
+        process.terminate.assert_called_once()
+        restarted_process.start.assert_called_once()
+        assert engine._regex_evaluator._process is restarted_process
 
         safe = re.compile(r"hello", re.IGNORECASE)
+        restarted_response_queue.get.return_value = True
         result2 = _regex_search_with_timeout(safe, "hello world", timeout=2)
         assert result2 is not None
-
-        engine._regex_executor = old_executor

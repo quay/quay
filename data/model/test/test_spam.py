@@ -1,8 +1,15 @@
+import json
 import uuid
 
 import pytest
 
-from data.database import QuarantinedRepository, Repository, SpamDetectionRule
+from data.database import (
+    LogEntry3,
+    LogEntryKind,
+    QuarantinedRepository,
+    Repository,
+    SpamDetectionRule,
+)
 from data.model.repository import get_repository
 from data.model.spam import (
     VALID_RULE_TYPES,
@@ -63,6 +70,18 @@ def sample_quarantined_repo(sample_repo):
         total_confidence=80,
         is_empty=False,
         scan_id="scan-001",
+    )
+
+
+def _get_repo_spam_logs(kind_name, repository_id):
+    kind = LogEntryKind.get(LogEntryKind.name == kind_name)
+    return list(
+        LogEntry3.select()
+        .where(
+            LogEntry3.kind == kind.id,
+            LogEntry3.repository == repository_id,
+        )
+        .order_by(LogEntry3.id)
     )
 
 
@@ -490,25 +509,56 @@ class TestGetQuarantinedRepos:
         )
         assert len(repos) >= 1
 
-    def test_pagination_limit(self, cleanup_spam_tables):
+    def test_orders_by_confidence_desc_then_id_desc(self, cleanup_spam_tables):
         test_repos = [
             get_repository("devtable", "simple"),
             get_repository("devtable", "complex"),
             get_repository("devtable", "history"),
         ]
-        for i, repo in enumerate(test_repos):
+        scores = [75, 90, 90]
+        for repo, score in zip(test_repos, scores):
             create_quarantined_repo(
                 repository=repo.id,
                 namespace_name="devtable",
                 repo_name=repo.name,
-                original_description=f"desc-{i}",
+                original_description=f"desc-{repo.name}",
                 matched_rules=[],
-                total_confidence=50 + i,
+                total_confidence=score,
                 is_empty=False,
-                scan_id=f"scan-page-{i}",
+                scan_id=f"scan-page-{repo.name}",
             )
+
+        repos, _ = get_quarantined_repos()
+        returned = [(repo.total_confidence_score, repo.repository_name) for repo in repos]
+        assert returned[:3] == [(90, "history"), (90, "complex"), (75, "simple")]
+
+    def test_pagination_limit_uses_confidence_order(self, cleanup_spam_tables):
+        test_repos = [
+            get_repository("devtable", "simple"),
+            get_repository("devtable", "complex"),
+            get_repository("devtable", "history"),
+        ]
+        for repo, score in zip(test_repos, [75, 90, 90]):
+            create_quarantined_repo(
+                repository=repo.id,
+                namespace_name="devtable",
+                repo_name=repo.name,
+                original_description=f"desc-{repo.name}",
+                matched_rules=[],
+                total_confidence=score,
+                is_empty=False,
+                scan_id=f"scan-page-{repo.name}",
+            )
+
         repos, next_token = get_quarantined_repos(limit=2)
         assert len(repos) == 2
+        assert [repo.total_confidence_score for repo in repos] == [90, 90]
+        assert next_token is not None
+
+        next_page, final_token = get_quarantined_repos(limit=2, page_token=next_token)
+        assert [repo.total_confidence_score for repo in next_page] == [75]
+        assert {repo.uuid for repo in repos}.isdisjoint({repo.uuid for repo in next_page})
+        assert final_token is None
 
     def test_empty_results(self, cleanup_spam_tables):
         repos, next_token = get_quarantined_repos()
@@ -585,6 +635,18 @@ class TestQuarantineRepository:
         with pytest.raises(InvalidStatusTransition, match="must be 'flagged'"):
             quarantine_repository(sample_quarantined_repo.uuid, actioned_by="admin")
 
+    def test_quarantine_writes_audit_log(self, sample_quarantined_repo):
+        quarantine_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+
+        logs = _get_repo_spam_logs("spam_repo_quarantined", sample_quarantined_repo.repository_id)
+        assert len(logs) == 1
+
+        metadata = json.loads(logs[0].metadata_json)
+        assert metadata["repo"] == "simple"
+        assert metadata["namespace"] == "devtable"
+        assert metadata["quarantined_repo_uuid"] == sample_quarantined_repo.uuid
+        assert metadata["status"] == "quarantined"
+
 
 class TestRestoreRepository:
     def test_restore_sets_status(self, sample_quarantined_repo):
@@ -622,6 +684,19 @@ class TestRestoreRepository:
         with pytest.raises(InvalidStatusTransition, match="must be 'quarantined'"):
             restore_repository(sample_quarantined_repo.uuid, actioned_by="admin")
 
+    def test_restore_writes_audit_log(self, sample_quarantined_repo):
+        quarantine_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+        restore_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+
+        logs = _get_repo_spam_logs("spam_repo_restored", sample_quarantined_repo.repository_id)
+        assert len(logs) == 1
+
+        metadata = json.loads(logs[0].metadata_json)
+        assert metadata["repo"] == "simple"
+        assert metadata["namespace"] == "devtable"
+        assert metadata["quarantined_repo_uuid"] == sample_quarantined_repo.uuid
+        assert metadata["status"] == "restored"
+
 
 class TestDismissQuarantinedRepo:
     def test_dismiss_sets_status(self, sample_quarantined_repo):
@@ -646,6 +721,18 @@ class TestDismissQuarantinedRepo:
         dismiss_quarantined_repo(sample_quarantined_repo.uuid, actioned_by="admin")
         with pytest.raises(InvalidStatusTransition, match="must be 'flagged' or 'quarantined'"):
             dismiss_quarantined_repo(sample_quarantined_repo.uuid, actioned_by="admin")
+
+    def test_dismiss_writes_audit_log(self, sample_quarantined_repo):
+        dismiss_quarantined_repo(sample_quarantined_repo.uuid, actioned_by="admin")
+
+        logs = _get_repo_spam_logs("spam_repo_dismissed", sample_quarantined_repo.repository_id)
+        assert len(logs) == 1
+
+        metadata = json.loads(logs[0].metadata_json)
+        assert metadata["repo"] == "simple"
+        assert metadata["namespace"] == "devtable"
+        assert metadata["quarantined_repo_uuid"] == sample_quarantined_repo.uuid
+        assert metadata["status"] == "dismissed"
 
 
 class TestSpamSeedData:

@@ -1817,6 +1817,36 @@ CONFIG_SCHEMA = {
             "description": "Whether to enable spam detection for repository content. When enabled, a background worker scans repositories against configurable rules and flags suspected spam for review. Defaults to False",
             "x-example": False,
         },
+        "SPAM_DETECTION_POLL_PERIOD": {
+            "type": "number",
+            "description": "The number of seconds between spam detection worker scans. Defaults to 86400 (24 hours).",
+            "x-example": 86400,
+        },
+        "SPAM_DETECTION_BATCH_SIZE": {
+            "type": "integer",
+            "description": "The number of repositories to scan per batch during spam detection. Defaults to 200.",
+            "x-example": 200,
+        },
+        "SPAM_DETECTION_SLEEP_BETWEEN_BATCHES": {
+            "type": "number",
+            "description": "The number of seconds to sleep between spam detection batches to reduce database pressure. Defaults to 0.5.",
+            "x-example": 0.5,
+        },
+        "SPAM_DETECTION_MIN_CONFIDENCE": {
+            "type": "integer",
+            "description": "Minimum confidence score required before a repository is flagged by spam detection. Defaults to 50.",
+            "x-example": 50,
+        },
+        "SPAM_DETECTION_DRY_RUN": {
+            "type": "boolean",
+            "description": "When True, spam detection reports matches without creating quarantine records. Defaults to True.",
+            "x-example": True,
+        },
+        "SPAM_DETECTION_MAX_REPOS": {
+            "type": "integer",
+            "description": "Maximum number of repositories to scan in a single spam detection run. Set to 0 for no limit. Defaults to 0.",
+            "x-example": 1000,
+        },
         "OTEL_CONFIG": {
             "type": "object",
             "description": "open telemetry config options",

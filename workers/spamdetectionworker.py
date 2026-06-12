@@ -15,6 +15,7 @@ BATCH_SIZE = app.config.get("SPAM_DETECTION_BATCH_SIZE", 200)
 SLEEP_BETWEEN_BATCHES = app.config.get("SPAM_DETECTION_SLEEP_BETWEEN_BATCHES", 0.5)
 MIN_CONFIDENCE = app.config.get("SPAM_DETECTION_MIN_CONFIDENCE", 50)
 DRY_RUN = app.config.get("SPAM_DETECTION_DRY_RUN", True)
+MAX_REPOS = app.config.get("SPAM_DETECTION_MAX_REPOS", 0)
 
 
 class SpamDetectionWorker(Worker):
@@ -29,6 +30,7 @@ class SpamDetectionWorker(Worker):
             sleep_between_batches=SLEEP_BETWEEN_BATCHES,
             min_confidence_threshold=MIN_CONFIDENCE,
             dry_run=DRY_RUN,
+            max_repos=MAX_REPOS,
         )
         scanner = SpamScanner(config)
         report = scanner.scan()

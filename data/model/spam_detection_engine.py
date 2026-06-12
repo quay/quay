@@ -1,10 +1,13 @@
+import atexit
 import logging
+import multiprocessing
 import re
 import time
 import uuid as uuid_module
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from queue import Empty
+from threading import Lock
 from typing import Optional
 
 from data.database import QuarantinedRepository, Repository, Tag, User
@@ -14,21 +17,89 @@ logger = logging.getLogger(__name__)
 
 REGEX_EVAL_TIMEOUT_SECS = 2
 
-_regex_executor = ThreadPoolExecutor(max_workers=1)
+
+def _regex_worker_main(request_queue, response_queue):
+    while True:
+        request = request_queue.get()
+        if request is None:
+            return
+
+        pattern, flags, text = request
+        response_queue.put(bool(re.search(pattern, text, flags)))
+
+
+class _RegexProcessEvaluator:
+    def __init__(self, context=None):
+        self._context = context or multiprocessing.get_context("spawn")
+        self._lock = Lock()
+        self._process = None
+        self._request_queue = None
+        self._response_queue = None
+
+    def search(self, compiled_pattern, text, timeout=REGEX_EVAL_TIMEOUT_SECS):
+        with self._lock:
+            self._ensure_started_locked()
+            try:
+                self._request_queue.put((compiled_pattern.pattern, compiled_pattern.flags, text))
+                return self._response_queue.get(timeout=timeout)
+            except Empty:
+                logger.warning(
+                    "Regex timed out on pattern %s, restarting evaluator process",
+                    compiled_pattern.pattern,
+                )
+                self._restart_locked()
+                return None
+            except Exception:
+                logger.exception("Regex evaluation failed for pattern %s", compiled_pattern.pattern)
+                self._restart_locked()
+                return None
+
+    def stop(self):
+        with self._lock:
+            self._stop_locked()
+
+    def _ensure_started_locked(self):
+        if self._process is not None and self._process.is_alive():
+            return
+
+        self._request_queue = self._context.Queue(maxsize=1)
+        self._response_queue = self._context.Queue(maxsize=1)
+        self._process = self._context.Process(
+            target=_regex_worker_main,
+            args=(self._request_queue, self._response_queue),
+            daemon=True,
+        )
+        self._process.start()
+
+    def _restart_locked(self):
+        self._stop_locked()
+        self._ensure_started_locked()
+
+    def _stop_locked(self):
+        if self._process is not None:
+            if self._process.is_alive():
+                self._process.terminate()
+            self._process.join(timeout=1)
+            if self._process.is_alive():
+                self._process.kill()
+                self._process.join(timeout=1)
+
+        for queue_obj in (self._request_queue, self._response_queue):
+            if queue_obj is not None:
+                queue_obj.cancel_join_thread()
+                queue_obj.close()
+
+        self._process = None
+        self._request_queue = None
+        self._response_queue = None
+
+
+_regex_evaluator = _RegexProcessEvaluator()
+atexit.register(_regex_evaluator.stop)
 
 
 def _regex_search_with_timeout(compiled_pattern, text, timeout=REGEX_EVAL_TIMEOUT_SECS):
-    global _regex_executor
-    try:
-        future = _regex_executor.submit(compiled_pattern.search, text)
-        return future.result(timeout=timeout)
-    except TimeoutError:
-        logger.warning(
-            "Regex timed out on pattern %s, replacing executor", compiled_pattern.pattern
-        )
-        _regex_executor.shutdown(wait=False)
-        _regex_executor = ThreadPoolExecutor(max_workers=1)
-        return None
+    return _regex_evaluator.search(compiled_pattern, text, timeout=timeout)
 
 
 @dataclass
@@ -170,17 +241,15 @@ class SpamScanner:
                 .tuples()
             )
 
-            has_empty_rule = any(e.rule.rule_type == "empty_repo" for e in evaluators)
-            if has_empty_rule:
-                non_empty_ids = set(
-                    row[0]
-                    for row in Tag.select(Tag.repository)
-                    .where(Tag.repository.in_(repo_ids), Tag.lifetime_end_ms >> None)
-                    .distinct()
-                    .tuples()
-                )
-                for repo in repos:
-                    repo._prefetched_is_empty = repo.id not in non_empty_ids
+            non_empty_ids = set(
+                row[0]
+                for row in Tag.select(Tag.repository)
+                .where(Tag.repository.in_(repo_ids), Tag.lifetime_end_ms >> None)
+                .distinct()
+                .tuples()
+            )
+            for repo in repos:
+                repo._prefetched_is_empty = repo.id not in non_empty_ids
 
             for repo in repos:
                 last_seen_id = repo.id
@@ -216,14 +285,7 @@ class SpamScanner:
                         self.report.below_threshold += 1
                         continue
 
-                    is_empty = getattr(repo, "_prefetched_is_empty", None)
-                    if is_empty is None:
-                        is_empty = not (
-                            Tag.select()
-                            .where(Tag.repository == repo.id, Tag.lifetime_end_ms >> None)
-                            .limit(1)
-                            .exists()
-                        )
+                    is_empty = repo._prefetched_is_empty
 
                     matched_rules_data = [
                         {

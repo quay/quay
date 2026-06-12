@@ -1,11 +1,10 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from test.fixtures import *
 from workers.gunicorn_worker import GunicornWorker
 from workers.spamdetectionworker import (
     BATCH_SIZE,
+    MAX_REPOS,
     MIN_CONFIDENCE,
     SLEEP_BETWEEN_BATCHES,
     SpamDetectionWorker,
@@ -49,6 +48,7 @@ def test_worker_scan_config_values(mock_scan_config, mock_spam_scanner, initiali
         sleep_between_batches=SLEEP_BETWEEN_BATCHES,
         min_confidence_threshold=MIN_CONFIDENCE,
         dry_run=True,
+        max_repos=MAX_REPOS,
     )
 
 

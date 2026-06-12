@@ -101,6 +101,14 @@ var knownUnmapped = map[string]bool{
 	"SECURITY_SCANNER_V2_BATCH_SIZE":          true,
 	"SECURITY_SCANNER_V2_INDEXING_INTERVAL":   true,
 
+	// Spam detection extras
+	"SPAM_DETECTION_POLL_PERIOD":           true,
+	"SPAM_DETECTION_BATCH_SIZE":            true,
+	"SPAM_DETECTION_SLEEP_BETWEEN_BATCHES": true,
+	"SPAM_DETECTION_MIN_CONFIDENCE":        true,
+	"SPAM_DETECTION_DRY_RUN":               true,
+	"SPAM_DETECTION_MAX_REPOS":             true,
+
 	// Feature flags not yet mapped
 	"FEATURE_ADVERTISE_V2":                          true,
 	"FEATURE_EXTENDED_ACTION_LOGGING":               true,

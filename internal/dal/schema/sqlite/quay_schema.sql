@@ -520,7 +520,7 @@ CREATE TABLE "blobupload" (
 	storage_metadata TEXT,
 	chunk_count INTEGER DEFAULT '0' NOT NULL,
 	uncompressed_byte_count BIGINT,
-	created DATETIME DEFAULT '2026-06-12 02:06:29' NOT NULL,
+	created DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	piece_sha_state TEXT,
 	piece_hashes TEXT,
 	CONSTRAINT pk_blobupload PRIMARY KEY (id),

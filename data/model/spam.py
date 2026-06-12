@@ -1,10 +1,10 @@
 import logging
 import re
 from datetime import datetime
-from typing import Optional
 
 from data.database import QuarantinedRepository, Repository, SpamDetectionRule, User
-from data.model import DataModelException, db_transaction, modelutil
+from data.model import DataModelException, db_transaction
+from data.model import log as logs_model
 from data.model import notification as notification_model
 
 logger = logging.getLogger(__name__)
@@ -169,6 +169,40 @@ def delete_spam_detection_rule(uuid):
     return True
 
 
+def _lookup_performer(username):
+    return User.get_or_none(User.username == username) if username else None
+
+
+def _log_quarantined_repo_action(kind_name, qr, repo, actioned_by):
+    logs_model.log_action(
+        kind_name,
+        qr.namespace_name,
+        performer=_lookup_performer(actioned_by),
+        repository=repo,
+        metadata={
+            "repo": qr.repository_name,
+            "namespace": qr.namespace_name,
+            "quarantined_repo_uuid": qr.uuid,
+            "status": qr.status,
+        },
+    )
+
+
+def _quarantined_repo_page_filter(page_token):
+    if not page_token:
+        return None
+
+    last_score = page_token.get("last_score")
+    last_id = page_token.get("last_id")
+    if last_score is None or last_id is None:
+        return None
+
+    return (QuarantinedRepository.total_confidence_score < last_score) | (
+        (QuarantinedRepository.total_confidence_score == last_score)
+        & (QuarantinedRepository.id < last_id)
+    )
+
+
 def get_quarantined_repos(
     status=None, min_confidence=0, namespace=None, scan_id=None, page_token=None, limit=50
 ):
@@ -183,11 +217,26 @@ def get_quarantined_repos(
     if scan_id:
         query = query.where(QuarantinedRepository.scan_id == scan_id)
 
-    query = query.order_by(QuarantinedRepository.total_confidence_score.desc())
+    page_filter = _quarantined_repo_page_filter(page_token)
+    if page_filter is not None:
+        query = query.where(page_filter)
 
-    results, next_token = modelutil.paginate(
-        query, QuarantinedRepository, page_token=page_token, limit=limit
+    results = list(
+        query.order_by(
+            QuarantinedRepository.total_confidence_score.desc(),
+            QuarantinedRepository.id.desc(),
+        ).limit(limit + 1)
     )
+
+    next_token = None
+    if len(results) > limit:
+        next_row = results[limit - 1]
+        next_token = {
+            "last_score": next_row.total_confidence_score,
+            "last_id": next_row.id,
+        }
+        results = results[:limit]
+
     return [QuarantinedRepoView(row) for row in results], next_token
 
 
@@ -251,6 +300,7 @@ def quarantine_repository(uuid, actioned_by):
             )
 
         now = datetime.utcnow()
+        repo = Repository.select().where(Repository.id == qr.repository_id).get()
         Repository.update(description=None).where(Repository.id == qr.repository_id).execute()
         QuarantinedRepository.update(
             status="quarantined",
@@ -258,9 +308,13 @@ def quarantine_repository(uuid, actioned_by):
             actioned_at=now,
             updated_at=now,
         ).where(QuarantinedRepository.uuid == uuid).execute()
+        qr.status = "quarantined"
+        qr.actioned_by = actioned_by
+        qr.actioned_at = now
+        qr.updated_at = now
+        _log_quarantined_repo_action("spam_repo_quarantined", qr, repo, actioned_by)
 
     try:
-        repo = Repository.select().where(Repository.id == qr.repository_id).get()
         owner = User.select().where(User.id == repo.namespace_user_id).get()
         notification_model.create_notification(
             "repo_spam_quarantined",
@@ -289,6 +343,7 @@ def restore_repository(uuid, actioned_by):
             )
 
         now = datetime.utcnow()
+        repo = Repository.select().where(Repository.id == qr.repository_id).get()
         Repository.update(description=qr.original_description).where(
             Repository.id == qr.repository_id
         ).execute()
@@ -298,6 +353,11 @@ def restore_repository(uuid, actioned_by):
             actioned_at=now,
             updated_at=now,
         ).where(QuarantinedRepository.uuid == uuid).execute()
+        qr.status = "restored"
+        qr.actioned_by = actioned_by
+        qr.actioned_at = now
+        qr.updated_at = now
+        _log_quarantined_repo_action("spam_repo_restored", qr, repo, actioned_by)
     return True
 
 
@@ -314,10 +374,16 @@ def dismiss_quarantined_repo(uuid, actioned_by):
             )
 
         now = datetime.utcnow()
+        repo = Repository.select().where(Repository.id == qr.repository_id).get()
         QuarantinedRepository.update(
             status="dismissed",
             actioned_by=actioned_by,
             actioned_at=now,
             updated_at=now,
         ).where(QuarantinedRepository.uuid == uuid).execute()
+        qr.status = "dismissed"
+        qr.actioned_by = actioned_by
+        qr.actioned_at = now
+        qr.updated_at = now
+        _log_quarantined_repo_action("spam_repo_dismissed", qr, repo, actioned_by)
     return True
