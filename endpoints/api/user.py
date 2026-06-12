@@ -1320,7 +1320,21 @@ class UserAssignedAuthorization(ApiResource):
         if not assigned_authorization:
             raise NotFound()
 
+        # Capture metadata before deletion
+        org_username = assigned_authorization.application.organization.username
+        metadata = {
+            "revoking_user": get_authenticated_user().username,
+            "assigned_user": assigned_authorization.assigned_user.username,
+            "application": assigned_authorization.application.name,
+            "client_id": assigned_authorization.application.client_id,
+        }
+
+        # Delete first
         assigned_authorization.delete_instance()
+
+        # Log after successful deletion
+        log_action("oauth_token_revoked", org_username, metadata)
+
         return "", 204
 
 
