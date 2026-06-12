@@ -31,11 +31,8 @@ class SpamDetectionWorker(Worker):
             dry_run=DRY_RUN,
         )
         scanner = SpamScanner(config)
-        try:
-            report = scanner.scan()
-            logger.info("Spam detection scan complete: %s", report.to_dict())
-        except Exception:
-            logger.exception("Spam detection scan failed")
+        report = scanner.scan()
+        logger.info("Spam detection scan complete: %s", report.to_dict())
 
 
 def create_gunicorn_worker():

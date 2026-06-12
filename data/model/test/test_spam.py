@@ -569,6 +569,22 @@ class TestQuarantineRepository:
         with pytest.raises(QuarantinedRepoNotFound, match="not found"):
             quarantine_repository("nonexistent-uuid", actioned_by="admin")
 
+    def test_quarantine_already_quarantined_raises(self, sample_quarantined_repo):
+        quarantine_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+        with pytest.raises(InvalidStatusTransition, match="must be 'flagged'"):
+            quarantine_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+
+    def test_quarantine_restored_raises(self, sample_quarantined_repo):
+        quarantine_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+        restore_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+        with pytest.raises(InvalidStatusTransition, match="must be 'flagged'"):
+            quarantine_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+
+    def test_quarantine_dismissed_raises(self, sample_quarantined_repo):
+        dismiss_quarantined_repo(sample_quarantined_repo.uuid, actioned_by="admin")
+        with pytest.raises(InvalidStatusTransition, match="must be 'flagged'"):
+            quarantine_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+
 
 class TestRestoreRepository:
     def test_restore_sets_status(self, sample_quarantined_repo):
@@ -597,6 +613,15 @@ class TestRestoreRepository:
         with pytest.raises(QuarantinedRepoNotFound, match="not found"):
             restore_repository("nonexistent-uuid", actioned_by="admin")
 
+    def test_restore_flagged_raises(self, sample_quarantined_repo):
+        with pytest.raises(InvalidStatusTransition, match="must be 'quarantined'"):
+            restore_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+
+    def test_restore_dismissed_raises(self, sample_quarantined_repo):
+        dismiss_quarantined_repo(sample_quarantined_repo.uuid, actioned_by="admin")
+        with pytest.raises(InvalidStatusTransition, match="must be 'quarantined'"):
+            restore_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+
 
 class TestDismissQuarantinedRepo:
     def test_dismiss_sets_status(self, sample_quarantined_repo):
@@ -610,6 +635,49 @@ class TestDismissQuarantinedRepo:
     def test_dismiss_nonexistent_raises(self, cleanup_spam_tables):
         with pytest.raises(QuarantinedRepoNotFound, match="not found"):
             dismiss_quarantined_repo("nonexistent-uuid", actioned_by="admin")
+
+    def test_dismiss_restored_raises(self, sample_quarantined_repo):
+        quarantine_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+        restore_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+        with pytest.raises(InvalidStatusTransition, match="must be 'flagged' or 'quarantined'"):
+            dismiss_quarantined_repo(sample_quarantined_repo.uuid, actioned_by="admin")
+
+    def test_dismiss_already_dismissed_raises(self, sample_quarantined_repo):
+        dismiss_quarantined_repo(sample_quarantined_repo.uuid, actioned_by="admin")
+        with pytest.raises(InvalidStatusTransition, match="must be 'flagged' or 'quarantined'"):
+            dismiss_quarantined_repo(sample_quarantined_repo.uuid, actioned_by="admin")
+
+
+class TestSpamSeedData:
+    def test_log_entry_kinds_exist(self, initialized_db):
+        from data.database import LogEntryKind
+
+        for kind_name in ("spam_repo_quarantined", "spam_repo_restored", "spam_repo_dismissed"):
+            assert LogEntryKind.get_or_none(LogEntryKind.name == kind_name) is not None
+
+    def test_notification_kind_exists(self, initialized_db):
+        from data.database import NotificationKind
+
+        assert (
+            NotificationKind.get_or_none(NotificationKind.name == "repo_spam_quarantined")
+            is not None
+        )
+
+    def test_quarantine_creates_notification(self, sample_quarantined_repo):
+        from data.database import Notification, NotificationKind
+
+        quarantine_repository(sample_quarantined_repo.uuid, actioned_by="admin")
+        kind = NotificationKind.get(NotificationKind.name == "repo_spam_quarantined")
+        repo = (
+            Repository.select().where(Repository.id == sample_quarantined_repo.repository_id).get()
+        )
+        notifications = list(
+            Notification.select().where(
+                Notification.kind == kind,
+                Notification.target == repo.namespace_user_id,
+            )
+        )
+        assert len(notifications) >= 1
 
 
 class TestExceptionClasses:

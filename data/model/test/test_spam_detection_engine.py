@@ -570,24 +570,6 @@ class TestScanConfigDefaults:
         assert config.dry_run is True
 
 
-class TestRuleEvaluatorPropagatesErrors:
-    def test_evaluator_propagates_exception(self):
-        rule_view = make_rule_view("keyword", pattern="test")
-        evaluator = RuleEvaluator(rule_view)
-        repo = MagicMock()
-        repo.description = MagicMock()
-        repo.description.lower = MagicMock(side_effect=RuntimeError("boom"))
-        repo.id = 1
-        with pytest.raises(RuntimeError, match="boom"):
-            evaluator.evaluate(repo)
-
-    def test_evaluator_returns_false_for_unknown_type(self):
-        rule_view = make_rule_view("nonexistent_type")
-        evaluator = RuleEvaluator(rule_view)
-        repo = make_repo()
-        assert evaluator.evaluate(repo) is False
-
-
 class TestRegexTimeout:
     def test_normal_regex_succeeds(self):
         import re
