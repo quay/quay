@@ -11,6 +11,7 @@ import (
 // from it.
 type Resolved struct {
 	Config      *Config
+	DataDir     string
 	StoragePath string
 	DBPath      string
 }
@@ -43,7 +44,7 @@ func resolveFromFile(configPath string) (*Resolved, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Resolved{Config: cfg, StoragePath: storagePath, DBPath: dbPath}, nil
+	return &Resolved{Config: cfg, DataDir: filepath.Dir(dbPath), StoragePath: storagePath, DBPath: dbPath}, nil
 }
 
 func resolveFromDefaults(dataDir, hostname string) (*Resolved, error) {
@@ -61,6 +62,7 @@ func resolveFromDefaults(dataDir, hostname string) (*Resolved, error) {
 
 	return &Resolved{
 		Config:      NewDefault(hostname, storagePath),
+		DataDir:     absDir,
 		StoragePath: storagePath,
 		DBPath:      filepath.Join(absDir, "quay.db"),
 	}, nil

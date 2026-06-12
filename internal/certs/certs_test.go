@@ -1,4 +1,4 @@
-package registry
+package certs
 
 import (
 	"crypto/tls"
@@ -10,12 +10,12 @@ import (
 	"testing"
 )
 
-func TestGenerateSelfSignedCert_DNS(t *testing.T) {
+func TestGenerateSelfSigned_DNS(t *testing.T) {
 	dir := t.TempDir()
 	certPath := filepath.Join(dir, "cert.pem")
 	keyPath := filepath.Join(dir, "key.pem")
 
-	if err := GenerateSelfSignedCert("registry.example.com", certPath, keyPath); err != nil {
+	if err := GenerateSelfSigned("registry.example.com", certPath, keyPath); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 
@@ -28,12 +28,12 @@ func TestGenerateSelfSignedCert_DNS(t *testing.T) {
 	}
 }
 
-func TestGenerateSelfSignedCert_IP(t *testing.T) {
+func TestGenerateSelfSigned_IP(t *testing.T) {
 	dir := t.TempDir()
 	certPath := filepath.Join(dir, "cert.pem")
 	keyPath := filepath.Join(dir, "key.pem")
 
-	if err := GenerateSelfSignedCert("192.168.1.100", certPath, keyPath); err != nil {
+	if err := GenerateSelfSigned("192.168.1.100", certPath, keyPath); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 
@@ -46,11 +46,11 @@ func TestGenerateSelfSignedCert_IP(t *testing.T) {
 	}
 }
 
-func TestGenerateSelfSignedCert_KeyPermissions(t *testing.T) {
+func TestGenerateSelfSigned_KeyPermissions(t *testing.T) {
 	dir := t.TempDir()
 	keyPath := filepath.Join(dir, "key.pem")
 
-	if err := GenerateSelfSignedCert("test.local", filepath.Join(dir, "cert.pem"), keyPath); err != nil {
+	if err := GenerateSelfSigned("test.local", filepath.Join(dir, "cert.pem"), keyPath); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 
@@ -63,20 +63,20 @@ func TestGenerateSelfSignedCert_KeyPermissions(t *testing.T) {
 	}
 }
 
-func TestCertFilesExist(t *testing.T) {
+func TestFilesExist(t *testing.T) {
 	dir := t.TempDir()
 	certPath := filepath.Join(dir, "cert.pem")
 	keyPath := filepath.Join(dir, "key.pem")
 
-	if CertFilesExist(certPath, keyPath) {
+	if FilesExist(certPath, keyPath) {
 		t.Error("expected false before generation")
 	}
 
-	if err := GenerateSelfSignedCert("test.local", certPath, keyPath); err != nil {
+	if err := GenerateSelfSigned("test.local", certPath, keyPath); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 
-	if !CertFilesExist(certPath, keyPath) {
+	if !FilesExist(certPath, keyPath) {
 		t.Error("expected true after generation")
 	}
 }
@@ -98,6 +98,9 @@ func loadCert(t *testing.T, certPath, keyPath string) tls.Certificate {
 	}
 
 	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		t.Fatalf("failed to decode PEM block")
+	}
 	parsed, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		t.Fatalf("parse x509: %v", err)

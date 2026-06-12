@@ -252,6 +252,7 @@ var knownUnmapped = map[string]bool{
 var goOnlyFields = map[string]bool{
 	"DATABASE_SECRET_KEY": true,
 	"SECRET_KEY":          true,
+	"LIBRARY_NAMESPACE":   true, // QUAY.IO-only in Python schema but needed by Go middleware
 }
 
 // TestSchemaFieldCoverage compares the Python schema keys against the Go struct
