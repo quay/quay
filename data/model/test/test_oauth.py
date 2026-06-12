@@ -1,8 +1,24 @@
+from datetime import datetime, timedelta
 from unittest.mock import patch
+
+import pytest
 
 from auth.scopes import READ_REPO
 from data import model
-from data.model.oauth import DatabaseAuthorizationProvider
+from data.model._basequery import update_last_accessed
+from data.model.oauth import (
+    DatabaseAuthorizationProvider,
+    count_active_tokens,
+    create_oauth_api_token,
+    delete_application_token,
+    delete_bootstrap_token,
+    get_or_create_application,
+    list_application_tokens,
+    list_bootstrap_tokens,
+    normalize_scope,
+    validate_access_token,
+    validate_expiration,
+)
 from test.fixtures import *
 
 REDIRECT_URI = "http://foo/bar/baz"
@@ -309,3 +325,354 @@ def test_validate_redirect_uri_blocks_path_prefix_mismatch(initialized_db):
         # Path that doesn't match configured prefix
         malicious_uri_2 = "http://foo/ba"
         assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri_2)
+
+
+# Tests for bootstrap token model functions
+
+
+def test_get_or_create_application_creates_new(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("bootstrap-test-new", user)
+    assert app is not None
+    assert app.name == "bootstrap-test-new"
+    assert app.application_uri == ""
+    assert app.redirect_uri == ""
+    assert app.organization == user
+
+
+def test_get_or_create_application_finds_existing(initialized_db):
+    user = model.user.get_user("devtable")
+    # Create first
+    app1 = get_or_create_application("bootstrap-test-existing", user)
+    # Find existing
+    app2 = get_or_create_application("bootstrap-test-existing", user)
+    assert app1.client_id == app2.client_id
+    assert app1.id == app2.id
+
+
+def test_get_or_create_application_returns_first_by_id(initialized_db):
+    user = model.user.get_user("devtable")
+    # Create two applications with the same name
+    app1 = model.oauth.create_application(user, "dup-app-name", "", "")
+    app2 = model.oauth.create_application(user, "dup-app-name", "", "")
+    assert app1.id < app2.id
+
+    found = get_or_create_application("dup-app-name", user)
+    assert found.id == app1.id
+
+
+def test_create_oauth_api_token_populates_fields(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("bootstrap-token-test", user)
+
+    before = datetime.now()
+    token_record, access_token = create_oauth_api_token(
+        application=app,
+        user=user,
+        scope="repo:read",
+        expiration_seconds=3600,
+    )
+    after = datetime.now()
+
+    assert token_record.created_by == user
+    assert token_record.authorized_user == user
+    assert token_record.scope == "repo:read"
+    assert token_record.created is not None
+    assert before <= token_record.created <= after
+    assert token_record.expires_at > datetime.now()
+    assert token_record.expires_at <= datetime.now() + timedelta(seconds=3601)
+
+
+def test_create_oauth_api_token_sets_both_users(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("bootstrap-both-users", user)
+
+    token_record, _ = create_oauth_api_token(
+        application=app,
+        user=user,
+        scope="repo:read",
+    )
+
+    assert token_record.authorized_user == user
+    assert token_record.created_by == user
+
+
+def test_create_oauth_api_token_returns_valid_token(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("bootstrap-validate", user)
+
+    token_record, access_token = create_oauth_api_token(
+        application=app,
+        user=user,
+        scope="repo:read",
+    )
+
+    validated = validate_access_token(access_token)
+    assert validated is not None
+    assert validated.uuid == token_record.uuid
+
+
+def test_create_oauth_api_token_default_expiration(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("bootstrap-default-exp", user)
+
+    token_record, _ = create_oauth_api_token(
+        application=app,
+        user=user,
+        scope="repo:read",
+    )
+
+    # Default is 10 years (315576000 seconds)
+    expected_min = datetime.now() + timedelta(seconds=315576000 - 60)
+    expected_max = datetime.now() + timedelta(seconds=315576000 + 60)
+    assert expected_min <= token_record.expires_at <= expected_max
+
+
+def test_count_active_tokens(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("count-active-test", user)
+
+    assert count_active_tokens(app) == 0
+
+    create_oauth_api_token(app, user, "repo:read")
+    create_oauth_api_token(app, user, "repo:read")
+    assert count_active_tokens(app) == 2
+
+
+def test_count_active_tokens_excludes_expired(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("count-expired-test", user)
+
+    create_oauth_api_token(app, user, "repo:read", expiration_seconds=3600)
+    token_record, _ = create_oauth_api_token(app, user, "repo:read", expiration_seconds=1)
+    token_record.expires_at = datetime.utcnow() - timedelta(seconds=10)
+    token_record.save()
+
+    assert count_active_tokens(app) == 1
+
+
+def test_list_application_tokens(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("list-tokens-test", user)
+
+    create_oauth_api_token(app, user, "repo:read")
+    create_oauth_api_token(app, user, "repo:write")
+
+    tokens, next_page = list_application_tokens(app)
+    assert len(tokens) >= 2
+    scopes = [t.scope for t in tokens]
+    assert "repo:read" in scopes
+    assert "repo:write" in scopes
+
+
+def test_delete_application_token(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("delete-token-test", user)
+
+    token_record, access_token = create_oauth_api_token(app, user, "repo:read")
+    assert delete_application_token(app, token_record.uuid) is True
+    assert validate_access_token(access_token) is None
+
+
+def test_delete_application_token_nonexistent(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("delete-missing-test", user)
+
+    assert delete_application_token(app, "nonexistent-uuid") is False
+
+
+def test_last_accessed_starts_null(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("last-accessed-null", user)
+
+    token_record, _ = create_oauth_api_token(app, user, "repo:read")
+    assert token_record.last_accessed is None
+
+
+def test_last_accessed_updated_after_validation(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("last-accessed-update", user)
+
+    token_record, access_token = create_oauth_api_token(app, user, "repo:read")
+    assert token_record.last_accessed is None
+
+    validated = validate_access_token(access_token)
+    assert validated is not None
+
+    with patch(
+        "data.model._basequery.config.app_config",
+        {"FEATURE_USER_LAST_ACCESSED": True, "LAST_ACCESSED_UPDATE_THRESHOLD_S": 0},
+    ):
+        update_last_accessed(validated)
+
+    assert validated.last_accessed is not None
+
+
+def test_last_accessed_debounce(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("last-accessed-debounce", user)
+
+    token_record, access_token = create_oauth_api_token(app, user, "repo:read")
+
+    with patch(
+        "data.model._basequery.config.app_config",
+        {"FEATURE_USER_LAST_ACCESSED": True, "LAST_ACCESSED_UPDATE_THRESHOLD_S": 0},
+    ):
+        update_last_accessed(token_record)
+    first_accessed = token_record.last_accessed
+
+    with patch(
+        "data.model._basequery.config.app_config",
+        {"FEATURE_USER_LAST_ACCESSED": True, "LAST_ACCESSED_UPDATE_THRESHOLD_S": 9999},
+    ):
+        update_last_accessed(token_record)
+    assert token_record.last_accessed == first_accessed
+
+
+def test_list_bootstrap_tokens_returns_only_bootstrap(initialized_db):
+    user = model.user.get_user("devtable")
+    bootstrap_app = get_or_create_application("bootstrap-list-test", user)
+    regular_app = model.oauth.create_application(
+        user, "regular-app", "http://example.com", "http://example.com/callback"
+    )
+
+    create_oauth_api_token(bootstrap_app, user, "repo:read")
+    create_oauth_api_token(regular_app, user, "repo:read")
+
+    tokens, _ = list_bootstrap_tokens()
+    uuids = {t.application.name for t in tokens}
+    assert "bootstrap-list-test" in uuids
+    assert "regular-app" not in uuids
+
+
+def test_list_bootstrap_tokens_expired_filter(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("bootstrap-expired-filter", user)
+
+    active_token, _ = create_oauth_api_token(app, user, "repo:read", expiration_seconds=3600)
+    expired_token, _ = create_oauth_api_token(app, user, "repo:write", expiration_seconds=1)
+    expired_token.expires_at = datetime.utcnow() - timedelta(seconds=10)
+    expired_token.save()
+
+    active_tokens, _ = list_bootstrap_tokens(expired=False)
+    active_uuids = {t.uuid for t in active_tokens}
+    assert active_token.uuid in active_uuids
+    assert expired_token.uuid not in active_uuids
+
+    expired_tokens, _ = list_bootstrap_tokens(expired=True)
+    expired_uuids = {t.uuid for t in expired_tokens}
+    assert expired_token.uuid in expired_uuids
+    assert active_token.uuid not in expired_uuids
+
+
+def test_list_bootstrap_tokens_expires_before(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("bootstrap-before-filter", user)
+
+    soon_token, _ = create_oauth_api_token(app, user, "repo:read", expiration_seconds=3600)
+    far_token, _ = create_oauth_api_token(app, user, "repo:write", expiration_seconds=86400 * 30)
+
+    cutoff = datetime.utcnow() + timedelta(days=1)
+    tokens, _ = list_bootstrap_tokens(expires_before=cutoff)
+    uuids = {t.uuid for t in tokens}
+    assert soon_token.uuid in uuids
+    assert far_token.uuid not in uuids
+
+
+def test_list_bootstrap_tokens_expires_after(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("bootstrap-after-filter", user)
+
+    soon_token, _ = create_oauth_api_token(app, user, "repo:read", expiration_seconds=3600)
+    far_token, _ = create_oauth_api_token(app, user, "repo:write", expiration_seconds=86400 * 30)
+
+    cutoff = datetime.utcnow() + timedelta(days=1)
+    tokens, _ = list_bootstrap_tokens(expires_after=cutoff)
+    uuids = {t.uuid for t in tokens}
+    assert far_token.uuid in uuids
+    assert soon_token.uuid not in uuids
+
+
+def test_delete_bootstrap_token_succeeds(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("bootstrap-delete-test", user)
+
+    token_record, access_token = create_oauth_api_token(app, user, "repo:read")
+    deleted = delete_bootstrap_token(token_record.uuid)
+    assert deleted is not None
+    assert deleted.uuid == token_record.uuid
+    assert validate_access_token(access_token) is None
+
+
+def test_delete_bootstrap_token_nonexistent(initialized_db):
+    assert delete_bootstrap_token("nonexistent-uuid") is None
+
+
+def test_validate_access_token_unexpired(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("validate-unexpired", user)
+
+    token_record, access_token = create_oauth_api_token(
+        app, user, "repo:read", expiration_seconds=3600
+    )
+    assert validate_access_token(access_token) is not None
+
+
+def test_validate_access_token_expired_returns_token(initialized_db):
+    user = model.user.get_user("devtable")
+    app = get_or_create_application("validate-expired", user)
+
+    token_record, access_token = create_oauth_api_token(
+        app, user, "repo:read", expiration_seconds=1
+    )
+    token_record.expires_at = datetime.utcnow() - timedelta(seconds=10)
+    token_record.save()
+
+    validated = validate_access_token(access_token)
+    assert validated is not None
+    assert validated.expires_at <= datetime.utcnow()
+
+
+def test_delete_bootstrap_token_rejects_non_bootstrap(initialized_db):
+    user = model.user.get_user("devtable")
+    regular_app = model.oauth.create_application(
+        user, "regular-app-delete", "http://example.com", "http://example.com/callback"
+    )
+    token_record, _ = create_oauth_api_token(regular_app, user, "repo:read")
+
+    assert delete_bootstrap_token(token_record.uuid) is None
+
+
+def test_normalize_scope_comma_separated():
+    assert normalize_scope("repo:read,repo:write") == "repo:read repo:write"
+
+
+def test_normalize_scope_space_separated():
+    assert normalize_scope("repo:read repo:write") == "repo:read repo:write"
+
+
+def test_normalize_scope_mixed_separators():
+    assert normalize_scope("repo:read, repo:write  repo:admin") == "repo:read repo:write repo:admin"
+
+
+def test_validate_expiration_positive_int():
+    assert validate_expiration(3600) == 3600
+
+
+def test_validate_expiration_positive_float():
+    assert validate_expiration(3600.5) == 3600
+
+
+def test_validate_expiration_zero_raises():
+    with pytest.raises(ValueError, match="positive"):
+        validate_expiration(0)
+
+
+def test_validate_expiration_negative_raises():
+    with pytest.raises(ValueError, match="positive"):
+        validate_expiration(-1)
+
+
+def test_validate_expiration_string_raises():
+    with pytest.raises(ValueError, match="positive"):
+        validate_expiration("3600")

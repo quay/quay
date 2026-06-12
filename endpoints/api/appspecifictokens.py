@@ -2,19 +2,31 @@
 Manages app specific tokens for the current user.
 """
 
+import datetime
 import logging
 import math
 from datetime import timedelta
 
-from flask import request
+import pytz
+from flask import request, session
+from jsonschema import ValidationError, validate
 
 import features
-from app import app
-from auth.auth_context import get_authenticated_user
+from app import app, authentication
+from auth import scopes
+from auth.auth_context import (
+    get_authenticated_user,
+    get_sso_token,
+    get_validated_oauth_token,
+)
+from auth.bootstrap import BootstrapAuthError, validate_bootstrap_auth
+from auth.permissions import UserAdminPermission
 from data import model
 from endpoints.api import (
+    FRESH_LOGIN_TIMEOUT,
     ApiResource,
     NotFound,
+    add_method_metadata,
     format_date,
     log_action,
     nickname,
@@ -22,11 +34,12 @@ from endpoints.api import (
     path_param,
     query_param,
     require_fresh_login,
+    require_scope,
     require_user_admin,
     resource,
     show_if,
-    validate_json_request,
 )
+from endpoints.exception import FreshLoginRequired, InvalidRequest, Unauthorized
 from util.parsing import truthy_bool
 from util.timedeltastring import convert_to_timedelta
 
@@ -54,6 +67,24 @@ def token_view(token, include_code=False):
 
 # The default window to use when looking up tokens that will be expiring.
 _DEFAULT_TOKEN_EXPIRATION_WINDOW = "4w"
+
+
+def _has_fresh_login(user):
+    """Check whether the current request has fresh login credentials (OAuth token, SSO, or recent session)."""
+    if get_validated_oauth_token() or get_sso_token():
+        return True
+
+    last_login = session.get("login_time", datetime.datetime.min)
+    valid_span = datetime.datetime.now() - FRESH_LOGIN_TIMEOUT
+
+    if (
+        last_login.replace(tzinfo=pytz.UTC) >= valid_span.replace(tzinfo=pytz.UTC)
+        or not authentication.supports_fresh_login
+        or not authentication.has_password_set(user.username)
+    ):
+        return True
+
+    return False
 
 
 @resource("/v1/user/apptoken")
@@ -106,20 +137,49 @@ class AppTokens(ApiResource):
             "only_expiring": expiring,
         }
 
-    @require_user_admin()
-    @require_fresh_login
+    @require_scope(scopes.ADMIN_USER)
+    @add_method_metadata("requires_fresh_login", True)
+    @add_method_metadata("request_schema", "NewToken")
     @nickname("createAppToken")
-    @validate_json_request("NewToken")
     def post(self):
         """
         Create a new app specific token for user.
+
+        Supports two authentication methods:
+        1. Standard session/OAuth auth with fresh login (existing behavior)
+        2. Bootstrap auth (Basic Auth) when FEATURE_PROGRAMMATIC_BOOTSTRAP is enabled
         """
-        title = request.get_json()["title"]
-        token = model.appspecifictoken.create_token(get_authenticated_user(), title)
+        user = get_authenticated_user()
+        if user:
+            if user.robot:
+                raise Unauthorized()
+            if not UserAdminPermission(user.username).can():
+                raise Unauthorized()
+            if not _has_fresh_login(user):
+                raise FreshLoginRequired()
+        elif features.PROGRAMMATIC_BOOTSTRAP:
+            try:
+                auth_result = validate_bootstrap_auth()
+                user = auth_result.user
+            except BootstrapAuthError:
+                raise Unauthorized()
+        else:
+            raise Unauthorized()
+
+        json_data = request.get_json()
+        if json_data is None:
+            raise InvalidRequest("Missing JSON body")
+        try:
+            validate(json_data, self.schemas["NewToken"])
+        except ValidationError as ex:
+            raise InvalidRequest(str(ex))
+
+        title = json_data["title"]
+        token = model.appspecifictoken.create_token(user, title)
 
         log_action(
             "create_app_specific_token",
-            get_authenticated_user().username,
+            user.username,
             {"app_specific_token_title": token.title, "app_specific_token": token.uuid},
         )
 

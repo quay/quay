@@ -1,12 +1,42 @@
+import json
+from base64 import b64encode
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
+from auth.bootstrap import BootstrapAuthError, BootstrapAuthResult
 from data import model
+from endpoints.api import api
 from endpoints.api.appspecifictokens import AppToken, AppTokens
 from endpoints.api.superuser import SuperUserAppTokens
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
+
+
+def _basic_auth_header(username, password):
+    token_bytes = b"%s:%s" % (username.encode("utf-8"), password.encode("utf-8"))
+    return "Basic " + b64encode(token_bytes).decode("ascii")
+
+
+@contextmanager
+def _enable_bootstrap(app):
+    import features as features_module
+
+    prev_cfg = app.config.get("FEATURE_PROGRAMMATIC_BOOTSTRAP")
+    prev_flag = features_module.PROGRAMMATIC_BOOTSTRAP.value
+    app.config["FEATURE_PROGRAMMATIC_BOOTSTRAP"] = True
+    features_module.PROGRAMMATIC_BOOTSTRAP.value = True
+    try:
+        yield
+    finally:
+        app.config["FEATURE_PROGRAMMATIC_BOOTSTRAP"] = prev_cfg
+        features_module.PROGRAMMATIC_BOOTSTRAP.value = prev_flag
+
+
+def _make_superuser_result(username="devtable"):
+    user = model.user.get_user(username)
+    return BootstrapAuthResult(user=user, auth_method="Database")
 
 
 def test_app_specific_tokens(app):
@@ -415,3 +445,192 @@ def test_superuser_endpoint_expiring_tokens(app):
         devtable_normal.delete_instance()
         reader_expiring.delete_instance()
         reader_normal.delete_instance()
+
+
+class TestAppTokenBootstrapAuth:
+    """Tests for bootstrap auth on POST /api/v1/user/apptoken (Story 003)."""
+
+    def test_bootstrap_auth_creates_token(self, app, initialized_db):
+        """POST with bootstrap auth succeeds without fresh login."""
+        with _enable_bootstrap(app):
+            auth_result = _make_superuser_result()
+            with app.test_client() as client:
+                with patch(
+                    "endpoints.api.appspecifictokens.validate_bootstrap_auth",
+                    return_value=auth_result,
+                ):
+                    resp = conduct_api_call(
+                        client,
+                        AppTokens,
+                        "POST",
+                        None,
+                        {"title": "Bootstrap Token"},
+                        200,
+                        headers={"Authorization": _basic_auth_header("devtable", "password")},
+                    )
+                    data = resp.json
+                    assert "token" in data
+                    assert "token_code" in data["token"]
+                    assert data["token"]["title"] == "Bootstrap Token"
+
+    def test_bootstrap_auth_non_superuser_rejected(self, app, initialized_db):
+        """Non-superuser bootstrap auth is rejected."""
+        with _enable_bootstrap(app):
+            with app.test_client() as client:
+                with patch(
+                    "endpoints.api.appspecifictokens.validate_bootstrap_auth",
+                    side_effect=BootstrapAuthError("Superuser access required", 401),
+                ):
+                    conduct_api_call(
+                        client,
+                        AppTokens,
+                        "POST",
+                        None,
+                        {"title": "Should Fail"},
+                        401,
+                        headers={"Authorization": _basic_auth_header("freshuser", "password")},
+                    )
+
+    def test_bootstrap_feature_flag_disabled_blocks_bootstrap(self, app, initialized_db):
+        """Feature flag disabled blocks bootstrap auth.
+
+        When PROGRAMMATIC_BOOTSTRAP is off, a request without a session identity
+        falls through to Unauthorized (401) because the bootstrap elif branch
+        is never entered.
+        """
+        import features as features_module
+
+        features_module.PROGRAMMATIC_BOOTSTRAP.value = False
+        app.config["FEATURE_PROGRAMMATIC_BOOTSTRAP"] = False
+
+        with app.test_client() as client:
+            conduct_api_call(
+                client,
+                AppTokens,
+                "POST",
+                None,
+                {"title": "Should Fail"},
+                401,
+                headers={"Authorization": _basic_auth_header("devtable", "password")},
+            )
+
+    def test_standard_auth_works_with_feature_flag_disabled(self, app, initialized_db):
+        """Standard fresh-login auth works even when bootstrap feature flag is disabled."""
+        import features as features_module
+
+        features_module.PROGRAMMATIC_BOOTSTRAP.value = False
+        app.config["FEATURE_PROGRAMMATIC_BOOTSTRAP"] = False
+
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(cl, AppTokens, "POST", None, {"title": "Standard Auth"}, 200)
+            assert "token_code" in resp.json["token"]
+
+    def test_standard_auth_still_works(self, app, initialized_db):
+        """Existing fresh-login flow continues to work when bootstrap auth is not present."""
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(cl, AppTokens, "POST", None, {"title": "Standard Token"}, 200)
+            data = resp.json
+            assert "token" in data
+            assert "token_code" in data["token"]
+            assert data["token"]["title"] == "Standard Token"
+
+    def test_no_auth_rejected(self, app, initialized_db):
+        """Request with no auth at all is rejected."""
+        with app.test_client() as client:
+            with patch(
+                "endpoints.api.appspecifictokens.validate_bootstrap_auth",
+                side_effect=BootstrapAuthError("Missing Authorization header", 401),
+            ):
+                conduct_api_call(
+                    client,
+                    AppTokens,
+                    "POST",
+                    None,
+                    {"title": "No Auth"},
+                    401,
+                )
+
+    def test_bootstrap_invalid_credentials_rejected(self, app, initialized_db):
+        """Invalid credentials via bootstrap auth are rejected."""
+        with _enable_bootstrap(app):
+            with app.test_client() as client:
+                with patch(
+                    "endpoints.api.appspecifictokens.validate_bootstrap_auth",
+                    side_effect=BootstrapAuthError("Invalid credentials", 401),
+                ):
+                    conduct_api_call(
+                        client,
+                        AppTokens,
+                        "POST",
+                        None,
+                        {"title": "Bad Creds"},
+                        401,
+                        headers={"Authorization": _basic_auth_header("devtable", "wrongpw")},
+                    )
+
+    def test_bootstrap_auth_bypasses_csrf_e2e(self, app, initialized_db):
+        """End-to-end: bootstrap Basic Auth POST succeeds without any CSRF token."""
+        with _enable_bootstrap(app):
+            with app.test_request_context():
+                url = api.url_for(AppTokens)
+
+            with app.test_client() as client:
+                resp = client.post(
+                    url,
+                    data=json.dumps({"title": "E2E No CSRF"}),
+                    headers={
+                        "Authorization": _basic_auth_header("devtable", "password"),
+                        "Content-Type": "application/json",
+                    },
+                )
+                assert resp.status_code == 200, resp.get_json()
+                data = resp.get_json()
+                assert data["token"]["title"] == "E2E No CSRF"
+                assert "token_code" in data["token"]
+
+    def test_no_basic_auth_still_requires_csrf(self, app, initialized_db):
+        """Regression: requests without Basic Auth header still require CSRF."""
+        with _enable_bootstrap(app):
+            with app.test_request_context():
+                url = api.url_for(AppTokens)
+
+            with app.test_client() as client:
+                resp = client.post(
+                    url,
+                    data=json.dumps({"title": "No CSRF No Auth"}),
+                    headers={"Content-Type": "application/json"},
+                )
+                assert resp.status_code == 403
+
+    def test_post_missing_json_body(self, app, initialized_db):
+        """POST with no JSON body returns 400."""
+        with _enable_bootstrap(app):
+            with app.test_request_context():
+                url = api.url_for(AppTokens)
+
+            with app.test_client() as client:
+                resp = client.post(
+                    url,
+                    headers={
+                        "Authorization": _basic_auth_header("devtable", "password"),
+                        "Content-Type": "application/json",
+                    },
+                )
+                assert resp.status_code == 400
+
+    def test_post_invalid_json_body(self, app, initialized_db):
+        """POST with JSON missing required 'title' field returns 400."""
+        with _enable_bootstrap(app):
+            with app.test_request_context():
+                url = api.url_for(AppTokens)
+
+            with app.test_client() as client:
+                resp = client.post(
+                    url,
+                    data=json.dumps({}),
+                    headers={
+                        "Authorization": _basic_auth_header("devtable", "password"),
+                        "Content-Type": "application/json",
+                    },
+                )
+                assert resp.status_code == 400

@@ -87,6 +87,7 @@ def generate_mock_oidc_token(
     audience="mock-client-id",
     expiry_seconds=3600,
     issued_at=None,
+    **extra_claims,
 ):
     now = datetime.datetime.now()
     iat = now - datetime.timedelta(seconds=30)
@@ -110,6 +111,7 @@ def generate_mock_oidc_token(
         "email": "mockuser@test.com",
         "email_verified": True,
     }
+    payload.update(extra_claims)
 
     headers = {"kid": "mock-key-id"}
 

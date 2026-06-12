@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from urllib.parse import unquote, urlparse
 
 from flask import url_for
+from peewee import JOIN
 
 from auth import scopes
 from data.database import (
@@ -17,6 +18,7 @@ from data.database import (
 )
 from data.fields import Credential, DecryptedValue
 from data.model import config, db_transaction, notification, user
+from data.model.modelutil import paginate
 from data.model.organization import is_org_admin
 from oauth import utils
 from oauth.provider import AuthorizationProvider
@@ -27,6 +29,25 @@ logger = logging.getLogger(__name__)
 ACCESS_TOKEN_PREFIX_LENGTH = 20
 ACCESS_TOKEN_MINIMUM_CODE_LENGTH = 20
 AUTHORIZATION_CODE_PREFIX_LENGTH = 20
+MAX_TOKENS_PER_APPLICATION = 1000
+BOOTSTRAP_APP_DESCRIPTION = "Auto-created by bootstrap token provisioning"
+
+
+def normalize_scope(scope_string):
+    """Normalize a comma- or space-separated scope string to space-separated, deduplicated."""
+    normalized = scope_string.replace(",", " ")
+    return " ".join(normalized.split())
+
+
+def validate_expiration(value):
+    """
+    Validate and return an integer expiration in seconds.
+
+    Raises ValueError if the value is not a positive number.
+    """
+    if not isinstance(value, (int, float)) or value <= 0:
+        raise ValueError("'expiration' must be a positive number of seconds")
+    return int(value)
 
 
 class DatabaseAuthorizationProvider(AuthorizationProvider):
@@ -127,7 +148,7 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
             OAuthAccessToken.select()
             .join(OAuthApplication)
             .switch(OAuthAccessToken)
-            .join(User)
+            .join(User, on=(OAuthAccessToken.authorized_user == User.id))
             .where(
                 OAuthApplication.client_id == client_id,
                 User.username == username,
@@ -333,6 +354,157 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         )
 
 
+def get_or_create_application(name, org):
+    """
+    Returns an existing OAuthApplication matching name+org, or creates one.
+
+    Uses an optimistic pattern: SELECT first, INSERT if not found.
+    Auto-created applications use empty strings for redirect_uri and
+    application_uri, following the FEATURE_USER_INITIALIZE precedent
+    (see endpoints/web.py:1113).
+    """
+    try:
+        return (
+            OAuthApplication.select()
+            .where(
+                OAuthApplication.name == name,
+                OAuthApplication.organization == org,
+            )
+            .order_by(OAuthApplication.id)
+            .limit(1)
+            .get()
+        )
+    except OAuthApplication.DoesNotExist:
+        return create_application(
+            org,
+            name,
+            application_uri="",
+            redirect_uri="",
+            description=BOOTSTRAP_APP_DESCRIPTION,
+        )
+
+
+def create_oauth_api_token(application, user, scope, expiration_seconds=315576000):
+    """
+    Creates an OAuth access token with bootstrap metadata fields populated.
+
+    Args:
+        application: OAuthApplication instance
+        user: User instance (both authorized_user and created_by)
+        scope: Space-separated scope string
+        expiration_seconds: Token lifetime in seconds (default 10 years)
+
+    Returns:
+        Tuple of (OAuthAccessToken, access_token_string)
+    """
+    access_token = utils.random_ascii_string(40)
+    token_name = access_token[:ACCESS_TOKEN_PREFIX_LENGTH]
+    token_code = access_token[ACCESS_TOKEN_PREFIX_LENGTH:]
+
+    assert len(token_name) == ACCESS_TOKEN_PREFIX_LENGTH
+    assert len(token_code) >= ACCESS_TOKEN_MINIMUM_CODE_LENGTH
+
+    expires_at = datetime.utcnow() + timedelta(seconds=expiration_seconds)
+
+    created = OAuthAccessToken.create(
+        application=application,
+        authorized_user=user,
+        scope=scope,
+        token_name=token_name,
+        token_code=Credential.from_string(token_code),
+        access_token="",
+        token_type="Bearer",
+        expires_at=expires_at,
+        data=json.dumps({"username": user.username}),
+        created_by=user,
+        created=datetime.utcnow(),
+    )
+    return created, access_token
+
+
+def count_active_tokens(application):
+    return (
+        OAuthAccessToken.select()
+        .where(
+            OAuthAccessToken.application == application,
+            OAuthAccessToken.expires_at > datetime.utcnow(),
+        )
+        .count()
+    )
+
+
+def list_application_tokens(application, page_token=None, limit=50):
+    CreatedBy = User.alias()
+    query = (
+        OAuthAccessToken.select(OAuthAccessToken, CreatedBy)
+        .join(CreatedBy, JOIN.LEFT_OUTER, on=(OAuthAccessToken.created_by == CreatedBy.id))
+        .switch(OAuthAccessToken)
+        .where(OAuthAccessToken.application == application)
+    )
+    return paginate(query, OAuthAccessToken, descending=True, page_token=page_token, limit=limit)
+
+
+def delete_application_token(application, token_uuid):
+    try:
+        token = OAuthAccessToken.get(
+            OAuthAccessToken.application == application,
+            OAuthAccessToken.uuid == token_uuid,
+        )
+        token.delete_instance()
+        return True
+    except OAuthAccessToken.DoesNotExist:
+        return False
+
+
+def list_bootstrap_tokens(
+    expired=None, expires_before=None, expires_after=None, page_token=None, limit=50
+):
+    AuthorizedUser = User.alias()
+    CreatedBy = User.alias()
+
+    query = (
+        OAuthAccessToken.select(OAuthAccessToken, OAuthApplication, AuthorizedUser, CreatedBy)
+        .join(OAuthApplication, on=(OAuthAccessToken.application == OAuthApplication.id))
+        .switch(OAuthAccessToken)
+        .join(AuthorizedUser, on=(OAuthAccessToken.authorized_user == AuthorizedUser.id))
+        .switch(OAuthAccessToken)
+        .join(CreatedBy, JOIN.LEFT_OUTER, on=(OAuthAccessToken.created_by == CreatedBy.id))
+        .where(OAuthApplication.description == BOOTSTRAP_APP_DESCRIPTION)
+    )
+
+    now = datetime.utcnow()
+    if expired is True:
+        query = query.where(OAuthAccessToken.expires_at <= now)
+    elif expired is False:
+        query = query.where(OAuthAccessToken.expires_at > now)
+
+    if expires_before is not None:
+        query = query.where(OAuthAccessToken.expires_at <= expires_before)
+
+    if expires_after is not None:
+        query = query.where(OAuthAccessToken.expires_at >= expires_after)
+
+    return paginate(query, OAuthAccessToken, descending=True, page_token=page_token, limit=limit)
+
+
+def delete_bootstrap_token(token_uuid):
+    try:
+        token = (
+            OAuthAccessToken.select(OAuthAccessToken, OAuthApplication)
+            .join(OAuthApplication, on=(OAuthAccessToken.application == OAuthApplication.id))
+            .where(
+                OAuthAccessToken.uuid == token_uuid,
+                OAuthApplication.description == BOOTSTRAP_APP_DESCRIPTION,
+            )
+            .get()
+        )
+    except OAuthAccessToken.DoesNotExist:
+        return None
+
+    token.delete_instance()
+    return token
+
+
 def create_application(org, name, application_uri, redirect_uri, **kwargs):
     client_secret = kwargs.pop("client_secret", random_string_generator(length=40)())
     return OAuthApplication.create(
@@ -358,7 +530,7 @@ def validate_access_token(access_token):
     try:
         found = (
             OAuthAccessToken.select(OAuthAccessToken, User)
-            .join(User)
+            .join(User, on=(OAuthAccessToken.authorized_user == User.id))
             .where(OAuthAccessToken.token_name == token_name)
             .get()
         )
@@ -417,7 +589,7 @@ def lookup_access_token_for_user(user_obj, token_uuid):
     try:
         return (
             OAuthAccessToken.select(OAuthAccessToken, User)
-            .join(User)
+            .join(User, on=(OAuthAccessToken.authorized_user == User.id))
             .where(
                 OAuthAccessToken.authorized_user == user_obj, OAuthAccessToken.uuid == token_uuid
             )
@@ -432,7 +604,7 @@ def list_access_tokens_for_user(user_obj):
         OAuthAccessToken.select()
         .join(OAuthApplication)
         .switch(OAuthAccessToken)
-        .join(User)
+        .join(User, on=(OAuthAccessToken.authorized_user == User.id))
         .where(OAuthAccessToken.authorized_user == user_obj)
     )
 

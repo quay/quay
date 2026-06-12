@@ -53,6 +53,18 @@ def verify_csrf(
         abort(403, message="CSRF token was invalid or missing.")
 
 
+def _has_bootstrap_auth():
+    if not features.PROGRAMMATIC_BOOTSTRAP:
+        return False
+    from auth.auth_context import get_authenticated_user
+
+    if get_authenticated_user() is not None:
+        return False
+    auth_header = request.headers.get("Authorization", "")
+    scheme = auth_header.lower().split(" ", 1)[0] if auth_header else ""
+    return scheme in ("basic", "bearer")
+
+
 def csrf_protect(
     session_token_name=_QUAY_CSRF_TOKEN_NAME,
     request_token_name=_QUAY_CSRF_TOKEN_NAME,
@@ -65,7 +77,8 @@ def csrf_protect(
             # Verify the CSRF token.
             if get_validated_oauth_token() is None and get_sso_token() is None:
                 if all_methods or (request.method != "GET" and request.method != "HEAD"):
-                    verify_csrf(session_token_name, request_token_name, check_header)
+                    if not _has_bootstrap_auth():
+                        verify_csrf(session_token_name, request_token_name, check_header)
 
             # Invoke the handler.
             resp = func(*args, **kwargs)

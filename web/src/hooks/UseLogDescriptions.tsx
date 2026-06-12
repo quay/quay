@@ -990,6 +990,24 @@ export function useLogDescriptions() {
         </>
       );
     },
+    create_oauth_api_token: function (metadata: Metadata) {
+      return (
+        <>
+          Created OAuth API token for application{' '}
+          {wrapVariable(metadata.application_name)} with scope{' '}
+          {wrapVariable(metadata.scope)} via{' '}
+          {wrapVariable(metadata.auth_method)} auth
+        </>
+      );
+    },
+    revoke_oauth_api_token: function (metadata: Metadata) {
+      return (
+        <>
+          Revoked OAuth API token {wrapVariable(metadata.oauth_token_uuid)} from
+          application {wrapVariable(metadata.application_name)}
+        </>
+      );
+    },
     add_repo_notification: function (metadata: Metadata) {
       const event = events.events.find((e) => e.type == metadata.event);
       return `Add notification of event "${event.title}" for repository ${metadata.namespace}/${metadata.repo}`;

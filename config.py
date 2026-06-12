@@ -869,6 +869,10 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: If set to true, the first User account may be created via API /api/v1/user/initialize
     FEATURE_USER_INITIALIZE = False
 
+    # Feature Flag: If set to true, superusers can create OAuth tokens via Basic Auth
+    # without UI interaction. Used for programmatic bootstrap of Quay access.
+    FEATURE_PROGRAMMATIC_BOOTSTRAP = False
+
     # Allows "/" in repository names
     FEATURE_EXTENDED_REPOSITORY_NAMES = True
 
