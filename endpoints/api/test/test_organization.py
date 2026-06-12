@@ -546,7 +546,6 @@ def test_update_application_allows_non_reserved_bootstrap_like_name(app):
     assert application.name == "custom-bootstrap-api"
 
 
-
 @pytest.fixture()
 def _mock_dns_for_ssrf_validation():
     with patch("util.security.ssrf._getaddrinfo") as mock_dns:
