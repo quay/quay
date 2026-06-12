@@ -6055,7 +6055,7 @@ SECURITY_TESTS: List[
         OrganizationProxyCacheConfig,
         "POST",
         {"orgname": "library"},
-        {"upstream_registry": "some-upstream-registry"},
+        {"upstream_registry": "docker.io"},
         "devtable",
         201,
     ),
