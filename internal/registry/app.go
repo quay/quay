@@ -10,6 +10,8 @@ import (
 
 	// Registers the filesystem storage driver with the distribution driver factory.
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/filesystem"
+
+	registrymw "github.com/quay/quay/internal/registry/middleware"
 )
 
 // AppConfig holds the parameters needed to construct the distribution app.
@@ -40,6 +42,10 @@ func NewApp(ctx context.Context, cfg AppConfig) http.Handler {
 			},
 		},
 	}
+	distCfg.Middleware = map[string][]configuration.Middleware{
+		"repository": {{Name: registrymw.Name()}},
+	}
+
 	distCfg.HTTP.Addr = cfg.ListenAddr
 	return handlers.NewApp(ctx, distCfg)
 }

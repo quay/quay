@@ -6,9 +6,13 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/quay/quay/internal/bootstrap"
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
+	"github.com/quay/quay/internal/dal/metastore"
+	registrymw "github.com/quay/quay/internal/registry/middleware"
 	"github.com/quay/quay/internal/server"
 )
 
@@ -44,6 +48,16 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 	}
 	defer func() { _ = db.Close() }()
 
+	store, err := metastore.NewSQLiteStore(ctx, db)
+	if err != nil {
+		slog.Error("metastore setup error", "err", err)
+		return 1
+	}
+	if err := registrymw.Register(store); err != nil {
+		slog.Error("middleware registration error", "err", err)
+		return 1
+	}
+
 	authDir := filepath.Join(filepath.Dir(resolved.DBPath), "auth")
 	if _, err := bootstrap.AdminUser(ctx, db, adminUsername, authDir); err != nil {
 		slog.Error("bootstrap admin user error", "err", err)
@@ -57,7 +71,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		PreferredScheme: resolved.Config.PreferredURLScheme,
 		DBPath:          resolved.DBPath,
 		DB:              db,
-	})
+	}, server.WithRoute("/metrics", promhttp.Handler()))
 	if err != nil {
 		slog.Error("server build error", "err", err)
 		return 1

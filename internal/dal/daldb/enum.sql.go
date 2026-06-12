@@ -20,6 +20,33 @@ func (q *Queries) GetAlembicVersion(ctx context.Context) (string, error) {
 	return version_num, err
 }
 
+const getAllMediaTypes = `-- name: GetAllMediaTypes :many
+SELECT id, name FROM mediatype
+`
+
+func (q *Queries) GetAllMediaTypes(ctx context.Context) ([]Mediatype, error) {
+	rows, err := q.db.QueryContext(ctx, getAllMediaTypes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Mediatype
+	for rows.Next() {
+		var i Mediatype
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMediaTypeByName = `-- name: GetMediaTypeByName :one
 SELECT id FROM mediatype WHERE name = ?
 `
