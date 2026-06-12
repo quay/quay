@@ -12,7 +12,7 @@ from image.docker.schema1 import (
 from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
 from image.docker.schema2.config import DockerSchema2Config
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
-from image.oci import OCI_CONTENT_TYPES
+from image.oci import OCI_CONTENT_TYPES, OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from image.oci.config import OCIConfig
 from image.oci.manifest import OCIManifestBuilder
 from image.shared.schemas import (
@@ -21,6 +21,8 @@ from image.shared.schemas import (
     parse_manifest_from_bytes,
 )
 from test.registry.protocols import (
+    ArtifactPullResult,
+    ArtifactPushResult,
     Failures,
     ProtocolOptions,
     PullResult,
@@ -561,6 +563,138 @@ class V2Protocol(RegistryProtocol):
             )
 
         return PushResult(manifests=manifests, headers=headers)
+
+    def push_artifact(
+        self,
+        session,
+        namespace,
+        repo_name,
+        manifest,
+        blobs,
+        reference=None,
+        credentials=None,
+        expected_failure=None,
+        options=None,
+    ):
+        """
+        Push a pre-built OCI/generic manifest and its blobs (signatures, Helm charts, etc.).
+        """
+        options = options or ProtocolOptions()
+        scopes = options.scopes or [
+            "repository:%s:push,pull" % self.repo_name(namespace, repo_name)
+        ]
+
+        self.ping(session)
+
+        token, _ = self.auth(
+            session,
+            credentials,
+            namespace,
+            repo_name,
+            scopes=scopes,
+            expected_failure=expected_failure,
+        )
+        if token is None:
+            assert V2Protocol.FAILURE_CODES[V2ProtocolSteps.AUTH].get(expected_failure)
+            return None
+
+        headers = {
+            "Authorization": "Bearer " + token,
+            "Accept": (
+                ",".join(options.accept_mimetypes)
+                if options.accept_mimetypes is not None
+                else "*/*"
+            ),
+        }
+
+        if not self._push_blobs(
+            blobs, session, namespace, repo_name, headers, options, expected_failure
+        ):
+            return None
+
+        manifest_ref = reference if reference is not None else str(manifest.digest)
+        manifest_headers = {"Content-Type": manifest.media_type}
+        manifest_headers.update(headers)
+
+        if options.manifest_content_type is not None:
+            manifest_headers["Content-Type"] = options.manifest_content_type
+
+        put_code = 404 if options.manifest_invalid_blob_references else 201
+        self.conduct(
+            session,
+            "PUT",
+            "/v2/%s/manifests/%s" % (self.repo_name(namespace, repo_name), manifest_ref),
+            data=manifest.bytes.as_encoded_str(),
+            expected_status=(put_code, expected_failure, V2ProtocolSteps.PUT_MANIFEST),
+            headers=manifest_headers,
+        )
+
+        return ArtifactPushResult(manifest=manifest, headers=headers)
+
+    def pull_artifact(
+        self,
+        session,
+        namespace,
+        repo_name,
+        digest,
+        credentials=None,
+        expected_failure=None,
+        options=None,
+    ):
+        """
+        Pull a manifest by digest and verify all referenced blobs exist.
+        """
+        options = options or ProtocolOptions()
+        scopes = options.scopes or ["repository:%s:pull" % self.repo_name(namespace, repo_name)]
+
+        self.ping(session)
+
+        token, _ = self.auth(
+            session,
+            credentials,
+            namespace,
+            repo_name,
+            scopes=scopes,
+            expected_failure=expected_failure,
+        )
+        if token is None:
+            assert V2Protocol.FAILURE_CODES[V2ProtocolSteps.AUTH].get(expected_failure)
+            return None
+
+        headers = {
+            "Authorization": "Bearer " + token,
+            "Accept": (
+                ",".join(options.accept_mimetypes)
+                if options.accept_mimetypes is not None
+                else OCI_IMAGE_MANIFEST_CONTENT_TYPE
+            ),
+        }
+
+        response = self.conduct(
+            session,
+            "GET",
+            "/v2/%s/manifests/%s" % (self.repo_name(namespace, repo_name), digest),
+            expected_status=(200, expected_failure, V2ProtocolSteps.GET_MANIFEST),
+            headers=headers,
+        )
+        if expected_failure is not None:
+            return None
+
+        pulled = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(response.text), response.headers["Content-Type"]
+        )
+
+        for blob_digest in pulled.blob_digests:
+            self.conduct(
+                session,
+                "GET",
+                "/v2/%s/blobs/%s" % (self.repo_name(namespace, repo_name), blob_digest),
+                expected_status=(200, expected_failure, V2ProtocolSteps.GET_BLOB),
+                headers=headers,
+                options=options,
+            )
+
+        return ArtifactPullResult(manifest=pulled, headers=headers)
 
     def _push_blobs(self, blobs, session, namespace, repo_name, headers, options, expected_failure):
         for blob_digest, blob_bytes in blobs.items():
