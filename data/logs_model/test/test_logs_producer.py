@@ -2,6 +2,7 @@ import logging
 
 import botocore
 import pytest
+from botocore.exceptions import ClientError
 from dateutil.parser import parse
 from mock import Mock, patch
 
@@ -14,6 +15,10 @@ from .test_elasticsearch import (
     mock_elasticsearch,
 )
 from data.logs_model import configure
+from data.logs_model.logs_producer.kinesis_stream_logs_producer import (
+    KINESIS_HASH_SPACE,
+    _explicit_hash_key,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,9 +92,18 @@ def test_kinesis_logs_producers(
     mock_elasticsearch.template = Mock(return_value=DEFAULT_TEMPLATE_RESPONSE)
 
     producer_config = kinesis_logs_producer_config
+    describe_response = {
+        "StreamDescriptionSummary": {"OpenShardCount": 4},
+    }
+
+    def mock_api_call(operation_name, kwargs):
+        if operation_name == "DescribeStreamSummary":
+            return describe_response
+        return {}
+
     with (
         patch("botocore.endpoint.EndpointCreator.create_endpoint"),
-        patch("botocore.client.BaseClient._make_api_call") as mock_send,
+        patch("botocore.client.BaseClient._make_api_call", side_effect=mock_api_call) as mock_send,
     ):
         configure(producer_config)
         logs_model.log_action(
@@ -103,6 +117,124 @@ def test_kinesis_logs_producers(
             parse("2019-01-01T03:30"),
         )
 
-        # Check that a PutRecord api call is made.
-        # NOTE: The second arg of _make_api_call uses a randomized PartitionKey
-        mock_send.assert_called_once_with("PutRecord", mock_send.call_args_list[0][0][1])
+        # Should have 2 calls: DescribeStreamSummary (init) + PutRecord (send)
+        assert mock_send.call_count == 2
+        assert mock_send.call_args_list[0][0][0] == "DescribeStreamSummary"
+        assert mock_send.call_args_list[1][0][0] == "PutRecord"
+        put_kwargs = mock_send.call_args_list[1][0][1]
+        assert "ExplicitHashKey" in put_kwargs
+        assert "PartitionKey" in put_kwargs
+
+
+def test_kinesis_logs_producer_with_explicit_hash_key(
+    logs_model, mock_elasticsearch, mock_db_model, kinesis_logs_producer_config
+):
+    """Test that ExplicitHashKey is used when shard count is auto-detected."""
+    mock_elasticsearch.template = Mock(return_value=DEFAULT_TEMPLATE_RESPONSE)
+
+    producer_config = kinesis_logs_producer_config
+    describe_response = {
+        "StreamDescriptionSummary": {"OpenShardCount": 4},
+    }
+
+    def mock_api_call(operation_name, kwargs):
+        if operation_name == "DescribeStreamSummary":
+            return describe_response
+        return {}
+
+    with (
+        patch("botocore.endpoint.EndpointCreator.create_endpoint"),
+        patch("botocore.client.BaseClient._make_api_call", side_effect=mock_api_call) as mock_send,
+    ):
+        configure(producer_config)
+        logs_model.log_action(
+            "pull_repo",
+            "user1",
+            Mock(id=1),
+            "192.168.1.1",
+            {"key": "value"},
+            None,
+            "repo1",
+            parse("2019-01-01T03:30"),
+        )
+
+        # Should have 2 calls: DescribeStreamSummary (init) + PutRecord (send)
+        assert mock_send.call_count == 2
+        assert mock_send.call_args_list[0][0][0] == "DescribeStreamSummary"
+        assert mock_send.call_args_list[1][0][0] == "PutRecord"
+        put_kwargs = mock_send.call_args_list[1][0][1]
+        assert "ExplicitHashKey" in put_kwargs
+
+
+def test_explicit_hash_key_within_hash_space():
+    """Test that _explicit_hash_key returns values within the Kinesis hash space."""
+    for _ in range(100):
+        key = int(_explicit_hash_key(128))
+        assert 0 <= key < KINESIS_HASH_SPACE
+
+
+def test_explicit_hash_key_distributes_across_shards():
+    """Test that _explicit_hash_key distributes evenly across all shards."""
+    number_of_shards = 4
+    slice_size = KINESIS_HASH_SPACE // number_of_shards
+    shard_hits = {i: 0 for i in range(number_of_shards)}
+
+    for _ in range(1000):
+        key = int(_explicit_hash_key(number_of_shards))
+        shard = key // slice_size
+        shard_hits[shard] += 1
+
+    # Each shard should get roughly 250 hits out of 1000
+    for shard, count in shard_hits.items():
+        assert count > 100, f"Shard {shard} only got {count} hits, expected ~250"
+
+
+def test_explicit_hash_key_single_shard():
+    """Test that _explicit_hash_key with 1 shard always targets shard 0's range."""
+    for _ in range(100):
+        key = int(_explicit_hash_key(1))
+        assert 0 <= key < KINESIS_HASH_SPACE
+
+
+def test_kinesis_fallback_when_shard_count_unavailable(
+    logs_model, mock_elasticsearch, mock_db_model, kinesis_logs_producer_config
+):
+    """Test that when describe_stream_summary fails, ExplicitHashKey is not set
+    and the old _partition_key() logic is used as PartitionKey."""
+    mock_elasticsearch.template = Mock(return_value=DEFAULT_TEMPLATE_RESPONSE)
+
+    producer_config = kinesis_logs_producer_config
+
+    def mock_api_call(operation_name, kwargs):
+        if operation_name == "DescribeStreamSummary":
+            raise ClientError(
+                {"Error": {"Code": "AccessDeniedException", "Message": "Not authorized"}},
+                "DescribeStreamSummary",
+            )
+        return {}
+
+    with (
+        patch("botocore.endpoint.EndpointCreator.create_endpoint"),
+        patch("botocore.client.BaseClient._make_api_call", side_effect=mock_api_call) as mock_send,
+    ):
+        configure(producer_config)
+        logs_model.log_action(
+            "pull_repo",
+            "user1",
+            Mock(id=1),
+            "192.168.1.1",
+            {"key": "value"},
+            None,
+            "repo1",
+            parse("2019-01-01T03:30"),
+        )
+
+        # Should have 2 calls: DescribeStreamSummary (failed) + PutRecord (send)
+        assert mock_send.call_count == 2
+        assert mock_send.call_args_list[0][0][0] == "DescribeStreamSummary"
+        assert mock_send.call_args_list[1][0][0] == "PutRecord"
+        put_kwargs = mock_send.call_args_list[1][0][1]
+        assert "ExplicitHashKey" not in put_kwargs
+        assert "PartitionKey" in put_kwargs
+        # PartitionKey should be a 40-char SHA1 hex digest from _partition_key()
+        assert len(put_kwargs["PartitionKey"]) == 40
