@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from test.fixtures import *
+from workers.gunicorn_worker import GunicornWorker
 from workers.spamdetectionworker import (
     BATCH_SIZE,
     MIN_CONFIDENCE,
@@ -55,4 +56,4 @@ def test_worker_scan_config_values(mock_scan_config, mock_spam_scanner, initiali
 @patch("workers.spamdetectionworker.ScanConfig")
 def test_create_gunicorn_worker(mock_scan_config, mock_spam_scanner, initialized_db):
     result = create_gunicorn_worker()
-    assert result is not None
+    assert isinstance(result, GunicornWorker)

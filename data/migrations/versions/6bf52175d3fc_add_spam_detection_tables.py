@@ -84,6 +84,11 @@ def upgrade(op, tables, tester):
         ["status", "total_confidence_score"],
         unique=False,
     )
+    op.execute(
+        "CREATE UNIQUE INDEX quarantinedrepository_repo_active_uniq "
+        "ON quarantinedrepository (repository_id) "
+        "WHERE status IN ('flagged', 'quarantined')"
+    )
 
     op.bulk_insert(
         tables.logentrykind,
@@ -114,5 +119,6 @@ def downgrade(op, tables, tester):
             tables.notificationkind.c.name == op.inline_literal("repo_spam_quarantined")
         )
     )
+    op.execute("DROP INDEX IF EXISTS quarantinedrepository_repo_active_uniq")
     op.drop_table("quarantinedrepository")
     op.drop_table("spamdetectionrule")

@@ -1377,3 +1377,4 @@ CREATE INDEX quarantinedrepository_namespace_name ON quarantinedrepository (name
 CREATE INDEX quarantinedrepository_status ON quarantinedrepository (status);
 CREATE INDEX quarantinedrepository_scan_id ON quarantinedrepository (scan_id);
 CREATE INDEX quarantinedrepository_status_confidence ON quarantinedrepository (status, total_confidence_score);
+CREATE UNIQUE INDEX quarantinedrepository_repo_active_uniq ON quarantinedrepository (repository_id) WHERE status IN ('flagged', 'quarantined');

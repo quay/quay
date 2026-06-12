@@ -1,4 +1,5 @@
 import uuid
+from concurrent.futures import TimeoutError
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -601,3 +602,28 @@ class TestRegexTimeout:
         pattern = re.compile(r"xyz123", re.IGNORECASE)
         result = _regex_search_with_timeout(pattern, "hello world", timeout=2)
         assert result is None
+
+    def test_timeout_replaces_executor_and_recovers(self):
+        import re
+        from concurrent.futures import Future
+
+        import data.model.spam_detection_engine as engine
+
+        old_executor = engine._regex_executor
+        mock_executor = MagicMock()
+        mock_future = MagicMock(spec=Future)
+        mock_future.result.side_effect = TimeoutError()
+        mock_executor.submit.return_value = mock_future
+        engine._regex_executor = mock_executor
+
+        pattern = re.compile(r"test", re.IGNORECASE)
+        result = _regex_search_with_timeout(pattern, "test text", timeout=1)
+        assert result is None
+        assert engine._regex_executor is not mock_executor
+        mock_executor.shutdown.assert_called_once_with(wait=False)
+
+        safe = re.compile(r"hello", re.IGNORECASE)
+        result2 = _regex_search_with_timeout(safe, "hello world", timeout=2)
+        assert result2 is not None
+
+        engine._regex_executor = old_executor

@@ -490,12 +490,17 @@ class TestGetQuarantinedRepos:
         )
         assert len(repos) >= 1
 
-    def test_pagination_limit(self, sample_repo, cleanup_spam_tables):
-        for i in range(3):
+    def test_pagination_limit(self, cleanup_spam_tables):
+        test_repos = [
+            get_repository("devtable", "simple"),
+            get_repository("devtable", "complex"),
+            get_repository("devtable", "history"),
+        ]
+        for i, repo in enumerate(test_repos):
             create_quarantined_repo(
-                repository=sample_repo.id,
+                repository=repo.id,
                 namespace_name="devtable",
-                repo_name="simple",
+                repo_name=repo.name,
                 original_description=f"desc-{i}",
                 matched_rules=[],
                 total_confidence=50 + i,

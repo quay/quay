@@ -18,11 +18,16 @@ _regex_executor = ThreadPoolExecutor(max_workers=1)
 
 
 def _regex_search_with_timeout(compiled_pattern, text, timeout=REGEX_EVAL_TIMEOUT_SECS):
+    global _regex_executor
     try:
         future = _regex_executor.submit(compiled_pattern.search, text)
         return future.result(timeout=timeout)
     except TimeoutError:
-        logger.warning("Regex timed out on pattern %s", compiled_pattern.pattern)
+        logger.warning(
+            "Regex timed out on pattern %s, replacing executor", compiled_pattern.pattern
+        )
+        _regex_executor.shutdown(wait=False)
+        _regex_executor = ThreadPoolExecutor(max_workers=1)
         return None
 
 
