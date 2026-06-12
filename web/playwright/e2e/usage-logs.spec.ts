@@ -398,6 +398,66 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     );
   });
 
+  test(
+    'chart legend renders in scrollable container below chart SVG',
+    {tag: ['@PROJQUAY-11577']},
+    async ({authenticatedPage, api}) => {
+      const org = await api.organization('legendlayout');
+      const today = new Date().toISOString().slice(0, 10) + 'T12:00:00Z';
+
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/logs*`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({logs: [], is_truncated: false}),
+          });
+        },
+      );
+
+      await authenticatedPage.route(
+        `**/api/v1/organization/${org.name}/aggregatelogs*`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              aggregated: [
+                {kind: 'create_repo', count: 3, datetime: today},
+                {kind: 'delete_repo', count: 1, datetime: today},
+                {kind: 'create_robot', count: 2, datetime: today},
+              ],
+            }),
+          });
+        },
+      );
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+      const chart = authenticatedPage.getByTestId('usage-logs-chart');
+      await expect(chart).toBeVisible();
+
+      // Legend must be in the dedicated scrollable container, not inside the SVG
+      const legendContainer = chart.locator('.usage-logs-legend-container');
+      await expect(legendContainer).toBeVisible();
+
+      // Verify legend items from the mocked data appear inside the container
+      await expect(
+        legendContainer.getByText('Create Repository'),
+      ).toBeVisible();
+      await expect(
+        legendContainer.getByText('Delete repository'),
+      ).toBeVisible();
+      await expect(
+        legendContainer.getByText('Create Robot Account'),
+      ).toBeVisible();
+
+      // The chart SVG must still be present at full height
+      await expect(chart.locator('svg').first()).toBeVisible();
+    },
+  );
+
   test('shows info alert when Splunk search is not configured', async ({
     authenticatedPage,
     api,
