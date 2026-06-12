@@ -357,6 +357,12 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether emails are enabled.
     FEATURE_MAILING = True
 
+    # Feature Flag: Whether to skip email confirmation requirement for repository notifications.
+    # When False (default), users must confirm email addresses before they can receive repository
+    # notifications. When True, email notifications can be sent to any address without confirmation.
+    # Only enable this in trusted enterprise environments with internal email addresses.
+    FEATURE_SKIP_EMAIL_CONFIRMATION = False
+
     # Feature Flag: Whether users can be created (by non-super users).
     FEATURE_USER_CREATION = True
 
