@@ -3,8 +3,11 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.23"></a>
+## [v3.9.23] - 0001-01-01
+
 <a name="v3.9.22"></a>
-## [v3.9.22] - 2026-05-19
+## [v3.9.22] - 2026-05-20
 ### PROJQUAY-11346: Chore(Deps)
 - [ca5c13aca](https://github.com/quay/quay/commit/ca5c13aca9b3ee9fbc7e85cd0d37029c3da4b991): bump pillow and follow-redirects [redhat-3.9] ([#5976](https://github.com/quay/quay/issues/5976))
 ### [Redhat-3.9] Chore(Web)
@@ -1704,7 +1707,8 @@
 ### Release
 - [9dd55deed](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.22...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.23...HEAD
+[v3.9.23]: https://github.com/quay/quay/compare/v3.9.22...v3.9.23
 [v3.9.22]: https://github.com/quay/quay/compare/v3.9.21...v3.9.22
 [v3.9.21]: https://github.com/quay/quay/compare/v3.9.20...v3.9.21
 [v3.9.20]: https://github.com/quay/quay/compare/v3.9.19...v3.9.20
