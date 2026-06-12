@@ -53,6 +53,7 @@ CLIENT_WHITELIST = [
     "FOOTER_LINKS",
     "UI_DELAY_AFTER_WRITE_SECONDS",
     "FEATURE_ASSIGN_OAUTH_TOKEN",
+    "FEATURE_PUBLIC_OAUTH_APPS",
     "FEATURE_IMAGE_EXPIRY_TRIGGER",
     "FEATURE_AUTO_PRUNE",
     "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY",
@@ -973,6 +974,7 @@ class DefaultConfig(ImmutableConfig):
     ROBOTS_WHITELIST: Optional[List[str]] = []
 
     FEATURE_ASSIGN_OAUTH_TOKEN = True
+    FEATURE_PUBLIC_OAUTH_APPS = False
     DEFAULT_NAMESPACE_AUTOPRUNE_POLICY: Optional[Dict[str, str]] = None
 
     # Allows users to set up notifications on image expiry, can remove flag once feature is tested
