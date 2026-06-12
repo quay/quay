@@ -42,12 +42,14 @@ logger = logging.getLogger(__name__)
 DEFAULT_REINDEX_THRESHOLD = 86400
 STALE_IN_PROGRESS_HOURS = 6
 TAG_LIMIT = 100
+DEFAULT_UNINDEXED_SWEEP_INTERVAL = 20
 
 
 class V4SecurityScannerV2(SecurityScannerIndexerInterface):
     def __init__(self, app, instance_keys, storage):
         self.app = app
         self.storage = storage
+        self._cycle_count = DEFAULT_UNINDEXED_SWEEP_INTERVAL
 
         if app.config.get("SECURITY_SCANNER_V4_ENDPOINT", None) is None:
             raise ValueError("Missing SECURITY_SCANNER_V4_ENDPOINT configuration")
@@ -89,7 +91,14 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
         )
         stale_threshold = datetime.utcnow() - timedelta(hours=STALE_IN_PROGRESS_HOURS)
 
-        claimed_new = self._claim_unindexed_manifests(batch_size)
+        sweep_interval = self.app.config.get(
+            "SECURITY_SCANNER_V2_UNINDEXED_SWEEP_INTERVAL", DEFAULT_UNINDEXED_SWEEP_INTERVAL
+        )
+        claimed_new = []
+        self._cycle_count += 1
+        if self._cycle_count >= sweep_interval:
+            self._cycle_count = 0
+            claimed_new = self._claim_unindexed_manifests(batch_size)
 
         remaining = batch_size - len(claimed_new)
         claimed_mss = []
@@ -145,7 +154,7 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
                         & (ManifestSecurityStatus.last_indexed < reindex_threshold)
                     )
                 )
-                .order_by(ManifestSecurityStatus.last_indexed.asc())
+                .order_by(ManifestSecurityStatus.last_indexed.desc())
                 .limit(batch_size)
             )
 
@@ -165,6 +174,12 @@ class V4SecurityScannerV2(SecurityScannerIndexerInterface):
             return rows
 
     def _claim_unindexed_manifests(self, batch_size):
+        # Finds manifests with no MSS row at all (LEFT JOIN IS NULL). This covers
+        # manifests pushed before push-time MSS creation was enabled and any where
+        # MSS creation failed. Manifests with a PENDING MSS row are handled by
+        # _find_and_claim_batch instead.
+        # Runs every N cycles (SECURITY_SCANNER_V2_UNINDEXED_SWEEP_INTERVAL) since
+        # the LEFT JOIN is expensive and most manifests will have MSS rows from push.
         candidates = list(
             Manifest.select(Manifest.id, Manifest.repository, can_use_read_replica=True)
             .join(ManifestSecurityStatus, JOIN.LEFT_OUTER)
