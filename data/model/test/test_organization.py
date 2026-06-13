@@ -5,10 +5,14 @@ from playhouse.test_utils import assert_query_count
 from data.database import OrganizationContactEmail
 from data.model.organization import (
     create_organization,
+    delete_contact_email,
+    find_organizations_by_contact_email,
+    get_contact_email,
     get_organization,
     get_organization_member_set,
     get_organizations,
     is_org_admin,
+    set_contact_email,
 )
 from data.model.team import add_user_to_team, get_organization_team
 from data.model.user import (
@@ -184,7 +188,8 @@ class TestOrganizationContactEmail:
 
     def test_create_with_email(self, initialized_db):
         """Test creating an OrganizationContactEmail with a contact email."""
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("rawcreateorg1", None, admin)
         record = OrganizationContactEmail.create(
             organization=org, contact_email="contact@example.com"
         )
@@ -193,14 +198,16 @@ class TestOrganizationContactEmail:
 
     def test_create_with_null_email(self, initialized_db):
         """Test creating an OrganizationContactEmail with a null contact email."""
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("rawcreateorg2", None, admin)
         record = OrganizationContactEmail.create(organization=org, contact_email=None)
         assert record.contact_email is None
         assert record.organization_id == org.id
 
     def test_unique_constraint_on_organization(self, initialized_db):
         """Test that only one contact email record can exist per organization."""
-        org = get_organization("buynlarge")
+        admin = get_user("devtable")
+        org = create_organization("rawcreateorg3", None, admin)
         OrganizationContactEmail.create(organization=org, contact_email="first@example.com")
 
         with pytest.raises(IntegrityError):
@@ -208,9 +215,9 @@ class TestOrganizationContactEmail:
 
     def test_multiple_orgs_can_share_email(self, initialized_db):
         """Test that multiple organizations can have the same contact email."""
-        org1 = get_organization("buynlarge")
         admin = get_user("devtable")
-        org2 = create_organization("testsharedorg", "shared@example.com", admin)
+        org1 = create_organization("sharedorg1", None, admin)
+        org2 = create_organization("sharedorg2", None, admin)
 
         shared_email = "shared@example.com"
         record1 = OrganizationContactEmail.create(organization=org1, contact_email=shared_email)
@@ -219,3 +226,108 @@ class TestOrganizationContactEmail:
         assert record1.contact_email == shared_email
         assert record2.contact_email == shared_email
         assert record1.organization_id != record2.organization_id
+
+
+class TestContactEmailCRUD:
+    """Tests for contact_email CRUD functions."""
+
+    def test_get_contact_email_returns_none_when_not_set(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("crudorg1", None, admin)
+        assert get_contact_email(org) is None
+
+    def test_get_contact_email_returns_email_when_set(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("crudorg2", None, admin)
+        set_contact_email(org, "test@example.com")
+        assert get_contact_email(org) == "test@example.com"
+
+    def test_set_contact_email_creates_new_record(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("crudorg3", None, admin)
+        record = set_contact_email(org, "new@example.com")
+        assert record.contact_email == "new@example.com"
+        assert get_contact_email(org) == "new@example.com"
+
+    def test_set_contact_email_updates_existing_record(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("crudorg4", None, admin)
+        set_contact_email(org, "first@example.com")
+        set_contact_email(org, "second@example.com")
+        assert get_contact_email(org) == "second@example.com"
+
+    def test_delete_contact_email_removes_record(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("crudorg5", None, admin)
+        set_contact_email(org, "delete@example.com")
+        assert get_contact_email(org) == "delete@example.com"
+        delete_contact_email(org)
+        assert get_contact_email(org) is None
+
+    def test_delete_contact_email_noop_when_not_set(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("crudorg6", None, admin)
+        delete_contact_email(org)
+        assert get_contact_email(org) is None
+
+    def test_find_organizations_by_contact_email_single_match(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("findorg1", None, admin, contact_email="find@example.com")
+        results = list(find_organizations_by_contact_email("find@example.com"))
+        assert len(results) == 1
+        assert results[0].id == org.id
+
+    def test_find_organizations_by_contact_email_multiple_matches(self, initialized_db):
+        admin = get_user("devtable")
+        shared = "shared-find@example.com"
+        org1 = create_organization("findorg2a", None, admin, contact_email=shared)
+        org2 = create_organization("findorg2b", None, admin, contact_email=shared)
+        results = list(find_organizations_by_contact_email(shared))
+        assert len(results) == 2
+        result_ids = {r.id for r in results}
+        assert org1.id in result_ids
+        assert org2.id in result_ids
+
+    def test_find_organizations_by_contact_email_no_match(self, initialized_db):
+        results = list(find_organizations_by_contact_email("nonexistent@example.com"))
+        assert len(results) == 0
+
+
+class TestCreateOrganizationContactEmail:
+    """Tests for create_organization with contact_email support."""
+
+    def test_create_org_generates_uuid_email(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("uuidorg1", "ignored@example.com", admin)
+        import uuid
+
+        try:
+            uuid.UUID(org.email)
+            is_uuid = True
+        except ValueError:
+            is_uuid = False
+        assert is_uuid, f"Expected UUID email, got: {org.email}"
+
+    def test_create_org_with_contact_email(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("contactorg1", None, admin, contact_email="contact@example.com")
+        assert get_contact_email(org) == "contact@example.com"
+
+    def test_create_org_without_contact_email(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("nocontactorg1", None, admin)
+        assert get_contact_email(org) is None
+
+    def test_create_org_ignores_email_parameter(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("ignoreemailorg", "should-be-ignored@example.com", admin)
+        assert org.email != "should-be-ignored@example.com"
+
+    def test_create_two_orgs_with_same_contact_email(self, initialized_db):
+        admin = get_user("devtable")
+        shared = "same-contact@example.com"
+        org1 = create_organization("samecontact1", None, admin, contact_email=shared)
+        org2 = create_organization("samecontact2", None, admin, contact_email=shared)
+        assert get_contact_email(org1) == shared
+        assert get_contact_email(org2) == shared
+        assert org1.id != org2.id
