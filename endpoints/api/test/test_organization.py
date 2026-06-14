@@ -17,6 +17,144 @@ from features import FeatureNameValue
 from test.fixtures import *
 
 
+class TestContactEmail:
+    def test_create_org_with_contact_email(self, app):
+        body = {
+            "name": "contactemailorg",
+            "contact_email": "contact@example.com",
+        }
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        org = model.organization.get_organization("contactemailorg")
+        assert model.organization.get_contact_email(org) == "contact@example.com"
+
+    def test_create_org_without_email(self, app):
+        body = {"name": "noemailorg"}
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        org = model.organization.get_organization("noemailorg")
+        assert model.organization.get_contact_email(org) is None
+
+    def test_create_org_email_backward_compat(self, app):
+        body = {
+            "name": "backcompatorg",
+            "email": "compat@example.com",
+        }
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        org = model.organization.get_organization("backcompatorg")
+        assert model.organization.get_contact_email(org) == "compat@example.com"
+
+    def test_update_org_contact_email(self, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "updated@example.com"},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert model.organization.get_contact_email(org) == "updated@example.com"
+
+    def test_update_org_duplicate_contact_email(self, app):
+        body = {
+            "name": "dupemailorg",
+            "contact_email": "shared@example.com",
+        }
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "shared@example.com"},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert model.organization.get_contact_email(org) == "shared@example.com"
+
+    def test_get_org_admin_sees_contact_email(self, app):
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(
+                cl, Organization, "GET", {"orgname": "buynlarge"}, expected_code=200
+            )
+        assert "contact_email" in resp.json
+        assert resp.json["contact_email"] is not None
+
+    def test_get_org_nonadmin_no_contact_email(self, app):
+        with client_with_identity("freshuser", app) as cl:
+            resp = conduct_api_call(
+                cl, Organization, "GET", {"orgname": "buynlarge"}, expected_code=200
+            )
+        assert resp.json.get("contact_email") is None
+        assert resp.json.get("email") == ""
+
+    def test_clear_contact_email(self, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "temp@example.com"},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert model.organization.get_contact_email(org) == "temp@example.com"
+
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": ""},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert model.organization.get_contact_email(org) is None
+
+    def test_create_org_no_email_with_mailing(self, app):
+        body = {"name": "mailingnoemailorg"}
+        with toggle_feature("MAILING", True):
+            with client_with_identity("devtable", app) as cl:
+                conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
+
+        org = model.organization.get_organization("mailingnoemailorg")
+        assert model.organization.get_contact_email(org) is None
+
+    def test_create_org_invalid_contact_email(self, app):
+        body = {
+            "name": "invalemailorg",
+            "contact_email": "not-a-valid-email",
+        }
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=400)
+
+    def test_update_org_invalid_contact_email(self, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "not-a-valid-email"},
+                expected_code=400,
+            )
+
+
 @pytest.mark.parametrize(
     "expiration, expected_code",
     [
