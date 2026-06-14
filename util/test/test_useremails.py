@@ -3,7 +3,12 @@ from test.fixtures import *
 import mock
 import pytest
 
-from util.useremails import render_email, send_org_recovery_email, send_recovery_email
+from util.useremails import (
+    render_email,
+    send_combined_recovery_email,
+    send_org_recovery_email,
+    send_recovery_email,
+)
 
 
 def test_render_email():
@@ -69,6 +74,24 @@ def test_render_email():
             {
                 "email": "foo@example.com",
                 "token": "sometoken",
+            },
+        ),
+        (
+            "combinedrecovery",
+            {
+                "organizations": [
+                    {"org_name": "myorg", "admin_usernames": ["admin1", "admin2"]},
+                ],
+                "reset_token": "sometoken",
+            },
+        ),
+        (
+            "combinedrecovery",
+            {
+                "organizations": [
+                    {"org_name": "myorg", "admin_usernames": ["admin1"]},
+                ],
+                "reset_token": None,
             },
         ),
         (
@@ -160,3 +183,82 @@ def test_send_org_recovery_no_admins_no_email(mock_send_email, initialized_db):
     send_org_recovery_email(org, [])
 
     mock_send_email.assert_not_called()
+
+
+@mock.patch("util.useremails.send_email")
+def test_send_combined_recovery_with_user_and_orgs(mock_send_email, initialized_db):
+    orgs_with_admins = [
+        {"org_name": "org1", "admin_usernames": ["admin1"]},
+        {"org_name": "org2", "admin_usernames": ["admin2", "admin3"]},
+    ]
+
+    send_combined_recovery_email("shared@example.com", orgs_with_admins, reset_token="token123")
+
+    mock_send_email.assert_called_once_with(
+        "shared@example.com",
+        "Account recovery",
+        "combinedrecovery",
+        {"organizations": orgs_with_admins, "reset_token": "token123"},
+        action=mock.ANY,
+    )
+
+
+@mock.patch("util.useremails.send_email")
+def test_send_combined_recovery_orgs_only(mock_send_email, initialized_db):
+    orgs_with_admins = [
+        {"org_name": "org1", "admin_usernames": ["admin1"]},
+    ]
+
+    send_combined_recovery_email("org@example.com", orgs_with_admins)
+
+    mock_send_email.assert_called_once_with(
+        "org@example.com",
+        "Account recovery",
+        "combinedrecovery",
+        {"organizations": orgs_with_admins, "reset_token": None},
+        action=None,
+    )
+
+
+def test_render_combined_recovery_template(initialized_db):
+    orgs_with_admins = [
+        {"org_name": "org1", "admin_usernames": ["admin1", "admin2"]},
+        {"org_name": "org2", "admin_usernames": ["admin3"]},
+    ]
+
+    html, plain = render_email(
+        "Test App",
+        "test.quay",
+        "foo@example.com",
+        "Account recovery",
+        "combinedrecovery",
+        {"organizations": orgs_with_admins, "reset_token": "testtoken"},
+    )
+
+    assert "org1" in html
+    assert "org2" in html
+    assert "admin1" in html
+    assert "admin3" in html
+    assert "testtoken" in html
+    assert "Recover Account" in html
+    assert "Login to Recover" in html
+
+
+def test_render_combined_recovery_template_no_reset(initialized_db):
+    orgs_with_admins = [
+        {"org_name": "myorg", "admin_usernames": ["admin1"]},
+    ]
+
+    html, plain = render_email(
+        "Test App",
+        "test.quay",
+        "foo@example.com",
+        "Account recovery",
+        "combinedrecovery",
+        {"organizations": orgs_with_admins, "reset_token": None},
+    )
+
+    assert "myorg" in html
+    assert "admin1" in html
+    assert "Login to Recover" in html
+    assert "Recover Account" not in html

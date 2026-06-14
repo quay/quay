@@ -83,6 +83,7 @@ from util.names import parse_single_urn
 from util.request import get_request_ip
 from util.useremails import (
     send_change_email,
+    send_combined_recovery_email,
     send_confirmation_email,
     send_org_recovery_email,
     send_password_changed,
@@ -1118,14 +1119,22 @@ class Recovery(ApiResource):
         user = model.user.find_user_by_email(email)
         orgs = list(model.organization.find_organizations_by_contact_email(email))
 
-        for org in orgs:
-            contact_email = model.organization.get_contact_email(org)
-            admin_users = model.organization.get_admin_users(org)
-            send_org_recovery_email(org, admin_users, contact_email=contact_email)
+        is_personal_user = user and not user.organization
+        reset_token = None
+        if is_personal_user:
+            reset_token = model.user.create_reset_password_email_code(email)
 
-        if user and not user.organization:
-            confirmation_code = model.user.create_reset_password_email_code(email)
-            send_recovery_email(email, confirmation_code)
+        if orgs:
+            orgs_with_admins = []
+            for org in orgs:
+                admin_users = model.organization.get_admin_users(org)
+                orgs_with_admins.append({
+                    "org_name": org.username,
+                    "admin_usernames": [u.username for u in admin_users],
+                })
+            send_combined_recovery_email(email, orgs_with_admins, reset_token=reset_token)
+        elif is_personal_user:
+            send_recovery_email(email, reset_token)
 
         return {
             "status": "sent",

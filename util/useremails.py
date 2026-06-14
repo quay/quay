@@ -180,6 +180,20 @@ def send_org_recovery_email(org, admin_users, contact_email=None):
                 send_email(admin.email, subject, "orgrecovery", params)
 
 
+def send_combined_recovery_email(email, orgs_with_admins, reset_token=None):
+    subject = "Account recovery"
+    params = {
+        "organizations": orgs_with_admins,
+        "reset_token": reset_token,
+    }
+    action = None
+    if reset_token:
+        action = GmailAction.view(
+            "Recover Account", "recovery?code=" + reset_token, "Recovery of an account"
+        )
+    send_email(email, subject, "combinedrecovery", params, action=action)
+
+
 def send_recovery_email(email, token):
     action = GmailAction.view("Recover Account", "recovery?code=" + token, "Recovery of an account")
 
