@@ -135,6 +135,25 @@ class TestContactEmail:
         org = model.organization.get_organization("mailingnoemailorg")
         assert model.organization.get_contact_email(org) is None
 
+    def test_create_org_invalid_contact_email(self, app):
+        body = {
+            "name": "invalemailorg",
+            "contact_email": "not-a-valid-email",
+        }
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=400)
+
+    def test_update_org_invalid_contact_email(self, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "not-a-valid-email"},
+                expected_code=400,
+            )
+
 
 @pytest.mark.parametrize(
     "expiration, expected_code",

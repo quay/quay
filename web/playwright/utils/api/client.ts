@@ -303,9 +303,7 @@ export class ApiClient {
     return response.json();
   }
 
-  async getOrganization(
-    name: string,
-  ): Promise<Record<string, unknown>> {
+  async getOrganization(name: string): Promise<Record<string, unknown>> {
     const response = await this.request.get(
       `${API_URL}/api/v1/organization/${name}`,
       {

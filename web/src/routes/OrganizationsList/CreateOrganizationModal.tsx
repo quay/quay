@@ -82,10 +82,7 @@ export const CreateOrganizationModal = (
 
   const createOrganizationHandler = async () => {
     try {
-      await createOrganization(
-        organizationName,
-        contactEmail || undefined,
-      );
+      await createOrganization(organizationName, contactEmail || undefined);
       addAlert({
         variant: AlertVariant.Success,
         title: `Successfully created organization ${organizationName}`,
@@ -190,9 +187,7 @@ export const CreateOrganizationModal = (
           onClick={createOrganizationHandler}
           form="modal-with-form-form"
           isDisabled={
-            invalidEmailFlag ||
-            !organizationName ||
-            !validation.isValid
+            invalidEmailFlag || !organizationName || !validation.isValid
           }
         >
           Create

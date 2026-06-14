@@ -323,6 +323,11 @@ class TestCreateOrganizationContactEmail:
         org = create_organization("ignoreemailorg", "should-be-ignored@example.com", admin)
         assert org.email != "should-be-ignored@example.com"
 
+    def test_create_org_email_fallback_sets_contact_email(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("emailfallbackorg", "fallback@example.com", admin)
+        assert get_contact_email(org) == "fallback@example.com"
+
     def test_create_two_orgs_with_same_contact_email(self, initialized_db):
         admin = get_user("devtable")
         shared = "same-contact@example.com"

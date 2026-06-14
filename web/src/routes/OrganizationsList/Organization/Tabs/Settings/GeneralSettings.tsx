@@ -473,9 +473,10 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
               ? 'The e-mail address associated with your account.'
               : 'Optional. Used for organization recovery and billing notifications.'
           }
-          customValidation={
-            (value: string) =>
-              !value || isValidEmail(value) || 'Please enter a valid email address'
+          customValidation={(value: string) =>
+            !value ||
+            isValidEmail(value) ||
+            'Please enter a valid email address'
           }
         />
       )}
