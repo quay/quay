@@ -323,6 +323,8 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
     ? `Sign in to ${config.config.REGISTRY_TITLE_SHORT}`
     : 'Sign In';
 
+  // Use full page reload instead of React Router navigation to ensure
+  // React Query cache and auth state are properly cleared before signin
   const signInButton = (
     <Button component="a" href="/signin">
       {signInButtonText}

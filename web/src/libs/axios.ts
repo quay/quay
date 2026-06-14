@@ -11,8 +11,14 @@ if (process.env.MOCK_API === 'true') {
 // a redirect to /signin. Set by fetchUser() in UserResource.ts.
 let _anonymousMode = false;
 
-export function setAnonymousMode(enabled: boolean) {
+let _isRedirecting = false;
+
+export function setAnonymousMode(enabled: boolean): void {
   _anonymousMode = enabled;
+}
+
+export function isRedirecting(): boolean {
+  return _isRedirecting;
 }
 
 axios.defaults.withCredentials = true;
@@ -101,22 +107,23 @@ axiosIns.interceptors.response.use(
 
       // Handle regular session expiry
       if (!isFreshLoginRequired) {
-        // Don't redirect on 401 from /api/v1/user/ (let fetchUser() return
-        // an anonymous user object instead — PROJQUAY-10610), or when already
-        // in anonymous mode (other endpoints like /api/v1/user/notifications
-        // will also 401 for anonymous users).
         const requestUrl = error.config?.url || '';
         const isUserEndpoint =
           requestUrl === '/api/v1/user/' ||
           requestUrl.endsWith('/api/v1/user/');
 
-        if (isUserEndpoint || _anonymousMode) {
-          // Skip redirect — handled by fetchUser or component error boundaries
-        } else if (window?.insights?.chrome?.auth) {
+        const isRepositoryEndpoint =
+          requestUrl.includes('/api/v1/repository/') ||
+          requestUrl.includes('/api/v2/');
+
+        const shouldSkipRedirect =
+          (isUserEndpoint || _anonymousMode) && !isRepositoryEndpoint;
+
+        if (!shouldSkipRedirect && window?.insights?.chrome?.auth) {
           // Refresh token for plugin
           GlobalAuthState.bearerToken =
             await window.insights.chrome.auth.getToken();
-        } else {
+        } else if (!shouldSkipRedirect) {
           // Redirect to login page for standalone, but only if not already there
           // This prevents infinite redirect loops when API calls fail on auth pages
           const currentPath = window.location.pathname;
@@ -125,7 +132,11 @@ axiosIns.interceptors.response.use(
             currentPath === '/createaccount' ||
             currentPath.startsWith('/oauth');
           if (!isOnAuthPage) {
+            _isRedirecting = true;
             window.location.href = '/signin';
+            return new Promise(() => {
+              /* intentionally empty - prevents rejection during redirect */
+            });
           }
         }
       }

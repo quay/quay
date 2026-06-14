@@ -78,6 +78,7 @@ export async function fetchUser(): Promise<IUserResource> {
       setAnonymousMode(true);
       return ANONYMOUS_USER;
     }
+    console.error('Error fetching user:', error);
     throw error;
   }
 }

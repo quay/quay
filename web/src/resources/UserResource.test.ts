@@ -1,10 +1,5 @@
-import {
-  AxiosError,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
-  isAxiosError,
-} from 'axios';
-import axios, {setAnonymousMode} from 'src/libs/axios';
+import {AxiosError, AxiosResponse, InternalAxiosRequestConfig} from 'axios';
+import axios from 'src/libs/axios';
 import {
   fetchUser,
   fetchUsersAsSuperUser,

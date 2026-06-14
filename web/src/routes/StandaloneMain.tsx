@@ -51,7 +51,7 @@ const Organization = lazy(
 const RepositoriesList = lazy(
   () => import('./RepositoriesList/RepositoriesList'),
 );
-const RepositoryTagRouter = lazy(() => import('./RepositoryTagRouter'));
+import ProtectedRepositoryRoute from './ProtectedRepositoryRoute';
 const OverviewList = lazy(() => import('./OverviewList/OverviewList'));
 const SetupBuildTriggerRedirect = lazy(
   () => import('./SetupBuildtrigger/SetupBuildTriggerRedirect'),
@@ -182,7 +182,7 @@ const NavigationRoutes = [
   },
   {
     path: NavigationPath.repositoryDetail,
-    Component: <RepositoryTagRouter />,
+    Component: <ProtectedRepositoryRoute />,
   },
   // Static pages
   {
@@ -263,10 +263,14 @@ export function StandaloneMain() {
   // If user is anonymous and ANONYMOUS_ACCESS is not enabled, redirect to
   // signin (preserves existing behavior when anonymous access is disabled).
   // When ANONYMOUS_ACCESS is enabled, let anonymous users browse public repos
-  // (PROJQUAY-10610).
   if (user?.anonymous && quayConfig?.features?.ANONYMOUS_ACCESS !== true) {
     window.location.href = '/signin';
     return null;
+  }
+
+  const isRepositoryRoute = location.pathname.startsWith('/repository/');
+  if (user?.anonymous && isRepositoryRoute) {
+    return <ProtectedRepositoryRoute />;
   }
 
   // Surface config or user fetch errors via the ErrorBoundary
