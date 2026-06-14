@@ -349,7 +349,9 @@ test.describe(
           expect(body).toHaveProperty('contact_email');
 
           await expect(
-            authenticatedPage.getByText('Successfully updated settings').first(),
+            authenticatedPage
+              .getByText('Successfully updated settings')
+              .first(),
           ).toBeVisible();
 
           // Reload and verify persistence
@@ -376,7 +378,9 @@ test.describe(
           await emailInput.clear();
           await authenticatedPage.locator('#save-org-settings').click();
           await expect(
-            authenticatedPage.getByText('Successfully updated settings').first(),
+            authenticatedPage
+              .getByText('Successfully updated settings')
+              .first(),
           ).toBeVisible();
 
           await authenticatedPage.reload();
@@ -402,7 +406,9 @@ test.describe(
           await authenticatedPage.locator('#save-org-settings').click();
 
           await expect(
-            authenticatedPage.getByText('Successfully updated settings').first(),
+            authenticatedPage
+              .getByText('Successfully updated settings')
+              .first(),
           ).toBeVisible();
         });
 
@@ -424,143 +430,122 @@ test.describe(
     // Group 3: End-to-End Lifecycle Flows
     // =========================================================================
 
-    test.describe(
-      'Contact Email — E2E Lifecycle',
-      {tag: ['@critical']},
-      () => {
-        test('create org with contact email → verify in settings → update → verify persistence', async ({
-          authenticatedPage,
-          api,
-        }) => {
-          await authenticatedPage.goto('/organization');
+    test.describe('Contact Email — E2E Lifecycle', {tag: ['@critical']}, () => {
+      test('create org with contact email → verify in settings → update → verify persistence', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        await authenticatedPage.goto('/organization');
 
-          const orgName = uniqueName('lifecycle');
-          const initialEmail = `${orgName}@example.com`;
-          const updatedEmail = `updated-${orgName}@example.com`;
+        const orgName = uniqueName('lifecycle');
+        const initialEmail = `${orgName}@example.com`;
+        const updatedEmail = `updated-${orgName}@example.com`;
 
-          // Create org with contact email via UI
-          await authenticatedPage
-            .locator('#create-organization-button')
-            .click();
-          await authenticatedPage
-            .locator('#create-org-name-input')
-            .fill(orgName);
-          await authenticatedPage
-            .locator('#create-org-email-input')
-            .fill(initialEmail);
+        // Create org with contact email via UI
+        await authenticatedPage.locator('#create-organization-button').click();
+        await authenticatedPage.locator('#create-org-name-input').fill(orgName);
+        await authenticatedPage
+          .locator('#create-org-email-input')
+          .fill(initialEmail);
 
-          await Promise.all([
-            authenticatedPage.waitForResponse(
-              (resp) =>
-                resp.url().includes('/api/v1/organization/') &&
-                resp.request().method() === 'POST' &&
-                resp.status() === 201,
-            ),
-            authenticatedPage.locator('#create-org-confirm').click(),
-          ]);
+        await Promise.all([
+          authenticatedPage.waitForResponse(
+            (resp) =>
+              resp.url().includes('/api/v1/organization/') &&
+              resp.request().method() === 'POST' &&
+              resp.status() === 201,
+          ),
+          authenticatedPage.locator('#create-org-confirm').click(),
+        ]);
 
-          await expect(
-            authenticatedPage.locator('#create-org-cancel'),
-          ).not.toBeVisible({timeout: 10000});
+        await expect(
+          authenticatedPage.locator('#create-org-cancel'),
+        ).not.toBeVisible({timeout: 10000});
 
-          // Navigate to settings and verify email appears
-          await authenticatedPage.goto(
-            `/organization/${orgName}?tab=Settings`,
-          );
-          const emailInput = authenticatedPage.locator('#org-settings-email');
-          await expect(emailInput).toHaveValue(initialEmail);
+        // Navigate to settings and verify email appears
+        await authenticatedPage.goto(`/organization/${orgName}?tab=Settings`);
+        const emailInput = authenticatedPage.locator('#org-settings-email');
+        await expect(emailInput).toHaveValue(initialEmail);
 
-          // Update the email
-          await emailInput.clear();
-          await emailInput.fill(updatedEmail);
-          await authenticatedPage.locator('#save-org-settings').click();
-          await expect(
-            authenticatedPage.getByText('Successfully updated settings').first(),
-          ).toBeVisible();
+        // Update the email
+        await emailInput.clear();
+        await emailInput.fill(updatedEmail);
+        await authenticatedPage.locator('#save-org-settings').click();
+        await expect(
+          authenticatedPage.getByText('Successfully updated settings').first(),
+        ).toBeVisible();
 
-          // Reload and verify persistence
-          await authenticatedPage.reload();
-          await expect(emailInput).toHaveValue(updatedEmail);
+        // Reload and verify persistence
+        await authenticatedPage.reload();
+        await expect(emailInput).toHaveValue(updatedEmail);
 
-          // Clean up
-          await api.raw.deleteOrganization(orgName);
-        });
+        // Clean up
+        await api.raw.deleteOrganization(orgName);
+      });
 
-        test('create org without email → add email in settings → verify', async ({
-          authenticatedPage,
-          api,
-        }) => {
-          await authenticatedPage.goto('/organization');
+      test('create org without email → add email in settings → verify', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        await authenticatedPage.goto('/organization');
 
-          const orgName = uniqueName('noemailset');
-          const addedEmail = `added-${orgName}@example.com`;
+        const orgName = uniqueName('noemailset');
+        const addedEmail = `added-${orgName}@example.com`;
 
-          // Create org without email
-          await authenticatedPage
-            .locator('#create-organization-button')
-            .click();
-          await authenticatedPage
-            .locator('#create-org-name-input')
-            .fill(orgName);
+        // Create org without email
+        await authenticatedPage.locator('#create-organization-button').click();
+        await authenticatedPage.locator('#create-org-name-input').fill(orgName);
 
-          await Promise.all([
-            authenticatedPage.waitForResponse(
-              (resp) =>
-                resp.url().includes('/api/v1/organization/') &&
-                resp.request().method() === 'POST' &&
-                resp.status() === 201,
-            ),
-            authenticatedPage.locator('#create-org-confirm').click(),
-          ]);
+        await Promise.all([
+          authenticatedPage.waitForResponse(
+            (resp) =>
+              resp.url().includes('/api/v1/organization/') &&
+              resp.request().method() === 'POST' &&
+              resp.status() === 201,
+          ),
+          authenticatedPage.locator('#create-org-confirm').click(),
+        ]);
 
-          await expect(
-            authenticatedPage.locator('#create-org-cancel'),
-          ).not.toBeVisible({timeout: 10000});
+        await expect(
+          authenticatedPage.locator('#create-org-cancel'),
+        ).not.toBeVisible({timeout: 10000});
 
-          // Go to settings — email should be empty
-          await authenticatedPage.goto(
-            `/organization/${orgName}?tab=Settings`,
-          );
-          const emailInput = authenticatedPage.locator('#org-settings-email');
-          await expect(emailInput).toHaveValue('');
+        // Go to settings — email should be empty
+        await authenticatedPage.goto(`/organization/${orgName}?tab=Settings`);
+        const emailInput = authenticatedPage.locator('#org-settings-email');
+        await expect(emailInput).toHaveValue('');
 
-          // Add email and save
-          await emailInput.fill(addedEmail);
-          await authenticatedPage.locator('#save-org-settings').click();
-          await expect(
-            authenticatedPage.getByText('Successfully updated settings').first(),
-          ).toBeVisible();
+        // Add email and save
+        await emailInput.fill(addedEmail);
+        await authenticatedPage.locator('#save-org-settings').click();
+        await expect(
+          authenticatedPage.getByText('Successfully updated settings').first(),
+        ).toBeVisible();
 
-          // Reload and verify persistence
-          await authenticatedPage.reload();
-          await expect(emailInput).toHaveValue(addedEmail);
+        // Reload and verify persistence
+        await authenticatedPage.reload();
+        await expect(emailInput).toHaveValue(addedEmail);
 
-          // Clean up
-          await api.raw.deleteOrganization(orgName);
-        });
+        // Clean up
+        await api.raw.deleteOrganization(orgName);
+      });
 
-        test('internal UUID email is never exposed in the UI', async ({
-          authenticatedPage,
-          api,
-        }) => {
-          const org = await api.organization(
-            'uuidcheck',
-            'visible@example.com',
-          );
+      test('internal UUID email is never exposed in the UI', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('uuidcheck', 'visible@example.com');
 
-          // Check settings page
-          await authenticatedPage.goto(
-            `/organization/${org.name}?tab=Settings`,
-          );
-          const emailInput = authenticatedPage.locator('#org-settings-email');
-          await expect(emailInput).toBeVisible();
+        // Check settings page
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+        const emailInput = authenticatedPage.locator('#org-settings-email');
+        await expect(emailInput).toBeVisible();
 
-          const value = await emailInput.inputValue();
-          expect(value).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-/);
-          expect(value).toBe('visible@example.com');
-        });
-      },
-    );
+        const value = await emailInput.inputValue();
+        expect(value).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-/);
+        expect(value).toBe('visible@example.com');
+      });
+    });
 
     // =========================================================================
     // Group 4: API Contract Verification
@@ -590,9 +575,7 @@ test.describe(
 
         // POST with old-style `email` field (not contact_email)
         const token = await (async () => {
-          const resp = await authenticatedRequest.get(
-            `${API_URL}/csrf_token`,
-          );
+          const resp = await authenticatedRequest.get(`${API_URL}/csrf_token`);
           const data = await resp.json();
           return data.csrf_token;
         })();
@@ -631,12 +614,8 @@ test.describe(
 
         const orgName = uniqueName('nomailing');
 
-        await authenticatedPage
-          .locator('#create-organization-button')
-          .click();
-        await authenticatedPage
-          .locator('#create-org-name-input')
-          .fill(orgName);
+        await authenticatedPage.locator('#create-organization-button').click();
+        await authenticatedPage.locator('#create-org-name-input').fill(orgName);
 
         // Leave email empty — should still be able to create
         await expect(

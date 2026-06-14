@@ -69,7 +69,7 @@ test.describe(
       const orgPromises = Array.from({length: 25}, () =>
         api.organization('paginationtest'),
       );
-      const orgs = await Promise.all(orgPromises);
+      await Promise.all(orgPromises);
 
       await authenticatedPage.goto('/organization');
 
@@ -145,7 +145,7 @@ test.describe(
     test(
       'organization CRUD lifecycle',
       {tag: ['@PROJQUAY-9948', '@PROJQUAY-9843']},
-      async ({authenticatedPage, api}) => {
+      async ({authenticatedPage}) => {
         await authenticatedPage.goto('/organization');
 
         // Create a shared unique ID for both orgs so we can filter them together
@@ -732,9 +732,7 @@ test.describe(
 
         // Fill only name — button should be enabled (email is optional)
         const orgName = uniqueName('optmail');
-        await authenticatedPage
-          .locator('#create-org-name-input')
-          .fill(orgName);
+        await authenticatedPage.locator('#create-org-name-input').fill(orgName);
         await expect(
           authenticatedPage.locator('#create-org-confirm'),
         ).toBeEnabled();
