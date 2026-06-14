@@ -244,6 +244,86 @@ test.describe(
       ).toBeVisible();
     });
 
+    test('keeps Update Mirror button disabled when toggling Enabled checkbox', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      // Setup: create org, repo, robot, set MIRROR state, create mirror config via API
+      const org = await api.organization(uniqueName('toggle'));
+      const repo = await api.repository(org.name, uniqueName('repo'));
+      const robot = await api.robot(org.name, uniqueName('bot'));
+      await api.setMirrorState(org.name, repo.name);
+
+      // Create mirror config via API
+      const syncStartDate = new Date();
+      syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+      await api.raw.createMirrorConfig(org.name, repo.name, {
+        external_reference: 'quay.io/library/alpine',
+        sync_interval: 3600,
+        sync_start_date: syncStartDate.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        root_rule: {
+          rule_kind: 'tag_glob_csv',
+          rule_value: ['latest'],
+        },
+        robot_username: robot.fullName,
+        skopeo_timeout_interval: 300,
+        is_enabled: true,
+      });
+
+      await authenticatedPage.goto(
+        `/repository/${org.name}/${repo.name}?tab=mirroring`,
+      );
+
+      // Wait for form to load with existing data
+      await expect(authenticatedPage.getByTestId('mirror-form')).toBeVisible();
+
+      // Verify Update Mirror button is initially disabled (no changes)
+      await expect(
+        authenticatedPage.getByTestId('submit-button'),
+      ).toBeDisabled();
+
+      // Verify enabled checkbox is checked
+      await expect(
+        authenticatedPage.getByTestId('mirror-enabled-checkbox'),
+      ).toBeChecked();
+
+      // Toggle the Enabled checkbox OFF
+      await authenticatedPage.getByTestId('mirror-enabled-checkbox').click();
+
+      // Wait for the toggle API call to complete and success alert
+      await expect(
+        authenticatedPage.getByText('Mirror disabled successfully'),
+      ).toBeVisible();
+
+      // Verify button remains disabled after toggle (no pending changes)
+      await expect(
+        authenticatedPage.getByTestId('submit-button'),
+      ).toBeDisabled();
+
+      // Toggle back ON
+      await authenticatedPage.getByTestId('mirror-enabled-checkbox').click();
+
+      // Wait for success alert
+      await expect(
+        authenticatedPage.getByText('Mirror enabled successfully'),
+      ).toBeVisible();
+
+      // Verify button still disabled
+      await expect(
+        authenticatedPage.getByTestId('submit-button'),
+      ).toBeDisabled();
+
+      // Now make a real change to another field
+      await authenticatedPage
+        .getByTestId('registry-location-input')
+        .fill('quay.io/library/nginx');
+
+      // Button should now be enabled (pending changes exist)
+      await expect(
+        authenticatedPage.getByTestId('submit-button'),
+      ).toBeEnabled();
+    });
+
     test('displays error on mirror configuration failure', async ({
       authenticatedPage,
       api,
