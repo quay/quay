@@ -21,7 +21,6 @@ import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useUI} from 'src/contexts/UIContext';
 import {AlertVariant} from 'src/contexts/UIContext';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 interface Validation {
   message: string;
@@ -40,15 +39,13 @@ export const CreateOrganizationModal = (
   props: CreateOrganizationModalProps,
 ): JSX.Element => {
   const [organizationName, setOrganizationName] = useState('');
-  const [organizationEmail, setOrganizationEmail] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [invalidEmailFlag, setInvalidEmailFlag] = useState(false);
   const [validation, setValidation] = useState<Validation>(defaultMessage);
   const [err, setErr] = useState<string>();
 
   const {createOrganization} = useOrganizations();
   const {addAlert} = useUI();
-  const quayConfig = useQuayConfig();
-  const mailingEnabled = quayConfig?.features?.MAILING === true;
 
   const handleNameInputChange = (value: string) => {
     const regex = /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/;
@@ -80,14 +77,14 @@ export const CreateOrganizationModal = (
   };
 
   const handleEmailInputChange = (value: string) => {
-    setOrganizationEmail(value);
+    setContactEmail(value);
   };
 
   const createOrganizationHandler = async () => {
     try {
       await createOrganization(
         organizationName,
-        mailingEnabled ? organizationEmail : undefined,
+        contactEmail || undefined,
       );
       addAlert({
         variant: AlertVariant.Success,
@@ -104,12 +101,12 @@ export const CreateOrganizationModal = (
   };
 
   const onInputBlur = () => {
-    if (organizationEmail.length !== 0) {
-      isValidEmail(organizationEmail)
+    if (contactEmail.length !== 0) {
+      isValidEmail(contactEmail)
         ? setInvalidEmailFlag(false)
         : setInvalidEmailFlag(true);
     } else {
-      return;
+      setInvalidEmailFlag(false);
     }
   };
 
@@ -151,43 +148,37 @@ export const CreateOrganizationModal = (
               </HelperText>
             </FormHelperText>
           </FormGroup>
-          {mailingEnabled && (
-            <FormGroup
-              label="Organization Email"
-              isRequired
-              fieldId="create-org-email"
-            >
-              <TextInput
-                isRequired
-                type="email"
-                id="create-org-email-input"
-                name="create-org-email-input"
-                value={organizationEmail}
-                onChange={(_event, value) => handleEmailInputChange(value)}
-                validated={invalidEmailFlag ? 'error' : 'default'}
-                onBlur={onInputBlur}
-              />
+          <FormGroup
+            label="Contact Email (Optional)"
+            fieldId="create-org-email"
+          >
+            <TextInput
+              type="email"
+              id="create-org-email-input"
+              name="create-org-email-input"
+              value={contactEmail}
+              onChange={(_event, value) => handleEmailInputChange(value)}
+              validated={invalidEmailFlag ? 'error' : 'default'}
+              onBlur={onInputBlur}
+            />
 
-              <FormHelperText>
-                <HelperText>
-                  {invalidEmailFlag ? (
-                    <HelperTextItem
-                      variant="error"
-                      icon={<ExclamationCircleIcon />}
-                    >
-                      Enter a valid email: email@provider.com
-                    </HelperTextItem>
-                  ) : (
-                    <HelperTextItem>
-                      {
-                        "This address must be different from your account's email"
-                      }
-                    </HelperTextItem>
-                  )}
-                </HelperText>
-              </FormHelperText>
-            </FormGroup>
-          )}
+            <FormHelperText>
+              <HelperText>
+                {invalidEmailFlag ? (
+                  <HelperTextItem
+                    variant="error"
+                    icon={<ExclamationCircleIcon />}
+                  >
+                    Enter a valid email: email@provider.com
+                  </HelperTextItem>
+                ) : (
+                  <HelperTextItem>
+                    Optional. Used for organization recovery and notifications.
+                  </HelperTextItem>
+                )}
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
           <br />
         </Form>
       </ModalBody>
@@ -201,7 +192,6 @@ export const CreateOrganizationModal = (
           isDisabled={
             invalidEmailFlag ||
             !organizationName ||
-            (mailingEnabled && !organizationEmail) ||
             !validation.isValid
           }
         >
