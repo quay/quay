@@ -130,9 +130,7 @@ class TestContactEmail:
         body = {"name": "mailingnoemailorg"}
         with toggle_feature("MAILING", True):
             with client_with_identity("devtable", app) as cl:
-                conduct_api_call(
-                    cl, OrganizationList, "POST", None, body=body, expected_code=201
-                )
+                conduct_api_call(cl, OrganizationList, "POST", None, body=body, expected_code=201)
 
         org = model.organization.get_organization("mailingnoemailorg")
         assert model.organization.get_contact_email(org) is None

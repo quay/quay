@@ -140,10 +140,18 @@ class TestRecoveryPost:
     @patch("endpoints.api.user.send_recovery_email")
     @patch("endpoints.api.user.send_combined_recovery_email")
     @patch("endpoints.api.user.model.user.create_reset_password_email_code", return_value="code123")
-    @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email", return_value=[])
+    @patch(
+        "endpoints.api.user.model.organization.find_organizations_by_contact_email", return_value=[]
+    )
     @patch("endpoints.api.user.model.user.find_user_by_email")
     def test_recovery_personal_user_only(
-        self, mock_find_user, mock_find_orgs, mock_create_code, mock_combined_email, mock_recovery_email, app
+        self,
+        mock_find_user,
+        mock_find_orgs,
+        mock_create_code,
+        mock_combined_email,
+        mock_recovery_email,
+        app,
     ):
         user = MagicMock()
         user.organization = False
@@ -152,7 +160,9 @@ class TestRecoveryPost:
         with patch("features.MAILING", FeatureNameValue("MAILING", True)):
             with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
                 with client_with_identity(None, app) as cl:
-                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "user@example.com"})
+                    result = conduct_api_call(
+                        cl, Recovery, "POST", None, body={"email": "user@example.com"}
+                    )
 
         assert result.json["status"] == "sent"
         mock_recovery_email.assert_called_once_with("user@example.com", "code123")
@@ -164,8 +174,13 @@ class TestRecoveryPost:
     @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email")
     @patch("endpoints.api.user.model.user.find_user_by_email", return_value=None)
     def test_recovery_org_only(
-        self, mock_find_user, mock_find_orgs, mock_get_admins,
-        mock_combined_email, mock_recovery_email, app
+        self,
+        mock_find_user,
+        mock_find_orgs,
+        mock_get_admins,
+        mock_combined_email,
+        mock_recovery_email,
+        app,
     ):
         org = MagicMock()
         org.username = "myorg"
@@ -178,7 +193,9 @@ class TestRecoveryPost:
         with patch("features.MAILING", FeatureNameValue("MAILING", True)):
             with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
                 with client_with_identity(None, app) as cl:
-                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "org@example.com"})
+                    result = conduct_api_call(
+                        cl, Recovery, "POST", None, body={"email": "org@example.com"}
+                    )
 
         assert result.json["status"] == "sent"
         mock_combined_email.assert_called_once_with(
@@ -195,8 +212,14 @@ class TestRecoveryPost:
     @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email")
     @patch("endpoints.api.user.model.user.find_user_by_email")
     def test_recovery_both_user_and_org(
-        self, mock_find_user, mock_find_orgs, mock_get_admins,
-        mock_create_code, mock_combined_email, mock_recovery_email, app
+        self,
+        mock_find_user,
+        mock_find_orgs,
+        mock_get_admins,
+        mock_create_code,
+        mock_combined_email,
+        mock_recovery_email,
+        app,
     ):
         user = MagicMock()
         user.organization = False
@@ -212,7 +235,9 @@ class TestRecoveryPost:
         with patch("features.MAILING", FeatureNameValue("MAILING", True)):
             with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
                 with client_with_identity(None, app) as cl:
-                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "shared@example.com"})
+                    result = conduct_api_call(
+                        cl, Recovery, "POST", None, body={"email": "shared@example.com"}
+                    )
 
         assert result.json["status"] == "sent"
         mock_combined_email.assert_called_once_with(
@@ -224,7 +249,9 @@ class TestRecoveryPost:
 
     @patch("endpoints.api.user.send_recovery_email")
     @patch("endpoints.api.user.send_combined_recovery_email")
-    @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email", return_value=[])
+    @patch(
+        "endpoints.api.user.model.organization.find_organizations_by_contact_email", return_value=[]
+    )
     @patch("endpoints.api.user.model.user.find_user_by_email", return_value=None)
     def test_recovery_no_match(
         self, mock_find_user, mock_find_orgs, mock_combined_email, mock_recovery_email, app
@@ -232,7 +259,9 @@ class TestRecoveryPost:
         with patch("features.MAILING", FeatureNameValue("MAILING", True)):
             with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
                 with client_with_identity(None, app) as cl:
-                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "nobody@example.com"})
+                    result = conduct_api_call(
+                        cl, Recovery, "POST", None, body={"email": "nobody@example.com"}
+                    )
 
         assert result.json["status"] == "sent"
         mock_combined_email.assert_not_called()
@@ -240,7 +269,9 @@ class TestRecoveryPost:
 
     @patch("endpoints.api.user.send_recovery_email")
     @patch("endpoints.api.user.send_combined_recovery_email")
-    @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email", return_value=[])
+    @patch(
+        "endpoints.api.user.model.organization.find_organizations_by_contact_email", return_value=[]
+    )
     @patch("endpoints.api.user.model.user.find_user_by_email")
     def test_recovery_skips_org_user_from_find_user(
         self, mock_find_user, mock_find_orgs, mock_combined_email, mock_recovery_email, app
@@ -253,7 +284,9 @@ class TestRecoveryPost:
         with patch("features.MAILING", FeatureNameValue("MAILING", True)):
             with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
                 with client_with_identity(None, app) as cl:
-                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "legacy@example.com"})
+                    result = conduct_api_call(
+                        cl, Recovery, "POST", None, body={"email": "legacy@example.com"}
+                    )
 
         assert result.json["status"] == "sent"
         mock_recovery_email.assert_not_called()
@@ -265,8 +298,13 @@ class TestRecoveryPost:
     @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email")
     @patch("endpoints.api.user.model.user.find_user_by_email", return_value=None)
     def test_recovery_multiple_orgs(
-        self, mock_find_user, mock_find_orgs, mock_get_admins,
-        mock_combined_email, mock_recovery_email, app
+        self,
+        mock_find_user,
+        mock_find_orgs,
+        mock_get_admins,
+        mock_combined_email,
+        mock_recovery_email,
+        app,
     ):
         org1 = MagicMock()
         org1.username = "org1"
@@ -282,7 +320,9 @@ class TestRecoveryPost:
         with patch("features.MAILING", FeatureNameValue("MAILING", True)):
             with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
                 with client_with_identity(None, app) as cl:
-                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "shared@example.com"})
+                    result = conduct_api_call(
+                        cl, Recovery, "POST", None, body={"email": "shared@example.com"}
+                    )
 
         assert result.json["status"] == "sent"
         mock_combined_email.assert_called_once_with(

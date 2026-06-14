@@ -712,7 +712,7 @@ class ClientKey(ApiResource):
 
         username = get_authenticated_user().username
         password = request.get_json()["password"]
-        (result, error_message) = authentication.confirm_existing_user(username, password)
+        result, error_message = authentication.confirm_existing_user(username, password)
         if not result:
             raise request_error(message=error_message)
 
@@ -725,7 +725,7 @@ def conduct_signin(username_or_email, password, invite_code=None):
     needs_email_verification = False
     invalid_credentials = False
 
-    (found_user, error_message) = authentication.verify_and_link_user(username_or_email, password)
+    found_user, error_message = authentication.verify_and_link_user(username_or_email, password)
     if found_user:
         # If there is an attached invitation code, handle it here. This will mark the
         # user as verified if the code is valid.
@@ -820,7 +820,7 @@ class ConvertToOrganization(ApiResource):
         # Ensure that the sign in credentials work.
         admin_username = convert_data["adminUser"]
         admin_password = convert_data["adminPassword"]
-        (admin_user, _) = authentication.verify_and_link_user(admin_username, admin_password)
+        admin_user, _ = authentication.verify_and_link_user(admin_username, admin_password)
         if not admin_user:
             raise request_error(
                 reason="invaliduser", message="The admin user credentials are not valid"
@@ -930,7 +930,7 @@ class VerifyUser(ApiResource):
         password = signin_data["password"]
 
         username = get_authenticated_user().username
-        (result, error_message) = authentication.confirm_existing_user(username, password)
+        result, error_message = authentication.confirm_existing_user(username, password)
         if not result:
             return {
                 "message": error_message,
@@ -1128,10 +1128,12 @@ class Recovery(ApiResource):
             orgs_with_admins = []
             for org in orgs:
                 admin_users = model.organization.get_admin_users(org)
-                orgs_with_admins.append({
-                    "org_name": org.username,
-                    "admin_usernames": [u.username for u in admin_users],
-                })
+                orgs_with_admins.append(
+                    {
+                        "org_name": org.username,
+                        "admin_usernames": [u.username for u in admin_users],
+                    }
+                )
             send_combined_recovery_email(email, orgs_with_admins, reset_token=reset_token)
         elif is_personal_user:
             send_recovery_email(email, reset_token)
