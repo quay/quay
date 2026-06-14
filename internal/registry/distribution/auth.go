@@ -1,5 +1,4 @@
-// Package registry provides authentication and TLS for the quay OCI registry.
-package registry
+package distribution
 
 import (
 	"database/sql"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/distribution/distribution/v3/registry/auth"
 	"github.com/quay/quay/internal/dal/daldb"
+	"github.com/quay/quay/internal/oci"
 )
 
 func init() {
@@ -25,6 +25,7 @@ type accessController struct {
 }
 
 var _ auth.AccessController = &accessController{}
+var _ oci.Authenticator = &accessController{}
 
 func newAccessController(options map[string]interface{}) (auth.AccessController, error) {
 	realm, ok := options["realm"].(string)
@@ -48,34 +49,39 @@ func newAccessController(options map[string]interface{}) (auth.AccessController,
 // of whether the username exists.
 var dummyHash = []byte("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy")
 
-func (ac *accessController) Authorized(req *http.Request, access ...auth.Access) (*auth.Grant, error) {
-	username, password, ok := req.BasicAuth()
+func (ac *accessController) authenticateUser(r *http.Request) (string, bool) {
+	username, password, ok := r.BasicAuth()
 	if !ok {
-		return nil, &challenge{
-			realm: ac.realm,
-			err:   auth.ErrInvalidCredential,
-		}
+		return "", false
 	}
 
-	var (
-		hashToCompare []byte
-		authenticated bool
-	)
+	var hashToCompare []byte
 
-	user, err := ac.queries.GetUserByUsername(req.Context(), username)
+	user, err := ac.queries.GetUserByUsername(r.Context(), username)
 	if err != nil || !user.Enabled || !user.PasswordHash.Valid {
 		hashToCompare = dummyHash
 	} else {
 		hashToCompare = []byte(user.PasswordHash.String)
 	}
 
-	if bcrypt.CompareHashAndPassword(hashToCompare, []byte(password)) == nil &&
-		err == nil && user.Enabled && user.PasswordHash.Valid {
-		authenticated = true
+	if bcrypt.CompareHashAndPassword(hashToCompare, []byte(password)) != nil ||
+		err != nil || !user.Enabled || !user.PasswordHash.Valid {
+		slog.Debug("authentication failed", "username", username)
+		return username, false
 	}
 
-	if !authenticated {
-		slog.Debug("authentication failed", "username", username)
+	return username, true
+}
+
+func (ac *accessController) Authorized(req *http.Request, access ...auth.Access) (*auth.Grant, error) {
+	username, ok := ac.authenticateUser(req)
+	if !ok && username == "" {
+		return nil, &challenge{
+			realm: ac.realm,
+			err:   auth.ErrInvalidCredential,
+		}
+	}
+	if !ok {
 		return nil, &challenge{
 			realm: ac.realm,
 			err:   auth.ErrAuthenticationFailure,
@@ -83,6 +89,18 @@ func (ac *accessController) Authorized(req *http.Request, access ...auth.Access)
 	}
 
 	return &auth.Grant{User: auth.UserInfo{Name: username}}, nil
+}
+
+func (ac *accessController) Authenticate(r *http.Request, _ ...oci.Access) (*oci.Grant, error) {
+	username, ok := ac.authenticateUser(r)
+	if !ok {
+		return nil, &challenge{
+			realm: ac.realm,
+			err:   oci.ErrUnauthorized,
+		}
+	}
+
+	return &oci.Grant{User: oci.User{Name: username}}, nil
 }
 
 // challenge implements auth.Challenge for Basic auth 401 responses.

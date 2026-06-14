@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 
 	"github.com/distribution/distribution/v3"
@@ -18,6 +19,7 @@ import (
 	repositorymiddleware "github.com/distribution/distribution/v3/registry/middleware/repository"
 
 	"github.com/quay/quay/internal/dal/metastore"
+	"github.com/quay/quay/internal/oci"
 )
 
 const middlewareName = "quaydb"
@@ -27,13 +29,13 @@ const middlewareName = "quaydb"
 // handlers.NewApp so that the middleware config reference resolves.
 //
 // The store is captured by closure—no options map is needed at runtime.
-func Register(store metastore.Store) error {
+func Register(store metastore.Store, libraryNamespace string) error {
 	return repositorymiddleware.Register(middlewareName, func(
 		ctx context.Context,
 		repo distribution.Repository,
 		_ map[string]interface{},
 	) (distribution.Repository, error) {
-		return newRepository(repo, store), nil
+		return newRepository(repo, store, libraryNamespace), nil
 	})
 }
 
@@ -47,15 +49,16 @@ func Name() string { return middlewareName }
 // per-request, so this is safe).
 type repository struct {
 	distribution.Repository
-	store metastore.Store
+	store            metastore.Store
+	libraryNamespace string
 
 	repoOnce sync.Once
 	repoID   int64
 	repoErr  error
 }
 
-func newRepository(inner distribution.Repository, store metastore.Store) *repository {
-	return &repository{Repository: inner, store: store}
+func newRepository(inner distribution.Repository, store metastore.Store, libraryNamespace string) *repository {
+	return &repository{Repository: inner, store: store, libraryNamespace: libraryNamespace}
 }
 
 func (r *repository) Named() reference.Named { return r.Repository.Named() }
@@ -85,12 +88,22 @@ func (r *repository) Tags(ctx context.Context) distribution.TagService {
 	}
 }
 
+// repoName converts this repository's distribution reference to an oci.RepositoryName.
+func (r *repository) repoName() oci.RepositoryName {
+	full := reference.Path(r.Named())
+	if i := strings.IndexByte(full, '/'); i >= 0 {
+		return oci.RepositoryName{Namespace: full[:i], Name: full[i+1:]}
+	}
+	return oci.RepositoryName{Namespace: r.libraryNamespace, Name: full}
+}
+
 // ensureRepo resolves (or creates) the repository in the metastore, returning
 // its database ID. The result is cached for the lifetime of this repository
 // wrapper (one per request) to avoid redundant transactions on multi-layer pushes.
 func (r *repository) ensureRepo(ctx context.Context) (int64, error) {
 	r.repoOnce.Do(func() {
-		r.repoID, r.repoErr = r.store.EnsureRepository(ctx, r.Named())
+		name := r.repoName()
+		r.repoID, r.repoErr = r.store.EnsureRepository(ctx, name)
 		if r.repoErr != nil {
 			r.repoErr = fmt.Errorf("middleware: ensure repository %s: %w", r.Named().Name(), r.repoErr)
 		}

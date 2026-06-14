@@ -2,9 +2,13 @@ package cmd
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"flag"
 	"log/slog"
+	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -12,7 +16,7 @@ import (
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
-	registrymw "github.com/quay/quay/internal/registry/middleware"
+	"github.com/quay/quay/internal/registry/distribution"
 	"github.com/quay/quay/internal/server"
 )
 
@@ -53,25 +57,38 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		slog.Error("metastore setup error", "err", err)
 		return 1
 	}
-	if err := registrymw.Register(store); err != nil {
-		slog.Error("middleware registration error", "err", err)
-		return 1
-	}
 
-	authDir := filepath.Join(filepath.Dir(resolved.DBPath), "auth")
+	authDir := filepath.Join(resolved.DataDir, "auth")
 	if _, err := bootstrap.AdminUser(ctx, db, adminUsername, authDir); err != nil {
 		slog.Error("bootstrap admin user error", "err", err)
 		return 1
 	}
 
-	srv, err := server.New(ctx, &server.Config{
+	reg, err := distribution.NewRegistry(ctx, &distribution.Config{
+		StoragePath:      resolved.StoragePath,
+		Hostname:         resolved.Config.ServerHostname,
+		ListenAddr:       addr,
+		DB:               db,
+		Store:            store,
+		LibraryNamespace: resolved.Config.LibraryNamespace,
+	})
+	if err != nil {
+		slog.Error("registry setup error", "err", err)
+		return 1
+	}
+	defer func() { _ = reg.Close() }()
+
+	mux := http.NewServeMux()
+	mux.Handle("/healthz", healthHandler(db))
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/", reg.Handler())
+
+	srv, err := server.New(ctx, mux, &server.Config{
 		ListenAddr:      addr,
-		StoragePath:     resolved.StoragePath,
 		Hostname:        resolved.Config.ServerHostname,
 		PreferredScheme: resolved.Config.PreferredURLScheme,
-		DBPath:          resolved.DBPath,
-		DB:              db,
-	}, server.WithRoute("/metrics", promhttp.Handler()))
+		CertDir:         resolved.DataDir,
+	})
 	if err != nil {
 		slog.Error("server build error", "err", err)
 		return 1
@@ -85,4 +102,26 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 	)
 
 	return srv.ListenAndServe(ctx)
+}
+
+func healthHandler(db *sql.DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		status := "ok"
+		code := http.StatusOK
+		var result int
+		if err := db.QueryRowContext(ctx, "SELECT 1").Scan(&result); err != nil {
+			status = "unhealthy"
+			code = http.StatusServiceUnavailable
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(code)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": status})
+	})
 }

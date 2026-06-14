@@ -11,6 +11,7 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/quay/quay/internal/dal/metastore"
+	"github.com/quay/quay/internal/oci"
 )
 
 // --- mock store ---
@@ -40,7 +41,7 @@ type mockStore struct {
 	deleteTagName string
 }
 
-func (m *mockStore) EnsureRepository(_ context.Context, _ reference.Named) (int64, error) {
+func (m *mockStore) EnsureRepository(_ context.Context, _ oci.RepositoryName) (int64, error) {
 	return m.ensureRepoID, m.ensureRepoErr
 }
 
@@ -190,7 +191,7 @@ func TestManifestPut_RecordsMetadata(t *testing.T) {
 		ms:   innerMS,
 	}
 
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	ms, err := repo.Manifests(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -230,7 +231,7 @@ func TestManifestPut_WithTag(t *testing.T) {
 		name: namedRef(t),
 		ms:   &mockManifestService{putDigest: dgst},
 	}
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	ms, err := repo.Manifests(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -258,7 +259,7 @@ func TestManifestPut_IndexClassifiesChildDigests(t *testing.T) {
 		name: namedRef(t),
 		ms:   &mockManifestService{putDigest: dgst},
 	}
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	ms, err := repo.Manifests(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -295,7 +296,7 @@ func TestManifestPut_StorageFailure_PassesThrough(t *testing.T) {
 		name: namedRef(t),
 		ms:   &mockManifestService{putErr: storageErr},
 	}
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	ms, _ := repo.Manifests(context.Background())
 
 	_, err := ms.Put(context.Background(), &mockManifest{
@@ -315,7 +316,7 @@ func TestManifestPut_MetadataFailure_BlocksOperation(t *testing.T) {
 		name: namedRef(t),
 		ms:   &mockManifestService{putDigest: digest.FromString("m")},
 	}
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	ms, _ := repo.Manifests(context.Background())
 
 	_, err := ms.Put(context.Background(), &mockManifest{
@@ -339,7 +340,7 @@ func TestManifestDelete_RecordsMetadata(t *testing.T) {
 		name: namedRef(t),
 		ms:   &mockManifestService{},
 	}
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	ms, _ := repo.Manifests(context.Background())
 
 	if err := ms.Delete(context.Background(), dgst); err != nil {
@@ -361,7 +362,7 @@ func TestBlobPut_RecordsMetadata(t *testing.T) {
 		name: namedRef(t),
 		bs:   &mockBlobStore{putDesc: desc},
 	}
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	bs := repo.Blobs(context.Background())
 
 	got, err := bs.Put(context.Background(), "application/octet-stream", []byte("data"))
@@ -385,7 +386,7 @@ func TestBlobCommit_RecordsMetadata(t *testing.T) {
 		name: namedRef(t),
 		bs:   &mockBlobStore{createWr: innerBW},
 	}
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	bs := repo.Blobs(context.Background())
 
 	wr, err := bs.Create(context.Background())
@@ -418,7 +419,7 @@ func TestBlobCreate_MountRecordsMetadata(t *testing.T) {
 			createErr: distribution.ErrBlobMounted{From: fromRef, Descriptor: desc},
 		},
 	}
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	bs := repo.Blobs(context.Background())
 
 	_, err := bs.Create(context.Background())
@@ -440,7 +441,7 @@ func TestTagService_Tag(t *testing.T) {
 		name: namedRef(t),
 		ts:   &mockTagService{},
 	}
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	ts := repo.Tags(context.Background())
 
 	if err := ts.Tag(context.Background(), "v2", desc); err != nil {
@@ -464,7 +465,7 @@ func TestTagService_Untag(t *testing.T) {
 		name: namedRef(t),
 		ts:   &mockTagService{},
 	}
-	repo := newRepository(innerRepo, store)
+	repo := newRepository(innerRepo, store, "library")
 	ts := repo.Tags(context.Background())
 
 	if err := ts.Untag(context.Background(), "old"); err != nil {

@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
 
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
+	"github.com/quay/quay/internal/oci"
 )
 
 func setupStore(t *testing.T) metastore.Store {
@@ -27,20 +27,11 @@ func setupStore(t *testing.T) metastore.Store {
 	return store
 }
 
-func namedRef(t *testing.T, name string) reference.Named {
-	t.Helper()
-	ref, err := reference.WithName(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return ref
-}
-
 func TestEnsureRepository(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
 
-	id1, err := store.EnsureRepository(ctx, namedRef(t, "library/nginx"))
+	id1, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +40,7 @@ func TestEnsureRepository(t *testing.T) {
 	}
 
 	// Idempotent: same name returns same ID.
-	id2, err := store.EnsureRepository(ctx, namedRef(t, "library/nginx"))
+	id2, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +49,7 @@ func TestEnsureRepository(t *testing.T) {
 	}
 
 	// Different repo returns different ID.
-	id3, err := store.EnsureRepository(ctx, namedRef(t, "library/alpine"))
+	id3, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "alpine"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,13 +62,13 @@ func TestEnsureRepository_MultipleNamespaces(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
 
-	id1, err := store.EnsureRepository(ctx, namedRef(t, "localhost/namespace1/repo"))
+	id1, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "namespace1", Name: "repo"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Second namespace must not fail (catches UNIQUE email constraint on empty string).
-	id2, err := store.EnsureRepository(ctx, namedRef(t, "localhost/namespace2/repo"))
+	id2, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "namespace2", Name: "repo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +82,7 @@ func TestEnsureRepository_DefaultNamespace(t *testing.T) {
 	ctx := t.Context()
 
 	// Single-component name defaults to "library" namespace.
-	id, err := store.EnsureRepository(ctx, namedRef(t, "nginx"))
+	id, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +118,7 @@ func TestPutManifest_Simple(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
 
-	repoID, err := store.EnsureRepository(ctx, namedRef(t, "library/nginx"))
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +163,7 @@ func TestPutManifest_WithTag(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
 
-	repoID, err := store.EnsureRepository(ctx, namedRef(t, "library/nginx"))
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +187,7 @@ func TestPutManifest_TagReplace(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
 
-	repoID, err := store.EnsureRepository(ctx, namedRef(t, "library/nginx"))
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +224,7 @@ func TestPutManifest_IndexWithChildren(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
 
-	repoID, err := store.EnsureRepository(ctx, namedRef(t, "library/nginx"))
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +260,7 @@ func TestPutManifest_UnknownMediaType(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
 
-	repoID, err := store.EnsureRepository(ctx, namedRef(t, "library/nginx"))
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +280,7 @@ func TestDeleteManifest(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
 
-	repoID, err := store.EnsureRepository(ctx, namedRef(t, "library/nginx"))
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +310,7 @@ func TestPutTag(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
 
-	repoID, err := store.EnsureRepository(ctx, namedRef(t, "library/nginx"))
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -350,7 +341,7 @@ func TestDeleteTag(t *testing.T) {
 	store := setupStore(t)
 	ctx := t.Context()
 
-	repoID, err := store.EnsureRepository(ctx, namedRef(t, "library/nginx"))
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
 	if err != nil {
 		t.Fatal(err)
 	}

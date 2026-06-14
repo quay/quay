@@ -6,6 +6,7 @@ const (
 	DefaultRegistryTitle      = "Red Hat Quay"
 	DefaultAuthenticationType = "Database"
 	DefaultTagExpiration      = "2w"
+	DefaultLibraryNamespace   = "library"
 )
 
 // newDefaultConfig returns a Config pre-populated with Quay's documented
@@ -17,6 +18,7 @@ func newDefaultConfig() Config {
 			PreferredURLScheme: DefaultPreferredURLScheme,
 			RegistryTitle:      DefaultRegistryTitle,
 			RegistryTitleShort: DefaultRegistryTitle,
+			LibraryNamespace:   DefaultLibraryNamespace,
 		},
 		Auth: Auth{
 			AuthenticationType: DefaultAuthenticationType,
