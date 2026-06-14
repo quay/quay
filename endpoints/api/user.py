@@ -1116,21 +1116,17 @@ class Recovery(ApiResource):
 
         email = recovery_data["email"]
         user = model.user.find_user_by_email(email)
-        if not user:
-            return {
-                "status": "sent",
-            }
+        orgs = list(model.organization.find_organizations_by_contact_email(email))
 
-        if user.organization:
-            send_org_recovery_email(user, model.organization.get_admin_users(user))
-            return {
-                "status": "org",
-                "orgemail": email,
-                "orgname": redact(user.username),
-            }
+        for org in orgs:
+            contact_email = model.organization.get_contact_email(org)
+            admin_users = model.organization.get_admin_users(org)
+            send_org_recovery_email(org, admin_users, contact_email=contact_email)
 
-        confirmation_code = model.user.create_reset_password_email_code(email)
-        send_recovery_email(email, confirmation_code)
+        if user and not user.organization:
+            confirmation_code = model.user.create_reset_password_email_code(email)
+            send_recovery_email(email, confirmation_code)
+
         return {
             "status": "sent",
         }

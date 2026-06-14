@@ -14,6 +14,7 @@ from buildtrigger.triggerutil import (
 )
 from data import model
 from data.database import RepositoryState
+from data.model.organization import get_admin_users, get_contact_email
 from data.logs_model import logs_model
 from endpoints.building import (
     BuildTriggerDisabledException,
@@ -69,12 +70,20 @@ def stripe_webhook():
                 invoice = stripe.Invoice.retrieve(invoice_id)
                 if invoice:
                     invoice_html = renderInvoiceToHtml(invoice, namespace)
-                    send_invoice_email(
-                        namespace.invoice_email_address or namespace.email, invoice_html
-                    )
+                    recipient = namespace.invoice_email_address
+                    if not recipient and namespace.organization:
+                        recipient = get_contact_email(namespace)
+                        if not recipient:
+                            for admin in get_admin_users(namespace):
+                                if admin.email:
+                                    send_invoice_email(admin.email, invoice_html)
+                    if recipient:
+                        send_invoice_email(recipient, invoice_html)
 
     elif event_type.startswith("customer.subscription."):
         cust_email = namespace.email if namespace is not None else "unknown@domain.com"
+        if namespace and namespace.organization:
+            cust_email = get_contact_email(namespace) or cust_email
         quay_username = namespace.username if namespace is not None else "unknown"
 
         change_type = ""
@@ -98,7 +107,16 @@ def stripe_webhook():
 
     elif event_type == "invoice.payment_failed":
         if namespace:
-            send_payment_failed(namespace.email, namespace.username)
+            if namespace.organization:
+                contact = get_contact_email(namespace)
+                if contact:
+                    send_payment_failed(contact, namespace.username)
+                else:
+                    for admin in get_admin_users(namespace):
+                        if admin.email:
+                            send_payment_failed(admin.email, namespace.username)
+            else:
+                send_payment_failed(namespace.email, namespace.username)
 
     elif event_type == "checkout.session.completed":
         mode = request_data["data"]["object"]["mode"]

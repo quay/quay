@@ -2,10 +2,10 @@ from test.fixtures import *
 
 import pytest
 from flask import url_for
-from mock import patch
+from mock import MagicMock, patch
 
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.api.user import User
+from endpoints.api.user import Recovery, User
 from endpoints.test.shared import client_with_identity, conduct_call
 from features import FeatureNameValue
 
@@ -133,3 +133,116 @@ def test_initialize_user(
                         assert 40 == len(user.json.get("access_token", ""))
                     else:
                         assert not user.json.get("access_token")
+
+
+class TestRecoveryPost:
+    @patch("endpoints.api.user.send_recovery_email")
+    @patch("endpoints.api.user.send_org_recovery_email")
+    @patch("endpoints.api.user.model.user.create_reset_password_email_code", return_value="code123")
+    @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email", return_value=[])
+    @patch("endpoints.api.user.model.user.find_user_by_email")
+    def test_recovery_personal_user_only(
+        self, mock_find_user, mock_find_orgs, mock_create_code, mock_org_email, mock_recovery_email, app
+    ):
+        user = MagicMock()
+        user.organization = False
+        mock_find_user.return_value = user
+
+        with patch("features.MAILING", FeatureNameValue("MAILING", True)):
+            with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
+                with client_with_identity(None, app) as cl:
+                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "user@example.com"})
+
+        assert result.json["status"] == "sent"
+        mock_recovery_email.assert_called_once_with("user@example.com", "code123")
+        mock_org_email.assert_not_called()
+
+    @patch("endpoints.api.user.send_recovery_email")
+    @patch("endpoints.api.user.send_org_recovery_email")
+    @patch("endpoints.api.user.model.organization.get_admin_users")
+    @patch("endpoints.api.user.model.organization.get_contact_email", return_value="org@example.com")
+    @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email")
+    @patch("endpoints.api.user.model.user.find_user_by_email", return_value=None)
+    def test_recovery_org_only(
+        self, mock_find_user, mock_find_orgs, mock_get_contact, mock_get_admins,
+        mock_org_email, mock_recovery_email, app
+    ):
+        org = MagicMock()
+        org.organization = True
+        mock_find_orgs.return_value = [org]
+        admin = MagicMock()
+        mock_get_admins.return_value = [admin]
+
+        with patch("features.MAILING", FeatureNameValue("MAILING", True)):
+            with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
+                with client_with_identity(None, app) as cl:
+                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "org@example.com"})
+
+        assert result.json["status"] == "sent"
+        mock_org_email.assert_called_once_with(org, [admin], contact_email="org@example.com")
+        mock_recovery_email.assert_not_called()
+
+    @patch("endpoints.api.user.send_recovery_email")
+    @patch("endpoints.api.user.send_org_recovery_email")
+    @patch("endpoints.api.user.model.user.create_reset_password_email_code", return_value="code456")
+    @patch("endpoints.api.user.model.organization.get_admin_users")
+    @patch("endpoints.api.user.model.organization.get_contact_email", return_value="shared@example.com")
+    @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email")
+    @patch("endpoints.api.user.model.user.find_user_by_email")
+    def test_recovery_both_user_and_org(
+        self, mock_find_user, mock_find_orgs, mock_get_contact, mock_get_admins,
+        mock_create_code, mock_org_email, mock_recovery_email, app
+    ):
+        user = MagicMock()
+        user.organization = False
+        mock_find_user.return_value = user
+
+        org = MagicMock()
+        mock_find_orgs.return_value = [org]
+        admin = MagicMock()
+        mock_get_admins.return_value = [admin]
+
+        with patch("features.MAILING", FeatureNameValue("MAILING", True)):
+            with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
+                with client_with_identity(None, app) as cl:
+                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "shared@example.com"})
+
+        assert result.json["status"] == "sent"
+        mock_org_email.assert_called_once_with(org, [admin], contact_email="shared@example.com")
+        mock_recovery_email.assert_called_once_with("shared@example.com", "code456")
+
+    @patch("endpoints.api.user.send_recovery_email")
+    @patch("endpoints.api.user.send_org_recovery_email")
+    @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email", return_value=[])
+    @patch("endpoints.api.user.model.user.find_user_by_email", return_value=None)
+    def test_recovery_no_match(
+        self, mock_find_user, mock_find_orgs, mock_org_email, mock_recovery_email, app
+    ):
+        with patch("features.MAILING", FeatureNameValue("MAILING", True)):
+            with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
+                with client_with_identity(None, app) as cl:
+                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "nobody@example.com"})
+
+        assert result.json["status"] == "sent"
+        mock_org_email.assert_not_called()
+        mock_recovery_email.assert_not_called()
+
+    @patch("endpoints.api.user.send_recovery_email")
+    @patch("endpoints.api.user.send_org_recovery_email")
+    @patch("endpoints.api.user.model.organization.find_organizations_by_contact_email", return_value=[])
+    @patch("endpoints.api.user.model.user.find_user_by_email")
+    def test_recovery_skips_org_user_from_find_user(
+        self, mock_find_user, mock_find_orgs, mock_org_email, mock_recovery_email, app
+    ):
+        """When find_user_by_email returns an org, it should be ignored (orgs are handled via contact_email)."""
+        org_user = MagicMock()
+        org_user.organization = True
+        mock_find_user.return_value = org_user
+
+        with patch("features.MAILING", FeatureNameValue("MAILING", True)):
+            with patch("features.RECAPTCHA", FeatureNameValue("RECAPTCHA", False)):
+                with client_with_identity(None, app) as cl:
+                    result = conduct_api_call(cl, Recovery, "POST", None, body={"email": "legacy@example.com"})
+
+        assert result.json["status"] == "sent"
+        mock_recovery_email.assert_not_called()
