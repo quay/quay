@@ -356,13 +356,20 @@ class Organization(ApiResource):
                     {"invoice_email_address": new_email, "namespace": orgname},
                 )
 
-            new_contact = org_data.get("contact_email") or org_data.get("email")
+            new_contact = (
+                org_data.get("contact_email")
+                if "contact_email" in org_data
+                else org_data.get("email")
+            )
             if new_contact is not None:
                 current_contact = model.organization.get_contact_email(org)
                 if new_contact != current_contact:
                     if new_contact and not validate_email(new_contact):
                         raise request_error(message="Invalid email address")
-                    model.organization.set_contact_email(org, new_contact)
+                    if new_contact:
+                        model.organization.set_contact_email(org, new_contact)
+                    else:
+                        model.organization.delete_contact_email(org)
                     log_action(
                         "org_change_email",
                         orgname,

@@ -99,6 +99,33 @@ class TestContactEmail:
         assert resp.json.get("contact_email") is None
         assert resp.json.get("email") == ""
 
+    def test_clear_contact_email(self, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "temp@example.com"},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert model.organization.get_contact_email(org) == "temp@example.com"
+
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": ""},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert model.organization.get_contact_email(org) is None
+
     def test_create_org_no_email_with_mailing(self, app):
         body = {"name": "mailingnoemailorg"}
         with toggle_feature("MAILING", True):
