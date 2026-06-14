@@ -14,8 +14,8 @@ from buildtrigger.triggerutil import (
 )
 from data import model
 from data.database import RepositoryState
-from data.model.organization import get_admin_users, get_contact_email
 from data.logs_model import logs_model
+from data.model.organization import get_admin_users, get_contact_email
 from endpoints.building import (
     BuildTriggerDisabledException,
     MaximumBuildsQueuedException,

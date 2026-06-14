@@ -388,7 +388,7 @@ test.describe(
           api,
         }) => {
           const sharedEmail = 'settings-shared@company.com';
-          const org1 = await api.organization('shset1', sharedEmail);
+          await api.organization('shset1', sharedEmail);
           const org2 = await api.organization('shset2');
 
           await authenticatedPage.goto(
@@ -412,13 +412,7 @@ test.describe(
           const username = TEST_USERS.user.username;
           await authenticatedPage.goto(`/user/${username}?tab=Settings`);
 
-          // Label should be "Email", not "Contact Email"
-          const emailLabel = authenticatedPage
-            .locator('label[for="org-settings-email"]')
-            .or(authenticatedPage.locator('.pf-v6-c-form__label').filter({hasText: 'Email'}));
-
-          // The page may show email as a link (FEATURE_MAILING) or as a text input
-          // Either way, "Contact Email" should NOT be present
+          // "Contact Email" should NOT be present on user settings
           await expect(
             authenticatedPage.getByText('Contact Email'),
           ).not.toBeVisible();
