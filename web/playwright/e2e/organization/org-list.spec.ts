@@ -145,9 +145,7 @@ test.describe(
     test(
       'organization CRUD lifecycle',
       {tag: ['@PROJQUAY-9948', '@PROJQUAY-9843']},
-      async ({authenticatedPage, quayConfig, api}) => {
-        const mailingEnabled = quayConfig?.features?.MAILING === true;
-
+      async ({authenticatedPage, api}) => {
         await authenticatedPage.goto('/organization');
 
         // Create a shared unique ID for both orgs so we can filter them together
@@ -156,7 +154,6 @@ test.describe(
           .substring(2, 8)}`;
         const orgName = `crud1-${testId}`;
         const orgName2 = `crud2-${testId}`;
-        const orgEmail = `${orgName}@example.com`;
 
         // Open and cancel modal first
         await authenticatedPage.locator('#create-organization-button').click();
@@ -168,14 +165,14 @@ test.describe(
           authenticatedPage.locator('#create-org-cancel'),
         ).not.toBeVisible();
 
-        // Create organization
+        // Create organization (email is optional, just provide name)
         await authenticatedPage.locator('#create-organization-button').click();
         await authenticatedPage.locator('#create-org-name-input').fill(orgName);
-        if (mailingEnabled) {
-          await authenticatedPage
-            .locator('#create-org-email-input')
-            .fill(orgEmail);
-        }
+
+        // Email field is always visible and optional
+        await expect(
+          authenticatedPage.locator('#create-org-email-input'),
+        ).toBeVisible();
 
         // Wait for Create button to be enabled, then click and wait for API response
         await expect(
@@ -213,11 +210,6 @@ test.describe(
         // PROJQUAY-9948: Try to create org with same name - should show error, not success
         await authenticatedPage.locator('#create-organization-button').click();
         await authenticatedPage.locator('#create-org-name-input').fill(orgName);
-        if (mailingEnabled) {
-          await authenticatedPage
-            .locator('#create-org-email-input')
-            .fill(`duplicate-${orgEmail}`);
-        }
         await authenticatedPage.locator('#create-org-confirm').click();
 
         // Should show error message
@@ -241,29 +233,10 @@ test.describe(
         await authenticatedPage
           .locator('#create-org-name-input')
           .fill('validname');
-        if (mailingEnabled) {
-          // When mailing is enabled, button should still be disabled without email
-          await expect(
-            authenticatedPage.locator('#create-org-confirm'),
-          ).toBeDisabled();
-          await authenticatedPage
-            .locator('#create-org-email-input')
-            .fill('invalid');
-          await authenticatedPage.locator('#create-org-name-input').click(); // Trigger validation
-          await expect(
-            authenticatedPage.getByText(
-              'Enter a valid email: email@provider.com',
-            ),
-          ).toBeVisible();
-          await expect(
-            authenticatedPage.locator('#create-org-confirm'),
-          ).toBeDisabled();
-        } else {
-          // When mailing is disabled, button should be enabled with just a name
-          await expect(
-            authenticatedPage.locator('#create-org-confirm'),
-          ).toBeEnabled();
-        }
+        // Email is optional — button should be enabled with just a name
+        await expect(
+          authenticatedPage.locator('#create-org-confirm'),
+        ).toBeEnabled();
         await authenticatedPage.locator('#create-org-cancel').click();
 
         // PROJQUAY-9843: Create second org for bulk delete test
@@ -272,11 +245,6 @@ test.describe(
         await authenticatedPage
           .locator('#create-org-name-input')
           .fill(orgName2);
-        if (mailingEnabled) {
-          await authenticatedPage
-            .locator('#create-org-email-input')
-            .fill(`${orgName2}@example.com`);
-        }
         await expect(
           authenticatedPage.locator('#create-org-confirm'),
         ).toBeEnabled();
@@ -741,11 +709,9 @@ test.describe(
       },
     );
     test(
-      'create organization respects FEATURE_MAILING for email field',
+      'create organization shows optional contact email field',
       {tag: '@PROJQUAY-10500'},
-      async ({authenticatedPage, quayConfig, api}) => {
-        const mailingEnabled = quayConfig?.features?.MAILING === true;
-
+      async ({authenticatedPage, api}) => {
         await authenticatedPage.goto('/organization');
 
         // Open create organization modal
@@ -754,65 +720,49 @@ test.describe(
           authenticatedPage.locator('#create-org-name-input'),
         ).toBeVisible();
 
-        if (mailingEnabled) {
-          // When MAILING is enabled, email field should be visible and required
-          await expect(
-            authenticatedPage.locator('#create-org-email-input'),
-          ).toBeVisible();
+        // Email field is always visible regardless of FEATURE_MAILING
+        await expect(
+          authenticatedPage.locator('#create-org-email-input'),
+        ).toBeVisible();
 
-          // Fill only name - button should be disabled (email required)
-          await authenticatedPage
-            .locator('#create-org-name-input')
-            .fill('testmailingorg');
-          await expect(
-            authenticatedPage.locator('#create-org-confirm'),
-          ).toBeDisabled();
-        } else {
-          // When MAILING is disabled, email field should NOT be visible
-          await expect(
-            authenticatedPage.locator('#create-org-email-input'),
-          ).not.toBeVisible();
+        // Label is "Contact Email (Optional)"
+        await expect(
+          authenticatedPage.getByText('Contact Email (Optional)'),
+        ).toBeVisible();
 
-          // Fill only name - button should be enabled (email not required)
-          const orgName = uniqueName('mailtest');
-          await authenticatedPage
-            .locator('#create-org-name-input')
-            .fill(orgName);
-          await expect(
-            authenticatedPage.locator('#create-org-confirm'),
-          ).toBeEnabled();
+        // Fill only name — button should be enabled (email is optional)
+        const orgName = uniqueName('optmail');
+        await authenticatedPage
+          .locator('#create-org-name-input')
+          .fill(orgName);
+        await expect(
+          authenticatedPage.locator('#create-org-confirm'),
+        ).toBeEnabled();
 
-          // Create org without email should succeed
-          await Promise.all([
-            authenticatedPage.waitForResponse(
-              (resp) =>
-                resp.url().includes('/api/v1/organization/') &&
-                resp.request().method() === 'POST' &&
-                resp.status() === 201,
-            ),
-            authenticatedPage.locator('#create-org-confirm').click(),
-          ]);
+        // Create org without email should succeed
+        await Promise.all([
+          authenticatedPage.waitForResponse(
+            (resp) =>
+              resp.url().includes('/api/v1/organization/') &&
+              resp.request().method() === 'POST' &&
+              resp.status() === 201,
+          ),
+          authenticatedPage.locator('#create-org-confirm').click(),
+        ]);
 
-          // Modal should close on success
-          await expect(
-            authenticatedPage.locator('#create-org-cancel'),
-          ).not.toBeVisible({timeout: 10000});
+        // Modal should close on success
+        await expect(
+          authenticatedPage.locator('#create-org-cancel'),
+        ).not.toBeVisible({timeout: 10000});
 
-          await expect(
-            authenticatedPage.getByText(
-              `Successfully created organization ${orgName}`,
-            ),
-          ).toBeVisible();
+        await expect(
+          authenticatedPage.getByText(
+            `Successfully created organization ${orgName}`,
+          ),
+        ).toBeVisible();
 
-          // Clean up the org created via UI
-          await api.raw.deleteOrganization(orgName);
-        }
-
-        // Close modal if still open
-        const cancelButton = authenticatedPage.locator('#create-org-cancel');
-        if (await cancelButton.isVisible()) {
-          await cancelButton.click();
-        }
+        // Clean up the org created via UI
+        await api.raw.deleteOrganization(orgName);
       },
     );
   },

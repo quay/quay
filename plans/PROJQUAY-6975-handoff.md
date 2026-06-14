@@ -3,7 +3,7 @@
 **Epic:** PROJQUAY-6975 — Allow Single Email for Multiple Organizations
 **Branch:** `feat/projquay-6975-single-email-multiple-orgs`
 **Last updated:** 2026-06-14
-**Status:** Stories 1–6 complete, Story 7 (Playwright E2E tests) next
+**Status:** All 7 stories complete — ready for PR
 
 ---
 
@@ -146,11 +146,30 @@
 
 **Tests:** All 20 useremails tests pass, all 12 user endpoint tests pass
 
+### Story 7: PROJQUAY-6975 — Playwright E2E Tests (COMPLETE)
+
+**Commit:** `PROJQUAY-6975: test(e2e): add Playwright tests for contact email feature`
+
+**Files changed:**
+- `web/playwright/utils/api/client.ts` — Updated `createOrganization()` to send `contact_email` instead of `email`; added `getOrganization()` method
+- `web/playwright/fixtures.ts` — Updated `TestApi.organization()` to accept optional `contactEmail` parameter; added `contactEmail` to `CreatedOrg` interface
+- `web/playwright/e2e/organization/contact-email.spec.ts` — New test file with 5 test groups (15 tests): Create Org Modal, Org Settings, E2E Lifecycle, API Contract, Recovery Flow
+- `web/playwright/e2e/organization/org-list.spec.ts` — Removed `mailingEnabled` conditionals from CRUD lifecycle test; rewrote FEATURE_MAILING test to verify email is always visible and optional
+
+**What was implemented:**
+1. API client updated: `createOrganization()` sends `contact_email` (not `email`); body only includes `contact_email` when provided
+2. Fixtures updated: `TestApi.organization()` passes `contactEmail` through; `CreatedOrg` interface includes `contactEmail` field
+3. New `contact-email.spec.ts` with consolidated tests covering:
+   - **Group 1:** Create modal — field visibility, label, helper text, validation cycle, shared email
+   - **Group 2:** Settings — display, label, validation, update persistence, clear, shared email, user label regression
+   - **Group 3:** E2E lifecycle — create → settings → update → reload; create without email → add in settings; UUID never exposed
+   - **Group 4:** API contract — GET returns `contact_email`, backward compat with `email` field in POST, FEATURE_MAILING decoupled
+   - **Group 5:** Recovery — generic "sent" message for any email type (no info leak)
+4. Existing `org-list.spec.ts` updated: removed all `mailingEnabled`/`quayConfig` conditionals from CRUD lifecycle; rewrote FEATURE_MAILING test
+
 ---
 
-## What Needs to Be Done Next
-
-### Remaining Stories (in order)
+## All Stories Complete
 
 | Order | Story | JIRA | Status |
 |-------|-------|------|--------|
@@ -160,11 +179,9 @@
 | 4 | React Create Org modal | PROJQUAY-10592 | DONE |
 | 5 | React Org Settings | PROJQUAY-10593 | DONE |
 | 6 | Unified recovery email template | PROJQUAY-11799 | DONE |
-| 7 | Playwright E2E tests | — | **NEXT** |
+| 7 | Playwright E2E tests | PROJQUAY-6975 | DONE |
 
-### Playwright Tests
-
-After all 6 stories are implemented, add Playwright E2E tests as a final commit. See the Playwright test plan for full details.
+All implementation and testing is complete. Ready for PR creation and code review.
 
 ---
 
