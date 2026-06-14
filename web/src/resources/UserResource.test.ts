@@ -31,6 +31,7 @@ vi.mock('src/libs/axios', () => ({
     put: vi.fn(),
     delete: vi.fn(),
   },
+  setAnonymousMode: vi.fn(),
 }));
 
 /** Creates a mock Axios response with the given data and status. */

@@ -294,6 +294,8 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     );
   }
 
+  const isAuthenticated = !!user?.username;
+
   // Return component Empty state - only if there are truly no repositories
   // If filtered results are empty but repos exist, show the table with toolbar
   if (!loading && !repos?.length) {
@@ -301,9 +303,13 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       <Empty
         icon={CubesIcon}
         title="There are no viewable repositories"
-        body="Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository."
+        body={
+          isAuthenticated
+            ? 'Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository.'
+            : 'No public repositories found. Sign in to view your private repositories.'
+        }
         button={
-          !isReadOnlySuperUser ? (
+          isAuthenticated && !isReadOnlySuperUser ? (
             <ToolbarButton
               id=""
               buttonValue="Create Repository"
@@ -311,7 +317,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
               isModalOpen={isCreateRepoModalOpen}
               setModalOpen={setCreateRepoModalOpen}
             />
-          ) : undefined
+          ) : null
         }
       />
     );
@@ -348,15 +354,19 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           setSearch={setSearch}
           total={paginationProps.total}
           currentOrg={currentOrg}
-          pageModal={createRepoModal}
-          showPageButton={!isReadOnlySuperUser}
+          pageModal={
+            isAuthenticated && !isReadOnlySuperUser ? createRepoModal : null
+          }
+          showPageButton={isAuthenticated && !isReadOnlySuperUser}
           buttonText="Create Repository"
           isModalOpen={isCreateRepoModalOpen}
           setModalOpen={setCreateRepoModalOpen}
           isKebabOpen={isKebabOpen}
           setKebabOpen={setKebabOpen}
-          kebabItems={!isReadOnlySuperUser ? kebabItems : []}
-          selectedRepoNames={!isReadOnlySuperUser ? selectedRepoNames : []}
+          kebabItems={isAuthenticated && !isReadOnlySuperUser ? kebabItems : []}
+          selectedRepoNames={
+            isAuthenticated && !isReadOnlySuperUser ? selectedRepoNames : []
+          }
           deleteModal={deleteRepositoryModal}
           deleteKebabIsOpen={isDeleteModalOpen}
           makePublicModalOpen={makePublicModalOpen}
@@ -376,7 +386,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
-              {!isReadOnlySuperUser && <Th />}
+              {isAuthenticated && !isReadOnlySuperUser && <Th />}
               <Th modifier="wrap" sort={getSortableSort(0)}>
                 {RepositoryListColumnNames.name}
               </Th>
@@ -412,7 +422,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
             ) : (
               paginatedRepositoryList.map((repo, rowIndex) => (
                 <Tr key={rowIndex}>
-                  {!isReadOnlySuperUser && (
+                  {isAuthenticated && !isReadOnlySuperUser && (
                     <Td
                       select={{
                         rowIndex,

@@ -848,6 +848,7 @@ export class TestApi {
  * Known Quay feature flags that can be enabled/disabled
  */
 export type QuayFeature =
+  | 'ANONYMOUS_ACCESS'
   | 'BILLING'
   | 'QUOTA_MANAGEMENT'
   | 'EDIT_QUOTA'
