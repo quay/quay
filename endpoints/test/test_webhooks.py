@@ -1,9 +1,7 @@
 import base64
 import json
-from test.fixtures import *
 from unittest.mock import MagicMock, patch
 
-import pytest
 from flask import url_for
 
 from data import model
@@ -14,6 +12,7 @@ from data.model.organization import (
 )
 from data.model.user import get_user
 from endpoints.test.shared import conduct_call, gen_basic_auth
+from test.fixtures import *
 
 
 class TestStripeWebhookContactEmail:
@@ -33,9 +32,7 @@ class TestStripeWebhookContactEmail:
     @patch("endpoints.webhooks.stripe")
     def test_charge_succeeded_org_with_contact_email(self, mock_stripe, app, client):
         admin = get_user("devtable")
-        org = create_organization(
-            "chargeorg1", None, admin, contact_email="billing@example.com"
-        )
+        org = create_organization("chargeorg1", None, admin, contact_email="billing@example.com")
         org.invoice_email = True
         org.invoice_email_address = None
         org.stripe_id = "cust_charge1"
@@ -44,8 +41,12 @@ class TestStripeWebhookContactEmail:
         mock_invoice = MagicMock()
         mock_stripe.Invoice.retrieve.return_value = mock_invoice
 
-        with patch("endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org):
-            with patch("endpoints.webhooks.renderInvoiceToHtml", return_value="<html>invoice</html>"):
+        with patch(
+            "endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org
+        ):
+            with patch(
+                "endpoints.webhooks.renderInvoiceToHtml", return_value="<html>invoice</html>"
+            ):
                 with patch("endpoints.webhooks.send_invoice_email") as mock_send:
                     resp = self._post_stripe_event(
                         client,
@@ -71,8 +72,12 @@ class TestStripeWebhookContactEmail:
         mock_invoice = MagicMock()
         mock_stripe.Invoice.retrieve.return_value = mock_invoice
 
-        with patch("endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org):
-            with patch("endpoints.webhooks.renderInvoiceToHtml", return_value="<html>invoice</html>"):
+        with patch(
+            "endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org
+        ):
+            with patch(
+                "endpoints.webhooks.renderInvoiceToHtml", return_value="<html>invoice</html>"
+            ):
                 with patch("endpoints.webhooks.send_invoice_email") as mock_send:
                     resp = self._post_stripe_event(
                         client,
@@ -97,8 +102,12 @@ class TestStripeWebhookContactEmail:
         mock_invoice = MagicMock()
         mock_stripe.Invoice.retrieve.return_value = mock_invoice
 
-        with patch("endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=user):
-            with patch("endpoints.webhooks.renderInvoiceToHtml", return_value="<html>invoice</html>"):
+        with patch(
+            "endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=user
+        ):
+            with patch(
+                "endpoints.webhooks.renderInvoiceToHtml", return_value="<html>invoice</html>"
+            ):
                 with patch("endpoints.webhooks.send_invoice_email") as mock_send:
                     resp = self._post_stripe_event(
                         client,
@@ -112,13 +121,13 @@ class TestStripeWebhookContactEmail:
 
     def test_subscription_created_org_with_contact_email(self, app, client):
         admin = get_user("devtable")
-        org = create_organization(
-            "suborg1", None, admin, contact_email="sub@example.com"
-        )
+        org = create_organization("suborg1", None, admin, contact_email="sub@example.com")
         org.stripe_id = "cust_sub1"
         org.save()
 
-        with patch("endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org):
+        with patch(
+            "endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org
+        ):
             with patch("endpoints.webhooks.send_subscription_change") as mock_send:
                 resp = self._post_stripe_event(
                     client,
@@ -137,7 +146,9 @@ class TestStripeWebhookContactEmail:
         org.stripe_id = "cust_sub2"
         org.save()
 
-        with patch("endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org):
+        with patch(
+            "endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org
+        ):
             with patch("endpoints.webhooks.send_subscription_change") as mock_send:
                 resp = self._post_stripe_event(
                     client,
@@ -152,13 +163,13 @@ class TestStripeWebhookContactEmail:
 
     def test_payment_failed_org_with_contact_email(self, app, client):
         admin = get_user("devtable")
-        org = create_organization(
-            "payorg1", None, admin, contact_email="pay@example.com"
-        )
+        org = create_organization("payorg1", None, admin, contact_email="pay@example.com")
         org.stripe_id = "cust_pay1"
         org.save()
 
-        with patch("endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org):
+        with patch(
+            "endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org
+        ):
             with patch("endpoints.webhooks.send_payment_failed") as mock_send:
                 resp = self._post_stripe_event(
                     client,
@@ -176,7 +187,9 @@ class TestStripeWebhookContactEmail:
         org.stripe_id = "cust_pay2"
         org.save()
 
-        with patch("endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org):
+        with patch(
+            "endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=org
+        ):
             with patch("endpoints.webhooks.send_payment_failed") as mock_send:
                 resp = self._post_stripe_event(
                     client,
@@ -193,7 +206,9 @@ class TestStripeWebhookContactEmail:
     def test_payment_failed_personal_user(self, app, client):
         user = get_user("devtable")
 
-        with patch("endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=user):
+        with patch(
+            "endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=user
+        ):
             with patch("endpoints.webhooks.send_payment_failed") as mock_send:
                 resp = self._post_stripe_event(
                     client,
