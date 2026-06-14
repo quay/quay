@@ -28,11 +28,13 @@ import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountMod
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useRepository} from 'src/hooks/UseRepository';
 import {useFetchTeams} from 'src/hooks/UseTeams';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
   validateTeamName,
 } from 'src/libs/utils';
+import {isRedirecting} from 'src/libs/axios';
 import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
 import {Entity} from 'src/resources/UserResource';
 import {CreateTeamModal} from '../OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
@@ -67,6 +69,7 @@ function getTabIndex(tab: string) {
 
 export default function RepositoryDetails() {
   const config = useQuayConfig();
+  const {user, loading: userLoading} = useCurrentUser();
   const [activeTabKey, setActiveTabKey] = useState(TabIndex.Information);
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,23 +81,52 @@ export default function RepositoryDetails() {
   const [selectedEntity, setSelectedEntity] = useState<Entity>(null);
   const {addAlert} = useUI();
   const [err, setErr] = useState<string>();
-
   const drawerRef = useRef<HTMLDivElement>();
 
   const organization = parseOrgNameFromUrl(location.pathname);
   const repository = parseRepoNameFromUrl(location.pathname);
+
+  // Only fetch repository AFTER user state is known
+  // This prevents API calls from firing for anonymous users before we can block them
+  const shouldFetchRepo = !userLoading;
   const {repoDetails, errorLoadingRepoDetails} = useRepository(
     organization,
     repository,
+    shouldFetchRepo,
   );
 
-  // state variables for Create Team
   const [teamName, setTeamName] = useState('');
   const [teamDescription, setTeamDescription] = useState('');
   const [isTeamModalOpen, setIsTeamModalOpen] = useState<boolean>(false);
 
-  const {teams} = useFetchTeams(organization);
+  // Only fetch teams AFTER user state is known (same as repo)
+  const {teams} = useFetchTeams(organization, shouldFetchRepo);
   const setupBuildTriggerUuid = searchParams.get('setupTrigger');
+
+  useEffect(() => {
+    if (errorLoadingRepoDetails) {
+      setErr(
+        addDisplayError(
+          'Unable to get repository',
+          errorLoadingRepoDetails as Error,
+        ),
+      );
+    }
+  }, [errorLoadingRepoDetails]);
+
+  if (isRedirecting()) {
+    return null;
+  }
+
+  // For anonymous users: ONLY render if we have confirmed public repo access
+  // This prevents FOUC (Flash of Unauthenticated Content) on slow connections
+  if (user?.anonymous) {
+    // Only render when we have actual repo data (200 response = public repo)
+    // For any other state (loading, error, undefined), show blank screen
+    if (!repoDetails) {
+      return null;
+    }
+  }
 
   const createRobotModal = (
     <CreateRobotAccountModal
@@ -177,17 +209,6 @@ export default function RepositoryDetails() {
       />
     ),
   };
-
-  useEffect(() => {
-    if (errorLoadingRepoDetails) {
-      setErr(
-        addDisplayError(
-          'Unable to get repository',
-          errorLoadingRepoDetails as Error,
-        ),
-      );
-    }
-  }, [errorLoadingRepoDetails]);
 
   return (
     <>

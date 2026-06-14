@@ -77,7 +77,7 @@ export interface ITeams {
   is_synced: boolean;
 }
 
-export function useFetchTeams(orgName: string) {
+export function useFetchTeams(orgName: string, enabled = true) {
   const {user} = useCurrentUser();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
@@ -96,7 +96,7 @@ export function useFetchTeams(orgName: string) {
     ({signal}) => fetchTeamsForNamespace(orgName, signal),
     {
       placeholderData: [],
-      enabled: !(user.username === orgName),
+      enabled: enabled && !(user.username === orgName),
     },
   );
 

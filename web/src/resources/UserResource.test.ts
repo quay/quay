@@ -1,10 +1,5 @@
-import {
-  AxiosError,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
-  isAxiosError,
-} from 'axios';
-import axios, {setAnonymousMode} from 'src/libs/axios';
+import {AxiosError, AxiosResponse, InternalAxiosRequestConfig} from 'axios';
+import axios from 'src/libs/axios';
 import {
   fetchUser,
   fetchUsersAsSuperUser,
@@ -63,6 +58,44 @@ describe('UserResource', () => {
       const result = await fetchUser();
       expect(axios.get).toHaveBeenCalledWith('/api/v1/user/');
       expect(result).toEqual(user);
+    });
+
+    it('calls setAnonymousMode(false) on successful fetch', async () => {
+      const {setAnonymousMode} = await import('src/libs/axios');
+      const user = {username: 'testuser', anonymous: false};
+      vi.mocked(axios.get).mockResolvedValueOnce(mockResponse(user));
+
+      await fetchUser();
+      expect(setAnonymousMode).toHaveBeenCalledWith(false);
+    });
+
+    it('returns ANONYMOUS_USER on 401 error', async () => {
+      const axiosErr = new AxiosError('Unauthorized');
+      (axiosErr as any).response = {status: 401};
+      vi.mocked(axios.get).mockRejectedValueOnce(axiosErr);
+
+      const result = await fetchUser();
+      expect(result.anonymous).toBe(true);
+      expect(result.username).toBe('');
+      expect(result.can_create_repo).toBe(false);
+    });
+
+    it('calls setAnonymousMode(true) on 401 error', async () => {
+      const {setAnonymousMode} = await import('src/libs/axios');
+      const axiosErr = new AxiosError('Unauthorized');
+      (axiosErr as any).response = {status: 401};
+      vi.mocked(axios.get).mockRejectedValueOnce(axiosErr);
+
+      await fetchUser();
+      expect(setAnonymousMode).toHaveBeenCalledWith(true);
+    });
+
+    it('rethrows non-401 errors', async () => {
+      const axiosErr = new AxiosError('Server Error');
+      (axiosErr as any).response = {status: 500};
+      vi.mocked(axios.get).mockRejectedValueOnce(axiosErr);
+
+      await expect(fetchUser()).rejects.toThrow('Server Error');
     });
   });
 

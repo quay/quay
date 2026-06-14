@@ -5,11 +5,11 @@ import {
   fetchRepositoryDetails,
 } from 'src/resources/RepositoryResource';
 
-export function useRepository(org: string, repo?: string) {
+export function useRepository(org: string, repo?: string, enabled = true) {
   const {data, error, isLoading, isError} = useQuery(
     ['repodetails', org, repo],
     () => fetchRepositoryDetails(org, repo),
-    {enabled: !isNullOrUndefined(repo)},
+    {enabled: !isNullOrUndefined(repo) && enabled},
   );
 
   return {

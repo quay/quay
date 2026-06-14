@@ -78,6 +78,7 @@ export async function fetchUser(): Promise<IUserResource> {
       setAnonymousMode(true);
       return ANONYMOUS_USER;
     }
+    console.error('Error fetching user:', error);
     throw error;
   }
 }
@@ -162,7 +163,7 @@ export interface CreateUserRequest {
 
 export interface CreateUserResponse {
   awaiting_verification?: boolean;
-  [key: string]: any; // Allow other fields from the API response
+  [key: string]: unknown;
 }
 
 export async function createUser(

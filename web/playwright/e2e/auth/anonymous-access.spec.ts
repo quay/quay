@@ -1,4 +1,4 @@
-import {test, expect, uniqueName} from '../../fixtures';
+import {test, expect, uniqueName, skipUnlessFeature} from '../../fixtures';
 
 test.describe(
   'Anonymous access',
@@ -109,6 +109,101 @@ test.describe(
       await unauthenticatedPage.getByRole('link', {name: /sign in/i}).click();
 
       await expect(unauthenticatedPage).toHaveURL(/\/signin/);
+    });
+
+    test('redirects to signin for private repository', async ({
+      unauthenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization(uniqueName('anon'));
+      // Default visibility is 'private'
+      const repo = await api.repository(org.name, uniqueName('private'));
+
+      await unauthenticatedPage.goto(`/repository/${repo.fullName}`);
+
+      // Private repo should redirect anonymous user to /signin
+      await expect(unauthenticatedPage).toHaveURL(/\/signin/, {
+        timeout: 10000,
+      });
+    });
+
+    test('does not show private repos in repository list', async ({
+      unauthenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization(uniqueName('anon'));
+      const publicRepo = await api.repository(
+        org.name,
+        uniqueName('pub'),
+        'public',
+      );
+      const privateRepo = await api.repository(org.name, uniqueName('priv'));
+
+      await unauthenticatedPage.goto('/repository');
+      await expect(unauthenticatedPage).toHaveURL(/\/repository/);
+
+      // Public repo should be visible
+      await expect(
+        unauthenticatedPage.getByRole('link', {name: publicRepo.fullName}),
+      ).toBeVisible({timeout: 10000});
+
+      // Private repo should NOT be visible
+      await expect(
+        unauthenticatedPage.getByRole('link', {name: privateRepo.fullName}),
+      ).not.toBeVisible();
+    });
+  },
+);
+
+test.describe(
+  'Anonymous access disabled',
+  {
+    tag: ['@auth', '@critical', '@PROJQUAY-10610'],
+  },
+  () => {
+    test('redirects unauthenticated user to signin when ANONYMOUS_ACCESS is disabled', async ({
+      quayConfig,
+      unauthenticatedPage,
+    }) => {
+      // This test only runs when ANONYMOUS_ACCESS is NOT enabled
+      const [skip] = skipUnlessFeature(quayConfig, 'ANONYMOUS_ACCESS');
+      test.skip(
+        !skip,
+        'ANONYMOUS_ACCESS is enabled — skipping disabled-flag test',
+      );
+
+      await unauthenticatedPage.goto('/organization');
+
+      // Should redirect to /signin when anonymous access is disabled
+      await expect(unauthenticatedPage).toHaveURL(/\/signin/, {
+        timeout: 10000,
+      });
+    });
+
+    test('redirects unauthenticated user to signin for public repo when ANONYMOUS_ACCESS is disabled', async ({
+      quayConfig,
+      unauthenticatedPage,
+      api,
+    }) => {
+      const [skip] = skipUnlessFeature(quayConfig, 'ANONYMOUS_ACCESS');
+      test.skip(
+        !skip,
+        'ANONYMOUS_ACCESS is enabled — skipping disabled-flag test',
+      );
+
+      const org = await api.organization(uniqueName('anon'));
+      const repo = await api.repository(
+        org.name,
+        uniqueName('public'),
+        'public',
+      );
+
+      await unauthenticatedPage.goto(`/repository/${repo.fullName}`);
+
+      // Even public repos should redirect when anonymous access is disabled
+      await expect(unauthenticatedPage).toHaveURL(/\/signin/, {
+        timeout: 10000,
+      });
     });
   },
 );
