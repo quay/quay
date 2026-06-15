@@ -5,6 +5,8 @@ import pytest
 from notifications.notificationevent import (
     BuildSuccessEvent,
     NotificationEvent,
+    QuotaErrorEvent,
+    QuotaWarningEvent,
     VulnerabilityFoundEvent,
 )
 from util.morecollections import AttrDict
@@ -248,3 +250,71 @@ def test_vulnerability_notification_normal():
 
     info = {"vulnerability": {"priority": "Critical"}}
     assert VulnerabilityFoundEvent().should_perform(info, notification_data)
+
+
+class TestQuotaWarningEvent:
+    def test_event_name(self):
+        assert QuotaWarningEvent.event_name() == "quota_warning"
+
+    def test_get_level(self):
+        event = QuotaWarningEvent()
+        assert event.get_level({}, {}) == "warning"
+
+    def test_get_summary(self):
+        event = QuotaWarningEvent()
+        event_data = {"namespace": "testorg", "threshold_percent": 80}
+        summary = event.get_summary(event_data, {})
+        assert "testorg" in summary
+        assert "80%" in summary
+
+    def test_get_sample_data(self):
+        event = QuotaWarningEvent()
+        sample = event.get_sample_data("testorg", "testrepo", {})
+        assert sample["namespace"] == "testorg"
+        assert sample["threshold_percent"] == 80
+        assert "usage_bytes" in sample
+        assert "limit_bytes" in sample
+        assert "usage_percent" in sample
+        assert "homepage" in sample
+
+    def test_should_perform_default_true(self):
+        event = QuotaWarningEvent()
+        assert event.should_perform({}, {})
+
+    def test_lookup_via_event_name(self):
+        found = NotificationEvent.get_event("quota_warning")
+        assert isinstance(found, QuotaWarningEvent)
+
+
+class TestQuotaErrorEvent:
+    def test_event_name(self):
+        assert QuotaErrorEvent.event_name() == "quota_error"
+
+    def test_get_level(self):
+        event = QuotaErrorEvent()
+        assert event.get_level({}, {}) == "error"
+
+    def test_get_summary(self):
+        event = QuotaErrorEvent()
+        event_data = {"namespace": "testorg", "usage_percent": 105}
+        summary = event.get_summary(event_data, {})
+        assert "testorg" in summary
+        assert "105%" in summary
+
+    def test_get_sample_data(self):
+        event = QuotaErrorEvent()
+        sample = event.get_sample_data("testorg", "testrepo", {})
+        assert sample["namespace"] == "testorg"
+        assert sample["threshold_percent"] == 100
+        assert sample["usage_percent"] == 105
+        assert "usage_bytes" in sample
+        assert "limit_bytes" in sample
+        assert "homepage" in sample
+
+    def test_should_perform_default_true(self):
+        event = QuotaErrorEvent()
+        assert event.should_perform({}, {})
+
+    def test_lookup_via_event_name(self):
+        found = NotificationEvent.get_event("quota_error")
+        assert isinstance(found, QuotaErrorEvent)
