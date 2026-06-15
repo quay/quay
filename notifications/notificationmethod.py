@@ -156,6 +156,9 @@ class EmailMethod(NotificationMethod):
         return "email"
 
     def validate(self, namespace_name, repo_name, config_data):
+        if repo_name is None:
+            return
+
         email = config_data.get("email", "")
         if not email:
             raise CannotValidateNotificationMethodException("Missing e-mail address")
@@ -168,16 +171,41 @@ class EmailMethod(NotificationMethod):
                 "notifications for this repository"
             )
 
+    def _resolve_namespace_recipients(self, namespace_name):
+        namespace_user = model.user.get_user_or_org(namespace_name)
+        if not namespace_user:
+            return []
+
+        if namespace_user.organization:
+            contact_email = model.organization.get_contact_email(namespace_user)
+            if contact_email:
+                return [contact_email]
+
+            admins = model.organization.get_admin_users(namespace_user)
+            return [admin.email for admin in admins if admin.email]
+
+        if namespace_user.email:
+            return [namespace_user.email]
+
+        return []
+
     def perform(self, notification_obj, event_handler, notification_data):
-        config_data = notification_obj.method_config_dict
-        email = config_data.get("email", "")
-        if not email:
+        repository = notification_obj.repository
+
+        if repository and repository.name is None:
+            recipients = self._resolve_namespace_recipients(repository.namespace_name)
+        else:
+            config_data = notification_obj.method_config_dict
+            email = config_data.get("email", "")
+            recipients = [email] if email else []
+
+        if not recipients:
             return
 
         with app.app_context():
             msg = Message(
                 event_handler.get_summary(notification_data["event_data"], notification_data),
-                recipients=[email],
+                recipients=recipients,
             )
             msg.html = event_handler.get_message(notification_data["event_data"], notification_data)
 
