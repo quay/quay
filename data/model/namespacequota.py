@@ -8,8 +8,10 @@ from data.database import (
     ImageStorage,
     Manifest,
     ManifestBlob,
+    NamespaceNotification,
     QuotaLimits,
     QuotaNamespaceSize,
+    QuotaNotificationState,
     QuotaType,
     QuotaTypes,
     Repository,
@@ -93,6 +95,12 @@ def update_namespace_quota_size(quota, limit_bytes):
 
 def delete_namespace_quota(quota):
     with db_transaction():
+        QuotaNotificationState.delete().where(
+            QuotaNotificationState.namespace == quota.namespace,
+        ).execute()
+        NamespaceNotification.delete().where(
+            NamespaceNotification.namespace == quota.namespace,
+        ).execute()
         QuotaLimits.delete().where(QuotaLimits.quota == quota).execute()
         quota.delete_instance()
 
@@ -168,7 +176,12 @@ def update_namespace_quota_limit_type(limit, type_name):
 
 
 def delete_namespace_quota_limit(limit):
-    limit.delete_instance()
+    with db_transaction():
+        QuotaNotificationState.delete().where(
+            QuotaNotificationState.namespace == limit.quota.namespace,
+            QuotaNotificationState.threshold_percent == limit.percent_of_limit,
+        ).execute()
+        limit.delete_instance()
 
 
 def verify_namespace_quota(repository_ref):
