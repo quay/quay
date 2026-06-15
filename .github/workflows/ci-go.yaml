@@ -1,44 +1,7 @@
 name: Go
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - '**.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.golangci.yml'
-      - '.github/workflows/go.yaml'
-      - 'util/config/schema.py'
-      - 'data/database.py'
-      - 'data/fields.py'
-      - 'data/migrations/versions/**'
-      - 'internal/dal/**'
-      - 'sqlc.yaml'
-      - 'Makefile'
-      - 'tools/schema_fingerprint.py'
-      - 'requirements.txt'
-      - '!config-tool/**'
-  pull_request:
-    paths:
-      - '**.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.golangci.yml'
-      - '.github/workflows/go.yaml'
-      - 'util/config/schema.py'
-      - 'data/database.py'
-      - 'data/fields.py'
-      - 'data/migrations/versions/**'
-      - 'internal/dal/**'
-      - 'sqlc.yaml'
-      - 'Makefile'
-      - 'tools/schema_fingerprint.py'
-      - 'requirements.txt'
-      - '!config-tool/**'
-
-permissions:
-  contents: read
+  workflow_call:
 
 jobs:
   lint:
