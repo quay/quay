@@ -28,7 +28,7 @@ spec:
   - name: use-ecr
     value: "true"
   - name: output-image
-    value: 'quay-py3-backup-staging:on-pr-{{revision}}'
+    value: 'quayio-py3-backup-staging:on-pr-{{revision}}'
   - name: image-expires-after
     value: 5d
   - name: dockerfile
