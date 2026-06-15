@@ -515,6 +515,10 @@ def initialize_database():
     LogEntryKind.create(name="delete_repo_notification")
     LogEntryKind.create(name="reset_repo_notification")
 
+    LogEntryKind.create(name="create_namespace_notification")
+    LogEntryKind.create(name="delete_namespace_notification")
+    LogEntryKind.create(name="reset_namespace_notification")
+
     LogEntryKind.create(name="regenerate_robot_token")
 
     LogEntryKind.create(name="repo_verb")

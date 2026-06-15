@@ -845,6 +845,7 @@ import endpoints.api.logs
 import endpoints.api.manifest
 import endpoints.api.mirror
 import endpoints.api.mirrorhealth
+import endpoints.api.namespacenotification
 import endpoints.api.namespacequota
 import endpoints.api.org_mirror
 import endpoints.api.organization
