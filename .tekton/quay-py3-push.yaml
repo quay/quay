@@ -27,7 +27,7 @@ spec:
   - name: use-ecr
     value: 'true'
   - name: output-image
-    value:  'quay-py3-backup-staging:on-pr-{{revision}}'
+    value:  'quay-py3-backup-staging:{{revision}}'
   - name: dockerfile
     value: Dockerfile
   - name: path-context
