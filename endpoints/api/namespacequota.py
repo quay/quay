@@ -270,6 +270,9 @@ class OrganizationQuota(ApiResource):
                         .format("{value:.1f} {unit}"),
                     },
                 )
+                model.namespacequota.maybe_trigger_retroactive_notifications_for_quota(
+                    orgname, quota,
+                )
         except model.DataModelException as ex:
             raise request_error(exception=ex)
 
@@ -384,6 +387,9 @@ class OrganizationQuotaLimitList(ApiResource):
                     "threshold_percent": quota_limit_threshold,
                 },
             )
+            model.namespacequota.maybe_trigger_retroactive_notification(
+                orgname, quota, quota_limit_threshold, quota_type,
+            )
             return "Created", 201
         except model.DataModelException as ex:
             raise request_error(exception=ex)
@@ -453,14 +459,20 @@ class OrganizationQuotaLimit(ApiResource):
             model.namespacequota.update_namespace_quota_limit_threshold(quota_limit, new_threshold)
 
         # Build metadata with current values after updates
+        current_type = quota_limit_data.get("type", previous_type)
+        current_threshold = quota_limit_data.get("threshold_percent", previous_threshold)
         metadata = {
             "namespace": orgname,
-            "type": quota_limit_data.get("type", previous_type),
-            "threshold_percent": quota_limit_data.get("threshold_percent", previous_threshold),
+            "type": current_type,
+            "threshold_percent": current_threshold,
             "previous_type": previous_type,
             "previous_threshold_percent": previous_threshold,
         }
         log_action("org_change_quota_limit", orgname, metadata)
+
+        model.namespacequota.maybe_trigger_retroactive_notification(
+            orgname, quota, current_threshold, current_type,
+        )
 
         return quota_view(quota)
 

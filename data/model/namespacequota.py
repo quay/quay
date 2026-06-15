@@ -308,6 +308,49 @@ def maybe_trigger_quota_notification(namespace_name, quota_result):
     )
 
 
+def maybe_trigger_retroactive_notification(namespace_name, quota, threshold_percent, quota_type_name):
+    """
+    Check if current usage exceeds a specific threshold and fire a notification if so.
+    Called when a quota limit is created or updated.
+    """
+    import features
+
+    if not features.QUOTA_NOTIFICATIONS:
+        return
+
+    usage_bytes = get_namespace_size(namespace_name)
+    quota_limit_bytes = quota.limit_bytes
+    bytes_allowed = int(quota_limit_bytes * threshold_percent / 100)
+
+    if usage_bytes <= bytes_allowed:
+        return
+
+    quota_result = {
+        "severity_level": quota_type_name,
+        "threshold_percent": threshold_percent,
+        "usage_bytes": usage_bytes,
+        "quota_limit_bytes": quota_limit_bytes,
+        "limit_bytes": bytes_allowed,
+    }
+    maybe_trigger_quota_notification(namespace_name, quota_result)
+
+
+def maybe_trigger_retroactive_notifications_for_quota(namespace_name, quota):
+    """
+    Re-evaluate all quota limits against current usage after the quota size changes.
+    """
+    import features
+
+    if not features.QUOTA_NOTIFICATIONS:
+        return
+
+    limits = get_namespace_quota_limit_list(quota)
+    for limit in limits:
+        maybe_trigger_retroactive_notification(
+            namespace_name, quota, limit.percent_of_limit, limit.quota_type.name
+        )
+
+
 def get_namespace_size(namespace_name):
     namespace = user.get_user_or_org(namespace_name)
     try:
