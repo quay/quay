@@ -8,6 +8,22 @@ from data import model
 DEFAULT_BATCH_SIZE = 1000
 
 
+def build_namespace_event_data(namespace_name, extra_data=None):
+    homepage = "%s://%s/organization/%s" % (
+        app.config["PREFERRED_URL_SCHEME"],
+        app.config["SERVER_HOSTNAME"],
+        namespace_name,
+    )
+
+    event_data = {
+        "namespace": namespace_name,
+        "homepage": homepage,
+    }
+
+    event_data.update(extra_data or {})
+    return event_data
+
+
 def build_repository_event_data(namespace_name, repo_name, extra_data=None, subpage=None):
     """
     Builds the basic repository data for an event, including the repository's name, Docker URL and

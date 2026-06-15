@@ -3,7 +3,7 @@ import re
 import time
 from datetime import datetime
 
-from notifications import build_repository_event_data
+from notifications import build_namespace_event_data, build_repository_event_data
 from util.jinjautil import get_template_env
 from util.secscan import PRIORITY_LEVELS, get_priority_for_index
 
@@ -480,4 +480,56 @@ class RepoImageExpiryEvent(NotificationEvent):
             namespace_name,
             repo_name,
             {"tags": ["latest", "v1"], "expiring_in": f"{event_config.get('days', None)} days"},
+        )
+
+
+class QuotaWarningEvent(NotificationEvent):
+    @classmethod
+    def event_name(cls):
+        return "quota_warning"
+
+    def get_level(self, event_data, notification_data):
+        return "warning"
+
+    def get_summary(self, event_data, notification_data):
+        return "Namespace %s storage usage has reached %s%% of its quota limit" % (
+            event_data["namespace"],
+            event_data["threshold_percent"],
+        )
+
+    def get_sample_data(self, namespace_name, repo_name, event_config):
+        return build_namespace_event_data(
+            namespace_name,
+            {
+                "threshold_percent": 80,
+                "usage_bytes": 858993459,
+                "limit_bytes": 1073741824,
+                "usage_percent": 80,
+            },
+        )
+
+
+class QuotaErrorEvent(NotificationEvent):
+    @classmethod
+    def event_name(cls):
+        return "quota_error"
+
+    def get_level(self, event_data, notification_data):
+        return "error"
+
+    def get_summary(self, event_data, notification_data):
+        return "Namespace %s storage usage has exceeded its quota limit (%s%%)" % (
+            event_data["namespace"],
+            event_data["usage_percent"],
+        )
+
+    def get_sample_data(self, namespace_name, repo_name, event_config):
+        return build_namespace_event_data(
+            namespace_name,
+            {
+                "threshold_percent": 100,
+                "usage_bytes": 1127428915,
+                "limit_bytes": 1073741824,
+                "usage_percent": 105,
+            },
         )

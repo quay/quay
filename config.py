@@ -45,6 +45,7 @@ CLIENT_WHITELIST = [
     "FEATURE_REPO_MIRROR",
     "FEATURE_ORG_MIRROR",
     "FEATURE_QUOTA_MANAGEMENT",
+    "FEATURE_QUOTA_NOTIFICATIONS",
     "FEATURE_EDIT_QUOTA",
     "FEATURE_PROXY_CACHE",
     "QUOTA_BACKFILL",
@@ -885,6 +886,12 @@ class DefaultConfig(ImmutableConfig):
 
     # Catches and suppresses quota failures during image push and garbage collection
     FEATURE_QUOTA_SUPPRESS_FAILURES = False
+
+    # Enables external notification channels (email, Slack, webhook) for quota threshold alerts
+    FEATURE_QUOTA_NOTIFICATIONS = False
+
+    # Cooldown period (in seconds) before re-sending a quota notification for the same threshold
+    QUOTA_NOTIFICATION_COOLDOWN_SECONDS = 86400
 
     # default value for all organizations to reject by default. 0 = no configuration
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0

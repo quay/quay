@@ -627,6 +627,9 @@ def initialize_database():
     ExternalNotificationEvent.create(name="repo_mirror_sync_failed")
     ExternalNotificationEvent.create(name="repo_image_expiry")
 
+    ExternalNotificationEvent.create(name="quota_warning")
+    ExternalNotificationEvent.create(name="quota_error")
+
     ExternalNotificationMethod.create(name="quay_notification")
     ExternalNotificationMethod.create(name="email")
     ExternalNotificationMethod.create(name="webhook")
