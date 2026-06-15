@@ -269,6 +269,8 @@ def start_blob_upload(namespace_name, repo_name):
         "FEATURE_VERIFY_QUOTA", True
     ):
         quota = namespacequota.verify_namespace_quota(repository_ref)
+        if quota["severity_level"] in ("Warning", "Reject"):
+            namespacequota.maybe_trigger_quota_notification(namespace_name, quota)
         if quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(
                 repository_ref, "quota_error", {"severity": "Reject"}
@@ -370,6 +372,8 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
         "FEATURE_VERIFY_QUOTA", True
     ):
         quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
+        if quota["severity_level"] in ("Warning", "Reject"):
+            namespacequota.maybe_trigger_quota_notification(namespace_name, quota)
         if quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(
                 repository_ref, "quota_error", {"severity": "Reject"}
@@ -419,6 +423,8 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
         "FEATURE_VERIFY_QUOTA", True
     ):
         quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
+        if quota["severity_level"] in ("Warning", "Reject"):
+            namespacequota.maybe_trigger_quota_notification(namespace_name, quota)
         if quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(
                 repository_ref, "quota_error", {"severity": "Reject"}
