@@ -475,6 +475,38 @@ export class TestApi {
   }
 
   /**
+   * Create a namespace notification for an organization.
+   * Automatically deleted after test.
+   */
+  async namespaceNotification(
+    orgName: string,
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string; orgName: string}> {
+    const result = await this.client.createNamespaceNotification(
+      orgName,
+      event,
+      method,
+      config,
+      eventConfig,
+      title,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteNamespaceNotification(orgName, result.uuid);
+      } catch {
+        /* ignore cleanup errors - notification may already be deleted */
+      }
+    });
+
+    return {uuid: result.uuid, orgName};
+  }
+
+  /**
    * Create a global message.
    * Automatically deleted after test.
    * (Superuser only)

@@ -10,6 +10,7 @@ import {BillingInformation} from './BillingInformation';
 import {CliConfiguration} from './CLIConfiguration';
 import {GeneralSettings} from './GeneralSettings';
 import ImmutabilityPolicies from './ImmutabilityPolicies';
+import NamespaceNotifications from './NamespaceNotifications';
 import {OrgMirroringState} from './OrgMirroringState';
 import {ProxyCacheConfig} from './ProxyCacheConfig';
 import {QuotaManagement} from './QuotaManagement';
@@ -149,6 +150,14 @@ export default function Settings(props: SettingsProps) {
       visible:
         quayConfig?.features?.QUOTA_MANAGEMENT &&
         quayConfig?.features?.EDIT_QUOTA,
+    },
+    {
+      name: 'Notifications',
+      id: 'namespacenotifications',
+      content: () => (
+        <NamespaceNotifications organizationName={props.organizationName} />
+      ),
+      visible: !!quayConfig?.features?.QUOTA_NOTIFICATIONS,
     },
   ];
 
