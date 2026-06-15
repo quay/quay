@@ -382,6 +382,18 @@ autostart = {{ config['quotaregistrysizeworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:quotanotificationworker]
+environment=
+  PYTHONPATH=%(ENV_PYTHONPATH)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/quotanotificationworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.quotanotificationworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.quotanotificationworker
+{% endif -%}
+autostart = {{ config['quotanotificationworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:autopruneworker]
 environment=
   PYTHONPATH=%(ENV_PYTHONPATH)s
