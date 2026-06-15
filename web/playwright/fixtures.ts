@@ -318,6 +318,28 @@ export class TestApi {
   }
 
   /**
+   * Invite an email address to a team.
+   * Automatically revoked after test.
+   */
+  async teamEmailInvite(
+    orgName: string,
+    teamName: string,
+    email: string,
+  ): Promise<{orgName: string; teamName: string; email: string}> {
+    await this.client.inviteTeamMemberByEmail(orgName, teamName, email);
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteTeamEmailInvite(orgName, teamName, email);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    });
+
+    return {orgName, teamName, email};
+  }
+
+  /**
    * Create a robot account in an organization.
    * Automatically deleted after test.
    */
@@ -1185,6 +1207,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   unauthenticatedPage: async ({browser}, use) => {
     // Create a fresh browser context without any authentication
     const context = await browser.newContext();
+    await setReactUICookie(context);
     const page = await context.newPage();
     await use(page);
     await page.close();

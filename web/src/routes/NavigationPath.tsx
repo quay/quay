@@ -37,6 +37,9 @@ const Breadcrumb = {
 };
 
 export enum NavigationPath {
+  // Auth flows
+  confirmInvite = '/confirminvite',
+
   // Side Nav
   home = '/',
   overviewList = '/overview',

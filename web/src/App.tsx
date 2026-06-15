@@ -7,6 +7,7 @@ import {LoadingPage} from 'src/components/LoadingPage';
 import {useAnalytics} from 'src/hooks/UseAnalytics';
 import {Signin} from 'src/routes/Signin/Signin';
 import {CreateAccount} from 'src/routes/CreateAccount/CreateAccount';
+import {ConfirmInvite} from 'src/routes/ConfirmInvite/ConfirmInvite';
 import UpdateUser from 'src/routes/UpdateUser/UpdateUser';
 import {OAuthCallbackHandler} from 'src/routes/OAuthCallback/OAuthCallbackHandler';
 import {OAuthError} from 'src/routes/OAuthCallback/OAuthError';
@@ -25,6 +26,7 @@ export default function App() {
             <Routes>
               <Route path="/signin" element={<Signin />} />
               <Route path="/createaccount" element={<CreateAccount />} />
+              <Route path="/confirminvite" element={<ConfirmInvite />} />
               <Route path="/updateuser" element={<UpdateUser />} />
               <Route path="/oauth-error" element={<OAuthError />} />
               <Route path="/oauth/localapp" element={<OAuthLocalHandler />} />

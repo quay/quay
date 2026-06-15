@@ -20,13 +20,14 @@ export function useCreateAccount() {
     username: string,
     password: string,
     email: string,
+    inviteCode?: string,
   ) => {
     setIsLoading(true);
     setError(null);
 
     try {
       // Create the user account
-      const response = await createUser(username, password, email);
+      const response = await createUser(username, password, email, inviteCode);
 
       // Clear CSRF token after account creation (session state changed)
       GlobalAuthState.csrfToken = null;
@@ -39,7 +40,7 @@ export function useCreateAccount() {
 
       // Auto-login after successful account creation
       try {
-        const loginResponse = await loginUser(username, password);
+        const loginResponse = await loginUser(username, password, inviteCode);
 
         if (loginResponse.success === true) {
           // Login successful, set auth state
