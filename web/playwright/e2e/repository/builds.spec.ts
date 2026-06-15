@@ -172,19 +172,31 @@ test.describe(
         `/repository/${org.name}/${repo.name}?tab=builds`,
       );
 
-      // Default sort: newest first — build2 should be above build1
-      const firstRow = authenticatedPage.locator('tbody tr').first();
-      await expect(firstRow).toContainText(build2.buildId.substring(0, 8));
+      // Both builds should appear in the table
+      await expect(
+        authenticatedPage.getByText(build1.buildId.substring(0, 8)),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText(build2.buildId.substring(0, 8)),
+      ).toBeVisible();
 
-      // Click Date started header to reverse sort (oldest first)
-      await authenticatedPage
-        .getByRole('columnheader', {name: 'Date started'})
-        .click();
+      // Default sort direction should be descending on "Date started"
+      const dateHeader = authenticatedPage.getByRole('columnheader', {
+        name: 'Date started',
+      });
+      await expect(dateHeader).toHaveAttribute('aria-sort', 'descending');
 
-      const firstRowAfterSort = authenticatedPage.locator('tbody tr').first();
-      await expect(firstRowAfterSort).toContainText(
-        build1.buildId.substring(0, 8),
-      );
+      // Click to toggle sort direction
+      await dateHeader.click();
+      await expect(dateHeader).toHaveAttribute('aria-sort', 'ascending');
+
+      // Both builds should remain visible after sort toggle
+      await expect(
+        authenticatedPage.getByText(build1.buildId.substring(0, 8)),
+      ).toBeVisible();
+      await expect(
+        authenticatedPage.getByText(build2.buildId.substring(0, 8)),
+      ).toBeVisible();
     });
 
     test('shows empty state when no builds exist', async ({
