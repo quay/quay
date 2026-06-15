@@ -30,6 +30,7 @@ import './css/ManageMembers.css';
 import {
   ITeamMember,
   useDeleteTeamMember,
+  useDeleteEmailInvite,
   useFetchTeamMembersForOrg,
 } from 'src/hooks/UseMembers';
 import {
@@ -97,6 +98,11 @@ export const manageMemberColumnNames = {
 interface IMemberInfo {
   teamName: string;
   memberName: string;
+  isEmailInvite?: boolean;
+}
+
+function getMemberDisplayName(member: ITeamMember): string {
+  return member.name || member.email || '';
 }
 
 export default function ManageMembersList(props: ManageMembersListProps) {
@@ -143,13 +149,15 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     totalCount,
   } = usePaginatedSortableTable(currentDataSource, {
     columns: {
-      1: (item: ITeamMember) => item.name, // Team member
+      1: (item: ITeamMember) => item.name || item.email, // Team member
       2: (item: ITeamMember) => getAccountTypeForMember(item), // Account
     },
     initialPerPage: 20,
     initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: Team member ascending
     filter: search.query
-      ? (item: ITeamMember) => item.name.includes(search.query)
+      ? (item: ITeamMember) =>
+          item.name?.includes(search.query) ||
+          item.email?.includes(search.query)
       : undefined,
   });
 
@@ -192,8 +200,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     isSelecting: boolean,
   ) => {
     setSelectedTeamMembers((prevSelected) => {
+      const displayName = getMemberDisplayName(teamMember);
       const otherSelectedTeamMembers = prevSelected.filter(
-        (t) => t.name !== teamMember.name,
+        (t) => getMemberDisplayName(t) !== displayName,
       );
       return isSelecting
         ? [...otherSelectedTeamMembers, teamMember]
@@ -203,6 +212,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
 
   const {removeTeamMember, errorDeleteTeamMember, successDeleteTeamMember} =
     useDeleteTeamMember(organizationName);
+
+  const {removeEmailInvite, errorDeleteEmailInvite, successDeleteEmailInvite} =
+    useDeleteEmailInvite(organizationName);
 
   useEffect(() => {
     if (successDeleteTeamMember) {
@@ -223,12 +235,39 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     }
   }, [errorDeleteTeamMember]);
 
+  useEffect(() => {
+    if (successDeleteEmailInvite) {
+      setIsDeleteModalForRowOpen(false);
+      addAlert({
+        variant: AlertVariant.Success,
+        title: `Successfully revoked invitation for: ${memberToBeDeleted.memberName}`,
+      });
+    }
+  }, [successDeleteEmailInvite]);
+
+  useEffect(() => {
+    if (errorDeleteEmailInvite) {
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: `Error revoking invitation for: ${memberToBeDeleted.memberName}`,
+      });
+    }
+  }, [errorDeleteEmailInvite]);
+
+  const handleDeleteMember = (info: IMemberInfo) => {
+    if (info.isEmailInvite) {
+      removeEmailInvite({teamName: info.teamName, email: info.memberName});
+    } else {
+      removeTeamMember({teamName: info.teamName, memberName: info.memberName});
+    }
+  };
+
   const deleteRowModal = (
     <DeleteModalForRowTemplate
       deleteMsgTitle={'Remove member from team'}
       isModalOpen={isDeleteModalForRowOpen}
       toggleModal={() => setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen)}
-      deleteHandler={removeTeamMember}
+      deleteHandler={handleDeleteMember}
       itemToBeDeleted={memberToBeDeleted}
       keyToDisplay="memberName"
     />
@@ -698,51 +737,57 @@ export default function ManageMembersList(props: ManageMembersListProps) {
               </Tr>
             </Thead>
             <Tbody>
-              {tableMembersList?.map((teamMember, rowIndex) => (
-                <Tr key={rowIndex}>
-                  <Td
-                    select={{
-                      rowIndex,
-                      onSelect: (_event, isSelecting) =>
-                        onSelectTeamMember(teamMember, rowIndex, isSelecting),
-                      isSelected: selectedTeamMembers.some(
-                        (t) => t.name === teamMember.name,
-                      ),
-                    }}
-                  />
-                  <Td
-                    dataLabel={manageMemberColumnNames.teamMember}
-                    data-testid={teamMember.name}
-                  >
-                    {teamMember.name}
-                  </Td>
-                  <Td dataLabel={manageMemberColumnNames.account}>
-                    {getAccountTypeForMember(teamMember)}
-                  </Td>
-                  <Conditional
-                    if={
-                      config?.registry_state !== 'readonly' &&
-                      organization.is_admin &&
-                      displayDeleteIcon(getAccountTypeForMember(teamMember))
-                    }
-                  >
-                    <Td>
-                      <Button
-                        icon={<TrashIcon />}
-                        variant="plain"
-                        onClick={() => {
-                          setMemberToBeDeleted({
-                            teamName: teamName,
-                            memberName: teamMember.name,
-                          });
-                          setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen);
-                        }}
-                        data-testid={`${teamMember.name}-delete-icon`}
-                      />
+              {tableMembersList?.map((teamMember, rowIndex) => {
+                const displayName = getMemberDisplayName(teamMember);
+                return (
+                  <Tr key={rowIndex}>
+                    <Td
+                      select={{
+                        rowIndex,
+                        onSelect: (_event, isSelecting) =>
+                          onSelectTeamMember(teamMember, rowIndex, isSelecting),
+                        isSelected: selectedTeamMembers.some(
+                          (t) => getMemberDisplayName(t) === displayName,
+                        ),
+                      }}
+                    />
+                    <Td
+                      dataLabel={manageMemberColumnNames.teamMember}
+                      data-testid={displayName}
+                    >
+                      {displayName}
                     </Td>
-                  </Conditional>
-                </Tr>
-              ))}
+                    <Td dataLabel={manageMemberColumnNames.account}>
+                      {getAccountTypeForMember(teamMember)}
+                    </Td>
+                    <Conditional
+                      if={
+                        config?.registry_state !== 'readonly' &&
+                        organization.is_admin &&
+                        displayDeleteIcon(getAccountTypeForMember(teamMember))
+                      }
+                    >
+                      <Td>
+                        <Button
+                          icon={<TrashIcon />}
+                          variant="plain"
+                          onClick={() => {
+                            setMemberToBeDeleted({
+                              teamName: teamName,
+                              memberName: displayName,
+                              isEmailInvite: teamMember.kind === 'invite',
+                            });
+                            setIsDeleteModalForRowOpen(
+                              !isDeleteModalForRowOpen,
+                            );
+                          }}
+                          data-testid={`${displayName}-delete-icon`}
+                        />
+                      </Td>
+                    </Conditional>
+                  </Tr>
+                );
+              })}
             </Tbody>
           </Table>
         </ManageMembersToolbar>

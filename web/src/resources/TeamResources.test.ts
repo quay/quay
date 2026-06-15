@@ -10,6 +10,7 @@ import {
   deleteTeamForOrg,
   bulkDeleteTeams,
   TeamDeleteError,
+  acceptTeamInvite,
 } from './TeamResources';
 import {ResourceError} from './ErrorHandling';
 
@@ -183,6 +184,19 @@ describe('TeamResources', () => {
       await expect(
         bulkDeleteTeams('org', [{name: 'devs'}, {name: 'ops'}] as any),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('acceptTeamInvite', () => {
+    it('accepts a team invite via PUT', async () => {
+      const response = {org: 'myorg', team: 'devs'};
+      vi.mocked(axios.put).mockResolvedValueOnce(mockResponse(response));
+
+      const result = await acceptTeamInvite('invite-code-123');
+      expect(axios.put).toHaveBeenCalledWith(
+        '/api/v1/teaminvite/invite-code-123',
+      );
+      expect(result).toEqual(response);
     });
   });
 

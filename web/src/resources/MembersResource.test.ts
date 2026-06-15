@@ -8,6 +8,8 @@ import {
   deleteTeamMemberForOrg,
   deleteCollaboratorForOrg,
   addMemberToTeamForOrg,
+  inviteTeamMemberByEmailForOrg,
+  deleteTeamMemberEmailInviteForOrg,
 } from './MembersResource';
 
 vi.mock('src/libs/axios', () => ({
@@ -119,6 +121,53 @@ describe('MembersResource', () => {
         {},
       );
       expect(result).toEqual({added: true});
+    });
+  });
+
+  describe('inviteTeamMemberByEmailForOrg', () => {
+    it('invites a member by email', async () => {
+      const inviteData = {email: 'test@example.com', kind: 'invite'};
+      vi.mocked(axios.put).mockResolvedValueOnce(mockResponse(inviteData));
+
+      const result = await inviteTeamMemberByEmailForOrg(
+        'myorg',
+        'devs',
+        'test@example.com',
+      );
+      expect(axios.put).toHaveBeenCalledWith(
+        '/api/v1/organization/myorg/team/devs/invite/test%40example.com',
+        {},
+      );
+      expect(result).toEqual(inviteData);
+    });
+
+    it('encodes special characters in email', async () => {
+      vi.mocked(axios.put).mockResolvedValueOnce(mockResponse({}));
+
+      await inviteTeamMemberByEmailForOrg(
+        'myorg',
+        'devs',
+        'user+tag@example.com',
+      );
+      expect(axios.put).toHaveBeenCalledWith(
+        '/api/v1/organization/myorg/team/devs/invite/user%2Btag%40example.com',
+        {},
+      );
+    });
+  });
+
+  describe('deleteTeamMemberEmailInviteForOrg', () => {
+    it('deletes an email invite', async () => {
+      vi.mocked(axios.delete).mockResolvedValueOnce(mockResponse(null, 204));
+
+      await deleteTeamMemberEmailInviteForOrg(
+        'myorg',
+        'devs',
+        'test@example.com',
+      );
+      expect(axios.delete).toHaveBeenCalledWith(
+        '/api/v1/organization/myorg/team/devs/invite/test%40example.com',
+      );
     });
   });
 });

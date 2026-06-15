@@ -80,3 +80,29 @@ export async function addMemberToTeamForOrg(
   assertHttpCode(response.status, 200);
   return response.data;
 }
+
+export async function inviteTeamMemberByEmailForOrg(
+  orgName: string,
+  teamName: string,
+  email: string,
+) {
+  const url = `/api/v1/organization/${orgName}/team/${teamName}/invite/${encodeURIComponent(
+    email,
+  )}`;
+  const response: AxiosResponse = await axios.put(url, {});
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export async function deleteTeamMemberEmailInviteForOrg(
+  orgName: string,
+  teamName: string,
+  email: string,
+) {
+  const response = await axios.delete(
+    `/api/v1/organization/${orgName}/team/${teamName}/invite/${encodeURIComponent(
+      email,
+    )}`,
+  );
+  assertHttpCode(response.status, 204);
+}

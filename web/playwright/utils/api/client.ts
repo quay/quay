@@ -1079,6 +1079,58 @@ export class ApiClient {
     }
   }
 
+  async inviteTeamMemberByEmail(
+    orgName: string,
+    teamName: string,
+    email: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.put(
+      `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/invite/${encodeURIComponent(
+        email,
+      )}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to invite ${email} to team ${teamName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
+  async deleteTeamEmailInvite(
+    orgName: string,
+    teamName: string,
+    email: string,
+  ): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.delete(
+      `${API_URL}/api/v1/organization/${orgName}/team/${teamName}/invite/${encodeURIComponent(
+        email,
+      )}`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to delete email invite ${email} from team ${teamName}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
   // Repository permission methods
 
   async addRepositoryPermission(
