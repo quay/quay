@@ -7,6 +7,7 @@ from data.database import (
     ExternalNotificationEvent,
     ExternalNotificationMethod,
     Namespace,
+    NamespaceNotification,
     Notification,
     NotificationKind,
     Repository,
@@ -318,3 +319,102 @@ def delete_tag_notifications_for_tag(tag):
     resp = TagNotificationSuccess.delete().where(TagNotificationSuccess.tag == tag.id).execute()
     logger.debug(f"Deleted {resp} entries from TagNotificationSuccess for tag: {tag.name}")
     return
+
+
+def create_namespace_notification(
+    namespace_user, event_name, method_name, method_config, event_config, title=None
+):
+    event = ExternalNotificationEvent.get(ExternalNotificationEvent.name == event_name)
+    method = ExternalNotificationMethod.get(ExternalNotificationMethod.name == method_name)
+
+    return NamespaceNotification.create(
+        namespace=namespace_user,
+        event=event,
+        method=method,
+        config_json=json.dumps(method_config),
+        title=title,
+        event_config_json=json.dumps(event_config),
+    )
+
+
+def list_namespace_notifications(namespace_name, event_name=None):
+    query = (
+        NamespaceNotification.select(NamespaceNotification, Namespace)
+        .join(Namespace, on=(NamespaceNotification.namespace == Namespace.id))
+        .where(Namespace.username == namespace_name)
+    )
+
+    if event_name:
+        query = (
+            query.switch(NamespaceNotification)
+            .join(ExternalNotificationEvent)
+            .where(ExternalNotificationEvent.name == event_name)
+        )
+
+    return query
+
+
+def get_namespace_notification(uuid):
+    try:
+        return (
+            NamespaceNotification.select(NamespaceNotification, Namespace)
+            .join(Namespace, on=(NamespaceNotification.namespace == Namespace.id))
+            .where(NamespaceNotification.uuid == uuid)
+            .get()
+        )
+    except NamespaceNotification.DoesNotExist:
+        raise InvalidNotificationException(
+            "No namespace notification found with uuid: %s" % uuid
+        )
+
+
+def delete_namespace_notification(namespace_name, uuid):
+    found = get_namespace_notification(uuid)
+    if found.namespace.username != namespace_name:
+        raise InvalidNotificationException(
+            "No namespace notification found with uuid: %s" % uuid
+        )
+    found.delete_instance()
+    return found
+
+
+def reset_namespace_notification_number_of_failures(namespace_name, uuid):
+    try:
+        notification = (
+            NamespaceNotification.select().where(NamespaceNotification.uuid == uuid).get()
+        )
+        if notification.namespace.username != namespace_name:
+            raise InvalidNotificationException(
+                "No namespace notification found with uuid: %s" % uuid
+            )
+        NamespaceNotification.update(number_of_failures=0).where(
+            NamespaceNotification.id == notification.id
+        ).execute()
+        return notification
+    except NamespaceNotification.DoesNotExist:
+        return None
+
+
+def increment_namespace_notification_failure_count(uuid):
+    (
+        NamespaceNotification.update(
+            number_of_failures=NamespaceNotification.number_of_failures + 1
+        )
+        .where(NamespaceNotification.uuid == uuid)
+        .execute()
+    )
+
+
+def get_enabled_namespace_notification(uuid):
+    try:
+        return (
+            NamespaceNotification.select(NamespaceNotification, Namespace)
+            .join(Namespace, on=(NamespaceNotification.namespace == Namespace.id))
+            .where(NamespaceNotification.uuid == uuid)
+            .where(NamespaceNotification.number_of_failures < 3)
+            .get()
+        )
+    except NamespaceNotification.DoesNotExist:
+        raise InvalidNotificationException(
+            "No namespace notification found with uuid: %s" % uuid
+        )
