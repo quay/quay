@@ -1,4 +1,5 @@
 import json
+import logging
 
 from peewee import JOIN, DataError, fn
 
@@ -186,11 +187,13 @@ def check_limits(namespace_name, size):
     quotas = get_namespace_quota_list(namespace_user.username)
     if not quotas:
         default_size = config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES", 0)
+        exceeded = default_size > 0 and size >= default_size
         return {
             "limit_bytes": default_size,
-            "severity_level": (
-                None if (default_size == 0 or size < default_size) else QuotaTypes.REJECT
-            ),
+            "severity_level": QuotaTypes.REJECT if exceeded else None,
+            "usage_bytes": size,
+            "quota_limit_bytes": default_size,
+            "threshold_percent": 100 if exceeded else None,
         }
 
     # Currently only one quota per namespace is supported
@@ -198,6 +201,7 @@ def check_limits(namespace_name, size):
     limits = get_namespace_quota_limit_list(quota)
     limit_bytes = 0
     severity_level = None
+    threshold_percent = None
 
     for limit in limits:
         bytes_allowed = int(limit.quota.limit_bytes * limit.percent_of_limit / 100)
@@ -205,8 +209,15 @@ def check_limits(namespace_name, size):
             if limit_bytes < bytes_allowed:
                 limit_bytes = bytes_allowed
                 severity_level = limit.quota_type.name
+                threshold_percent = limit.percent_of_limit
 
-    return {"limit_bytes": limit_bytes, "severity_level": severity_level}
+    return {
+        "limit_bytes": limit_bytes,
+        "severity_level": severity_level,
+        "usage_bytes": size,
+        "quota_limit_bytes": quota.limit_bytes,
+        "threshold_percent": threshold_percent,
+    }
 
 
 def notify_organization_admins(repository_ref, notification_kind, metadata={}):
@@ -241,6 +252,60 @@ def notify_organization_admins(repository_ref, notification_kind, metadata={}):
                 namespace_user,
                 metadata,
             )
+
+
+logger = logging.getLogger(__name__)
+
+
+def maybe_trigger_quota_notification(namespace_name, quota_result):
+    """
+    Spawn external namespace notifications when a quota threshold is crossed,
+    gated behind FEATURE_QUOTA_NOTIFICATIONS with dedup via the state machine.
+    """
+    import features
+    from data.model.quota_notification_state import record_notification, should_notify
+    from notifications import spawn_namespace_notification
+
+    if not features.QUOTA_NOTIFICATIONS:
+        return
+
+    severity = quota_result.get("severity_level")
+    if severity not in ("Warning", "Reject"):
+        return
+
+    threshold_percent = quota_result.get("threshold_percent")
+    if threshold_percent is None:
+        return
+
+    namespace_user = model.user.get_user_or_org(namespace_name)
+    if namespace_user is None:
+        return
+
+    if not should_notify(namespace_user, threshold_percent):
+        return
+
+    event_name = "quota_warning" if severity == "Warning" else "quota_error"
+    usage_bytes = quota_result.get("usage_bytes", 0)
+    quota_limit_bytes = quota_result.get("quota_limit_bytes", 0)
+    usage_percent = int(usage_bytes * 100 / quota_limit_bytes) if quota_limit_bytes else 0
+
+    spawn_namespace_notification(
+        namespace_name,
+        event_name,
+        extra_data={
+            "threshold_percent": threshold_percent,
+            "usage_bytes": usage_bytes,
+            "limit_bytes": quota_limit_bytes,
+            "usage_percent": usage_percent,
+        },
+    )
+    record_notification(namespace_user, threshold_percent)
+    logger.info(
+        "Quota %s notification triggered for namespace %s at %d%% threshold",
+        severity.lower(),
+        namespace_name,
+        threshold_percent,
+    )
 
 
 def get_namespace_size(namespace_name):
