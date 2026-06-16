@@ -14,7 +14,7 @@ import {
   ExclamationTriangleIcon,
   BanIcon,
 } from '@patternfly/react-icons';
-import {useNavigate} from 'react-router-dom';
+import {useNavigate, useSearchParams} from 'react-router-dom';
 import {useCurrentUser, useUpdateUser} from 'src/hooks/UseCurrentUser';
 import {useUsernameValidation} from 'src/hooks/UseUsernameValidation';
 import {UpdateUserRequest} from 'src/resources/UserResource';
@@ -28,6 +28,7 @@ function isValidUsername(username: string): boolean {
 
 export default function UpdateUser() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {user, loading: userLoading} = useCurrentUser();
   const [isUpdating, setIsUpdating] = useState(false);
   const [username, setUsername] = useState('');
@@ -47,6 +48,13 @@ export default function UpdateUser() {
       if (updatedUser?.prompts?.length) {
         setIsUpdating(false);
       } else {
+        // Check for pending invite code (passed via query param from signin/signup)
+        const inviteCode = searchParams.get('code');
+        if (inviteCode) {
+          navigate(`/confirminvite?code=${encodeURIComponent(inviteCode)}`);
+          return;
+        }
+
         // Check for stored redirect URL (set by external login flow)
         const redirectUrl = localStorage.getItem('quay.redirectAfterLoad');
         localStorage.removeItem('quay.redirectAfterLoad');
@@ -99,7 +107,12 @@ export default function UpdateUser() {
       }
 
       if (!user.prompts || user.prompts.length === 0) {
-        navigate('/');
+        const inviteCode = searchParams.get('code');
+        if (inviteCode) {
+          navigate(`/confirminvite?code=${encodeURIComponent(inviteCode)}`);
+        } else {
+          navigate('/');
+        }
         return;
       }
 

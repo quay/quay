@@ -205,7 +205,16 @@ export function Signin() {
 
         // If user has prompts (e.g., confirm_username), redirect to updateuser
         if (user.prompts && user.prompts.length > 0) {
-          navigate('/updateuser');
+          const updateUrl = inviteCode
+            ? `/updateuser?code=${encodeURIComponent(inviteCode)}`
+            : '/updateuser';
+          navigate(updateUrl);
+          return;
+        }
+
+        // If there's an invite code, redirect to confirminvite to accept it
+        if (inviteCode) {
+          navigate(`/confirminvite?code=${encodeURIComponent(inviteCode)}`);
           return;
         }
 

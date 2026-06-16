@@ -64,7 +64,10 @@ export function useCreateAccount() {
 
           // If user has prompts (e.g., confirm_username, enter_name, enter_company), redirect to updateuser
           if (user.prompts && user.prompts.length > 0) {
-            navigate('/updateuser');
+            const updateUrl = inviteCode
+              ? `/updateuser?code=${encodeURIComponent(inviteCode)}`
+              : '/updateuser';
+            navigate(updateUrl);
             return {success: true};
           }
 
