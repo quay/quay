@@ -20,13 +20,14 @@ export function useCreateAccount() {
     username: string,
     password: string,
     email: string,
+    inviteCode?: string,
   ) => {
     setIsLoading(true);
     setError(null);
 
     try {
       // Create the user account
-      const response = await createUser(username, password, email);
+      const response = await createUser(username, password, email, inviteCode);
 
       // Clear CSRF token after account creation (session state changed)
       GlobalAuthState.csrfToken = null;
@@ -39,7 +40,7 @@ export function useCreateAccount() {
 
       // Auto-login after successful account creation
       try {
-        const loginResponse = await loginUser(username, password);
+        const loginResponse = await loginUser(username, password, inviteCode);
 
         if (loginResponse.success === true) {
           // Login successful, set auth state
@@ -64,6 +65,12 @@ export function useCreateAccount() {
           // If user has prompts (e.g., confirm_username, enter_name, enter_company), redirect to updateuser
           if (user.prompts && user.prompts.length > 0) {
             navigate('/updateuser');
+            return {success: true};
+          }
+
+          // If there's an invite code, redirect to confirminvite to accept it
+          if (inviteCode) {
+            navigate(`/confirminvite?code=${encodeURIComponent(inviteCode)}`);
             return {success: true};
           }
 

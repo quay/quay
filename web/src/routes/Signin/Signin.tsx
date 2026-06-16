@@ -131,14 +131,17 @@ export function Signin() {
     );
   };
 
+  const inviteCode = searchParams.get('code') || undefined;
+
   const showCreateAccount = () => {
     if (!quayConfig) return false;
+    const hasInvite = Boolean(inviteCode);
     return (
       !inReadOnlyMode &&
       quayConfig.features?.USER_CREATION === true &&
       quayConfig.config?.AUTHENTICATION_TYPE === 'Database' &&
       shouldShowDirectLogin() &&
-      !quayConfig.features?.INVITE_ONLY_USER_CREATION &&
+      (!quayConfig.features?.INVITE_ONLY_USER_CREATION || hasInvite) &&
       !inAccountRecoveryMode
     );
   };
@@ -146,6 +149,7 @@ export function Signin() {
   const showInvitationMessage = () => {
     if (!quayConfig) return false;
     return (
+      !inviteCode &&
       quayConfig.features?.USER_CREATION === true &&
       quayConfig.config?.AUTHENTICATION_TYPE === 'Database' &&
       quayConfig.features?.DIRECT_LOGIN === true &&
@@ -178,7 +182,7 @@ export function Signin() {
   ) => {
     e.preventDefault();
     try {
-      const response = await loginUser(username, password);
+      const response = await loginUser(username, password, inviteCode);
       if (response.success === true) {
         setAuthState((old) => ({...old, isSignedIn: true, username: username}));
         await getCsrfToken();
@@ -425,7 +429,11 @@ export function Signin() {
               <>
                 Don&apos;t have an account?{' '}
                 <Link
-                  to="/createaccount"
+                  to={
+                    inviteCode
+                      ? `/createaccount?code=${encodeURIComponent(inviteCode)}`
+                      : '/createaccount'
+                  }
                   data-testid="signin-create-account-link"
                   style={{
                     color: 'var(--pf-t--global--text--color--link--default)',

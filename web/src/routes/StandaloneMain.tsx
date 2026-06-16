@@ -90,7 +90,12 @@ function getReservedRoutePrefixes(): string[] {
     .filter((prefix) => prefix && !prefix.startsWith(':')); // Filter out empty and param placeholders
 
   // Additional static routes not in NavigationPath enum
-  const staticPrefixes = ['signin', 'createaccount', 'oauth-error'];
+  const staticPrefixes = [
+    'signin',
+    'createaccount',
+    'confirminvite',
+    'oauth-error',
+  ];
 
   // Combine and deduplicate
   return [...new Set([...navigationPrefixes, ...staticPrefixes])];

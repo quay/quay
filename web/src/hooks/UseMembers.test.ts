@@ -8,6 +8,8 @@ import {
   useFetchCollaborators,
   useDeleteTeamMember,
   useDeleteCollaborator,
+  useInviteTeamMemberByEmail,
+  useDeleteEmailInvite,
 } from './UseMembers';
 import {
   addMemberToTeamForOrg,
@@ -15,15 +17,19 @@ import {
   fetchCollaboratorsForOrg,
   deleteTeamMemberForOrg,
   deleteCollaboratorForOrg,
+  inviteTeamMemberByEmailForOrg,
+  deleteTeamMemberEmailInviteForOrg,
 } from 'src/resources/MembersResource';
 
 vi.mock('src/resources/MembersResource', () => ({
   addMemberToTeamForOrg: vi.fn(),
   deleteCollaboratorForOrg: vi.fn(),
   deleteTeamMemberForOrg: vi.fn(),
+  deleteTeamMemberEmailInviteForOrg: vi.fn(),
   fetchCollaboratorsForOrg: vi.fn(),
   fetchMembersForOrg: vi.fn(),
   fetchTeamMembersForOrg: vi.fn(),
+  inviteTeamMemberByEmailForOrg: vi.fn(),
 }));
 
 vi.mock(
@@ -161,6 +167,72 @@ describe('UseMembers', () => {
         expect(result.current.successDeleteCollaborator).toBe(true),
       );
       expect(deleteCollaboratorForOrg).toHaveBeenCalledWith('myorg', 'extuser');
+    });
+  });
+
+  describe('useInviteTeamMemberByEmail', () => {
+    it('calls inviteTeamMemberByEmailForOrg on mutate', async () => {
+      vi.mocked(inviteTeamMemberByEmailForOrg).mockResolvedValueOnce(undefined);
+      const {result} = renderHook(() => useInviteTeamMemberByEmail('myorg'), {
+        wrapper,
+      });
+      act(() => {
+        result.current.inviteMemberByEmail({
+          team: 'myteam',
+          email: 'test@example.com',
+        });
+      });
+      await waitFor(() =>
+        expect(result.current.successInvitingMember).toBe(true),
+      );
+      expect(inviteTeamMemberByEmailForOrg).toHaveBeenCalledWith(
+        'myorg',
+        'myteam',
+        'test@example.com',
+      );
+    });
+
+    it('sets error state on failure', async () => {
+      vi.mocked(inviteTeamMemberByEmailForOrg).mockRejectedValueOnce(
+        new Error('invite failed'),
+      );
+      const {result} = renderHook(() => useInviteTeamMemberByEmail('myorg'), {
+        wrapper,
+      });
+      act(() => {
+        result.current.inviteMemberByEmail({
+          team: 'myteam',
+          email: 'bad@example.com',
+        });
+      });
+      await waitFor(() =>
+        expect(result.current.errorInvitingMember).toBe(true),
+      );
+    });
+  });
+
+  describe('useDeleteEmailInvite', () => {
+    it('calls deleteTeamMemberEmailInviteForOrg on mutate', async () => {
+      vi.mocked(deleteTeamMemberEmailInviteForOrg).mockResolvedValueOnce(
+        undefined,
+      );
+      const {result} = renderHook(() => useDeleteEmailInvite('myorg'), {
+        wrapper,
+      });
+      act(() => {
+        result.current.removeEmailInvite({
+          teamName: 'myteam',
+          email: 'test@example.com',
+        });
+      });
+      await waitFor(() =>
+        expect(result.current.successDeleteEmailInvite).toBe(true),
+      );
+      expect(deleteTeamMemberEmailInviteForOrg).toHaveBeenCalledWith(
+        'myorg',
+        'myteam',
+        'test@example.com',
+      );
     });
   });
 });
