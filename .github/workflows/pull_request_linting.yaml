@@ -4,17 +4,22 @@ on:
   pull_request:
     types: ['opened', 'edited', 'reopened', 'synchronize']
 
+permissions:
+  contents: read
+
 jobs:
   conventional-commit:
     runs-on: ubuntu-latest
     name: conventional commit check
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: check conventional commit
         id: check-for-cc
-        uses: agenthunt/conventional-commit-checker-action@v2.0.0
+        uses: agenthunt/conventional-commit-checker-action@9e552d650d0e205553ec7792d447929fc78e012b # v2.0.0
         with:
           pr-title-regex: '^(?:\[redhat-[0-9]+\.[0-9]+\] )?(?:PROJQUAY-[0-9]+|NO-ISSUE): [a-z]+(?:\([^)]+\))?: .+$'
           pr-body-regex: '(.*)?'
