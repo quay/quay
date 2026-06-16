@@ -7,7 +7,10 @@ import {
   testNamespaceNotification,
 } from 'src/resources/NamespaceNotificationResource';
 
-export function useUpdateNamespaceNotifications(orgname: string) {
+export function useUpdateNamespaceNotifications(
+  orgname: string,
+  isUser: boolean = false,
+) {
   const queryClient = useQueryClient();
 
   const {
@@ -17,7 +20,7 @@ export function useUpdateNamespaceNotifications(orgname: string) {
     reset: resetCreatingNotification,
   } = useMutation(
     async (notification: NamespaceNotification) =>
-      createNamespaceNotification(orgname, notification),
+      createNamespaceNotification(orgname, notification, isUser),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['namespacenotifications']);
@@ -33,7 +36,7 @@ export function useUpdateNamespaceNotifications(orgname: string) {
   } = useMutation(
     async (uuids: string | string[]) => {
       uuids = Array.isArray(uuids) ? uuids : [uuids];
-      return bulkDeleteNamespaceNotifications(orgname, uuids);
+      return bulkDeleteNamespaceNotifications(orgname, uuids, isUser);
     },
     {
       onSuccess: () => {
@@ -48,7 +51,7 @@ export function useUpdateNamespaceNotifications(orgname: string) {
     isSuccess: successTestingNotification,
     reset: resetTestingNotification,
   } = useMutation(
-    async (uuid: string) => testNamespaceNotification(orgname, uuid),
+    async (uuid: string) => testNamespaceNotification(orgname, uuid, isUser),
     {
       onSuccess: () => {
         setTimeout(() => {
@@ -66,7 +69,7 @@ export function useUpdateNamespaceNotifications(orgname: string) {
   } = useMutation(
     async (uuids: string | string[]) => {
       uuids = Array.isArray(uuids) ? uuids : [uuids];
-      return bulkEnableNamespaceNotifications(orgname, uuids);
+      return bulkEnableNamespaceNotifications(orgname, uuids, isUser);
     },
     {
       onSuccess: () => {

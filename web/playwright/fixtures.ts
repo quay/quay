@@ -507,6 +507,36 @@ export class TestApi {
   }
 
   /**
+   * Create a namespace notification for the authenticated user.
+   * Automatically deleted after test.
+   */
+  async userNamespaceNotification(
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string}> {
+    const result = await this.client.createUserNamespaceNotification(
+      event,
+      method,
+      config,
+      eventConfig,
+      title,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteUserNamespaceNotification(result.uuid);
+      } catch {
+        /* ignore cleanup errors - notification may already be deleted */
+      }
+    });
+
+    return {uuid: result.uuid};
+  }
+
+  /**
    * Create a global message.
    * Automatically deleted after test.
    * (Superuser only)
