@@ -864,6 +864,52 @@ export class ApiClient {
     }
   }
 
+  async getUserNamespaceNotifications(): Promise<{
+    notifications: Array<{
+      uuid: string;
+      title: string;
+      event: string;
+      method: string;
+      number_of_failures: number;
+    }>;
+  }> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/user/notifications`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get user namespace notifications: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async testUserNamespaceNotification(uuid: string): Promise<void> {
+    const token = await this.fetchToken();
+    const response = await this.request.post(
+      `${API_URL}/api/v1/user/notifications/${uuid}/test`,
+      {
+        timeout: 5000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to test user namespace notification ${uuid}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
   // Team methods
 
   async createTeam(
@@ -1070,6 +1116,9 @@ export class ApiClient {
         `Failed to create user ${username}: ${response.status()} - ${body}`,
       );
     }
+
+    // Creating a user changes the server session; invalidate cached CSRF token
+    this.csrfToken = null;
 
     const result = await response.json();
     return {
