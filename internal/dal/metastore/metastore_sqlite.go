@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
 
 	"github.com/quay/quay/internal/dal/daldb"
+	"github.com/quay/quay/internal/oci"
 )
 
 // SQLiteStore implements Store backed by a SQLite database. It holds only a
@@ -83,7 +83,7 @@ func (s *SQLiteStore) resolveMediaType(mt string) (int64, error) {
 }
 
 // EnsureRepository creates or retrieves the repository and its namespace user.
-func (s *SQLiteStore) EnsureRepository(ctx context.Context, name reference.Named) (int64, error) {
+func (s *SQLiteStore) EnsureRepository(ctx context.Context, name oci.RepositoryName) (int64, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
@@ -91,22 +91,20 @@ func (s *SQLiteStore) EnsureRepository(ctx context.Context, name reference.Named
 	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
 	q := daldb.New(tx)
 
-	namespace, repo := parseRepoName(name)
-
-	userID, err := q.EnsureUser(ctx, namespace)
+	userID, err := q.EnsureUser(ctx, name.Namespace)
 	if err != nil {
-		return 0, fmt.Errorf("ensure user %q: %w", namespace, err)
+		return 0, fmt.Errorf("ensure user %q: %w", name.Namespace, err)
 	}
 
 	repoID, err := q.GetOrCreateRepository(ctx, daldb.GetOrCreateRepositoryParams{
 		NamespaceUserID: sql.NullInt64{Int64: userID, Valid: true},
-		Name:            repo,
+		Name:            name.Name,
 		VisibilityID:    s.visibilityPrivate,
 		KindID:          s.repoKindImage,
 		BadgeToken:      "",
 	})
 	if err != nil {
-		return 0, fmt.Errorf("ensure repository %q: %w", name.Name(), err)
+		return 0, fmt.Errorf("ensure repository %q: %w", name.String(), err)
 	}
 
 	if err := tx.Commit(); err != nil {

@@ -1,4 +1,5 @@
-package registry
+// Package certs provides self-signed TLS certificate generation and secure TLS configuration.
+package certs
 
 import (
 	"crypto/ecdsa"
@@ -14,10 +15,10 @@ import (
 	"time"
 )
 
-// GenerateSelfSignedCert creates a self-signed TLS certificate and key for the
+// GenerateSelfSigned creates a self-signed TLS certificate and key for the
 // given hostname. The cert is valid for 10 years. If hostname is an IP address,
 // it is added as an IP SAN; otherwise as a DNS SAN.
-func GenerateSelfSignedCert(hostname, certPath, keyPath string) error {
+func GenerateSelfSigned(hostname, certPath, keyPath string) error {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return fmt.Errorf("generate key: %w", err)
@@ -71,8 +72,7 @@ func GenerateSelfSignedCert(hostname, certPath, keyPath string) error {
 }
 
 // SecureTLSConfig returns a hardened TLS configuration with ECDHE-only cipher
-// suites and modern curve preferences. For TLS 1.3, Go manages cipher suites
-// automatically and ignores the CipherSuites field.
+// suites and modern curve preferences.
 func SecureTLSConfig() *tls.Config {
 	return &tls.Config{
 		MinVersion: tls.VersionTLS12,
@@ -91,8 +91,8 @@ func SecureTLSConfig() *tls.Config {
 	}
 }
 
-// CertFilesExist returns true if both cert and key files exist.
-func CertFilesExist(certPath, keyPath string) bool {
+// FilesExist returns true if both cert and key files exist.
+func FilesExist(certPath, keyPath string) bool {
 	if _, err := os.Stat(certPath); err != nil {
 		return false
 	}

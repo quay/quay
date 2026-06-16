@@ -4,14 +4,11 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log/slog"
 	"net"
 	"net/http"
 	"time"
-
-	"github.com/quay/quay/internal/registry"
 )
 
 const (
@@ -22,14 +19,12 @@ const (
 	shutdownTimeout   = 10 * time.Second
 )
 
-// Config holds the parameters needed to build a registry server.
+// Config holds the parameters needed to build an HTTP server.
 type Config struct {
 	ListenAddr      string
-	StoragePath     string
 	Hostname        string
 	PreferredScheme string
-	DBPath          string
-	DB              *sql.DB
+	CertDir         string
 }
 
 // Server wraps an *http.Server with registry-specific lifecycle.
@@ -40,36 +35,27 @@ type Server struct {
 	keyPath  string
 }
 
-// New creates a Server with the distribution app, healthz endpoint, and
-// optional TLS.
-func New(ctx context.Context, cfg *Config, opts ...Option) (*Server, error) {
+// New creates an HTTP server with the given handler and optional TLS.
+func New(ctx context.Context, handler http.Handler, cfg *Config, opts ...Option) (*Server, error) {
 	var o options
 	for _, fn := range opts {
 		fn(&o)
 	}
 
-	app := registry.NewApp(ctx, registry.AppConfig{
-		StoragePath: cfg.StoragePath,
-		Hostname:    cfg.Hostname,
-		ListenAddr:  cfg.ListenAddr,
-		DB:          cfg.DB,
-	})
-
 	mux := http.NewServeMux()
-	mux.Handle("/healthz", registry.NewHealthHandler(cfg.DB))
 	for _, r := range o.extraRoutes {
 		mux.Handle(r.pattern, r.handler)
 	}
-	mux.Handle("/", app)
+	mux.Handle("/", handler)
 
-	var handler http.Handler = mux
+	var wrapped http.Handler = mux
 	if o.middleware != nil {
-		handler = o.middleware(handler)
+		wrapped = o.middleware(mux)
 	}
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           handler,
+		Handler:           wrapped,
 		ReadHeaderTimeout: readHeaderTimeout,
 		IdleTimeout:       idleTimeout,
 		BaseContext:       func(_ net.Listener) context.Context { return ctx },
@@ -78,7 +64,7 @@ func New(ctx context.Context, cfg *Config, opts ...Option) (*Server, error) {
 	s := &Server{srv: srv}
 
 	if cfg.PreferredScheme == schemeHTTPS {
-		certPath, keyPath, err := ensureTLS(cfg.Hostname, cfg.DBPath, srv)
+		certPath, keyPath, err := ensureTLS(cfg.Hostname, cfg.CertDir, srv)
 		if err != nil {
 			return nil, err
 		}

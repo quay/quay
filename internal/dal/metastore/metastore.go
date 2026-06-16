@@ -6,30 +6,18 @@ package metastore
 
 import (
 	"context"
-	"strings"
 
-	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
-)
 
-// parseRepoName splits a distribution reference into namespace and repository.
-// "library/nginx" → ("library", "nginx")
-// "nginx" → ("library", "nginx")
-// "org/team/repo" → ("org", "team/repo")
-func parseRepoName(name reference.Named) (namespace, repo string) {
-	full := reference.Path(name)
-	if i := strings.IndexByte(full, '/'); i >= 0 {
-		return full[:i], full[i+1:]
-	}
-	return "library", full
-}
+	"github.com/quay/quay/internal/oci"
+)
 
 // Store persists container registry metadata. Implementations must be safe
 // for concurrent use from multiple goroutines.
 type Store interface {
 	// EnsureRepository returns the ID of the named repository, creating it
 	// and its namespace user if they do not exist.
-	EnsureRepository(ctx context.Context, name reference.Named) (int64, error)
+	EnsureRepository(ctx context.Context, name oci.RepositoryName) (int64, error)
 
 	// PutManifest records a manifest and atomically creates all associated
 	// blob links, child-manifest links, and an optional tag. It returns the
