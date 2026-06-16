@@ -121,9 +121,7 @@ describe('Signin', () => {
   it('shows invitation message when INVITE_ONLY_USER_CREATION is true and no code', () => {
     mockFeatures.INVITE_ONLY_USER_CREATION = true;
     renderSignin();
-    expect(
-      screen.getByTestId('signin-invitation-message'),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('signin-invitation-message')).toBeInTheDocument();
     expect(
       screen.getByText('Invitation required to sign up'),
     ).toBeInTheDocument();
