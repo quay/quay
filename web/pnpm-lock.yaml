@@ -18,6 +18,7 @@ overrides:
   minimatch: 3.1.5
   svgo: 4.0.1
   immutable: ^5.1.5
+  fast-uri: ^3.1.2
 
 importers:
 
