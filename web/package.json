@@ -17,7 +17,7 @@
     "@tanstack/react-query": "^4.13.5",
     "@types/node": "^20.6.5",
     "@types/react": "^18.2.0",
-    "axios": "^1.15.2",
+    "axios": "^1.16.1",
     "https-proxy-agent": "^5.0.1",
     "js-sha1": "^0.6.0",
     "mini-css-extract-plugin": "^2.7.6",
@@ -122,7 +122,7 @@
     "webpack-merge": "^5.10.0"
   },
   "overrides": {
-    "axios": "^1.15.2",
+    "axios": "^1.16.1",
     "cross-spawn": "^7.0.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -139,7 +139,7 @@
   },
   "pnpm": {
     "overrides": {
-      "axios": "^1.15.2",
+      "axios": "^1.16.1",
       "cross-spawn": "^7.0.6",
       "react": "^18.2.0",
       "react-dom": "^18.2.0",
