@@ -43,16 +43,17 @@ class OAuthLoginManager(object):
 
     def get_service_by_issuer(self, issuer):
         for service in self.services:
+            if hasattr(service, "get_issuers"):
+                try:
+                    for config_issuer in service.get_issuers():
+                        if config_issuer.rstrip("/") == issuer.rstrip("/"):
+                            return service
+                except Exception:
+                    pass
 
-            if not hasattr(service, "get_issuer"):
-                continue
-
-            if not service.get_issuer:
-                continue
-
-            config_issuer = service.get_issuer()
-
-            if config_issuer.rstrip("/") == issuer.rstrip("/"):
-                return service
+            if hasattr(service, "get_issuer") and service.get_issuer:
+                config_issuer = service.get_issuer()
+                if config_issuer and config_issuer.rstrip("/") == issuer.rstrip("/"):
+                    return service
 
         return None
