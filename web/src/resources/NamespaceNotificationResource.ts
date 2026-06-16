@@ -30,8 +30,11 @@ interface FetchNamespaceNotificationsResponse {
 
 export async function fetchNamespaceNotifications(
   orgname: string,
+  isUser: boolean = false,
 ): Promise<NamespaceNotification[]> {
-  const url = `/api/v1/organization/${orgname}/notifications`;
+  const url = isUser
+    ? '/api/v1/user/notifications'
+    : `/api/v1/organization/${orgname}/notifications`;
   const response: AxiosResponse<FetchNamespaceNotificationsResponse> =
     await axios.get(url);
   return response.data.notifications;
@@ -40,8 +43,11 @@ export async function fetchNamespaceNotifications(
 export async function createNamespaceNotification(
   orgname: string,
   notification: NamespaceNotification,
+  isUser: boolean = false,
 ): Promise<void> {
-  const url = `/api/v1/organization/${orgname}/notifications`;
+  const url = isUser
+    ? '/api/v1/user/notifications'
+    : `/api/v1/organization/${orgname}/notifications`;
   const payload: Record<string, unknown> = {
     event: notification.event,
     method: notification.method,
@@ -55,9 +61,12 @@ export async function createNamespaceNotification(
 export async function deleteNamespaceNotification(
   orgname: string,
   uuid: string,
+  isUser: boolean = false,
 ): Promise<void> {
   try {
-    const url = `/api/v1/organization/${orgname}/notifications/${uuid}`;
+    const url = isUser
+      ? `/api/v1/user/notifications/${uuid}`
+      : `/api/v1/organization/${orgname}/notifications/${uuid}`;
     await axios.delete(url);
   } catch (err) {
     throw new ResourceError(
@@ -71,9 +80,10 @@ export async function deleteNamespaceNotification(
 export async function bulkDeleteNamespaceNotifications(
   orgname: string,
   uuids: string[],
+  isUser: boolean = false,
 ): Promise<void> {
   const responses = await Promise.allSettled(
-    uuids.map((uuid) => deleteNamespaceNotification(orgname, uuid)),
+    uuids.map((uuid) => deleteNamespaceNotification(orgname, uuid, isUser)),
   );
   throwIfError(responses, 'Unable to delete notifications');
 }
@@ -81,17 +91,23 @@ export async function bulkDeleteNamespaceNotifications(
 export async function testNamespaceNotification(
   orgname: string,
   uuid: string,
+  isUser: boolean = false,
 ): Promise<void> {
-  const url = `/api/v1/organization/${orgname}/notifications/${uuid}/test`;
+  const url = isUser
+    ? `/api/v1/user/notifications/${uuid}/test`
+    : `/api/v1/organization/${orgname}/notifications/${uuid}/test`;
   await axios.post(url);
 }
 
 export async function enableNamespaceNotification(
   orgname: string,
   uuid: string,
+  isUser: boolean = false,
 ): Promise<void> {
   try {
-    const url = `/api/v1/organization/${orgname}/notifications/${uuid}`;
+    const url = isUser
+      ? `/api/v1/user/notifications/${uuid}`
+      : `/api/v1/organization/${orgname}/notifications/${uuid}`;
     await axios.post(url);
   } catch (err) {
     throw new ResourceError(
@@ -105,9 +121,10 @@ export async function enableNamespaceNotification(
 export async function bulkEnableNamespaceNotifications(
   orgname: string,
   uuids: string[],
+  isUser: boolean = false,
 ): Promise<void> {
   const responses = await Promise.allSettled(
-    uuids.map((uuid) => enableNamespaceNotification(orgname, uuid)),
+    uuids.map((uuid) => enableNamespaceNotification(orgname, uuid, isUser)),
   );
   throwIfError(responses, 'Unable to enable notifications');
 }

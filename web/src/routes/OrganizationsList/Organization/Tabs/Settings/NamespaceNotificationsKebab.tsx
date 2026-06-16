@@ -25,6 +25,7 @@ import {
 
 export default function NamespaceNotificationsKebab({
   orgname,
+  isUser = false,
   notification,
 }: NamespaceNotificationsKebabProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -41,7 +42,7 @@ export default function NamespaceNotificationsKebab({
     enableNotifications,
     errorEnablingNotification,
     resetEnablingNotification,
-  } = useUpdateNamespaceNotifications(orgname);
+  } = useUpdateNamespaceNotifications(orgname, isUser);
 
   useEffect(() => {
     if (successTestingNotification) {
@@ -186,5 +187,6 @@ export default function NamespaceNotificationsKebab({
 
 interface NamespaceNotificationsKebabProps {
   orgname: string;
+  isUser?: boolean;
   notification: NamespaceNotification;
 }

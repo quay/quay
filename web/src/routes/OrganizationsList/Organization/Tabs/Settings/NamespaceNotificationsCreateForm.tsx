@@ -86,7 +86,7 @@ export default function NamespaceNotificationsCreateForm(
     successCreatingNotification,
     errorCreatingNotification,
     resetCreatingNotification,
-  } = useUpdateNamespaceNotifications(props.orgname);
+  } = useUpdateNamespaceNotifications(props.orgname, props.isUser);
 
   const NAMESPACE_METHODS: NotificationMethodOption[] = [
     {
@@ -480,6 +480,7 @@ export default function NamespaceNotificationsCreateForm(
 
 interface NamespaceNotificationsCreateFormProps {
   orgname: string;
+  isUser?: boolean;
   isOpen: boolean;
   onClose: () => void;
 }

@@ -110,6 +110,7 @@ function NotificationConfig({
 
 export default function NamespaceNotifications({
   organizationName,
+  isUser = false,
 }: NamespaceNotificationsProps) {
   const config = useQuayConfig();
   const registryTitle = config?.config?.REGISTRY_TITLE_SHORT || 'Quay';
@@ -117,7 +118,7 @@ export default function NamespaceNotifications({
   const [expandedUuids, setExpandedUuids] = useState<string[]>([]);
 
   const {notifications, loading, error} =
-    useNamespaceNotifications(organizationName);
+    useNamespaceNotifications(organizationName, isUser);
 
   const {
     paginatedData: paginatedNotifications,
@@ -167,6 +168,7 @@ export default function NamespaceNotifications({
         />
         <NamespaceNotificationsCreateForm
           orgname={organizationName}
+          isUser={isUser}
           isOpen={isCreateOpen}
           onClose={() => setIsCreateOpen(false)}
         />
@@ -247,6 +249,7 @@ export default function NamespaceNotifications({
               <Td data-label="kebab">
                 <NamespaceNotificationsKebab
                   orgname={organizationName}
+                  isUser={isUser}
                   notification={notification}
                 />
               </Td>
@@ -272,4 +275,5 @@ export default function NamespaceNotifications({
 
 interface NamespaceNotificationsProps {
   organizationName: string;
+  isUser?: boolean;
 }

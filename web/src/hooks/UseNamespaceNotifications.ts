@@ -17,7 +17,10 @@ export interface NamespaceNotificationFilter {
   status: NamespaceNotificationStatus[];
 }
 
-export function useNamespaceNotifications(orgname: string) {
+export function useNamespaceNotifications(
+  orgname: string,
+  isUser: boolean = false,
+) {
   const [filter, setFilter] = useState<NamespaceNotificationFilter>({
     event: [],
     status: [],
@@ -40,8 +43,8 @@ export function useNamespaceNotifications(orgname: string) {
     isLoading: loading,
     isPlaceholderData,
   } = useQuery(
-    ['namespacenotifications', orgname],
-    () => fetchNamespaceNotifications(orgname),
+    ['namespacenotifications', orgname, isUser],
+    () => fetchNamespaceNotifications(orgname, isUser),
     {
       placeholderData: [],
     },

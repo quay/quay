@@ -155,7 +155,10 @@ export default function Settings(props: SettingsProps) {
       name: 'Notifications',
       id: 'namespacenotifications',
       content: () => (
-        <NamespaceNotifications organizationName={props.organizationName} />
+        <NamespaceNotifications
+          organizationName={props.organizationName}
+          isUser={props.isUserOrganization}
+        />
       ),
       visible: !!quayConfig?.features?.QUOTA_NOTIFICATIONS,
     },
