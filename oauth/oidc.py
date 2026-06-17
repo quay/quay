@@ -70,6 +70,10 @@ class OIDCLoginService(OAuthService):
         self._validate_multi_config()
 
     def _validate_multi_config(self):
+        issuer = self.config.get("OIDC_ISSUER")
+        if issuer is not None and not isinstance(issuer, str):
+            raise ValueError(f"OIDC_ISSUER must be a string, got {type(issuer).__name__}")
+
         for field in ("OIDC_ISSUERS", "OIDC_AUDIENCES", "OIDC_ALLOWED_CLIENTS"):
             value = self.config.get(field)
             if value is None:

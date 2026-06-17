@@ -4,6 +4,7 @@ import pytest
 import requests
 
 from auth.test.mock_oidc_server import (
+    MOCK_AZP_CLIENT,
     MOCK_CUSTOM_AUDIENCE,
     MOCK_V1_ISSUER,
     MOCK_V2_ISSUER,
@@ -227,8 +228,46 @@ class TestDecodeMultiIssuer:
             service.decode_user_jwt(token)
 
 
+class TestAzpClaim:
+    """Tests for azp (authorized party) claim handling."""
+
+    @patch.object(requests.Session, "request", mock_request)
+    def test_token_with_azp_preserves_claim(self):
+        """A token generated with azp contains the claim after decode."""
+        service = _make_service_with_mock()
+        token = generate_mock_oidc_token(
+            audience="mock-client-id",
+            azp=MOCK_AZP_CLIENT,
+        )
+        decoded = service.decode_user_jwt(token)
+        assert decoded["azp"] == MOCK_AZP_CLIENT
+
+    @patch.object(requests.Session, "request", mock_request)
+    def test_token_without_azp_has_no_claim(self):
+        """A token generated without azp does not contain the claim."""
+        service = _make_service_with_mock()
+        token = generate_mock_oidc_token(audience="mock-client-id")
+        decoded = service.decode_user_jwt(token)
+        assert "azp" not in decoded
+
+    def test_allowed_clients_accepts_matching_azp(self):
+        """allowed_clients list contains the expected client ID."""
+        service = _make_service({"OIDC_ALLOWED_CLIENTS": [MOCK_AZP_CLIENT, "other-client"]})
+        assert MOCK_AZP_CLIENT in service.allowed_clients
+
+    def test_allowed_clients_rejects_missing_azp(self):
+        """allowed_clients list does not contain an unlisted client."""
+        service = _make_service({"OIDC_ALLOWED_CLIENTS": ["only-this-client"]})
+        assert MOCK_AZP_CLIENT not in service.allowed_clients
+
+
 class TestConfigValidation:
     """Tests for validation of OIDC_ISSUERS, OIDC_AUDIENCES, OIDC_ALLOWED_CLIENTS."""
+
+    def test_oidc_issuer_must_be_string(self):
+        """OIDC_ISSUER (singular) as a list raises ValueError."""
+        with pytest.raises(ValueError, match="OIDC_ISSUER must be a string"):
+            _make_service_with_mock({"OIDC_ISSUER": ["https://issuer.com"]})
 
     def test_oidc_issuers_must_be_list(self):
         """OIDC_ISSUERS as a string raises ValueError."""
