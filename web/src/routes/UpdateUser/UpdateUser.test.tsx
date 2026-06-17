@@ -1,4 +1,5 @@
-import {render, screen, waitFor, act} from 'src/test-utils';
+import {render, screen, waitFor} from 'src/test-utils';
+import {act} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import UpdateUser from './UpdateUser';
 
