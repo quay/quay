@@ -1,6 +1,9 @@
-import {render, screen} from 'src/test-utils';
+import {render, screen, userEvent, waitFor} from 'src/test-utils';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {Signin} from './Signin';
+import {loginUser} from 'src/resources/AuthResource';
+import {fetchUser} from 'src/resources/UserResource';
+import {getCsrfToken} from 'src/libs/axios';
 
 const mockFeatures = {
   DIRECT_LOGIN: true,
@@ -81,6 +84,18 @@ function renderSignin(search = '') {
     <MemoryRouter initialEntries={[`/signin${search}`]}>
       <Routes>
         <Route path="/signin" element={<Signin />} />
+        <Route
+          path="/confirminvite"
+          element={<div data-testid="confirminvite-page">ConfirmInvite</div>}
+        />
+        <Route
+          path="/updateuser"
+          element={<div data-testid="updateuser-page">UpdateUser</div>}
+        />
+        <Route
+          path="/organization"
+          element={<div data-testid="org-page">Organizations</div>}
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -144,5 +159,61 @@ describe('Signin', () => {
     expect(
       screen.queryByTestId('signin-invitation-message'),
     ).not.toBeInTheDocument();
+  });
+
+  it('redirects to confirminvite after login with invite code', async () => {
+    vi.mocked(loginUser).mockResolvedValue({success: true});
+    vi.mocked(getCsrfToken).mockResolvedValue({csrf_token: 'token'});
+    vi.mocked(fetchUser).mockResolvedValue({prompts: []});
+
+    renderSignin('?code=testinvite');
+
+    await userEvent.type(screen.getByLabelText('Username'), 'testuser');
+    await userEvent.type(screen.getByLabelText('Password'), 'testpass');
+    await userEvent.click(
+      screen.getByRole('button', {name: /sign in/i}),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('confirminvite-page')).toBeInTheDocument();
+    });
+  });
+
+  it('redirects to updateuser with invite code when user has prompts', async () => {
+    vi.mocked(loginUser).mockResolvedValue({success: true});
+    vi.mocked(getCsrfToken).mockResolvedValue({csrf_token: 'token'});
+    vi.mocked(fetchUser).mockResolvedValue({
+      prompts: ['confirm_username'],
+    });
+
+    renderSignin('?code=testinvite');
+
+    await userEvent.type(screen.getByLabelText('Username'), 'testuser');
+    await userEvent.type(screen.getByLabelText('Password'), 'testpass');
+    await userEvent.click(
+      screen.getByRole('button', {name: /sign in/i}),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('updateuser-page')).toBeInTheDocument();
+    });
+  });
+
+  it('redirects to organization after login without invite code', async () => {
+    vi.mocked(loginUser).mockResolvedValue({success: true});
+    vi.mocked(getCsrfToken).mockResolvedValue({csrf_token: 'token'});
+    vi.mocked(fetchUser).mockResolvedValue({prompts: []});
+
+    renderSignin();
+
+    await userEvent.type(screen.getByLabelText('Username'), 'testuser');
+    await userEvent.type(screen.getByLabelText('Password'), 'testpass');
+    await userEvent.click(
+      screen.getByRole('button', {name: /sign in/i}),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('org-page')).toBeInTheDocument();
+    });
   });
 });
