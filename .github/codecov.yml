@@ -21,7 +21,6 @@ coverage:
     patch:
       default:
         target: 60%
-        informational: true
 
 flags:
   unit:
