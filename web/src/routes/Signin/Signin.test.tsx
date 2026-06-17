@@ -166,13 +166,17 @@ describe('Signin', () => {
     vi.mocked(getCsrfToken).mockResolvedValue({csrf_token: 'token'});
     vi.mocked(fetchUser).mockResolvedValue({prompts: []});
 
-    renderSignin('?code=testinvite');
+    const {container} = renderSignin('?code=testinvite');
 
-    await userEvent.type(screen.getByLabelText('Username'), 'testuser');
-    await userEvent.type(screen.getByLabelText('Password'), 'testpass');
-    await userEvent.click(
-      screen.getByRole('button', {name: /sign in/i}),
+    await userEvent.type(
+      container.querySelector('#pf-login-username-id')!,
+      'testuser',
     );
+    await userEvent.type(
+      container.querySelector('#pf-login-password-id')!,
+      'testpass',
+    );
+    await userEvent.click(screen.getByRole('button', {name: /sign in/i}));
 
     await waitFor(() => {
       expect(screen.getByTestId('confirminvite-page')).toBeInTheDocument();
@@ -186,13 +190,17 @@ describe('Signin', () => {
       prompts: ['confirm_username'],
     });
 
-    renderSignin('?code=testinvite');
+    const {container} = renderSignin('?code=testinvite');
 
-    await userEvent.type(screen.getByLabelText('Username'), 'testuser');
-    await userEvent.type(screen.getByLabelText('Password'), 'testpass');
-    await userEvent.click(
-      screen.getByRole('button', {name: /sign in/i}),
+    await userEvent.type(
+      container.querySelector('#pf-login-username-id')!,
+      'testuser',
     );
+    await userEvent.type(
+      container.querySelector('#pf-login-password-id')!,
+      'testpass',
+    );
+    await userEvent.click(screen.getByRole('button', {name: /sign in/i}));
 
     await waitFor(() => {
       expect(screen.getByTestId('updateuser-page')).toBeInTheDocument();
@@ -204,13 +212,17 @@ describe('Signin', () => {
     vi.mocked(getCsrfToken).mockResolvedValue({csrf_token: 'token'});
     vi.mocked(fetchUser).mockResolvedValue({prompts: []});
 
-    renderSignin();
+    const {container} = renderSignin();
 
-    await userEvent.type(screen.getByLabelText('Username'), 'testuser');
-    await userEvent.type(screen.getByLabelText('Password'), 'testpass');
-    await userEvent.click(
-      screen.getByRole('button', {name: /sign in/i}),
+    await userEvent.type(
+      container.querySelector('#pf-login-username-id')!,
+      'testuser',
     );
+    await userEvent.type(
+      container.querySelector('#pf-login-password-id')!,
+      'testpass',
+    );
+    await userEvent.click(screen.getByRole('button', {name: /sign in/i}));
 
     await waitFor(() => {
       expect(screen.getByTestId('org-page')).toBeInTheDocument();
