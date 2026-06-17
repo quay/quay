@@ -21,7 +21,7 @@
     "@types/jest": "^27.4.1",
     "@types/node": "^16.11.26",
     "@types/react": "^17.0.2",
-    "axios": "^1.15.2",
+    "axios": "^1.16.1",
     "buffer": "^4.9.2",
     "js-sha1": "^0.6.0",
     "mini-css-extract-plugin": "^2.6.1",
@@ -115,7 +115,7 @@
       "minimatch": "^9.0.4"
     },
     "node-forge": "^1.4.0",
-    "axios": "^1.15.2",
+    "axios": "^1.16.1",
     "immutable": "^5.1.5",
     "svgo": "4.0.1"
   },
