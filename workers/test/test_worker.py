@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from workers.worker import (
@@ -184,3 +185,74 @@ def test_default_sentry_config_values():
 
         # Verify the SDK was called exactly once
         assert mock_sentry_sdk.init.call_count == 1
+
+
+def test_start_schedules_job_with_5s_buffer():
+    with (
+        patch("workers.worker.app") as mock_app,
+        patch("workers.worker.signal"),
+    ):
+        mock_app.config.get.side_effect = lambda key, default=None: {
+            "SETUP_COMPLETE": True,
+            "REGISTRY_STATE": "normal",
+        }.get(key, default)
+
+        worker = Worker()
+        worker.add_operation(lambda: None, 86400)
+
+        mock_sched = MagicMock()
+        worker._sched = mock_sched
+
+        stop_event = MagicMock()
+        stop_event.wait.return_value = True
+        worker._stop = stop_event
+
+        before = datetime.now()
+        worker.start()
+        after = datetime.now()
+
+        mock_sched.add_job.assert_called_once()
+        call_kwargs = mock_sched.add_job.call_args
+        start_date = call_kwargs.kwargs.get("start_date") or call_kwargs[1].get("start_date")
+        if start_date is None:
+            start_date = call_kwargs[0][2] if len(call_kwargs[0]) > 2 else None
+
+        assert start_date is not None
+        assert start_date >= before + timedelta(seconds=4)
+        assert start_date <= after + timedelta(seconds=6)
+        assert call_kwargs.kwargs.get("seconds") or call_kwargs[1].get("seconds") == 86400
+
+
+def test_start_stagger_workers_adds_random_delay():
+    with (
+        patch("workers.worker.app") as mock_app,
+        patch("workers.worker.signal"),
+        patch("workers.worker.randint", return_value=100) as mock_randint,
+    ):
+        mock_app.config.get.side_effect = lambda key, default=None: {
+            "SETUP_COMPLETE": True,
+            "REGISTRY_STATE": "normal",
+            "STAGGER_WORKERS": True,
+        }.get(key, default)
+
+        worker = Worker()
+        worker.add_operation(lambda: None, 86400)
+
+        mock_sched = MagicMock()
+        worker._sched = mock_sched
+
+        stop_event = MagicMock()
+        stop_event.wait.return_value = True
+        worker._stop = stop_event
+
+        before = datetime.now()
+        worker.start()
+
+        mock_randint.assert_called_once_with(1, 86400)
+
+        call_kwargs = mock_sched.add_job.call_args
+        start_date = call_kwargs.kwargs.get("start_date") or call_kwargs[1].get("start_date")
+        if start_date is None:
+            start_date = call_kwargs[0][2] if len(call_kwargs[0]) > 2 else None
+
+        assert start_date >= before + timedelta(seconds=104)
