@@ -48,9 +48,12 @@ export default function UpdateUser() {
       if (updatedUser?.prompts?.length) {
         setIsUpdating(false);
       } else {
-        // Check for pending invite code (passed via query param from signin/signup)
-        const inviteCode = searchParams.get('code');
+        // Check for pending invite code (query param from signin/signup, or sessionStorage from OAuth)
+        const inviteCode =
+          searchParams.get('code') ||
+          sessionStorage.getItem('pendingInviteCode');
         if (inviteCode) {
+          sessionStorage.removeItem('pendingInviteCode');
           navigate(`/confirminvite?code=${encodeURIComponent(inviteCode)}`);
           return;
         }
@@ -107,8 +110,11 @@ export default function UpdateUser() {
       }
 
       if (!user.prompts || user.prompts.length === 0) {
-        const inviteCode = searchParams.get('code');
+        const inviteCode =
+          searchParams.get('code') ||
+          sessionStorage.getItem('pendingInviteCode');
         if (inviteCode) {
+          sessionStorage.removeItem('pendingInviteCode');
           navigate(`/confirminvite?code=${encodeURIComponent(inviteCode)}`);
         } else {
           navigate('/');

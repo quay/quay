@@ -16,6 +16,7 @@ import {
   Routes,
   useParams,
   useLocation,
+  useNavigate,
 } from 'react-router-dom';
 
 import {QuayHeader} from 'src/components/header/QuayHeader';
@@ -226,10 +227,21 @@ export function StandaloneMain() {
   const quayConfig = useQuayConfig();
   const {loading, error} = useCurrentUser();
   const location = useLocation();
+  const navigate = useNavigate();
   const {clearAllAlerts} = useUI();
 
   // Load external scripts (Stripe, StatusPage) only when BILLING feature is enabled (PROJQUAY-9803)
   useExternalScripts();
+
+  // Check for pending invite code from OAuth/SSO flow
+  useEffect(() => {
+    if (loading) return;
+    const pendingCode = sessionStorage.getItem('pendingInviteCode');
+    if (pendingCode) {
+      sessionStorage.removeItem('pendingInviteCode');
+      navigate(`/confirminvite?code=${encodeURIComponent(pendingCode)}`);
+    }
+  }, [loading, navigate]);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 

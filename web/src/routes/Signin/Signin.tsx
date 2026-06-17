@@ -75,6 +75,10 @@ export function Signin() {
     if (shouldAutoRedirectSSO() && externalLogins.length > 0) {
       const singleProvider = externalLogins[0];
       const redirectUrl = searchParams.get('redirect_url') || undefined;
+      const code = searchParams.get('code');
+      if (code) {
+        sessionStorage.setItem('pendingInviteCode', code);
+      }
       startExternalLogin(singleProvider, redirectUrl);
     }
   }, [shouldAutoRedirectSSO, externalLogins, startExternalLogin, searchParams]);
@@ -403,6 +407,11 @@ export function Signin() {
               redirectUrl={searchParams.get('redirect_url') || undefined}
               disabled={isExternalAuth}
               onClearErrors={() => setExternalLoginError(null)}
+              onSignInStarted={() => {
+                if (inviteCode) {
+                  sessionStorage.setItem('pendingInviteCode', inviteCode);
+                }
+              }}
             />
           ))}
 
