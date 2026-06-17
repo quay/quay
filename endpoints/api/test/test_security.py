@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type, cast
 
 import pytest
 from flask_principal import AnonymousIdentity
@@ -6724,7 +6724,7 @@ def test_team_sync_security(is_superuser, allow_nonsuperuser, method, expected, 
             BuildTriggerActivate,
             "POST",
             {"repository": "neworg/repo", "trigger_uuid": "SWO1"},
-            {"config": {}},
+            cast(Dict[str, Any], {"config": {}}),
             404,
         ),
         (
