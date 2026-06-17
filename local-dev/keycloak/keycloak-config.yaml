@@ -15,3 +15,13 @@ SOMEOIDC_LOGIN_CONFIG:
   USE_PKCE: true
   PKCE_METHOD: "S256"
   PUBLIC_CLIENT: true
+  OIDC_ISSUERS:
+    - "http://localhost:8081/realms/quay"
+    - "http://host.containers.internal:8081/realms/quay"
+  OIDC_AUDIENCES:
+    - "quay-ui"
+    - "api://quay-api"
+  OIDC_ALLOWED_CLIENTS:
+    - "quay-ui"
+    - "quay-obo"
+    - "quay-unknown-aud"
