@@ -352,13 +352,14 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                                 user,
                                 email_required=features.MAILING,
                             )
+                            namespace_exists = True
                         except model.DataModelException as ex:
                             raise Unsupported(message="Cannot create organization")
 
                 if (
                     CreateRepositoryPermission(namespace).can()
                     and user is not None
-                    and namespace_exists is not None
+                    and namespace_exists
                 ):
                     if (
                         features.RESTRICTED_USERS
