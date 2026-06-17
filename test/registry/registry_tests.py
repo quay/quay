@@ -1702,8 +1702,8 @@ def test_tags_disabled_namespace(
         ("devtable", "buynlarge", "baserepo", "buynlarge/baserepo", None),
         # Unsuccessful mount, unknown repo.
         ("devtable", "devtable", "baserepo", "unknown/repohere", Failures.UNAUTHORIZED_FOR_MOUNT),
-        # Unsuccessful mount, no access.
-        ("public", "public", "baserepo", "public/baserepo", Failures.UNAUTHORIZED_FOR_MOUNT),
+        # Successful mount, super user has access to everything if FEATURE_SUPERUSERS_FULL_ACCESS is set
+        ("public", "public", "baserepo", "public/baserepo", None),
     ],
 )
 def test_blob_mounting(
@@ -1760,6 +1760,50 @@ def test_blob_mounting(
             "latest",
             basic_images,
             credentials=("devtable", "password"),
+        )
+
+
+def test_blob_mounting_when_superuser_full_access_disabled(
+    manifest_protocol,
+    pusher,
+    basic_images,
+    liveserver_session,
+    app_reloader,
+    registry_server_executor,
+    liveserver,
+):
+    # push as a public user
+    pusher.push(
+        liveserver_session,
+        "public",
+        "baserepo",
+        "latest",
+        basic_images,
+        credentials=("public", "password"),
+    )
+
+    # disable SUPERUSERS_FULL_ACCESS
+    with FeatureFlagValue("SUPERUSERS_FULL_ACCESS", False, registry_server_executor.on(liveserver)):
+        options = ProtocolOptions()
+        options.scopes = [
+            "repository:devtable/newrepo:push,pull",
+            "repository:public/baserepo:pull",
+        ]
+        options.mount_blobs = {
+            "sha256:" + hashlib.sha256(image.bytes).hexdigest(): "public/baserepo"
+            for image in basic_images
+        }
+
+        # Super user without full access should fail to mount
+        manifest_protocol.push(
+            liveserver_session,
+            "devtable",
+            "newrepo",
+            "latest",
+            basic_images,
+            credentials=("devtable", "password"),
+            options=options,
+            expected_failure=Failures.UNAUTHORIZED_FOR_MOUNT,
         )
 
 
@@ -2089,6 +2133,158 @@ def test_login_scopes(
     )
     assert payload is not None
     assert payload["access"] == expected_access
+
+
+@pytest.mark.parametrize(
+    "username, password, scopes, expected_access, expect_success",
+    [
+        # only pull in scopes
+        (
+            "devtable",
+            "password",
+            "repository:somerepo/that/doesnt/exist:pull",
+            [
+                {"type": "repository", "name": "somerepo/that/doesnt/exist", "actions": []},
+            ],
+            True,
+        ),
+        # push-pull in scopes
+        (
+            "devtable",
+            "password",
+            "repository:somerepo/that/doesnt/exist:push,pull",
+            [
+                {"type": "repository", "name": "somerepo/that/doesnt/exist", "actions": []},
+            ],
+            True,
+        ),
+        # star in scope
+        (
+            "devtable",
+            "password",
+            "repository:somerepo/that/doesnt/exist:push,pull,*",
+            [
+                {"type": "repository", "name": "somerepo/that/doesnt/exist", "actions": []},
+            ],
+            True,
+        ),
+    ],
+)
+def test_login_scopes_when_superuser_full_access_disabled_create_repository_on_push_disabled(
+    username,
+    password,
+    scopes,
+    expected_access,
+    expect_success,
+    v2_protocol,
+    liveserver_session,
+    app_reloader,
+    registry_server_executor,
+    liveserver,
+):
+    """
+    Tests that super users do not have access to a non-existent namespace/repo if SUPERUSERS_FULL_ACCESS
+    is disabled and CREATE_NAMESPACE_ON_PUSH is false.
+    """
+    with ConfigChange(
+        "CREATE_NAMESPACE_ON_PUSH", False, registry_server_executor.on(liveserver), liveserver
+    ):
+        with FeatureFlagValue(
+            "SUPERUSERS_FULL_ACCESS", False, registry_server_executor.on(liveserver)
+        ):
+            response = v2_protocol.login(
+                liveserver_session, username, password, scopes, expect_success
+            )
+            if not expect_success:
+                return
+
+            # Validate the returned token
+            encoded = response.json()["token"]
+            payload = decode_bearer_header(
+                "Bearer " + encoded, instance_keys, {"SERVER_HOSTNAME": "localhost:5000"}
+            )
+            assert payload is not None
+            assert payload["access"] == expected_access
+
+
+@pytest.mark.parametrize(
+    "username, password, scopes, expected_access, expect_success",
+    [
+        # only pull in scopes
+        (
+            "devtable",
+            "password",
+            "repository:somerepo/that/doesnt/exist:pull",
+            [
+                {"type": "repository", "name": "somerepo/that/doesnt/exist", "actions": ["pull"]},
+            ],
+            True,
+        ),
+        # push-pull in scopes
+        (
+            "devtable",
+            "password",
+            "repository:somerepo/that/doesnt/exist:push,pull",
+            [
+                {
+                    "type": "repository",
+                    "name": "somerepo/that/doesnt/exist",
+                    "actions": ["push", "pull"],
+                },
+            ],
+            True,
+        ),
+        # star in scope
+        (
+            "devtable",
+            "password",
+            "repository:somerepo/that/doesnt/exist:push,pull,*",
+            [
+                {
+                    "type": "repository",
+                    "name": "somerepo/that/doesnt/exist",
+                    "actions": ["push", "pull", "*"],
+                },
+            ],
+            True,
+        ),
+    ],
+)
+def test_login_scopes_when_superuser_full_access_enabled_create_repositories_on_push_enabled(
+    username,
+    password,
+    scopes,
+    expected_access,
+    expect_success,
+    v2_protocol,
+    liveserver_session,
+    app_reloader,
+    registry_server_executor,
+    liveserver,
+):
+    """
+    Tests that super users have access to a non-existent namespace/repo if SUPERUSERS_FULL_ACCESS
+    is enabled and CREATE_NAMESPACE_ON_PUSH is enabled.
+    """
+    with ConfigChange(
+        "CREATE_NAMESPACE_ON_PUSH", True, registry_server_executor.on(liveserver), liveserver
+    ):
+        with FeatureFlagValue(
+            "SUPERUSERS_FULL_ACCESS", True, registry_server_executor.on(liveserver)
+        ):
+            response = v2_protocol.login(
+                liveserver_session, username, password, scopes, expect_success
+            )
+            if not expect_success:
+                return
+
+            # Validate the returned token
+            encoded = response.json()["token"]
+            payload = decode_bearer_header(
+                "Bearer " + encoded, instance_keys, {"SERVER_HOSTNAME": "localhost:5000"}
+            )
+            assert payload is not None
+            assert payload["access"] == expected_access
 
 
 def test_push_pull_same_blobs(pusher, puller, liveserver_session, app_reloader):
