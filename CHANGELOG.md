@@ -3,8 +3,13 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.12/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.12.19"></a>
+## [v3.12.19] - 2026-06-11
+### [Redhat-3.12] PROJQUAY-11673: Fix(Cve)
+- [e124765e7](https://github.com/quay/quay/commit/e124765e7922b53c2bf2a938a105c3e68c53b430): CVE-2026-48526 - PyJWT ([#6144](https://github.com/quay/quay/issues/6144))
+
 <a name="v3.12.18"></a>
-## [v3.12.18] - 2026-05-15
+## [v3.12.18] - 2026-05-19
 ### PROJQUAY-11340: Chore(Deps)
 - [eddf0f02e](https://github.com/quay/quay/commit/eddf0f02e1af56b6127d5b9ddf36ce152d1a2e52): bump pillow and follow-redirects [redhat-3.12] ([#5974](https://github.com/quay/quay/issues/5974))
 ### PROJQUAY-11417
@@ -17,6 +22,8 @@
 - [eb0f8ee23](https://github.com/quay/quay/commit/eb0f8ee230a7b7528cdc4e80f595e957c6c5f6ee): bump axios to 1.15.0 ([#5952](https://github.com/quay/quay/issues/5952))
 ### [Redhat-3.12] PROJQUAY-11473: Chore(Web)
 - [e30e2848c](https://github.com/quay/quay/commit/e30e2848c874a8fca8e77ab235ec4678186fb804): remove es5-ext transitive dependency ([#5902](https://github.com/quay/quay/issues/5902))
+### [Redhat-3.12] PROJQUAY-11488: Chore(Web)
+- [0fdc7bbf2](https://github.com/quay/quay/commit/0fdc7bbf227d920973bb519c45da7b1711fdd4e9): bump axios to 1.15.2 ([#6025](https://github.com/quay/quay/issues/6025))
 ### [Redhat-3.12] PROJQUAY-11508: Chore(Deps)
 - [87e475848](https://github.com/quay/quay/commit/87e4758486fe62bdcc28a2591d2819306bd81c72): Bump cryptography to version 46.0.7 ([#5988](https://github.com/quay/quay/issues/5988))
 
@@ -754,6 +761,25 @@
 - [5286c33f8](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd0](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
 
+<a name="v3.10.22"></a>
+## [v3.10.22] - 2026-05-20
+### PROJQUAY-11339: Chore(Deps)
+- [ab5817716](https://github.com/quay/quay/commit/ab5817716c53088255ab70f13ea32ba3a56ce48c): bump pillow and follow-redirects [redhat-3.10] ([#5975](https://github.com/quay/quay/issues/5975))
+### [Redhat-3.10] Chore(Web)
+- [97f1ba211](https://github.com/quay/quay/commit/97f1ba2114b2c52dde38aa366cf7651ffd5cf2dc): remove es5-ext transitive dependency (PROJQUAY-11473) ([#5903](https://github.com/quay/quay/issues/5903))
+### [Redhat-3.10] Deps
+- [126f7f3ad](https://github.com/quay/quay/commit/126f7f3ad7261bdcd880fd641f796077d8468fee): Bump go-jose to v4.1.4 (PROJQUAY-11471) ([#5896](https://github.com/quay/quay/issues/5896))
+### [Redhat-3.10] PROJQUAY-11190: Fix(Data)
+- [38a85c8d8](https://github.com/quay/quay/commit/38a85c8d8047aa56906ca13fa1c168f538d6b107): prevent RCE via unsafe pickle deserialization ([#6004](https://github.com/quay/quay/issues/6004))
+### [Redhat-3.10] PROJQUAY-11280: Chore(Web)
+- [07500ae0b](https://github.com/quay/quay/commit/07500ae0bcb9001c6a67d78c26b94d8750fb9120): bump axios to 1.15.0 ([#5953](https://github.com/quay/quay/issues/5953))
+### [Redhat-3.10] PROJQUAY-11418: Fix(Security)
+- [52c8a373a](https://github.com/quay/quay/commit/52c8a373a02f39f705a30e8b35c94b5aa9b90d6e): bump node forge to 1.4.0 ([#5925](https://github.com/quay/quay/issues/5925))
+### [Redhat-3.10] PROJQUAY-11487: Chore(Web)
+- [6b7ad61b5](https://github.com/quay/quay/commit/6b7ad61b51008ff26544a822c0688dc425f36ff4): bump axios to 1.15.2 ([#6026](https://github.com/quay/quay/issues/6026))
+### [Redhat-3.10] PROJQUAY-11507: Chore(Deps)
+- [d5ed97e88](https://github.com/quay/quay/commit/d5ed97e88020761338dbeaf02f519e34b790964e): Bump cryptography to version 46.0.7 ([#5989](https://github.com/quay/quay/issues/5989))
+
 <a name="v3.10.21"></a>
 ## [v3.10.21] - 2026-04-20
 ### NO-ISSUE: Chore(Deps)
@@ -1346,6 +1372,25 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.22"></a>
+## [v3.9.22] - 2026-05-20
+### PROJQUAY-11346: Chore(Deps)
+- [ca5c13aca](https://github.com/quay/quay/commit/ca5c13aca9b3ee9fbc7e85cd0d37029c3da4b991): bump pillow and follow-redirects [redhat-3.9] ([#5976](https://github.com/quay/quay/issues/5976))
+### [Redhat-3.9] Chore(Web)
+- [ce72ddfb6](https://github.com/quay/quay/commit/ce72ddfb6e80c5d5c9f76165041a08df257d45d8): remove es5-ext transitive dependency (PROJQUAY-11473) ([#5904](https://github.com/quay/quay/issues/5904))
+### [Redhat-3.9] Deps
+- [196f1a76f](https://github.com/quay/quay/commit/196f1a76f3709a9451525a9258f6dbda7c7c78f0): Bump go-jose to v4.1.4 PROJQUAY-11472 ([#5905](https://github.com/quay/quay/issues/5905))
+### [Redhat-3.9] PROJQUAY-11187: Fix(Data)
+- [bb1344afe](https://github.com/quay/quay/commit/bb1344afe38689763759db1b371056ce46d11caa): prevent RCE via unsafe pickle deserialization ([#6005](https://github.com/quay/quay/issues/6005))
+### [Redhat-3.9] PROJQUAY-11287: Chore(Web)
+- [a37328e25](https://github.com/quay/quay/commit/a37328e251858b4124001926b71553542743acbb): bump axios to 1.15.0 ([#5954](https://github.com/quay/quay/issues/5954))
+### [Redhat-3.9] PROJQUAY-11419: Fix(Security)
+- [eace51bea](https://github.com/quay/quay/commit/eace51beaddd0594bd10fe4dafcccfce199eb37f): bump node forge to 1.4.0 ([#5924](https://github.com/quay/quay/issues/5924))
+### [Redhat-3.9] PROJQUAY-11494: Chore(Web)
+- [7b96223e3](https://github.com/quay/quay/commit/7b96223e37820cbe565db93e708d8382e5540b8e): bump axios to 1.15.2 ([#6027](https://github.com/quay/quay/issues/6027))
+### [Redhat-3.9] PROJQUAY-11514: Chore(Deps)
+- [7612ead81](https://github.com/quay/quay/commit/7612ead81c189c027b872f74aeae835e356d928b): Bump cryptography to version 46.0.7 ([#5990](https://github.com/quay/quay/issues/5990))
 
 <a name="v3.9.21"></a>
 ## [v3.9.21] - 2026-04-20
@@ -3029,7 +3074,8 @@
 ### Release
 - [9dd55deed](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.18...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.19...HEAD
+[v3.12.19]: https://github.com/quay/quay/compare/v3.12.18...v3.12.19
 [v3.12.18]: https://github.com/quay/quay/compare/v3.12.17...v3.12.18
 [v3.12.17]: https://github.com/quay/quay/compare/v3.12.16...v3.12.17
 [v3.12.16]: https://github.com/quay/quay/compare/v3.12.15...v3.12.16
@@ -3062,7 +3108,8 @@
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.21...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.22...v3.11.0
+[v3.10.22]: https://github.com/quay/quay/compare/v3.10.21...v3.10.22
 [v3.10.21]: https://github.com/quay/quay/compare/v3.10.20...v3.10.21
 [v3.10.20]: https://github.com/quay/quay/compare/v3.10.19...v3.10.20
 [v3.10.19]: https://github.com/quay/quay/compare/v3.10.18...v3.10.19
@@ -3084,7 +3131,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.21...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.22...v3.10.0
+[v3.9.22]: https://github.com/quay/quay/compare/v3.9.21...v3.9.22
 [v3.9.21]: https://github.com/quay/quay/compare/v3.9.20...v3.9.21
 [v3.9.20]: https://github.com/quay/quay/compare/v3.9.19...v3.9.20
 [v3.9.19]: https://github.com/quay/quay/compare/v3.9.18...v3.9.19
