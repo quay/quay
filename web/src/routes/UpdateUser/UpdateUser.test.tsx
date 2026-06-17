@@ -1,12 +1,15 @@
-import {render, screen, waitFor} from 'src/test-utils';
+import {render, screen, waitFor, act} from 'src/test-utils';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import UpdateUser from './UpdateUser';
 
+let capturedOnSuccess: (user: any) => void;
+
 vi.mock('src/hooks/UseCurrentUser', () => ({
   useCurrentUser: vi.fn(),
-  useUpdateUser: () => ({
-    updateUser: vi.fn(),
-  }),
+  useUpdateUser: ({onSuccess}: {onSuccess: (user: any) => void}) => {
+    capturedOnSuccess = onSuccess;
+    return {updateUser: vi.fn()};
+  },
 }));
 
 vi.mock('src/hooks/UseUsernameValidation', () => ({
@@ -81,6 +84,53 @@ describe('UpdateUser', () => {
     } as any);
 
     renderUpdateUser();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('confirminvite-page')).toBeInTheDocument();
+    });
+    expect(sessionStorage.getItem('pendingInviteCode')).toBeNull();
+  });
+
+  it('onSuccess redirects to confirminvite when code query param is present', async () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      user: {
+        anonymous: false,
+        prompts: ['confirm_username'],
+        username: 'testuser',
+      },
+      loading: false,
+      error: null,
+    } as any);
+
+    renderUpdateUser('?code=query-invite');
+
+    act(() => {
+      capturedOnSuccess({prompts: []});
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('confirminvite-page')).toBeInTheDocument();
+    });
+  });
+
+  it('onSuccess redirects to confirminvite when sessionStorage has pending invite', async () => {
+    sessionStorage.setItem('pendingInviteCode', 'oauth-invite');
+
+    vi.mocked(useCurrentUser).mockReturnValue({
+      user: {
+        anonymous: false,
+        prompts: ['confirm_username'],
+        username: 'testuser',
+      },
+      loading: false,
+      error: null,
+    } as any);
+
+    renderUpdateUser();
+
+    act(() => {
+      capturedOnSuccess({prompts: []});
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('confirminvite-page')).toBeInTheDocument();
