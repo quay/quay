@@ -17,7 +17,7 @@ import (
 
 // TargetVersion is the alembic HEAD revision this binary was built against.
 // Updated by make go-schema when schema changes.
-const TargetVersion = "c3d4e5f6a7b8"
+const TargetVersion = "d4e5f6a7b8c9"
 
 // InitDatabase creates a fresh SQLite database by executing the embedded DDL
 // and seed data. It returns an error if the database file already contains
@@ -291,10 +291,6 @@ func applyMigrationTx(ctx context.Context, db *sql.DB, migrationSQL, revisionID 
 	defer tx.Rollback() //nolint:errcheck // no-op after commit
 
 	for _, stmt := range splitStatements(migrationSQL) {
-		trimmed := strings.TrimSpace(stmt)
-		if trimmed == "" || strings.HasPrefix(trimmed, "--") {
-			continue
-		}
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("execute SQL: %w", err)
 		}
@@ -325,10 +321,16 @@ func extractRevisionID(migrationSQL string) (string, error) {
 	return "", fmt.Errorf("missing '-- revision: <id>' comment")
 }
 
-// splitStatements splits a SQL script on semicolons, trimming whitespace
-// and discarding empty entries.
+// splitStatements strips SQL comment lines, then splits on semicolons,
+// trimming whitespace and discarding empty entries.
 func splitStatements(rawSQL string) []string {
-	raw := strings.Split(rawSQL, ";")
+	var filtered []string
+	for _, line := range strings.Split(rawSQL, "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "--") {
+			filtered = append(filtered, line)
+		}
+	}
+	raw := strings.Split(strings.Join(filtered, "\n"), ";")
 	stmts := make([]string, 0, len(raw))
 	for _, s := range raw {
 		s = strings.TrimSpace(s)
