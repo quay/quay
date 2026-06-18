@@ -19,7 +19,7 @@ import {
 } from 'react-router-dom';
 
 import {QuayHeader} from 'src/components/header/QuayHeader';
-import {QuaySidebar} from 'src/components/sidebar/QuaySidebar';
+import {QuaySidebar, isDetailPagePath} from 'src/components/sidebar/QuaySidebar';
 import {QuayFooter} from 'src/components/footer/QuayFooter';
 import {NavigationPath} from './NavigationPath';
 
@@ -222,6 +222,7 @@ export function StandaloneMain() {
   const {loading, error} = useCurrentUser();
   const location = useLocation();
   const {clearAllAlerts} = useUI();
+  const isDetailPage = isDetailPagePath(location.pathname);
 
   // Load external scripts (Stripe, StatusPage) only when BILLING feature is enabled (PROJQUAY-9803)
   useExternalScripts();
@@ -265,8 +266,8 @@ export function StandaloneMain() {
     <ErrorBoundary hasError={!!error} fallback={<SiteUnavailableError />}>
       <Page
         masthead={<QuayHeader toggleDrawer={toggleDrawer} />}
-        sidebar={<QuaySidebar />}
-        isManagedSidebar
+        sidebar={isDetailPage ? null : <QuaySidebar />}
+        isManagedSidebar={!isDetailPage}
         notificationDrawer={notificationDrawer}
         isNotificationDrawerExpanded={isDrawerOpen}
         isContentFilled

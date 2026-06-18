@@ -74,21 +74,4 @@ describe('QuaySidebar', () => {
     expect(screen.getByText('Repositories')).toBeInTheDocument();
   });
 
-  it('hides sidebar on repository detail pages', () => {
-    render(
-      <MemoryRouter initialEntries={['/repository/myorg/myrepo']}>
-        <QuaySidebar />
-      </MemoryRouter>,
-    );
-    expect(screen.queryByText('Repositories')).not.toBeInTheDocument();
-  });
-
-  it('hides sidebar on organization detail pages', () => {
-    render(
-      <MemoryRouter initialEntries={['/organization/myorg']}>
-        <QuaySidebar />
-      </MemoryRouter>,
-    );
-    expect(screen.queryByText('Organizations')).not.toBeInTheDocument();
-  });
 });

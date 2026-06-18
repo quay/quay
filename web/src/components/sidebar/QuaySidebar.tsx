@@ -184,9 +184,7 @@ export function QuaySidebar() {
     </Nav>
   );
 
-  const isDetailPage = isDetailPagePath(location.pathname);
-
-  if (isSidebarOpen && !isDetailPage) {
+  if (isSidebarOpen) {
     return (
       <PageSidebar className="page-sidebar">
         <PageSidebarBody>{Navigation}</PageSidebarBody>
