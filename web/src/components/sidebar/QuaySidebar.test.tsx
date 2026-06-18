@@ -1,4 +1,19 @@
-import {isDetailPagePath} from './QuaySidebar';
+import {render, screen} from 'src/test-utils';
+import {MemoryRouter} from 'react-router-dom';
+import {isDetailPagePath, QuaySidebar} from './QuaySidebar';
+
+vi.mock('src/hooks/UseQuayConfig', () => ({
+  useQuayConfig: vi.fn(() => ({
+    config: {BRANDING: {}},
+    features: {},
+  })),
+}));
+
+vi.mock('src/hooks/UseCurrentUser', () => ({
+  useCurrentUser: vi.fn(() => ({
+    isSuperUser: false,
+  })),
+}));
 
 describe('isDetailPagePath', () => {
   it('returns false for repository list page', () => {
@@ -46,5 +61,34 @@ describe('isDetailPagePath', () => {
 
   it('returns false for root path', () => {
     expect(isDetailPagePath('/')).toBe(false);
+  });
+});
+
+describe('QuaySidebar', () => {
+  it('renders sidebar on list pages', () => {
+    render(
+      <MemoryRouter initialEntries={['/repository']}>
+        <QuaySidebar />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('Repositories')).toBeInTheDocument();
+  });
+
+  it('hides sidebar on repository detail pages', () => {
+    render(
+      <MemoryRouter initialEntries={['/repository/myorg/myrepo']}>
+        <QuaySidebar />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText('Repositories')).not.toBeInTheDocument();
+  });
+
+  it('hides sidebar on organization detail pages', () => {
+    render(
+      <MemoryRouter initialEntries={['/organization/myorg']}>
+        <QuaySidebar />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText('Organizations')).not.toBeInTheDocument();
   });
 });
