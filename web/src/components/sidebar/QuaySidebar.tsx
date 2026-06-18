@@ -177,7 +177,11 @@ export function QuaySidebar() {
     </Nav>
   );
 
-  if (isSidebarOpen) {
+  const isDetailPage =
+    /^\/repository\/[^/]+\/[^/]+/.test(location.pathname) ||
+    /^\/organization\/[^/]+$/.test(location.pathname);
+
+  if (isSidebarOpen && !isDetailPage) {
     return (
       <PageSidebar className="page-sidebar">
         <PageSidebarBody>{Navigation}</PageSidebarBody>

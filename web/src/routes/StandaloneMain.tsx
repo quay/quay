@@ -267,7 +267,6 @@ export function StandaloneMain() {
         masthead={<QuayHeader toggleDrawer={toggleDrawer} />}
         sidebar={<QuaySidebar />}
         isManagedSidebar
-        defaultManagedSidebarIsOpen={true}
         notificationDrawer={notificationDrawer}
         isNotificationDrawerExpanded={isDrawerOpen}
         isContentFilled
