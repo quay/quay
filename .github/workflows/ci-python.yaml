@@ -1,17 +1,13 @@
 name: CI
 on:
-  # See the documentation for more intricate event dispatch here:
-  # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#on
-  push:
-    branches:
-    - "!dependabot/*"
-    - "*"
-  pull_request:
-    branches:
-    - "*"
-
-permissions:
-  contents: read
+  workflow_call:
+    inputs:
+      is-pr:
+        required: true
+        type: boolean
+    secrets:
+      CODECOV_TOKEN:
+        required: false
 
 jobs:
   build:
@@ -59,7 +55,7 @@ jobs:
   pre-commit-checks:
     name: Pre-commit checks
     runs-on: ubuntu-22.04
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ inputs.is-pr }}
     steps:
 
     - name: Checkout
@@ -235,6 +231,7 @@ jobs:
   registry:
     name: Registry Protocol Test
     runs-on: quay-001-large-ubuntu-24-x64
+    timeout-minutes: 45
     steps:
 
     - name: Checkout
