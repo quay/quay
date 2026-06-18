@@ -18,12 +18,12 @@ describe('isDetailPagePath', () => {
     expect(
       isDetailPagePath('/repository/myorg/myrepo/manifest/sha256:abc'),
     ).toBe(true);
-    expect(
-      isDetailPagePath('/repository/myorg/myrepo/trigger/uuid-123'),
-    ).toBe(true);
-    expect(
-      isDetailPagePath('/repository/myorg/myrepo/build/build-456'),
-    ).toBe(true);
+    expect(isDetailPagePath('/repository/myorg/myrepo/trigger/uuid-123')).toBe(
+      true,
+    );
+    expect(isDetailPagePath('/repository/myorg/myrepo/build/build-456')).toBe(
+      true,
+    );
   });
 
   it('returns true for organization detail page', () => {
