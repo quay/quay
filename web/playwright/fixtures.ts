@@ -1039,6 +1039,9 @@ type TestFixtures = {
   // Unauthenticated RawApiClient (no browser required)
   anonClient: RawApiClient;
 
+  // Isolated user with its own API client (no shared namespace state)
+  freshUser: {user: CreatedUser; api: TestApi};
+
   // Auto-fixture: skips tests based on @feature: tags (runs automatically)
   _autoSkipByFeature: void;
 
@@ -1219,6 +1222,25 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const testApi = new TestApi(client);
     await use(testApi);
     await testApi.cleanup();
+  },
+
+  freshUser: async ({superuserApi, playwright}, use) => {
+    const created = await superuserApi.user('iso');
+    await superuserApi.raw.updateUserAsSuperuser(created.username, {
+      email: created.email,
+    });
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    const client = new ApiClient(request);
+    await client.signIn(created.username, created.password);
+    client.setCredentials(created.username, created.password);
+    const testApi = new TestApi(client, created.username);
+
+    await use({user: created, api: testApi});
+
+    await testApi.cleanup();
+    await request.dispose();
   },
 
   // =========================================================================
