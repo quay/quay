@@ -39,10 +39,8 @@ test.describe(
         authenticatedPage.getByRole('tab', {name: 'Information'}),
       ).toBeVisible();
 
-      // Sidebar should not be visible
-      await expect(
-        authenticatedPage.locator('.page-sidebar'),
-      ).not.toBeVisible();
+      // Sidebar should be removed from the DOM, not just visually hidden
+      await expect(authenticatedPage.locator('.page-sidebar')).toHaveCount(0);
     });
 
     test('sidebar is hidden on organization detail page', async ({
@@ -55,10 +53,8 @@ test.describe(
       // Org detail content should be visible (proves we're on a detail page)
       await expect(authenticatedPage.locator('h1')).toBeVisible();
 
-      // Sidebar should not be visible
-      await expect(
-        authenticatedPage.locator('.page-sidebar'),
-      ).not.toBeVisible();
+      // Sidebar should be removed from the DOM, not just visually hidden
+      await expect(authenticatedPage.locator('.page-sidebar')).toHaveCount(0);
     });
   },
 );
