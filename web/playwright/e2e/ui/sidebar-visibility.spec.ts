@@ -17,18 +17,14 @@ test.describe(
       authenticatedPage,
     }) => {
       await authenticatedPage.goto('/repository');
-      await expect(
-        authenticatedPage.locator('.page-sidebar'),
-      ).toBeVisible();
+      await expect(authenticatedPage.locator('.page-sidebar')).toBeVisible();
     });
 
     test('sidebar is visible on organization list page', async ({
       authenticatedPage,
     }) => {
       await authenticatedPage.goto('/organization');
-      await expect(
-        authenticatedPage.locator('.page-sidebar'),
-      ).toBeVisible();
+      await expect(authenticatedPage.locator('.page-sidebar')).toBeVisible();
     });
 
     test('sidebar is hidden on repository detail page', async ({
