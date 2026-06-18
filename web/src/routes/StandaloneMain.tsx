@@ -19,7 +19,10 @@ import {
 } from 'react-router-dom';
 
 import {QuayHeader} from 'src/components/header/QuayHeader';
-import {QuaySidebar, isDetailPagePath} from 'src/components/sidebar/QuaySidebar';
+import {
+  QuaySidebar,
+  isDetailPagePath,
+} from 'src/components/sidebar/QuaySidebar';
 import {QuayFooter} from 'src/components/footer/QuayFooter';
 import {NavigationPath} from './NavigationPath';
 

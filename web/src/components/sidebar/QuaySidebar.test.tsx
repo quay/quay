@@ -73,5 +73,4 @@ describe('QuaySidebar', () => {
     );
     expect(screen.getByText('Repositories')).toBeInTheDocument();
   });
-
 });
