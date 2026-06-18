@@ -930,6 +930,29 @@ export class ApiClient {
     };
   }
 
+  async updateUserAsSuperuser(
+    username: string,
+    data: {email?: string; enabled?: boolean; password?: string},
+  ): Promise<void> {
+    const response = await this.withFreshLoginRetry(async () => {
+      const token = await this.fetchToken();
+      return this.request.put(`${API_URL}/api/v1/superuser/users/${username}`, {
+        timeout: 10000,
+        headers: {
+          'X-CSRF-Token': token,
+        },
+        data,
+      });
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to update user ${username}: ${response.status()} - ${body}`,
+      );
+    }
+  }
+
   async deleteUser(username: string): Promise<void> {
     const response = await this.withFreshLoginRetry(async () => {
       const token = await this.fetchToken();
