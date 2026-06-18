@@ -28,6 +28,13 @@ interface SideNavProps {
   component: JSX.Element;
 }
 
+export function isDetailPagePath(pathname: string): boolean {
+  return (
+    /^\/repository\/[^/]+\/[^/]+/.test(pathname) ||
+    /^\/organization\/[^/]+$/.test(pathname)
+  );
+}
+
 export function QuaySidebar() {
   const location = useLocation();
   const {isSidebarOpen} = useUI();
@@ -177,9 +184,7 @@ export function QuaySidebar() {
     </Nav>
   );
 
-  const isDetailPage =
-    /^\/repository\/[^/]+\/[^/]+/.test(location.pathname) ||
-    /^\/organization\/[^/]+$/.test(location.pathname);
+  const isDetailPage = isDetailPagePath(location.pathname);
 
   if (isSidebarOpen && !isDetailPage) {
     return (
