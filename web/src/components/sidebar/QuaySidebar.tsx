@@ -35,6 +35,17 @@ export function isDetailPagePath(pathname: string): boolean {
   );
 }
 
+export function sidebarPropsForPath(pathname: string): {
+  sidebar: JSX.Element | null;
+  isManagedSidebar: boolean;
+} {
+  const isDetail = isDetailPagePath(pathname);
+  return {
+    sidebar: isDetail ? null : <QuaySidebar />,
+    isManagedSidebar: !isDetail,
+  };
+}
+
 export function QuaySidebar() {
   const location = useLocation();
   const {isSidebarOpen} = useUI();

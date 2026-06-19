@@ -1,6 +1,6 @@
 import {render, screen} from 'src/test-utils';
 import {MemoryRouter} from 'react-router-dom';
-import {isDetailPagePath, QuaySidebar} from './QuaySidebar';
+import {isDetailPagePath, QuaySidebar, sidebarPropsForPath} from './QuaySidebar';
 
 vi.mock('src/hooks/UseQuayConfig', () => ({
   useQuayConfig: vi.fn(() => ({
@@ -61,6 +61,26 @@ describe('isDetailPagePath', () => {
 
   it('returns false for root path', () => {
     expect(isDetailPagePath('/')).toBe(false);
+  });
+});
+
+describe('sidebarPropsForPath', () => {
+  it('returns sidebar component and managed sidebar on list pages', () => {
+    const props = sidebarPropsForPath('/repository');
+    expect(props.sidebar).not.toBeNull();
+    expect(props.isManagedSidebar).toBe(true);
+  });
+
+  it('returns null sidebar on repository detail pages', () => {
+    const props = sidebarPropsForPath('/repository/myorg/myrepo');
+    expect(props.sidebar).toBeNull();
+    expect(props.isManagedSidebar).toBe(false);
+  });
+
+  it('returns null sidebar on organization detail pages', () => {
+    const props = sidebarPropsForPath('/organization/myorg');
+    expect(props.sidebar).toBeNull();
+    expect(props.isManagedSidebar).toBe(false);
   });
 });
 
