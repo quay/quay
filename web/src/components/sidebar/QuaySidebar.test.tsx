@@ -1,6 +1,10 @@
 import {render, screen} from 'src/test-utils';
 import {MemoryRouter} from 'react-router-dom';
-import {isDetailPagePath, QuaySidebar, sidebarPropsForPath} from './QuaySidebar';
+import {
+  isDetailPagePath,
+  QuaySidebar,
+  sidebarPropsForPath,
+} from './QuaySidebar';
 
 vi.mock('src/hooks/UseQuayConfig', () => ({
   useQuayConfig: vi.fn(() => ({
