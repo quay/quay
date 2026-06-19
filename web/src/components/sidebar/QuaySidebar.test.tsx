@@ -49,8 +49,21 @@ describe('isDetailPagePath', () => {
     expect(isDetailPagePath('/organization/myorg')).toBe(true);
   });
 
+  it('returns true for user detail page', () => {
+    expect(isDetailPagePath('/user/testuser')).toBe(true);
+  });
+
+  it('returns false for user list page', () => {
+    expect(isDetailPagePath('/user')).toBe(false);
+  });
+
   it('returns false for organization team sub-route', () => {
     expect(isDetailPagePath('/organization/myorg/teams/devs')).toBe(false);
+  });
+
+  it('returns false for trailing-slash paths (React Router normalizes these)', () => {
+    expect(isDetailPagePath('/organization/myorg/')).toBe(false);
+    expect(isDetailPagePath('/user/testuser/')).toBe(false);
   });
 
   it('returns false for superuser pages', () => {
@@ -83,6 +96,12 @@ describe('sidebarPropsForPath', () => {
 
   it('returns null sidebar on organization detail pages', () => {
     const props = sidebarPropsForPath('/organization/myorg');
+    expect(props.sidebar).toBeNull();
+    expect(props.isManagedSidebar).toBe(false);
+  });
+
+  it('returns null sidebar on user detail pages', () => {
+    const props = sidebarPropsForPath('/user/testuser');
     expect(props.sidebar).toBeNull();
     expect(props.isManagedSidebar).toBe(false);
   });

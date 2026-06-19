@@ -31,7 +31,8 @@ interface SideNavProps {
 export function isDetailPagePath(pathname: string): boolean {
   return (
     /^\/repository\/[^/]+\/[^/]+/.test(pathname) ||
-    /^\/organization\/[^/]+$/.test(pathname)
+    /^\/organization\/[^/]+$/.test(pathname) ||
+    /^\/user\/[^/]+$/.test(pathname)
   );
 }
 
