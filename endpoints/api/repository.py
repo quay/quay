@@ -28,6 +28,8 @@ from auth.permissions import (
 from data.cache import cache_key
 from data.database import RepositoryState
 from data.model import DataModelException
+from data.model import repository as repository_model
+from data.model import spam_ingress
 from data.model.org_mirror import is_namespace_org_mirrored
 from endpoints.api import (
     ApiResource,
@@ -67,6 +69,57 @@ from util.parsing import truthy_bool
 logger = logging.getLogger(__name__)
 
 MAX_DAYS_IN_3_MONTHS = 92
+
+
+def _check_spam_ingress(namespace, repository, description, visibility, action):
+    if not features.SPAM_DETECTION:
+        return
+
+    context = spam_ingress.SpamIngressContext(
+        namespace=namespace,
+        repository=repository,
+        description=description,
+        visibility=visibility,
+        action=action,
+    )
+
+    try:
+        decision = spam_ingress.evaluate_description(context, app.config)
+    except Exception:
+        if app.config.get("SPAM_DETECTION_FAIL_OPEN", True):
+            logger.exception(
+                "Spam detection ingress classifier unavailable; allowing %s for %s/%s",
+                action,
+                namespace,
+                repository,
+            )
+            return
+
+        logger.exception(
+            "Spam detection ingress classifier unavailable; rejecting %s for %s/%s",
+            action,
+            namespace,
+            repository,
+        )
+        raise InvalidRequest("Repository description could not be evaluated")
+
+    logger.info(
+        "Spam detection ingress decision for %s/%s action=%s allowed=%s "
+        "dry_run=%s score=%s version=%s reason=%s",
+        namespace,
+        repository,
+        action,
+        decision.allowed,
+        app.config.get("SPAM_DETECTION_DRY_RUN", True),
+        decision.score,
+        decision.classifier_version,
+        decision.reason,
+    )
+
+    if decision.allowed or app.config.get("SPAM_DETECTION_DRY_RUN", True):
+        return
+
+    raise InvalidRequest("Repository description was rejected by spam detection")
 
 
 def check_allowed_private_repos(namespace):
@@ -185,6 +238,13 @@ class RepositoryList(ApiResource):
                 )
 
             kind = req.get("repo_kind", "image") or "image"
+            _check_spam_ingress(
+                namespace_name,
+                repository_name,
+                req["description"],
+                visibility,
+                "create",
+            )
             try:
                 created = model.create_repo(
                     namespace_name,
@@ -381,6 +441,18 @@ class Repository(RepositoryParamResource):
             raise NotFound()
 
         values = request.get_json()
+        repo = repository_model.get_repository(namespace, repository)
+        visibility = None
+        if repo is not None:
+            visibility = "public" if repository_model.is_repository_public(repo) else "private"
+
+        _check_spam_ingress(
+            namespace,
+            repository,
+            values["description"],
+            visibility,
+            "update",
+        )
         model.set_description(namespace, repository, values["description"])
 
         log_action(
