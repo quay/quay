@@ -1792,6 +1792,36 @@ CONFIG_SCHEMA = {
             "description": "Only disables pushes of new content to the registry, while retaining all other functionality. Differs from read only mode because database is not set as read-only.",
             "x-example": False,
         },
+        "FEATURE_SPAM_DETECTION": {
+            "type": "boolean",
+            "description": "Enables repository-description spam detection at API ingress. Defaults to False.",
+            "x-example": False,
+        },
+        "SPAM_DETECTION_DRY_RUN": {
+            "type": "boolean",
+            "description": "Evaluates repository descriptions without rejecting create or update requests. Defaults to True.",
+            "x-example": True,
+        },
+        "SPAM_DETECTION_FAIL_OPEN": {
+            "type": "boolean",
+            "description": "Allows repository create and update requests if the local spam classifier cannot be evaluated. Defaults to True.",
+            "x-example": True,
+        },
+        "SPAM_DETECTION_CLASSIFIER_PATH": {
+            "type": ["string", "null"],
+            "description": "Path to the local Bayesian spam classifier artifact used for repository-description ingress evaluation.",
+            "x-example": "/conf/spam-detection/classifier.json",
+        },
+        "SPAM_DETECTION_CLASSIFIER_VERSION": {
+            "type": ["string", "null"],
+            "description": "Expected version of the local spam classifier artifact. If set, Quay rejects or fail-opens classifier evaluation when the artifact version differs.",
+            "x-example": "2026-06-20.1",
+        },
+        "SPAM_DETECTION_CLASSIFIER_SHA256": {
+            "type": ["string", "null"],
+            "description": "Optional SHA-256 checksum for the local spam classifier artifact.",
+            "x-example": "a3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        },
         "MANIFESTS_ENDPOINT_READ_TIMEOUT": {
             "type": "string",
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",

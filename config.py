@@ -982,6 +982,21 @@ class DefaultConfig(ImmutableConfig):
     # Defaults to "False".
     DISABLE_PUSHES = False
 
+    # Feature Flag: Enables repository-description spam detection at API ingress.
+    FEATURE_SPAM_DETECTION = False
+
+    # Evaluates repository descriptions without rejecting create/update requests.
+    SPAM_DETECTION_DRY_RUN = True
+
+    # Allows repository create/update requests if the local classifier cannot be evaluated.
+    SPAM_DETECTION_FAIL_OPEN = True
+
+    # Local Bayesian classifier artifact used by Quay ingress. Generated and distributed outside
+    # Quay; Quay must not call quay-service-tool on the request path.
+    SPAM_DETECTION_CLASSIFIER_PATH = None
+    SPAM_DETECTION_CLASSIFIER_VERSION = None
+    SPAM_DETECTION_CLASSIFIER_SHA256 = None
+
     # Specific namespaces that be exceptions to the s3-cloudflare optimization
     # used for registry-proxy namespaces
     CDN_SPECIFIC_NAMESPACES: Optional[List[str]] = []

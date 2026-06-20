@@ -146,6 +146,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_RESTRICTED_V1_PUSH":                    true,
 	"FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX":  true,
 	"FEATURE_SPARSE_INDEX":                          true,
+	"FEATURE_SPAM_DETECTION":                        true,
 	"FEATURE_SUPERUSERS_FULL_ACCESS":                true,
 	"FEATURE_SUPERUSERS_ORG_CREATION_ONLY":          true,
 	"FEATURE_SUPERUSER_CONFIGDUMP":                  true,
@@ -242,6 +243,11 @@ var knownUnmapped = map[string]bool{
 	"ROBOTS_DISALLOW":                                true,
 	"SECURITY_SCANNER_INDEXING_INTERVAL":             true,
 	"SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE":       true,
+	"SPAM_DETECTION_CLASSIFIER_PATH":                 true,
+	"SPAM_DETECTION_CLASSIFIER_SHA256":               true,
+	"SPAM_DETECTION_CLASSIFIER_VERSION":              true,
+	"SPAM_DETECTION_DRY_RUN":                         true,
+	"SPAM_DETECTION_FAIL_OPEN":                       true,
 	"WEBHOOK_NOTIFICATION_CONFIG":                    true,
 }
 
