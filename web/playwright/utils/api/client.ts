@@ -2405,9 +2405,11 @@ export class ApiClient {
     repo: string,
     manifestDigest: string,
     includeVulnerabilities = true,
+    raw = false,
   ): Promise<{status: string; data: unknown}> {
+    const params = `vulnerabilities=${includeVulnerabilities}&raw=${raw}`;
     const response = await this.request.get(
-      `${API_URL}/api/v1/repository/${namespace}/${repo}/manifest/${manifestDigest}/security?vulnerabilities=${includeVulnerabilities}`,
+      `${API_URL}/api/v1/repository/${namespace}/${repo}/manifest/${manifestDigest}/security?${params}`,
       {timeout: 30000},
     );
 
