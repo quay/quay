@@ -99,3 +99,30 @@ def test_classifier_checksum_mismatch_raises_unavailable(tmp_path):
                 "SPAM_DETECTION_CLASSIFIER_SHA256": "0" * 64,
             },
         )
+
+
+def test_custom_token_pattern_raises_unavailable(tmp_path):
+    spam_ingress.clear_classifier_cache()
+    artifact_path, artifact_sha = _write_artifact(
+        tmp_path,
+        {
+            "version": "test-v1",
+            "token_spam_counts": {"casino": 100},
+            "token_ham_counts": {"project": 100},
+            "feature_config": {"token_pattern": "(a+)+", "include_repository_name": False},
+        },
+    )
+    context = spam_ingress.SpamIngressContext(
+        namespace="devtable",
+        repository="spamrepo",
+        description="casino",
+    )
+
+    with pytest.raises(spam_ingress.SpamIngressUnavailable):
+        spam_ingress.evaluate_description(
+            context,
+            {
+                "SPAM_DETECTION_CLASSIFIER_PATH": str(artifact_path),
+                "SPAM_DETECTION_CLASSIFIER_SHA256": artifact_sha,
+            },
+        )
