@@ -51,9 +51,10 @@ class BayesianSpamClassifier:
         self._threshold = float(artifact.get("ingress_threshold", DEFAULT_INGRESS_THRESHOLD))
         self._thresholds = artifact.get("ingress_thresholds") or {}
         feature_config = artifact.get("feature_config") or {}
-        self._token_pattern = re.compile(
-            feature_config.get("token_pattern", DEFAULT_TOKEN_PATTERN), re.IGNORECASE
-        )
+        token_pattern = feature_config.get("token_pattern", DEFAULT_TOKEN_PATTERN)
+        if token_pattern != DEFAULT_TOKEN_PATTERN:
+            raise SpamIngressUnavailable("Custom spam classifier token patterns are not supported")
+        self._token_pattern = re.compile(token_pattern, re.IGNORECASE)
         self._include_repository_name = feature_config.get("include_repository_name", False)
 
         if self._spam_total is None:
