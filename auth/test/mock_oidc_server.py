@@ -93,6 +93,7 @@ def generate_mock_oidc_token(
     expiry_seconds=3600,
     issued_at=None,
     azp=None,
+    **extra_claims,
 ):
     now = datetime.datetime.now()
     iat = now - datetime.timedelta(seconds=30)
@@ -120,6 +121,7 @@ def generate_mock_oidc_token(
     if azp:
         payload["azp"] = azp
 
+    payload.update(extra_claims)
     headers = {"kid": "mock-key-id"}
 
     return jwt.encode(payload, MOCK_PRIVATE_KEY, algorithm="RS256", headers=headers)

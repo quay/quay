@@ -14,6 +14,7 @@ from data.model.user import get_user
 from endpoints.api import api
 from endpoints.api.appspecifictokens import *
 from endpoints.api.billing import *
+from endpoints.api.bootstrap import BootstrapTokenRenew
 from endpoints.api.build import *
 from endpoints.api.capabilities import *
 from endpoints.api.discovery import *
@@ -26,6 +27,10 @@ from endpoints.api.mirrorhealth import RepositoryMirrorHealth
 from endpoints.api.namespacequota import *
 from endpoints.api.org_mirror import *  # type: ignore[no-redef]
 from endpoints.api.organization import *  # type: ignore[assignment,no-redef]
+from endpoints.api.organization_application_tokens import (
+    OrganizationApplicationToken,
+    OrganizationApplicationTokens,
+)
 from endpoints.api.permission import *  # type: ignore[no-redef]
 from endpoints.api.policy import *
 from endpoints.api.prototype import *
@@ -5320,6 +5325,105 @@ SECURITY_TESTS: List[
         "reader",
         403,
     ),
+    (
+        OrganizationApplicationTokens,
+        "GET",
+        {"orgname": "buynlarge", "client_id": "deadbeef"},
+        None,
+        None,
+        401,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "GET",
+        {"orgname": "buynlarge", "client_id": "deadbeef"},
+        None,
+        "devtable",
+        200,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "GET",
+        {"orgname": "buynlarge", "client_id": "deadbeef"},
+        None,
+        "freshuser",
+        403,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "GET",
+        {"orgname": "buynlarge", "client_id": "deadbeef"},
+        None,
+        "reader",
+        403,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "POST",
+        {"orgname": "buynlarge", "client_id": "deadbeef"},
+        {"scope": "repo:read"},
+        None,
+        401,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "POST",
+        {"orgname": "buynlarge", "client_id": "deadbeef"},
+        {"scope": "repo:read"},
+        "devtable",
+        200,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "POST",
+        {"orgname": "buynlarge", "client_id": "deadbeef"},
+        {"scope": "repo:read"},
+        "freshuser",
+        403,
+    ),
+    (
+        OrganizationApplicationTokens,
+        "POST",
+        {"orgname": "buynlarge", "client_id": "deadbeef"},
+        {"scope": "repo:read"},
+        "reader",
+        403,
+    ),
+    (
+        OrganizationApplicationToken,
+        "DELETE",
+        {"orgname": "buynlarge", "client_id": "deadbeef", "token_uuid": "fake"},
+        None,
+        None,
+        401,
+    ),
+    (
+        OrganizationApplicationToken,
+        "DELETE",
+        {"orgname": "buynlarge", "client_id": "deadbeef", "token_uuid": "fake"},
+        None,
+        "devtable",
+        404,
+    ),
+    (
+        OrganizationApplicationToken,
+        "DELETE",
+        {"orgname": "buynlarge", "client_id": "deadbeef", "token_uuid": "fake"},
+        None,
+        "freshuser",
+        403,
+    ),
+    (
+        OrganizationApplicationToken,
+        "DELETE",
+        {"orgname": "buynlarge", "client_id": "deadbeef", "token_uuid": "fake"},
+        None,
+        "reader",
+        403,
+    ),
+    (BootstrapTokenRenew, "POST", None, None, None, 401),
+    (BootstrapTokenRenew, "POST", None, None, "devtable", 401),
+    (BootstrapTokenRenew, "POST", None, None, "reader", 401),
     (Users, "GET", {"username": "devtable"}, None, None, 200),
     (UserNotificationList, "GET", None, None, None, 401),
     (UserNotificationList, "GET", None, None, "devtable", 200),

@@ -114,12 +114,13 @@ class AppTokens(ApiResource):
         """
         Create a new app specific token for user.
         """
+        user = get_authenticated_user()
         title = request.get_json()["title"]
-        token = model.appspecifictoken.create_token(get_authenticated_user(), title)
+        token = model.appspecifictoken.create_token(user, title)
 
         log_action(
             "create_app_specific_token",
-            get_authenticated_user().username,
+            user.username,
             {"app_specific_token_title": token.title, "app_specific_token": token.uuid},
         )
 

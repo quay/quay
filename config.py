@@ -5,6 +5,7 @@ from uuid import uuid4
 import requests
 
 from _init import CONF_DIR, ROOT_DIR
+from util.bootstrap_token import DEFAULT_BOOTSTRAP_TOKEN_PATH
 
 
 def build_requests_session():
@@ -869,6 +870,20 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: If set to true, the first User account may be created via API /api/v1/user/initialize
     FEATURE_USER_INITIALIZE = False
+
+    # Feature Flag: If set to true, enables programmatic bootstrap token provisioning.
+    # On startup, creates a superuser-scoped OAuth token and writes it to disk.
+    FEATURE_PROGRAMMATIC_BOOTSTRAP = False
+    BOOTSTRAP_APP_NAME = "__quay_bootstrap_app"
+    BOOTSTRAP_TOKEN_OWNER = None
+    PROGRAMMATIC_TOKEN_PATH = DEFAULT_BOOTSTRAP_TOKEN_PATH
+    PROGRAMMATIC_TOKEN_EXPIRATION = 3600  # 60 minutes in seconds
+    PROGRAMMATIC_TOKEN_SCOPE = (
+        "org:admin repo:admin repo:create repo:read repo:write super:user user:admin user:read"
+    )
+    PROGRAMMATIC_TOKEN_K8S_SECRET = None
+    PROGRAMMATIC_TOKEN_K8S_KEY = "token.json"
+    PROGRAMMATIC_TOKEN_K8S_NAMESPACE = None
 
     # Allows "/" in repository names
     FEATURE_EXTENDED_REPOSITORY_NAMES = True

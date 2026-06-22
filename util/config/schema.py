@@ -1512,6 +1512,56 @@ CONFIG_SCHEMA = {
             "description": "If set to true, the first User account may be created via API /api/v1/user/initialize",
             "x-example": False,
         },
+        "FEATURE_PROGRAMMATIC_BOOTSTRAP": {
+            "type": "boolean",
+            "description": "If set to true, enables programmatic bootstrap token provisioning on startup and the /api/v1/bootstrap/renew endpoint. Defaults to False",
+            "x-example": False,
+        },
+        "BOOTSTRAP_APP_NAME": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "OAuth application name used for programmatic bootstrap tokens. Defaults to '__quay_bootstrap_app'.",
+            "x-example": "__quay_bootstrap_app",
+        },
+        "BOOTSTRAP_TOKEN_OWNER": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Username that owns the programmatic bootstrap OAuth application and tokens. Required when FEATURE_PROGRAMMATIC_BOOTSTRAP is enabled, and the user must also be listed in SUPER_USERS.",
+            "x-example": "admin",
+        },
+        "PROGRAMMATIC_TOKEN_PATH": {
+            "type": "string",
+            "description": "Filesystem path where the bootstrap token JSON is written.",
+            "x-example": "/var/lib/quay/quay-machine-token.json",
+        },
+        "PROGRAMMATIC_TOKEN_EXPIRATION": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Bootstrap token lifetime in seconds. Defaults to 3600 (60 minutes).",
+            "x-example": 3600,
+        },
+        "PROGRAMMATIC_TOKEN_SCOPE": {
+            "type": "string",
+            "description": "Space-separated OAuth scopes for the bootstrap token.",
+            "x-example": "org:admin repo:admin repo:create repo:read repo:write super:user user:admin user:read",
+        },
+        "PROGRAMMATIC_TOKEN_K8S_SECRET": {
+            "type": ["string", "null"],
+            "description": "Name of the Kubernetes Secret to write the bootstrap token into. When null, K8s Secret write is skipped even in K8s mode.",
+            "x-example": "quay-bootstrap-token",
+        },
+        "PROGRAMMATIC_TOKEN_K8S_KEY": {
+            "type": "string",
+            "description": "Key name within the K8s Secret data map. Defaults to 'token.json'.",
+            "x-example": "token.json",
+        },
+        "PROGRAMMATIC_TOKEN_K8S_NAMESPACE": {
+            "type": ["string", "null"],
+            "description": "Kubernetes namespace for the bootstrap token Secret. Defaults to the pod's own namespace.",
+            "x-example": "quay-enterprise",
+        },
         # OCI artifact types
         "ALLOWED_OCI_ARTIFACT_TYPES": {
             "type": "object",

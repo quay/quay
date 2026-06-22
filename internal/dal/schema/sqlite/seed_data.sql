@@ -1,6 +1,6 @@
 INSERT INTO accesstokenkind VALUES(1,'build-worker');
 INSERT INTO accesstokenkind VALUES(2,'pushpull-token');
-INSERT INTO alembic_version VALUES('c3d4e5f6a7b8');
+INSERT INTO alembic_version VALUES('1763d9d00e83');
 INSERT INTO apprblobplacementlocation VALUES(1,'local_eu');
 INSERT INTO apprblobplacementlocation VALUES(2,'local_us');
 INSERT INTO apprtagkind VALUES(1,'tag');
@@ -185,6 +185,8 @@ INSERT INTO logentrykind VALUES(138,'delete_immutability_policy');
 INSERT INTO logentrykind VALUES(139,'org_mirror_repo_creation_failed');
 INSERT INTO logentrykind VALUES(140,'tag_made_immutable_by_policy');
 INSERT INTO logentrykind VALUES(141,'tags_made_immutable_by_policy');
+INSERT INTO logentrykind VALUES(142,'create_oauth_api_token');
+INSERT INTO logentrykind VALUES(143,'revoke_oauth_api_token');
 INSERT INTO loginservice VALUES(1,'github');
 INSERT INTO loginservice VALUES(2,'quayrobot');
 INSERT INTO loginservice VALUES(3,'ldap');

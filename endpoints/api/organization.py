@@ -788,6 +788,9 @@ class OrganizationApplications(ApiResource):
                 raise NotFound()
 
             app_data = request.get_json()
+            if model.oauth.is_bootstrap_app_name(app_data["name"], app.config):
+                raise request_error(message="Application name is reserved")
+
             application = model.oauth.create_application(
                 org,
                 app_data["name"],
@@ -889,6 +892,9 @@ class OrganizationApplicationResource(ApiResource):
                 raise NotFound()
 
             app_data = request.get_json()
+            if model.oauth.is_bootstrap_app_name(app_data["name"], app.config):
+                raise request_error(message="Application name is reserved")
+
             application.name = app_data["name"]
             application.application_uri = app_data["application_uri"]
             application.redirect_uri = app_data["redirect_uri"]
