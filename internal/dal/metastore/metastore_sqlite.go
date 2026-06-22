@@ -357,6 +357,9 @@ func (s *SQLiteStore) GetRepositoryID(ctx context.Context, name oci.RepositoryNa
 		Username: name.Namespace,
 		Name:     name.Name,
 	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("get repository %s: %w", name, oci.ErrNotExist)
+	}
 	if err != nil {
 		return 0, fmt.Errorf("get repository %s: %w", name, err)
 	}
@@ -370,6 +373,9 @@ func (s *SQLiteStore) GetTagDigest(ctx context.Context, repoID int64, tag string
 		RepositoryID: repoID,
 		Name:         tag,
 	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("get tag %q: %w", tag, oci.ErrNotExist)
+	}
 	if err != nil {
 		return "", fmt.Errorf("get tag %q: %w", tag, err)
 	}
@@ -383,6 +389,9 @@ func (s *SQLiteStore) GetManifestDigest(ctx context.Context, repoID int64, dgst 
 		RepositoryID: repoID,
 		Digest:       dgst.String(),
 	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("get manifest %s: %w", dgst, oci.ErrNotExist)
+	}
 	if err != nil {
 		return "", fmt.Errorf("get manifest %s: %w", dgst, err)
 	}

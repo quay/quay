@@ -2,7 +2,6 @@ package local
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -25,13 +24,13 @@ func setupDistTest(t *testing.T) (*DistDriver, oci.BlobStore, oci.MetadataStore)
 	}
 
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	db, err := dbcore.Setup(context.Background(), dbPath)
+	db, err := dbcore.Setup(t.Context(), dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
 
-	store, err := metastore.NewSQLiteStore(context.Background(), db)
+	store, err := metastore.NewSQLiteStore(t.Context(), db)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +48,7 @@ func TestDistDriver_Name(t *testing.T) {
 
 func TestDistDriver_BlobPutGetContent(t *testing.T) {
 	dd, blobs, _ := setupDistTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	content := []byte("hello blob")
 	dgst := digest.FromBytes(content)
@@ -70,7 +69,7 @@ func TestDistDriver_BlobPutGetContent(t *testing.T) {
 
 func TestDistDriver_UploadLifecycle(t *testing.T) {
 	dd, blobs, _ := setupDistTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Init upload through BlobStore
 	uploadID, err := blobs.InitUpload(ctx)
@@ -133,7 +132,7 @@ func TestDistDriver_UploadLifecycle(t *testing.T) {
 
 func TestDistDriver_Move_UploadToBlob(t *testing.T) {
 	dd, blobs, _ := setupDistTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	content := []byte("finalized blob")
 	dgst := digest.FromBytes(content)
@@ -147,9 +146,15 @@ func TestDistDriver_Move_UploadToBlob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.Write(content)
-	w.Commit(ctx)
-	w.Close()
+	if _, err := w.Write(content); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	// Move to blob path via DistDriver
 	uploadDataPath := "/docker/registry/v2/repositories/lib/test/_uploads/" + uploadID + "/data"
@@ -170,7 +175,7 @@ func TestDistDriver_Move_UploadToBlob(t *testing.T) {
 
 func TestDistDriver_MetadataLink_GetContent(t *testing.T) {
 	dd, _, store := setupDistTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	repoID, _ := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
 	manifestDgst := digest.FromString("my-manifest")
@@ -207,7 +212,7 @@ func TestDistDriver_MetadataLink_GetContent(t *testing.T) {
 
 func TestDistDriver_MetadataLink_PutContent_NoOp(t *testing.T) {
 	dd, _, _ := setupDistTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	linkPath := "/docker/registry/v2/repositories/lib/test/_layers/sha256/aabb/link"
 	if err := dd.PutContent(ctx, linkPath, []byte("sha256:aabb")); err != nil {
@@ -217,7 +222,7 @@ func TestDistDriver_MetadataLink_PutContent_NoOp(t *testing.T) {
 
 func TestDistDriver_ListTags(t *testing.T) {
 	dd, _, store := setupDistTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	repoID, _ := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
 	d1 := digest.FromString("m1")

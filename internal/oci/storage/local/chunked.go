@@ -133,7 +133,7 @@ func (d *Driver) CommitUpload(ctx context.Context, uploadID string, dgst digest.
 	if err != nil {
 		return fmt.Errorf("open upload data: %w", err)
 	}
-	computed, err := digest.SHA256.FromReader(f)
+	computed, err := dgst.Algorithm().FromReader(f)
 	_ = f.Close()
 	if err != nil {
 		return fmt.Errorf("compute digest: %w", err)
@@ -172,18 +172,23 @@ func (d *Driver) CancelUpload(ctx context.Context, uploadID string) error {
 	return os.RemoveAll(dir)
 }
 
+func (d *Driver) validateStatePath(uploadID, key string) (string, error) {
+	if err := d.validateUploadID(uploadID); err != nil {
+		return "", err
+	}
+	p := filepath.Clean(filepath.Join(d.uploadDir(uploadID), filepath.FromSlash(key)))
+	if !strings.HasPrefix(p, d.uploadDir(uploadID)) {
+		return "", fmt.Errorf("invalid upload state key %q", key)
+	}
+	return p, nil
+}
+
 // PutUploadState stores metadata for an upload keyed by a relative path
 // (e.g., "startedat", "hashstates/sha256/1024").
 func (d *Driver) PutUploadState(ctx context.Context, uploadID, key string, data []byte) error {
-	if err := d.validateUploadID(uploadID); err != nil {
+	p, err := d.validateStatePath(uploadID, key)
+	if err != nil {
 		return err
-	}
-
-	p := filepath.Join(d.uploadDir(uploadID), filepath.FromSlash(key))
-	p = filepath.Clean(p)
-	base := d.uploadDir(uploadID)
-	if !strings.HasPrefix(p, base) {
-		return fmt.Errorf("invalid upload state key %q", key)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
@@ -194,12 +199,12 @@ func (d *Driver) PutUploadState(ctx context.Context, uploadID, key string, data 
 
 // GetUploadState retrieves upload metadata by key.
 func (d *Driver) GetUploadState(ctx context.Context, uploadID, key string) ([]byte, error) {
-	if err := d.validateUploadID(uploadID); err != nil {
+	p, err := d.validateStatePath(uploadID, key)
+	if err != nil {
 		return nil, err
 	}
 
-	p := filepath.Join(d.uploadDir(uploadID), filepath.FromSlash(key))
-	data, err := os.ReadFile(p) //nolint:gosec // path from validated UUID + key
+	data, err := os.ReadFile(p) //nolint:gosec // path validated by validateStatePath
 	if os.IsNotExist(err) {
 		return nil, storage.ErrNotExist
 	}
@@ -208,11 +213,10 @@ func (d *Driver) GetUploadState(ctx context.Context, uploadID, key string) ([]by
 
 // ListUploadState lists state keys under a prefix within an upload directory.
 func (d *Driver) ListUploadState(ctx context.Context, uploadID, keyPrefix string) ([]string, error) {
-	if err := d.validateUploadID(uploadID); err != nil {
+	dir, err := d.validateStatePath(uploadID, keyPrefix)
+	if err != nil {
 		return nil, err
 	}
-
-	dir := filepath.Join(d.uploadDir(uploadID), filepath.FromSlash(keyPrefix))
 	entries, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil, nil

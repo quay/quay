@@ -94,21 +94,7 @@ func (d *DistDriver) resolveLink(ctx context.Context, repoID int64, path string)
 		return d.meta.GetManifestDigest(ctx, repoID, dgst)
 	}
 	if strings.Contains(path, "/_layers/") && strings.HasSuffix(path, "/link") {
-		dgst, err := digestFromLinkPath(path, "/_layers/")
-		if err != nil {
-			return "", err
-		}
-		// Check repo-scoped link first (manifestblob + uploadedblob),
-		// then fall back to global existence (blob uploaded but not yet
-		// linked to a manifest — distribution checks layers before
-		// accepting the manifest that creates the link).
-		if ok, _ := d.meta.BlobLinkedToRepo(ctx, repoID, dgst); ok {
-			return dgst, nil
-		}
-		if ok, _ := d.meta.BlobExists(ctx, dgst); ok {
-			return dgst, nil
-		}
-		return "", fmt.Errorf("blob not linked")
+		return d.resolveLayerLink(ctx, repoID, path)
 	}
 	if strings.Contains(path, "/tags/") && strings.Contains(path, "/index/") && strings.HasSuffix(path, "/link") {
 		dgst, err := digestFromLinkPath(path, "/index/")
@@ -118,6 +104,27 @@ func (d *DistDriver) resolveLink(ctx context.Context, repoID int64, path string)
 		return d.meta.GetManifestDigest(ctx, repoID, dgst)
 	}
 	return "", fmt.Errorf("unknown metadata path")
+}
+
+// resolveLayerLink checks if a blob is linked to the repo (via manifestblob or
+// uploadedblob), falling back to global existence for blobs uploaded but not
+// yet referenced by a manifest.
+func (d *DistDriver) resolveLayerLink(ctx context.Context, repoID int64, path string) (digest.Digest, error) {
+	dgst, err := digestFromLinkPath(path, "/_layers/")
+	if err != nil {
+		return "", err
+	}
+	if ok, err := d.meta.BlobLinkedToRepo(ctx, repoID, dgst); err != nil {
+		return "", err
+	} else if ok {
+		return dgst, nil
+	}
+	if ok, err := d.meta.BlobExists(ctx, dgst); err != nil {
+		return "", err
+	} else if ok {
+		return dgst, nil
+	}
+	return "", fmt.Errorf("blob not linked")
 }
 
 // PutContent writes small objects. Blob content is stored by digest,

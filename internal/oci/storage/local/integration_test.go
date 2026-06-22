@@ -2,7 +2,6 @@ package local
 
 import (
 	"bytes"
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,7 +14,7 @@ import (
 
 func TestIntegration_BlobRoundTrip(t *testing.T) {
 	dd, blobs, store := setupDistTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "test", Name: "repo"})
 	if err != nil {
@@ -43,9 +42,15 @@ func TestIntegration_BlobRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.Write(content)
-	w.Commit(ctx)
-	w.Close()
+	if _, err := w.Write(content); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	// 4. Move upload to blob (routes through BlobStore.UploadReader → BlobStore.Writer)
 	blobPath := "/docker/registry/v2/blobs/sha256/" + dgst.Encoded()[:2] + "/" + dgst.Encoded() + "/data"
@@ -54,17 +59,21 @@ func TestIntegration_BlobRoundTrip(t *testing.T) {
 	}
 
 	// 5. Record blob metadata (simulating middleware)
-	store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: int64(len(content))})
+	if _, err := store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: int64(len(content))}); err != nil {
+		t.Fatal(err)
+	}
 
 	// 6. Record manifest (simulating middleware)
 	manifestDgst := digest.FromString("manifest-content")
-	store.PutManifest(ctx, repoID, oci.ManifestRecord{
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:      manifestDgst,
 		MediaType:   "application/vnd.oci.image.manifest.v1+json",
 		Content:     []byte(`{"schemaVersion":2}`),
 		BlobDigests: []oci.BlobRef{{Digest: dgst, Size: int64(len(content))}},
 		Tag:         "latest",
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	// --- Pull side ---
 
