@@ -9,7 +9,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"github.com/quay/quay/internal/dal/metastore"
+	"github.com/quay/quay/internal/oci"
 )
 
 // blobStore wraps a distribution.BlobStore to record blob metadata on
@@ -63,11 +63,19 @@ func (bs *blobStore) Resume(ctx context.Context, id string) (distribution.BlobWr
 }
 
 func (bs *blobStore) recordBlob(ctx context.Context, desc v1.Descriptor) error { //nolint:gocritic // distribution passes descriptors by value
-	if _, err := bs.repo.store.PutBlob(ctx, metastore.BlobRecord{
+	if _, err := bs.repo.store.PutBlob(ctx, oci.BlobRecord{
 		Digest: desc.Digest,
 		Size:   desc.Size,
 	}); err != nil {
 		return logMetadataError("blob_put", bs.repo.Named().Name(), desc.Digest.String(), err)
+	}
+
+	repoID, err := bs.repo.ensureRepo(ctx)
+	if err != nil {
+		return err
+	}
+	if err := bs.repo.store.PutUploadedBlob(ctx, repoID, desc.Digest); err != nil {
+		return logMetadataError("uploaded_blob", bs.repo.Named().Name(), desc.Digest.String(), err)
 	}
 	return nil
 }
@@ -93,7 +101,7 @@ func (bw *blobWriter) Commit(ctx context.Context, provisional v1.Descriptor) (_ 
 	return desc, nil
 }
 
-// Delete delegates to the inner store. No metadata cleanup is needed here—
+// Delete delegates to the inner store. No metadata cleanup is needed here---
 // orphaned blob rows are handled by the garbage collector (FindOrphanedBlobs).
 func (bs *blobStore) Delete(ctx context.Context, dgst digest.Digest) error {
 	return bs.BlobStore.Delete(ctx, dgst)

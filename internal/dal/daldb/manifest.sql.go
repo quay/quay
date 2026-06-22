@@ -134,6 +134,22 @@ func (q *Queries) LinkManifestChild(ctx context.Context, arg LinkManifestChildPa
 	return err
 }
 
+const manifestExistsByDigest = `-- name: ManifestExistsByDigest :one
+SELECT digest FROM manifest WHERE repository_id = ? AND digest = ?
+`
+
+type ManifestExistsByDigestParams struct {
+	RepositoryID int64  `json:"repository_id"`
+	Digest       string `json:"digest"`
+}
+
+func (q *Queries) ManifestExistsByDigest(ctx context.Context, arg ManifestExistsByDigestParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, manifestExistsByDigest, arg.RepositoryID, arg.Digest)
+	var digest string
+	err := row.Scan(&digest)
+	return digest, err
+}
+
 const upsertManifest = `-- name: UpsertManifest :one
 INSERT INTO manifest (repository_id, digest, media_type_id, manifest_bytes)
 VALUES (?, ?, ?, ?)

@@ -21,10 +21,9 @@ func TestNoDistributionOutsideRegistry(t *testing.T) {
 		}
 		// These packages are allowed to import distribution.
 		short := strings.TrimPrefix(pkg, "github.com/quay/quay/")
-		if strings.HasPrefix(short, "internal/registry/") ||
-			short == "internal/registry" ||
-			strings.HasPrefix(short, "internal/cmd/") ||
-			short == "internal/cmd" {
+		if strings.HasPrefix(short, "internal/registry") ||
+			strings.HasPrefix(short, "internal/cmd") ||
+			strings.HasPrefix(short, "internal/oci/storage/local") {
 			continue
 		}
 

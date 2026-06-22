@@ -9,7 +9,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"github.com/quay/quay/internal/dal/metastore"
+	"github.com/quay/quay/internal/oci"
 )
 
 // manifestService wraps a distribution.ManifestService to record metadata on
@@ -37,7 +37,7 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 		return "", logMetadataError("manifest_put", ms.repo.Named().Name(), dgst.String(), err)
 	}
 
-	record := metastore.ManifestRecord{
+	record := oci.ManifestRecord{
 		Digest:    dgst,
 		MediaType: mt,
 		Content:   payload,
@@ -58,7 +58,7 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 		}
 	} else {
 		for _, ref := range manifest.References() {
-			record.BlobDigests = append(record.BlobDigests, metastore.BlobRef{
+			record.BlobDigests = append(record.BlobDigests, oci.BlobRef{
 				Digest: ref.Digest,
 				Size:   ref.Size,
 			})

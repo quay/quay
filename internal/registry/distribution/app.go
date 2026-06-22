@@ -10,10 +10,8 @@ import (
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry/handlers"
 
-	// Register the filesystem storage driver with distribution.
-	_ "github.com/distribution/distribution/v3/registry/storage/driver/filesystem"
-
-	"github.com/quay/quay/internal/dal/metastore"
+	"github.com/quay/quay/internal/oci"
+	"github.com/quay/quay/internal/oci/storage/local"
 	registrymw "github.com/quay/quay/internal/registry/distribution/middleware"
 )
 
@@ -23,7 +21,7 @@ type Config struct {
 	Hostname         string
 	ListenAddr       string
 	DB               *sql.DB
-	Store            metastore.Store
+	Store            oci.MetadataStore
 	LibraryNamespace string
 }
 
@@ -50,6 +48,8 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 		libraryNamespace = "library"
 	}
 
+	local.RegisterMetadataStore(cfg.Store)
+
 	if err := registrymw.Register(cfg.Store, libraryNamespace); err != nil {
 		return nil, fmt.Errorf("register middleware: %w", err)
 	}
@@ -57,7 +57,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 	distCfg := &configuration.Configuration{
 		Catalog: configuration.Catalog{MaxEntries: 1000},
 		Storage: configuration.Storage{
-			"filesystem": configuration.Parameters{
+			"quay": configuration.Parameters{
 				"rootdirectory": cfg.StoragePath,
 			},
 			"delete": configuration.Parameters{
