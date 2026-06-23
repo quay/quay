@@ -488,15 +488,19 @@ export async function fetchBuildLogsSuperuser(
   buildUuid: string,
   signal?: AbortSignal,
 ): Promise<ISuperuserBuild> {
-  // Fetch both build info and logs in parallel
   const [buildResponse, logsResponse] = await Promise.all([
     axios.get(`/api/v1/superuser/${buildUuid}/build`, {signal}),
     axios.get(`/api/v1/superuser/${buildUuid}/logs`, {signal}),
   ]);
 
-  // Merge logs into build object
+  let logs = logsResponse.data.logs || [];
+  if (!isNullOrUndefined(logsResponse.data.logs_url)) {
+    const archived = await fetchArchivedBuildLogs(logsResponse.data.logs_url);
+    logs = archived.logs || [];
+  }
+
   return {
     ...buildResponse.data,
-    logs: logsResponse.data.logs || [],
+    logs,
   };
 }
