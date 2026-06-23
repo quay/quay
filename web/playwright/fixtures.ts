@@ -40,6 +40,7 @@ import {
   TeamRole,
 } from './utils/api';
 import {isContainerRuntimeAvailable} from './utils/container';
+import {WebhookReceiver} from './utils/webhook';
 
 // ============================================================================
 // TestApi: Auto-cleanup API client for tests
@@ -1046,6 +1047,9 @@ type TestFixtures = {
 
   // Auto-fixture: skips tests based on @container tag (runs automatically)
   _autoSkipByContainer: void;
+
+  // WebhookReceiver that auto-starts and auto-stops per test
+  webhook: WebhookReceiver;
 };
 
 /**
@@ -1393,6 +1397,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     },
     {auto: true},
   ],
+
+  // eslint-disable-next-line no-empty-pattern
+  webhook: async ({}, use) => {
+    const receiver = new WebhookReceiver();
+    await receiver.start();
+    await use(receiver);
+    await receiver.stop();
+  },
 });
 
 // Re-export expect for convenience
