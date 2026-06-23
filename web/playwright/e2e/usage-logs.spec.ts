@@ -119,7 +119,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         .click();
 
       await expect(
-        authenticatedPage.getByText('Logs exported with id'),
+        authenticatedPage.getByText('Logs exported with id').first(),
       ).toBeVisible();
 
       const email = await mailpit.waitForEmail(
@@ -154,7 +154,7 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
         .click();
 
       await expect(
-        authenticatedPage.getByText('Logs exported with id'),
+        authenticatedPage.getByText('Logs exported with id').first(),
       ).toBeVisible();
 
       const received = await webhook.waitForWebhook(
