@@ -1,4 +1,4 @@
-import {test, expect} from '../fixtures';
+import {test, expect, mailpit} from '../fixtures';
 import type {Page} from '@playwright/test';
 import {pushImage} from '../utils/container';
 import {TEST_USERS} from '../global-setup';
@@ -97,6 +97,79 @@ test.describe('Usage Logs', {tag: ['@logs']}, () => {
     await expect(
       authenticatedPage.getByTestId('usage-logs-export-confirm-button'),
     ).toBeDisabled();
+  });
+
+  test.describe('export delivery', {tag: ['@feature:LOG_EXPORT']}, () => {
+    test('delivers export email for organization logs', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      test.setTimeout(180_000);
+      const org = await api.organization('exportemail');
+      const recipient = `export-${org.name}@example.com`;
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Logs`);
+
+      await authenticatedPage.getByTestId('usage-logs-export-button').click();
+      await authenticatedPage
+        .getByTestId('usage-logs-export-email-input')
+        .fill(recipient);
+      await authenticatedPage
+        .getByTestId('usage-logs-export-confirm-button')
+        .click();
+
+      await expect(
+        authenticatedPage.getByText('Logs exported with id'),
+      ).toBeVisible();
+
+      const email = await mailpit.waitForEmail(
+        (msg) =>
+          msg.Subject.includes('Export Action Logs Complete') &&
+          msg.To.some((to) => to.Address === recipient),
+        120_000,
+      );
+      expect(email).not.toBeNull();
+
+      const body = await mailpit.getEmailBody(email!.ID);
+      expect(body).toContain('Usage Logs Export has completed');
+      expect(body).toContain('exported logs information can be found at');
+    });
+
+    test('delivers callback for repository logs export', async ({
+      authenticatedPage,
+      api,
+      webhook,
+    }) => {
+      test.setTimeout(180_000);
+      const repo = await api.repository();
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=logs`);
+
+      await authenticatedPage.getByTestId('usage-logs-export-button').click();
+      await authenticatedPage
+        .getByTestId('usage-logs-export-email-input')
+        .fill(webhook.getUrl('/export-callback'));
+      await authenticatedPage
+        .getByTestId('usage-logs-export-confirm-button')
+        .click();
+
+      await expect(
+        authenticatedPage.getByText('Logs exported with id'),
+      ).toBeVisible();
+
+      const received = await webhook.waitForWebhook(
+        (req) => req.url === '/export-callback',
+        120_000,
+      );
+      expect(received).not.toBeNull();
+
+      const body = received!.body;
+      expect(body).toHaveProperty('export_id');
+      expect(body).toHaveProperty('status', 'success');
+      expect(body).toHaveProperty('exported_data_url');
+      expect(body).toHaveProperty('namespace');
+      expect(body).toHaveProperty('repository');
+    });
   });
 
   test('filters logs by text input', async ({authenticatedPage, api}) => {
