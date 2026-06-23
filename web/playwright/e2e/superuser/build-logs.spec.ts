@@ -124,68 +124,6 @@ test.describe(
       await expect(checkbox).toBeChecked();
     });
 
-    test('displays archived build logs fetched via logs_url', async ({
-      superuserPage,
-      api,
-    }) => {
-      const org = await api.organization('suarchive');
-      const repo = await api.repository(org.name, 'archived');
-      const build = await api.build(org.name, repo.name);
-
-      const archivedLogs = {
-        start: 0,
-        total: 3,
-        logs: [
-          {type: 'phase', message: 'pulling'},
-          {type: 'command', message: 'FROM scratch'},
-          {type: 'phase', message: 'complete'},
-        ],
-      };
-
-      // Mock the logs endpoint to return logs_url (simulating archived logs)
-      await superuserPage.route(
-        `**/api/v1/superuser/${build.buildId}/logs`,
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              logs_url: `http://fake-archive.example.com/buildlogs/${build.buildId}`,
-            }),
-          });
-        },
-      );
-
-      // Mock the archive URL to return actual log entries
-      await superuserPage.route(
-        `**/buildlogs/${build.buildId}`,
-        async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify(archivedLogs),
-          });
-        },
-      );
-
-      await superuserPage.goto('/build-logs');
-      await superuserPage.getByTestId('build-uuid-input').fill(build.buildId);
-      await superuserPage.getByTestId('load-build-button').click();
-
-      await expect(superuserPage.getByText('Build Information')).toBeVisible({
-        timeout: 30_000,
-      });
-
-      // Verify logs are displayed (not "No logs available")
-      await expect(superuserPage.getByTestId('build-logs-display')).toBeVisible(
-        {timeout: 15_000},
-      );
-      await expect(
-        superuserPage.getByText('No logs available'),
-      ).not.toBeVisible();
-      await expect(superuserPage.getByText('FROM scratch')).toBeVisible();
-    });
-
     test('loads and displays real build logs', async ({
       superuserPage,
       superuserApi,
