@@ -199,6 +199,41 @@ describe('BuildResource', () => {
       const result = await fetchBuildLogsSuperuser('uuid1');
       expect(result.logs).toEqual([]);
     });
+
+    it('fetches archived logs when logs_url is present', async () => {
+      const buildData = {id: 'b1', uuid: 'uuid1', status: 'complete'};
+      const archivedLogs = {
+        logs: [{message: 'pulling'}, {message: 'complete'}],
+        start: 0,
+        total: 2,
+      };
+
+      vi.mocked(axios.get)
+        .mockResolvedValueOnce(mockResponse(buildData))
+        .mockResolvedValueOnce(
+          mockResponse({logs_url: 'https://archive.example.com/buildlogs/uuid1'}),
+        )
+        .mockResolvedValueOnce(mockResponse(archivedLogs));
+
+      const result = await fetchBuildLogsSuperuser('uuid1');
+      expect(result.id).toBe('b1');
+      expect(result.logs).toEqual(archivedLogs.logs);
+      expect(vi.mocked(axios.get).mock.calls[2][0]).toBe(
+        'https://archive.example.com/buildlogs/uuid1',
+      );
+    });
+
+    it('defaults to empty array when archived logs have no logs field', async () => {
+      vi.mocked(axios.get)
+        .mockResolvedValueOnce(mockResponse({id: 'b1'}))
+        .mockResolvedValueOnce(
+          mockResponse({logs_url: 'https://archive.example.com/logs'}),
+        )
+        .mockResolvedValueOnce(mockResponse({}));
+
+      const result = await fetchBuildLogsSuperuser('uuid1');
+      expect(result.logs).toEqual([]);
+    });
   });
 
   describe('toggleBuildTrigger', () => {
