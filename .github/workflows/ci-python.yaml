@@ -1,93 +1,11 @@
 name: CI
 on:
   workflow_call:
-    inputs:
-      is-pr:
-        required: true
-        type: boolean
     secrets:
       CODECOV_TOKEN:
         required: false
 
 jobs:
-  build:
-    name: Format
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      with:
-        persist-credentials: false
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-      with:
-        python-version: 3.12
-        cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          requirements-dev.txt
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install black==24.4.2
-        pip install flake8
-
-    - name: Check Formatting (Black)
-      run: |
-        black --line-length=100 --target-version=py312 --check --diff .
-
-    - name: Check Formatting (Flake8)
-      run: |
-        # The code-base needs to be cleaned up. There are too many Flake8
-        # related warnings now. Ignore known problems to catch new ones.
-        flake8 --ignore=C901,E203,E262,E265,E266,E402,E501,E712,E713,E722,E731,E741,F401,F403,F405,F811,F821,F841,W503
-        # Run full scan for visibility purposes.
-        flake8 --exit-zero
-
-    - name: Check Requirements are pinned
-      run: |
-        # Read each line of requirement.txt and flag if any line doesn't contain ==, @, newline, or #
-        sed '/^$/d' < requirements.txt | while read i; do if [[ ! $i =~ [==|@|^#] ]]; then echo $i is not pinned; fi; done
-
-  pre-commit-checks:
-    name: Pre-commit checks
-    runs-on: ubuntu-22.04
-    if: ${{ inputs.is-pr }}
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      with:
-        persist-credentials: false
-        fetch-depth: 0  # fetch all commits and branches for pre-commit
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-      with:
-        python-version: 3.12
-
-    - name: Set up Node 22
-      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-      with:
-        node-version: 22
-
-    - name: Install pnpm
-      uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-      with:
-        version: 10
-        run_install: false
-
-    - name: Install web dependencies
-      run: cd ./web && pnpm install --frozen-lockfile
-
-    - name: Run pre-commit checks
-      uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
-      with:
-        extra_args: --from-ref origin/${{ github.base_ref }} --to-ref HEAD --verbose
-
   unit:
     name: Unit Test
     runs-on: ubuntu-22.04
@@ -198,36 +116,6 @@ jobs:
     - name: Check Types
       run: make types-test
 
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      with:
-        persist-credentials: false
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-      with:
-        python-version: 3.12
-        cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          requirements-dev.txt
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
-
-    - name: tox
-      run: |
-        tox -e py312-e2e
-
   registry:
     name: Registry Protocol Test
     runs-on: quay-001-large-ubuntu-24-x64
@@ -293,3 +181,179 @@ jobs:
         TOX_DOCKER_GATEWAY: "0.0.0.0"
       run: |
         tox -e py312-psql
+
+  oci:
+    name: OCI Distribution Spec
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_USER: postgres_user
+          POSTGRES_PASSWORD: postgres_password
+          POSTGRES_DB: postgres_db
+          POSTGRES_PORT: 5432
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.4
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+    - name: Enable pg_trgm extension
+      run: |
+        psql "postgresql://postgres_user:postgres_password@localhost:5432/postgres_db" \
+          --command="create extension if not exists pg_trgm;"
+
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        persist-credentials: false
+
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        persist-credentials: false
+        repository: opencontainers/distribution-spec
+        ref: v1.1.0-rc1
+        path: dist-spec
+
+    - name: Set up Go 1.18
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # zizmor: ignore[cache-poisoning] v6.4.0
+      with:
+        go-version: 1.18
+
+    - name: Build conformance.test binary
+      run: |
+        cd dist-spec/conformance
+        CGO_ENABLED=0 go test -c -o conformance.test
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+    - name: Build and export to Docker
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+      with:
+        context: .
+        load: true
+        tags: localhost/quay
+        cache-from: type=gha
+        cache-to: type=gha
+
+    - name: Start Quay
+      run: |
+        IP=$(ip addr show dev eth0 | sed -n 's: *inet \([0-9.]*\)/.*:\1:p')
+
+        mkdir -p /tmp/config
+        cat >/tmp/config/config.yaml <<EOF
+        BUILDLOGS_REDIS: {"host": "$IP", "port": 6379}
+        DATABASE_SECRET_KEY: anothercrazykey!
+        DB_URI: postgresql://postgres_user:postgres_password@$IP:5432/postgres_db
+        DISTRIBUTED_STORAGE_CONFIG: {"default": ["LocalStorage", {"storage_path": "/datastorage/registry"}]}
+        DISTRIBUTED_STORAGE_PREFERENCE: ["default"]
+        SERVER_HOSTNAME: localhost
+        SETUP_COMPLETE: true
+        USER_EVENTS_REDIS: {"host": "$IP", "port": 6379}
+        PULL_METRICS_REDIS: {"host": "$IP", "port": 6379}
+
+
+        DATA_MODEL_CACHE_CONFIG:
+          engine: memcached
+          endpoint: [127.0.0.1, 18080]
+          repository_blob_cache_ttl: 60s
+          catalog_page_cache_ttl: 60s
+          active_repo_tags_cache_ttl: 0s
+        EOF
+
+        docker run \
+          --detach \
+          --health-cmd="curl -fsS http://localhost:8080/health/instance" \
+          --health-interval=10s \
+          --health-retries=5 \
+          --health-timeout=5s \
+          --name=quay \
+          --publish=127.0.0.1:443:8443/tcp \
+          --publish=127.0.0.1:80:8080/tcp \
+          --volume=/tmp/config:/conf/stack:Z \
+          localhost/quay
+
+        for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+          status=$(docker inspect -f '{{.State.Health.Status}}' quay)
+          printf "[%s] status: %s\n" "$(date -u +'%F %T')" "$status"
+          if [ "$status" == "healthy" ]; then
+            break
+          fi
+          sleep 10
+        done
+        docker inspect --format='{{json .State.Health}}' quay
+
+        docker exec -i quay python <<EOF
+        from app import app
+        from data import model
+        from data.database import configure
+        configure(app.config)
+        myuser = model.user.create_user("myuser", "p@ssw0rd", "admin@localhost.local", auto_verify=True)
+        myorg = model.organization.create_organization("myorg", "myorg@localhost.local", myuser)
+        EOF
+
+    - name: Run conformance tests
+      run: |
+        export OCI_ROOT_URL="http://localhost"
+        export OCI_NAMESPACE="myuser/myrepo"
+        export OCI_CROSSMOUNT_NAMESPACE="myorg/other"
+        export OCI_USERNAME="myuser"
+        export OCI_PASSWORD="p@ssw0rd"
+
+        export OCI_TEST_PULL=1
+        export OCI_TEST_PUSH=1
+        export OCI_TEST_CONTENT_DISCOVERY=1
+        export OCI_TEST_CONTENT_MANAGEMENT=0
+
+        export OCI_HIDE_SKIPPED_WORKFLOWS=0
+        export OCI_DEBUG=1
+        export OCI_DELETE_MANIFEST_BEFORE_BLOBS=0
+
+        ./dist-spec/conformance/conformance.test
+
+    - name: Create report
+      run: |
+        mkdir -p .oci-test-results/ .logs/
+        mv report.html junit.xml .oci-test-results/ || true
+        docker logs quay >.logs/quay.log 2>&1 || true
+      if: always()
+
+    - name: Check logs
+      run: |
+        TRACEBACKS=$(grep Traceback .logs/quay.log | wc -l)
+        if [ "$TRACEBACKS" -gt 4 ]; then
+          echo >&2 ERROR: Traceback detected, check Quay logs.
+          exit 1
+        fi
+      if: always()
+
+    - name: Stop Quay
+      run: |
+        docker rm --force --volumes quay
+      if: always()
+
+    - name: Upload test results
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: oci-test-results
+        path: .oci-test-results/
+      if: always()
+
+    - name: Upload Quay logs
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: logs
+        path: .logs/
+      if: always()

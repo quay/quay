@@ -110,7 +110,7 @@ jobs:
   e2e-test-check:
     if: ${{ inputs.is-pr }}
     runs-on: ubuntu-latest
-    name: e2e test coverage check
+    name: E2E Coverage Gate
     continue-on-error: true
     permissions:
       pull-requests: read

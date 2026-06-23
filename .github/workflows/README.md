@@ -6,20 +6,24 @@ All CI runs through a single **sentinel** gate. Branch protection requires only 
 
 `sentinel.yaml` is the orchestrator. It:
 1. Runs `dorny/paths-filter` to detect which file categories changed
-2. Calls reusable workflows conditionally
+2. Calls reusable workflows conditionally (or unconditionally for lint)
 3. Aggregates all results with `re-actors/alls-green`
 
 If every expected job passes (or is legitimately skipped), `all-green` passes. If any expected job fails, `all-green` fails.
 
 ## File structure
 
-| File | Role |
-|------|------|
-| `sentinel.yaml` | Orchestrator + gate (the only required check) |
-| `ci-python.yaml` | Format, Pre-commit, Unit, SQLite, PostgreSQL, Types, E2E, Registry |
-| `ci-go.yaml` | Go Lint, Build, Test, Schema Drift, E2E Mirror |
-| `ci-web.yaml` | Build Plugin, Vitest, e2e-test-check, Playwright E2E |
-| `ci-oci-spec.yaml` | OCI Distribution Spec conformance |
+| File | Role | Dependency tiers |
+|------|------|-----------------|
+| `sentinel.yaml` | Orchestrator + gate (the only required check) | — |
+| `ci-lint.yaml` | PR title check, pre-commit | Always runs, no tiers |
+| `ci-python.yaml` | Types, Unit, SQLite, PostgreSQL, Registry, OCI Spec | No tiers (all parallel) |
+| `ci-go.yaml` | Build → Lint → Test + Schema Drift → E2E Mirror | 4 tiers |
+| `ci-web.yaml` | Build Plugin, Vitest, e2e-test-check, Playwright E2E | No tiers |
+
+## Tier gating
+
+**Go:** Build → Lint → Test + Schema Drift → E2E Mirror. Each tier gates the next.
 
 ## Adding a new always-run job
 
