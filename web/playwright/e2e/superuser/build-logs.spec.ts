@@ -158,6 +158,11 @@ test.describe(
       await expect(superuserPage.getByTestId('build-logs-display')).toBeVisible(
         {timeout: 15_000},
       );
+
+      // Verify the fix: logs are rendered, not the empty state
+      await expect(
+        superuserPage.getByText('No logs available'),
+      ).not.toBeVisible();
     });
 
     test('navigates to Build Logs via sidebar', async ({superuserPage}) => {
