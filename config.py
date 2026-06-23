@@ -23,6 +23,7 @@ CLIENT_WHITELIST = [
     "MIXPANEL_KEY",
     "STRIPE_PUBLISHABLE_KEY",
     "ENTERPRISE_LOGO_URL",
+    "ENTERPRISE_LOGO_URL_DARK",
     "SENTRY_PUBLIC_DSN",
     "AUTHENTICATION_TYPE",
     "REGISTRY_TITLE",
@@ -74,6 +75,8 @@ def frontend_visible_config(config_dict):
         if "ENTERPRISE_LOGO_URL" in config_dict:
             visible_dict["BRANDING"] = visible_dict.get("BRANDING", {})
             visible_dict["BRANDING"]["logo"] = config_dict["ENTERPRISE_LOGO_URL"]
+            if "ENTERPRISE_LOGO_URL_DARK" in config_dict:
+                visible_dict["BRANDING"]["logo_dark"] = config_dict["ENTERPRISE_LOGO_URL_DARK"]
 
     return visible_dict
 
@@ -512,12 +515,14 @@ class DefaultConfig(ImmutableConfig):
     if os.environ.get("RED_HAT_QUAY", False):
         BRANDING = {
             "logo": "/static/img/RH_Logo_Quay_Black_UX-horizontal.svg",
+            "logo_dark": "/static/img/RH_Logo_Quay_White_UX-horizontal.svg",
             "footer_img": "/static/img/RedHat.svg",
             "footer_url": "https://access.redhat.com/documentation/en-us/red_hat_quay/3/",
         }
     else:
         BRANDING = {
             "logo": "/static/img/quay-horizontal-color.svg",
+            "logo_dark": "/static/img/quay-horizontal-whiteblue-nobackground.svg",
             "footer_img": None,
             "footer_url": None,
         }
