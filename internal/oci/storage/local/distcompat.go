@@ -459,46 +459,19 @@ func prefixAll(basePath string, items []string) []string {
 	return result
 }
 
-// Move finalizes an upload by streaming the staged data through the
-// BlobStore's content-addressed writer, then cleaning up the upload.
-// Only upload-to-blob moves are supported.
+// Move finalizes an upload by verifying its digest and renaming into
+// content-addressable storage. Only upload-to-blob moves are supported.
 func (d *DistDriver) Move(ctx context.Context, src, dst string) error {
-	srcKind := classify(src)
-	dstKind := classify(dst)
-
-	if srcKind == pathUpload && dstKind == pathBlob {
-		dgst, err := digestFromBlobPath(dst)
-		if err != nil {
-			return err
-		}
-		id := uploadIDFromPath(src)
-		rc, err := d.blobs.UploadReader(ctx, id, 0)
-		if errors.Is(err, storage.ErrNotExist) {
-			return storagedriver.PathNotFoundError{Path: src}
-		}
-		if err != nil {
-			return err
-		}
-		defer func() { _ = rc.Close() }()
-
-		w, err := d.blobs.Writer(ctx, dgst)
-		if err != nil {
-			return err
-		}
-		if _, err := io.Copy(w, rc); err != nil {
-			if cerr := w.Close(); cerr != nil {
-				return fmt.Errorf("copy failed: %w (close also failed: %w)", err, cerr)
-			}
-			return err
-		}
-		if err := w.Close(); err != nil {
-			return err
-		}
-
-		return d.blobs.CancelUpload(ctx, id)
+	if classify(src) != pathUpload || classify(dst) != pathBlob {
+		return fmt.Errorf("unsupported move: %s → %s", src, dst)
 	}
 
-	return fmt.Errorf("unsupported move: %s → %s", src, dst)
+	dgst, err := digestFromBlobPath(dst)
+	if err != nil {
+		return err
+	}
+	id := uploadIDFromPath(src)
+	return d.blobs.CommitUpload(ctx, id, dgst)
 }
 
 // Delete removes blobs by digest, upload directories by canceling the

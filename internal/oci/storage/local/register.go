@@ -24,8 +24,11 @@ func RegisterMetadataStore(meta oci.MetadataStore) {
 		panic("RegisterMetadataStore called with nil")
 	}
 	metaMu.Lock()
+	defer metaMu.Unlock()
+	if registeredMeta != nil {
+		panic("RegisterMetadataStore called twice")
+	}
 	registeredMeta = meta
-	metaMu.Unlock()
 }
 
 func init() {

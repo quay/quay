@@ -144,7 +144,7 @@ type atomicWriter struct {
 
 func (w *atomicWriter) Write(p []byte) (int, error) {
 	n, err := w.tmp.Write(p)
-	if err == nil && n > 0 {
+	if n > 0 {
 		_, _ = w.hash.Hash().Write(p[:n])
 	}
 	return n, err

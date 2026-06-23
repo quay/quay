@@ -88,6 +88,9 @@ func (r *repository) Tags(ctx context.Context) distribution.TagService {
 }
 
 // repoName converts this repository's distribution reference to an oci.RepositoryName.
+// Named().Name() returns the repo path without a hostname when distribution
+// creates the reference internally (e.g. "projectquay/clair"). reference.Path()
+// would incorrectly strip the first segment as a hostname.
 func (r *repository) repoName() oci.RepositoryName {
 	full := r.Named().Name()
 	if i := strings.IndexByte(full, '/'); i >= 0 {
