@@ -1,5 +1,5 @@
-import logo_dark from 'src/assets/quay.svg';
-import logo_light from 'src/assets/logo.svg';
+import logo_dark from 'src/assets/RH_Logo_Quay_White_UX-horizontal.svg';
+import logo_light from 'src/assets/RH_Logo_Quay_Black_UX-horizontal.svg';
 import rh_logo_dark from 'src/assets/RH_QuayIO2.svg';
 import rh_logo_light from 'src/assets/RH_QuayIO.svg';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
