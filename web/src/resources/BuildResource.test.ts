@@ -211,7 +211,9 @@ describe('BuildResource', () => {
       vi.mocked(axios.get)
         .mockResolvedValueOnce(mockResponse(buildData))
         .mockResolvedValueOnce(
-          mockResponse({logs_url: 'https://archive.example.com/buildlogs/uuid1'}),
+          mockResponse({
+            logs_url: 'https://archive.example.com/buildlogs/uuid1',
+          }),
         )
         .mockResolvedValueOnce(mockResponse(archivedLogs));
 
