@@ -20,6 +20,7 @@ import {AxiosError} from 'axios';
 export function useFetchOrganizationQuota(
   orgName: string,
   viewMode?: QuotaViewMode,
+  enabled = true,
 ) {
   const {
     data: organizationQuotas,
@@ -30,7 +31,7 @@ export function useFetchOrganizationQuota(
     ['organizationquota', orgName, viewMode],
     ({signal}) => fetchOrganizationQuota(orgName, signal, viewMode),
     {
-      enabled: !!orgName || viewMode === 'self',
+      enabled: enabled && (!!orgName || viewMode === 'self'),
     },
   );
 
