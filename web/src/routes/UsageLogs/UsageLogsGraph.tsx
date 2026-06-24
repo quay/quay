@@ -197,7 +197,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
           <div className="usage-logs-legend-container">
             <ChartLegend
               data={getLegendData()}
-              itemsPerRow={4}
+              itemsPerRow={3}
               orientation="horizontal"
               style={{labels: {fontSize: 11}}}
               width={1200}
