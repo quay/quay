@@ -173,7 +173,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
             }}
             domainPadding={{x: 5 * Object.keys(logData).length}}
             height={500}
-            width={1600}
+            width={1200}
             scale={{x: 'time', y: 'linear'}}
           >
             <ChartAxis fixLabelOverlap />
@@ -197,10 +197,10 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
           <div className="usage-logs-legend-container">
             <ChartLegend
               data={getLegendData()}
-              itemsPerRow={5}
+              itemsPerRow={4}
               orientation="horizontal"
               style={{labels: {fontSize: 11}}}
-              width={1600}
+              width={1200}
             />
           </div>
         </FlexItem>

@@ -269,11 +269,10 @@ export const logKinds = {
   org_mirror_sync_started: 'Start Organization Mirror Sync',
   org_mirror_sync_success: 'Organization Mirror Sync Success',
   org_mirror_sync_failed: 'Organization Mirror Sync Failed',
-  org_mirror_sync_now_requested: 'Organization Mirror Immediate Sync Requested',
+  org_mirror_sync_now_requested: 'Org Mirror Immediate Sync Requested',
   org_mirror_sync_cancelled: 'Organization Mirror Sync Cancelled',
   org_mirror_repo_created: 'Organization Mirror Repository Created',
-  org_mirror_repo_creation_failed:
-    'Organization Mirror Repository Creation Failed',
+  org_mirror_repo_creation_failed: 'Org Mirror Repo Creation Failed',
   create_proxy_cache_config: 'Create Proxy Cache Config',
   delete_proxy_cache_config: 'Delete Proxy Cache Config',
   start_build_trigger: 'Manual build trigger',
