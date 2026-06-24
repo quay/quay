@@ -1,6 +1,6 @@
 module github.com/quay/quay/config-tool
 
-go 1.24.8
+go 1.25.0
 
 require (
 	cuelang.org/go v0.6.0
@@ -32,7 +32,7 @@ require (
 	github.com/minio/crc64nvme v1.0.2 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/crypto v0.51.0 // indirect
 )
 
 require (
@@ -60,9 +60,9 @@ require (
 	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 )
 
 exclude github.com/Azure/azure-storage-blob-go v0.15.0
