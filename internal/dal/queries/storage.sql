@@ -1,7 +1,10 @@
--- name: UpsertImageStorage :one
+-- name: GetBlobByChecksum :one
+SELECT id FROM imagestorage WHERE content_checksum = ?;
+
+-- name: InsertBlob :one
 INSERT INTO imagestorage (uuid, content_checksum, image_size, uploading, cas_path)
 VALUES (?, ?, ?, 0, 1)
-ON CONFLICT (content_checksum) DO UPDATE SET content_checksum = excluded.content_checksum
+ON CONFLICT (uuid) DO UPDATE SET content_checksum = excluded.content_checksum
 RETURNING id;
 
 -- name: FindOrphanedBlobs :many

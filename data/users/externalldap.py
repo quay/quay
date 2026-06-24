@@ -1,10 +1,14 @@
 import hashlib
 import logging
 import os
+import queue
+import random
 import re
 import sys
 import threading
+import time
 from collections import OrderedDict, namedtuple
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Optional
 
@@ -140,6 +144,14 @@ class LDAPConnectionBuilder(object):
         self._network_timeout = network_timeout
         self._referrals = int(referrals)
 
+    @property
+    def admin_dn(self) -> str:
+        return self._user_dn
+
+    @property
+    def admin_pw(self) -> str:
+        return self._user_pw
+
     def get_connection(self):
         return LDAPConnection(
             self._ldap_uri,
@@ -150,6 +162,221 @@ class LDAPConnectionBuilder(object):
             self._network_timeout,
             self._referrals,
         )
+
+    def verify_bind(self, user_dn: str, password: str) -> bool:
+        """Verify user credentials via a direct (non-pooled) connection."""
+        try:
+            with LDAPConnection(
+                self._ldap_uri,
+                user_dn,
+                password,
+                self._allow_tls_fallback,
+                self._timeout,
+                self._network_timeout,
+                self._referrals,
+            ):
+                pass
+            return True
+        except ldap.INVALID_CREDENTIALS:
+            return False
+
+
+_POOL_IDLE_THRESHOLD = 30.0
+_POOL_LIFETIME_JITTER = 0.2
+
+
+@dataclass
+class _PoolEntry:
+    conn: Any
+    created_at: float = field(default_factory=time.monotonic)
+    last_used: float = field(default_factory=time.monotonic)
+    is_overflow: bool = False
+    lifetime_jitter: float = field(
+        default_factory=lambda: random.uniform(1.0 - _POOL_LIFETIME_JITTER, 1.0)
+    )
+
+
+class LDAPConnectionPool:
+    """Queue-based admin LDAP connection pool.
+
+    Requires gevent monkey-patching (threading.Lock and queue.Queue must be
+    patched). All Quay gunicorn configs call monkey.patch_all() before imports.
+    Lazy-initialized so it is safe with preload_app=True (connections are
+    created post-fork, per-worker).
+    """
+
+    def __init__(self, builder, pool_size=10, max_wait=5.0, connection_lifetime=300):
+        self._builder = builder
+        self._pool_size = pool_size
+        self._max_wait = max_wait
+        self._connection_lifetime = connection_lifetime
+        self._queue = None
+        self._lock = threading.Lock()
+        self._total_created = 0
+
+    def _ensure_pool(self):
+        if self._queue is not None:
+            return
+        with self._lock:
+            if self._queue is None:
+                self._queue = queue.Queue(maxsize=self._pool_size)
+
+    def _create_raw_connection(self):
+        wrapper = self._builder.get_connection()
+        try:
+            return wrapper.__enter__()
+        except Exception:
+            try:
+                wrapper.__exit__(*sys.exc_info())
+            except Exception:
+                pass
+            raise
+
+    def _create_with_slot(self, **entry_kwargs):
+        """Reserve a capacity slot and create a connection. Rolls back on failure."""
+        with self._lock:
+            self._total_created += 1
+        try:
+            raw = self._create_raw_connection()
+            return _PoolEntry(conn=raw, **entry_kwargs)
+        except Exception:
+            with self._lock:
+                self._total_created -= 1
+            raise
+
+    def _replace(self, old_entry):
+        """Discard an old connection and create a replacement in its slot."""
+        self._discard(old_entry)
+        return self._create_with_slot()
+
+    def _discard(self, entry):
+        with self._lock:
+            self._total_created = max(0, self._total_created - 1)
+        try:
+            entry.conn.unbind_s()
+        except Exception:
+            pass
+
+    def _health_check(self, entry):
+        try:
+            entry.conn.search_s("", ldap.SCOPE_BASE, "(objectClass=*)", ["1.1"])
+            return True
+        except Exception:
+            return False
+
+    def _checkout(self):
+        self._ensure_pool()
+
+        try:
+            entry = self._queue.get(block=False)
+        except queue.Empty:
+            with self._lock:
+                if self._total_created < self._pool_size:
+                    self._total_created += 1
+                    reserved = True
+                else:
+                    reserved = False
+
+            if reserved:
+                try:
+                    raw = self._create_raw_connection()
+                    return _PoolEntry(conn=raw)
+                except Exception:
+                    with self._lock:
+                        self._total_created -= 1
+                    raise
+
+            try:
+                entry = self._queue.get(block=True, timeout=self._max_wait)
+            except queue.Empty:
+                logger.warning(
+                    "LDAP pool exhausted (size=%d, total=%d), creating overflow connection",
+                    self._pool_size,
+                    self._total_created,
+                )
+                return self._create_with_slot(is_overflow=True)
+
+        now = time.monotonic()
+
+        effective_lifetime = self._connection_lifetime * entry.lifetime_jitter
+        if (now - entry.created_at) >= effective_lifetime:
+            logger.debug("LDAP pooled connection exceeded lifetime, rotating")
+            return self._replace(entry)
+
+        if (now - entry.last_used) >= _POOL_IDLE_THRESHOLD:
+            if not self._health_check(entry):
+                logger.debug("LDAP pooled connection failed health check, replacing")
+                return self._replace(entry)
+
+        entry.last_used = now
+        return entry
+
+    def _return(self, entry, error_occurred=False):
+        if error_occurred or entry.is_overflow:
+            self._discard(entry)
+            return
+
+        effective_lifetime = self._connection_lifetime * entry.lifetime_jitter
+        if (time.monotonic() - entry.created_at) >= effective_lifetime:
+            self._discard(entry)
+            return
+
+        try:
+            self._queue.put_nowait(entry)
+        except queue.Full:
+            self._discard(entry)
+
+    def verify_bind(self, user_dn: str, password: str) -> bool:
+        """Verify user credentials via bind-and-revert on a pooled connection.
+
+        Binds as the user to check their password, then immediately rebinds
+        as admin to restore the connection identity. If the admin rebind
+        fails, the connection is discarded (never returned in wrong state).
+        """
+        entry = self._checkout()
+        try:
+            entry.conn.simple_bind_s(user_dn, password)
+        except ldap.INVALID_CREDENTIALS:
+            try:
+                entry.conn.simple_bind_s(self._builder.admin_dn, self._builder.admin_pw)
+                entry.last_used = time.monotonic()
+                self._return(entry)
+            except Exception:
+                self._discard(entry)
+            return False
+        except Exception:
+            self._discard(entry)
+            raise
+
+        try:
+            entry.conn.simple_bind_s(self._builder.admin_dn, self._builder.admin_pw)
+            entry.last_used = time.monotonic()
+            self._return(entry)
+        except Exception:
+            logger.warning(
+                "LDAP admin rebind failed after user verification, discarding connection"
+            )
+            self._discard(entry)
+
+        return True
+
+    def get_connection(self) -> "_PooledConnectionContext":
+        return _PooledConnectionContext(self)
+
+
+class _PooledConnectionContext:
+    def __init__(self, pool: LDAPConnectionPool) -> None:
+        self._pool = pool
+        self._entry: Optional[_PoolEntry] = None
+
+    def __enter__(self):
+        self._entry = self._pool._checkout()
+        return self._entry.conn
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._entry is not None:
+            self._pool._return(self._entry, error_occurred=exc_type is not None)
+            self._entry = None
 
 
 class LDAPConnection(object):
@@ -232,10 +459,14 @@ class LDAPUsers(FederatedUsers):
         ldap_referrals=_DEFAULT_REFERRALS,
         enable_caching=False,
         cache_ttl=_DEFAULT_CACHE_TTL,
+        connection_pooling=True,
+        pool_size=10,
+        pool_max_wait=5.0,
+        pool_connection_lifetime=300,
     ):
         super(LDAPUsers, self).__init__("ldap", requires_email)
 
-        self._ldap = LDAPConnectionBuilder(
+        builder = LDAPConnectionBuilder(
             ldap_uri,
             admin_dn,
             admin_passwd,
@@ -244,6 +475,13 @@ class LDAPUsers(FederatedUsers):
             network_timeout,
             referrals=ldap_referrals,
         )
+
+        if connection_pooling:
+            self._ldap = LDAPConnectionPool(
+                builder, pool_size, pool_max_wait, pool_connection_lifetime
+            )
+        else:
+            self._ldap = builder
         self._ldap_uri = ldap_uri
         self._uid_attr = uid_attr
         self._email_attr = email_attr
@@ -633,6 +871,19 @@ class LDAPUsers(FederatedUsers):
         logger.debug("For query %s found results %s", query, final_results)
         return (final_results, self.federated_service, None)
 
+    def _verify_password(self, found_dn, password):
+        """Verify password via self._ldap.verify_bind (works for both pool and builder)."""
+        try:
+            return self._ldap.verify_bind(found_dn, password)
+        except ldap.REFERRAL as re:
+            referral_dn = self._get_ldap_referral_dn(re)
+            if not referral_dn:
+                return False
+            try:
+                return self._ldap.verify_bind(referral_dn, password)
+            except ldap.INVALID_CREDENTIALS:
+                return False
+
     def verify_credentials(self, username_or_email, password):
         """
         Verify the credentials with LDAP.
@@ -650,24 +901,7 @@ class LDAPUsers(FederatedUsers):
         logger.debug("DN %s found: %s", found_dn, found_response)
 
         # First validate the password by binding as the user
-        try:
-            with LDAPConnection(self._ldap_uri, found_dn, password, self._allow_tls_fallback):
-                pass
-        except ldap.REFERRAL as re:
-            referral_dn = self._get_ldap_referral_dn(re)
-            if not referral_dn:
-                return (None, "Invalid username or password.")
-
-            try:
-                with LDAPConnection(
-                    self._ldap_uri, referral_dn, password, self._allow_tls_fallback
-                ):
-                    pass
-            except ldap.INVALID_CREDENTIALS:
-                logger.debug("Invalid LDAP credentials")
-                return (None, "Invalid username or password.")
-
-        except ldap.INVALID_CREDENTIALS:
+        if not self._verify_password(found_dn, password):
             logger.debug("Invalid LDAP credentials")
             return (None, "Invalid username or password.")
 
@@ -688,10 +922,12 @@ class LDAPUsers(FederatedUsers):
         if err is not None:
             return (False, err)
 
-        if not next(it, False):
-            return (False, "Group does not exist or is empty")
-
-        return (True, None)
+        try:
+            if not next(it, False):
+                return (False, "Group does not exist or is empty")
+            return (True, None)
+        finally:
+            it.close()
 
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
         try:
@@ -767,7 +1003,9 @@ class LDAPUsers(FederatedUsers):
 
                 # Conduct the initial search for users that are a member of the group.
                 logger.debug(
-                    "Conducting LDAP search of DN: %s and filter %s", user_search_dn, search_flt
+                    "Conducting LDAP search of DN: %s and filter %s",
+                    user_search_dn,
+                    search_flt,
                 )
                 try:
                     if has_pagination:
@@ -780,7 +1018,10 @@ class LDAPUsers(FederatedUsers):
                         )
                     else:
                         msgid = conn.search(
-                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, attrlist=attributes
+                            user_search_dn,
+                            ldap.SCOPE_SUBTREE,
+                            search_flt,
+                            attrlist=attributes,
                         )
                 except ldap.LDAPError as lde:
                     logger.exception(

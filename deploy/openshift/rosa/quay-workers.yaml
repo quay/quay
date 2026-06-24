@@ -1,0 +1,333 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: quay-workers
+objects:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: ${{NAME}}
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - secrets
+    verbs:
+    - get
+    - patch
+    - update
+  - apiGroups:
+    - ""
+    resources:
+    - namespaces
+    verbs:
+    - get
+  - apiGroups:
+    - apps
+    resources:
+    - deployments
+    verbs:
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: ${{NAME}}
+    annotations: ${{SERVICE_ACCOUNT_ANNOTATIONS}}
+  imagePullSecrets:
+  - name: ${{SERVICE_ACCOUNT_IMAGE_PULL_SECRETS}}
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: ${{NAME}}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: ${{NAME}}
+  subjects:
+  - kind: ServiceAccount
+    name: ${{NAME}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: ${NAME}-metrics
+    labels:
+      prometheus_monitoring: "${PROMETHEUS_MONITORING}"
+  spec:
+    type: ClusterIP
+    ports:
+      - protocol: TCP
+        name: metrics
+        port: ${{METRICS_SVC_PORT}}
+        targetPort: ${{METRICS_SVC_TARGET_PORT}}
+    selector:
+      app.kubernetes.io/component: ${{QUAY_COMPONENT}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: ${NAME}-grpc
+    annotations: ${{GRPC_SVC_ANNOTATIONS}}
+  spec:
+    ports:
+    - name: grpc
+      protocol: TCP
+      port: ${{GRPC_SVC_PORT}}
+      targetPort: ${{GRPC_SVC_TARGET_PORT}}
+    type: NodePort
+    selector:
+      app.kubernetes.io/component: ${{QUAY_COMPONENT}}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: ${NAME}
+    labels:
+      app.kubernetes.io/component: ${{QUAY_COMPONENT}}
+    annotations:
+      ignore-check.kube-linter.io/unset-cpu-requirements: "no cpu limits"
+      ${{DVO_MIN_REPLICAS_CHECK}}: ${{DVO_MIN_REPLICAS_CHECK_DISABLE_REASON}}
+      ${{DVO_ANTI_AFFINITY_CHECK}}: ${{DVO_ANTI_AFFINITY_CHECK_DISABLE_REASON}}
+  spec:
+    replicas: ${{REPLICAS}}
+    minReadySeconds: ${{MIN_READY_SECONDS}}
+    progressDeadlineSeconds: ${{PROGRESS_DEADLINE_SECONDS}}
+    revisionHistoryLimit: ${{REVISION_HISTORY_LIMITS}}
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: ${{MAX_UNAVAILABLE}}
+        maxSurge: ${{MAX_SURGE}}
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: ${{QUAY_COMPONENT}}
+    template:
+      metadata:
+        labels:
+          app.kubernetes.io/component: ${{QUAY_COMPONENT}}
+        annotations:
+          oneagent.dynatrace.com/inject: "${DYNATRACE_MONITORING}"
+      spec:
+        terminationGracePeriodSeconds: ${{TERMINATION_GRACE_PERIOD_SECONDS}}
+        volumes:
+        - name: configvolume
+          secret:
+            secretName: ${{QUAY_CONFIG_SECRET}}
+        serviceAccountName: ${{NAME}}
+        nodeSelector:
+          part-of: quay
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 1
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                      - ${{QUAY_COMPONENT}}
+                  topologyKey: kubernetes.io/hostname
+        containers:
+        - name: quay-app
+          image: ${IMAGE}:${IMAGE_TAG}
+          imagePullPolicy: ${{IMAGE_PULL_POLICY}}
+          command:
+          - /quay-registry/quay-entrypoint.sh
+          - ${{QUAY_ENTRYPOINT}}
+          ports:
+          - containerPort: 55443
+            name: grpc
+          - containerPort: 9091
+            name: metrics
+          volumeMounts:
+          - name: configvolume
+            mountPath: /conf/stack
+          startupProbe:
+            failureThreshold: ${{STARTUP_PROBE_FAILURE_THRESHOLD}}
+            periodSeconds: ${{STARTUP_PROBE_PERIOD_SECONDS}}
+            tcpSocket:
+              port: 50051
+          readinessProbe:
+            failureThreshold: ${{READINESS_PROBE_FAILURE_THRESHOLD}}
+            periodSeconds: ${{READINESS_PROBE_PERIOD_SECONDS}}
+            successThreshold: ${{READINESS_PROBE_SUCCESS_THRESHOLD}}
+            tcpSocket:
+              port: 50051
+          livenessProbe:
+            failureThreshold: ${{LIVENESS_PROBE_FAILURE_THRESHOLD}}
+            periodSeconds: ${{LIVENESS_PROBE_PERIOD_SECONDS}}
+            tcpSocket:
+              port: 50051
+          resources:
+            limits:
+              memory: ${{MEMORY_LIMIT}}
+            requests:
+              cpu: ${{CPU_REQUEST}}
+              memory: ${{MEMORY_REQUEST}}
+          env:
+          - name: QE_K8S_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: QE_K8S_CONFIG_SECRET
+            value: ${{QUAY_CONFIG_SECRET}}
+          - name: DEBUGLOG
+            value: ${DEBUGLOG}
+          - name: IGNORE_VALIDATION
+            value: ${IGNORE_VALIDATION}
+          - name: QUAY_LOGGING
+            value: ${{QUAY_LOGGING}}
+          - name: DB_CONNECTION_POOLING
+            value: ${DB_CONNECTION_POOLING}
+          - name: QUAY_SERVICES
+            value: ${QUAY_SERVICES}
+          - name: QUAY_OVERRIDE_SERVICES
+            value: ${QUAY_OVERRIDE_SERVICES}
+parameters:
+  # Template
+  - name: NAME
+    value: "quay"
+    displayName: Base name, used as a prefix in some resources
+    description: Defaults to quay
+  - name: IMAGE
+    value: ""
+    displayName: quay image
+    description: quay docker image. Defaults to quay.io/app-sre/quay.
+  - name: IMAGE_TAG
+    value: ""
+    displayName: quay version
+    description: quay version which defaults to latest
+
+  # Service Account
+  - name: SERVICE_ACCOUNT_ANNOTATIONS
+    value: "{}"
+    description: Optional annotations to add the service account like for IRSA/ROSA (JSON format)
+  - name: SERVICE_ACCOUNT_IMAGE_PULL_SECRETS
+    value: "quayio-backup-image-pull-secret"
+    description: "Secret name for service account imagePullSecrets"
+
+  # Metrics svc
+  - name: METRICS_SVC_PORT
+    value: "9091"
+  - name: METRICS_SVC_TARGET_PORT
+    value: "9091"
+
+  # GRPC svc
+  - name: GRPC_SVC_ANNOTATIONS
+    value: |-
+      {
+        "alb.ingress.kubernetes.io/healthcheck-protocol": "HTTPS",
+        "alb.ingress.kubernetes.io/healthcheck-path": "/"
+      }
+    displayName: GRPC service annotations.
+    description: GRPC Service annotations.
+  - name: GRPC_SVC_PORT
+    value: "443"
+  - name: GRPC_SVC_TARGET_PORT
+    value: "55443"
+
+  # Quay component: used in  selectors
+  - name: QUAY_COMPONENT
+    value: "bkg-workers"
+    displayName: quay app selector
+
+  # Deployment attributes
+  - name: REPLICAS
+    value: "1"
+    displayName: deployment replicas
+  - name: MIN_READY_SECONDS
+    value: "0"
+    displayName: deployment min ready seconds
+  - name: PROGRESS_DEADLINE_SECONDS
+    value: "600"
+    displayName: deployment progress deadline seconds
+  - name: REVISION_HISTORY_LIMITS
+    value: "10"
+    displayName: deployment revision history limits
+  - name: MAX_SURGE
+    value: "1"
+    displayName: deployment max surge
+  - name: MAX_UNAVAILABLE
+    value: "0"
+    displayName: deployment max unavailable
+  - name: TERMINATION_GRACE_PERIOD_SECONDS
+    value: "60"
+  - name: IMAGE_PULL_POLICY
+    value: "IfNotPresent"
+    displayName: image pull policy
+
+  # Pod Spec
+  ## Resources
+  - name: CPU_REQUEST
+    value: "1"
+    displayName: "quay container CPU request"
+  - name: MEMORY_REQUEST
+    value: "4096Mi"
+    displayName: "quay container memory request"
+  - name: MEMORY_LIMIT
+    value: "4096Mi"
+    displayName: "quay container memory limit"
+
+  ## Lifecycle probes
+  - name: STARTUP_PROBE_FAILURE_THRESHOLD
+    value: "10"
+  - name: STARTUP_PROBE_PERIOD_SECONDS
+    value: "15"
+  - name: LIVENESS_PROBE_FAILURE_THRESHOLD
+    value: "5"
+  - name: LIVENESS_PROBE_PERIOD_SECONDS
+    value: "15"
+  - name: READINESS_PROBE_FAILURE_THRESHOLD
+    value: "3"
+  - name: READINESS_PROBE_SUCCESS_THRESHOLD
+    value: "1"
+  - name: READINESS_PROBE_PERIOD_SECONDS
+    value: "15"
+
+  ## Quay Configuration
+  - name: QUAY_ENTRYPOINT
+    value: "registry-nomigrate"
+    displayName: quay container entrypoint
+    description: the specific container entrypoint that will be run (e.g. registry, registry-nomigrate)
+  - name: QUAY_CONFIG_SECRET
+    value: ""
+    displayName: Quay container configuration secret
+  - name: DEBUGLOG
+    value: "false"
+    displayName: debug log
+  - name: IGNORE_VALIDATION
+    value: "false"
+  - name: QUAY_LOGGING
+    value: "stdout"
+    displayName: quay logging handler
+  - name: DB_CONNECTION_POOLING
+    value: "true"
+  - name: QUAY_SERVICES
+    value: ""
+    displayName: quay services whitelist
+    description: Comma-separated list of supervisord services to enable. If empty, all default services run.
+  - name: QUAY_OVERRIDE_SERVICES
+    value: "gunicorn-registry=false,gunicorn-web=false,gunicorn-secscan=false"
+    displayName: quay services override
+    description: Comma-separated list of service=true/false overrides. Applied after QUAY_SERVICES. Example "builder=false,repomirrorworker=true"
+
+  # DVO configuration
+  - name: DVO_MIN_REPLICAS_CHECK
+    value: "min-replicas-check-not-disabled"
+  - name: DVO_MIN_REPLICAS_CHECK_DISABLE_REASON
+    value: ""
+  - name: DVO_ANTI_AFFINITY_CHECK
+    value: "anti-affinity-check-not-disabled"
+  - name: DVO_ANTI_AFFINITY_CHECK_DISABLE_REASON
+    value: ""
+
+  # Additional configuration
+  - name: DYNATRACE_MONITORING
+    value: "false"
+    description: Enable Dynatrace Oneagent injection on the pods.
+  - name: PROMETHEUS_MONITORING
+    value: "true"
+    description: Enables prometheus scrapping on the metrics svc. ServiceMonitor must honor this label

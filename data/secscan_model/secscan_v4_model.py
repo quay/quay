@@ -5,7 +5,7 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
 
-from peewee import JOIN, IntegrityError, fn
+from peewee import JOIN, IntegrityError, OperationalError, fn
 
 import features
 from data.cache import cache_key
@@ -91,13 +91,6 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
 
     def perform_indexing_recent_manifests(self, batch_size=None):
         return None
-
-    def register_model_cleanup_callbacks(self, data_model_config):
-        pass
-
-    @property
-    def legacy_api_handler(self):
-        raise NotImplementedError("Unsupported for this security scanner version")
 
     def lookup_notification_page(self, notification_id, page_index=None):
         return None
@@ -276,12 +269,10 @@ class V4SecurityScanner(SecurityScannerInterface):
     ):
         # TODO(alecmerdler): Filter out any `Manifests` that are still being uploaded
         def not_indexed_query():
-            return Manifest.select(can_use_read_replica=True).where(
-                ~fn.EXISTS(
-                    ManifestSecurityStatus.select().where(
-                        ManifestSecurityStatus.manifest == Manifest.id
-                    )
-                )
+            return (
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
+                .join(ManifestSecurityStatus, JOIN.LEFT_OUTER)
+                .where(ManifestSecurityStatus.id >> None)
             )
 
         def index_error_query():
@@ -606,9 +597,11 @@ class V4SecurityScanner(SecurityScannerInterface):
                         metadata_json={},
                     )
                 except IntegrityError:
-                    # Row already exists and is owned by another worker
                     logger.debug("Manifest %d already claimed by another worker", candidate.id)
                     abt.set()
+                    continue
+                except OperationalError:
+                    logger.debug("Manifest %d skipped due to lock conflict", candidate.id)
                     continue
 
             try:
@@ -805,13 +798,6 @@ class V4SecurityScanner(SecurityScannerInterface):
                     Metadata={},
                 ),
             )
-
-    def register_model_cleanup_callbacks(self, data_model_config):
-        pass
-
-    @property
-    def legacy_api_handler(self):
-        raise NotImplementedError("Unsupported for this security scanner version")
 
     def garbage_collect_manifest_report(self, manifest_digest):
         def manifest_digest_exists():

@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/quay/quay/internal/registry"
+	"github.com/quay/quay/internal/certs"
 	"github.com/quay/quay/internal/system"
 )
 
@@ -189,7 +189,7 @@ func (inst *Installer) waitForHealth(ctx context.Context, url, certPath string, 
 	if !pool.AppendCertsFromPEM(caCert) {
 		return fmt.Errorf("parse TLS certificate: %s", certPath)
 	}
-	tlsCfg := registry.SecureTLSConfig()
+	tlsCfg := certs.SecureTLSConfig()
 	tlsCfg.RootCAs = pool
 	client := &http.Client{
 		Timeout:   2 * time.Second,

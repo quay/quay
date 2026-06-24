@@ -9,6 +9,13 @@ VALUES (?, ?, ?, ?, ?)
 ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
 RETURNING id;
 
+-- name: ExpireActiveTag :execresult
+UPDATE tag SET lifetime_end_ms = ?
+WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL;
+
+-- name: DeleteTagsByManifest :exec
+DELETE FROM tag WHERE manifest_id = ?;
+
 -- name: GetTagsByRepository :many
 SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
 FROM tag

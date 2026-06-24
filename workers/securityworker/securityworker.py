@@ -27,6 +27,12 @@ class SecurityWorker(Worker):
         self.add_operation(self._index_in_scanner, interval)
         self.add_operation(self._index_recent_manifests_in_scanner, interval)
 
+        if self._model.v2_enabled:
+            v2_interval = app.config.get(
+                "SECURITY_SCANNER_V2_INDEXING_INTERVAL", DEFAULT_INDEXING_INTERVAL
+            )
+            self.add_operation(self._index_v2, v2_interval)
+
     def _index_in_scanner(self):
         batch_size = app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
 
@@ -56,6 +62,10 @@ class SecurityWorker(Worker):
 
         else:
             self._model.perform_indexing_recent_manifests(batch_size)
+
+    def _index_v2(self):
+        batch_size = app.config.get("SECURITY_SCANNER_V2_BATCH_SIZE", 50)
+        self._model.perform_indexing_v2(batch_size)
 
 
 def create_gunicorn_worker():

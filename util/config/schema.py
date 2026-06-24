@@ -826,6 +826,21 @@ CONFIG_SCHEMA = {
             "description": "A base64 encoded string used to sign JWT(s) on Clair V4 requests. If 'None' jwt signing will not occur.",
             "x-example": "PSK",
         },
+        "FEATURE_SECURITY_SCANNER_V2": {
+            "type": "boolean",
+            "description": "Whether to enable the V2 lock-free security scanner indexer using PostgreSQL FOR UPDATE SKIP LOCKED for work distribution. Defaults to False",
+            "x-example": False,
+        },
+        "SECURITY_SCANNER_V2_BATCH_SIZE": {
+            "type": "number",
+            "description": "The number of manifests to claim per indexing cycle in the V2 security scanner. Defaults to 50.",
+            "x-example": 50,
+        },
+        "SECURITY_SCANNER_V2_INDEXING_INTERVAL": {
+            "type": "number",
+            "description": "The number of seconds between indexing cycles in the V2 security scanner. Defaults to 30.",
+            "x-example": 30,
+        },
         # Repository mirroring
         "REPO_MIRROR_INTERVAL": {
             "type": "number",
@@ -2547,6 +2562,33 @@ CONFIG_SCHEMA = {
         "type": "number",
         "description": "Time-to-live in seconds for cached LDAP permission results. Defaults to 5.",
         "x-example": 10,
+        "x-reference": None,
+    },
+    "LDAP_CONNECTION_POOLING": {
+        "type": "boolean",
+        "description": "Enable admin LDAP connection pooling to reuse connections across requests. Set false to fall back to per-request connections. Defaults to True.",
+        "x-example": True,
+        "x-reference": None,
+    },
+    "LDAP_POOL_SIZE": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Maximum number of pooled admin LDAP connections per worker process. Defaults to 10.",
+        "x-example": 10,
+        "x-reference": None,
+    },
+    "LDAP_POOL_MAX_WAIT": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Seconds to wait for a pooled LDAP connection before creating an overflow connection. Defaults to 5.0.",
+        "x-example": 5.0,
+        "x-reference": None,
+    },
+    "LDAP_POOL_CONNECTION_LIFETIME": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "description": "Maximum age in seconds of a pooled LDAP connection before it is rotated. Defaults to 300.",
+        "x-example": 300,
         "x-reference": None,
     },
     "GLOBAL_PROMETHEUS_STATS_FREQUENCY": {

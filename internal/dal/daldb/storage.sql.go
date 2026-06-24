@@ -64,6 +64,37 @@ func (q *Queries) FindOrphanedBlobs(ctx context.Context) ([]FindOrphanedBlobsRow
 	return items, nil
 }
 
+const getBlobByChecksum = `-- name: GetBlobByChecksum :one
+SELECT id FROM imagestorage WHERE content_checksum = ?
+`
+
+func (q *Queries) GetBlobByChecksum(ctx context.Context, contentChecksum sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getBlobByChecksum, contentChecksum)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertBlob = `-- name: InsertBlob :one
+INSERT INTO imagestorage (uuid, content_checksum, image_size, uploading, cas_path)
+VALUES (?, ?, ?, 0, 1)
+ON CONFLICT (uuid) DO UPDATE SET content_checksum = excluded.content_checksum
+RETURNING id
+`
+
+type InsertBlobParams struct {
+	Uuid            string         `json:"uuid"`
+	ContentChecksum sql.NullString `json:"content_checksum"`
+	ImageSize       sql.NullInt64  `json:"image_size"`
+}
+
+func (q *Queries) InsertBlob(ctx context.Context, arg InsertBlobParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertBlob, arg.Uuid, arg.ContentChecksum, arg.ImageSize)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const totalStorageBytes = `-- name: TotalStorageBytes :one
 SELECT COALESCE(SUM(image_size), 0) FROM imagestorage WHERE uploading = 0
 `
@@ -73,24 +104,4 @@ func (q *Queries) TotalStorageBytes(ctx context.Context) (interface{}, error) {
 	var coalesce interface{}
 	err := row.Scan(&coalesce)
 	return coalesce, err
-}
-
-const upsertImageStorage = `-- name: UpsertImageStorage :one
-INSERT INTO imagestorage (uuid, content_checksum, image_size, uploading, cas_path)
-VALUES (?, ?, ?, 0, 1)
-ON CONFLICT (content_checksum) DO UPDATE SET content_checksum = excluded.content_checksum
-RETURNING id
-`
-
-type UpsertImageStorageParams struct {
-	Uuid            string         `json:"uuid"`
-	ContentChecksum sql.NullString `json:"content_checksum"`
-	ImageSize       sql.NullInt64  `json:"image_size"`
-}
-
-func (q *Queries) UpsertImageStorage(ctx context.Context, arg UpsertImageStorageParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, upsertImageStorage, arg.Uuid, arg.ContentChecksum, arg.ImageSize)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
 }

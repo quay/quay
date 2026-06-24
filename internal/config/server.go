@@ -8,6 +8,7 @@ type Server struct {
 	RegistryTitle          string `yaml:"REGISTRY_TITLE"`
 	RegistryTitleShort     string `yaml:"REGISTRY_TITLE_SHORT"`
 	RegistryState          string `yaml:"REGISTRY_STATE"`
+	LibraryNamespace       string `yaml:"LIBRARY_NAMESPACE"`
 }
 
 // validateServer checks server-related enum values and TLS consistency.

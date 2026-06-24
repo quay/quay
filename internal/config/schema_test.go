@@ -97,6 +97,9 @@ var knownUnmapped = map[string]bool{
 	"SECURITY_SCANNER_V4_NAMESPACE_WHITELIST": true,
 	"SECURITY_SCANNER_V4_PSK":                 true,
 	"SECURITY_SCANNER_V4_MANIFEST_CLEANUP":    true,
+	"FEATURE_SECURITY_SCANNER_V2":             true,
+	"SECURITY_SCANNER_V2_BATCH_SIZE":          true,
+	"SECURITY_SCANNER_V2_INDEXING_INTERVAL":   true,
 
 	// Feature flags not yet mapped
 	"FEATURE_ADVERTISE_V2":                          true,
@@ -249,6 +252,7 @@ var knownUnmapped = map[string]bool{
 var goOnlyFields = map[string]bool{
 	"DATABASE_SECRET_KEY": true,
 	"SECRET_KEY":          true,
+	"LIBRARY_NAMESPACE":   true, // QUAY.IO-only in Python schema but needed by Go middleware
 }
 
 // TestSchemaFieldCoverage compares the Python schema keys against the Go struct

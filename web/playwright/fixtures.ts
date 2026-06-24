@@ -40,6 +40,7 @@ import {
   TeamRole,
 } from './utils/api';
 import {isContainerRuntimeAvailable, isHelmAvailable} from './utils/container';
+import {WebhookReceiver} from './utils/webhook';
 
 // ============================================================================
 // TestApi: Auto-cleanup API client for tests
@@ -1039,6 +1040,9 @@ type TestFixtures = {
   // Unauthenticated RawApiClient (no browser required)
   anonClient: RawApiClient;
 
+  // Isolated user with its own API client (no shared namespace state)
+  freshUser: {user: CreatedUser; api: TestApi};
+
   // Auto-fixture: skips tests based on @feature: tags (runs automatically)
   _autoSkipByFeature: void;
 
@@ -1056,6 +1060,9 @@ type TestFixtures = {
 
   // Auto-fixture: skips tests based on @helm tag (runs automatically)
   _autoSkipByHelm: void;
+
+  // WebhookReceiver that auto-starts and auto-stops per test
+  webhook: WebhookReceiver;
 };
 
 /**
@@ -1237,6 +1244,25 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const testApi = new TestApi(client);
     await use(testApi);
     await testApi.cleanup();
+  },
+
+  freshUser: async ({superuserApi, playwright}, use) => {
+    const created = await superuserApi.user('iso');
+    await superuserApi.raw.updateUserAsSuperuser(created.username, {
+      email: created.email,
+    });
+    const request = await playwright.request.newContext({
+      ignoreHTTPSErrors: true,
+    });
+    const client = new ApiClient(request);
+    await client.signIn(created.username, created.password);
+    client.setCredentials(created.username, created.password);
+    const testApi = new TestApi(client, created.username);
+
+    await use({user: created, api: testApi});
+
+    await testApi.cleanup();
+    await request.dispose();
   },
 
   // =========================================================================
@@ -1431,6 +1457,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     },
     {auto: true},
   ],
+
+  // eslint-disable-next-line no-empty-pattern
+  webhook: async ({}, use) => {
+    const receiver = new WebhookReceiver();
+    await receiver.start();
+    await use(receiver);
+    await receiver.stop();
+  },
 });
 
 // Re-export expect for convenience

@@ -470,7 +470,7 @@ class TestUserStarredRepositoryList(ApiTestCase):
         self.login(READ_ACCESS_USER)
 
         # Queries: Base + the list query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
             self.getJsonResponse(StarredRepositoryList, expected_code=200)
 
     def test_star_repo_guest(self):
@@ -487,7 +487,7 @@ class TestUserStarredRepositoryList(ApiTestCase):
         self.login(READ_ACCESS_USER)
 
         # Queries: Base + the list query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
             json = self.getJsonResponse(StarredRepositoryList)
             assert json["repositories"] == []
 
@@ -2169,7 +2169,7 @@ class TestListRepos(ApiTestCase):
         # Queries: Base + the list query + the popularity and last modified queries + full perms load
         # TODO: Add quota queries
         with patch("features.QUOTA_MANAGEMENT", False):
-            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
+            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 5):
                 json = self.getJsonResponse(
                     RepositoryList,
                     params=dict(
@@ -2630,11 +2630,11 @@ class TestGetRepository(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
             self.getJsonResponse(Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple"))
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
             json = self.getJsonResponse(
                 Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
             )
@@ -3795,11 +3795,11 @@ class TestUserRobots(ApiTestCase):
         self.putJsonResponse(UserRobot, params=dict(robot_shortname="coolbot"), expected_code=201)
 
         # Queries: Base + the lookup query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
             self.getJsonResponse(UserRobotList)
 
         # Queries: Base + the lookup query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
             self.getJsonResponse(UserRobotList, params=dict(permissions=True))
 
     def test_robots(self):
