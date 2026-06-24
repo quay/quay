@@ -28,6 +28,25 @@ interface SideNavProps {
   component: JSX.Element;
 }
 
+export function isDetailPagePath(pathname: string): boolean {
+  return (
+    /^\/repository\/[^/]+\/[^/]+/.test(pathname) ||
+    /^\/organization\/[^/]+$/.test(pathname) ||
+    /^\/user\/[^/]+$/.test(pathname)
+  );
+}
+
+export function sidebarPropsForPath(pathname: string): {
+  sidebar: JSX.Element | null;
+  isManagedSidebar: boolean;
+} {
+  const isDetail = isDetailPagePath(pathname);
+  return {
+    sidebar: isDetail ? null : <QuaySidebar />,
+    isManagedSidebar: !isDetail,
+  };
+}
+
 export function QuaySidebar() {
   const location = useLocation();
   const {isSidebarOpen} = useUI();

@@ -186,8 +186,8 @@ test.describe(
       });
       await expect(dateHeader).toHaveAttribute('aria-sort', 'descending');
 
-      // Click to toggle sort direction
-      await dateHeader.click();
+      // Click the sort button inside the column header to toggle direction
+      await dateHeader.getByRole('button').click();
       await expect(dateHeader).toHaveAttribute('aria-sort', 'ascending');
 
       // Both builds should remain visible after sort toggle
