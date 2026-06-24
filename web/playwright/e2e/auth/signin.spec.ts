@@ -1,7 +1,11 @@
 import {test as base, expect, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
+import {ApiClient} from '../../utils/api';
 
 const test = base;
+const SESSION_COOKIE_NAME = '_csrf_token';
+const EXPECTED_SESSION_TIMEOUT_SECONDS = 2 * 60 * 60;
+const SESSION_TIMEOUT_TOLERANCE_SECONDS = 60;
 
 test.describe(
   'Signin page with anonymous access disabled',
@@ -105,6 +109,41 @@ test.describe(
     });
   },
 );
+
+test.describe('Signin session handling', {tag: ['@auth', '@signin']}, () => {
+  test(
+    'session cookie honors configured SESSION_TIMEOUT',
+    {tag: ['@PROJQUAY-5657', '@auth:Database']},
+    async ({browser, freshUser}) => {
+      const context = await browser.newContext();
+
+      try {
+        const api = new ApiClient(context.request);
+        const loginStartedAt = Math.floor(Date.now() / 1000);
+        await api.signIn(freshUser.user.username, freshUser.user.password);
+
+        const cookies = await context.cookies();
+        const sessionCookie = cookies.find(
+          (cookie) => cookie.name === SESSION_COOKIE_NAME,
+        );
+
+        expect(sessionCookie).toBeTruthy();
+        expect(sessionCookie!.expires).toBeGreaterThan(0);
+
+        const lifetimeSeconds = sessionCookie!.expires - loginStartedAt;
+
+        expect(lifetimeSeconds).toBeGreaterThan(
+          EXPECTED_SESSION_TIMEOUT_SECONDS - SESSION_TIMEOUT_TOLERANCE_SECONDS,
+        );
+        expect(lifetimeSeconds).toBeLessThan(
+          EXPECTED_SESSION_TIMEOUT_SECONDS + SESSION_TIMEOUT_TOLERANCE_SECONDS,
+        );
+      } finally {
+        await context.close();
+      }
+    },
+  );
+});
 
 // Signin error handling tests
 test.describe('Signin error handling', {tag: ['@auth', '@signin']}, () => {

@@ -1158,6 +1158,12 @@ CONFIG_SCHEMA = {
             "description": "The time after which a fresh login requires users to reenter their password",
             "x-example": "5m",
         },
+        "SESSION_TIMEOUT": {
+            "type": "string",
+            "description": "The lifetime for permanent browser sessions. Used when FEATURE_PERMANENT_SESSIONS is enabled.",
+            "pattern": "^[0-9]+(w|m|d|h|s)$",
+            "x-example": "24h",
+        },
         # Webhook blacklist.
         "WEBHOOK_HOSTNAME_BLACKLIST": {
             "type": "array",
