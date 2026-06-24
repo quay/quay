@@ -206,6 +206,8 @@ PROXY_CACHE_BLOB_DOWNLOAD: FeatureNameValue
 
 RESTRICTED_USERS: FeatureNameValue
 
+SPAM_DETECTION: FeatureNameValue
+
 # Feature Flag: If set to true, enables reconciler for RH marketplace
 ENTITLEMENT_RECONCILIATION: FeatureNameValue
 ENTITLEMENT_RECONCILIATION_USER_ENDPOINT: FeatureNameValue

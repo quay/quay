@@ -13,6 +13,7 @@ from data.database import (
     SourceRegistryType,
     Visibility,
 )
+from data.model import spam_ingress
 from data.registry_model import registry_model
 from data.users import UserAuthentication, UserManager
 from endpoints.api.repository import (
@@ -171,6 +172,180 @@ def test_create_repository(repo_name, extended_repo_names, expected_status, app)
             if expected_status == 201:
                 assert result["name"] == repo_name
                 assert model.repository.get_repository("devtable", repo_name).name == repo_name
+
+
+def test_create_repository_spam_detection_disabled_does_not_evaluate(app):
+    with patch("features.SPAM_DETECTION", FeatureNameValue("SPAM_DETECTION", False)):
+        with patch("endpoints.api.repository.spam_ingress.evaluate_description") as mock_evaluate:
+            with client_with_identity("devtable", app) as cl:
+                body = {
+                    "namespace": "devtable",
+                    "repository": "spamingressdisabled",
+                    "visibility": "public",
+                    "description": "casino bonus spam",
+                }
+
+                result = conduct_api_call(cl, RepositoryList, "POST", None, body, 201).json
+                assert result["name"] == "spamingressdisabled"
+                mock_evaluate.assert_not_called()
+
+
+def test_create_repository_spam_detection_dry_run_allows_rejected_description(app):
+    decision = spam_ingress.SpamIngressDecision(
+        allowed=False,
+        score=0.99,
+        reason="score_exceeded_threshold",
+        classifier_version="test-v1",
+    )
+
+    with patch("features.SPAM_DETECTION", FeatureNameValue("SPAM_DETECTION", True)):
+        with patch.dict(
+            realapp.config,
+            {
+                "SPAM_DETECTION_DRY_RUN": True,
+                "SPAM_DETECTION_FAIL_OPEN": True,
+            },
+        ):
+            with patch(
+                "endpoints.api.repository.spam_ingress.evaluate_description",
+                return_value=decision,
+            ) as mock_evaluate:
+                with client_with_identity("devtable", app) as cl:
+                    body = {
+                        "namespace": "devtable",
+                        "repository": "spamingressdryrun",
+                        "visibility": "public",
+                        "description": "casino bonus spam",
+                    }
+
+                    result = conduct_api_call(cl, RepositoryList, "POST", None, body, 201).json
+
+    assert result["name"] == "spamingressdryrun"
+    context = mock_evaluate.call_args[0][0]
+    assert context.namespace == "devtable"
+    assert context.repository == "spamingressdryrun"
+    assert context.visibility == "public"
+    assert context.action == "create"
+
+
+def test_create_repository_spam_detection_enforcement_rejects_description(app):
+    decision = spam_ingress.SpamIngressDecision(
+        allowed=False,
+        score=0.99,
+        reason="score_exceeded_threshold",
+        classifier_version="test-v1",
+    )
+
+    with patch("features.SPAM_DETECTION", FeatureNameValue("SPAM_DETECTION", True)):
+        with patch.dict(
+            realapp.config,
+            {
+                "SPAM_DETECTION_DRY_RUN": False,
+                "SPAM_DETECTION_FAIL_OPEN": True,
+            },
+        ):
+            with patch(
+                "endpoints.api.repository.spam_ingress.evaluate_description",
+                return_value=decision,
+            ):
+                with client_with_identity("devtable", app) as cl:
+                    body = {
+                        "namespace": "devtable",
+                        "repository": "spamingressreject",
+                        "visibility": "public",
+                        "description": "casino bonus spam",
+                    }
+
+                    conduct_api_call(cl, RepositoryList, "POST", None, body, 400)
+
+    assert model.repository.get_repository("devtable", "spamingressreject") is None
+
+
+def test_create_repository_spam_detection_fail_open_allows_classifier_error(app):
+    with patch("features.SPAM_DETECTION", FeatureNameValue("SPAM_DETECTION", True)):
+        with patch.dict(
+            realapp.config,
+            {
+                "SPAM_DETECTION_DRY_RUN": False,
+                "SPAM_DETECTION_FAIL_OPEN": True,
+            },
+        ):
+            with patch(
+                "endpoints.api.repository.spam_ingress.evaluate_description",
+                side_effect=spam_ingress.SpamIngressUnavailable("missing artifact"),
+            ):
+                with client_with_identity("devtable", app) as cl:
+                    body = {
+                        "namespace": "devtable",
+                        "repository": "spamingressfailopen",
+                        "visibility": "public",
+                        "description": "casino bonus spam",
+                    }
+
+                    result = conduct_api_call(cl, RepositoryList, "POST", None, body, 201).json
+
+    assert result["name"] == "spamingressfailopen"
+
+
+def test_create_repository_spam_detection_fail_closed_rejects_classifier_error(app):
+    with patch("features.SPAM_DETECTION", FeatureNameValue("SPAM_DETECTION", True)):
+        with patch.dict(
+            realapp.config,
+            {
+                "SPAM_DETECTION_DRY_RUN": False,
+                "SPAM_DETECTION_FAIL_OPEN": False,
+            },
+        ):
+            with patch(
+                "endpoints.api.repository.spam_ingress.evaluate_description",
+                side_effect=spam_ingress.SpamIngressUnavailable("missing artifact"),
+            ):
+                with client_with_identity("devtable", app) as cl:
+                    body = {
+                        "namespace": "devtable",
+                        "repository": "spamingressfailclosed",
+                        "visibility": "public",
+                        "description": "casino bonus spam",
+                    }
+
+                    conduct_api_call(cl, RepositoryList, "POST", None, body, 400)
+
+    assert model.repository.get_repository("devtable", "spamingressfailclosed") is None
+
+
+def test_update_repository_spam_detection_enforcement_rejects_description(app):
+    decision = spam_ingress.SpamIngressDecision(
+        allowed=False,
+        score=0.99,
+        reason="score_exceeded_threshold",
+        classifier_version="test-v1",
+    )
+    repo = model.repository.get_repository("devtable", "simple")
+    original_description = repo.description
+    expected_visibility = "public" if model.repository.is_repository_public(repo) else "private"
+
+    with patch("features.SPAM_DETECTION", FeatureNameValue("SPAM_DETECTION", True)):
+        with patch.dict(
+            realapp.config,
+            {
+                "SPAM_DETECTION_DRY_RUN": False,
+                "SPAM_DETECTION_FAIL_OPEN": True,
+            },
+        ):
+            with patch(
+                "endpoints.api.repository.spam_ingress.evaluate_description",
+                return_value=decision,
+            ) as mock_evaluate:
+                with client_with_identity("devtable", app) as cl:
+                    params = {"repository": "devtable/simple"}
+                    body = {"description": "casino bonus spam"}
+                    conduct_api_call(cl, Repository, "PUT", params, body, 400)
+
+    repo = model.repository.get_repository("devtable", "simple")
+    assert repo.description == original_description
+    context = mock_evaluate.call_args[0][0]
+    assert context.visibility == expected_visibility
+    assert context.action == "update"
 
 
 @pytest.mark.parametrize(
