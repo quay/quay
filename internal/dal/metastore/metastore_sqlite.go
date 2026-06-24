@@ -16,7 +16,7 @@ import (
 
 // SQLiteStore implements Store backed by a SQLite database. It holds only a
 // *sql.DB and cached enum IDs. All transactional methods bind daldb.Queries
-// to the transaction via WithTx—never to the pool—preventing deadlocks
+// to the transaction via WithTx---never to the pool---preventing deadlocks
 // under MaxOpenConns=1.
 type SQLiteStore struct {
 	db *sql.DB
@@ -30,7 +30,7 @@ type SQLiteStore struct {
 }
 
 // compile-time check
-var _ Store = (*SQLiteStore)(nil)
+var _ oci.MetadataStore = (*SQLiteStore)(nil)
 
 // DB returns the underlying database handle, primarily for use in tests.
 func (s *SQLiteStore) DB() *sql.DB { return s.db }
@@ -114,7 +114,7 @@ func (s *SQLiteStore) EnsureRepository(ctx context.Context, name oci.RepositoryN
 }
 
 // PutManifest upserts a manifest and its blob/child references within a transaction.
-func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m ManifestRecord) (int64, error) { //nolint:gocritic // interface compliance
+func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.ManifestRecord) (int64, error) { //nolint:gocritic // interface compliance
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
@@ -185,7 +185,7 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m ManifestR
 // non-unique index (the sqlc UpsertImageStorage ON CONFLICT clause targets
 // content_checksum which won't work). The db parameter must be the same
 // handle (pool or tx) used by the caller to avoid deadlocks.
-func (s *SQLiteStore) ensureBlob(ctx context.Context, db daldb.DBTX, ref BlobRef) (int64, error) {
+func (s *SQLiteStore) ensureBlob(ctx context.Context, db daldb.DBTX, ref oci.BlobRef) (int64, error) {
 	q := daldb.New(db)
 	checksum := sql.NullString{String: ref.Digest.String(), Valid: true}
 
@@ -261,14 +261,14 @@ func (s *SQLiteStore) DeleteManifest(ctx context.Context, repoID int64, dgst dig
 }
 
 // PutBlob inserts or retrieves a blob by its content checksum.
-func (s *SQLiteStore) PutBlob(ctx context.Context, b BlobRecord) (int64, error) {
+func (s *SQLiteStore) PutBlob(ctx context.Context, b oci.BlobRecord) (int64, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
 
-	id, err := s.ensureBlob(ctx, tx, BlobRef(b))
+	id, err := s.ensureBlob(ctx, tx, oci.BlobRef(b))
 	if err != nil {
 		return 0, err
 	}
@@ -280,7 +280,7 @@ func (s *SQLiteStore) PutBlob(ctx context.Context, b BlobRecord) (int64, error) 
 }
 
 // PutTag expires any active tag with the same name and inserts a new one.
-func (s *SQLiteStore) PutTag(ctx context.Context, repoID int64, t TagRecord) (int64, error) {
+func (s *SQLiteStore) PutTag(ctx context.Context, repoID int64, t oci.TagRecord) (int64, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
@@ -348,4 +348,148 @@ func (s *SQLiteStore) DeleteTag(ctx context.Context, repoID int64, tag string) e
 		return fmt.Errorf("expire tag %q: %w", tag, err)
 	}
 	return nil
+}
+
+// GetRepositoryID retrieves the repository ID by namespace and name.
+func (s *SQLiteStore) GetRepositoryID(ctx context.Context, name oci.RepositoryName) (int64, error) {
+	q := daldb.New(s.db)
+	id, err := q.GetRepositoryByNamespaceName(ctx, daldb.GetRepositoryByNamespaceNameParams{
+		Username: name.Namespace,
+		Name:     name.Name,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("get repository %s: %w", name, oci.ErrNotExist)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("get repository %s: %w", name, err)
+	}
+	return id, nil
+}
+
+// GetTagDigest retrieves the manifest digest for an active tag.
+func (s *SQLiteStore) GetTagDigest(ctx context.Context, repoID int64, tag string) (digest.Digest, error) {
+	q := daldb.New(s.db)
+	d, err := q.GetActiveTagDigest(ctx, daldb.GetActiveTagDigestParams{
+		RepositoryID: repoID,
+		Name:         tag,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("get tag %q: %w", tag, oci.ErrNotExist)
+	}
+	if err != nil {
+		return "", fmt.Errorf("get tag %q: %w", tag, err)
+	}
+	return digest.Parse(d)
+}
+
+// GetManifestDigest verifies a manifest exists in the repository and returns its digest.
+func (s *SQLiteStore) GetManifestDigest(ctx context.Context, repoID int64, dgst digest.Digest) (digest.Digest, error) {
+	q := daldb.New(s.db)
+	d, err := q.ManifestExistsByDigest(ctx, daldb.ManifestExistsByDigestParams{
+		RepositoryID: repoID,
+		Digest:       dgst.String(),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("get manifest %s: %w", dgst, oci.ErrNotExist)
+	}
+	if err != nil {
+		return "", fmt.Errorf("get manifest %s: %w", dgst, err)
+	}
+	return digest.Parse(d)
+}
+
+// BlobLinkedToRepo checks if a blob is linked to a specific repository via
+// manifestblob or uploadedblob (matching Python's get_repository_blob_by_digest).
+func (s *SQLiteStore) BlobLinkedToRepo(ctx context.Context, repoID int64, dgst digest.Digest) (bool, error) {
+	q := daldb.New(s.db)
+	checksum := sql.NullString{String: dgst.String(), Valid: true}
+	_, err := q.BlobLinkedToRepo(ctx, daldb.BlobLinkedToRepoParams{
+		ContentChecksum: checksum,
+		RepositoryID:    repoID,
+		RepositoryID_2:  repoID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("blob linked to repo %d %s: %w", repoID, dgst, err)
+	}
+	return true, nil
+}
+
+// BlobExists checks if a blob exists in the global storage.
+func (s *SQLiteStore) BlobExists(ctx context.Context, dgst digest.Digest) (bool, error) {
+	q := daldb.New(s.db)
+	checksum := sql.NullString{String: dgst.String(), Valid: true}
+	_, err := q.GetBlobByChecksum(ctx, checksum)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("blob exists %s: %w", dgst, err)
+	}
+	return true, nil
+}
+
+// ListTags returns all active tags for a repository.
+func (s *SQLiteStore) ListTags(ctx context.Context, repoID int64) ([]string, error) {
+	q := daldb.New(s.db)
+	now := time.Now().UnixMilli()
+	rows, err := q.GetTagsByRepository(ctx, daldb.GetTagsByRepositoryParams{
+		RepositoryID:  repoID,
+		LifetimeEndMs: sql.NullInt64{Int64: now, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list tags: %w", err)
+	}
+	tags := make([]string, len(rows))
+	for i, r := range rows {
+		tags[i] = r.Name
+	}
+	return tags, nil
+}
+
+// ListRepositories returns all repositories.
+func (s *SQLiteStore) ListRepositories(ctx context.Context) ([]oci.RepositoryName, error) {
+	q := daldb.New(s.db)
+	rows, err := q.ListAllRepositories(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list repositories: %w", err)
+	}
+	repos := make([]oci.RepositoryName, len(rows))
+	for i, r := range rows {
+		repos[i] = oci.RepositoryName{Namespace: r.Namespace, Name: r.Name}
+	}
+	return repos, nil
+}
+
+// PutUploadedBlob marks a blob as recently uploaded to protect it from GC.
+func (s *SQLiteStore) PutUploadedBlob(ctx context.Context, repoID int64, dgst digest.Digest) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+	q := daldb.New(tx)
+
+	checksum := sql.NullString{String: dgst.String(), Valid: true}
+	blobID, err := q.GetBlobByChecksum(ctx, checksum)
+	if err != nil {
+		return fmt.Errorf("lookup blob %s: %w", dgst, err)
+	}
+
+	if err := q.InsertUploadedBlob(ctx, daldb.InsertUploadedBlobParams{
+		RepositoryID: repoID,
+		BlobID:       blobID,
+	}); err != nil {
+		return fmt.Errorf("insert uploaded blob %s: %w", dgst, err)
+	}
+
+	return tx.Commit()
+}
+
+// CleanExpiredUploadedBlobs removes uploaded blob markers that have expired.
+func (s *SQLiteStore) CleanExpiredUploadedBlobs(ctx context.Context) error {
+	q := daldb.New(s.db)
+	return q.CleanExpiredUploadedBlobs(ctx)
 }

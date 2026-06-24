@@ -10,6 +10,38 @@ import (
 	"database/sql"
 )
 
+const blobLinkedToRepo = `-- name: BlobLinkedToRepo :one
+SELECT 1 FROM imagestorage s
+WHERE s.content_checksum = ? AND (
+  EXISTS (SELECT 1 FROM manifestblob mb WHERE mb.blob_id = s.id AND mb.repository_id = ?)
+  OR EXISTS (SELECT 1 FROM uploadedblob ub WHERE ub.blob_id = s.id AND ub.repository_id = ? AND ub.expires_at > datetime('now'))
+)
+`
+
+type BlobLinkedToRepoParams struct {
+	ContentChecksum sql.NullString `json:"content_checksum"`
+	RepositoryID    int64          `json:"repository_id"`
+	RepositoryID_2  int64          `json:"repository_id_2"`
+}
+
+// Matches Python's get_repository_blob_by_digest: checks both ManifestBlob
+// and UploadedBlob (for recently pushed blobs not yet referenced by a manifest).
+func (q *Queries) BlobLinkedToRepo(ctx context.Context, arg BlobLinkedToRepoParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, blobLinkedToRepo, arg.ContentChecksum, arg.RepositoryID, arg.RepositoryID_2)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const cleanExpiredUploadedBlobs = `-- name: CleanExpiredUploadedBlobs :exec
+DELETE FROM uploadedblob WHERE expires_at < datetime('now')
+`
+
+func (q *Queries) CleanExpiredUploadedBlobs(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, cleanExpiredUploadedBlobs)
+	return err
+}
+
 const deleteImageStorage = `-- name: DeleteImageStorage :exec
 DELETE FROM imagestorage WHERE id = ?
 `
@@ -93,6 +125,21 @@ func (q *Queries) InsertBlob(ctx context.Context, arg InsertBlobParams) (int64, 
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const insertUploadedBlob = `-- name: InsertUploadedBlob :exec
+INSERT OR IGNORE INTO uploadedblob (repository_id, blob_id, uploaded_at, expires_at)
+VALUES (?, ?, datetime('now'), datetime('now', '+1 hour'))
+`
+
+type InsertUploadedBlobParams struct {
+	RepositoryID int64 `json:"repository_id"`
+	BlobID       int64 `json:"blob_id"`
+}
+
+func (q *Queries) InsertUploadedBlob(ctx context.Context, arg InsertUploadedBlobParams) error {
+	_, err := q.db.ExecContext(ctx, insertUploadedBlob, arg.RepositoryID, arg.BlobID)
+	return err
 }
 
 const totalStorageBytes = `-- name: TotalStorageBytes :one

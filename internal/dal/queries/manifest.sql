@@ -34,3 +34,6 @@ DELETE FROM manifestsecuritystatus WHERE manifest_id = ?;
 
 -- name: CountManifests :one
 SELECT COUNT(*) FROM manifest;
+
+-- name: ManifestExistsByDigest :one
+SELECT digest FROM manifest WHERE repository_id = ? AND digest = ?;

@@ -34,6 +34,25 @@ func (q *Queries) ExpireActiveTag(ctx context.Context, arg ExpireActiveTagParams
 	return q.db.ExecContext(ctx, expireActiveTag, arg.LifetimeEndMs, arg.RepositoryID, arg.Name)
 }
 
+const getActiveTagDigest = `-- name: GetActiveTagDigest :one
+SELECT m.digest
+FROM tag t
+JOIN manifest m ON t.manifest_id = m.id
+WHERE t.repository_id = ? AND t.name = ? AND t.lifetime_end_ms IS NULL
+`
+
+type GetActiveTagDigestParams struct {
+	RepositoryID int64  `json:"repository_id"`
+	Name         string `json:"name"`
+}
+
+func (q *Queries) GetActiveTagDigest(ctx context.Context, arg GetActiveTagDigestParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getActiveTagDigest, arg.RepositoryID, arg.Name)
+	var digest string
+	err := row.Scan(&digest)
+	return digest, err
+}
+
 const getTagsByRepository = `-- name: GetTagsByRepository :many
 SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
 FROM tag
