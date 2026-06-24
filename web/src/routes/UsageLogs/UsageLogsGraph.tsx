@@ -1,3 +1,4 @@
+import {useRef, useState, useEffect} from 'react';
 import {
   Chart,
   ChartAxis,
@@ -15,6 +16,8 @@ import {logKinds} from './UsageLogs';
 
 import './css/UsageLogs.scss';
 
+const MIN_LEGEND_COL_WIDTH = 320;
+
 interface UsageLogsGraphProps {
   starttime: string;
   endtime: string;
@@ -28,6 +31,25 @@ interface UsageLogsGraphProps {
 
 /** Renders aggregate usage log data as a bar chart with a scrollable legend below the SVG. */
 export default function UsageLogsGraph(props: UsageLogsGraphProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [chartWidth, setChartWidth] = useState(1200);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setChartWidth(Math.floor(entry.contentRect.width));
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const itemsPerRow = Math.max(
+    1,
+    Math.floor(chartWidth / MIN_LEGEND_COL_WIDTH),
+  );
+
   // D3 Category20 colors (same as Angular)
   const d3Category20Colors = [
     '#1f77b4',
@@ -151,57 +173,59 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   } else
     return (
       <Flex grow={{default: 'grow'}} data-testid="usage-logs-chart">
-        <FlexItem>
-          <Chart
-            key={props.starttime + props.endtime}
-            containerComponent={
-              <ChartVoronoiContainer
-                labels={({datum}) => `${datum.name}: ${datum.y}`}
-                constrainToVisibleArea
-              />
-            }
-            domain={{
-              x: [new Date(props.starttime), new Date(props.endtime)],
-              y: [0, maxRange],
-            }}
-            name="usage-logs-graph"
-            padding={{
-              bottom: 50,
-              left: 80,
-              right: 50,
-              top: 50,
-            }}
-            domainPadding={{x: 5 * Object.keys(logData).length}}
-            height={500}
-            width={1200}
-            scale={{x: 'time', y: 'linear'}}
-          >
-            <ChartAxis fixLabelOverlap />
-            <ChartAxis dependentAxis showGrid />
-            <ChartGroup offset={11}>
-              {Object.keys(logData).map((logKind, index) => (
-                <ChartBar
-                  data={logData[logKind]}
-                  key={index}
-                  style={{
-                    data: {
-                      fill: d3Category20Colors[
-                        index % d3Category20Colors.length
-                      ],
-                    },
-                  }}
+        <FlexItem style={{width: '100%'}}>
+          <div ref={containerRef}>
+            <Chart
+              key={props.starttime + props.endtime + chartWidth}
+              containerComponent={
+                <ChartVoronoiContainer
+                  labels={({datum}) => `${datum.name}: ${datum.y}`}
+                  constrainToVisibleArea
                 />
-              ))}
-            </ChartGroup>
-          </Chart>
-          <div className="usage-logs-legend-container">
-            <ChartLegend
-              data={getLegendData()}
-              itemsPerRow={3}
-              orientation="horizontal"
-              style={{labels: {fontSize: 11}}}
-              width={1200}
-            />
+              }
+              domain={{
+                x: [new Date(props.starttime), new Date(props.endtime)],
+                y: [0, maxRange],
+              }}
+              name="usage-logs-graph"
+              padding={{
+                bottom: 50,
+                left: 80,
+                right: 50,
+                top: 50,
+              }}
+              domainPadding={{x: 5 * Object.keys(logData).length}}
+              height={500}
+              width={chartWidth}
+              scale={{x: 'time', y: 'linear'}}
+            >
+              <ChartAxis fixLabelOverlap />
+              <ChartAxis dependentAxis showGrid />
+              <ChartGroup offset={11}>
+                {Object.keys(logData).map((logKind, index) => (
+                  <ChartBar
+                    data={logData[logKind]}
+                    key={index}
+                    style={{
+                      data: {
+                        fill: d3Category20Colors[
+                          index % d3Category20Colors.length
+                        ],
+                      },
+                    }}
+                  />
+                ))}
+              </ChartGroup>
+            </Chart>
+            <div className="usage-logs-legend-container">
+              <ChartLegend
+                data={getLegendData()}
+                itemsPerRow={itemsPerRow}
+                orientation="horizontal"
+                style={{labels: {fontSize: 11}}}
+                width={chartWidth}
+              />
+            </div>
           </div>
         </FlexItem>
       </Flex>
