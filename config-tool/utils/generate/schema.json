@@ -115,6 +115,15 @@
       "ct-validate": "",
       "ct-fieldgroups": ["AccessSettings"]
     },
+    "SESSION_TIMEOUT": {
+      "x-example": "24h",
+      "type": "string",
+      "description": "The lifetime for permanent browser sessions. Used when FEATURE_PERMANENT_SESSIONS is enabled.",
+      "pattern": "^[0-9]+(w|m|d|h|s)$",
+      "ct-default": "31d",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
     "FEATURE_ACTION_LOG_ROTATION": {
       "x-example": false,
       "type": "boolean",
