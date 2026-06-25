@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 import ldap
 from ldap.filter import filter_format
-from mock import patch
+from mock import MagicMock, patch
 from mockldap import MockLdap
 
 from app import app
