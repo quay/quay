@@ -187,11 +187,11 @@ export class TestApi {
    * Create a unique organization.
    * Automatically deleted after test.
    */
-  async organization(namePrefix = 'org'): Promise<CreatedOrg> {
+  async organization(namePrefix = 'org', email?: string): Promise<CreatedOrg> {
     const name = uniqueName(namePrefix);
-    const email = `${name}@example.com`;
+    const orgEmail = email ?? `${name}@example.com`;
 
-    await this.client.createOrganization(name, email);
+    await this.client.createOrganization(name, orgEmail);
 
     this.cleanupStack.push(async () => {
       try {
@@ -201,7 +201,7 @@ export class TestApi {
       }
     });
 
-    return {name, email};
+    return {name, email: orgEmail};
   }
 
   /**

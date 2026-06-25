@@ -16,6 +16,10 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
       const emailInput = authenticatedPage.locator('#org-settings-email');
       await expect(emailInput).toBeVisible();
 
+      // Check save button is disabled before any edits (form is not dirty)
+      const saveButton = authenticatedPage.locator('#save-org-settings');
+      await expect(saveButton).toBeDisabled();
+
       // Type a bad email
       await emailInput.clear();
       await emailInput.fill('this is not a good e-mail');
@@ -23,14 +27,8 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
         authenticatedPage.getByText('Please enter a valid email address'),
       ).toBeVisible();
 
-      // Leave empty (email field is not required, so no error should appear)
-      await emailInput.clear();
-
-      // Check save button is disabled when form is not dirty or invalid
-      const saveButton = authenticatedPage.locator('#save-org-settings');
-      await expect(saveButton).toBeDisabled();
-
       // Type a good email and save
+      await emailInput.clear();
       await emailInput.fill('good-email@redhat.com');
       await expect(saveButton).toBeEnabled();
       await saveButton.click();
@@ -546,35 +544,99 @@ test.describe('Organization Settings', {tag: ['@organization']}, () => {
     },
   );
 
-  test.describe(
-    'Duplicate Email on Update',
-    {tag: ['@feature:MAILING']},
-    () => {
-      test('rejects updating organization email to one already in use (OCP-73836)', async ({
-        authenticatedPage,
-        api,
-      }) => {
-        const org1 = await api.organization('emaildup');
-        const org2 = await api.organization('emaildup');
+  test.describe('Email (PROJQUAY-10593)', {tag: ['@PROJQUAY-10593']}, () => {
+    test('shows Email label and helper text for organizations', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org = await api.organization('contactlbl');
 
-        await authenticatedPage.goto(`/organization/${org2.name}?tab=Settings`);
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
 
-        const emailInput = authenticatedPage.locator('#org-settings-email');
-        await expect(emailInput).toBeVisible();
+      await expect(
+        authenticatedPage.locator('label[for="org-settings-email"]'),
+      ).toHaveText(/Email/);
+      await expect(
+        authenticatedPage.getByText(
+          'Optional. Used for organization recovery and billing notifications.',
+        ),
+      ).toBeVisible();
+    });
 
-        await emailInput.clear();
-        await emailInput.fill(org1.email);
+    test('allows duplicate emails across organizations', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const org1 = await api.organization('dupmail');
+      const org2 = await api.organization('dupmail');
 
-        const saveButton = authenticatedPage.locator('#save-org-settings');
-        await expect(saveButton).toBeEnabled();
-        await saveButton.click();
+      await authenticatedPage.goto(`/organization/${org1.name}?tab=Settings`);
+      const emailInput1 = authenticatedPage.locator('#org-settings-email');
+      await expect(emailInput1).toBeVisible();
+      await emailInput1.fill('shared@example.com');
+      await authenticatedPage.locator('#save-org-settings').click();
+      await expect(
+        authenticatedPage.getByText('Successfully updated settings').first(),
+      ).toBeVisible();
 
-        await expect(
-          authenticatedPage.getByText('E-mail address already used').first(),
-        ).toBeVisible();
-      });
-    },
-  );
+      await authenticatedPage.goto(`/organization/${org2.name}?tab=Settings`);
+      const emailInput2 = authenticatedPage.locator('#org-settings-email');
+      await expect(emailInput2).toBeVisible();
+      await emailInput2.fill('shared@example.com');
+      await authenticatedPage.locator('#save-org-settings').click();
+      await expect(
+        authenticatedPage.getByText('Successfully updated settings').first(),
+      ).toBeVisible();
+    });
+
+    test('sends email in PUT request', async ({authenticatedPage, api}) => {
+      const org = await api.organization('putcheck');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+      const emailInput = authenticatedPage.locator('#org-settings-email');
+      await expect(emailInput).toBeVisible();
+      await emailInput.fill('contact-test@example.com');
+
+      const putPromise = authenticatedPage.waitForRequest(
+        (req) =>
+          req.url().includes(`/api/v1/organization/${org.name}`) &&
+          req.method() === 'PUT',
+      );
+
+      await authenticatedPage.locator('#save-org-settings').click();
+
+      const putRequest = await putPromise;
+      const body = putRequest.postDataJSON();
+      expect(body).toHaveProperty('email');
+      expect(body.email).toBe('contact-test@example.com');
+    });
+
+    test('allows clearing email', async ({authenticatedPage, api}) => {
+      const org = await api.organization('clearmail');
+
+      await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+      const emailInput = authenticatedPage.locator('#org-settings-email');
+      await expect(emailInput).toBeVisible();
+      await emailInput.fill('to-be-cleared@example.com');
+      await authenticatedPage.locator('#save-org-settings').click();
+      await expect(
+        authenticatedPage.getByText('Successfully updated settings').first(),
+      ).toBeVisible();
+
+      await authenticatedPage.reload();
+      await expect(emailInput).toHaveValue('to-be-cleared@example.com');
+
+      await emailInput.clear();
+      await authenticatedPage.locator('#save-org-settings').click();
+      await expect(
+        authenticatedPage.getByText('Successfully updated settings').first(),
+      ).toBeVisible();
+
+      await authenticatedPage.reload();
+      await expect(emailInput).toHaveValue('');
+    });
+  });
 
   test.describe(
     'Repository Settings: Org Mirror Mutual Exclusion',

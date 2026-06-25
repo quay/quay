@@ -83,6 +83,7 @@ from util.names import parse_single_urn
 from util.request import get_request_ip
 from util.useremails import (
     send_change_email,
+    send_combined_recovery_email,
     send_confirmation_email,
     send_org_recovery_email,
     send_password_changed,
@@ -711,7 +712,7 @@ class ClientKey(ApiResource):
 
         username = get_authenticated_user().username
         password = request.get_json()["password"]
-        (result, error_message) = authentication.confirm_existing_user(username, password)
+        result, error_message = authentication.confirm_existing_user(username, password)
         if not result:
             raise request_error(message=error_message)
 
@@ -724,7 +725,7 @@ def conduct_signin(username_or_email, password, invite_code=None):
     needs_email_verification = False
     invalid_credentials = False
 
-    (found_user, error_message) = authentication.verify_and_link_user(username_or_email, password)
+    found_user, error_message = authentication.verify_and_link_user(username_or_email, password)
     if found_user:
         # If there is an attached invitation code, handle it here. This will mark the
         # user as verified if the code is valid.
@@ -819,7 +820,7 @@ class ConvertToOrganization(ApiResource):
         # Ensure that the sign in credentials work.
         admin_username = convert_data["adminUser"]
         admin_password = convert_data["adminPassword"]
-        (admin_user, _) = authentication.verify_and_link_user(admin_username, admin_password)
+        admin_user, _ = authentication.verify_and_link_user(admin_username, admin_password)
         if not admin_user:
             raise request_error(
                 reason="invaliduser", message="The admin user credentials are not valid"
@@ -929,7 +930,7 @@ class VerifyUser(ApiResource):
         password = signin_data["password"]
 
         username = get_authenticated_user().username
-        (result, error_message) = authentication.confirm_existing_user(username, password)
+        result, error_message = authentication.confirm_existing_user(username, password)
         if not result:
             return {
                 "message": error_message,
@@ -1116,21 +1117,28 @@ class Recovery(ApiResource):
 
         email = recovery_data["email"]
         user = model.user.find_user_by_email(email)
-        if not user:
-            return {
-                "status": "sent",
-            }
+        orgs = list(model.organization.find_organizations_by_email(email))
 
-        if user.organization:
-            send_org_recovery_email(user, model.organization.get_admin_users(user))
-            return {
-                "status": "org",
-                "orgemail": email,
-                "orgname": redact(user.username),
-            }
+        is_personal_user = user and not user.organization
+        reset_token = None
+        if is_personal_user:
+            reset_token = model.user.create_reset_password_email_code(email)
 
-        confirmation_code = model.user.create_reset_password_email_code(email)
-        send_recovery_email(email, confirmation_code)
+        if orgs:
+            admins_by_org = model.organization.get_admin_users_for_orgs(orgs)
+            orgs_with_admins = []
+            for org in orgs:
+                admin_users = admins_by_org.get(org.id, [])
+                orgs_with_admins.append(
+                    {
+                        "org_name": org.username,
+                        "admin_usernames": [u.username for u in admin_users],
+                    }
+                )
+            send_combined_recovery_email(email, orgs_with_admins, reset_token=reset_token)
+        elif is_personal_user:
+            send_recovery_email(email, reset_token)
+
         return {
             "status": "sent",
         }

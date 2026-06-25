@@ -1,10 +1,9 @@
 import pytest
-from peewee import IntegrityError
 from playhouse.test_utils import assert_query_count
 
-from data.database import OrganizationContactEmail
 from data.model.organization import (
     create_organization,
+    find_organizations_by_email,
     get_organization,
     get_organization_member_set,
     get_organizations,
@@ -14,11 +13,13 @@ from data.model.team import add_user_to_team, get_organization_team
 from data.model.user import (
     create_robot,
     create_user,
+    find_user_by_email,
     get_user,
     mark_namespace_for_deletion,
 )
 from data.queue import WorkQueue
 from test.fixtures import *
+from util.validation import validate_email
 
 
 @pytest.mark.parametrize(
@@ -179,43 +180,114 @@ class TestGetOrganizationMemberSet:
         assert len(members) > 0
 
 
-class TestOrganizationContactEmail:
-    """Tests for the OrganizationContactEmail model."""
+class TestCreateOrganizationEmail:
+    """Tests for create_organization with email stored directly in User.email."""
 
-    def test_create_with_email(self, initialized_db):
-        """Test creating an OrganizationContactEmail with a contact email."""
-        org = get_organization("buynlarge")
-        record = OrganizationContactEmail.create(
-            organization=org, contact_email="contact@example.com"
-        )
-        assert record.contact_email == "contact@example.com"
-        assert record.organization_id == org.id
-
-    def test_create_with_null_email(self, initialized_db):
-        """Test creating an OrganizationContactEmail with a null contact email."""
-        org = get_organization("buynlarge")
-        record = OrganizationContactEmail.create(organization=org, contact_email=None)
-        assert record.contact_email is None
-        assert record.organization_id == org.id
-
-    def test_unique_constraint_on_organization(self, initialized_db):
-        """Test that only one contact email record can exist per organization."""
-        org = get_organization("buynlarge")
-        OrganizationContactEmail.create(organization=org, contact_email="first@example.com")
-
-        with pytest.raises(IntegrityError):
-            OrganizationContactEmail.create(organization=org, contact_email="second@example.com")
-
-    def test_multiple_orgs_can_share_email(self, initialized_db):
-        """Test that multiple organizations can have the same contact email."""
-        org1 = get_organization("buynlarge")
+    def test_create_org_with_email_stores_in_user_email(self, initialized_db):
+        """Test that create_organization with email stores it in User.email."""
         admin = get_user("devtable")
-        org2 = create_organization("testsharedorg", "shared@example.com", admin)
+        org = create_organization("emailorg1", "real@example.com", admin)
+        assert org.email == "real@example.com"
 
-        shared_email = "shared@example.com"
-        record1 = OrganizationContactEmail.create(organization=org1, contact_email=shared_email)
-        record2 = OrganizationContactEmail.create(organization=org2, contact_email=shared_email)
+    def test_create_org_without_email_generates_uuid(self, initialized_db):
+        """Test that create_organization without email generates a non-email UUID in User.email."""
+        admin = get_user("devtable")
+        org = create_organization("uuidorg1", None, admin)
+        assert not validate_email(org.email), f"Expected non-email UUID, got: {org.email}"
 
-        assert record1.contact_email == shared_email
-        assert record2.contact_email == shared_email
-        assert record1.organization_id != record2.organization_id
+    def test_create_org_contact_email_takes_priority(self, initialized_db):
+        """Test that contact_email parameter takes priority over email parameter."""
+        admin = get_user("devtable")
+        org = create_organization(
+            "contactorg1", "fallback@example.com", admin, contact_email="contact@example.com"
+        )
+        assert org.email == "contact@example.com"
+
+    def test_create_org_email_fallback(self, initialized_db):
+        """Test that email parameter is used when contact_email is not provided."""
+        admin = get_user("devtable")
+        org = create_organization("emailfallbackorg", "fallback@example.com", admin)
+        assert org.email == "fallback@example.com"
+
+    def test_two_orgs_can_share_same_email(self, initialized_db):
+        """Test that two organizations can have the same email address."""
+        admin = get_user("devtable")
+        shared = "shared@example.com"
+        org1 = create_organization("sharedorg1", shared, admin)
+        org2 = create_organization("sharedorg2", shared, admin)
+        assert org1.email == shared
+        assert org2.email == shared
+        assert org1.id != org2.id
+
+    def test_org_can_share_email_with_user(self, initialized_db):
+        """Test that an org can be created with the same email as an existing user.
+
+        Regression test: create_user_noverify INSERTs with organization=false,
+        so the partial unique index fires during INSERT. The fix is to insert
+        with a placeholder email, set organization=true, then apply the real email.
+        """
+        admin = get_user("devtable")
+        user_email = admin.email  # devtable's email
+        org = create_organization("overlaporg", user_email, admin)
+        assert org.email == user_email
+        assert org.organization is True
+        # The original user still has their email
+        admin_refreshed = get_user("devtable")
+        assert admin_refreshed.email == user_email
+
+    def test_find_organizations_by_email_single_match(self, initialized_db):
+        """Test find_organizations_by_email returns a single matching org."""
+        admin = get_user("devtable")
+        org = create_organization("findorg1", "find@example.com", admin)
+        results = list(find_organizations_by_email("find@example.com"))
+        assert len(results) == 1
+        assert results[0].id == org.id
+
+    def test_find_organizations_by_email_multiple_matches(self, initialized_db):
+        """Test find_organizations_by_email returns multiple matching orgs."""
+        admin = get_user("devtable")
+        shared = "shared-find@example.com"
+        org1 = create_organization("findorg2a", shared, admin)
+        org2 = create_organization("findorg2b", shared, admin)
+        results = list(find_organizations_by_email(shared))
+        assert len(results) == 2
+        result_ids = {r.id for r in results}
+        assert org1.id in result_ids
+        assert org2.id in result_ids
+
+    def test_find_organizations_by_email_no_match(self, initialized_db):
+        """Test find_organizations_by_email returns empty when no match."""
+        results = list(find_organizations_by_email("nonexistent@example.com"))
+        assert len(results) == 0
+
+    def test_recovery_lookup_shared_email_finds_user_and_orgs(self, initialized_db):
+        """Integration test: when a user and orgs share an email, the recovery
+        query functions return both independently — find_user_by_email returns
+        only the user, find_organizations_by_email returns only the orgs.
+
+        Regression test for the combined recovery email flow where a single
+        email may now match a personal user AND multiple organizations.
+        """
+        admin = get_user("devtable")
+        shared = admin.email  # e.g. devtable@devtable.com
+
+        org1 = create_organization("recoveryorg1", shared, admin)
+        org2 = create_organization("recoveryorg2", shared, admin)
+
+        # find_user_by_email should return ONLY the non-org user
+        found_user = find_user_by_email(shared)
+        assert found_user is not None
+        assert found_user.organization is False
+        assert found_user.username == "devtable"
+
+        # find_organizations_by_email should return ONLY the orgs
+        found_orgs = list(find_organizations_by_email(shared))
+        assert len(found_orgs) == 2
+        org_names = {o.username for o in found_orgs}
+        assert "recoveryorg1" in org_names
+        assert "recoveryorg2" in org_names
+
+        # Neither function returns the wrong type
+        for org in found_orgs:
+            assert org.organization is True
+        assert found_user.id not in {o.id for o in found_orgs}

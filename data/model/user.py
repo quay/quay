@@ -140,27 +140,31 @@ def create_user_noverify(
     if not username_valid:
         raise InvalidUsernameException("Invalid namespace %s: %s" % (username, username_issue))
 
+    # Check username uniqueness (applies to all users and orgs).
     try:
-        existing = User.get((User.username == username) | (User.email == email))
-        logger.debug("Existing user with same username or email.")
+        existing = User.get(User.username == username)
+        assert not existing.robot
 
-        # A user already exists with either the same username or email
-        if existing.username == username:
-            assert not existing.robot
+        msg = (
+            "Username has already been taken by an organization and cannot be reused: %s" % username
+        )
+        if not existing.organization:
+            msg = "Username has already been taken by user cannot be reused: %s" % username
 
-            msg = (
-                "Username has already been taken by an organization and cannot be reused: %s"
-                % username
-            )
-            if not existing.organization:
-                msg = "Username has already been taken by user cannot be reused: %s" % username
-
-            raise InvalidUsernameException(msg)
-
-        raise InvalidEmailAddressException("Email has already been used: %s" % email)
+        raise InvalidUsernameException(msg)
     except User.DoesNotExist:
-        # This is actually the happy path
-        logger.debug("Email and username are unique!")
+        pass
+
+    # Check email uniqueness only among non-organization users. Organizations are allowed
+    # to share emails (enforced by the partial unique index on User.email).
+    if email_required:
+        try:
+            User.get(User.email == email, User.organization == False)
+            raise InvalidEmailAddressException("Email has already been used: %s" % email)
+        except User.DoesNotExist:
+            pass
+
+    logger.debug("Email and username are unique!")
 
     # Create the user.
     try:
@@ -823,12 +827,9 @@ def confirm_user_email(token):
 
 def create_reset_password_email_code(email):
     try:
-        user = User.get(User.email == email)
+        user = User.get(User.email == email, User.organization == False)
     except User.DoesNotExist:
         raise InvalidEmailAddressException("Email address was not found")
-
-    if user.organization:
-        raise InvalidEmailAddressException("Organizations can not have passwords")
 
     verification_code, unhashed = Credential.generate()
     code = EmailConfirmation.create(user=user, pw_reset=True, verification_code=verification_code)
@@ -879,7 +880,7 @@ def find_user_by_email(email):
         return None
 
     try:
-        return User.get(User.email == email)
+        return User.get(User.email == email, User.organization == False)
     except User.DoesNotExist:
         return None
 
@@ -1149,8 +1150,13 @@ def verify_user(username_or_email, password):
         return None
 
     # Fetch the user with the matching username or e-mail address.
+    # For email matching, only consider non-organization users since orgs cannot log in
+    # and multiple orgs may share the same email.
     try:
-        fetched = User.get((User.username == username_or_email) | (User.email == username_or_email))
+        fetched = User.get(
+            (User.username == username_or_email)
+            | ((User.email == username_or_email) & (User.organization == False))
+        )
     except User.DoesNotExist:
         return None
 

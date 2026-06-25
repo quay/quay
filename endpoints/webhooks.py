@@ -15,6 +15,7 @@ from buildtrigger.triggerutil import (
 from data import model
 from data.database import RepositoryState
 from data.logs_model import logs_model
+from data.model.organization import get_admin_users
 from endpoints.building import (
     BuildTriggerDisabledException,
     MaximumBuildsQueuedException,
@@ -27,6 +28,7 @@ from util.useremails import (
     send_payment_failed,
     send_subscription_change,
 )
+from util.validation import validate_email
 
 logger = logging.getLogger(__name__)
 
@@ -69,12 +71,27 @@ def stripe_webhook():
                 invoice = stripe.Invoice.retrieve(invoice_id)
                 if invoice:
                     invoice_html = renderInvoiceToHtml(invoice, namespace)
-                    send_invoice_email(
-                        namespace.invoice_email_address or namespace.email, invoice_html
-                    )
+                    recipient = namespace.invoice_email_address
+                    if not recipient and namespace.organization:
+                        if validate_email(namespace.email):
+                            recipient = namespace.email
+                        else:
+                            for admin in get_admin_users(namespace):
+                                if validate_email(admin.email):
+                                    send_invoice_email(admin.email, invoice_html)
+                    if recipient:
+                        send_invoice_email(recipient, invoice_html)
 
     elif event_type.startswith("customer.subscription."):
         cust_email = namespace.email if namespace is not None else "unknown@domain.com"
+        if namespace and namespace.organization:
+            if validate_email(namespace.email):
+                cust_email = namespace.email
+            else:
+                for admin in get_admin_users(namespace):
+                    if admin.email:
+                        cust_email = admin.email
+                        break
         quay_username = namespace.username if namespace is not None else "unknown"
 
         change_type = ""
@@ -98,7 +115,15 @@ def stripe_webhook():
 
     elif event_type == "invoice.payment_failed":
         if namespace:
-            send_payment_failed(namespace.email, namespace.username)
+            if namespace.organization:
+                if validate_email(namespace.email):
+                    send_payment_failed(namespace.email, namespace.username)
+                else:
+                    for admin in get_admin_users(namespace):
+                        if admin.email:
+                            send_payment_failed(admin.email, namespace.username)
+            else:
+                send_payment_failed(namespace.email, namespace.username)
 
     elif event_type == "checkout.session.completed":
         mode = request_data["data"]["object"]["mode"]

@@ -471,13 +471,12 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           helperText={
             isUserOrganization
               ? 'The e-mail address associated with your account.'
-              : 'The e-mail address associated with the organization.'
+              : 'Optional. Used for organization recovery and billing notifications.'
           }
-          customValidation={
-            quayConfig?.features?.MAILING
-              ? (value: string) =>
-                  isValidEmail(value) || 'Please enter a valid email address'
-              : undefined
+          customValidation={(value: string) =>
+            !value ||
+            isValidEmail(value) ||
+            'Please enter a valid email address'
           }
         />
       )}

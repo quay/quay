@@ -60,7 +60,7 @@ def send_email(recipient, subject, template_file, parameters, action=None):
     app_title = app.config["REGISTRY_TITLE_SHORT"]
     app_url = get_app_url()
     html, plain = render_email(
-        app_title, app_url, recipient, subject, template_file, parameters, action=None
+        app_title, app_url, recipient, subject, template_file, parameters, action=action
     )
     msg = Message("[%s] %s" % (app_title, subject), recipients=[recipient])
     msg.html = html
@@ -167,17 +167,31 @@ def send_repo_authorization_email(namespace, repository, email, token):
     )
 
 
-def send_org_recovery_email(org, admin_users):
+def send_org_recovery_email(org, admin_users, contact_email=None):
     subject = "Organization %s recovery" % (org.username)
-    send_email(
-        org.email,
-        subject,
-        "orgrecovery",
-        {
-            "organization": org.username,
-            "admin_usernames": [user.username for user in admin_users],
-        },
-    )
+    admin_usernames = [u.username for u in admin_users]
+    params = {"organization": org.username, "admin_usernames": admin_usernames}
+
+    if contact_email:
+        send_email(contact_email, subject, "orgrecovery", params)
+    else:
+        for admin in admin_users:
+            if admin.email:
+                send_email(admin.email, subject, "orgrecovery", params)
+
+
+def send_combined_recovery_email(email, orgs_with_admins, reset_token=None):
+    subject = "Account recovery"
+    params = {
+        "organizations": orgs_with_admins,
+        "reset_token": reset_token,
+    }
+    action = None
+    if reset_token:
+        action = GmailAction.view(
+            "Recover Account", "recovery?code=" + reset_token, "Recovery of an account"
+        )
+    send_email(email, subject, "combinedrecovery", params, action=action)
 
 
 def send_recovery_email(email, token):
