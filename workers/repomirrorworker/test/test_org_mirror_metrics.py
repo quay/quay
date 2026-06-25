@@ -45,7 +45,6 @@ class TestUpdateSyncFinished:
         before = {
             sample.labels.get("namespace"): sample.value
             for metric in REGISTRY.collect()
-            if metric.name == "quay_org_mirror_sync_failures_total"
             for sample in metric.samples
             if sample.name == "quay_org_mirror_sync_failures_total"
             and sample.labels.get("namespace") == "cardinality-test"
@@ -67,7 +66,6 @@ class TestUpdateSyncFinished:
         after_samples = [
             sample
             for metric in REGISTRY.collect()
-            if metric.name == "quay_org_mirror_sync_failures_total"
             for sample in metric.samples
             if sample.name == "quay_org_mirror_sync_failures_total"
             and sample.labels.get("namespace") == "cardinality-test"
