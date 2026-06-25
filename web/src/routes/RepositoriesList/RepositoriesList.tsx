@@ -70,10 +70,17 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
   const {isReadOnlySuperUser} = useSuperuserPermissions();
+  const isQuotaManagementEnabled =
+    quayConfig?.features?.QUOTA_MANAGEMENT === true &&
+    quayConfig?.features?.EDIT_QUOTA === true;
 
   // Fetch quota information - use 'self' viewMode for user namespaces, 'organization' for orgs
   const viewMode = props.isUserOrganization ? 'self' : 'organization';
-  const {organizationQuota} = useFetchOrganizationQuota(currentOrg, viewMode);
+  const {organizationQuota} = useFetchOrganizationQuota(
+    currentOrg,
+    viewMode,
+    isQuotaManagementEnabled,
+  );
   const {repos, loading, error, search, setSearch, searchFilter, truncated} =
     useRepositories(currentOrg);
 
@@ -334,15 +341,13 @@ export default function RepositoriesList(props: RepositoriesListProps) {
             style={{marginBottom: '1em'}}
           />
         )}
-        {quayConfig?.features?.QUOTA_MANAGEMENT &&
-          quayConfig?.features?.EDIT_QUOTA &&
-          currentOrg && (
-            <div style={{marginBottom: '1em'}}>
-              <Title headingLevel="h4" size="md">
-                Total Quota Consumed: <span>{formatQuotaDisplay()}</span>
-              </Title>
-            </div>
-          )}
+        {isQuotaManagementEnabled && currentOrg && (
+          <div style={{marginBottom: '1em'}}>
+            <Title headingLevel="h4" size="md">
+              Total Quota Consumed: <span>{formatQuotaDisplay()}</span>
+            </Title>
+          </div>
+        )}
         <RepositoryToolBar
           search={search}
           setSearch={setSearch}
@@ -383,8 +388,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
               <Th modifier="wrap" sort={getSortableSort(1)}>
                 {RepositoryListColumnNames.visibility}
               </Th>
-              {quayConfig?.features.QUOTA_MANAGEMENT &&
-              quayConfig?.features.EDIT_QUOTA ? (
+              {isQuotaManagementEnabled ? (
                 <Th modifier="wrap" sort={getSortableSort(2)}>
                   {RepositoryListColumnNames.size}
                 </Th>
@@ -461,8 +465,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
                   <Td dataLabel={RepositoryListColumnNames.visibility}>
                     {repo.is_public ? 'public' : 'private'}
                   </Td>
-                  {quayConfig?.features.QUOTA_MANAGEMENT &&
-                  quayConfig?.features.EDIT_QUOTA ? (
+                  {isQuotaManagementEnabled ? (
                     <Td dataLabel={RepositoryListColumnNames.size}>
                       {(() => {
                         const sizeDisplay =
