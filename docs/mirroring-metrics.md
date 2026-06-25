@@ -594,7 +594,8 @@ There is **no global org-mirror health API**; multi-org visibility is Prometheus
 
 - `200 OK`: `"healthy": true`
 - `503 Service Unavailable`: `"healthy": false`
-- `401 Unauthorized`: Not authenticated, not an org member, or stale session
+- `401 Unauthorized`: Unauthenticated callers, or session requires fresh login (`require_fresh_login`)
+- `403 Forbidden`: Authenticated user is not a member of the organization (`insufficient_scope`)
 - `404 Not Found`: Organization does not exist, or org has no mirror configuration
 
 ### Query parameters
@@ -665,7 +666,7 @@ When `detailed=true`, `organization.repositories` includes `details[]` and `pagi
 Same semantics as repository mirror health where applicable:
 
 - **Critical:** `failed / (total - never_run - skipped) > 0.2` when denominator &gt; 0
-- **Warning:** worker replica mismatch when `REPO_MIRROR_WORKER_REPLICAS` is set, org mirror enabled, and `workers.active < workers.configured`
+- **Warning:** worker replica mismatch when `REPO_MIRROR_WORKER_REPLICAS` is set, org mirror enabled, this process reports `workers.active > 0`, and `workers.active < workers.configured` (skipped on API-only pods where the local gauge is absent/zero)
 - **Warning:** discovered repos not synced in 24+ hours (from metric timestamps)
 - **Warning:** discovered repos still `NEVER_RUN` after discovery completed
 - **Error:** `FAIL` with `sync_retries_remaining == 0`

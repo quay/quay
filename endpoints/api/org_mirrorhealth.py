@@ -271,10 +271,14 @@ def get_org_mirror_health_data(
     active_workers = get_mirror_workers_active_value()
     configured_workers = replicas if replicas is not None else active_workers
 
+    # Replica mismatch uses the in-process gauge only. API pods typically do not run
+    # RepoMirrorWorker, so active_workers is 0 there; skip the check unless this process
+    # reports an active worker to avoid false 503s from missing local metrics.
     if (
         replicas is not None
         and config.is_enabled
         and features.ORG_MIRROR
+        and active_workers > 0
         and active_workers < replicas
     ):
         healthy = False

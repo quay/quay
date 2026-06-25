@@ -121,9 +121,10 @@ curl -s -b "$COOKIES" \
 | Caller | Expected |
 |--------|----------|
 | Org member | `200` or `503` |
-| Superuser | `200` or `503` |
-| User not in org | `401` |
+| Superuser / global readonly superuser | `200` or `503` |
+| Authenticated user not in org | `403` |
 | Unauthenticated | `401` |
+| Stale session (`require_fresh_login`) | `401` |
 | Org without mirror config | `404` |
 | Unknown organization | `404` |
 
@@ -241,7 +242,8 @@ On OpenShift, mirror metrics are on **mirror worker pods**, not `quay-app` pods.
 | Health API `tags_pending: 0` always | API pod has no worker metrics | Scrape `quay-repomirror` / mirror worker pods |
 | Health API `workers.active: 0` | Same as above | `quay_repository_mirror_workers_active` on worker pod |
 | No `quay_org_mirror_*` metrics | Org mirror not configured or worker not running | `FEATURE_ORG_MIRROR`, `make local-dev-up-with-repomirror` |
-| `403` on health API | Stale session | Re-run sign-in (`require_fresh_login`) |
+| `401` on health API | Unauthenticated or stale session (`require_fresh_login`) | Re-run sign-in |
+| `403` on health API | Authenticated user not in org (insufficient permission) | Use an org member account or superuser |
 | `404` on org health | No `OrgMirrorConfig` for org | `GET /api/v1/organization/<org>/mirror` |
 
 ---

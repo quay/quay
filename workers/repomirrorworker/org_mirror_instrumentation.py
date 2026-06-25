@@ -66,6 +66,9 @@ from workers.repomirrorworker.org_mirror_metrics import (
 
 logger = logging.getLogger(__name__)
 
+_CANCEL_CHECK_TAG_INTERVAL = 10
+_CANCEL_CHECK_SECONDS = 30.0
+
 
 def _record_repo_sync_failure_metrics(
     namespace: str,
@@ -518,6 +521,7 @@ def perform_org_mirror_repo_with_metrics(
             start_time=sync_start_ts,
         )
 
+        last_cancel_check = time.monotonic()
         for tag_index, tag in enumerate(tags):
             src_image = f"docker://{external_reference}:{tag}"
             dest_image = (
@@ -548,14 +552,21 @@ def perform_org_mirror_repo_with_metrics(
                 remaining_tags,
             )
 
-            if check_org_mirror_repo_sync_status(claimed_repo) == OrgMirrorRepoStatus.CANCEL:
-                logger.info(
-                    "Org mirror sync cancelled on repo %s/%s.",
-                    org.username,
-                    claimed_repo.repository_name,
-                )
-                overall_status = OrgMirrorRepoStatus.CANCEL
-                break
+            now = time.monotonic()
+            if (
+                tag_index % _CANCEL_CHECK_TAG_INTERVAL == 0
+                or tag_index == len(tags) - 1
+                or (now - last_cancel_check) >= _CANCEL_CHECK_SECONDS
+            ):
+                last_cancel_check = now
+                if check_org_mirror_repo_sync_status(claimed_repo) == OrgMirrorRepoStatus.CANCEL:
+                    logger.info(
+                        "Org mirror sync cancelled on repo %s/%s.",
+                        org.username,
+                        claimed_repo.repository_name,
+                    )
+                    overall_status = OrgMirrorRepoStatus.CANCEL
+                    break
 
             if not result.success:
                 overall_status = OrgMirrorRepoStatus.FAIL
