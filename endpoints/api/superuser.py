@@ -171,7 +171,7 @@ class SuperUserLogs(ApiResource):
 def org_view(org):
     return {
         "name": org.username,
-        "email": org.email,
+        "email": org.get_contact_email() or "",
         "avatar": avatar.get_data_for_org(org),
     }
 

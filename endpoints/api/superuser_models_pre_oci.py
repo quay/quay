@@ -178,7 +178,7 @@ class PreOCIModel(SuperuserDataInterface):
 
         quotas = _get_namespace_quotas(org)
 
-        return Organization(org.username, org.email, quotas)
+        return Organization(org.username, org.get_contact_email() or "", quotas)
 
     def mark_organization_for_deletion(self, name):
         org = model.organization.get_organization(name)
@@ -264,7 +264,7 @@ class PreOCIModel(SuperuserDataInterface):
 
     def get_organizations(self):
         return [
-            Organization(org.username, org.email, _get_namespace_quotas(org))
+            Organization(org.username, org.get_contact_email() or "", _get_namespace_quotas(org))
             for org in model.organization.get_organizations()
         ]
 
@@ -280,7 +280,12 @@ class PreOCIModel(SuperuserDataInterface):
             limit=limit,
         )
         return (
-            [Organization(org.username, org.email, _get_namespace_quotas(org)) for org in orgs],
+            [
+                Organization(
+                    org.username, org.get_contact_email() or "", _get_namespace_quotas(org)
+                )
+                for org in orgs
+            ],
             next_page_token,
         )
 

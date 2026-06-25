@@ -167,6 +167,11 @@ class ReconciliationWorker(Worker):
             reconciliation_users_total.set(len(users))
 
             for user in users:
+                # Use User.email (not contact_email) for marketplace lookups.
+                # User.email is unique per org, so shared contact emails
+                # cannot cause cross-org entitlement confusion. For new orgs
+                # where User.email is a UUID, lookup_customer_id is expected
+                # to return no results and the org will be skipped.
                 if user.email is None or user.email == "":
                     reconciliation_users_not_processed.labels(reason="missing_email").inc()
                     logger.info("Email missing or empty for user %s", user.username)

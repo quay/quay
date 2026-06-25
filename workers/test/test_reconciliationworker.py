@@ -48,6 +48,89 @@ def test_reconcile_org_user(initialized_db):
     mock.assert_called_with(org_user.email, raise_exception=True)
 
 
+def test_shared_contact_email_orgs_use_unique_user_email(initialized_db):
+    """
+    Two orgs sharing the same contact_email must NOT resolve to the same
+    marketplace customer. The reconciler uses User.email (unique UUID per org)
+    for lookups, so each org hits the marketplace API with its own identifier.
+    """
+    user = model.user.get_user("devtable")
+    shared_email = "billing@acme.com"
+
+    org_a = model.organization.create_organization(
+        "shared_org_a", None, user, contact_email=shared_email
+    )
+    org_a.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+    org_a.save()
+
+    org_b = model.organization.create_organization(
+        "shared_org_b", None, user, contact_email=shared_email
+    )
+    org_b.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+    org_b.save()
+
+    # Confirm both orgs have the same contact_email but different User.email
+    assert model.organization.get_contact_email(org_a) == shared_email
+    assert model.organization.get_contact_email(org_b) == shared_email
+    assert org_a.email != org_b.email
+
+    with patch.object(marketplace_users, "lookup_customer_id", return_value=None) as mock_lookup:
+        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+
+    # Collect all emails that were passed to lookup_customer_id
+    looked_up_emails = [call.args[0] for call in mock_lookup.call_args_list]
+
+    # Both org UUIDs should have been looked up individually
+    assert org_a.email in looked_up_emails
+    assert org_b.email in looked_up_emails
+
+    # The shared contact email should NEVER be used for marketplace lookups
+    assert shared_email not in looked_up_emails
+
+
+def test_shared_contact_email_orgs_get_independent_entitlements(initialized_db):
+    """
+    When two orgs share a contact_email, each org's entitlements are
+    independent because the reconciler uses their unique User.email (UUID).
+    One org having a paid plan must not leak entitlements to the other.
+    """
+    user = model.user.get_user("devtable")
+    shared_email = "billing@acme.com"
+
+    org_paying = model.organization.create_organization(
+        "paying_org", None, user, contact_email=shared_email
+    )
+    org_paying.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+    org_paying.save()
+
+    org_free = model.organization.create_organization(
+        "free_org", None, user, contact_email=shared_email
+    )
+    org_free.save()
+
+    # Map each org's unique email to a different marketplace customer
+    def lookup_by_email(email, raise_exception=False):
+        if email == org_paying.email:
+            return [99001]
+        if email == org_free.email:
+            return [99002]
+        return None
+
+    with patch.object(marketplace_users, "lookup_customer_id", side_effect=lookup_by_email):
+        with patch.object(marketplace_subscriptions, "lookup_subscription", return_value=None):
+            with patch.object(marketplace_subscriptions, "create_entitlement") as mock_create:
+                worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+
+    created = [(call.args[0], call.args[1]) for call in mock_create.call_args_list]
+
+    # Free org (99002) should only ever get free-tier SKU
+    assert all(sku == "MW04192" for cid, sku in created if cid == 99002)
+    # Paid org's SKU should never appear on the free org's customer
+    paid_skus = {sku for cid, sku in created if cid == 99001 and sku != "MW04192"}
+    for paid_sku in paid_skus:
+        assert (99002, paid_sku) not in created
+
+
 def test_exception_handling(initialized_db, caplog):
     with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
         mock.side_effect = stripe.error.InvalidRequestError

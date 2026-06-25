@@ -1214,7 +1214,11 @@ class UserNotification(ApiResource):
 
 def authorization_view(access_token):
     oauth_app = access_token.application
-    app_email = oauth_app.avatar_email or oauth_app.organization.email
+    app_email = (
+        oauth_app.avatar_email
+        or oauth_app.organization.get_contact_email()
+        or oauth_app.organization.email
+    )
     return {
         "application": {
             "name": oauth_app.name,
@@ -1233,7 +1237,11 @@ def authorization_view(access_token):
 
 def assigned_authorization_view(assigned_authorization):
     oauth_app = assigned_authorization.application
-    app_email = oauth_app.avatar_email or oauth_app.organization.email
+    app_email = (
+        oauth_app.avatar_email
+        or oauth_app.organization.get_contact_email()
+        or oauth_app.organization.email
+    )
     return {
         "application": {
             "name": oauth_app.name,

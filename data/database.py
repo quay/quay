@@ -883,6 +883,54 @@ class User(BaseModel):
     creation_date = DateTimeField(default=datetime.utcnow, null=True)
     last_accessed = DateTimeField(null=True, index=True)
 
+    def get_contact_email(self):
+        """
+        Returns the real contact email for this user/org.
+        For regular users, returns User.email directly.
+        For orgs, checks OrganizationContactEmail first. Falls back to User.email
+        only if no OrganizationContactEmail row exists and User.email looks like
+        a real email (contains '@') — this covers legacy orgs not yet migrated.
+        """
+        if not self.organization:
+            return self.email
+        if hasattr(self, "_contact_email_resolved"):
+            return self._contact_email_resolved
+        try:
+            record = OrganizationContactEmail.get(OrganizationContactEmail.organization == self)
+            # Row exists — use its value (may be None if explicitly cleared)
+            self._contact_email_resolved = record.contact_email
+            return record.contact_email
+        except OrganizationContactEmail.DoesNotExist:
+            # No row — fall back to User.email for legacy orgs
+            if self.email and "@" in self.email:
+                self._contact_email_resolved = self.email
+                return self.email
+            self._contact_email_resolved = None
+            return None
+
+    @classmethod
+    def prefetch_contact_emails(cls, users):
+        """
+        Batch-prefetches contact emails for a list of users/orgs.
+        Sets _contact_email_resolved on each org to avoid N+1 queries.
+        """
+        orgs = [u for u in users if u.organization]
+        if not orgs:
+            return
+        org_ids = [o.id for o in orgs]
+        contact_map = {}
+        for record in OrganizationContactEmail.select().where(
+            OrganizationContactEmail.organization << org_ids
+        ):
+            contact_map[record.organization_id] = record.contact_email
+        for org in orgs:
+            if org.id in contact_map:
+                # Row exists — use its value (may be None if explicitly cleared)
+                org._contact_email_resolved = contact_map[org.id]
+            else:
+                # No row — fall back to User.email for legacy orgs
+                org._contact_email_resolved = org.email if org.email and "@" in org.email else None
+
     def delete_instance(self, recursive=False, delete_nullable=False):
         # If we are deleting a robot account, only execute the subset of queries necessary.
         if self.robot:

@@ -2,7 +2,7 @@ import pytest
 from peewee import IntegrityError
 from playhouse.test_utils import assert_query_count
 
-from data.database import OrganizationContactEmail
+from data.database import OrganizationContactEmail, User
 from data.model.organization import (
     create_organization,
     delete_contact_email,
@@ -336,3 +336,91 @@ class TestCreateOrganizationContactEmail:
         assert get_contact_email(org1) == shared
         assert get_contact_email(org2) == shared
         assert org1.id != org2.id
+
+
+class TestUserGetContactEmail:
+    """Tests for User.get_contact_email() method."""
+
+    def test_regular_user_returns_email(self, initialized_db):
+        user = get_user("devtable")
+        assert user.get_contact_email() == user.email
+
+    def test_org_with_contact_email(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("getcontact1", None, admin, contact_email="org@example.com")
+        assert org.get_contact_email() == "org@example.com"
+
+    def test_org_without_contact_email_uuid_returns_none(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("getcontact2", None, admin)
+        # org.email is a UUID (no '@'), so get_contact_email should return None
+        assert "@" not in org.email
+        assert org.get_contact_email() is None
+
+    def test_org_with_legacy_real_email(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("getcontact3", None, admin)
+        # Simulate legacy org that still has a real email in User.email
+        org.email = "legacy@example.com"
+        org.save()
+        assert org.get_contact_email() == "legacy@example.com"
+
+    def test_caches_result_on_instance(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("getcontact4", None, admin, contact_email="cached@example.com")
+        # First call resolves and caches
+        assert org.get_contact_email() == "cached@example.com"
+        assert hasattr(org, "_contact_email_resolved")
+        # Second call uses cache
+        assert org.get_contact_email() == "cached@example.com"
+
+    def test_email_required_param_is_noop(self, initialized_db):
+        """email_required is kept for backward compat but has no effect."""
+        admin = get_user("devtable")
+        org = create_organization("reqorg", None, admin, email_required=True)
+        assert org.get_contact_email() is None
+
+
+class TestPrefetchContactEmails:
+    """Tests for User.prefetch_contact_emails() classmethod."""
+
+    def test_prefetch_sets_resolved_attribute(self, initialized_db):
+        admin = get_user("devtable")
+        org1 = create_organization("prefetch1", None, admin, contact_email="pf1@example.com")
+        org2 = create_organization("prefetch2", None, admin, contact_email="pf2@example.com")
+
+        # Clear any cached values
+        if hasattr(org1, "_contact_email_resolved"):
+            del org1._contact_email_resolved
+        if hasattr(org2, "_contact_email_resolved"):
+            del org2._contact_email_resolved
+
+        User.prefetch_contact_emails([org1, org2])
+        assert org1._contact_email_resolved == "pf1@example.com"
+        assert org2._contact_email_resolved == "pf2@example.com"
+
+    def test_prefetch_handles_orgs_without_contact_email(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("prefetch3", None, admin)
+
+        if hasattr(org, "_contact_email_resolved"):
+            del org._contact_email_resolved
+
+        User.prefetch_contact_emails([org])
+        assert org._contact_email_resolved is None
+
+    def test_prefetch_skips_regular_users(self, initialized_db):
+        user = get_user("devtable")
+        User.prefetch_contact_emails([user])
+        assert not hasattr(user, "_contact_email_resolved")
+
+    def test_prefetch_mixed_users_and_orgs(self, initialized_db):
+        admin = get_user("devtable")
+        org = create_organization("prefetch4", None, admin, contact_email="mixed@example.com")
+
+        if hasattr(org, "_contact_email_resolved"):
+            del org._contact_email_resolved
+
+        User.prefetch_contact_emails([admin, org])
+        assert not hasattr(admin, "_contact_email_resolved")
+        assert org._contact_email_resolved == "mixed@example.com"

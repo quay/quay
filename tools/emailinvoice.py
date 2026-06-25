@@ -23,8 +23,12 @@ def sendInvoice(invoice_id):
 
     with app.app_context():
         invoice_html = renderInvoiceToHtml(invoice, user)
-        send_invoice_email(user.invoice_email_address or user.email, invoice_html)
-        print("Invoice sent to %s" % (user.invoice_email_address or user.email))
+        recipient = user.invoice_email_address or user.get_contact_email()
+        if not recipient:
+            print("No recipient email found for customer %s" % customer_id)
+            return
+        send_invoice_email(recipient, invoice_html)
+        print("Invoice sent to %s" % recipient)
 
 
 parser = argparse.ArgumentParser(description="Email an invoice")

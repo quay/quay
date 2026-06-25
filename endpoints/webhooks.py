@@ -15,7 +15,7 @@ from buildtrigger.triggerutil import (
 from data import model
 from data.database import RepositoryState
 from data.logs_model import logs_model
-from data.model.organization import get_admin_users, get_contact_email
+from data.model.organization import get_admin_users
 from endpoints.building import (
     BuildTriggerDisabledException,
     MaximumBuildsQueuedException,
@@ -70,20 +70,24 @@ def stripe_webhook():
                 invoice = stripe.Invoice.retrieve(invoice_id)
                 if invoice:
                     invoice_html = renderInvoiceToHtml(invoice, namespace)
-                    recipient = namespace.invoice_email_address
+                    recipient = namespace.invoice_email_address or namespace.get_contact_email()
                     if not recipient and namespace.organization:
-                        recipient = get_contact_email(namespace)
-                        if not recipient:
-                            for admin in get_admin_users(namespace):
-                                if admin.email:
-                                    send_invoice_email(admin.email, invoice_html)
+                        for admin in get_admin_users(namespace):
+                            if admin.email:
+                                send_invoice_email(admin.email, invoice_html)
                     if recipient:
                         send_invoice_email(recipient, invoice_html)
 
     elif event_type.startswith("customer.subscription."):
-        cust_email = namespace.email if namespace is not None else "unknown@domain.com"
-        if namespace and namespace.organization:
-            cust_email = get_contact_email(namespace) or cust_email
+        cust_email = None
+        if namespace is not None:
+            cust_email = namespace.invoice_email_address or namespace.get_contact_email()
+            if not cust_email and namespace.organization:
+                for admin in get_admin_users(namespace):
+                    if admin.email:
+                        cust_email = admin.email
+                        break
+        cust_email = cust_email or "unknown@domain.com"
         quay_username = namespace.username if namespace is not None else "unknown"
 
         change_type = ""
@@ -107,16 +111,13 @@ def stripe_webhook():
 
     elif event_type == "invoice.payment_failed":
         if namespace:
-            if namespace.organization:
-                contact = get_contact_email(namespace)
-                if contact:
-                    send_payment_failed(contact, namespace.username)
-                else:
-                    for admin in get_admin_users(namespace):
-                        if admin.email:
-                            send_payment_failed(admin.email, namespace.username)
-            else:
-                send_payment_failed(namespace.email, namespace.username)
+            contact = namespace.invoice_email_address or namespace.get_contact_email()
+            if contact:
+                send_payment_failed(contact, namespace.username)
+            elif namespace.organization:
+                for admin in get_admin_users(namespace):
+                    if admin.email:
+                        send_payment_failed(admin.email, namespace.username)
 
     elif event_type == "checkout.session.completed":
         mode = request_data["data"]["object"]["mode"]

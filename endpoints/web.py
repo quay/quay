@@ -769,7 +769,11 @@ def request_authorization_code():
             abort(404)
             return
 
-        app_email = oauth_app.avatar_email or oauth_app.organization.email
+        app_email = (
+            oauth_app.avatar_email
+            or oauth_app.organization.get_contact_email()
+            or oauth_app.organization.email
+        )
         oauth_app_view = {
             "name": oauth_app.name,
             "description": oauth_app.description,

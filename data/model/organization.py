@@ -28,6 +28,8 @@ def create_organization(
 ):
     with db_transaction():
         try:
+            effective_contact = contact_email or email
+
             internal_email = str(uuid.uuid4())
             new_org = user.create_user_noverify(
                 name, internal_email, email_required=False, is_possible_abuser=is_possible_abuser
@@ -35,7 +37,6 @@ def create_organization(
             new_org.organization = True
             new_org.save()
 
-            effective_contact = contact_email or email
             if effective_contact:
                 OrganizationContactEmail.create(
                     organization=new_org, contact_email=effective_contact
@@ -236,11 +237,15 @@ def set_contact_email(org, contact_email):
     if not created:
         record.contact_email = contact_email
         record.save()
+    if hasattr(org, "_contact_email_resolved"):
+        del org._contact_email_resolved
     return record
 
 
 def delete_contact_email(org):
     OrganizationContactEmail.delete().where(OrganizationContactEmail.organization == org).execute()
+    if hasattr(org, "_contact_email_resolved"):
+        del org._contact_email_resolved
 
 
 def find_organizations_by_contact_email(contact_email):

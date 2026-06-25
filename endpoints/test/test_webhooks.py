@@ -140,7 +140,7 @@ class TestStripeWebhookContactEmail:
         mock_send.assert_called_once()
         assert mock_send.call_args[0][2] == "sub@example.com"
 
-    def test_subscription_created_org_no_contact_email(self, app, client):
+    def test_subscription_created_org_no_contact_email_falls_back_to_admin(self, app, client):
         admin = get_user("devtable")
         org = create_organization("suborg2", None, admin)
         org.stripe_id = "cust_sub2"
@@ -159,7 +159,7 @@ class TestStripeWebhookContactEmail:
 
         assert resp.status_code == 200
         mock_send.assert_called_once()
-        assert mock_send.call_args[0][2] == org.email
+        assert mock_send.call_args[0][2] == admin.email
 
     def test_payment_failed_org_with_contact_email(self, app, client):
         admin = get_user("devtable")

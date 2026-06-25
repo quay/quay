@@ -117,7 +117,7 @@ def org_view(o, teams):
 
     contact_email = None
     if is_admin or can_view_as_superuser:
-        contact_email = model.organization.get_contact_email(o)
+        contact_email = o.get_contact_email()
 
     view = {
         "name": o.username,
@@ -708,7 +708,7 @@ class ApplicationInformation(ApiResource):
 
         app_email = (
             application.avatar_email
-            or model.organization.get_contact_email(application.organization)
+            or application.organization.get_contact_email()
             or application.organization.email
         )
         app_data = avatar.get_data(application.name, app_email, "app")
