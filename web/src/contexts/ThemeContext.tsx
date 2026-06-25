@@ -62,7 +62,7 @@ export const ThemeProvider: React.FC = ({children}) => {
   }, [themePreference]);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('pf-v5-theme-dark', isDarkTheme);
+    document.documentElement.classList.toggle('pf-v6-theme-dark', isDarkTheme);
   }, [isDarkTheme]);
 
   return (

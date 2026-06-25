@@ -113,11 +113,24 @@ web/yarn-debug.log*
 web/yarn-error.log*
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Cypress files
-web/cypress/videos
-web/cypress/screenshots
-web/cypress/downloads
+
+# Playwright files
+web/playwright-report/
+web/test-results/
+web/.playwright/
 
 # marketplace
 local-dev/stack/quay-marketplace-api.crt
 local-dev/stack/quay-marketplace-api.key
+
+# quay-builder binary (extracted from container image)
+local-dev/quay-builder
+
+# Go build output
+bin/
+
+# claude
+.claude/plans
+.claude/implementation
+.claude/poll-state/
+.claude/session-state/

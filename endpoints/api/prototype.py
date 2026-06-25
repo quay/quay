@@ -4,6 +4,7 @@ Manage default permissions added to repositories.
 
 from flask import request
 
+import features
 from app import avatar
 from auth import scopes
 from auth.auth_context import get_authenticated_user
@@ -11,8 +12,10 @@ from auth.permissions import AdministerOrganizationPermission
 from data import model
 from endpoints.api import (
     ApiResource,
+    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     log_action,
     nickname,
     path_param,
@@ -146,7 +149,11 @@ class PermissionPrototypeList(ApiResource):
         List the existing prototypes for this organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or allow_if_superuser_with_full_access()
+        ):
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -154,11 +161,11 @@ class PermissionPrototypeList(ApiResource):
 
             permissions = model.permission.get_prototype_permissions(org)
 
-            users_filter = {p.activating_user for p in permissions} | {
-                p.delegate_user for p in permissions
+            user_ids_filter = {p.activating_user.id for p in permissions if p.activating_user} | {
+                p.delegate_user.id for p in permissions if p.delegate_user
             }
             org_members = model.organization.get_organization_member_set(
-                org, users_filter=users_filter
+                org, user_ids_filter=user_ids_filter
             )
             return {"prototypes": [prototype_view(p, org_members) for p in permissions]}
 
@@ -172,7 +179,7 @@ class PermissionPrototypeList(ApiResource):
         Create a new permission prototype.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -218,9 +225,9 @@ class PermissionPrototypeList(ApiResource):
             )
             log_prototype_action("create_prototype_permission", orgname, prototype)
 
-            users_filter = {prototype.activating_user, prototype.delegate_user}
+            user_ids_filter = {prototype.activating_user_id, prototype.delegate_user_id}
             org_members = model.organization.get_organization_member_set(
-                org, users_filter=users_filter
+                org, user_ids_filter=user_ids_filter
             )
             return prototype_view(prototype, org_members)
 
@@ -263,7 +270,7 @@ class PermissionPrototype(ApiResource):
         Delete an existing permission prototype.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -287,7 +294,7 @@ class PermissionPrototype(ApiResource):
         Update the role of an existing permission prototype.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -307,9 +314,9 @@ class PermissionPrototype(ApiResource):
                 "modify_prototype_permission", orgname, prototype, original_role=existing.role.name
             )
 
-            users_filter = {prototype.activating_user, prototype.delegate_user}
+            user_ids_filter = {prototype.activating_user_id, prototype.delegate_user_id}
             org_members = model.organization.get_organization_member_set(
-                org, users_filter=users_filter
+                org, user_ids_filter=user_ids_filter
             )
             return prototype_view(prototype, org_members)
 

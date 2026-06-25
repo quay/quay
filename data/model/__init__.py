@@ -125,6 +125,17 @@ class StaleTagException(DataModelException):
     pass
 
 
+class ImmutableTagException(DataModelException):
+    """Exception raised when an operation is attempted on an immutable tag."""
+
+    def __init__(self, tag_name: str, operation: str, repository_id: int | None = None) -> None:
+        self.tag_name = tag_name
+        self.operation = operation
+        self.repository_id = repository_id
+        msg = f"Cannot {operation} immutable tag '{tag_name}'"
+        super().__init__(msg)
+
+
 class InvalidSystemQuotaConfig(Exception):
     pass
 
@@ -193,6 +204,18 @@ class InvalidRepositoryException(DataModelException):
     pass
 
 
+class ImmutabilityPolicyDoesNotExist(DataModelException):
+    pass
+
+
+class InvalidImmutabilityPolicy(DataModelException):
+    pass
+
+
+class DuplicateImmutabilityPolicy(DataModelException):
+    pass
+
+
 class PushesDisabledException(Exception):
     pass
 
@@ -231,6 +254,7 @@ from data.model import (
     build,
     entitlements,
     gc,
+    immutability,
     label,
     log,
     message,
@@ -238,6 +262,7 @@ from data.model import (
     namespacequota,
     notification,
     oauth,
+    org_mirror,
     organization,
     organization_skus,
     permission,

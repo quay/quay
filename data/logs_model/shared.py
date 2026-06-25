@@ -9,6 +9,10 @@ class InvalidLogsDateRangeError(Exception):
     pass
 
 
+class SearchNotConfiguredError(Exception):
+    pass
+
+
 class SharedModel:
     def queue_logs_export(
         self,

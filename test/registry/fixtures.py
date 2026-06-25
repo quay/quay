@@ -4,7 +4,6 @@ import logging.config
 import os
 import shutil
 from tempfile import NamedTemporaryFile
-from test.registry.liveserverfixture import LiveServerExecutor
 
 import pytest
 from flask import g, jsonify
@@ -16,7 +15,6 @@ from data.database import (
     ImageStorage,
     Manifest,
     ManifestBlob,
-    NamespaceGeoRestriction,
     QueueItem,
     User,
     close_db_filter,
@@ -25,6 +23,7 @@ from data.database import (
 from data.registry_model import registry_model
 from endpoints.csrf import generate_csrf_token
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST
+from test.registry.liveserverfixture import LiveServerExecutor
 from util.log import logfile_path
 
 
@@ -120,11 +119,6 @@ def registry_server_executor(app):
 
         return "OK"
 
-    def create_app_repository(namespace, name):
-        user = model.user.get_user(namespace)
-        model.repository.create_repository(namespace, name, user, repo_kind="application")
-        return "OK"
-
     def disable_namespace(namespace):
         namespace_obj = model.user.get_namespace_user(namespace)
         namespace_obj.enabled = False
@@ -136,13 +130,11 @@ def registry_server_executor(app):
         Manifest.delete().execute()
         return "OK"
 
-    def set_geo_block_for_namespace(namespace_name, iso_country_code):
-        NamespaceGeoRestriction.create(
-            namespace=User.get(username=namespace_name),
-            description="",
-            unstructured_json={},
-            restricted_region_iso_code=iso_country_code,
-        )
+    def make_tag_immutable(namespace_name, repo_name, tag_name):
+        from data.model.oci.tag import set_tag_immutable
+
+        repo_ref = registry_model.lookup_repository(namespace_name, repo_name)
+        set_tag_immutable(repo_ref.id, tag_name, True)
         return "OK"
 
     executor = LiveServerExecutor()
@@ -155,10 +147,9 @@ def registry_server_executor(app):
     executor.register("add_token", add_token)
     executor.register("break_database", break_database)
     executor.register("reload_app", reload_app)
-    executor.register("create_app_repository", create_app_repository)
     executor.register("disable_namespace", disable_namespace)
     executor.register("delete_manifests", delete_manifests)
-    executor.register("set_geo_block_for_namespace", set_geo_block_for_namespace)
+    executor.register("make_tag_immutable", make_tag_immutable)
     return executor
 
 

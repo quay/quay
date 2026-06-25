@@ -96,7 +96,7 @@ export default function BuildHistory(props: BuildHistoryProps) {
         1: (item: RepositoryBuild) => item.phase, // Status
         2: (item: RepositoryBuild) =>
           item.manual_user || item.trigger?.service || '', // Triggered by
-        3: (item: RepositoryBuild) => item.started, // Date started
+        3: (item: RepositoryBuild) => new Date(item.started).getTime(), // Date started (sort by timestamp)
         4: (item: RepositoryBuild) => item.tags?.join(', ') || '', // Tags
       },
       initialPerPage: 50, // Show more builds by default
@@ -109,7 +109,7 @@ export default function BuildHistory(props: BuildHistoryProps) {
   }
 
   if (isError) {
-    return <RequestError message={error as string} />;
+    return <RequestError err={error} />;
   }
 
   const setFilter = (filterType: string) => {
@@ -143,10 +143,10 @@ export default function BuildHistory(props: BuildHistoryProps) {
             if={
               (props.repoDetails.can_write || props.repoDetails.can_admin) &&
               config?.features.BUILD_SUPPORT &&
-              config?.config?.REGISTRY_STATE !== 'readonly'
+              config?.registry_state !== 'readonly'
             }
           >
-            <ToolbarItem align={{default: 'alignRight'}}>
+            <ToolbarItem align={{default: 'alignEnd'}}>
               <Button onClick={() => setIsRunBuildModalOpen(true)}>
                 Start New Build
               </Button>

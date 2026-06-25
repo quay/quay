@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+  "osvVulnerabilityAlerts": false,
+  "dependencyDashboard": true,
+  "extends": [
+    "github>konflux-ci/mintmaker-presets:cve-automerge-all",
+    "github>quay/quay-konflux-configs"
+  ],
+  "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
+  "postUpdateOptions": ["gomodTidy"],
+  "packageRules": [
+    {
+      "description": "Disable major version bumps for non-tekton managers",
+      "matchUpdateTypes": ["major"],
+      "matchManagers": ["npm", "pip_requirements", "gomod"],
+      "enabled": false
+    }
+  ],
+  "semanticCommits": "disabled",
+  "commitMessagePrefix": "NO-ISSUE: chore(deps):"
+}

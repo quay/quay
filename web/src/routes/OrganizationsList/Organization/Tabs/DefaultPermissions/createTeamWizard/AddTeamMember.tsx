@@ -1,9 +1,8 @@
 import {
   Button,
   PageSection,
-  TextContent,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {ITeamMember} from 'src/hooks/UseMembers';
@@ -16,8 +15,8 @@ import {
 import {getAccountTypeForMember} from 'src/libs/utils';
 import {TrashIcon} from '@patternfly/react-icons';
 import NameAndDescription from 'src/components/modals/robotAccountWizard/NameAndDescription';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {addDisplayError} from 'src/resources/ErrorHandling';
 import ToggleDrawer from 'src/components/ToggleDrawer';
 
 const memberAndRobotColNames = {
@@ -30,7 +29,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   const [perPage, setPerPage] = useState(20);
   const [newRobotAccntName, setNewRobotAccntName] = useState('');
   const [newRobotAccntDescription, setNewRobotAccntDescription] = useState('');
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {error, robots} = useFetchRobotAccounts(props.orgName);
 
@@ -58,7 +57,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
     onError: (err) => {
       addAlert({
         variant: AlertVariant.Failure,
-        title: err,
+        title: addDisplayError('Unable to create robot account', err),
       });
     },
   });
@@ -88,13 +87,22 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   };
 
   const onCreateRobotAccount = async () => {
-    await createNewRobot({
-      namespace: props.orgName,
-      robotname: newRobotAccntName,
-      description: newRobotAccntDescription,
-    });
-    props.setDrawerExpanded(false);
-    addTeamMemberHandler(`${props.orgName}+${newRobotAccntName}`, true);
+    try {
+      const created = await createNewRobot({
+        namespace: props.orgName,
+        robotname: newRobotAccntName,
+        description: newRobotAccntDescription,
+      });
+
+      if (!created || created['name'] === '') {
+        return;
+      }
+
+      props.setDrawerExpanded(false);
+      addTeamMemberHandler(`${props.orgName}+${newRobotAccntName}`, true);
+    } catch (err) {
+      // Error already handled by onError callback
+    }
   };
 
   const validateRobotName = () => {
@@ -103,9 +111,11 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
 
   const drawerPanelContent = (
     <>
-      <TextContent>
-        <Text component={TextVariants.h1}>Provide a name and description</Text>
-      </TextContent>
+      <Content>
+        <Content component={ContentVariants.h1}>
+          Provide a name and description
+        </Content>
+      </Content>
       <NameAndDescription
         name={newRobotAccntName}
         setName={setNewRobotAccntName}
@@ -155,12 +165,13 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
 
     // Add to delete member list if member already exists in db
     props.setDeletedTeamMembers((prev) => {
-      const memberExists = props?.allMembers.find(
+      const memberExists = props?.allMembers?.find(
         (currentMember) => currentMember.name === member.name,
       );
       if (memberExists && !prev.includes(memberExists)) {
         return [...prev, memberExists];
       }
+      return prev;
     });
   };
 
@@ -169,7 +180,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   }
 
   return (
-    <PageSection padding={{default: 'noPadding'}}>
+    <PageSection hasBodyWrapper={false} padding={{default: 'noPadding'}}>
       <AddTeamToolbar
         orgName={props.orgName}
         allItems={props.tableItems}

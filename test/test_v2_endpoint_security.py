@@ -1,11 +1,11 @@
 import json
 import unittest
-from test.specs import build_v2_index_specs
 
 import endpoints.decorated  # Register the various exceptions via decorators.
 from app import app
 from endpoints.v2 import v2_bp
 from initdb import finished_database_for_testing, setup_database_for_testing
+from test.specs import build_v2_index_specs
 
 app.register_blueprint(v2_bp, url_prefix="/v2")
 
@@ -13,6 +13,7 @@ NO_ACCESS_USER = "freshuser"
 READ_ACCESS_USER = "reader"
 ADMIN_ACCESS_USER = "devtable"
 CREATOR_ACCESS_USER = "creator"
+GLOBAL_READONLY_SUPERUSER = "globalreadonlysuperuser"
 
 
 class EndpointTestCase(unittest.TestCase):
@@ -119,6 +120,12 @@ class TestAdminAccess(EndpointTestCase, metaclass=_SpecTestBuilder):
     spec_func = build_v2_index_specs
     result_attr = "admin_code"
     auth_username = ADMIN_ACCESS_USER
+
+
+class TestGlobalReadOnlySuperUserAccess(EndpointTestCase, metaclass=_SpecTestBuilder):
+    spec_func = build_v2_index_specs
+    result_attr = "global_readonly_code"
+    auth_username = GLOBAL_READONLY_SUPERUSER
 
 
 if __name__ == "__main__":

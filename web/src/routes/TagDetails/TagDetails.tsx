@@ -1,11 +1,6 @@
-import {PageSection, PageSectionVariants, Title} from '@patternfly/react-core';
+import {Alert, PageSection, Title} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {useLocation, useSearchParams} from 'react-router-dom';
-import {useResetRecoilState} from 'recoil';
-import {
-  SecurityDetailsErrorState,
-  SecurityDetailsState,
-} from 'src/atoms/SecurityDetailsState';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import RequestError from 'src/components/errors/RequestError';
@@ -17,21 +12,31 @@ import {
   getManifestByDigest,
   getTags,
 } from 'src/resources/TagResource';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
   parseTagNameFromUrl,
 } from '../../libs/utils';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import TagArchSelect from './TagDetailsArchSelect';
 import TagTabs from './TagDetailsTabs';
+
+function getMissingArchitectures(tag: Tag): string[] {
+  if (!tag.is_sparse || !tag.manifest_list?.manifests) {
+    return [];
+  }
+  return tag.manifest_list.manifests
+    .filter((m) => m.is_present === false)
+    .map((m) => `${m.platform.os}/${m.platform.architecture}`);
+}
 
 export default function TagDetails() {
   const [searchParams] = useSearchParams();
   const [digest, setDigest] = useState<string>('');
+  const [manifestData, setManifestData] =
+    useState<ManifestByDigestResponse>(null);
   const [err, setErr] = useState<string>();
-  const resetSecurityDetails = useResetRecoilState(SecurityDetailsState);
-  const resetSecurityError = useResetRecoilState(SecurityDetailsErrorState);
+  const quayConfig = useQuayConfig();
   const [tagDetails, setTagDetails] = useState<Tag>({
     name: '',
     is_manifest_list: false,
@@ -47,8 +52,6 @@ export default function TagDetails() {
     },
   });
 
-  const quayConfig = useQuayConfig();
-
   // TODO: refactor, need more checks when parsing path
   const location = useLocation();
 
@@ -58,8 +61,6 @@ export default function TagDetails() {
 
   useEffect(() => {
     (async () => {
-      resetSecurityDetails();
-      resetSecurityError();
       try {
         const resp: TagsResponse = await getTags(org, repo, 1, 100, tag);
 
@@ -74,16 +75,37 @@ export default function TagDetails() {
         }
 
         const tagResp: Tag = resp.tags[0];
-        if (tagResp.is_manifest_list || quayConfig.features.UI_MODELCARD) {
-          const manifestResp: ManifestByDigestResponse =
-            await getManifestByDigest(org, repo, tagResp.manifest_digest, true);
-          if (tagResp.is_manifest_list) {
-            tagResp.manifest_list = JSON.parse(manifestResp.manifest_data);
+
+        // Always fetch manifest data for layers and other features, but
+        // only include modelcard if UI_MODELCARD feature is enabled
+        const includeModelcard = quayConfig?.features.UI_MODELCARD || false;
+        const manifestResp: ManifestByDigestResponse =
+          await getManifestByDigest(
+            org,
+            repo,
+            tagResp.manifest_digest,
+            includeModelcard,
+          );
+
+        if (tagResp.is_manifest_list) {
+          const manifestList = JSON.parse(manifestResp.manifest_data);
+          // Merge presence info from tag API into manifest list
+          if (tagResp.child_manifests_presence && manifestList.manifests) {
+            manifestList.manifests = manifestList.manifests.map(
+              (m: {digest: string}) => ({
+                ...m,
+                is_present:
+                  tagResp.child_manifests_presence?.[m.digest] ?? true,
+              }),
+            );
           }
-          if (manifestResp.modelcard) {
-            tagResp.modelcard = manifestResp.modelcard;
-          }
+          tagResp.manifest_list = manifestList;
         }
+        if (manifestResp.modelcard) {
+          tagResp.modelcard = manifestResp.modelcard;
+        }
+
+        setManifestData(manifestResp);
 
         // Confirm requested digest exists for this tag
         const requestedDigest = searchParams.get('digest');
@@ -97,27 +119,38 @@ export default function TagDetails() {
           throw new Error(`Requested digest not found: ${requestedDigest}`);
         }
 
-        let currentDigest =
+        // For manifest lists, prefer the first present architecture
+        let currentDigest = tagResp.manifest_digest;
+        if (
           tagResp.is_manifest_list &&
           tagResp.manifest_list?.manifests?.length > 0
-            ? tagResp.manifest_list.manifests[0].digest
-            : tagResp.manifest_digest;
+        ) {
+          // Find the first present manifest, or fall back to first if none present
+          const firstPresent = tagResp.manifest_list.manifests.find(
+            (m) => m.is_present !== false,
+          );
+          currentDigest = firstPresent
+            ? firstPresent.digest
+            : tagResp.manifest_list.manifests[0].digest;
+        }
         currentDigest = searchParams.get('digest')
           ? searchParams.get('digest')
           : currentDigest;
         setDigest(currentDigest);
         setTagDetails(tagResp);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(error);
-        setErr(addDisplayError('Unable to get details for tag', error));
+        const errorObj =
+          error instanceof Error ? error : new Error(String(error));
+        setErr(addDisplayError('Unable to get details for tag', errorObj));
       }
     })();
-  }, []);
+  }, [org, repo, tag, searchParams, quayConfig?.features?.UI_MODELCARD]);
 
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Title headingLevel="h1">
           {repo}:{tag}
         </Title>
@@ -126,13 +159,30 @@ export default function TagDetails() {
           options={tagDetails.manifest_list?.manifests}
           setDigest={setDigest}
           render={tagDetails.is_manifest_list}
-          style={{marginTop: 'var(--pf-v5-global--spacer--md)'}}
+          style={{marginTop: 'var(--pf-t--global--spacer--md)'}}
         />
+        {tagDetails.is_sparse && (
+          <Alert
+            variant="warning"
+            isInline
+            title="Sparse Manifest List"
+            style={{marginTop: 'var(--pf-t--global--spacer--md)'}}
+            data-testid="sparse-manifest-alert"
+          >
+            This is a sparse manifest list - not all architectures are present
+            locally.
+            {getMissingArchitectures(tagDetails).length > 0 && (
+              <>
+                {' '}
+                Missing architectures:{' '}
+                {getMissingArchitectures(tagDetails).join(', ')}.
+              </>
+            )}{' '}
+            Missing architectures will be pulled on first access.
+          </Alert>
+        )}
       </PageSection>
-      <PageSection
-        variant={PageSectionVariants.light}
-        padding={{default: 'noPadding'}}
-      >
+      <PageSection hasBodyWrapper={false} padding={{default: 'noPadding'}}>
         <ErrorBoundary
           hasError={isErrorString(err)}
           fallback={<RequestError message={err} />}
@@ -142,6 +192,7 @@ export default function TagDetails() {
             repo={repo}
             tag={tagDetails}
             digest={digest}
+            manifestData={manifestData}
             err={err}
           />
         </ErrorBoundary>

@@ -1,15 +1,12 @@
 import React from 'react';
 import {
   EmptyState,
-  EmptyStateIcon,
   EmptyStateBody,
   Title,
   Spinner,
   Bullseye,
-  PageSectionVariants,
   PageSection,
   EmptyStateActions,
-  EmptyStateHeader,
   EmptyStateFooter,
 } from '@patternfly/react-core';
 
@@ -20,12 +17,11 @@ export function LoadingPage(props: {
   secondaryActions?: React.ReactNode;
 }) {
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <Bullseye>
-        <EmptyState>
-          <EmptyStateHeader icon={<EmptyStateIcon icon={Spinner} />} />
+        <EmptyState icon={Spinner}>
           <EmptyStateFooter>
-            <div tabIndex="1">
+            <div tabIndex={1}>
               <Title size="lg" headingLevel="h4">
                 {props.title ?? 'Loading'}
               </Title>

@@ -7,21 +7,24 @@ import {
   DrawerHead,
   DrawerPanelContent,
   PageSection,
-  PageSectionVariants,
   Tab,
   TabTitleText,
   Tabs,
   Title,
 } from '@patternfly/react-core';
 import {useEffect, useRef, useState} from 'react';
-import {useLocation, useNavigate, useSearchParams} from 'react-router-dom';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import Conditional from 'src/components/empty/Conditional';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import RequestError from 'src/components/errors/RequestError';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
-import {useAlerts} from 'src/hooks/UseAlerts';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useRepository} from 'src/hooks/UseRepository';
 import {useFetchTeams} from 'src/hooks/UseTeams';
@@ -43,10 +46,11 @@ import TagsList from './Tags/TagsList';
 import {DrawerContentType} from './Types';
 import UsageLogs from '../UsageLogs/UsageLogs';
 import {Mirroring} from './Mirroring/Mirroring';
+import Information from './Information/Information';
 
 enum TabIndex {
-  Tags = 'tags',
   Information = 'information',
+  Tags = 'tags',
   TagHistory = 'history',
   Builds = 'builds',
   Logs = 'logs',
@@ -63,7 +67,7 @@ function getTabIndex(tab: string) {
 
 export default function RepositoryDetails() {
   const config = useQuayConfig();
-  const [activeTabKey, setActiveTabKey] = useState(TabIndex.Tags);
+  const [activeTabKey, setActiveTabKey] = useState(TabIndex.Information);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -72,7 +76,7 @@ export default function RepositoryDetails() {
   );
   const [isCreateRobotModalOpen, setIsCreateRobotModalOpen] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<Entity>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [err, setErr] = useState<string>();
 
   const drawerRef = useRef<HTMLDivElement>();
@@ -214,13 +218,13 @@ export default function RepositoryDetails() {
         >
           <DrawerContentBody>
             <QuayBreadcrumb />
-            <PageSection variant={PageSectionVariants.light}>
+            <PageSection hasBodyWrapper={false}>
               <Title data-testid="repo-title" headingLevel="h1">
                 {repository}
               </Title>
             </PageSection>
             <PageSection
-              variant={PageSectionVariants.light}
+              hasBodyWrapper={false}
               padding={{default: 'noPadding'}}
             >
               <ErrorBoundary
@@ -235,10 +239,20 @@ export default function RepositoryDetails() {
                   usePageInsets={true}
                 >
                   <Tab
+                    eventKey={TabIndex.Information}
+                    title={<TabTitleText>Information</TabTitleText>}
+                    {...({} as any)}
+                  >
+                    <Information
+                      organization={organization}
+                      repository={repository}
+                      repoDetails={repoDetails}
+                    />
+                  </Tab>
+                  <Tab
                     eventKey={TabIndex.Tags}
                     title={<TabTitleText>Tags</TabTitleText>}
-                    onPointerEnterCapture={undefined}
-                    onPointerLeaveCapture={undefined}
+                    {...({} as any)}
                   >
                     <TagsList
                       organization={organization}
@@ -249,8 +263,7 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.TagHistory}
                     title={<TabTitleText>Tag history</TabTitleText>}
-                    onPointerEnterCapture={undefined}
-                    onPointerLeaveCapture={undefined}
+                    {...({} as any)}
                   >
                     <TagHistory
                       org={organization}
@@ -261,8 +274,7 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.Logs}
                     title={<TabTitleText>Logs</TabTitleText>}
-                    onPointerEnterCapture={undefined}
-                    onPointerLeaveCapture={undefined}
+                    {...({} as any)}
                   >
                     <UsageLogs
                       organization={organization}
@@ -277,20 +289,35 @@ export default function RepositoryDetails() {
                     isHidden={
                       !config?.features?.REPO_MIRROR || !repoDetails?.can_admin
                     }
-                    onPointerEnterCapture={undefined}
-                    onPointerLeaveCapture={undefined}
+                    {...({} as any)}
                   >
                     {repoDetails?.state !== 'MIRROR' ? (
                       <div>
                         This repository&apos;s state is{' '}
-                        <strong>{repoDetails?.state}</strong>. Use the{' '}
-                        <a
-                          href={`/repository/${repoDetails?.namespace}/${repoDetails?.name}?tab=settings`}
-                        >
-                          Settings tab
-                        </a>{' '}
-                        and change it to <strong>Mirror</strong> to manage its
-                        mirroring configuration.
+                        <strong>{repoDetails?.state}</strong>.{' '}
+                        {repoDetails?.state === 'ORG_MIRROR' ? (
+                          <>
+                            Mirroring is managed at the organization level. Use
+                            the{' '}
+                            <Link
+                              to={`/organization/${repoDetails?.namespace}?tab=Mirroring`}
+                            >
+                              organization mirroring settings
+                            </Link>{' '}
+                            to manage mirroring configuration.
+                          </>
+                        ) : (
+                          <>
+                            Use the{' '}
+                            <Link
+                              to={`/repository/${repoDetails?.namespace}/${repoDetails?.name}?tab=settings`}
+                            >
+                              Settings tab
+                            </Link>{' '}
+                            and change it to <strong>Mirror</strong> to manage
+                            its mirroring configuration.
+                          </>
+                        )}
                       </div>
                     ) : (
                       <Mirroring
@@ -307,8 +334,7 @@ export default function RepositoryDetails() {
                       repoDetails?.state !== 'NORMAL' ||
                       (!repoDetails?.can_write && !repoDetails?.can_admin)
                     }
-                    onPointerEnterCapture={undefined}
-                    onPointerLeaveCapture={undefined}
+                    {...({} as any)}
                   >
                     <Builds
                       org={organization}
@@ -321,8 +347,7 @@ export default function RepositoryDetails() {
                     eventKey={TabIndex.Settings}
                     title={<TabTitleText>Settings</TabTitleText>}
                     isHidden={!repoDetails?.can_admin}
-                    onPointerEnterCapture={undefined}
-                    onPointerLeaveCapture={undefined}
+                    {...({} as any)}
                   >
                     <Settings
                       org={organization}

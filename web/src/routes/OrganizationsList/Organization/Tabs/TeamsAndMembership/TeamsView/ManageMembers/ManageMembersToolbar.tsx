@@ -32,7 +32,7 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             searchState={props.search}
             setSearchState={props.setSearch}
           />
-          <Flex className="pf-v5-u-mr-md">
+          <Flex className="pf-v6-u-mr-md">
             <FlexItem>
               <SearchInput
                 id="team-member-search-input"
@@ -42,11 +42,7 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             </FlexItem>
           </Flex>
           <Flex>
-            <Conditional
-              if={
-                props.isAdmin && !props.isReadOnly && !props.pageInReadOnlyMode
-              }
-            >
+            <Conditional if={props.isAdmin && !props.isReadOnly}>
               <FlexItem>
                 <Button
                   onClick={() =>
@@ -64,18 +60,20 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             <Conditional
               if={
                 props.displaySyncDirectory &&
-                props.teamCanSync?.service == 'oidc'
+                ['ldap', 'keystone', 'oidc'].includes(
+                  props.teamCanSync?.service || '',
+                )
               }
             >
               <FlexItem>
-                <Button onClick={props.toggleOIDCTeamSyncModal}>
+                <Button onClick={props.toggleDirectoryTeamSyncModal}>
                   Enable Team Sync
                 </Button>
               </FlexItem>
             </Conditional>
 
             <Conditional
-              if={props.pageInReadOnlyMode && props.teamCanSync != null}
+              if={props.pageInReadOnlyMode && props.teamCanSync !== null}
             >
               <FlexItem>
                 <Button onClick={props.toggleRemoveTeamSyncModal}>
@@ -85,7 +83,7 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             </Conditional>
           </Flex>
           <ToolbarPagination
-            itemsList={props.paginatedItems}
+            total={props.totalItems}
             perPage={props.perPage}
             page={props.page}
             setPage={props.setPage}
@@ -96,7 +94,7 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
       {props.children}
       <PanelFooter>
         <ToolbarPagination
-          itemsList={props.paginatedItems}
+          total={props.totalItems}
           perPage={props.perPage}
           page={props.page}
           setPage={props.setPage}
@@ -122,6 +120,7 @@ interface ManageMembersToolbarProps {
   setPage: (page: number) => void;
   perPage: number;
   setPerPage: (perPage: number) => void;
+  totalItems: number;
   searchOptions: string[];
   search: SearchState;
   setSearch: (search: SearchState) => void;
@@ -130,8 +129,8 @@ interface ManageMembersToolbarProps {
   isReadOnly: boolean;
   isAdmin: boolean;
   displaySyncDirectory: boolean;
-  isOIDCTeamSyncModalOpen: boolean;
-  toggleOIDCTeamSyncModal: () => void;
+  isDirectoryTeamSyncModalOpen: boolean;
+  toggleDirectoryTeamSyncModal: () => void;
   teamCanSync?: ITeamMembersCanSyncResponse;
   pageInReadOnlyMode: boolean;
   isRemoveTeamSyncModalOpen: boolean;

@@ -13,20 +13,21 @@ import {
   ButtonVariant,
   ActionGroup,
   Divider,
-  Text,
-  TextContent,
+  Content,
   SelectOption,
   SelectGroup,
   Spinner,
 } from '@patternfly/react-core';
-import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
+import {DesktopIcon} from '@patternfly/react-icons';
 import {useRepository} from 'src/hooks/UseRepository';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {useUI} from 'src/contexts/UIContext';
 import FormError from 'src/components/errors/FormError';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
 import {useFetchTeams} from 'src/hooks/UseTeams';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {Entity} from 'src/resources/UserResource';
 import {useQueryClient} from '@tanstack/react-query';
+import {Link} from 'react-router-dom';
 import './Mirroring.css';
 
 interface MirroringProps {
@@ -40,7 +41,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     errorLoadingRepoDetails,
     isLoading: isLoadingRepo,
   } = useRepository(namespace, repoName);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const queryClient = useQueryClient();
 
   // Initialize form hook
@@ -64,36 +65,24 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   // Fetch robot accounts and teams
   const {robots} = useFetchRobotAccounts(namespace);
   const {teams} = useFetchTeams(namespace);
+  const quayConfig = useQuayConfig();
+  const robotsDisallowed = quayConfig?.config?.ROBOTS_DISALLOW === true;
 
   // Create dropdown options
   const robotOptions = [
     <React.Fragment key="dropdown-options">
-      <SelectOption
-        key="create-team"
-        component="button"
-        onClick={() => formHook.setIsCreateTeamModalOpen(true)}
-      >
-        <UsersIcon /> &nbsp; Create team
-      </SelectOption>
-      <SelectOption
-        key="create-robot"
-        component="button"
-        onClick={() => formHook.setIsCreateRobotModalOpen(true)}
-      >
-        <DesktopIcon /> &nbsp; Create robot account
-      </SelectOption>
-      <Divider component="li" key="divider" />
-      <SelectGroup label="Teams" key="teams">
-        {teams?.map(({name}) => (
+      {!robotsDisallowed && (
+        <>
           <SelectOption
-            key={name}
-            value={name}
-            onClick={() => formHook.handleTeamSelect(name)}
+            key="create-robot"
+            component="button"
+            onClick={() => formHook.setIsCreateRobotModalOpen(true)}
           >
-            {name}
+            <DesktopIcon /> &nbsp; Create robot account
           </SelectOption>
-        ))}
-      </SelectGroup>
+          <Divider component="li" key="divider" />
+        </>
+      )}
       <SelectGroup label="Robot accounts" key="robot-accounts">
         {robots?.map(({name}) => (
           <SelectOption
@@ -128,19 +117,32 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   }
 
   if (!repoDetails) {
-    return <Text>Repository not found</Text>;
+    return <Content component="p">Repository not found</Content>;
   }
 
   if (repoDetails.state !== 'MIRROR') {
     return (
-      <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
-        <TextContent>
-          <Text>
+      <div className="pf-v6-u-max-width-lg pf-v6-u-p-md">
+        <Content>
+          <Content component="p">
             This repository&apos;s state is <strong>{repoDetails.state}</strong>
-            . Use the settings tab and change it to <strong>Mirror</strong> to
-            manage its mirroring configuration.
-          </Text>
-        </TextContent>
+            .{' '}
+            {repoDetails.state === 'ORG_MIRROR' ? (
+              <>
+                Mirroring is managed at the organization level. Use the{' '}
+                <Link to={`/organization/${namespace}?tab=Mirroring`}>
+                  organization mirroring settings
+                </Link>{' '}
+                to manage mirroring configuration.
+              </>
+            ) : (
+              <>
+                Use the settings tab and change it to <strong>Mirror</strong> to
+                manage its mirroring configuration.
+              </>
+            )}
+          </Content>
+        </Content>
       </div>
     );
   }
@@ -156,7 +158,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   }
 
   return (
-    <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
+    <div className="pf-v6-u-max-width-lg pf-v6-u-p-md">
       <Form
         isWidthLimited
         data-testid="mirror-form"
@@ -167,7 +169,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           repoName={repoName}
           isConfigured={!!configHook.config}
         />
-        <Divider className="pf-v5-u-mt-sm" />
+        <Divider className="pf-v6-u-mt-sm" />
         <MirroringConfiguration
           control={formHook.control}
           errors={formHook.errors}
@@ -184,6 +186,10 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           robotOptions={robotOptions}
           setConfig={configHook.setConfig}
           addAlert={addAlert}
+          architectureFilter={formHook.formValues.architectureFilter}
+          setArchitectureFilter={(archs) =>
+            formHook.setValue('architectureFilter', archs, {shouldDirty: true})
+          }
         />
         <MirroringCredentials
           control={formHook.control}
@@ -205,7 +211,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         <ActionGroup>
           <Button
             variant={ButtonVariant.primary}
-            className="pf-v5-u-display-block pf-v5-u-mx-auto"
+            className="pf-v6-u-display-block pf-v6-u-mx-auto"
             type="button"
             onClick={() => formHook.onSubmit(formHook.formValues)}
             isDisabled={

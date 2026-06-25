@@ -1,5 +1,6 @@
 import {useState, useEffect} from 'react';
 import {
+  MirroringConfig,
   MirroringConfigResponse,
   getMirrorConfig,
   createMirrorConfig,
@@ -57,6 +58,7 @@ export const useMirroringConfig = (
           unsignedImages:
             response.external_registry_config?.unsigned_images ?? false,
           skopeoTimeoutInterval: response.skopeo_timeout_interval || 300,
+          architectureFilter: response.architecture_filter || [],
         });
 
         // Set selected robot if there's one configured
@@ -101,17 +103,15 @@ export const useMirroringConfig = (
       .map((tag) => tag.trim())
       .filter((tag) => tag.length > 0);
 
-    const mirrorConfig = {
+    const mirrorConfig: Partial<MirroringConfig> = {
       is_enabled: data.isEnabled,
       external_reference: data.externalReference,
-      external_registry_username: data.username || null,
-      external_registry_password: data.password || null,
       sync_start_date: data.syncStartDate
         ? timestampToISO(timestampFromISO(data.syncStartDate))
         : timestampToISO(Math.floor(Date.now() / 1000)),
       sync_interval: convertToSeconds(Number(data.syncValue), data.syncUnit),
       robot_username: data.robotUsername,
-      skopeo_timeout_interval: data.skopeoTimeoutInterval,
+      skopeo_timeout_interval: data.skopeoTimeoutInterval ?? undefined,
       external_registry_config: {
         verify_tls: data.verifyTls,
         unsigned_images: data.unsignedImages,
@@ -125,7 +125,21 @@ export const useMirroringConfig = (
         rule_kind: 'tag_glob_csv',
         rule_value: tagPatterns,
       },
+      architecture_filter:
+        data.architectureFilter.length > 0 ? data.architectureFilter : null,
     };
+
+    // Only include credentials when the user explicitly changed them.
+    // The password field is never pre-populated from the API (for security),
+    // so a non-empty value means the user is actively setting new credentials.
+    if (!config || data.password) {
+      mirrorConfig.external_registry_username = data.username || null;
+      mirrorConfig.external_registry_password = data.password || null;
+    } else if (data.username !== (config.external_registry_username ?? '')) {
+      // Username-only change: backend has a dedicated handler that preserves
+      // the existing password (change_username vs change_credentials).
+      mirrorConfig.external_registry_username = data.username || null;
+    }
 
     if (config) {
       await updateMirrorConfig(namespace, repoName, mirrorConfig);

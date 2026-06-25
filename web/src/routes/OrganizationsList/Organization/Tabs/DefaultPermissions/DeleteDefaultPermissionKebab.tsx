@@ -7,8 +7,7 @@ import {
   MenuToggleElement,
 } from '@patternfly/react-core';
 import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {
   IDefaultPermission,
   useDeleteDefaultPermission,
@@ -18,7 +17,7 @@ export default function DeleteDefaultPermissionKebab(
   props: DefaultPermissionsDropdownProps,
 ) {
   const [isOpen, setIsOpen] = useState(false);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {
     removeDefaultPermission,

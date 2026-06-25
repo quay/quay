@@ -6,6 +6,10 @@ from prometheus_client import Gauge
 from app import app
 from data import model
 from data.database import UseThenDisconnect
+from data.model.org_mirror import (
+    get_enabled_org_mirror_config_count,
+    get_org_mirror_config_count,
+)
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
@@ -17,6 +21,12 @@ repository_rows = Gauge("quay_repository_rows", "number of repositories in the d
 user_rows = Gauge("quay_user_rows", "number of users in the database")
 org_rows = Gauge("quay_org_rows", "number of organizations in the database")
 robot_rows = Gauge("quay_robot_rows", "number of robot accounts in the database")
+org_mirror_configs_total = Gauge(
+    "quay_org_mirrors_total", "number of org-level mirror configurations in the database"
+)
+org_mirror_configs_enabled = Gauge(
+    "quay_org_mirrors_enabled", "number of enabled org-level mirror configurations in the database"
+)
 
 
 WORKER_FREQUENCY = app.config.get("GLOBAL_PROMETHEUS_STATS_FREQUENCY", 60 * 60)
@@ -63,6 +73,8 @@ class GlobalPrometheusStatsWorker(Worker):
             user_rows.set(get_active_user_count())
             org_rows.set(get_active_org_count())
             robot_rows.set(get_robot_count())
+            org_mirror_configs_total.set(get_org_mirror_config_count())
+            org_mirror_configs_enabled.set(get_enabled_org_mirror_config_count())
 
 
 def create_gunicorn_worker():

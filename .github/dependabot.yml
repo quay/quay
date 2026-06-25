@@ -1,24 +1,19 @@
 version: 2
 updates:
-  - package-ecosystem: pip
-    directory: /
+  - package-ecosystem: "github-actions" # zizmor: ignore[dependabot-cooldown]
+    directory: "/"
     schedule:
-      interval: weekly
+      interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 10
-  - package-ecosystem: gomod
-    directory: /config-tool
-    schedule:
-      interval: weekly
+    labels:
+      - "dependencies"
+      - "area/ci"
+    commit-message:
+      prefix: "NO-ISSUE: chore(ci)"
     groups:
-      k8s:
+      github-actions:
         patterns:
-          - k8s.io/*
-          - sigs.k8s.io/*
-  - package-ecosystem: npm
-    directory: /config-tool/pkg/lib/editor
-    schedule:
-      interval: weekly
-  - package-ecosystem: npm
-    directory: /web
-    schedule:
-      interval: weekly
+          - "actions/*"
+          - "docker/*"
+          - "github/*"

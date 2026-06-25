@@ -48,8 +48,7 @@ export default function TagHistory(props: TagHistoryProps) {
     startTime?.getTime(),
     endTime?.getTime(),
   ]);
-  const isReadOnlyMode: boolean =
-    quayConfig?.config?.REGISTRY_STATE === 'readonly';
+  const isReadOnlyMode: boolean = quayConfig?.registry_state === 'readonly';
 
   const {
     paginatedData: paginatedTags,

@@ -5,12 +5,15 @@ on:
     branches:
       - master
 
+permissions:
+  contents: write
+
 jobs:
   sync_master_to_release:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
 
@@ -20,8 +23,10 @@ jobs:
           git config user.email "github-actions-bot@users.noreply.github.com"
 
       - name: Merge master into release
+        env:
+          BRANCH_NAME: ${{ vars.BRANCH_SYNC_TARGET }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH_NAME="${{ vars.BRANCH_SYNC_TARGET }}"
           if [ -z "$BRANCH_NAME" ]; then echo "BRANCH_SYNC_TARGET variable is not set" && exit 1; fi
           echo "Syncing master to $BRANCH_NAME"
           git checkout master
@@ -37,5 +42,3 @@ jobs:
           git push origin $BRANCH_NAME
 
           echo "Merged master ($MASTER_COMMIT) into $BRANCH_NAME ($RELEASE_COMMIT)"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

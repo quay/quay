@@ -33,12 +33,20 @@ export interface RepositoryCreationResponse {
 export interface IQuotaReport {
   quota_bytes: number;
   configured_quota: number;
+  percent_consumed?: number; // may come from API
+  backfill_status?: 'waiting' | 'running' | null; // for org-level display
+}
+
+export function isNonNormalState(state: string | null | undefined): boolean {
+  return state != null && state !== 'NORMAL';
 }
 
 export enum RepositoryState {
   NORMAL = 'NORMAL',
   READ_ONLY = 'READ_ONLY',
   MIRROR = 'MIRROR',
+  ORG_MIRROR = 'ORG_MIRROR',
+  MARKED_FOR_DELETION = 'MARKED_FOR_DELETION',
 }
 
 export interface FetchAllReposOptions {
@@ -142,6 +150,56 @@ export async function fetchRepositories() {
   return response.data?.repositories as IRepository[];
 }
 
+/**
+ * Result from fetching all superuser repos, including whether results were truncated.
+ */
+export interface SuperUserReposResult {
+  repos: IRepository[];
+  truncated: boolean;
+}
+
+const MAX_SUPERUSER_REPO_PAGES = 100; // 10,000 repos at 100/page
+
+/**
+ * Fetch all repositories across the registry as a superuser.
+ * Uses a single paginated API call with public=true (no namespace filter).
+ * The backend returns all repos (public + private) when the caller is a superuser.
+ * Stops after MAX_SUPERUSER_REPO_PAGES to prevent unbounded memory growth.
+ */
+export async function fetchAllReposAsSuperUser(
+  options: FetchRepositoriesOptions = {},
+  _pageCount = 0,
+): Promise<SuperUserReposResult> {
+  const {signal, next_page_token = null, onPartialResult} = options;
+  const url = next_page_token
+    ? `/api/v1/repository?next_page=${next_page_token}&last_modified=true&public=true`
+    : `/api/v1/repository?last_modified=true&public=true`;
+  const response: AxiosResponse = await axios.get(url, {signal});
+  assertHttpCode(response.status, 200);
+
+  const repos = response.data?.repositories as IRepository[];
+  if (onPartialResult) {
+    onPartialResult(repos);
+  }
+
+  if (response.data?.next_page) {
+    if (_pageCount + 1 >= MAX_SUPERUSER_REPO_PAGES) {
+      return {repos, truncated: true};
+    }
+    const more = await fetchAllReposAsSuperUser(
+      {signal, next_page_token: response.data.next_page, onPartialResult},
+      _pageCount + 1,
+    );
+    return {repos: repos.concat(more.repos), truncated: more.truncated};
+  }
+  return {repos, truncated: false};
+}
+
+export interface RepositoryStats {
+  date: string;
+  count: number;
+}
+
 export interface RepositoryDetails {
   can_admin: boolean;
   can_write: boolean;
@@ -157,11 +215,12 @@ export interface RepositoryDetails {
   status_token: string | null;
   tag_expiration_s: number | null;
   trust_enabled: boolean;
+  stats?: RepositoryStats[];
 }
 
 export async function fetchRepositoryDetails(org: string, repo: string) {
   const response: AxiosResponse<RepositoryDetails> = await axios.get(
-    `/api/v1/repository/${org}/${repo}?includeStats=false&includeTags=false`,
+    `/api/v1/repository/${org}/${repo}?includeStats=true&includeTags=false`,
   );
   assertHttpCode(response.status, 200);
   return response.data;

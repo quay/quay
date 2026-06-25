@@ -7,7 +7,14 @@ from mock import patch
 from auth.scopes import READ_REPO
 from auth.test.mock_oidc_server import MOCK_PUBLIC_KEY, generate_mock_oidc_token
 from data import model
-from data.database import DeletedNamespace, EmailConfirmation, FederatedLogin, User
+from data.database import (
+    DeletedNamespace,
+    EmailConfirmation,
+    FederatedLogin,
+    Repository,
+    RepositoryState,
+    User,
+)
 from data.fields import Credential
 from data.model.notification import create_notification
 from data.model.oauth import (
@@ -30,10 +37,12 @@ from data.model.user import (
     create_user_noverify,
     delete_namespace_via_marker,
     delete_robot,
+    delete_user,
     get_active_namespaces,
     get_active_users,
     get_estimated_robot_count,
     get_matching_users,
+    get_namespace_users_by_usernames,
     get_public_repo_count,
     get_pull_credentials,
     get_quay_user_from_federated_login_name,
@@ -273,6 +282,49 @@ def test_delete_namespace_via_marker(initialized_db):
         DeletedNamespace.get(id=marker_id)
 
 
+def test_delete_namespace_bulk_state_update(initialized_db):
+    """Repos must be bulk-marked MARKED_FOR_DELETION before purge_repository is called."""
+    user = create_user_noverify("foobar", "foo@example.com", email_required=False)
+    repo_ids = set()
+    for name in ("repo1", "repo2", "repo3", "repo4", "repo5"):
+        repo_ids.add(create_repository("foobar", name, user).id)
+
+    seen_states = []
+
+    real_purge = model.gc.purge_repository
+
+    def recording_purge(repo, force=False):
+        seen_states.append((repo.id, repo.state))
+        return real_purge(repo, force=force)
+
+    with patch("data.model.user.gc.purge_repository", side_effect=recording_purge):
+        result = delete_user(user, [])
+
+    assert result is True
+    assert len(seen_states) == 5
+    for repo_id, state in seen_states:
+        assert (
+            state == RepositoryState.MARKED_FOR_DELETION
+        ), f"repo {repo_id} was not pre-marked; purge_repository saw state {state}"
+
+
+def test_delete_namespace_with_mixed_repo_states(initialized_db):
+    """delete_user succeeds when some repos are already MARKED_FOR_DELETION."""
+    user = create_user_noverify("foobar", "foo@example.com", email_required=False)
+    repo_normal = create_repository("foobar", "normal", user)
+    repo_already = create_repository("foobar", "already_marked", user)
+
+    Repository.update(state=RepositoryState.MARKED_FOR_DELETION).where(
+        Repository.id == repo_already.id
+    ).execute()
+
+    result = delete_user(user, [])
+    assert result is True
+
+    with pytest.raises(User.DoesNotExist):
+        User.get(id=user.id)
+
+
 def test_delete_robot(initialized_db):
     # Create a robot account.
     user = create_user_noverify("foobar", "foo@example.com", email_required=False)
@@ -397,3 +449,28 @@ def test_get_active_namespaces(initialized_db):
     assert num_active_users > 0
     assert num_organizations > 0
     assert active_namespaces == num_active_users + num_organizations
+
+
+def test_get_namespace_users_by_usernames(initialized_db):
+    # Test with existing users
+    result = get_namespace_users_by_usernames(["devtable", "public"])
+    assert "devtable" in result
+    assert "public" in result
+    assert result["devtable"] is not None
+    assert result["devtable"].username == "devtable"
+    assert result["public"] is not None
+    assert result["public"].username == "public"
+
+    # Test with non-existent user
+    result = get_namespace_users_by_usernames(["devtable", "nonexistent_user_xyz"])
+    assert result["devtable"] is not None
+    assert result["nonexistent_user_xyz"] is None
+
+    # Test with empty list
+    result = get_namespace_users_by_usernames([])
+    assert result == {}
+
+    # Test with only non-existent users
+    result = get_namespace_users_by_usernames(["nonexistent1", "nonexistent2"])
+    assert result["nonexistent1"] is None
+    assert result["nonexistent2"] is None

@@ -2,8 +2,6 @@ import {
   Button,
   EmptyState,
   EmptyStateBody,
-  EmptyStateIcon,
-  EmptyStateHeader,
   EmptyStateFooter,
   Icon,
 } from '@patternfly/react-core';
@@ -15,12 +13,12 @@ import {
 
 export function QueuedState() {
   return (
-    <EmptyState variant="full">
-      <EmptyStateHeader
-        titleText="Security scan is currently queued."
-        icon={<EmptyStateIcon icon={PauseCircleIcon} />}
-        headingLevel="h1"
-      />
+    <EmptyState
+      headingLevel="h1"
+      icon={PauseCircleIcon}
+      titleText="Security scan is currently queued."
+      variant="full"
+    >
       <EmptyStateBody>Refresh page for updates in scan status.</EmptyStateBody>
       <EmptyStateFooter>
         <Button title="Home" onClick={() => window.location.reload()}>
@@ -38,12 +36,12 @@ export function FailedState() {
     </Icon>
   );
   return (
-    <EmptyState variant="full">
-      <EmptyStateHeader
-        titleText="Security scan has failed."
-        icon={<EmptyStateIcon icon={RedExclamationIcon} />}
-        headingLevel="h1"
-      />
+    <EmptyState
+      headingLevel="h1"
+      icon={RedExclamationIcon}
+      titleText="Security scan has failed."
+      variant="full"
+    >
       <EmptyStateBody>
         The scan could not be completed due to error.
       </EmptyStateBody>
@@ -53,12 +51,12 @@ export function FailedState() {
 
 export function UnsupportedState() {
   return (
-    <EmptyState variant="full">
-      <EmptyStateHeader
-        titleText="Security scan is not supported."
-        icon={<EmptyStateIcon icon={BanIcon} />}
-        headingLevel="h1"
-      />
+    <EmptyState
+      headingLevel="h1"
+      icon={BanIcon}
+      titleText="Security scan is not supported."
+      variant="full"
+    >
       <EmptyStateBody>
         Image does not have content the scanner recognizes.
       </EmptyStateBody>

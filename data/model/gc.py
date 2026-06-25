@@ -6,7 +6,6 @@ from peewee import IntegrityError, fn
 import features
 from data.database import (
     AccessToken,
-    ApprTag,
     BlobUpload,
     DeletedRepository,
     ImageStorage,
@@ -17,6 +16,7 @@ from data.database import (
     ManifestLabel,
     ManifestPullStatistics,
     ManifestSecurityStatus,
+    OrgMirrorRepository,
     QuotaRepositorySize,
     RepoMirrorConfig,
     Repository,
@@ -81,26 +81,16 @@ def purge_repository(repo, force=False):
     assert repo.state == RepositoryState.MARKED_FOR_DELETION or force
 
     # Update the repo state to ensure nothing else is written to it.
-    repo.state = RepositoryState.MARKED_FOR_DELETION
-    repo.save()
+    # Skip the individual save when the state is already set (e.g. after a bulk
+    # UPDATE from delete_user()) to avoid N per-repo round-trips.
+    if repo.state != RepositoryState.MARKED_FOR_DELETION:
+        repo.state = RepositoryState.MARKED_FOR_DELETION
+        repo.save()
 
-    # Delete the repository of all Appr-referenced entries.
-    # Note that new-model Tag's must be deleted in *two* passes, as they can reference parent tags,
-    # and MySQL is... particular... about such relationships when deleting.
-    if repo.kind.name == "application":
-        fst_pass = (
-            ApprTag.delete()
-            .where(ApprTag.repository == repo, ~(ApprTag.linked_tag >> None))
-            .execute()
-        )
-        snd_pass = ApprTag.delete().where(ApprTag.repository == repo).execute()
-        gc_table_rows_deleted.labels(table="ApprTag").inc(fst_pass + snd_pass)
-    else:
-        # GC to remove the images and storage.
-        _purge_repository_contents(repo)
+    # GC to remove the images and storage.
+    _purge_repository_contents(repo)
 
     # Ensure there are no additional tags, manifests, images or blobs in the repository.
-    assert ApprTag.select().where(ApprTag.repository == repo).count() == 0
     assert Tag.select().where(Tag.repository == repo).count() == 0
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
@@ -128,6 +118,7 @@ def purge_repository(repo, force=False):
     _chunk_delete_all(repo, RepositoryNotification, force=force)
     _chunk_delete_all(repo, BlobUpload, force=force)
     _chunk_delete_all(repo, RepoMirrorConfig, force=force)
+    _chunk_delete_all(repo, OrgMirrorRepository, force=force)
     _chunk_delete_all(repo, RepositoryAuthorizedEmail, force=force)
 
     # Delete pull statistics for the repository.
@@ -194,6 +185,14 @@ def _purge_repository_contents(repo):
     Purges all the contents of a repository, removing all of its tags, manifests and images.
     """
     logger.debug("Purging repository %s", repo)
+
+    # We need to break manifest child-parent relationship here. Child images contain ids that are lower than
+    # their parents. If only child images are picked up during chunking, they will not be able to be deleted
+    # because their parent's entry in ManifestChild table will continue to exist. This will cause an endless
+    # loop of constantly enqueueing the same manifests over and over.
+    # The operation is safe because the repository is already marked for deletion and cannot be modified in
+    # any way.
+    ManifestChild.delete().where(ManifestChild.repository == repo).execute()
 
     # Purge via all the tags.
     while True:
@@ -302,9 +301,31 @@ def garbage_collect_repo(repo):
 
 def _run_garbage_collection(context):
     """
-    Runs the garbage collection loop, deleting manifests, images, labels and blobs in an iterative
-    fashion.
+    Runs garbage collection in two phases: first discovers all manifests, blobs and labels
+    in the manifest tree via BFS, then deletes them iteratively. Labels are deleted in bulk.
     """
+
+    # Phase 1: Walk the manifest tree level-by-level, collecting blobs and labels.
+    discovered = set()
+    to_discover = set(context.manifest_ids)
+
+    while to_discover:
+        batch = list(to_discover)
+        discovered.update(to_discover)
+
+        for manifest_blob in ManifestBlob.select().where(ManifestBlob.manifest << batch):
+            context.add_blob_id(manifest_blob.blob_id)
+
+        for manifest_label in ManifestLabel.select().where(ManifestLabel.manifest << batch):
+            context.add_label_id(manifest_label.label_id)
+
+        to_discover = set()
+        for connector in ManifestChild.select().where(ManifestChild.manifest << batch):
+            if connector.child_manifest_id not in discovered:
+                context.add_manifest_id(connector.child_manifest_id)
+                to_discover.add(connector.child_manifest_id)
+
+    # Phase 2: Delete manifests, labels and blobs.
     has_changes = True
 
     while has_changes:
@@ -316,9 +337,8 @@ def _run_garbage_collection(context):
                 has_changes = True
 
         # GC all labels encountered.
-        for label_id in list(context.label_ids):
-            if _garbage_collect_label(label_id, context):
-                has_changes = True
+        if _bulk_garbage_collect_labels(context):
+            has_changes = True
 
         # GC any blobs encountered.
         if context.blob_ids:
@@ -335,6 +355,22 @@ def _purge_oci_manifest(manifest, context):
 
 def _purge_oci_tag(tag, context, allow_non_expired=False):
     assert tag.repository_id == context.repository.id
+
+    # Safety: never purge immutable tags during GC when they should not expire
+    # allow_non_expired=True is used during repository deletion, which must always succeed
+    if (
+        not allow_non_expired
+        and features.IMMUTABLE_TAGS
+        and tag.immutable
+        and not config.app_config.get("FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE", False)
+    ):
+        logger.warning(
+            "Skipping GC of immutable tag %s (id=%s) in repository %s",
+            tag.name,
+            tag.id,
+            context.repository.id,
+        )
+        return False
 
     if not allow_non_expired:
         assert tag.lifetime_end_ms is not None
@@ -355,10 +391,21 @@ def _purge_oci_tag(tag, context, allow_non_expired=False):
         if reloaded_tag.lifetime_end_ms != tag.lifetime_end_ms:
             return False
 
+        # Delete pull statistics for the tag.
+        deleted_tag_pull_stats = (
+            TagPullStatistics.delete()
+            .where(
+                TagPullStatistics.repository == context.repository,
+                TagPullStatistics.tag_name == tag.name,
+            )
+            .execute()
+        )
+
         # Delete the tag.
         delete_tag_notifications_for_tag(tag)
         tag.delete_instance()
 
+    gc_table_rows_deleted.labels(table="TagPullStatistics").inc(deleted_tag_pull_stats)
     gc_table_rows_deleted.labels(table="Tag").inc()
 
 
@@ -395,13 +442,20 @@ def _check_manifest_used(manifest_id):
         # Check if the manifest is the subject of another manifest.
         # Note: Manifest referrers with a valid subject field are created a non expiring
         # hidden tag, in order to prevent GC from inadvertently removing a referrer.
-        try:
-            Manifest.select().join(Referrer, on=(Manifest.digest == Referrer.subject)).where(
-                Manifest.id == manifest_id
-            ).get()
+        if (
+            Manifest.select()
+            .where(
+                Manifest.id == manifest_id,
+                fn.EXISTS(
+                    Referrer.select().where(
+                        Referrer.subject == Manifest.digest,
+                        Referrer.repository == Manifest.repository,
+                    )
+                ),
+            )
+            .exists()
+        ):
             return True
-        except Manifest.DoesNotExist:
-            pass
 
     return False
 
@@ -412,18 +466,6 @@ def _garbage_collect_manifest(manifest_id, context):
     # Make sure the manifest isn't referenced.
     if _check_manifest_used(manifest_id):
         return False
-
-    # Add the manifest's blobs to the context to be GCed.
-    for manifest_blob in ManifestBlob.select().where(ManifestBlob.manifest == manifest_id):
-        context.add_blob_id(manifest_blob.blob_id)
-
-    # Add child manifests to be GCed.
-    for connector in ManifestChild.select().where(ManifestChild.manifest == manifest_id):
-        context.add_manifest_id(connector.child_manifest_id)
-
-    # Add the labels to be GCed.
-    for manifest_label in ManifestLabel.select().where(ManifestLabel.manifest == manifest_id):
-        context.add_label_id(manifest_label.label_id)
 
     # Delete the manifest.
     with db_transaction():
@@ -492,6 +534,16 @@ def _garbage_collect_manifest(manifest_id, context):
             .execute()
         )
 
+        # Delete pull statistics for the manifest.
+        deleted_manifest_pull_stats = (
+            ManifestPullStatistics.delete()
+            .where(
+                ManifestPullStatistics.repository == context.repository,
+                ManifestPullStatistics.manifest_digest == manifest.digest,
+            )
+            .execute()
+        )
+
         # Delete the manifest.
         manifest.delete_instance()
 
@@ -509,37 +561,38 @@ def _garbage_collect_manifest(manifest_id, context):
     gc_table_rows_deleted.labels(table="ManifestChild").inc(deleted_manifest_child)
     gc_table_rows_deleted.labels(table="ManifestBlob").inc(deleted_manifest_blob)
     gc_table_rows_deleted.labels(table="ManifestSecurityStatus").inc(deleted_manifest_security)
+    gc_table_rows_deleted.labels(table="ManifestPullStatistics").inc(deleted_manifest_pull_stats)
     gc_table_rows_deleted.labels(table="Manifest").inc()
 
     return True
 
 
-def _check_label_used(label_id):
-    assert label_id is not None
+def _bulk_garbage_collect_labels(context):
+    """
+    Bulk deletes all labels which are part of a specific context.
+    """
+    label_ids = set(context.label_ids)
+    if not label_ids:
+        return False
+
+    deleted = 0
 
     with db_transaction():
-        # Check if the label is referenced by another manifest or tag manifest.
-        try:
-            ManifestLabel.select().where(ManifestLabel.label == label_id).get()
-            return True
-        except ManifestLabel.DoesNotExist:
-            pass
+        referenced = set(
+            ManifestLabel.select(ManifestLabel.label)
+            .where(ManifestLabel.label << label_ids)
+            .tuples()
+        )
+        referenced_ids = {r[0] for r in referenced}
+        unreferenced_ids = label_ids - referenced_ids
 
-    return False
-
-
-def _garbage_collect_label(label_id, context):
-    assert label_id is not None
-
-    # We can now delete the label.
-    with db_transaction():
-        if _check_label_used(label_id):
+        if not unreferenced_ids:
             return False
 
-        result = Label.delete().where(Label.id == label_id).execute() == 1
+        deleted = Label.delete().where(Label.id << list(unreferenced_ids)).execute()
 
-    if result:
+    for label_id in unreferenced_ids:
         context.mark_label_id_removed(label_id)
-        gc_table_rows_deleted.labels(table="Label").inc(result)
+    gc_table_rows_deleted.labels(table="Label").inc(deleted)
 
-    return result
+    return deleted > 0

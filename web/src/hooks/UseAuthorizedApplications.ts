@@ -98,6 +98,22 @@ export function useAuthorizedApplications() {
     return `${window.location.origin}/oauth/authorize?${params.toString()}`;
   };
 
+  const fetchAuthorizationData = async (app: AuthorizedApp) => {
+    const scopes = app.scopes.map((scope) => scope.scope).join(' ');
+    const params = new URLSearchParams({
+      response_type: app.responseType || 'token',
+      client_id: app.application.clientId,
+      scope: scopes,
+      redirect_uri:
+        app.redirectUri || `${window.location.origin}/oauth/localapp`,
+      assignment_uuid: app.uuid,
+      format: 'json',
+    });
+    const response = await axios.get(`/oauth/authorize?${params.toString()}`);
+    assertHttpCode(response.status, 200);
+    return response.data;
+  };
+
   return {
     authorizedApps,
     assignedApps,
@@ -106,6 +122,7 @@ export function useAuthorizedApplications() {
     revokeAuthorization: revokeMutation.mutate,
     deleteAssignedAuthorization: deleteAssignedMutation.mutate,
     getAuthorizationUrl,
+    fetchAuthorizationData,
     isRevoking: revokeMutation.isLoading,
     isDeletingAssigned: deleteAssignedMutation.isLoading,
   };

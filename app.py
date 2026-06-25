@@ -54,11 +54,14 @@ from util.config.configutil import generate_secret_key
 from util.greenlet_tracing import enable_tracing
 from util.ipresolver import IPResolver
 from util.label_validator import LabelValidator
+from util.locking import GlobalLock
 from util.log import filter_logs
 from util.marketplace import MarketplaceSubscriptionApi, MarketplaceUserApi
 from util.metrics.otel import init_exporter
 from util.metrics.prometheus import PrometheusPlugin
 from util.names import urn_generator
+from util.profiling.pyroscope import init_pyroscope
+from util.pullmetrics import PullMetricsBuilderModule
 from util.repomirror.api import RepoMirrorAPI
 from util.saas.analytics import Analytics
 from util.saas.exceptionlog import Sentry
@@ -114,10 +117,23 @@ app.config.update(environ_config)
 if app.config.get("PROXY_COUNT", 1):
     app.wsgi_app = ProxyFix(app.wsgi_app)  # type: ignore[method-assign]
 
-# Allow user to define a custom storage preference for the local instance.
-_distributed_storage_preference = os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE", "").split()
-if _distributed_storage_preference:
-    app.config["DISTRIBUTED_STORAGE_PREFERENCE"] = _distributed_storage_preference
+
+def apply_storage_replication_config(config):
+    """Apply env var override and validate storage replication settings."""
+    pref = os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE", "").split()
+    if pref:
+        config["DISTRIBUTED_STORAGE_PREFERENCE"] = pref
+
+    if not config.get("DISTRIBUTED_STORAGE_PREFERENCE") and config.get(
+        "FEATURE_STORAGE_REPLICATION", False
+    ):
+        raise Exception(
+            "Missing storage preference for geo-replication. Set DISTRIBUTED_STORAGE_PREFERENCE "
+            "in config.yaml or the QUAY_DISTRIBUTED_STORAGE_PREFERENCE environment variable."
+        )
+
+
+apply_storage_replication_config(app.config)
 
 # Generate a secret key if none was specified.
 if app.config["SECRET_KEY"] is None:
@@ -264,8 +280,10 @@ log_archive = LogArchive(app, storage)
 analytics = Analytics(app)
 billing = Billing(app)
 sentry = Sentry(app)
+init_pyroscope(app)
 build_logs = BuildLogs(app)
 userevents = UserEventsBuilderModule(app)
+pullmetrics = PullMetricsBuilderModule(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)
 
@@ -332,19 +350,16 @@ if os.path.exists(_v2_key_path):
 else:
     docker_v2_signing_key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
 
-# Check if georeplication is turned on and whether env. variables exist:
-if os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE") is None and app.config.get(
-    "FEATURE_STORAGE_REPLICATION", False
-):
-    raise Exception(
-        "Missing storage preference, did you perhaps forget to define QUAY_DISTRIBUTED_STORAGE_PREFERENCE variable?"
-    )
-
 # Configure the database.
 if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):
     raise Exception("Missing DATABASE_SECRET_KEY in config; did you perhaps forget to add it?")
 
 database.configure(app.config)
+
+# Configure global locking
+# For testing in CI we mock GlobalLock anyway, so we'll skip global initialization if TESTING is set:
+if not app.config.get("TESTING", False):
+    GlobalLock.configure(app.config)
 
 model.config.app_config = app.config
 model.config.store = storage
@@ -373,4 +388,7 @@ if features.OTEL_TRACING:
         excluded_urls=app.config.get("OTEL_TRACING_EXCLUDED_URLS", None),
     )
     Psycopg2Instrumentor().instrument()
-    init_exporter(app.config)
+    # Detect if running under gunicorn with preload_app
+    # When QUAY_HOTRELOAD is false, gunicorn configs set preload_app=True
+    is_preload = os.getenv("QUAY_HOTRELOAD", "false") == "false"
+    init_exporter(app.config, is_gunicorn_preload=is_preload)

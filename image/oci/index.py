@@ -45,6 +45,8 @@ from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
+from image.docker.schema2.list import DockerSchema2ManifestList
+from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from image.oci.descriptor import get_descriptor_schema
 from image.oci.manifest import OCIManifest, OCIManifestDescriptor
@@ -290,10 +292,14 @@ class OCIIndex(ManifestListInterface):
         """
         Returns the manifests in the list.
         """
+        from data.model import config
+
         manifests = self._parsed[INDEX_MANIFESTS_KEY]
         supported_types = {}
         supported_types[OCI_IMAGE_MANIFEST_CONTENT_TYPE] = OCIManifest
         supported_types[OCI_IMAGE_INDEX_CONTENT_TYPE] = OCIIndex
+        supported_types[DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE] = DockerSchema2Manifest
+        supported_types[DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE] = DockerSchema2ManifestList
         return [
             LazyManifestLoader(
                 m,
@@ -302,6 +308,7 @@ class OCIIndex(ManifestListInterface):
                 INDEX_DIGEST_KEY,
                 INDEX_SIZE_KEY,
                 INDEX_MEDIATYPE_KEY,
+                app_config=config.app_config,
             )
             for m in manifests
         ]

@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import pickle
 import string
@@ -14,6 +15,18 @@ from util.bytes import Bytes
 def random_string(length=16):
     random = SystemRandom()
     return "".join([random.choice(string.ascii_uppercase + string.digits) for _ in range(length)])
+
+
+class _SafeUnpickler(pickle.Unpickler):
+    """
+    Restricted unpickler that only allows deserializing resumablesha256.sha256 objects.
+    Prevents arbitrary code execution via crafted pickle payloads (CVE-2026-32590).
+    """
+
+    def find_class(self, module, name):
+        if module == "resumablesha256" and name == "sha256":
+            return super().find_class(module, name)
+        raise pickle.UnpicklingError(f"Forbidden class: {module}.{name}")
 
 
 class _ResumableSHAField(TextField):
@@ -43,7 +56,8 @@ class _ResumableSHAField(TextField):
         if value is None:
             return None
 
-        hasher = pickle.loads(base64.b64decode(value.encode("ascii")))
+        data = base64.b64decode(value.encode("ascii"))
+        hasher = _SafeUnpickler(io.BytesIO(data)).load()
         return hasher
 
 

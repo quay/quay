@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {
   Dropdown,
   DropdownItem,
@@ -14,13 +14,30 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownToggle, setDropdownToggle] = useState('');
 
+  // Refs for callback props so the useEffect always reads fresh values
+  // without re-triggering when parent recreates function/object references.
+  const onSelectRef = useRef(props.onSelect);
+  const onRowSelectRef = useRef(props.OnRowSelect);
+  const setUserEntryRef = useRef(props.setUserEntry);
+  const repoRef = useRef(props.repo);
+  const rowIndexRef = useRef(props.rowIndex);
+  onSelectRef.current = props.onSelect;
+  onRowSelectRef.current = props.OnRowSelect;
+  setUserEntryRef.current = props.setUserEntry;
+  repoRef.current = props.repo;
+  rowIndexRef.current = props.rowIndex;
+
   const dropdownOnSelect = (name, userEntry) => {
     if (!props.wizarStep) {
       props.setUserEntry(userEntry);
-      if (name == defaultUnSelectedVal) {
+      if (name === defaultUnSelectedVal) {
         props.OnRowSelect(props.repo, props?.rowIndex, false);
-      } else if (name != defaultUnSelectedVal && !props?.isItemSelected) {
+      } else if (name !== defaultUnSelectedVal && !props?.isItemSelected) {
         props.OnRowSelect(props.repo, props?.rowIndex, true);
+      }
+    } else {
+      if (name === defaultUnSelectedVal && props.OnRowSelect) {
+        props.OnRowSelect(props.repo, props?.rowIndex, false);
       }
     }
     setDropdownToggle(name);
@@ -29,24 +46,64 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
   };
 
   useEffect(() => {
+    // Uses refs for callback props to avoid stale closures without
+    // re-triggering the effect when parent recreates references.
+    const applySelection = (name: string, userEntry: boolean) => {
+      if (!props.wizarStep) {
+        setUserEntryRef.current?.(userEntry);
+        if (name === defaultUnSelectedVal) {
+          onRowSelectRef.current?.(repoRef.current, rowIndexRef.current, false);
+        } else if (name !== defaultUnSelectedVal && !props?.isItemSelected) {
+          onRowSelectRef.current?.(repoRef.current, rowIndexRef.current, true);
+        }
+      } else {
+        if (name === defaultUnSelectedVal && onRowSelectRef.current) {
+          onRowSelectRef.current(repoRef.current, rowIndexRef.current, false);
+        }
+      }
+      setDropdownToggle(name);
+      onSelectRef.current(name, repoRef.current);
+      setIsOpen(false);
+    };
+
     if (props.wizarStep) {
-      if (props.selectedVal) {
-        dropdownOnSelect(props.selectedVal, true);
+      // Wizard step mode: always default to 'Read' when a row is selected
+      if (props.selectedVal && props.selectedVal !== 'None') {
+        applySelection(props.selectedVal, true);
+      } else if (props?.isItemSelected) {
+        // Row is selected but no permission set yet - default to 'Read'
+        applySelection(defaultSelectedVal, true);
+      } else if (props.selectedVal === 'None') {
+        setDropdownToggle('None');
       }
       return;
     }
+    // Non-wizard mode: only show actual values, be careful about defaulting
+    // If we have a valid permission value, always use it first
+    if (props.selectedVal && props.selectedVal !== 'None') {
+      if (props.selectedVal !== dropdownToggle) {
+        applySelection(props.selectedVal, props?.isUserEntry || false);
+      }
+      return;
+    }
+    // Only default to 'Read' when user manually selects a row (isUserEntry=true),
+    // not when rows are auto-selected during loading of existing permissions
     if (
       props?.isItemSelected &&
-      (!props.selectedVal || props.selectedVal == 'None')
+      (!props.selectedVal || props.selectedVal === 'None')
     ) {
-      dropdownOnSelect(defaultSelectedVal, props?.isUserEntry || false);
+      if (props?.isUserEntry) {
+        applySelection(defaultSelectedVal, true);
+      }
     } else if (!props?.isItemSelected) {
-      dropdownOnSelect(defaultUnSelectedVal, props?.isUserEntry || false);
+      applySelection(defaultUnSelectedVal, props?.isUserEntry || false);
     }
-    if (props.selectedVal && props.selectedVal != dropdownToggle) {
-      dropdownOnSelect(props.selectedVal, props?.isUserEntry || false);
-    }
-  }, [props?.isItemSelected, props.selectedVal]);
+  }, [
+    props?.isItemSelected,
+    props.selectedVal,
+    props.wizarStep,
+    props.isUserEntry,
+  ]);
 
   return (
     <Dropdown
@@ -70,6 +127,7 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
       <DropdownList>
         {props.dropdownItems.map((item) => (
           <DropdownItem
+            component="button"
             data-testid={`${item.name}-permission-type`}
             key={item.name}
             description={item.description}

@@ -23,6 +23,17 @@ objects:
           title: "Quay"
           href: "/containers/quay"
           product: "Red Hat Quay.io"
+      widgetRegistry:
+        - scope: "landing"
+          module: "./QuayWidget"
+          defaults:
+            w: 1
+            h: 4
+            maxH: 10
+            minH: 1
+          config:
+            title: "Quay.io"
+            icon: "QuayIcon"
       module:
         manifestLocation: "/apps/quay/fed-mods.json"
         modules:
@@ -37,4 +48,3 @@ parameters:
     required: true
   - name: IMAGE
     value: quay.io/app-sre/quayio-frontend
-

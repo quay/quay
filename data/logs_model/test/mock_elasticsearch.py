@@ -87,6 +87,8 @@ INDEX_REQUEST_2019_01_01 = [
         "metadata": {"key": "value", "time": "2018-03-08T03:30:00", "😂": "😂👌👌👌👌"},
         "performer_id": 1,
         "kind_id": 1,
+        # Enhanced logging fields for ESS EOI compliance
+        "namespace_name": "user1",
     },
 ]
 
@@ -101,6 +103,8 @@ INDEX_REQUEST_2017_03_08 = [
         "metadata": {"key": "value", "time": "2018-03-08T03:30:00", "😂": "😂👌👌👌👌"},
         "performer_id": 1,
         "kind_id": 2,
+        # Enhanced logging fields for ESS EOI compliance
+        "namespace_name": "user1",
     },
 ]
 

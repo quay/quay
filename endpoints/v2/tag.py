@@ -21,7 +21,7 @@ from endpoints.v2.errors import NameUnknown, TooManyTagsRequested
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @oci_tag_paginate()
 def list_all_tags(namespace_name, repo_name, last_pagination_tag_name, limit, pagination_callback):

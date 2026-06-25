@@ -25,7 +25,7 @@ def attach_gitlab_build_trigger():
         abort(400)
     state = state[len("repo:") :]
     try:
-        [namespace, repository] = state.split("/")
+        [namespace, repository] = state.split("/", maxsplit=1)
     except ValueError:
         abort(400)
 

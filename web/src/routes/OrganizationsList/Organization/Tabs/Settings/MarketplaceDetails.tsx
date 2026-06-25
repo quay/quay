@@ -3,8 +3,6 @@ import {
   Flex,
   FlexItem,
   HelperText,
-  List,
-  ListItem,
   Spinner,
   Title,
 } from '@patternfly/react-core';

@@ -13,7 +13,7 @@ func TestValidateBuildManager(t *testing.T) {
 
 	before := []byte(`
 FEATURE_BUILD_SUPPORT: true
-BUILD_MANAGER: 
+BUILD_MANAGER:
   - ephemeral
   - ALLOWED_WORKER_COUNT: 1
     ORCHESTRATOR_PREFIX: buildman/production/
@@ -52,13 +52,13 @@ BUILD_MANAGER:
 	var confMap BuildManagerFieldGroup
 	err := yaml.Unmarshal(before, &confMap)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Errorf("%s", err.Error())
 		return
 	}
 
 	after, err := yaml.Marshal(confMap)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Errorf("%s", err.Error())
 		return
 	}
 
@@ -67,7 +67,7 @@ BUILD_MANAGER:
 	var confMap2 BuildManagerFieldGroup
 	err = yaml.Unmarshal(after, &confMap2)
 	if err != nil {
-		t.Errorf("fail" + err.Error())
+		t.Errorf("fail: %s", err.Error())
 		return
 	}
 

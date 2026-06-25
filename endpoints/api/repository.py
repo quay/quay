@@ -12,6 +12,7 @@ import features
 from app import (
     app,
     dockerfile_build_queue,
+    model_cache,
     repository_gc_queue,
     tuf_metadata_api,
     usermanager,
@@ -24,11 +25,16 @@ from auth.permissions import (
     ModifyRepositoryPermission,
     ReadRepositoryPermission,
 )
+from data.cache import cache_key
 from data.database import RepositoryState
+from data.model import DataModelException
+from data.model.org_mirror import is_namespace_org_mirrored
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     format_date,
     log_action,
     nickname,
@@ -69,6 +75,10 @@ def check_allowed_private_repos(namespace):
 
     If so, raises a ExceedsLicenseException.
     """
+    # Superusers with full access bypass license limits
+    if allow_if_superuser_with_full_access():
+        return
+
     # Not enabled if billing is disabled.
     if not features.BILLING:
         return
@@ -119,7 +129,7 @@ class RepositoryList(ApiResource):
                 "repo_kind": {
                     "type": ["string", "null"],
                     "description": "The kind of repository",
-                    "enum": ["image", "application", None],
+                    "enum": ["image", None],
                 },
             },
         },
@@ -141,7 +151,8 @@ class RepositoryList(ApiResource):
         namespace_name = req["namespace"] if "namespace" in req else owner.username
 
         permission = CreateRepositoryPermission(namespace_name)
-        if (permission.can() or allow_if_superuser()) and not (
+
+        if (permission.can() or allow_if_superuser_with_full_access()) and not (
             features.RESTRICTED_USERS
             and usermanager.is_restricted_user(owner.username)
             and owner.username == namespace_name
@@ -167,15 +178,25 @@ class RepositoryList(ApiResource):
             if not valid_repository_name:
                 raise InvalidRequest("Invalid repository name")
 
+            if features.ORG_MIRROR and is_namespace_org_mirrored(namespace_name):
+                raise InvalidRequest(
+                    "Cannot create repository: organization is managed by "
+                    "organization-level mirroring"
+                )
+
             kind = req.get("repo_kind", "image") or "image"
-            created = model.create_repo(
-                namespace_name,
-                repository_name,
-                owner,
-                req["description"],
-                visibility=visibility,
-                repo_kind=kind,
-            )
+            try:
+                created = model.create_repo(
+                    namespace_name,
+                    repository_name,
+                    owner,
+                    req["description"],
+                    visibility=visibility,
+                    repo_kind=kind,
+                )
+            except DataModelException as e:
+                raise InvalidRequest(str(e)) from e
+
             if created is None:
                 raise InvalidRequest("Could not create repository")
 
@@ -318,7 +339,15 @@ class Repository(RepositoryParamResource):
         repo_data["can_write"] = has_write_permission
         repo_data["can_admin"] = AdministerRepositoryPermission(namespace, repository).can()
 
-        if parsed_args["includeStats"] and repo.repository_base_elements.kind_name != "application":
+        # Grant superusers effective permissions for UI visibility
+        if allow_if_global_readonly_superuser():
+            repo_data["can_admin"] = True
+        elif features.SUPERUSERS_FULL_ACCESS and allow_if_superuser():
+            repo_data["can_admin"] = True
+            if repo.state == RepositoryState.NORMAL:
+                repo_data["can_write"] = True
+
+        if parsed_args["includeStats"]:
             stats = []
             found_dates = {}
 
@@ -369,6 +398,14 @@ class Repository(RepositoryParamResource):
         Delete a repository.
         """
         username = model.mark_repository_for_deletion(namespace, repository, repository_gc_queue)
+
+        # Invalidate the repository lookup cache to prevent stale repository ID being returned on immediate new push
+        # to the repo of the same name.
+        for kind_filter in (None, "image"):
+            repository_lookup_key = cache_key.for_repository_lookup(
+                namespace, repository, None, kind_filter, model_cache.cache_config
+            )
+            model_cache.invalidate(repository_lookup_key)
 
         if features.BILLING:
             plan = get_namespace_plan(namespace)
@@ -525,6 +562,15 @@ class RepositoryStateResource(RepositoryParamResource):
 
         if state == RepositoryState.MIRROR and not features.REPO_MIRROR:
             return {"detail": "Unknown Repository State: %s" % state_name}, 400
+
+        if state == RepositoryState.ORG_MIRROR:
+            return {"detail": "ORG_MIRROR state is managed by organization-level mirroring"}, 400
+
+        if features.ORG_MIRROR and is_namespace_org_mirrored(namespace):
+            return {
+                "detail": "Repository state changes are not allowed in an "
+                "organization managed by organization-level mirroring"
+            }, 400
 
         if state is None:
             return {"detail": "%s is not a valid Repository state." % state_name}, 400

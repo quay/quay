@@ -4,6 +4,8 @@ import {
   HelperText,
   HelperTextItem,
   Modal,
+  ModalBody,
+  ModalFooter,
   ModalVariant,
   Spinner,
   TextInput,
@@ -14,8 +16,7 @@ import BuildTriggerDescription from './BuildTriggerDescription';
 import Conditional from 'src/components/empty/Conditional';
 import {useState} from 'react';
 import {useStartBuild} from 'src/hooks/UseBuilds';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useSourceRefs} from 'src/hooks/UseBuildTriggers';
 import TypeAheadSelect from 'src/components/TypeAheadSelect';
 import {isNullOrUndefined} from 'src/libs/utils';
@@ -25,7 +26,7 @@ export default function ManuallyStartTrigger(props: ManuallyStartTriggerProps) {
   const [commit, setCommit] = useState<string>('');
   const [ref, setRef] = useState<SourceRef>({name: '', kind: null});
   const [isValid, setIsValid] = useState<boolean>(false);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {refs, isLoading, isError, error} = useSourceRefs(
     org,
     repo,
@@ -73,7 +74,66 @@ export default function ManuallyStartTrigger(props: ManuallyStartTriggerProps) {
       aria-label="Manually Start Build"
       onClose={() => props.onClose()}
       variant={ModalVariant.medium}
-      actions={[
+      style={{
+        overflowX: 'visible',
+        overflowY: 'visible',
+      }}
+    >
+      <ModalBody>
+        <Conditional if={trigger?.service === 'custom-git'}>
+          <Title headingLevel="h4">Manually Start Build Trigger</Title>
+          <BuildTriggerDescription trigger={trigger} />
+          <br />
+          Commit:
+          <TextInput
+            id="manual-build-commit-input"
+            value={commit}
+            onChange={(_, value) => onChange(value)}
+            type="text"
+            pattern="^([A-Fa-f0-9]{7,})$"
+            placeholder="1c002dd"
+          />
+          <Conditional if={!isValid && commit !== ''}>
+            <HelperText id="helper-text">
+              <HelperTextItem variant="error">
+                Invalid commit pattern
+              </HelperTextItem>
+            </HelperText>
+          </Conditional>
+        </Conditional>
+        <Conditional if={trigger?.service !== 'custom-git'}>
+          <Conditional if={isLoading}>
+            <Spinner />
+          </Conditional>
+          <Conditional if={isError}>
+            <Alert variant="danger" title={error?.toString()} />
+          </Conditional>
+          <Conditional if={!isLoading && !isError}>
+            <Title headingLevel="h4">Manually Start Build Trigger</Title>
+            <BuildTriggerDescription trigger={trigger} />
+            <br />
+            Branch/Tag:{' '}
+            <TypeAheadSelect
+              value={ref.name}
+              onChange={(value) => onRefChange(value)}
+              initialSelectOptions={refs?.map((ref, index) => ({
+                key: `${ref.kind}/${ref.name}`,
+                onClick: () => setRef(ref),
+                id: `ref-option-${index}`,
+                value: ref.name,
+              }))}
+            />
+            <Conditional if={!isValid && ref?.name !== ''}>
+              <HelperText id="helper-text">
+                <HelperTextItem variant="error">
+                  Branch/Tag not found
+                </HelperTextItem>
+              </HelperText>
+            </Conditional>
+          </Conditional>
+        </Conditional>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="start-build"
           isDisabled={!isValid}
@@ -82,68 +142,11 @@ export default function ManuallyStartTrigger(props: ManuallyStartTriggerProps) {
           }
         >
           Start Build
-        </Button>,
+        </Button>
         <Button key="cancel" variant="primary" onClick={() => props.onClose()}>
           Cancel
-        </Button>,
-      ]}
-      style={{
-        overflowX: 'visible',
-        overflowY: 'visible',
-      }}
-    >
-      <Conditional if={trigger?.service === 'custom-git'}>
-        <Title headingLevel="h4">Manually Start Build Trigger</Title>
-        <BuildTriggerDescription trigger={trigger} />
-        <br />
-        Commit:
-        <TextInput
-          id="manual-build-commit-input"
-          value={commit}
-          onChange={(_, value) => onChange(value)}
-          type="text"
-          pattern="^([A-Fa-f0-9]{7,})$"
-          placeholder="1c002dd"
-        />
-        <Conditional if={!isValid && commit !== ''}>
-          <HelperText id="helper-text">
-            <HelperTextItem variant="error">
-              Invalid commit pattern
-            </HelperTextItem>
-          </HelperText>
-        </Conditional>
-      </Conditional>
-      <Conditional if={trigger?.service !== 'custom-git'}>
-        <Conditional if={isLoading}>
-          <Spinner />
-        </Conditional>
-        <Conditional if={isError}>
-          <Alert variant="danger" title={error?.toString()} />
-        </Conditional>
-        <Conditional if={!isLoading && !isError}>
-          <Title headingLevel="h4">Manually Start Build Trigger</Title>
-          <BuildTriggerDescription trigger={trigger} />
-          <br />
-          Branch/Tag:{' '}
-          <TypeAheadSelect
-            value={ref.name}
-            onChange={(value) => onRefChange(value)}
-            initialSelectOptions={refs?.map((ref, index) => ({
-              key: `${ref.kind}/${ref.name}`,
-              onClick: () => setRef(ref),
-              id: `ref-option-${index}`,
-              value: ref.name,
-            }))}
-          />
-          <Conditional if={!isValid && ref?.name !== ''}>
-            <HelperText id="helper-text">
-              <HelperTextItem variant="error">
-                Branch/Tag not found
-              </HelperTextItem>
-            </HelperText>
-          </Conditional>
-        </Conditional>
-      </Conditional>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

@@ -5,6 +5,7 @@ import shutil
 from collections import namedtuple
 
 import pytest
+from filelock import FileLock
 from flask import Flask, jsonify
 from flask.testing import FlaskClient
 from flask_login import LoginManager
@@ -14,6 +15,9 @@ from mock import patch
 from peewee import InternalError, SqliteDatabase
 
 import features
+
+# Ensure application loads test configuration at import time
+os.environ.setdefault("TEST", "1")
 from app import app as application
 from auth.permissions import on_identity_loaded
 from data import model
@@ -35,6 +39,29 @@ from path_converters import (
 )
 from test.testconfig import FakeTransaction
 
+
+# Mock GlobalLock for tests that doesn't require Redis
+class MockGlobalLock:
+    """Test-only GlobalLock that doesn't require Redis connection."""
+
+    lock_factory = object()  # Non-None to pass checks
+
+    def __init__(self, name, lock_ttl=600, auto_renewal=False):
+        self._lock_name = name
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        pass
+
+    def acquire(self):
+        return True
+
+    def release(self):
+        pass
+
+
 INIT_DB_PATH = 0
 
 
@@ -53,9 +80,15 @@ def init_db_path(tmpdir_factory):
     # NOTE: We use a global here because pytest runs this code multiple times, due to the fixture
     # being imported instead of being in a conftest. Moving to conftest has its own issues, and this
     # call is quite slow, so we simply cache it here.
-    global INIT_DB_PATH
-    INIT_DB_PATH = INIT_DB_PATH or _init_db_path(tmpdir_factory)
-    return INIT_DB_PATH
+
+    # Use file lock to coordinate database initialization across pytest-xdist workers
+    # tmpdir_factory.getbasetemp() returns py.path.local.LocalPath, use dirpath() for parent
+    lock_file = str(tmpdir_factory.getbasetemp().dirpath("db_init.lock"))
+
+    with FileLock(lock_file, timeout=300):
+        global INIT_DB_PATH
+        INIT_DB_PATH = INIT_DB_PATH or _init_db_path(tmpdir_factory)
+        return INIT_DB_PATH
 
 
 def _init_db_path(tmpdir_factory):
@@ -217,6 +250,11 @@ def initialized_db(appconfig):
     model._basequery._lookup_team_roles()
     model._basequery.get_public_repo_visibility()
     model.log.get_log_entry_kinds()
+
+    # Patch GlobalLock to use mock version for tests (no Redis required)
+    import data.model.storage
+
+    data.model.storage.GlobalLock = MockGlobalLock
 
     if not under_test_real_database:
         # Make absolutely sure foreign key constraints are on.

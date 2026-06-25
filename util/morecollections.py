@@ -95,7 +95,7 @@ class IndexedStreamingDiffTracker(object):
         if len(stream_tuples_list) < self._reports_per_stream:
             self._new_stream_finished = True
 
-        for (item, index) in stream_tuples_list:
+        for item, index in stream_tuples_list:
             if self._new_stream:
                 assert index > self._new_stream[-1].index
 
@@ -118,7 +118,7 @@ class IndexedStreamingDiffTracker(object):
         if len(stream_tuples_list) < self._reports_per_stream:
             self._old_stream_finished = True
 
-        for (item, index) in stream_tuples:
+        for item, index in stream_tuples:
             if self._old_stream:
                 assert index > self._old_stream[-1].index
 

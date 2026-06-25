@@ -1,14 +1,21 @@
 import ManifestDigest from 'src/components/ManifestDigest';
 import {TagAction, TagEntry} from './types';
 import {ReactElement, useEffect, useState} from 'react';
-import {Alert, Button, Label, Modal} from '@patternfly/react-core';
+import {
+  Alert,
+  Button,
+  Label,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+} from '@patternfly/react-core';
 import {useRestoreTag} from 'src/hooks/UseTags';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 export default function RestoreTag(props: RestoreTagProps) {
   const {tagEntry, org, repo} = props;
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const {restoreTag, success, error} = useRestoreTag(org, repo);
 
@@ -78,35 +85,37 @@ export default function RestoreTag(props: RestoreTagProps) {
     <>
       <a onClick={() => setIsModalOpen(true)}>{message}</a>
       <Modal
-        title="Restore Tag"
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         variant="medium"
-        actions={[
+      >
+        <ModalHeader title="Restore Tag" />
+        <ModalBody>
+          <Alert
+            isInline
+            variant="warning"
+            title="This will change the image to which the tag points."
+          />
+          Are you sure you want to restore tag{' '}
+          <Label isCompact>{tagEntry.tag.name}</Label> to image{' '}
+          <ManifestDigest digest={digest} />?
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="modal-action-button"
             variant="primary"
             onClick={() => restoreTag({tag: tagEntry.tag.name, digest: digest})}
           >
             Restore tag
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="secondary"
             onClick={() => setIsModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <Alert
-          isInline
-          variant="warning"
-          title="This will change the image to which the tag points."
-        />
-        Are you sure you want to restore tag{' '}
-        <Label isCompact>{tagEntry.tag.name}</Label> to image{' '}
-        <ManifestDigest digest={digest} />?
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

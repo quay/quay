@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -9,7 +10,9 @@ import (
 
 // OIDC represents the OIDC config fields
 type OIDCFieldGroup struct {
-	OIDCProviders []*OIDCProvider `default:"[]" validate:"" json:"-" yaml:"-"`
+	OIDCProviders      []*OIDCProvider `default:"[]" validate:"" json:"-" yaml:"-"`
+	ServerHostname     string          `default:"" validate:"" json:"SERVER_HOSTNAME,omitempty" yaml:"SERVER_HOSTNAME,omitempty"`
+	PreferredUrlScheme string          `default:"https" validate:"" json:"PREFERRED_URL_SCHEME,omitempty" yaml:"PREFERRED_URL_SCHEME,omitempty"`
 }
 
 type OIDCProvider struct {
@@ -28,6 +31,17 @@ type OIDCProvider struct {
 func NewOIDCFieldGroup(fullConfig map[string]interface{}) (*OIDCFieldGroup, error) {
 	newOIDCFieldGroup := &OIDCFieldGroup{}
 	defaults.Set(newOIDCFieldGroup)
+
+	if value, ok := fullConfig["SERVER_HOSTNAME"]; ok {
+		if strVal, ok := value.(string); ok {
+			newOIDCFieldGroup.ServerHostname = strVal
+		}
+	}
+	if value, ok := fullConfig["PREFERRED_URL_SCHEME"]; ok {
+		if strVal, ok := value.(string); ok {
+			newOIDCFieldGroup.PreferredUrlScheme = strVal
+		}
+	}
 
 	for key, value := range fullConfig {
 		if providerConf, ok := value.(map[string]interface{}); ok {
@@ -102,4 +116,28 @@ func NewOIDCProvider(prefix string, providerConfig map[string]interface{}) (*OID
 	}
 
 	return newOIDCProvider, nil
+}
+
+// ServiceID derives the OIDC service ID from the provider's config prefix.
+// This matches the Python logic in oauth/oidc.py: lowercase of everything
+// before the first underscore (e.g., "AUTH0" → "auth0", "MY_CUSTOM" → "my").
+func (p *OIDCProvider) ServiceID() string {
+	idx := strings.Index(p._Prefix, "_")
+	if idx >= 0 {
+		return strings.ToLower(p._Prefix[:idx])
+	}
+	return strings.ToLower(p._Prefix)
+}
+
+// RedirectURL constructs the OAuth2 redirect URL for the given provider.
+// Returns an empty string if ServerHostname is not configured.
+func (fg *OIDCFieldGroup) RedirectURL(provider *OIDCProvider) string {
+	if fg.ServerHostname == "" {
+		return ""
+	}
+	scheme := fg.PreferredUrlScheme
+	if scheme == "" {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s/oauth2/%s/callback", scheme, fg.ServerHostname, provider.ServiceID())
 }

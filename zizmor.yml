@@ -1,0 +1,12 @@
+rules:
+  # These workflows intentionally use pull_request_target or workflow_run
+  # triggers to access secrets for labeling, reporting, and deployments.
+  # frozen-branch-check uses pull_request_target solely to read vars context
+  # (no code checkout, no secret access).
+  dangerous-triggers:
+    ignore:
+      - .github/workflows/frozen-branch-check.yaml
+      - .github/workflows/playwright-report-deploy.yaml
+      - .github/workflows/pr-labeler.yaml
+      - .github/workflows/pr-status-labeler.yaml
+      - .github/workflows/web-ci-results.yaml

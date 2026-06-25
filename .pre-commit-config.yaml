@@ -4,7 +4,7 @@ repos:
     hooks:
     -   id: gitleaks
 -   repo: https://github.com/psf/black
-    rev: 22.10.0
+    rev: 24.4.2
     hooks:
     -   id: black
 -   repo: https://github.com/pycqa/isort
@@ -18,16 +18,38 @@ repos:
         name: Checking Config file changes
         entry: .github/hooks/pre-commit.sh
         language: script
+    -   id: requirements-build-sync
+        name: Check requirements-build.txt is updated
+        entry: .github/hooks/check-requirements-build.sh
+        language: script
+        pass_filenames: false
+        stages: [pre-commit]
+    -   id: npm-lockfile-sync
+        name: Sync npm lockfile with pnpm changes
+        entry: bash -c 'if git diff --cached --name-only | grep -qE "^web/(pnpm-lock\.yaml|package\.json)$"; then cd web && npm install --package-lock-only --legacy-peer-deps --silent 2>/dev/null && git add package-lock.json; fi'
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
     -   id: eslint
         name: ESLint
         entry: web/node_modules/.bin/eslint --fix
         language: system
         files: ^web/
-        exclude: ^web/cypress/test/|^web/cypress/fixtures
+        exclude: ^web/Containerfile|^web/Dockerfile|^web/pnpm-lock\.yaml|^web/package-lock\.json
+-   repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+    -   id: shellcheck
+        args: ["--severity=warning"]
+        files: ^(\.claude/scripts|\.github/hooks)/.*\.sh$
+-   repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.10.0-1
+    hooks:
+    -   id: shfmt
+        args: ["-i", "2", "-ci", "-bn"]
+        files: ^(\.claude/scripts|\.github/hooks)/.*\.sh$
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
     hooks:
     -   id: trailing-whitespace
-        exclude: ^web/cypress/test/
     -   id: end-of-file-fixer
-        exclude: ^web/cypress/test/

@@ -47,7 +47,7 @@ export default function BuildTriggers(props: BuildTriggersProps) {
           <ToolbarItem>
             <Title headingLevel="h2">Build Triggers</Title>
           </ToolbarItem>
-          <ToolbarItem align={{default: 'alignRight'}}>
+          <ToolbarItem align={{default: 'alignEnd'}}>
             <CreateBuildTriggerDropdown
               namespace={props.org}
               repo={props.repo}
@@ -166,9 +166,7 @@ export default function BuildTriggers(props: BuildTriggersProps) {
                       <ExclamationTriangleIcon /> This build trigger was
                       automatically disabled due to successive internal errors.
                     </Conditional>
-                    <Conditional
-                      if={config?.config?.REGISTRY_STATE !== 'readonly'}
-                    >
+                    <Conditional if={config?.registry_state !== 'readonly'}>
                       <a
                         onClick={() =>
                           setTriggerToggleOptions({

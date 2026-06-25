@@ -1,7 +1,6 @@
 import {
   Button,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Spinner,
 } from '@patternfly/react-core';
@@ -11,8 +10,7 @@ import {useFetchCollaborators} from 'src/hooks/UseMembers';
 import {useEffect, useState} from 'react';
 import {IMembers} from 'src/resources/MembersResource';
 import {TrashIcon} from '@patternfly/react-icons';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import CollaboratorsDeleteModal from './CollaboratorsDeleteModal';
 import Conditional from 'src/components/empty/Conditional';
@@ -55,7 +53,7 @@ export default function CollaboratorsViewList(
   const [selectedCollaborators, setSelectedCollaborators] = useState<
     IMembers[]
   >([]);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [collaboratorToBeDeleted, setCollaboratorToBeDeleted] =
     useState<IMembers>();
 
@@ -98,7 +96,7 @@ export default function CollaboratorsViewList(
 
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <CollaboratorsViewToolbar
           selectedMembers={selectedCollaborators}
           deSelectAll={() => setSelectedCollaborators([])}

@@ -15,6 +15,7 @@ export function Kebab(props: KebabProps) {
         <MenuToggle
           ref={toggleRef}
           id={props?.id}
+          data-testid={props?.['data-testid']}
           variant={props.useActions ? 'secondary' : 'plain'}
           onClick={() => props.setKebabOpen(!props.isKebabOpen)}
           isExpanded={props.isKebabOpen}
@@ -38,4 +39,5 @@ type KebabProps = {
   kebabItems: React.ReactElement[];
   useActions?: boolean;
   id?: string;
+  'data-testid'?: string;
 };

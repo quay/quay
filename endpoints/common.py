@@ -17,6 +17,7 @@ from endpoints.common_models_pre_oci import pre_oci_model as model
 from endpoints.csrf import QUAY_CSRF_UPDATED_HEADER_NAME, generate_csrf_token
 from external_libraries import get_external_css, get_external_javascript
 from util.config.provider.k8sprovider import QE_NAMESPACE
+from util.metrics.prometheus import ui_page_views
 from util.secscan import PRIORITY_LEVELS
 from util.timedeltastring import convert_to_timedelta
 
@@ -68,6 +69,10 @@ def _list_files(path, extension, contains=""):
         return os.path.join(dp, f)[len("static/") :]
 
     filepath = os.path.join("static/", path)
+    if not os.path.isdir(filepath):
+        # Volume mounts of the repo (e.g. CI, local dev) often omit gitignored `static/build`;
+        # walking a missing path raises FileNotFoundError and yields 500 on every Angular UI route.
+        return []
     return [join_path(dp, f) for dp, _, files in os.walk(filepath) for f in files if matches(f)]
 
 
@@ -101,6 +106,8 @@ def render_page_template(name, route_data=None, **kwargs):
     """
     Renders the page template with the given name as the response and returns its contents.
     """
+    ui_page_views.labels(ui="angular").inc()
+
     main_scripts = _list_files("build", "js", JS_BUNDLE_NAME)
 
     use_cdn = app.config.get("USE_CDN", True)

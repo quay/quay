@@ -4,9 +4,11 @@ from contextlib import contextmanager
 
 from peewee import fn
 
+import features
 from data import database, model
 from data.cache import cache_key
 from data.database import (
+    ManifestChild,
     Repository,
     RepositoryKind,
     RepositoryState,
@@ -34,7 +36,11 @@ from data.registry_model.datatypes import (
     Tag,
 )
 from data.registry_model.interface import RegistryDataInterface
-from data.registry_model.label_handlers import LABEL_EXPIRY_KEY, apply_label_to_manifest
+from data.registry_model.label_handlers import (
+    LABEL_EXPIRY_KEY,
+    LABEL_IMMUTABLE_KEY,
+    apply_label_to_manifest,
+)
 from data.registry_model.shared import SyntheticIDHandler
 from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
@@ -82,6 +88,109 @@ class OCIModel(RegistryDataInterface):
             return (None, None)
 
         return Manifest.for_manifest(manifest, self._legacy_image_id_handler), layer_index
+
+    def _get_expiry_label_for_manifest(self, manifest):
+        """
+        Gets the quay.expires-after label for a manifest.
+
+        For manifest lists, this intersects labels from all child manifests,
+        matching the behavior during initial manifest creation.
+
+        Returns the label dict {"key": ..., "value": ...} or None if not found.
+        """
+        # First check labels directly on the manifest
+        label_dict = next(
+            (
+                label.asdict()
+                for label in self.list_manifest_labels(manifest, key_prefix="quay")
+                if label.key == LABEL_EXPIRY_KEY
+            ),
+            None,
+        )
+
+        if label_dict is not None:
+            return label_dict
+
+        # For manifest lists, check child manifest labels
+        if manifest.is_manifest_list:
+            child_manifests = ManifestChild.select(ManifestChild.child_manifest).where(
+                ManifestChild.manifest == manifest._db_id
+            )
+
+            child_label_dicts = []
+            for child in child_manifests:
+                child_manifest = Manifest.for_manifest(
+                    child.child_manifest, self._legacy_image_id_handler
+                )
+                child_labels = {
+                    label.key: label.value
+                    for label in self.list_manifest_labels(child_manifest, key_prefix="quay")
+                }
+                child_label_dicts.append(child_labels)
+
+            if child_label_dicts:
+                # Intersect labels across all children (same logic as manifest.py)
+                labels_to_apply = child_label_dicts[0].items()
+                for child_label_dict in child_label_dicts[1:]:
+                    labels_to_apply = labels_to_apply & child_label_dict.items()
+                labels_to_apply = dict(labels_to_apply)
+
+                if LABEL_EXPIRY_KEY in labels_to_apply:
+                    return {"key": LABEL_EXPIRY_KEY, "value": labels_to_apply[LABEL_EXPIRY_KEY]}
+
+        return None
+
+    def _get_immutable_label_for_manifest(self, manifest):
+        """
+        Checks if the quay.immutable=true label is set on a manifest.
+
+        For manifest lists, returns True only if ALL child manifests
+        have quay.immutable=true (intersection semantics).
+
+        Returns True if the manifest should be immutable, False otherwise.
+        """
+        label_dict = next(
+            (
+                label.asdict()
+                for label in self.list_manifest_labels(manifest, key_prefix="quay")
+                if label.key == LABEL_IMMUTABLE_KEY
+            ),
+            None,
+        )
+
+        if label_dict is not None:
+            return label_dict["value"].strip().lower() == "true"
+
+        if manifest.is_manifest_list:
+            child_manifests = ManifestChild.select(ManifestChild.child_manifest).where(
+                ManifestChild.manifest == manifest._db_id
+            )
+
+            child_label_dicts = []
+            for child in child_manifests:
+                child_manifest = Manifest.for_manifest(
+                    child.child_manifest, self._legacy_image_id_handler
+                )
+                child_labels = {
+                    label.key: label.value
+                    for label in self.list_manifest_labels(child_manifest, key_prefix="quay")
+                }
+                if LABEL_IMMUTABLE_KEY in child_labels:
+                    child_labels[LABEL_IMMUTABLE_KEY] = (
+                        child_labels[LABEL_IMMUTABLE_KEY].strip().lower()
+                    )
+                child_label_dicts.append(child_labels)
+
+            if child_label_dicts:
+                labels_to_apply = child_label_dicts[0].items()
+                for child_label_dict in child_label_dicts[1:]:
+                    labels_to_apply = labels_to_apply & child_label_dict.items()
+                labels_to_apply = dict(labels_to_apply)
+
+                if LABEL_IMMUTABLE_KEY in labels_to_apply:
+                    return labels_to_apply[LABEL_IMMUTABLE_KEY] == "true"
+
+        return False
 
     def get_tag_legacy_image_id(self, repository_ref, tag_name, storage):
         """
@@ -447,23 +556,13 @@ class OCIModel(RegistryDataInterface):
                 created_manifest.manifest, self._legacy_image_id_handler
             )
 
-            # Optional expiration label
-            # NOTE: Since there is currently only one special label on a manifest that has an effect on its tags (expiration),
-            #       it is just simpler to set that value at tag creation time (plus it saves an additional query).
-            #       If we were to define more of these "special" labels in the future, we should use the handlers from
-            #       data/registry_model/label_handlers.py
+            # Optional expiration and immutability labels
+            # NOTE: The quay.expires-after and quay.immutable labels are extracted
+            #       at tag creation time and passed to retarget_tag() so they are
+            #       applied atomically. The handlers in label_handlers.py are still
+            #       used for labels created via the API after initial push.
             if not created_manifest.newly_created:
-                label_dict = next(
-                    (
-                        label.asdict()
-                        for label in self.list_manifest_labels(
-                            wrapped_manifest,
-                            key_prefix="quay",
-                        )
-                        if label.key == LABEL_EXPIRY_KEY
-                    ),
-                    None,
-                )
+                label_dict = self._get_expiry_label_for_manifest(wrapped_manifest)
             else:
                 label_dict = next(
                     (
@@ -482,6 +581,15 @@ class OCIModel(RegistryDataInterface):
                     expiration_seconds = expiration_td.total_seconds()
                 except ValueError:
                     pass
+
+            # Optional immutability label
+            immutable_from_label = False
+            if features.IMMUTABLE_TAGS:
+                if not created_manifest.newly_created:
+                    immutable_from_label = self._get_immutable_label_for_manifest(wrapped_manifest)
+                else:
+                    immutable_value = created_manifest.labels_to_apply.get(LABEL_IMMUTABLE_KEY, "")
+                    immutable_from_label = immutable_value.strip().lower() == "true"
 
             if verify_quota:
                 quota = namespacequota.verify_namespace_quota(repository_ref)
@@ -504,6 +612,7 @@ class OCIModel(RegistryDataInterface):
                 created_manifest.manifest,
                 raise_on_error=raise_on_error,
                 expiration_seconds=expiration_seconds,
+                immutable_from_label=immutable_from_label,
             )
             if tag is None:
                 return (None, None)
@@ -565,16 +674,11 @@ class OCIModel(RegistryDataInterface):
 
                     manifest_id = created.manifest.id
 
-            label_dict = next(
-                (
-                    label.asdict()
-                    for label in self.list_manifest_labels(
-                        manifest,
-                        key_prefix="quay",
-                    )
-                    if label.key == LABEL_EXPIRY_KEY
-                ),
-                None,
+            label_dict = self._get_expiry_label_for_manifest(manifest)
+            immutable_from_label = (
+                self._get_immutable_label_for_manifest(manifest)
+                if features.IMMUTABLE_TAGS
+                else False
             )
 
             expiration_seconds = None
@@ -591,6 +695,8 @@ class OCIModel(RegistryDataInterface):
                 manifest_id,
                 is_reversion=is_reversion,
                 expiration_seconds=expiration_seconds,
+                immutable_from_label=immutable_from_label,
+                raise_on_error=True,
             )
 
             return Tag.for_tag(tag, self._legacy_image_id_handler)
@@ -616,15 +722,16 @@ class OCIModel(RegistryDataInterface):
         Deletes all tags pointing to the given manifest, making the manifest inaccessible for
         pulling.
 
-        Returns the tags (ShallowTag) deleted. Returns None on error.
+        Returns the tags (ShallowTag) deleted. Raises ImmutableTagException if any tag is immutable.
         """
         with db_disallow_replica_use():
+            deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
+
             manifest_cache_key = cache_key.for_repository_manifest(
                 manifest.repository.id, manifest.digest, model_cache.cache_config
             )
             model_cache.invalidate(manifest_cache_key)
 
-            deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
             return [ShallowTag.for_tag(tag) for tag in deleted_tags]
 
     def change_repository_tag_expiration(self, tag, expiration_date):
@@ -636,6 +743,16 @@ class OCIModel(RegistryDataInterface):
         """
         with db_disallow_replica_use():
             return oci.tag.change_tag_expiration(tag._db_id, expiration_date)
+
+    def change_tag_immutability(self, tag, immutable):
+        """
+        Sets the immutability status of the tag.
+
+        Returns a tuple of (previous_immutable_status, success).
+        """
+        with db_disallow_replica_use():
+            repo_ref = tag.repository
+            return oci.tag.set_tag_immutable(repo_ref.id, tag.name, immutable)
 
     def reset_security_status(self, manifest_or_legacy_image):
         """
@@ -678,6 +795,13 @@ class OCIModel(RegistryDataInterface):
         """
         with db_disallow_replica_use():
             oci.tag.set_tag_expiration_sec_for_manifest(manifest._db_id, expiration_sec)
+
+    def set_tags_immutability_for_manifest(self, manifest, immutable):
+        """
+        Sets the immutability status of all alive tags pointing to the given manifest.
+        """
+        with db_disallow_replica_use():
+            oci.tag.set_tags_immutability_for_manifest(manifest._db_id, immutable)
 
     def get_schema1_parsed_manifest(
         self, manifest, namespace_name, repo_name, tag_name, storage, raise_on_error=False
@@ -975,28 +1099,6 @@ class OCIModel(RegistryDataInterface):
             return self.lookup_active_repository_tags(
                 repository_ref, last_pagination_tag_name, limit
             )
-
-    def get_cached_namespace_region_blacklist(self, model_cache, namespace_name):
-        """
-        Returns a cached set of ISO country codes blacklisted for pulls for the namespace or None if
-        the list could not be loaded.
-        """
-
-        def load_blacklist():
-            restrictions = model.user.list_namespace_geo_restrictions(namespace_name)
-            if restrictions is None:
-                return None
-
-            return [restriction.restricted_region_iso_code for restriction in restrictions]
-
-        blacklist_cache_key = cache_key.for_namespace_geo_restrictions(
-            namespace_name, model_cache.cache_config
-        )
-        result = model_cache.retrieve(blacklist_cache_key, load_blacklist)
-        if result is None:
-            return None
-
-        return set(result)
 
     def get_cached_repo_blob(self, model_cache, namespace_name, repo_name, blob_digest):
         """

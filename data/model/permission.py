@@ -1,6 +1,6 @@
-import itertools
+import logging
 
-from peewee import JOIN
+from peewee import JOIN, SQL, fn
 
 from data.database import (
     Namespace,
@@ -16,6 +16,8 @@ from data.database import (
 )
 from data.model import DataModelException, _basequery
 from util.names import parse_robot_username
+
+logger = logging.getLogger(__name__)
 
 
 def list_team_permissions(team):
@@ -72,14 +74,48 @@ def get_user_repository_permissions(user, namespace, repo_name):
     return _get_user_repo_permissions(user, limit_namespace=namespace, limit_repo_name=repo_name)
 
 
-def _get_user_repo_permissions(
-    user, limit_to_repository_obj=None, limit_namespace=None, limit_repo_name=None
-):
-    UserThroughTeam = User.alias()
+def get_user_repository_permissions_for_read(user, namespace, repo_name):
+    """
+    Get user repository permissions for read-only operations.
 
-    base_query = (
+    Uses read replicas for high-volume read operations. Safe for checking
+    pull permissions where replication lag is acceptable.
+    """
+    return _get_user_repo_permissions(
+        user, limit_namespace=namespace, limit_repo_name=repo_name, can_use_read_replica=True
+    )
+
+
+def get_user_repository_permissions_for_write(user, namespace, repo_name):
+    """
+    Get user repository permissions for write operations.
+
+    Always uses primary database to ensure immediate consistency for critical
+    operations like push, where permission revocations must be enforced instantly.
+    """
+    return _get_user_repo_permissions(
+        user, limit_namespace=namespace, limit_repo_name=repo_name, can_use_read_replica=False
+    )
+
+
+def _get_user_repo_permissions(
+    user,
+    limit_to_repository_obj=None,
+    limit_namespace=None,
+    limit_repo_name=None,
+    can_use_read_replica=True,
+):
+    user_in_team = TeamMember.select(SQL("1")).where(
+        (TeamMember.team == RepositoryPermission.team) & (TeamMember.user == user)
+    )
+
+    query = (
         RepositoryPermission.select(
-            RepositoryPermission, Role, Repository, Namespace, can_use_read_replica=True
+            RepositoryPermission,
+            Role,
+            Repository,
+            Namespace,
+            can_use_read_replica=can_use_read_replica,
         )
         .join(Role)
         .switch(RepositoryPermission)
@@ -89,23 +125,15 @@ def _get_user_repo_permissions(
     )
 
     if limit_to_repository_obj is not None:
-        base_query = base_query.where(RepositoryPermission.repository == limit_to_repository_obj)
+        query = query.where(RepositoryPermission.repository == limit_to_repository_obj)
     elif limit_namespace and limit_repo_name:
-        base_query = base_query.where(
+        query = query.where(
             Repository.name == limit_repo_name, Namespace.username == limit_namespace
         )
 
-    direct = base_query.clone().join(User).where(User.id == user)
+    query = query.where((RepositoryPermission.user == user) | fn.EXISTS(user_in_team))
 
-    team = (
-        base_query.clone()
-        .join(Team)
-        .join(TeamMember)
-        .join(UserThroughTeam, on=(UserThroughTeam.id == TeamMember.user))
-        .where(UserThroughTeam.id == user)
-    )
-
-    return itertools.chain(direct, team)
+    return query
 
 
 def delete_prototype_permission(org, uid):
@@ -177,9 +205,53 @@ def get_org_wide_permissions(user, org_filter=None):
     with_user = with_org.switch(Team).join(TeamMember).join(User)
 
     if org_filter:
-        with_user.where(Org.username == org_filter)
+        with_user = with_user.where(Org.username == org_filter)
 
     return with_user.where(User.id == user, Org.organization == True)
+
+
+def get_user_teams_in_org(user: User, org_name: str) -> set[str]:
+    """
+    Returns a set of team names that the given user is a member of within the specified organization.
+
+    This is used for batch permission checking - a user can view a team if they are a member of it
+    (any role) or if they are an organization admin (checked separately).
+    """
+    Org = User.alias()
+
+    query = (
+        Team.select(Team.name)
+        .join(Org, on=(Team.organization == Org.id))
+        .switch(Team)
+        .join(TeamMember)
+        .join(User)
+        .where(User.id == user, Org.username == org_name)
+    )
+
+    return {team.name for team in query}
+
+
+def is_org_admin(user: User, org_name: str) -> bool:
+    """
+    Returns True if the user is an admin of the specified organization.
+
+    A user is an org admin if they are a member of any team with the 'admin' role.
+    """
+    Org = User.alias()
+
+    query = (
+        Team.select(Team.id)
+        .join(TeamRole)
+        .switch(Team)
+        .join(Org, on=(Team.organization == Org.id))
+        .switch(Team)
+        .join(TeamMember)
+        .join(User)
+        .where(User.id == user, Org.username == org_name, TeamRole.name == "admin")
+        .limit(1)
+    )
+
+    return query.exists()
 
 
 def get_all_repo_teams(namespace_name, repository_name):
@@ -298,7 +370,25 @@ def delete_user_permission(username, namespace_name, repository_name):
     if not fetched:
         raise DataModelException("User does not have permission for repo.")
 
-    fetched[0].delete_instance()
+    permission = fetched[0]
+
+    # Mark permission as revoked before deleting (best-effort)
+    try:
+        from app import model_cache
+
+        tracker = getattr(model_cache, "repo_modification_tracker", None)
+        if tracker and permission.user:
+            tracker.mark_permission_revoked(permission.user.id, namespace_name, repository_name)
+    except Exception as e:
+        logger.debug(
+            "Failed to mark permission revoked for user=%s, repo=%s/%s: %s",
+            permission.user.id if permission.user else None,
+            namespace_name,
+            repository_name,
+            e,
+        )
+
+    permission.delete_instance()
 
 
 def delete_team_permission(team_name, namespace_name, repository_name):
@@ -308,7 +398,31 @@ def delete_team_permission(team_name, namespace_name, repository_name):
     if not fetched:
         raise DataModelException("Team does not have permission for repo.")
 
-    fetched[0].delete_instance()
+    permission = fetched[0]
+
+    # Mark permissions as revoked for all team members (best-effort)
+    try:
+        from app import model_cache
+
+        tracker = getattr(model_cache, "repo_modification_tracker", None)
+        if tracker and permission.team:
+            from data.model import organization as org_model
+
+            member_ids = [
+                member.id for member in org_model.get_organization_team_members(permission.team.id)
+            ]
+            if member_ids:
+                tracker.mark_permissions_revoked_batch(member_ids, namespace_name, repository_name)
+    except Exception as e:
+        logger.debug(
+            "Failed to mark team permission revoked for team=%s, repo=%s/%s: %s",
+            permission.team.id if permission.team else None,
+            namespace_name,
+            repository_name,
+            e,
+        )
+
+    permission.delete_instance()
 
 
 def __set_entity_repo_permission(

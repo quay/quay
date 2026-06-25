@@ -18,8 +18,7 @@ import {
 import {BulkOperationError, ResourceError} from 'src/resources/ErrorHandling';
 import {useCurrentUser} from './UseCurrentUser';
 import {IAvatar} from 'src/resources/OrganizationResource';
-import {useAlerts} from './UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {useUI, AlertVariant} from 'src/contexts/UIContext';
 import {addRepoPermissionToTeam} from 'src/resources/DefaultPermissionResource';
 
 interface createNewTeamForNamespaceParams {
@@ -29,7 +28,7 @@ interface createNewTeamForNamespaceParams {
 
 export function useCreateTeam(orgName, {onSuccess, onError}) {
   const queryClient = useQueryClient();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {
     data: responseData,

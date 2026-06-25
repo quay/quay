@@ -1,9 +1,7 @@
 import {
   PageSection,
-  PageSectionVariants,
-  TextContent,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
   Spinner,
   Dropdown,
   MenuToggleElement,
@@ -25,8 +23,7 @@ import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemp
 import Conditional from 'src/components/empty/Conditional';
 import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import ErrorModal from 'src/components/errors/ErrorModal';
 import {usePaginatedSortableTable} from '../../../../../hooks/usePaginatedSortableTable';
 
@@ -80,7 +77,7 @@ export default function DefaultPermissionsList(
   >([]);
   const [bulkDeleteModalIsOpen, setBulkDeleteModalIsOpen] = useState(false);
   const [err, setError] = useState<string[]>();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const onSelectPermission = (
     permission: IDefaultPermission,
@@ -179,25 +176,25 @@ export default function DefaultPermissionsList(
 
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <ErrorModal
           title="Default permission deletion failed"
           error={err}
           setError={setError}
         />
-        <TextContent>
-          <Text component={TextVariants.p}>
+        <Content>
+          <Content component={ContentVariants.p}>
             The Default permissions panel defines permissions that should be
             granted automatically to a repository when it is created, in
             addition to the default of the repository&apos;s creator.
             Permissions are assigned based on the user who created the
             repository.
-          </Text>
-          <Text component={TextVariants.p}>
+          </Content>
+          <Content component={ContentVariants.p}>
             Note: Permissions added here do not automatically get added to
             existing repositories.
-          </Text>
-        </TextContent>
+          </Content>
+        </Content>
         <DefaultPermissionsToolbar
           selectedItems={selectedPermissions}
           deSelectAll={() => setSelectedPermissions([])}

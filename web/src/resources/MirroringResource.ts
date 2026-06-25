@@ -24,6 +24,8 @@ export interface MirroringConfig {
     rule_kind: string;
     rule_value: string[];
   };
+  skopeo_timeout_interval?: number;
+  architecture_filter?: string[] | null;
 }
 
 export interface MirroringConfigResponse extends MirroringConfig {
@@ -43,6 +45,7 @@ export interface MirroringConfigResponse extends MirroringConfig {
   sync_retries_remaining: number | null;
   robot_username: string;
   skopeo_timeout_interval: number;
+  architecture_filter: string[];
 }
 
 // Date conversion utilities

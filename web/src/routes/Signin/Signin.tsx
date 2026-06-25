@@ -6,27 +6,27 @@ import {
   Form,
   FormGroup,
   LoginForm,
-  LoginPage,
   Spinner,
   TextInput,
   ValidatedOptions,
 } from '@patternfly/react-core';
-import logo from 'src/assets/quay.svg';
 import {GlobalAuthState, loginUser} from 'src/resources/AuthResource';
 import {useNavigate, Link, useSearchParams} from 'react-router-dom';
 import {useRecoilState} from 'recoil';
 import {AuthState} from 'src/atoms/AuthState';
-import axios, {getCsrfToken} from 'src/libs/axios';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {getCsrfToken} from 'src/libs/axios';
+import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
 import {AxiosError} from 'axios';
 import './Signin.css';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {usePasswordRecovery} from 'src/hooks/UsePasswordRecovery';
 import {useQuayState} from 'src/hooks/UseQuayState';
-import {ReCaptcha} from 'src/components/ReCaptcha';
 import {useExternalLogins} from 'src/hooks/UseExternalLogins';
 import {useExternalLoginAuth} from 'src/hooks/UseExternalLoginAuth';
 import {ExternalLoginButton} from 'src/components/ExternalLoginButton';
+import {LoginPageLayout} from 'src/components/LoginPageLayout';
+import {useQueryClient} from '@tanstack/react-query';
+import {fetchUser} from 'src/resources/UserResource';
 
 type ViewType = 'signin' | 'forgotPassword';
 
@@ -39,7 +39,6 @@ export function Signin() {
 
   const [currentView, setCurrentView] = useState<ViewType>('signin');
   const [recoveryEmail, setRecoveryEmail] = useState('');
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [externalLoginError, setExternalLoginError] = useState<string | null>(
     null,
   );
@@ -47,8 +46,10 @@ export function Signin() {
   const {inReadOnlyMode, inAccountRecoveryMode} = useQuayState();
 
   const navigate = useNavigate();
-  const quayConfig = useQuayConfig();
+  const {config: quayConfig, isLoading: configLoading} =
+    useQuayConfigWithLoading();
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const {
     requestRecovery,
     isLoading: sendingRecovery,
@@ -73,9 +74,10 @@ export function Signin() {
   useEffect(() => {
     if (shouldAutoRedirectSSO() && externalLogins.length > 0) {
       const singleProvider = externalLogins[0];
-      startExternalLogin(singleProvider);
+      const redirectUrl = searchParams.get('redirect_url') || undefined;
+      startExternalLogin(singleProvider, redirectUrl);
     }
-  }, [shouldAutoRedirectSSO, externalLogins, startExternalLogin]);
+  }, [shouldAutoRedirectSSO, externalLogins, startExternalLogin, searchParams]);
 
   // Check for external login errors in URL parameters
   useEffect(() => {
@@ -109,16 +111,16 @@ export function Signin() {
     }
   }, [hookError]);
 
-  let logoUrl = logo;
-  if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
-    logoUrl = `${axios.defaults.baseURL}${quayConfig.config.ENTERPRISE_DARK_LOGO_URL}`;
+  // Show loading spinner until config is loaded to prevent flash of unconfigured content
+  if (configLoading) {
+    return (
+      <LoginPageLayout title="" description="">
+        <div style={{textAlign: 'center', padding: '40px'}}>
+          <Spinner size="xl" />
+        </div>
+      </LoginPageLayout>
+    );
   }
-
-  useEffect(() => {
-    if (quayConfig?.config?.REGISTRY_TITLE) {
-      document.title = `${quayConfig.config.REGISTRY_TITLE} • Quay`;
-    }
-  }, [quayConfig]);
 
   const showForgotPassword = () => {
     if (!quayConfig) return false;
@@ -156,7 +158,7 @@ export function Signin() {
     if (!recoveryEmail) return;
 
     try {
-      await requestRecovery(recoveryEmail, recaptchaToken);
+      await requestRecovery(recoveryEmail);
     } catch (error) {
       // Error is handled by the hook
     }
@@ -166,7 +168,6 @@ export function Signin() {
     setCurrentView(view);
     if (view === 'signin') {
       setRecoveryError(null);
-      setRecaptchaToken(null);
     } else {
       setErr(undefined);
     }
@@ -182,6 +183,29 @@ export function Signin() {
         setAuthState((old) => ({...old, isSignedIn: true, username: username}));
         await getCsrfToken();
         GlobalAuthState.isLoggedIn = true;
+
+        // Fetch fresh user data to check for prompts
+        let user;
+        try {
+          user = await queryClient.fetchQuery(['user'], fetchUser);
+        } catch (fetchErr) {
+          // If fetching user fails, show error and stop navigation
+          setErr(
+            addDisplayError(
+              'Login successful but failed to load user data. Please refresh the page.',
+              fetchErr,
+            ),
+          );
+          return;
+        }
+
+        // If user has prompts (e.g., confirm_username), redirect to updateuser
+        if (user.prompts && user.prompts.length > 0) {
+          navigate('/updateuser');
+          return;
+        }
+
+        // Otherwise, redirect to the intended destination
         const redirectUrl = searchParams.get('redirect_url');
         if (redirectUrl) {
           window.location.href = redirectUrl;
@@ -196,8 +220,10 @@ export function Signin() {
         err instanceof AxiosError &&
         err.response &&
         err.response.status === 403;
-      if (authErr && err.response.data.invalidCredentials) {
-        setErr('Invalid login credentials');
+      if (authErr && err.response.data.needsEmailVerification) {
+        setErr('You must verify your email address before you can sign in');
+      } else if (authErr && err.response.data.invalidCredentials) {
+        setErr(err.response.data.message || 'Invalid login credentials');
       } else if (authErr) {
         setErr('CSRF token expired - please refresh');
       } else {
@@ -209,6 +235,7 @@ export function Signin() {
   const errMessage = (
     <Alert
       id="form-error-alert"
+      data-testid="signin-error-alert"
       isInline
       actionClose={<AlertActionCloseButton onClose={() => setErr(null)} />}
       variant="danger"
@@ -287,6 +314,7 @@ export function Signin() {
                   isRequired
                   type="email"
                   id="recovery-email"
+                  data-testid="signin-recovery-email"
                   name="recovery-email"
                   value={recoveryEmail}
                   onChange={(_event, v) => setRecoveryEmail(v)}
@@ -300,12 +328,11 @@ export function Signin() {
                 />
               </FormGroup>
 
-              <ReCaptcha onChange={setRecaptchaToken} className="captcha" />
-
               <Button
                 variant="primary"
                 type="submit"
                 isBlock
+                data-testid="signin-send-recovery"
                 isDisabled={
                   !recoveryEmail ||
                   !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recoveryEmail) ||
@@ -324,6 +351,7 @@ export function Signin() {
         <button
           type="button"
           className="signin-link-button"
+          data-testid="signin-back-to-login"
           onClick={() => handleViewChange('signin')}
         >
           Back to Sign In
@@ -398,7 +426,10 @@ export function Signin() {
                 Don&apos;t have an account?{' '}
                 <Link
                   to="/createaccount"
-                  style={{color: 'var(--pf-v5-global--link--Color)'}}
+                  data-testid="signin-create-account-link"
+                  style={{
+                    color: 'var(--pf-t--global--text--color--link--default)',
+                  }}
                 >
                   Create account
                 </Link>
@@ -408,7 +439,9 @@ export function Signin() {
 
             {showInvitationMessage() && (
               <>
-                <span>Invitation required to sign up</span>
+                <span data-testid="signin-invitation-message">
+                  Invitation required to sign up
+                </span>
                 <br />
               </>
             )}
@@ -417,6 +450,7 @@ export function Signin() {
               <button
                 type="button"
                 className="signin-link-button"
+                data-testid="signin-forgot-password-link"
                 onClick={() => handleViewChange('forgotPassword')}
               >
                 Forgot Password?
@@ -450,17 +484,13 @@ export function Signin() {
   );
 
   return (
-    <LoginPage
-      className={'pf-u-background-color-100 pf-v5-u-text-align-left'}
-      brandImgSrc={logoUrl}
-      brandImgAlt="Red Hat Quay"
-      backgroundImgSrc="assets/images/rh_login.jpeg"
-      textContent="Quay builds, analyzes and distributes your container images. Store your containers with added security. Easily build and deploy new containers. Scan containers to provide security."
-      loginTitle={
+    <LoginPageLayout
+      title={
         currentView === 'signin' ? 'Log in to your account' : 'Reset Password'
       }
+      description="Build, analyze and distribute your container images. Store your containers with added security. Easily build and deploy new containers. Scan containers to provide security."
     >
       {currentView === 'signin' ? loginForm : recoveryForm}
-    </LoginPage>
+    </LoginPageLayout>
   );
 }

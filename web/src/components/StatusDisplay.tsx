@@ -31,7 +31,7 @@ export function StatusDisplay({
   return (
     <>
       {title && <Title headingLevel="h3">{title}</Title>}
-      <Card isFlat data-testid={dataTestId}>
+      <Card data-testid={dataTestId}>
         <CardBody>
           <DescriptionList isHorizontal>
             {items.map((item, index) => (

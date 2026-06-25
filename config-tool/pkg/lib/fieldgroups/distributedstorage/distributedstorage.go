@@ -379,10 +379,17 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 		}
 	}
 
-	if value, ok := storageArgs["sts_web_token_filen"]; ok {
+	if value, ok := storageArgs["sts_web_identity_token_file"]; ok {
 		newDistributedStorageArgs.STSWebIdentityTokenFile, ok = value.(string)
 		if !ok {
-			return newDistributedStorageArgs, errors.New("sts_web_token_file must be a string")
+			return newDistributedStorageArgs, errors.New("sts_web_identity_token_file must be a string")
+		}
+	}
+
+	if value, ok := storageArgs["sts_role_session_name"]; ok {
+		newDistributedStorageArgs.STSRoleSessionName, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("sts_role_session_name must be a string")
 		}
 	}
 

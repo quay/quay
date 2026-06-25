@@ -1,7 +1,7 @@
 import os
 import os.path
 import sys
-from typing import List, Union
+from typing import List
 
 import jinja2
 
@@ -13,8 +13,14 @@ QUAYRUN_DIR = os.getenv("QUAYRUN", QUAYCONF_DIR)
 QUAY_LOGGING = os.getenv("QUAY_LOGGING", "stdout")  # or "syslog"
 QUAY_HOTRELOAD: bool = os.getenv("QUAY_HOTRELOAD", "false") == "true"
 
-QUAY_SERVICES: Union[List, str] = os.getenv("QUAY_SERVICES", [])
-QUAY_OVERRIDE_SERVICES: Union[List, str] = os.getenv("QUAY_OVERRIDE_SERVICES", [])
+
+def _parse_csv_env(name):
+    val = os.getenv(name, "")
+    return [s.strip() for s in val.split(",") if s.strip()] if val else []
+
+
+QUAY_SERVICES: List[str] = _parse_csv_env("QUAY_SERVICES")
+QUAY_OVERRIDE_SERVICES: List[str] = _parse_csv_env("QUAY_OVERRIDE_SERVICES")
 
 
 def registry_services():
@@ -50,11 +56,11 @@ def registry_services():
         "manifestbackfillworker": {"autostart": "true"},
         "manifestsubjectbackfillworker": {"autostart": "true"},
         "securityscanningnotificationworker": {"autostart": "true"},
-        "config-editor": {"autostart": "false"},
         "quotatotalworker": {"autostart": "true"},
         "quotaregistrysizeworker": {"autostart": "true"},
         "autopruneworker": {"autostart": "true"},
         "proxycacheblobworker": {"autostart": "true"},
+        "pullstatsredisflushworker": {"autostart": "true"},
     }
 
 
@@ -91,11 +97,11 @@ def config_services():
         "manifestbackfillworker": {"autostart": "false"},
         "manifestsubjectbackfillworker": {"autostart": "false"},
         "securityscanningnotificationworker": {"autostart": "false"},
-        "config-editor": {"autostart": "true"},
         "quotatotalworker": {"autostart": "false"},
         "quotaregistrysizeworker": {"autostart": "false"},
         "autopruneworker": {"autostart": "false"},
         "proxycacheblobworker": {"autostart": "false"},
+        "pullstatsredisflushworker": {"autostart": "false"},
     }
 
 
@@ -109,7 +115,7 @@ def generate_supervisord_config(filename, config, logdriver, hotreload):
 
 
 def limit_services(config, enabled_services):
-    if enabled_services == []:
+    if not enabled_services:
         return
 
     for service in list(config.keys()):
@@ -120,7 +126,7 @@ def limit_services(config, enabled_services):
 
 
 def override_services(config, override_services):
-    if override_services == []:
+    if not override_services:
         return
 
     for service in list(config.keys()):
@@ -137,6 +143,7 @@ if __name__ == "__main__":
         config = registry_services()
     limit_services(config, QUAY_SERVICES)
     override_services(config, QUAY_OVERRIDE_SERVICES)
+
     generate_supervisord_config(
         os.path.join(QUAYCONF_DIR, "supervisord.conf"),
         config,

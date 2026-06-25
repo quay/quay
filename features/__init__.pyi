@@ -94,12 +94,6 @@ USER_METADATA: FeatureNameValue
 # Feature Flag: Whether to support signing
 SIGNING: FeatureNameValue
 
-# Feature Flag: Whether to enable support for App repositories.
-APP_REGISTRY: FeatureNameValue
-
-# Feature Flag: Whether app registry is in a read-only mode.
-READONLY_APP_REGISTRY: FeatureNameValue
-
 # Feature Flag: If set to true, the _catalog endpoint returns public repositories. Otherwise,
 # only private repositories can be returned.
 PUBLIC_CATALOG: FeatureNameValue
@@ -125,6 +119,9 @@ SECURITY_NOTIFICATIONS: FeatureNameValue
 # Repository mirror
 REPO_MIRROR: FeatureNameValue
 
+# Organization-level repository mirror
+ORG_MIRROR: FeatureNameValue
+
 # Site key and secret key for using recaptcha.
 RECAPTCHA: FeatureNameValue
 
@@ -139,6 +136,9 @@ NONSUPERUSER_TEAM_SYNCING_SETUP: FeatureNameValue
 
 # Feature Flag: Whether users can view and change their tag expiration.
 CHANGE_TAG_EXPIRATION: FeatureNameValue
+
+# Feature Flag: Whether tag immutability is enabled.
+IMMUTABLE_TAGS: FeatureNameValue
 
 # Feature Flag: If enabled, users can create and use app specific tokens to login via the CLI.
 APP_SPECIFIC_TOKENS: FeatureNameValue
@@ -193,6 +193,8 @@ EXTENDED_REPOSITORY_NAMES: FeatureNameValue
 
 QUOTA_MANAGEMENT: FeatureNameValue
 EDIT_QUOTA: FeatureNameValue
+
+IMAGE_PULL_STATS: FeatureNameValue
 
 QUOTA_SUPPRESS_FAILURES: FeatureNameValue
 

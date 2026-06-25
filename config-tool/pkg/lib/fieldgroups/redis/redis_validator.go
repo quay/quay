@@ -36,6 +36,14 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 		errors = append(errors, err)
 	}
 
+	// Check for pull metrics config (only if provided)
+	if fg.PullMetricsRedis != nil {
+		// Check for pull metrics host
+		if ok, err := shared.ValidateRequiredString(fg.PullMetricsRedis.Host, "PULL_METRICS_REDIS.HOST", "Redis"); !ok {
+			errors = append(errors, err)
+		}
+	}
+
 	// Build options for build logs and connect
 	addr := fg.BuildlogsRedis.Host
 	if fg.BuildlogsRedis.Port != 0 {
@@ -50,9 +58,9 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 	}
 
 	options := &redis.Options{
-		Addr:     addr,
-		Password: fg.BuildlogsRedis.Password,
-		DB:       0,
+		Addr:      addr,
+		Password:  fg.BuildlogsRedis.Password,
+		DB:        0,
 		TLSConfig: tlsConfig,
 	}
 	if ok, err := shared.ValidateRedisConnection(options, "BUILDLOGS_REDIS", "Redis"); !ok {
@@ -73,13 +81,40 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 	}
 
 	options = &redis.Options{
-		Addr:     addr,
-		Password: fg.UserEventsRedis.Password,
-		DB:       0,
+		Addr:      addr,
+		Password:  fg.UserEventsRedis.Password,
+		DB:        0,
 		TLSConfig: tlsConfig,
 	}
 	if ok, err := shared.ValidateRedisConnection(options, "USER_EVENTS_REDIS", "Redis"); !ok {
 		errors = append(errors, err)
+	}
+
+	// Build options for pull metrics and connect (only if provided)
+	if fg.PullMetricsRedis != nil {
+		addr = fg.PullMetricsRedis.Host
+		if fg.PullMetricsRedis.Port != 0 {
+			addr = addr + ":" + fmt.Sprintf("%d", fg.PullMetricsRedis.Port)
+		}
+
+		tlsConfig = nil
+		if fg.PullMetricsRedis.Ssl {
+			tlsConfig = &tls.Config{
+				InsecureSkipVerify: true,
+			}
+		}
+
+		options = &redis.Options{
+			Addr:      addr,
+			Password:  fg.PullMetricsRedis.Password,
+			DB:        fg.PullMetricsRedis.Db,
+			TLSConfig: tlsConfig,
+		}
+		if opts.Mode != "testing" {
+			if ok, err := shared.ValidateRedisConnection(options, "PULL_METRICS_REDIS", "Redis"); !ok {
+				errors = append(errors, err)
+			}
+		}
 	}
 
 	return errors

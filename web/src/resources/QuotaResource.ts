@@ -27,13 +27,29 @@ export interface ICreateQuotaLimitParams {
   threshold_percent: number;
 }
 
-// Fetch organization quota
+export type QuotaViewMode = 'self' | 'organization' | 'superuser';
+
+// Fetch quota based on view context
 export async function fetchOrganizationQuota(
   orgName: string,
   signal?: AbortSignal,
+  viewMode?: QuotaViewMode,
 ): Promise<IQuota[]> {
   try {
-    const response = await axios.get(`/api/v1/organization/${orgName}/quota`, {
+    // Build endpoint based on view context
+    let endpoint: string;
+    if (viewMode === 'self') {
+      // User viewing their own quota (no username in path - auth determines user)
+      endpoint = '/api/v1/user/quota';
+    } else if (viewMode === 'superuser') {
+      // Superuser managing a user's quota
+      endpoint = `/api/v1/superuser/users/${orgName}/quota`;
+    } else {
+      // Organization quota (default)
+      endpoint = `/api/v1/organization/${orgName}/quota`;
+    }
+
+    const response = await axios.get(endpoint, {
       signal,
     });
     return response.data;
@@ -57,65 +73,75 @@ export async function fetchOrganizationQuota(
   }
 }
 
-// Create organization quota
+// Create quota (only superusers can create quotas)
 export async function createOrganizationQuota(
   orgName: string,
   params: ICreateQuotaParams,
+  viewMode?: QuotaViewMode,
 ): Promise<void> {
-  await axios.post(`/api/v1/organization/${orgName}/quota`, params);
+  const endpoint =
+    viewMode === 'superuser'
+      ? `/api/v1/superuser/users/${orgName}/quota`
+      : `/api/v1/organization/${orgName}/quota`;
+  await axios.post(endpoint, params);
 }
 
-// Update organization quota
+// Update quota (only superusers can update quotas)
 export async function updateOrganizationQuota(
   orgName: string,
   quotaId: string,
   params: IUpdateQuotaParams,
+  viewMode?: QuotaViewMode,
 ): Promise<void> {
-  await axios.put(`/api/v1/organization/${orgName}/quota/${quotaId}`, params);
+  const endpoint =
+    viewMode === 'superuser'
+      ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}`
+      : `/api/v1/organization/${orgName}/quota/${quotaId}`;
+  await axios.put(endpoint, params);
 }
 
-// Delete organization quota
+// Delete quota (only superusers can delete quotas)
 export async function deleteOrganizationQuota(
   orgName: string,
   quotaId: string,
+  viewMode?: QuotaViewMode,
 ): Promise<void> {
-  await axios.delete(`/api/v1/organization/${orgName}/quota/${quotaId}`);
+  const endpoint =
+    viewMode === 'superuser'
+      ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}`
+      : `/api/v1/organization/${orgName}/quota/${quotaId}`;
+  await axios.delete(endpoint);
 }
 
-// Create quota limit
+// Create quota limit (for organization or user quota)
 export async function createQuotaLimit(
   orgName: string,
   quotaId: string,
   params: ICreateQuotaLimitParams,
 ): Promise<void> {
-  await axios.post(
-    `/api/v1/organization/${orgName}/quota/${quotaId}/limit`,
-    params,
-  );
+  const endpoint = `/api/v1/organization/${orgName}/quota/${quotaId}/limit`;
+  await axios.post(endpoint, params);
 }
 
-// Update quota limit
+// Update quota limit (for organization or user quota)
 export async function updateQuotaLimit(
   orgName: string,
   quotaId: string,
   limitId: string,
   params: ICreateQuotaLimitParams,
 ): Promise<void> {
-  await axios.put(
-    `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`,
-    params,
-  );
+  const endpoint = `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`;
+  await axios.put(endpoint, params);
 }
 
-// Delete quota limit
+// Delete quota limit (for organization or user quota)
 export async function deleteQuotaLimit(
   orgName: string,
   quotaId: string,
   limitId: string,
 ): Promise<void> {
-  await axios.delete(
-    `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`,
-  );
+  const endpoint = `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`;
+  await axios.delete(endpoint);
 }
 
 // Helper function to convert bytes to human readable format

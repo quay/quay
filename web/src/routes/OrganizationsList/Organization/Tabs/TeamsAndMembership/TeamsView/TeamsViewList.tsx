@@ -8,10 +8,11 @@ import {
   MenuToggle,
   MenuToggleElement,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Spinner,
+  Tooltip,
 } from '@patternfly/react-core';
+import {SyncIcon} from '@patternfly/react-icons';
 import TeamsViewToolbar from './TeamsViewToolbar';
 import TeamViewKebab from './TeamViewKebab';
 import {ITeams, useDeleteTeam, useFetchTeams} from 'src/hooks/UseTeams';
@@ -20,13 +21,13 @@ import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemp
 import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
 import ErrorModal from 'src/components/errors/ErrorModal';
 import {getTeamMemberPath} from 'src/routes/NavigationPath';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import SetRepoPermissionForTeamModal from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/SetRepoPermissionsModal/SetRepoPermissionForTeamModal';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import Conditional from 'src/components/empty/Conditional';
 import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTemplate';
 import {usePaginatedSortableTable} from '../../../../../../hooks/usePaginatedSortableTable';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export const teamViewColumnNames = {
   teamName: 'Team name',
@@ -36,6 +37,7 @@ export const teamViewColumnNames = {
 };
 
 export default function TeamsViewList(props: TeamsViewListProps) {
+  const config = useQuayConfig();
   const {
     teams: allTeams,
     isLoadingTeams,
@@ -72,7 +74,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
   const [deleteModalIsOpen, setDeleteModalIsOpen] = useState(false);
   const [err, setIsError] = useState<string[]>();
   const [searchParams] = useSearchParams();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [isSetRepoPermModalOpen, setIsSetRepoPermModalOpen] = useState(false);
   const [repoPermForTeam, setRepoPermForTeam] = useState<string>('');
   const [isDeleteModalForRowOpen, setIsDeleteModalForRowOpen] = useState(false);
@@ -236,13 +238,17 @@ export default function TeamsViewList(props: TeamsViewListProps) {
     setIsSetRepoPermModalOpen(!isSetRepoPermModalOpen);
   };
 
+  const showSyncColumn =
+    config?.features?.TEAM_SYNCING &&
+    config?.config?.AUTHENTICATION_TYPE !== 'Database';
+
   if (isLoadingTeams) {
     return <Spinner />;
   }
 
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <ErrorModal
           title="Team deletion failed"
           error={err}
@@ -278,6 +284,9 @@ export default function TeamsViewList(props: TeamsViewListProps) {
           <Thead>
             <Tr>
               <Th />
+              <Conditional if={showSyncColumn}>
+                <Th modifier="center" />
+              </Conditional>
               <Th sort={getSortableSort(1)}>{teamViewColumnNames.teamName}</Th>
               <Th sort={getSortableSort(2)}>{teamViewColumnNames.members}</Th>
               <Th sort={getSortableSort(3)}>
@@ -298,6 +307,15 @@ export default function TeamsViewList(props: TeamsViewListProps) {
                     isSelected: selectedTeams.some((t) => t.name === team.name),
                   }}
                 />
+                <Conditional if={showSyncColumn}>
+                  <Td modifier="center">
+                    {team.is_synced && (
+                      <Tooltip content="Team is synchronized with a backing group">
+                        <SyncIcon data-test-id="sync-icon" />
+                      </Tooltip>
+                    )}
+                  </Td>
+                </Conditional>
                 <Td dataLabel={teamViewColumnNames.teamName}>
                   {team.can_view ? (
                     <Link

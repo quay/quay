@@ -5,9 +5,8 @@ import {
   fetchProxyCacheConfig,
   validateProxyCacheConfig,
 } from 'src/resources/ProxyCacheResource';
-import {useCurrentUser} from './UseCurrentUser';
 import {addDisplayError} from 'src/resources/ErrorHandling';
-import {AxiosError} from 'axios';
+import {AxiosError, isAxiosError} from 'axios';
 
 export interface IProxyCacheConfig {
   upstream_registry: string;
@@ -18,27 +17,35 @@ export interface IProxyCacheConfig {
   upstream_registry_password?: string;
 }
 
-export function useFetchProxyCacheConfig(orgName: string) {
-  const {user} = useCurrentUser();
-
+export function useFetchProxyCacheConfig(orgName: string, enabled = true) {
   const {
     data: fetchedProxyCacheConfig,
     isLoading: isLoadingProxyCacheConfig,
     isSuccess: isSuccessLoadingProxyCacheConfig,
-    isError: errorLoadingProxyCacheConfig,
-  } = useQuery<IProxyCacheConfig>(
-    ['proxycacheconfig'],
-    ({signal}) => fetchProxyCacheConfig(orgName, signal),
-    {
-      enabled: !(user.username === orgName),
+    isError: isErrorProxyCacheConfig,
+    error: errorLoadingProxyCacheConfig,
+  } = useQuery<IProxyCacheConfig | undefined>({
+    queryKey: ['proxycacheconfig', orgName],
+    queryFn: async ({signal}) => {
+      try {
+        return await fetchProxyCacheConfig(orgName, signal);
+      } catch (err) {
+        if (isAxiosError(err) && err.response?.status === 404) {
+          return undefined;
+        }
+        throw err;
+      }
     },
-  );
+    enabled,
+  });
 
   return {
     fetchedProxyCacheConfig,
+    isProxyCacheConfigured: !!fetchedProxyCacheConfig?.upstream_registry,
     isLoadingProxyCacheConfig,
     errorLoadingProxyCacheConfig,
     isSuccessLoadingProxyCacheConfig,
+    isErrorProxyCacheConfig,
   };
 }
 

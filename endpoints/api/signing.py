@@ -9,7 +9,6 @@ from app import tuf_metadata_api
 from endpoints.api import (
     NotFound,
     RepositoryParamResource,
-    disallow_for_app_repositories,
     nickname,
     path_param,
     require_repo_read,
@@ -31,7 +30,6 @@ class RepositorySignatures(RepositoryParamResource):
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoSignatures")
-    @disallow_for_app_repositories
     def get(self, namespace, repository):
         """
         Fetches the list of signed tags for the repository.

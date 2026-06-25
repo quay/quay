@@ -5,15 +5,20 @@ packages: [
   libpq-devel,
   openldap,
   openssl,
-  python39,
+  python3.12,
+  python3.12-pip,
+  python-unversioned-command,
   python3-gpg,
+  python3-six,
   skopeo,
   findutils,
   tzdata,
   gcc-c++,
   git,
+  cmake,
+  ninja-build,
   openldap-devel,
-  python39-devel,
+  python3.12-devel,
   libffi-devel,
   openssl-devel,
   diffutils,
@@ -27,9 +32,13 @@ packages: [
   libxslt-devel,
   freetype-devel,
   glibc,
-  glibc-minimal-langpack,
+  glibc-langpack-en,
   glibc-devel,
 ]
+moduleEnable:
+  - nginx:1.24
 contentOrigin:
   repofiles: ["./ubi.repo"]
 arches: [x86_64]
+context:
+  image: registry.access.redhat.com/ubi9/ubi-minimal:9.7

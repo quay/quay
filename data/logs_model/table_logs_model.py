@@ -217,6 +217,14 @@ class TableLogsModel(SharedModel, ActionLogsDataInterface):
         repository_name=None,
         timestamp=None,
         is_free_namespace=False,
+        # Enhanced logging fields (accepted but not stored in table model)
+        request_url=None,
+        http_method=None,
+        auth_type=None,
+        user_agent=None,
+        performer_kind=None,
+        request_id=None,
+        x_forwarded_for=None,
     ):
         if self._should_skip_logging and self._should_skip_logging(
             kind_name, namespace_name, is_free_namespace

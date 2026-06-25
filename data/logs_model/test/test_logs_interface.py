@@ -1,6 +1,5 @@
 import os
 from datetime import date, datetime, timedelta
-from test.fixtures import *
 from unittest.mock import patch
 
 import pytest
@@ -20,6 +19,7 @@ from data.logs_model.inmemory_model import InMemoryModel
 from data.logs_model.interface import LogsIterationTimeout
 from data.logs_model.table_logs_model import TableLogsModel
 from data.logs_model.test.fake_elasticsearch import FAKE_ES_HOST, fake_elasticsearch
+from test.fixtures import *
 
 
 @pytest.fixture()
@@ -151,7 +151,9 @@ def test_logs(namespace_name, repo_name, performer_name, check_args, expect_resu
     kinds = list(LogEntryKind.select())
     user = model.user.get_user(performer_name)
 
-    start_timestamp = datetime.utcnow()
+    # Use a timestamp safely in the middle of the day to avoid crossing midnight UTC,
+    # which would split aggregated log counts across two days and cause flaky failures.
+    start_timestamp = datetime.utcnow().replace(hour=12, minute=0, second=0, microsecond=0)
     timestamp = start_timestamp
 
     for kind in kinds:

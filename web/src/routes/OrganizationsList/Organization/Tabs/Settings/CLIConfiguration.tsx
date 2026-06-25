@@ -1,43 +1,450 @@
-import {FlexItem, Title, Form, Flex} from '@patternfly/react-core';
-import {Button} from '@patternfly/react-core';
+import {
+  FlexItem,
+  Title,
+  Form,
+  Flex,
+  Button,
+  Content,
+  Spinner,
+  Alert,
+  EmptyState,
+  EmptyStateBody,
+  Divider,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
+  MenuToggle,
+  Tooltip,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
+import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
+import {EllipsisVIcon, KeyIcon} from '@patternfly/react-icons';
 import {GenerateEncryptedPassword} from 'src/components/modals/GenerateEncryptedPasswordModal';
+import CreateApplicationTokenModal from 'src/components/modals/CreateApplicationTokenModal';
+import RevokeTokenModal from 'src/components/modals/RevokeTokenModal';
+import CredentialsModal from 'src/components/modals/CredentialsModal';
+import ChangePasswordModal from 'src/components/modals/ChangePasswordModal';
+import {
+  useFetchApplicationTokens,
+  useApplicationToken,
+} from 'src/hooks/UseApplicationTokens';
+import {IApplicationToken} from 'src/resources/UserResource';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useState} from 'react';
+import {formatRelativeTime, formatDate} from 'src/libs/utils';
+import ApplicationTokensToolbar from './ApplicationTokensToolbar';
+import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 
 export const CliConfiguration = () => {
-  const [open, toggleOpen] = useState(false);
+  const quayConfig = useQuayConfig();
+  const {user} = useCurrentUser();
+  const [encryptedPasswordModalOpen, toggleEncryptedPasswordModal] =
+    useState(false);
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
+  const [createTokenModalOpen, setCreateTokenModalOpen] = useState(false);
+  const [revokeTokenModalOpen, setRevokeTokenModalOpen] = useState(false);
+  const [tokenToRevoke, setTokenToRevoke] = useState<IApplicationToken | null>(
+    null,
+  );
+  const [viewTokenModalOpen, setViewTokenModalOpen] = useState(false);
+  const [tokenUuidToFetch, setTokenUuidToFetch] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState<Record<string, boolean>>({});
+
+  const {
+    tokens,
+    filteredTokens,
+    paginatedTokens,
+    isLoading,
+    error,
+    page,
+    setPage,
+    perPage,
+    setPerPage,
+    search,
+    setSearch,
+  } = useFetchApplicationTokens();
+  const {
+    data: fetchedToken,
+    isLoading: isFetchingToken,
+    error: fetchTokenError,
+  } = useApplicationToken(tokenUuidToFetch);
+
+  const handleRevokeToken = (token: IApplicationToken) => {
+    setTokenToRevoke(token);
+    setRevokeTokenModalOpen(true);
+  };
+
+  const handleCloseRevokeModal = () => {
+    setRevokeTokenModalOpen(false);
+    setTokenToRevoke(null);
+  };
+
+  const handleViewToken = (token: IApplicationToken) => {
+    setTokenUuidToFetch(token.uuid);
+    setViewTokenModalOpen(true);
+  };
+
+  const handleCloseViewModal = () => {
+    setViewTokenModalOpen(false);
+    setTokenUuidToFetch(null);
+  };
+
+  const toggleDropdown = (tokenUuid: string) => {
+    setDropdownOpen((prev) => ({
+      ...prev,
+      [tokenUuid]: !prev[tokenUuid],
+    }));
+  };
+
+  const renderDateCell = (dateString: string | null) => {
+    if (!dateString) return 'Never';
+
+    const relativeTime = formatRelativeTime(dateString);
+    const fullDate = formatDate(dateString);
+
+    return (
+      <Tooltip content={fullDate}>
+        <span>{relativeTime}</span>
+      </Tooltip>
+    );
+  };
+
+  const showEncryptedPassword =
+    quayConfig?.config?.AUTHENTICATION_TYPE !== 'AppToken';
+  const showAppTokens = quayConfig?.features?.APP_SPECIFIC_TOKENS === true;
+  const requireEncryptedAuth =
+    quayConfig?.features?.REQUIRE_ENCRYPTED_BASIC_AUTH === true;
+  const hasOIDC =
+    quayConfig?.external_login && quayConfig.external_login.length > 0;
+  const isAuthTypeDatabase =
+    quayConfig?.config?.AUTHENTICATION_TYPE === 'Database';
+  const shouldShowPasswordPrompt =
+    !user?.has_password_set && hasOIDC && isAuthTypeDatabase;
+
   return (
-    <Form id="form-form" width="70%">
-      <Flex
-        spaceItems={{default: 'spaceItemsSm'}}
-        direction={{default: 'column'}}
-      >
-        <FlexItem>
-          <Title headingLevel="h3">Docker CLI password</Title>
-        </FlexItem>
-        <FlexItem>
-          {`The Docker CLI stores passwords entered on the command line in
-            plaintext.`}
-        </FlexItem>
-        <FlexItem>
-          {`It is therefore highly recommended to generate an
-            encrypted version of your password for use with docker login.`}
-        </FlexItem>
-      </Flex>
-      <Flex width={'70%'}>
-        <Button
-          variant="secondary"
-          onClick={() => toggleOpen(true)}
-          id="cli-password-button"
-        >
-          Generate encrypted password
-        </Button>
-      </Flex>
+    <Form id="cli-configuration-form" width="70%">
+      {/* Docker CLI Password Section */}
+      {showEncryptedPassword && (
+        <>
+          <Flex
+            spaceItems={{default: 'spaceItemsSm'}}
+            direction={{default: 'column'}}
+          >
+            <FlexItem>
+              <Title headingLevel="h3" className="pf-v6-u-text-align-left">
+                Docker CLI password
+              </Title>
+            </FlexItem>
+            <FlexItem>
+              {!requireEncryptedAuth ? (
+                <>
+                  The Docker CLI stores passwords entered on the command line in{' '}
+                  <strong>plaintext</strong>. It is therefore highly recommended
+                  to generate an encrypted version of your password to use for{' '}
+                  <code>docker login</code>.
+                </>
+              ) : (
+                <>
+                  This installation is set to <strong>require</strong> encrypted
+                  passwords when using the Docker command line interface.
+                </>
+              )}
+            </FlexItem>
+          </Flex>
+          <Flex width={'70%'}>
+            {!shouldShowPasswordPrompt ? (
+              <Button
+                variant="secondary"
+                onClick={() => toggleEncryptedPasswordModal(true)}
+                id="cli-password-button"
+                data-testid="cli-password-button"
+              >
+                Generate encrypted password
+              </Button>
+            ) : (
+              <Alert variant="info" isInline title="Password not set">
+                A password must be set on your account before generating an
+                encrypted version.{' '}
+                <Button
+                  variant="link"
+                  isInline
+                  onClick={() => setChangePasswordModalOpen(true)}
+                  data-testid="set-password-button"
+                >
+                  Set password
+                </Button>
+              </Alert>
+            )}
+          </Flex>
+
+          <Divider className="pf-v6-u-my-sm" />
+        </>
+      )}
+
+      {/* Docker CLI and other Application Tokens Section */}
+      {showAppTokens && (
+        <>
+          <Flex
+            spaceItems={{default: 'spaceItemsSm'}}
+            direction={{default: 'column'}}
+          >
+            <FlexItem>
+              <Title headingLevel="h3" className="pf-v6-u-text-align-left">
+                Docker CLI and other Application Tokens
+              </Title>
+            </FlexItem>
+            <FlexItem>
+              {quayConfig?.config?.AUTHENTICATION_TYPE !== 'AppToken' ? (
+                <>
+                  As an alternative to using your password for Docker and rkt
+                  CLIs, an application token can be generated below.
+                </>
+              ) : (
+                <>
+                  An application token is <strong>required</strong> to login via
+                  the Docker or rkt CLIs.
+                </>
+              )}
+            </FlexItem>
+          </Flex>
+
+          <Flex width={'70%'} className="pf-v6-u-mb-md">
+            <Button
+              variant="secondary"
+              onClick={() => setCreateTokenModalOpen(true)}
+              id="create-app-token-button"
+              data-testid="create-app-token-button"
+            >
+              Create application token
+            </Button>
+          </Flex>
+
+          {/* Application Tokens Table */}
+          {isLoading && (
+            <div className="pf-v6-u-text-align-center pf-v6-u-p-lg">
+              <Spinner size="md" />
+              <Content component="p" className="pf-v6-u-mt-sm">
+                Loading tokens...
+              </Content>
+            </div>
+          )}
+
+          {error && (
+            <Alert variant="danger" isInline title="Error loading tokens">
+              {(error as Error)?.message || 'Failed to load application tokens'}
+            </Alert>
+          )}
+
+          {!isLoading && !error && tokens && (
+            <>
+              {tokens.length === 0 ? (
+                <EmptyState
+                  titleText="No application tokens"
+                  headingLevel="h4"
+                  icon={KeyIcon}
+                >
+                  <EmptyStateBody>
+                    You haven&apos;t created any application tokens yet. Create
+                    one to use as an alternative to your password for CLI
+                    authentication.
+                  </EmptyStateBody>
+                </EmptyState>
+              ) : (
+                <>
+                  <ApplicationTokensToolbar
+                    filteredTokens={filteredTokens}
+                    page={page}
+                    setPage={setPage}
+                    perPage={perPage}
+                    setPerPage={setPerPage}
+                    search={search}
+                    setSearch={setSearch}
+                  />
+                  <Table
+                    aria-label="Application tokens table"
+                    variant="compact"
+                  >
+                    <Thead>
+                      <Tr>
+                        <Th>Title</Th>
+                        <Th>Last Accessed</Th>
+                        <Th>Expiration</Th>
+                        <Th>Created</Th>
+                        <Th width={10}></Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {paginatedTokens.map((token) => (
+                        <Tr key={token.uuid}>
+                          <Td dataLabel="Title">
+                            <Button
+                              variant="link"
+                              isInline
+                              onClick={() => handleViewToken(token)}
+                              className="pf-v6-u-p-0"
+                            >
+                              {token.title}
+                            </Button>
+                          </Td>
+                          <Td dataLabel="Last Accessed">
+                            {renderDateCell(token.last_accessed)}
+                          </Td>
+                          <Td dataLabel="Expiration">
+                            {renderDateCell(token.expiration)}
+                          </Td>
+                          <Td dataLabel="Created">
+                            {renderDateCell(token.created)}
+                          </Td>
+                          <Td isActionCell>
+                            <Dropdown
+                              isOpen={dropdownOpen[token.uuid] || false}
+                              onSelect={() =>
+                                setDropdownOpen((prev) => ({
+                                  ...prev,
+                                  [token.uuid]: false,
+                                }))
+                              }
+                              onOpenChange={(isOpen) =>
+                                setDropdownOpen((prev) => ({
+                                  ...prev,
+                                  [token.uuid]: isOpen,
+                                }))
+                              }
+                              toggle={(toggleRef) => (
+                                <MenuToggle
+                                  ref={toggleRef}
+                                  aria-label={`Actions for ${token.title}`}
+                                  variant="plain"
+                                  onClick={() => toggleDropdown(token.uuid)}
+                                  isExpanded={dropdownOpen[token.uuid] || false}
+                                  data-testid="token-actions-dropdown"
+                                >
+                                  <EllipsisVIcon />
+                                </MenuToggle>
+                              )}
+                              shouldFocusToggleOnSelect
+                              popperProps={{
+                                position: 'right',
+                                enableFlip: true,
+                              }}
+                            >
+                              <DropdownList>
+                                <DropdownItem
+                                  key="revoke"
+                                  onClick={() => handleRevokeToken(token)}
+                                >
+                                  Revoke Token
+                                </DropdownItem>
+                              </DropdownList>
+                            </Dropdown>
+                          </Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                  <ToolbarPagination
+                    itemsList={filteredTokens}
+                    perPage={perPage}
+                    page={page}
+                    setPage={setPage}
+                    setPerPage={setPerPage}
+                    bottom={true}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {/* Modals */}
       <GenerateEncryptedPassword
-        modalOpen={open}
+        modalOpen={encryptedPasswordModalOpen}
         title="Generate an encrypted password"
         buttonText="Generate"
-        toggleModal={() => toggleOpen(false)}
+        toggleModal={() => toggleEncryptedPasswordModal(false)}
       />
+
+      <CreateApplicationTokenModal
+        isOpen={createTokenModalOpen}
+        onClose={() => setCreateTokenModalOpen(false)}
+      />
+
+      <RevokeTokenModal
+        isOpen={revokeTokenModalOpen}
+        onClose={handleCloseRevokeModal}
+        token={tokenToRevoke}
+      />
+
+      <ChangePasswordModal
+        isOpen={changePasswordModalOpen}
+        onClose={() => setChangePasswordModalOpen(false)}
+      />
+
+      {/* View Token Credentials Modal */}
+      {viewTokenModalOpen && (
+        <>
+          {isFetchingToken && (
+            <Modal
+              variant="small"
+              isOpen={viewTokenModalOpen}
+              onClose={handleCloseViewModal}
+            >
+              <ModalHeader title="Loading Token" />
+              <ModalBody>
+                <div className="pf-v6-u-text-align-center pf-v6-u-p-lg">
+                  <Spinner size="md" />
+                  <Content component="p" className="pf-v6-u-mt-sm">
+                    Loading token credentials...
+                  </Content>
+                </div>
+              </ModalBody>
+            </Modal>
+          )}
+
+          {fetchTokenError && (
+            <Modal
+              variant="small"
+              isOpen={viewTokenModalOpen}
+              onClose={handleCloseViewModal}
+            >
+              <ModalHeader title="Error" />
+              <ModalBody>
+                <Alert variant="danger" isInline title="Error loading token">
+                  {(fetchTokenError as Error)?.message ||
+                    'Failed to load token credentials'}
+                </Alert>
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  key="close"
+                  variant="primary"
+                  onClick={handleCloseViewModal}
+                >
+                  Close
+                </Button>
+              </ModalFooter>
+            </Modal>
+          )}
+
+          {fetchedToken && !isFetchingToken && (
+            <CredentialsModal
+              isOpen={viewTokenModalOpen}
+              onClose={handleCloseViewModal}
+              credentials={{
+                username: '$app',
+                password: fetchedToken.token_code,
+                title: fetchedToken.title,
+              }}
+              type="token"
+            />
+          )}
+        </>
+      )}
     </Form>
   );
 };

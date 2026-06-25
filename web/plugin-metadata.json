@@ -2,7 +2,7 @@
   "name": "quay-ui-plugin",
   "version": "0.0.1",
   "exposedModules": {
-    "QuayPluginMain": "./src/routes/PluginMain"
+    "QuayPluginMain": "./src/routes/PluginMain",
+    "QuayWidget": "./src/components/Widgets/quay-widget"
   }
 }
-

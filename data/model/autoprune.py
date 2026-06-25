@@ -9,6 +9,7 @@ from data.database import Repository
 from data.database import RepositoryAutoPrunePolicy as RepositoryAutoPrunePolicyTable
 from data.database import RepositoryState, User, db_for_update, get_epoch_timestamp_ms
 from data.model import (
+    ImmutableTagException,
     InvalidNamespaceAutoPruneMethod,
     InvalidNamespaceAutoPrunePolicy,
     InvalidNamespaceException,
@@ -515,7 +516,7 @@ def create_autoprune_task(namespace_id):
 def update_autoprune_task(task, task_status):
     try:
         task.status = task_status
-        task.save()
+        task.save(only=[AutoPruneTaskStatus.status])
     except AutoPruneTaskStatus.DoesNotExist:
         return None
     except Exception as err:
@@ -556,7 +557,7 @@ def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
 
         task.last_ran_ms = get_epoch_timestamp_ms()
         task.status = "running"
-        task.save()
+        task.save(only=[AutoPruneTaskStatus.last_ran_ms, AutoPruneTaskStatus.status])
 
         return task
 
@@ -597,6 +598,14 @@ def prune_tags(tags, repo, namespace):
                         "tag": tag.name,
                     },
                 )
+        except ImmutableTagException:
+            logger.info(
+                "Skipping immutable tag '%s' during auto-prune for repo %s/%s",
+                tag.name,
+                namespace.username,
+                repo.name,
+            )
+            continue
         except Exception as err:
             raise Exception(
                 f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
@@ -733,7 +742,10 @@ def execute_policies_for_repo(
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):
     try:
-        query = Repository.select(Repository.name, Repository.id,).where(
+        query = Repository.select(
+            Repository.name,
+            Repository.id,
+        ).where(
             Repository.state == RepositoryState.NORMAL,
             Repository.namespace_user == namespace_id,
         )

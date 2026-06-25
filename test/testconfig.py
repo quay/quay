@@ -46,6 +46,7 @@ class TestConfig(DefaultConfig):
     USERFILES_PATH = "userfiles/"
 
     FEATURE_SUPER_USERS = True
+    FEATURE_SUPERUSERS_FULL_ACCESS = True
     FEATURE_BILLING = True
     FEATURE_MAILING = True
     SUPER_USERS = ["devtable"]
@@ -56,6 +57,7 @@ class TestConfig(DefaultConfig):
     LICENSE_EXPIRATION_WARNING = datetime.now() + timedelta(weeks=520)
 
     FEATURE_GITHUB_BUILD = True
+    FEATURE_BUILD_SUPPORT = True
 
     CLOUDWATCH_NAMESPACE = None
 
@@ -103,6 +105,8 @@ class TestConfig(DefaultConfig):
     }
 
     FEATURE_REPO_MIRROR = True
+    FEATURE_ORG_MIRROR = True
+    FEATURE_IMMUTABLE_TAGS = True
     FEATURE_GENERAL_OCI_SUPPORT = True
     OCI_NAMESPACE_WHITELIST: List[str] = []
 
@@ -128,7 +132,11 @@ class TestConfig(DefaultConfig):
     AUTOPRUNE_FETCH_TAGS_PAGE_LIMIT = 2
     AUTOPRUNE_FETCH_REPOSITORIES_PAGE_LIMIT = 2
     FEATURE_IMAGE_EXPIRY_TRIGGER = True
+    FEATURE_IMAGE_PULL_STATS = True
+    PULL_METRICS_REDIS = {"host": "localhost", "port": 6379, "db": 1}
 
     CDN_SPECIFIC_NAMESPACES = ["redhat"]
+
+    DEFAULT_UI = "angular"
 
     FEATURE_OTEL_TRACING = True

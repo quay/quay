@@ -1,10 +1,6 @@
 import SecurityReportTable from './SecurityReportTable';
 import {SecurityReportChart} from './SecurityReportChart';
-import {useRecoilValue} from 'recoil';
-import {
-  SecurityDetailsErrorState,
-  SecurityDetailsState,
-} from 'src/atoms/SecurityDetailsState';
+import {useSecurityDetails} from 'src/hooks/UseSecurityDetails';
 import {isErrorString} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
 import {
@@ -13,9 +9,8 @@ import {
   UnsupportedState,
 } from './SecurityReportScanStates';
 
-export default function SecurityReport() {
-  const data = useRecoilValue(SecurityDetailsState);
-  const error = useRecoilValue(SecurityDetailsErrorState);
+export default function SecurityReport(props: SecurityReportProps) {
+  const {data, error} = useSecurityDetails(props.org, props.repo, props.digest);
 
   if (isErrorString(error)) {
     return <RequestError message={error} />;
@@ -39,4 +34,10 @@ export default function SecurityReport() {
       <SecurityReportTable features={features} />
     </>
   );
+}
+
+export interface SecurityReportProps {
+  org: string;
+  repo: string;
+  digest: string;
 }

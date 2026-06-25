@@ -6,13 +6,16 @@ from flask import request
 import features
 from auth import scopes
 from auth.auth_context import get_authenticated_user
-from auth.permissions import OrganizationMemberPermission, SuperUserPermission
+from auth.permissions import OrganizationMemberPermission
 from data import model
 from data.model import config
 from endpoints.api import (
     ApiResource,
+    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
+    log_action,
     nickname,
     request_error,
     require_scope,
@@ -99,10 +102,11 @@ class OrganizationQuotaList(ApiResource):
     @nickname("listOrganizationQuota")
     def get(self, orgname):
         orgperm = OrganizationMemberPermission(orgname)
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
         if (
             not orgperm.can()
-            and not SuperUserPermission().can()
             and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
         ):
             raise Unauthorized()
 
@@ -128,7 +132,7 @@ class OrganizationQuotaList(ApiResource):
         """
         Create a new organization quota.
         """
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota_data = request.get_json()
@@ -155,6 +159,15 @@ class OrganizationQuotaList(ApiResource):
 
         try:
             model.namespacequota.create_namespace_quota(org, limit_bytes)
+            log_action(
+                "org_create_quota",
+                orgname,
+                {
+                    "namespace": orgname,
+                    "limit_bytes": limit_bytes,
+                    "limit": bitmath.Byte(limit_bytes).best_prefix().format("{value:.1f} {unit}"),
+                },
+            )
             return "Created", 201
         except model.DataModelException as ex:
             raise request_error(exception=ex)
@@ -204,10 +217,11 @@ class OrganizationQuota(ApiResource):
     @nickname("getOrganizationQuota")
     def get(self, orgname, quota_id):
         orgperm = OrganizationMemberPermission(orgname)
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
         if (
             not orgperm.can()
-            and not SuperUserPermission().can()
             and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
         ):
             raise Unauthorized()
 
@@ -219,11 +233,12 @@ class OrganizationQuota(ApiResource):
     @require_scope(scopes.SUPERUSER)
     @validate_json_request("UpdateOrgQuota")
     def put(self, orgname, quota_id):
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota_data = request.get_json()
         quota = get_quota(orgname, quota_id)
+        previous_limit_bytes = quota.limit_bytes
 
         try:
             limit_bytes = None
@@ -240,6 +255,21 @@ class OrganizationQuota(ApiResource):
 
             if limit_bytes:
                 model.namespacequota.update_namespace_quota_size(quota, limit_bytes)
+                log_action(
+                    "org_change_quota",
+                    orgname,
+                    {
+                        "namespace": orgname,
+                        "limit_bytes": limit_bytes,
+                        "limit": bitmath.Byte(limit_bytes)
+                        .best_prefix()
+                        .format("{value:.1f} {unit}"),
+                        "previous_limit_bytes": previous_limit_bytes,
+                        "previous_limit": bitmath.Byte(previous_limit_bytes)
+                        .best_prefix()
+                        .format("{value:.1f} {unit}"),
+                    },
+                )
         except model.DataModelException as ex:
             raise request_error(exception=ex)
 
@@ -248,13 +278,29 @@ class OrganizationQuota(ApiResource):
     @nickname("deleteOrganizationQuota")
     @require_scope(scopes.SUPERUSER)
     def delete(self, orgname, quota_id):
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
 
-        # Exceptions by`delete_instance` are unexpected and raised
+        # Capture values before deletion for audit logging
+        deleted_quota_id = quota.id
+        limit_bytes = quota.limit_bytes
+
+        # Perform deletion first - exceptions are unexpected and raised
         model.namespacequota.delete_namespace_quota(quota)
+
+        # Log after successful deletion
+        log_action(
+            "org_delete_quota",
+            orgname,
+            {
+                "namespace": orgname,
+                "quota_id": deleted_quota_id,
+                "limit_bytes": limit_bytes,
+                "limit": bitmath.Byte(limit_bytes).best_prefix().format("{value:.1f} {unit}"),
+            },
+        )
 
         return "", 204
 
@@ -283,25 +329,25 @@ class OrganizationQuotaLimitList(ApiResource):
 
     @nickname("listOrganizationQuotaLimit")
     def get(self, orgname, quota_id):
-        orgperm = OrganizationMemberPermission(orgname)
+        permission = OrganizationMemberPermission(orgname)
         if (
-            not orgperm.can()
-            and not allow_if_superuser()
-            and not allow_if_global_readonly_superuser()
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or allow_if_superuser_with_full_access()
         ):
-            raise Unauthorized()
+            quota = get_quota(orgname, quota_id)
+            return [
+                limit_view(limit)
+                for limit in model.namespacequota.get_namespace_quota_limit_list(quota)
+            ]
 
-        quota = get_quota(orgname, quota_id)
-        return [
-            limit_view(limit)
-            for limit in model.namespacequota.get_namespace_quota_limit_list(quota)
-        ]
+        raise Unauthorized()
 
     @nickname("createOrganizationQuotaLimit")
     @validate_json_request("NewOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def post(self, orgname, quota_id):
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -328,6 +374,15 @@ class OrganizationQuotaLimitList(ApiResource):
                 quota,
                 quota_type,
                 quota_limit_threshold,
+            )
+            log_action(
+                "org_create_quota_limit",
+                orgname,
+                {
+                    "namespace": orgname,
+                    "type": quota_type,
+                    "threshold_percent": quota_limit_threshold,
+                },
             )
             return "Created", 201
         except model.DataModelException as ex:
@@ -357,26 +412,26 @@ class OrganizationQuotaLimit(ApiResource):
 
     @nickname("getOrganizationQuotaLimit")
     def get(self, orgname, quota_id, limit_id):
-        orgperm = OrganizationMemberPermission(orgname)
+        permission = OrganizationMemberPermission(orgname)
         if (
-            not orgperm.can()
-            and not allow_if_superuser()
-            and not allow_if_global_readonly_superuser()
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or allow_if_superuser_with_full_access()
         ):
-            raise Unauthorized()
+            quota = get_quota(orgname, quota_id)
+            quota_limit = model.namespacequota.get_namespace_quota_limit(quota, limit_id)
+            if quota_limit is None:
+                raise NotFound()
 
-        quota = get_quota(orgname, quota_id)
-        quota_limit = model.namespacequota.get_namespace_quota_limit(quota, limit_id)
-        if quota_limit is None:
-            raise NotFound()
+            return limit_view(quota_limit)
 
-        return limit_view(quota_limit)
+        raise Unauthorized()
 
     @nickname("changeOrganizationQuotaLimit")
     @validate_json_request("UpdateOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def put(self, orgname, quota_id, limit_id):
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -386,6 +441,10 @@ class OrganizationQuotaLimit(ApiResource):
         if quota_limit is None:
             raise NotFound()
 
+        # Capture previous values for audit logging
+        previous_type = quota_limit.quota_type.name
+        previous_threshold = quota_limit.percent_of_limit
+
         if "type" in quota_limit_data:
             new_type = quota_limit_data["type"]
             model.namespacequota.update_namespace_quota_limit_type(quota_limit, new_type)
@@ -393,12 +452,22 @@ class OrganizationQuotaLimit(ApiResource):
             new_threshold = quota_limit_data["threshold_percent"]
             model.namespacequota.update_namespace_quota_limit_threshold(quota_limit, new_threshold)
 
+        # Build metadata with current values after updates
+        metadata = {
+            "namespace": orgname,
+            "type": quota_limit_data.get("type", previous_type),
+            "threshold_percent": quota_limit_data.get("threshold_percent", previous_threshold),
+            "previous_type": previous_type,
+            "previous_threshold_percent": previous_threshold,
+        }
+        log_action("org_change_quota_limit", orgname, metadata)
+
         return quota_view(quota)
 
     @nickname("deleteOrganizationQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def delete(self, orgname, quota_id, limit_id):
-        if not SuperUserPermission().can():
+        if not allow_if_superuser_with_full_access():
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
@@ -406,12 +475,30 @@ class OrganizationQuotaLimit(ApiResource):
         if quota_limit is None:
             raise NotFound()
 
+        # Capture values before deletion for audit logging
+        deleted_limit_id = quota_limit.id
+        quota_type = quota_limit.quota_type.name
+        threshold_percent = quota_limit.percent_of_limit
+
         try:
-            # Exceptions by`delete_instance` are unexpected and raised
+            # Perform deletion first - exceptions are unexpected and raised
             model.namespacequota.delete_namespace_quota_limit(quota_limit)
-            return "", 204
         except model.DataModelException as ex:
             raise request_error(exception=ex)
+
+        # Log after successful deletion
+        log_action(
+            "org_delete_quota_limit",
+            orgname,
+            {
+                "namespace": orgname,
+                "limit_id": deleted_limit_id,
+                "type": quota_type,
+                "threshold_percent": threshold_percent,
+            },
+        )
+
+        return "", 204
 
 
 @resource("/v1/user/quota")

@@ -14,6 +14,7 @@ from data.logs_model import logs_model
 from data.logs_model.interface import LogsIterationTimeout
 from endpoints.api import format_date
 from util.log import logfile_path
+from util.security.ssrf import validate_external_registry_url
 from util.useremails import send_logs_exported_email
 from workers.gunicorn_worker import GunicornWorker
 from workers.queueworker import QueueWorker
@@ -245,29 +246,42 @@ class ExportActionLogsWorker(QueueWorker):
         )
 
         if job_details.get("callback_url"):
-            # Post the results to the callback URL.
-            client = app.config["HTTPCLIENT"]
-            result = client.post(
-                job_details["callback_url"],
-                json={
-                    "export_id": job_details["export_id"],
-                    "start_time": job_details["start_time"],
-                    "end_time": job_details["end_time"],
-                    "namespace": job_details["namespace_name"],
-                    "repository": job_details["repository_name"],
-                    "exported_data_url": exported_data_url,
-                    "status": result_status.value,
-                },
-            )
+            callback_url = job_details["callback_url"]
 
-            if result.status_code != 200:
-                logger.error(
-                    "Got `%s` status code for callback URL `%s` for export `%s`",
-                    result.status_code,
-                    job_details["callback_url"],
-                    job_details["export_id"],
+            try:
+                validate_external_registry_url(
+                    callback_url,
+                    resolve_dns=True,
+                    allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
                 )
-                raise Exception("Got non-200 for batch logs reporting; retrying later")
+            except ValueError:
+                logger.warning(
+                    "Callback URL validation failed for export '%s'",
+                    job_details.get("export_id"),
+                )
+            else:
+                client = app.config["HTTPCLIENT"]
+                result = client.post(
+                    callback_url,
+                    json={
+                        "export_id": job_details["export_id"],
+                        "start_time": job_details["start_time"],
+                        "end_time": job_details["end_time"],
+                        "namespace": job_details["namespace_name"],
+                        "repository": job_details["repository_name"],
+                        "exported_data_url": exported_data_url,
+                        "status": result_status.value,
+                    },
+                    allow_redirects=False,
+                )
+
+                if result.status_code != 200:
+                    logger.error(
+                        "Got `%s` status code for callback URL for export `%s`",
+                        result.status_code,
+                        job_details["export_id"],
+                    )
+                    raise Exception("Got non-200 for batch logs reporting; retrying later")
 
         if job_details.get("callback_email"):
             with app.app_context():

@@ -1,18 +1,11 @@
 import React, {useEffect} from 'react';
-import {
-  Button,
-  Form,
-  FormGroup,
-  PageSection,
-  PageSectionVariants,
-} from '@patternfly/react-core';
+import {Button, Form, FormGroup, PageSection} from '@patternfly/react-core';
 import {useForm} from 'react-hook-form';
 import {
   IOAuthApplication,
   useUpdateOAuthApplication,
 } from 'src/hooks/UseOAuthApplications';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {OAuthApplicationFormData} from '../types';
 
@@ -23,7 +16,7 @@ interface SettingsTabProps {
 }
 
 export default function SettingsTab(props: SettingsTabProps) {
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {
     control,
@@ -87,7 +80,7 @@ export default function SettingsTab(props: SettingsTabProps) {
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <Form>
         <FormTextInput
           name="name"

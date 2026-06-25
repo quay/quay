@@ -7,14 +7,14 @@ services:
   quay-db:
     user: postgres
     container_name: quay-db
-    image: docker.io/library/postgres:12.1
+    image: docker.io/library/postgres:18
     environment:
       POSTGRES_USER: "quay"
       POSTGRES_PASSWORD: "quay"
       POSTGRES_DB: "quay"
     volumes:
       - "./local-dev/init/pg_bootstrap.sql:/docker-entrypoint-initdb.d/pg_bootstrap.sql"
-      - "quay-db-data:/var/lib/postgresql/data"
+      - "quay-db-data:/var/lib/postgresql"
     ports:
       - "5432:5432"
     healthcheck:
@@ -25,15 +25,15 @@ services:
       start_period: 10s
 
   clair-db:
-    user: postgres
     container_name: clair-db
-    image: docker.io/library/postgres:12.1
+    image: docker.io/library/postgres:18
     command: -c 'max_connections=300'
     environment:
       POSTGRES_USER: "clair"
+      POSTGRES_PASSWORD: "clair"
       POSTGRES_DB: "clair"
     volumes:
-      - "clair-db-data:/var/lib/postgresql/data"
+      - "clair-db-data:/var/lib/postgresql"
     ports:
       - "5433:5432"
     healthcheck:
@@ -48,8 +48,111 @@ services:
     user: nobody
     container_name: quay-redis
     image: docker.io/library/redis:latest
+    # Disable RDB persistence: the default image runs as 'nobody' which cannot
+    # write snapshot files to /data, causing stop-writes-on-bgsave-error to
+    # block all writes and break the /health/endtoend check.
+    command: ["redis-server", "--save", ""]
     ports:
       - "6379:6379"
+
+  # Pyroscope server for continuous profiling (optional). Opt-in via profile — start explicitly when needed:
+  #   docker compose --profile profiling up -d pyroscope
+  # UI: http://localhost:4040. Set PROFILING_TYPE and PYROSCOPE_SERVER_ADDRESS in config when using.
+  pyroscope:
+    profiles: ["profiling"]
+    container_name: quay-pyroscope
+    image: docker.io/grafana/pyroscope:latest
+    command: ["-server.http-listen-address=0.0.0.0", "-server.grpc-listen-address=0.0.0.0"]
+    ports:
+      - "4040:4040"
+
+  ldap:
+    container_name: quay-ldap
+    image: docker.io/389ds/dirsrv:latest
+    environment:
+      DS_DM_PASSWORD: "admin"
+    volumes:
+      - "./local-dev/ldap/base.ldif:/data/ldif/base.ldif:ro"
+      - "./local-dev/ldap/init-389ds.sh:/data/init-389ds.sh:ro"
+    ports:
+      - "3389:3389"
+      - "6636:3636"
+    command: >
+      bash -c "
+      /usr/lib/dirsrv/dscontainer -r &
+      sleep 10 &&
+      bash /data/init-389ds.sh &&
+      wait
+      "
+
+  # Splunk Enterprise - local audit log testing
+  # Web UI: http://localhost:8000 (admin/changeme1)
+  splunk:
+    container_name: quay-splunk
+    platform: linux/amd64
+    image: docker.io/splunk/splunk:8.2
+    environment:
+      SPLUNK_START_ARGS: "--accept-license"
+      SPLUNK_GENERAL_TERMS: "--accept-sgt-current-at-splunk-com"
+      SPLUNK_PASSWORD: "changeme1"
+    volumes:
+      - "./local-dev/splunk/init-splunk.sh:/tmp/init-splunk.sh:ro"
+    ports:
+      - "8000:8000"   # Web UI
+      - "8089:8089"   # Management/SDK API
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -k -u admin:changeme1 https://localhost:8089/services/server/health/splunkd || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
+
+  # Jaeger all-in-one for distributed tracing (optional). Start via:
+  #   make local-dev-up-with-jaeger   (recommended — also merges OTEL config)
+  #   docker compose up -d jaeger     (manual, run make enable-jaeger separately)
+  # UI: http://localhost:16686. OTLP gRPC: 4317, OTLP HTTP: 4318.
+  jaeger:
+    container_name: quay-jaeger
+    image: docker.io/jaegertracing/all-in-one:latest
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Web UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+
+  garage:
+    container_name: quay-garage
+    image: dxflrs/garage:v1.0.1
+    volumes:
+      - "./local-dev/garage/garage.toml:/etc/garage.toml:ro,z"
+    ports:
+      - "3900:3900"
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  keycloak:
+    container_name: quay-keycloak
+    image: quay.io/keycloak/keycloak:26.2
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: "http://localhost:8081"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    volumes:
+      - "./local-dev/keycloak/quay-realm-export.json:/opt/keycloak/data/import/quay-realm.json:ro"
+    ports:
+      - "8081:8080"
+    command:
+      - start-dev
+      - --import-realm
 
   local-dev-frontend:
     user: ${DOCKER_USER:-root}
@@ -93,6 +196,9 @@ services:
   quay:
     user: ${DOCKER_USER:-nobody:0}
     container_name: quay-quay
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
     build:
       context: .
       args:
@@ -105,14 +211,44 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
+      - "50051:50051"
     environment:
       QUAY_VERSION: local-dev
-      QUAY_HOTRELOAD: "true"
+      QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
+      QUAY_DISTRIBUTED_STORAGE_PREFERENCE: "${QUAY_DISTRIBUTED_STORAGE_PREFERENCE:-}"
+      DOCKER_HOST: "${QUAY_DOCKER_HOST:-}"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp
       WORKER_COUNT_UNSUPPORTED_MINIMUM: "1"
       WORKER_COUNT: "1"
+
+  repomirror:
+    user: ${DOCKER_USER:-nobody:0}
+    container_name: quay-repomirror
+    build:
+      context: .
+      args:
+        BUILD_ANGULAR: ${BUILD_ANGULAR:-true}
+      target: final
+    image: localhost/quay-local:latest
+    volumes:
+      - ".:/quay-registry"
+      - "./local-dev/stack:/quay-registry/conf/stack"
+    environment:
+      QUAY_VERSION: local-dev
+      QUAY_HOTRELOAD: "${QUAY_HOTRELOAD:-true}"
+      DEBUGLOG: "true"
+      IGNORE_VALIDATION: "true"
+      QUAYRUN: /tmp
+      WORKER_COUNT_UNSUPPORTED_MINIMUM: "1"
+      WORKER_COUNT: "1"
+    command: ["repomirror-nomigrate"]
+    network_mode: "service:quay"
+    depends_on:
+      - quay-db
+      - redis
+      - quay
 
   # clair is configured to share it's network
   # namespace with quay. this allows quay to serve
@@ -122,11 +258,20 @@ services:
     container_name: quay-clair
     image: quay.io/projectquay/clair:4.7.2
     volumes:
-      - "./local-dev/clair:/src/clair/"
+      - "./local-dev/clair/config.yaml:/etc/clair/config.yaml:z"
     environment:
-      CLAIR_CONF: "/src/clair/config.yaml"
+      CLAIR_CONF: "/etc/clair/config.yaml"
       CLAIR_MODE: "combo"
     network_mode: "service:quay"
-    cpus: 2
-    command:
-      ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
+
+  # Mailpit - local email testing server
+  # Web UI: http://localhost:8025
+  mailpit:
+    container_name: quay-mailpit
+    image: docker.io/axllent/mailpit:latest
+    ports:
+      - "8025:8025"  # Web UI
+      - "1025:1025"  # SMTP
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1

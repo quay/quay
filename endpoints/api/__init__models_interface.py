@@ -10,19 +10,6 @@ class InitDataInterface(object):
     """
 
     @abstractmethod
-    def is_app_repository(self, namespace_name, repository_name):
-        """
-
-        Args:
-          namespace_name: namespace or user
-          repository_name: repository
-
-        Returns:
-          Boolean
-        """
-        pass
-
-    @abstractmethod
     def repository_is_public(self, namespace_name, repository_name):
         """
 

@@ -7,17 +7,15 @@ import {
   DescriptionListGroup,
   DescriptionListDescription,
   PageSection,
-  PageSectionVariants,
   Stack,
   StackItem,
-  Text,
+  Content,
 } from '@patternfly/react-core';
 import {
   IOAuthApplication,
   useResetOAuthApplicationClientSecret,
 } from 'src/hooks/UseOAuthApplications';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
 
 interface OAuthInformationTabProps {
@@ -29,7 +27,7 @@ interface OAuthInformationTabProps {
 
 export default function OAuthInformationTab(props: OAuthInformationTabProps) {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {resetOAuthApplicationClientSecretMutation} =
     useResetOAuthApplicationClientSecret(
@@ -53,7 +51,7 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
     );
 
   if (!props.application) {
-    return <Text>No application selected</Text>;
+    return <Content component="p">No application selected</Content>;
   }
 
   const handleResetSecret = () => {
@@ -68,7 +66,7 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
   };
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <Stack hasGutter>
         <StackItem>
           <DescriptionList isHorizontal>
@@ -89,7 +87,9 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
             <DescriptionListGroup>
               <DescriptionListTerm>Client Secret:</DescriptionListTerm>
               <DescriptionListDescription>
-                <Text>{props.application.client_secret}</Text>
+                <Content component="p">
+                  {props.application.client_secret}
+                </Content>
               </DescriptionListDescription>
             </DescriptionListGroup>
           </DescriptionList>

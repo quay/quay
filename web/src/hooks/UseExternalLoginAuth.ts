@@ -1,6 +1,7 @@
 import {useState, useCallback} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import axios from 'src/libs/axios';
+import {AxiosError} from 'axios';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {ExternalLoginProvider} from './UseExternalLogins';
 import {useQuayConfig} from './UseQuayConfig';
@@ -28,9 +29,9 @@ export function useExternalLoginAuth() {
         // Try to extract meaningful error message from response
         let errorMessage = 'Could not load external login service information';
 
-        if (axios.isAxiosError(err) && err.response?.data?.error_message) {
+        if (err instanceof AxiosError && err.response?.data?.error_message) {
           errorMessage = err.response.data.error_message;
-        } else if (axios.isAxiosError(err) && err.response?.data?.message) {
+        } else if (err instanceof AxiosError && err.response?.data?.message) {
           errorMessage = err.response.data.message;
         }
 

@@ -109,9 +109,26 @@ class ActionLogsDataInterface(object):
         repository_name=None,
         timestamp=None,
         is_free_namespace=False,
+        # Enhanced logging fields for ESS EOI compliance
+        request_url=None,
+        http_method=None,
+        auth_type=None,
+        user_agent=None,
+        performer_kind=None,
+        request_id=None,
+        x_forwarded_for=None,
     ):
         """
         Logs a single action as having taken place.
+
+        Enhanced parameters for ESS Events of Interest (EOI) compliance:
+            request_url: Full request URL including path and query parameters
+            http_method: HTTP method (GET, POST, PUT, DELETE, etc.)
+            auth_type: Authentication type (basic, bearer, oauth, session, anonymous)
+            user_agent: Request User-Agent header
+            performer_kind: Type of performer (user, robot, token, oauth, app_specific_token, anonymous)
+            request_id: Unique request ID for correlation/tracing
+            x_forwarded_for: Original client IP when behind proxy/load balancer
         """
 
     @abstractmethod

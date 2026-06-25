@@ -9,7 +9,6 @@ test/data/registry
 venv
 .venv
 .git
-!.git/HEAD
 .gitignore
 .github
 Bobfile
@@ -23,6 +22,7 @@ htmlcov
 .coverage
 coverage
 .cache
+.npm
 .npm-debug.log
 test/__pycache__
 __pycache__
@@ -36,3 +36,10 @@ node_modules
 **/node_modules
 .local
 **/testdata
+
+# ignore Go rewrite files for now (root-only, not config-tool/)
+/go.mod
+/go.sum
+/cmd/
+/bin/
+/.golangci.yml

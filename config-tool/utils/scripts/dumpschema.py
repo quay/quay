@@ -823,18 +823,6 @@ CONFIG_SCHEMA = {
             "description": "Whether to collect and support user metadata. Defaults to False",
             "x-example": False,
         },
-        # Feature Flag: Support App Registry.
-        "FEATURE_APP_REGISTRY": {
-            "type": "boolean",
-            "description": "Whether to enable support for App repositories. Defaults to False",
-            "x-example": False,
-        },
-        # Feature Flag: Read only app registry.
-        "FEATURE_READONLY_APP_REGISTRY": {
-            "type": "boolean",
-            "description": "Whether to App repositories are read-only. Defaults to False",
-            "x-example": True,
-        },
         # Feature Flag: Public Reposiotires in _catalog Endpoint.
         "FEATURE_PUBLIC_CATALOG": {
             "type": "boolean",

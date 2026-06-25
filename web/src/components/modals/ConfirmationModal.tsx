@@ -1,5 +1,12 @@
 import {setRepositoryVisibility} from 'src/resources/RepositoryResource';
-import {Modal, ModalVariant, Button} from '@patternfly/react-core';
+import {
+  Button,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
 import {useState} from 'react';
 import FormError from 'src/components/errors/FormError';
 import {addDisplayError} from 'src/resources/ErrorHandling';
@@ -48,10 +55,15 @@ export function ConfirmationModal(props: ConfirmationModalProps) {
   return (
     <Modal
       variant={ModalVariant.small}
-      title={props.title}
       isOpen={props.modalOpen}
       onClose={props.toggleModal}
-      actions={[
+    >
+      <ModalHeader title={props.title} />
+      <ModalBody>
+        <FormError message={err} setErr={setErr} />
+        {props.description}
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant="primary"
@@ -59,14 +71,11 @@ export function ConfirmationModal(props: ConfirmationModalProps) {
           data-testid={props.confirmButtonTestId}
         >
           {props.buttonText}
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={props.toggleModal}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <FormError message={err} setErr={setErr} />
-      {props.description}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

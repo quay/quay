@@ -3,11 +3,10 @@ import {
   AlertActionCloseButton,
   AlertGroup,
 } from '@patternfly/react-core';
-import {useRecoilState} from 'recoil';
-import {AlertVariant, alertState} from 'src/atoms/AlertState';
+import {useUI, AlertVariant} from 'src/contexts/UIContext';
 
 export default function Alerts() {
-  const [alerts, setAlerts] = useRecoilState(alertState);
+  const {alerts, removeAlert} = useUI();
   return (
     <AlertGroup isToast isLiveRegion>
       {alerts.map((alert) => (
@@ -19,7 +18,7 @@ export default function Alerts() {
           actionClose={
             <AlertActionCloseButton
               onClose={() => {
-                setAlerts((prev) => prev.filter((a) => a.key !== alert.key));
+                removeAlert(alert.key);
               }}
             />
           }

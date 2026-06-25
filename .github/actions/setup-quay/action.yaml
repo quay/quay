@@ -1,0 +1,446 @@
+name: 'Setup Quay Local Dev'
+description: 'Set up Quay container registry for CI testing using docker-compose'
+author: 'Project Quay'
+
+branding:
+  icon: 'box'
+  color: 'red'
+
+inputs:
+  build-image:
+    description: 'Whether to build the Quay Docker image'
+    required: false
+    default: 'true'
+
+  use-gha-cache:
+    description: 'Use GitHub Actions cache for Docker builds'
+    required: false
+    default: 'true'
+
+  image-tag:
+    description: 'Tag for the built Quay image'
+    required: false
+    default: 'localhost/quay-local:latest'
+
+  extra-config-file:
+    description: 'Path to extra config to append to config.yaml'
+    required: false
+    default: ''
+
+  extra-config:
+    description: 'Inline YAML config to merge into config.yaml'
+    required: false
+    default: ''
+
+  health-check-timeout:
+    description: 'Health check timeout in seconds'
+    required: false
+    default: '120'
+
+  with-clair:
+    description: 'Start Clair security scanner'
+    required: false
+    default: 'false'
+
+  with-repomirror:
+    description: 'Start Quay repository mirroring worker'
+    required: false
+    default: 'false'
+
+  with-ldap:
+    description: 'Start LDAP server and configure Quay for LDAP auth'
+    required: false
+    default: 'false'
+
+  with-keycloak:
+    description: 'Start Keycloak OIDC provider (config merge handled separately by CI workflow)'
+    required: false
+    default: 'false'
+
+  with-jaeger:
+    description: 'Start Jaeger and configure OTEL tracing'
+    required: false
+    default: 'false'
+
+  with-builds:
+    description: 'Enable container build support with PopenExecutor'
+    required: false
+    default: 'false'
+
+  with-mailpit:
+    description: 'Start Mailpit email testing server'
+    required: false
+    default: 'true'
+
+  with-georep:
+    description: 'Start Garage S3 and configure geo-replication with two storage regions'
+    required: false
+    default: 'false'
+
+outputs:
+  quay-url:
+    description: 'URL where Quay is accessible'
+    value: ${{ steps.healthcheck.outputs.quay-url }}
+
+  container-name:
+    description: 'Name of the Quay container'
+    value: 'quay-quay'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Docker Buildx
+      if: inputs.build-image == 'true'
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+    - name: Build Quay image (with cache)
+      if: inputs.build-image == 'true' && inputs.use-gha-cache == 'true'
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+      with:
+        context: .
+        load: true
+        tags: ${{ inputs.image-tag }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build Quay image (no cache)
+      if: inputs.build-image == 'true' && inputs.use-gha-cache != 'true'
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+      with:
+        context: .
+        load: true
+        tags: ${{ inputs.image-tag }}
+
+    - name: Start LDAP server
+      if: inputs.with-ldap == 'true'
+      shell: bash
+      run: |
+        docker compose up -d ldap
+        echo "Waiting for LDAP to be ready..."
+        # Poll until LDAP responds and base DN exists (init script completed)
+        timeout=60
+        while [ $timeout -gt 0 ]; do
+          if docker exec quay-ldap ldapsearch -x -H ldap://localhost:3389 \
+              -D "cn=Directory Manager" -w admin \
+              -b "dc=example,dc=org" -s base &>/dev/null; then
+            echo "LDAP is ready!"
+            break
+          fi
+          sleep 2
+          timeout=$((timeout - 2))
+        done
+        if [ $timeout -le 0 ]; then
+          echo "::error::LDAP failed to initialize within 60 seconds"
+          docker logs quay-ldap
+          exit 1
+        fi
+
+    - name: Configure LDAP authentication
+      if: inputs.with-ldap == 'true'
+      shell: bash
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        LDAP_CONFIG="local-dev/ldap/ldap-config.yaml"
+
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${LDAP_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "LDAP configuration merged"
+
+    - name: Configure Jaeger tracing
+      if: inputs.with-jaeger == 'true'
+      shell: bash
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        JAEGER_CONFIG="local-dev/jaeger/jaeger-config.yaml"
+
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${JAEGER_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "Jaeger tracing configuration merged"
+
+    - name: Merge extra config file
+      if: inputs.extra-config-file != ''
+      shell: bash
+      env:
+        EXTRA_CONFIG: ${{ inputs.extra-config-file }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+
+        if [ ! -f "${EXTRA_CONFIG}" ]; then
+          echo "::error::extra-config-file '${EXTRA_CONFIG}' not found"
+          exit 1
+        fi
+
+        echo "Merging ${EXTRA_CONFIG} into ${BASE_CONFIG}..."
+        pip install pyyaml -q
+        python3 "${ACTION_PATH}/merge-yaml.py" \
+          "${BASE_CONFIG}" "${EXTRA_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        echo "Config merged successfully"
+
+    - name: Merge inline extra config
+      if: inputs.extra-config != ''
+      shell: bash
+      env:
+        EXTRA_CONFIG_CONTENT: ${{ inputs.extra-config }}
+      run: |
+        set -euo pipefail
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        INLINE_CONFIG=$(mktemp --suffix=.yaml)
+
+        printf '%s\n' "${EXTRA_CONFIG_CONTENT}" > "${INLINE_CONFIG}"
+
+        echo "Merging inline config into ${BASE_CONFIG}..."
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${INLINE_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+        rm -f "${INLINE_CONFIG}"
+        echo "Inline config merged successfully"
+
+    - name: Configure geo-replication storage
+      if: inputs.with-georep == 'true'
+      shell: bash
+      run: |
+        BASE_CONFIG="local-dev/stack/config.yaml"
+        GEOREP_CONFIG="local-dev/garage/georep-config.yaml"
+
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          "${BASE_CONFIG}" "${GEOREP_CONFIG}" > "${BASE_CONFIG}.tmp"
+        mv "${BASE_CONFIG}.tmp" "${BASE_CONFIG}"
+
+        # Remove the default LocalStorage entry — the replication worker
+        # refuses to start when any backend is LocalStorage.
+        python3 -c "
+        import yaml, sys
+        with open('${BASE_CONFIG}') as f:
+            cfg = yaml.safe_load(f)
+        cfg.get('DISTRIBUTED_STORAGE_CONFIG', {}).pop('default', None)
+        with open('${BASE_CONFIG}', 'w') as f:
+            yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
+        "
+        echo "Geo-replication storage configuration merged (LocalStorage removed)"
+
+    - name: Extract quay-builder binary
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: make local-dev-extract-builder
+
+    - name: Configure build support
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: |
+        pip install pyyaml -q
+        python3 ${{ github.action_path }}/merge-yaml.py \
+          local-dev/stack/config.yaml local-dev/builds/builds-config.yaml \
+          > local-dev/stack/config.yaml.tmp
+        mv local-dev/stack/config.yaml.tmp local-dev/stack/config.yaml
+        echo "Build support configuration merged"
+
+        # Expose Docker API over TCP so the Quay container can reach it
+        # without bind-mounting the socket (UBI9 tmpfs on /run hides mounts).
+        sudo apt-get install -y -qq socat > /dev/null 2>&1 || true
+        socat TCP-LISTEN:2375,reuseaddr,fork UNIX-CONNECT:/var/run/docker.sock &
+        sleep 1
+        curl -sf http://localhost:2375/version > /dev/null \
+          && echo "Docker TCP proxy ready on port 2375" \
+          || { echo "::error::Docker TCP proxy failed to start"; exit 1; }
+
+        # Export for docker-compose variable substitution (QUAY_DOCKER_HOST in compose env).
+        # Uses a separate var name so the runner's own Docker CLI isn't affected.
+        echo "QUAY_DOCKER_HOST=tcp://host.docker.internal:2375" >> "$GITHUB_ENV"
+        export QUAY_DOCKER_HOST="tcp://host.docker.internal:2375"
+
+    - name: Start database services
+      shell: bash
+      run: |
+        docker compose up -d redis quay-db
+        docker exec quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+
+    - name: Start Garage S3
+      if: inputs.with-georep == 'true'
+      shell: bash
+      run: |
+        # HACK: Quay generates S3 pre-signed URLs using the configured hostname
+        # ("garage"). Podman/docker on the runner follows these 302 redirects and
+        # needs to resolve "garage" to reach the Garage container's exposed port.
+        # Adding it to /etc/hosts is the simplest way to bridge container DNS and
+        # host DNS without coupling Garage's lifecycle to Quay's network namespace.
+        echo "127.0.0.1 garage" | sudo tee -a /etc/hosts
+
+        docker compose up -d garage
+        echo "Waiting for Garage to be healthy..."
+        for i in $(seq 1 30); do
+          STATUS=$(docker inspect --format='{{.State.Health.Status}}' quay-garage 2>/dev/null || echo "starting")
+          if [ "${STATUS}" = "healthy" ]; then
+            echo "Garage is healthy!"
+            break
+          fi
+          [ "$i" -eq 30 ] && { echo "::error::Garage failed to become healthy"; docker logs quay-garage 2>&1 | tail -50; exit 1; }
+          sleep 2
+        done
+        GARAGE_CONTAINER=quay-garage CONTAINER_RUNTIME=docker bash local-dev/garage/init-garage.sh
+        echo "Garage S3 initialized with geo-replication buckets"
+
+    - name: Start Keycloak
+      if: inputs.with-keycloak == 'true'
+      shell: bash
+      run: |
+        docker compose up -d keycloak
+        echo "Waiting for Keycloak to be ready..."
+        if curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+            http://localhost:8081/realms/quay > /dev/null 2>&1; then
+          echo "Keycloak is ready!"
+        else
+          echo "::error::Keycloak failed to start"
+          docker logs quay-keycloak 2>&1 | tail -50
+          exit 1
+        fi
+
+    - name: Start Jaeger
+      if: inputs.with-jaeger == 'true'
+      shell: bash
+      run: |
+        docker compose up -d jaeger
+        echo "Waiting for Jaeger to be ready..."
+        if curl -sf --retry 30 --retry-delay 3 --retry-all-errors \
+            http://localhost:16686/api/services > /dev/null 2>&1; then
+          echo "Jaeger is ready!"
+        else
+          echo "::error::Jaeger failed to start"
+          docker logs quay-jaeger 2>&1 | tail -50
+          exit 1
+        fi
+
+    - name: Build Angular static files
+      shell: bash
+      env:
+        NODE_OPTIONS: --openssl-legacy-provider
+      run: |
+        echo "Building Angular static files for old UI..."
+        npm clean-install
+        npm run build
+        echo "Static files built successfully"
+        ls -la static/build/ || echo "Warning: static/build/ directory not found"
+
+    - name: Install pnpm
+      shell: bash
+      run: npm install -g pnpm@10
+
+    - name: Build React static files for nginx
+      shell: bash
+      env:
+        REACT_QUAY_APP_API_URL: http://localhost:8080
+      run: |
+        echo "Building React static files for nginx..."
+        cd web && pnpm install --frozen-lockfile && pnpm run build
+        mkdir -p ../static/patternfly
+        cp -r dist/* ../static/patternfly/
+        echo "React files deployed to static/patternfly/"
+        ls ../static/patternfly/index.html
+
+    - name: Start Quay container
+      shell: bash
+      run: |
+        DOCKER_USER="1001:0" docker compose up -d --no-build quay
+
+    - name: Wait for Quay to be ready
+      id: healthcheck
+      shell: bash
+      env:
+        HEALTH_CHECK_TIMEOUT: ${{ inputs.health-check-timeout }}
+      run: |
+        echo "Waiting for Quay to be ready..."
+
+        TIMEOUT="${HEALTH_CHECK_TIMEOUT}"
+        RETRY_DELAY=2
+        MAX_RETRIES=$((TIMEOUT / RETRY_DELAY))
+
+        if curl -sf --retry ${MAX_RETRIES} --retry-delay ${RETRY_DELAY} --retry-all-errors \
+            http://localhost:8080/health/instance > /dev/null 2>&1; then
+          echo "Quay is ready!"
+          echo "quay-url=http://localhost:8080" >> $GITHUB_OUTPUT
+        else
+          echo "Quay failed to become ready within ${TIMEOUT} seconds"
+          docker logs quay-quay 2>&1 | tail -100
+          exit 1
+        fi
+
+    - name: Verify build manager
+      if: inputs.with-builds == 'true'
+      shell: bash
+      run: |
+        echo "=== Build Manager Diagnostics ==="
+
+        echo "--- Docker API via TCP from container ---"
+        docker exec quay-quay python3 -c "
+        import urllib.request, json
+        resp = urllib.request.urlopen('http://host.docker.internal:2375/version', timeout=5)
+        data = json.loads(resp.read())
+        print('Docker API reachable, version:', data.get('Version'))
+        " 2>&1 || echo "::warning::Docker TCP API not reachable from container"
+
+        echo "--- quay-builder binary ---"
+        docker exec quay-quay ls -la /quay-registry/local-dev/quay-builder 2>&1 || echo "quay-builder binary not found"
+
+        echo "--- Build config ---"
+        docker exec quay-quay python3 -c "
+        import yaml, os
+        with open('/quay-registry/conf/stack/config.yaml') as f:
+            cfg = yaml.safe_load(f)
+        print('FEATURE_BUILD_SUPPORT:', cfg.get('FEATURE_BUILD_SUPPORT'))
+        print('DOCKER_HOST:', os.environ.get('DOCKER_HOST'))
+        " 2>&1 || echo "Failed to read config"
+
+        echo "--- gRPC port check ---"
+        docker exec quay-quay python3 -c "
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        r = s.connect_ex(('localhost', 50051))
+        print('gRPC port 50051:', 'OPEN' if r == 0 else 'CLOSED')
+        s.close()
+        " 2>&1
+
+        echo "=== End Build Manager Diagnostics ==="
+
+    - name: Start Clair
+      if: inputs.with-clair == 'true'
+      shell: bash
+      run: |
+        docker compose up -d clair-db
+        docker exec clair-db bash -c 'while ! pg_isready; do echo "waiting for clair postgres"; sleep 2; done'
+        DOCKER_USER="1001:0" docker compose up -d clair
+        echo "Waiting for Clair to be ready..."
+        timeout=120
+        while [ $timeout -gt 0 ]; do
+          if docker exec quay-quay curl -sf http://localhost:6000/indexer/api/v1/index_state > /dev/null 2>&1; then
+            echo "Clair is ready!"
+            break
+          fi
+          sleep 3
+          timeout=$((timeout - 3))
+        done
+        if [ $timeout -le 0 ]; then
+          echo "Clair failed to become ready within 120 seconds"
+          docker logs quay-clair 2>&1 | tail -100
+          exit 1
+        fi
+
+    - name: Start Repomirror
+      if: inputs.with-repomirror == 'true'
+      shell: bash
+      run: |
+        DOCKER_USER="1001:0" docker compose up -d repomirror
+        echo "Repomirror worker started"
+
+    - name: Start Mailpit
+      if: inputs.with-mailpit == 'true'
+      shell: bash
+      run: |
+        docker compose up -d mailpit
+        echo "Mailpit email server started (SMTP: localhost:1025, Web UI: localhost:8025)"

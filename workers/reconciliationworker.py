@@ -33,8 +33,8 @@ reconciliation_runs_total = Counter(
     "total number of reconciliation runs completed",
     labelnames=["status"],  # success, failed
 )
-reconciliation_duration_seconds = Histogram(
-    "quay_reconciliation_duration_seconds", "duration of reconciliation runs in seconds"
+reconciliation_duration_seconds = Gauge(
+    "quay_reconciliation_duration_seconds", "duration of last reconciliation run in seconds"
 )
 reconciliation_last_success_timestamp = Gauge(
     "quay_reconciliation_last_success_timestamp", "timestamp of last successful reconciliation"
@@ -64,6 +64,7 @@ reconciliation_api_call_duration = Histogram(
     "quay_reconciliation_api_call_duration_seconds",
     "time taken for API calls during reconciliation",
     labelnames=["api", "operation"],
+    buckets=(1.0, 5.0, 20.0),  # Track fast (<1s), slow (1-5s), very slow/timeout (>5s)
 )
 reconciliation_api_call_errors = Counter(
     "quay_reconciliation_api_call_errors_total",
@@ -214,7 +215,7 @@ class ReconciliationWorker(Worker):
             raise
         finally:
             duration = time.time() - start_time
-            reconciliation_duration_seconds.observe(duration)
+            reconciliation_duration_seconds.set(duration)
 
     def _reconcile_paying_user(self, user, customer_ids, plan, marketplace_api):
         """
@@ -227,27 +228,17 @@ class ReconciliationWorker(Worker):
             marketplace_api: Marketplace API client
         """
         for customer_id in customer_ids:
-            customer_skus = self._get_customer_id_entitlement_skus(customer_id, marketplace_api)
             rh_sku = plan.get("rh_sku")
-            if rh_sku not in customer_skus:
-                try:
-                    with track_api_call("marketplace_subscription", "create_entitlement"):
-                        result = marketplace_api.create_entitlement(
-                            customer_id, rh_sku, raise_exception=True
-                        )
-                        if result and result.ok:
-                            logger.info("Created SKU %s for %s", rh_sku, user)
-                        else:
-                            logger.error(
-                                "Failed to create SKU %s for user %s, retcode %s",
-                                rh_sku,
-                                user.username,
-                                str(result),
-                            )
-                except MarketplaceApiException as e:
-                    logger.error(
-                        "Failed to create SKU %s for user %s: %s", rh_sku, user.username, str(e)
-                    )
+            try:
+                if not self._customer_id_has_sku(customer_id, rh_sku, marketplace_api):
+                    self._create_entitlement(customer_id, rh_sku, marketplace_api)
+            except MarketplaceApiException as e:
+                logger.error(
+                    "Failed to reconcile customer id (Free user). User:%s, customer_id: %s, error: %s",
+                    user.username,
+                    customer_id,
+                    str(e),
+                )
             # Not-implemented: Remove free tier sku entitlement for paying customers
 
     def _reconcile_free_user(self, user, customer_ids, marketplace_api):
@@ -255,52 +246,32 @@ class ReconciliationWorker(Worker):
         Given a non-paying user, ensure they have the free-tier entitlement
         """
         for customer_id in customer_ids:
-            customer_skus = self._get_customer_id_entitlement_skus(customer_id, marketplace_api)
-            if FREE_TIER_SKU not in customer_skus:
-                try:
-                    with track_api_call("marketplace_subscription", "create_entitlement"):
-                        result = marketplace_api.create_entitlement(customer_id, FREE_TIER_SKU)
-                        if result and result.ok:
-                            logger.info("Created Free SKU %s for %s", FREE_TIER_SKU, user)
-                        else:
-                            logger.error(
-                                "Failed to create Free SKU %s for user %s",
-                                FREE_TIER_SKU,
-                                user.username,
-                            )
-                except MarketplaceApiException as e:
-                    logger.error(
-                        "Failed to create Free SKU %s for user %s: %s",
-                        FREE_TIER_SKU,
-                        user.username,
-                        str(e),
-                    )
-            # Not-implemented: Remove duplicated free tier sku entitlements.
-
-    def _get_customer_id_entitlement_skus(self, customer_id, marketplace_api):
-        """
-        Get the list of entitlement SKUs for a given customer ID.
-
-        :param customer_id: The ID of the customer to look up
-        :param marketplace_api: The marketplace API client to use for the lookup
-        :return: A list of entitlement SKUs for the customer
-        """
-        skus = []
-        for sku in RH_SKUS:
             try:
-                with track_api_call("marketplace_subscription", "lookup_subscription"):
-                    subs = marketplace_api.lookup_subscription(customer_id, sku)
-                if subs is not None and len(subs) > 0:
-                    skus.append(sku)
+                if not self._customer_id_has_sku(customer_id, FREE_TIER_SKU, marketplace_api):
+                    self._create_entitlement(customer_id, FREE_TIER_SKU, marketplace_api)
             except MarketplaceApiException as e:
                 logger.error(
-                    "Failed to lookup subscription for customer %s, sku %s: %s",
+                    "Failed to reconcile customer id. User:%s, customer_id: %s, error: %s",
+                    user.username,
                     customer_id,
-                    sku,
                     str(e),
                 )
-                # Continue checking other SKUs
-        return skus
+            # Not-implemented: Remove duplicated free tier sku entitlements.
+
+    def _create_entitlement(self, customer_id, sku, marketplace_api):
+        with track_api_call("marketplace_subscription", "create_entitlement"):
+            result = marketplace_api.create_entitlement(customer_id, sku, raise_exception=True)
+            if result and result.ok:
+                logger.info("Entitlement created. customer_id: %s, sku: %s", customer_id, sku)
+            else:
+                logger.error(
+                    "Failed to create Entitlement. customer_id: %s, sku: %s", customer_id, sku
+                )
+
+    def _customer_id_has_sku(self, customer_id, sku, marketplace_api):
+        with track_api_call("marketplace_subscription", "lookup_subscription"):
+            subs = marketplace_api.lookup_subscription(customer_id, sku)
+            return subs is not None and len(subs) > 0
 
 
 def create_gunicorn_worker():

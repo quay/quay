@@ -320,18 +320,15 @@ def conduct_robot_search(username, query, results):
 
 
 def repo_result_view(repo, username, last_modified=None, stars=None, popularity=None):
-    kind = (
-        "application" if Repository.kind.get_name(repo.kind_id) == "application" else "repository"
-    )
     view = {
-        "kind": kind,
-        "title": "app" if kind == "application" else "repo",
+        "kind": "repository",
+        "title": "repo",
         "namespace": search_entity_view(username, repo.namespace_user),
         "name": repo.name,
         "description": repo.description,
         "is_public": model.repository.is_repository_public(repo),
         "score": REPOSITORY_SEARCH_SCORE,
-        "href": "/" + kind + "/" + repo.namespace_user.username + "/" + repo.name,
+        "href": "/repository/" + repo.namespace_user.username + "/" + repo.name,
     }
 
     if last_modified is not None:
@@ -412,7 +409,7 @@ class ConductRepositorySearch(ApiResource):
     @nickname("conductRepoSearch")
     def get(self, parsed_args):
         """
-        Get a list of apps and repositories that match the specified query.
+        Get a list of repositories that match the specified query.
         """
         query = parsed_args["query"]
         page = min(max(1, parsed_args["page"]), MAX_RESULT_PAGE_COUNT)

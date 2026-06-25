@@ -81,7 +81,7 @@ case "$QUAYENTRY" in
         "${QUAYPATH}/conf/init/certs_install.sh" || exit
         "${QUAYPATH}/conf/init/client_certs.sh" || exit
         echo "Entering migration mode to version: ${MIGRATION_VERSION}"
-        PYTHONPATH="${QUAYPATH}" alembic upgrade "${MIGRATION_VERSION}"
+        PYTHONPATH="${PYTHONPATH}:${QUAYPATH}" alembic upgrade "${MIGRATION_VERSION}"
         ;;
     "registry-nomigrate")
         echo ""; echo "Startup timestamp: "; date; echo ""

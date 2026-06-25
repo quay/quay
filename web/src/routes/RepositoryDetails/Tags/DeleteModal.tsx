@@ -1,18 +1,24 @@
 import {
-  Modal,
-  ModalVariant,
   Button,
   Label,
   Alert,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
 } from '@patternfly/react-core';
 import {useEffect} from 'react';
-import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {
+  RepositoryDetails,
+  isNonNormalState,
+} from 'src/resources/RepositoryResource';
 import './Tags.css';
 import {isNullOrUndefined} from 'src/libs/utils';
 import Conditional from 'src/components/empty/Conditional';
 import {useDeleteTag} from 'src/hooks/UseTags';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertDetails, AlertVariant} from 'src/atoms/AlertState';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
+import {AlertDetails, AlertVariant, useUI} from 'src/contexts/UIContext';
 
 export interface ModalOptions {
   isOpen: boolean;
@@ -26,8 +32,8 @@ export function DeleteModal(props: ModalProps) {
     errorDeleteTags,
     errorDeleteTagDetails,
   } = useDeleteTag(props.org, props.repo);
-  const {addAlert} = useAlerts();
-  const isReadonly: boolean = props.repoDetails?.state !== 'NORMAL';
+  const {addAlert} = useUI();
+  const isReadonly = isNonNormalState(props.repoDetails?.state);
 
   useEffect(() => {
     if (successDeleteTags) {
@@ -88,7 +94,8 @@ export function DeleteModal(props: ModalProps) {
         <>
           {Array.from(errorDeleteTagDetails.getErrors()).map(([tag, error]) => (
             <p key={tag}>
-              Could not delete tag {tag}: {error.error.message}
+              Could not delete tag {tag}:{' '}
+              {getErrorMessageFromUnknown(error.error)}
             </p>
           ))}
         </>
@@ -104,17 +111,7 @@ export function DeleteModal(props: ModalProps) {
     <>
       <Modal
         id="tag-deletion-modal"
-        title={title}
-        description={
-          <Conditional if={props.modalOptions.force}>
-            <span style={{color: 'red'}}>
-              Tags deleted cannot be restored within the time machine window and
-              will be immediately eligible for garbage collection.
-            </span>
-          </Conditional>
-        }
         isOpen={props.modalOptions.isOpen}
-        disableFocusTrap={true}
         key="modal"
         onClose={() => {
           props.setModalOptions((prevOptions) => ({
@@ -124,7 +121,54 @@ export function DeleteModal(props: ModalProps) {
         }}
         data-testid="delete-tags-modal"
         variant={ModalVariant.small}
-        actions={[
+      >
+        <ModalHeader
+          title={title}
+          description={
+            <Conditional if={props.modalOptions.force}>
+              <span style={{color: 'red'}}>
+                Tags deleted cannot be restored within the time machine window
+                and will be immediately eligible for garbage collection.
+              </span>
+            </Conditional>
+          }
+        />
+        <ModalBody>
+          <Conditional if={isReadonly}>
+            <Alert
+              id="form-error-alert"
+              isInline
+              variant="danger"
+              title={`Repository is currently in ${props.repoDetails?.state} state. Deletion is disabled.`}
+            />
+            <div className="delete-modal-readonly-alert" />
+          </Conditional>
+          <Conditional
+            if={props.immutableTags && props.immutableTags.length > 0}
+          >
+            <Alert
+              isInline
+              variant="warning"
+              title="Immutable tags will be skipped"
+              data-testid="immutable-tags-warning"
+            >
+              The following tags are immutable and will not be deleted:{' '}
+              {props.immutableTags?.join(', ')}
+            </Alert>
+            <div style={{marginBottom: '1rem'}} />
+          </Conditional>
+          {props.tags?.map((tag) => (
+            <span key={tag}>
+              <Label>{tag}</Label>{' '}
+            </span>
+          ))}
+          <Conditional if={props.tags?.length > 20}>
+            <div>
+              <b>Note:</b> This operation can take several minutes.
+            </div>
+          </Conditional>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="cancel"
             variant="primary"
@@ -136,38 +180,18 @@ export function DeleteModal(props: ModalProps) {
             }}
           >
             Cancel
-          </Button>,
+          </Button>
           <Button
             key="modal-action-button"
             variant="primary"
             onClick={() =>
               deleteTags({tags: props.tags, force: props.modalOptions.force})
             }
-            isDisabled={isReadonly}
+            isDisabled={isReadonly || props.tags.length === 0}
           >
             Delete
-          </Button>,
-        ]}
-      >
-        <Conditional if={isReadonly}>
-          <Alert
-            id="form-error-alert"
-            isInline
-            variant="danger"
-            title={`Repository is currently in ${props.repoDetails?.state} state. Deletion is disabled.`}
-          />
-          <div className="delete-modal-readonly-alert" />
-        </Conditional>
-        {props.tags?.map((tag) => (
-          <span key={tag}>
-            <Label>{tag}</Label>{' '}
-          </span>
-        ))}
-        <Conditional if={props.tags?.length > 20}>
-          <div>
-            <b>Note:</b> This operation can take several minutes.
-          </div>
-        </Conditional>
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );
@@ -182,4 +206,5 @@ type ModalProps = {
   org: string;
   repo: string;
   repoDetails: RepositoryDetails;
+  immutableTags?: string[];
 };

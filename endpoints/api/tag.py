@@ -1,19 +1,28 @@
 """
 Manage the tags of a repository.
 """
+
+import json
 from datetime import datetime
 
 from flask import abort, request
 
+import features
 from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
-from data.model import repository as repository_model
+from auth.permissions import AdministerRepositoryPermission
+from data.database import Manifest as ManifestTable
+from data.model import ImmutableTagException
+from data.model.oci.manifest import is_manifest_present
+from data.model.oci.tag import RetargetTagException
+from data.model.pull_statistics import (
+    get_manifest_pull_statistics,
+    get_tag_pull_statistics,
+)
 from data.registry_model import registry_model
 from endpoints.api import RepositoryParamResource
 from endpoints.api import abort as custom_abort
 from endpoints.api import (
-    deprecated,
-    disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
     format_date,
@@ -28,9 +37,75 @@ from endpoints.api import (
     show_if,
     validate_json_request,
 )
-from endpoints.exception import InvalidRequest, NotFound
+from endpoints.exception import InvalidRequest, NotFound, TagImmutable, Unauthorized
 from util.names import TAG_ERROR, TAG_REGEX
 from util.parsing import truthy_bool
+
+
+def _get_sparse_manifest_info(manifest_id, repository_id):
+    """
+    Get sparse manifest info for a manifest list.
+
+    Returns a tuple of (is_sparse, child_manifest_count, present_child_count, child_presence_map).
+    The child_presence_map is a dict mapping child manifest digests to their presence status.
+
+    Determines sparseness by parsing the parent manifest's JSON to get all referenced
+    child digests (source of truth), then checking which ones exist in the database with
+    non-empty manifest_bytes. This correctly handles mirror scenarios where ManifestChild
+    entries are only created for actually-mirrored architectures.
+    """
+    # Fetch the parent manifest's bytes
+    try:
+        parent_manifest = ManifestTable.get(
+            ManifestTable.id == manifest_id,
+            ManifestTable.repository == repository_id,
+        )
+    except ManifestTable.DoesNotExist:
+        return False, 0, 0, {}
+
+    if not parent_manifest.manifest_bytes:
+        return False, 0, 0, {}
+
+    # Parse the manifest list JSON to get all referenced child digests
+    try:
+        manifest_data = json.loads(parent_manifest.manifest_bytes)
+    except (json.JSONDecodeError, TypeError):
+        return False, 0, 0, {}
+
+    if not isinstance(manifest_data, dict):
+        return False, 0, 0, {}
+
+    child_entries = manifest_data.get("manifests", [])
+    child_digests = [entry["digest"] for entry in child_entries if "digest" in entry]
+    child_manifest_count = len(child_digests)
+
+    if child_manifest_count == 0:
+        return False, 0, 0, {}
+
+    # Batch-query all child manifests that exist in the database
+    existing_children = ManifestTable.select(
+        ManifestTable.digest, ManifestTable.manifest_bytes
+    ).where(
+        ManifestTable.digest << child_digests,
+        ManifestTable.repository == repository_id,
+    )
+
+    existing_by_digest = {child.digest: child for child in existing_children}
+
+    # Build the presence map: a child is present if it exists in DB with non-empty manifest_bytes
+    present_child_count = 0
+    child_presence_map = {}
+
+    for digest in child_digests:
+        child = existing_by_digest.get(digest)
+        is_present = child is not None and is_manifest_present(child)
+        child_presence_map[digest] = is_present
+        if is_present:
+            present_child_count += 1
+
+    is_sparse = present_child_count < child_manifest_count
+
+    return is_sparse, child_manifest_count, present_child_count, child_presence_map
 
 
 def _tag_dict(tag):
@@ -38,6 +113,9 @@ def _tag_dict(tag):
         "name": tag.name,
         "reversion": tag.reversion,
     }
+
+    if features.IMMUTABLE_TAGS:
+        tag_info["immutable"] = tag.immutable
 
     if tag.lifetime_start_ts and tag.lifetime_start_ts > 0:
         tag_info["start_ts"] = tag.lifetime_start_ts
@@ -57,6 +135,16 @@ def _tag_dict(tag):
         expiration = format_date(datetime.utcfromtimestamp(tag.lifetime_end_ts))
         tag_info["expiration"] = expiration
 
+    # Add sparse manifest info for manifest lists
+    if tag.manifest.is_manifest_list:
+        is_sparse, child_count, present_count, presence_map = _get_sparse_manifest_info(
+            tag.manifest._db_id, tag.repository.id
+        )
+        tag_info["is_sparse"] = is_sparse
+        tag_info["child_manifest_count"] = child_count
+        tag_info["present_child_count"] = present_count
+        tag_info["child_manifests_presence"] = presence_map
+
     return tag_info
 
 
@@ -68,7 +156,6 @@ class ListRepositoryTags(RepositoryParamResource):
     """
 
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
-    @disallow_for_app_repositories
     @parse_args()
     @query_param("specificTag", "Filters the tags to the specific tag.", type=str, default="")
     @query_param(
@@ -135,12 +222,15 @@ class RepositoryTag(RepositoryParamResource):
                     "type": ["number", "null"],
                     "description": "(If specified) The expiration for the image",
                 },
+                "immutable": {
+                    "type": "boolean",
+                    "description": "(If specified) Whether the tag should be immutable. Write permission required to set, admin permission required to unset.",
+                },
             },
         },
     }
 
     @require_repo_write(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("changeTag")
@@ -193,6 +283,37 @@ class RepositoryTag(RepositoryParamResource):
             else:
                 raise InvalidRequest("Could not update tag expiration; Tag has probably changed")
 
+        if "immutable" in request.get_json() and features.IMMUTABLE_TAGS:
+            tag_ref = registry_model.get_repo_tag(repo_ref, tag)
+            if tag_ref is None:
+                raise NotFound()
+
+            immutable = request.get_json()["immutable"]
+
+            # Removing immutability requires admin permission
+            if not immutable and tag_ref.immutable:
+                if not AdministerRepositoryPermission(namespace, repository).can():
+                    raise Unauthorized()
+
+            previous, ok = registry_model.change_tag_immutability(tag_ref, immutable)
+            if not ok:
+                raise InvalidRequest("Could not update tag immutability; Tag has probably changed")
+
+            username = get_authenticated_user().username
+            log_action(
+                "change_tag_immutability",
+                namespace,
+                {
+                    "username": username,
+                    "repo": repository,
+                    "tag": tag,
+                    "namespace": namespace,
+                    "immutable": immutable,
+                    "previous_immutable": previous,
+                },
+                repo_name=repository,
+            )
+
         if "manifest_digest" in request.get_json():
             existing_tag = registry_model.get_repo_tag(repo_ref, tag)
 
@@ -211,9 +332,14 @@ class RepositoryTag(RepositoryParamResource):
             )
             existing_manifest_digest = existing_manifest.digest if existing_manifest else None
 
-            if not registry_model.retarget_tag(
-                repo_ref, tag, manifest, storage, docker_v2_signing_key
-            ):
+            try:
+                if not registry_model.retarget_tag(
+                    repo_ref, tag, manifest, storage, docker_v2_signing_key
+                ):
+                    raise InvalidRequest("Could not move tag")
+            except ImmutableTagException as e:
+                raise TagImmutable(e.tag_name, e.operation) from e
+            except RetargetTagException:
                 raise InvalidRequest("Could not move tag")
 
             username = get_authenticated_user().username
@@ -235,7 +361,6 @@ class RepositoryTag(RepositoryParamResource):
         return "Updated", 201
 
     @require_repo_write(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("deleteFullTag")
@@ -248,7 +373,11 @@ class RepositoryTag(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        tag_ref = registry_model.delete_tag(model_cache, repo_ref, tag)
+        try:
+            tag_ref = registry_model.delete_tag(model_cache, repo_ref, tag)
+        except ImmutableTagException as e:
+            raise TagImmutable(e.tag_name, e.operation) from e
+
         if tag_ref is None:
             raise NotFound()
 
@@ -285,7 +414,6 @@ class RestoreTag(RepositoryParamResource):
     }
 
     @require_repo_write(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("restoreTag")
@@ -320,14 +448,19 @@ class RestoreTag(RepositoryParamResource):
         if manifest is None:
             raise NotFound()
 
-        if not registry_model.retarget_tag(
-            repo_ref,
-            tag,
-            manifest,
-            storage,
-            docker_v2_signing_key,
-            is_reversion=True,
-        ):
+        try:
+            if not registry_model.retarget_tag(
+                repo_ref,
+                tag,
+                manifest,
+                storage,
+                docker_v2_signing_key,
+                is_reversion=True,
+            ):
+                raise InvalidRequest("Could not restore tag")
+        except ImmutableTagException as e:
+            raise TagImmutable(e.tag_name, e.operation) from e
+        except RetargetTagException:
             raise InvalidRequest("Could not restore tag")
 
         log_action("revert_tag", namespace, log_data, repo_name=repository)
@@ -366,7 +499,6 @@ class TagTimeMachineDelete(RepositoryParamResource):
     }
 
     @require_repo_write(allow_for_superuser=True)
-    @disallow_for_app_repositories
     @nickname("removeTagFromTimemachine")
     @validate_json_request("ExpireTag")
     def post(self, namespace, repository, tag):
@@ -416,3 +548,53 @@ class TagTimeMachineDelete(RepositoryParamResource):
             repo_name=repository,
         )
         return "", 200
+
+
+@resource("/v1/repository/<apirepopath:repository>/tag/<tag>/pull_statistics")
+@path_param("repository", "The full path of the repository. e.g. namespace/name")
+@path_param("tag", "The name of the tag")
+@show_if(features.IMAGE_PULL_STATS)
+class RepositoryTagPullStatistics(RepositoryParamResource):
+    """
+    Resource for retrieving pull statistics for a specific repository tag.
+    """
+
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
+    @nickname("getTagPullStatistics")
+    def get(self, namespace, repository, tag):
+        """
+        Get pull statistics for a specific tag.
+        """
+
+        repo_ref = registry_model.lookup_repository(namespace, repository)
+        if repo_ref is None:
+            raise NotFound()
+
+        # Get the tag reference
+        tag_ref = registry_model.get_repo_tag(repo_ref, tag)
+        if tag_ref is None:
+            raise NotFound()
+
+        # Get pull statistics from database
+        tag_stats = get_tag_pull_statistics(repo_ref.id, tag)
+        manifest_stats = get_manifest_pull_statistics(repo_ref.id, tag_ref.manifest_digest)
+
+        # Return statistics - handle cases where tag_stats or manifest_stats may be None
+        # Note: manifest_stats can exist even when tag_stats doesn't (digest pulls only)
+        last_tag_pull = tag_stats.get("last_pull_date") if tag_stats else None
+        last_manifest_pull = manifest_stats.get("last_pull_date") if manifest_stats else None
+
+        return {
+            "tag_name": tag,
+            "tag_pull_count": tag_stats.get("pull_count", 0) if tag_stats else 0,
+            "last_tag_pull_date": format_date(last_tag_pull) if last_tag_pull else None,
+            "current_manifest_digest": (
+                tag_stats.get("current_manifest_digest", tag_ref.manifest_digest)
+                if tag_stats
+                else tag_ref.manifest_digest
+            ),
+            "manifest_pull_count": manifest_stats.get("pull_count", 0) if manifest_stats else 0,
+            "last_manifest_pull_date": (
+                format_date(last_manifest_pull) if last_manifest_pull else None
+            ),
+        }

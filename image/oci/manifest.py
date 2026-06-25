@@ -299,21 +299,35 @@ class OCIManifest(ManifestInterface):
         not support layers.
         """
         if not self.is_image_manifest:
+            for filesystem_layer in self.filesystem_layers:
+                yield ManifestImageLayer(
+                    layer_id=str(filesystem_layer.digest),
+                    compressed_size=filesystem_layer.compressed_size,
+                    is_remote=filesystem_layer.is_remote,
+                    urls=filesystem_layer.urls,
+                    command=None,
+                    blob_digest=str(filesystem_layer.digest),
+                    created_datetime=None,
+                    author=None,
+                    comment=None,
+                    internal_layer=filesystem_layer,
+                )
             return
 
         for image_layer in self._manifest_image_layers(content_retriever):
             is_remote = image_layer.blob_layer.is_remote if image_layer.blob_layer else False
             urls = image_layer.blob_layer.urls if image_layer.blob_layer else None
+            history = image_layer.history
             yield ManifestImageLayer(
                 layer_id=image_layer.v1_id,
                 compressed_size=image_layer.compressed_size,
                 is_remote=is_remote,
                 urls=urls,
-                command=image_layer.history.command,
+                command=history.command if history else None,
                 blob_digest=image_layer.blob_digest,
-                created_datetime=image_layer.history.created_datetime,
-                author=image_layer.history.author,
-                comment=image_layer.history.comment,
+                created_datetime=history.created_datetime if history else None,
+                author=history.author if history else None,
+                comment=history.comment if history else None,
                 internal_layer=image_layer,
             )
 
@@ -346,9 +360,11 @@ class OCIManifest(ManifestInterface):
                 v1_layer_id = digest_history.hexdigest()
 
                 yield OCIManifestImageLayer(
-                    history=config.synthesized_history
-                    if index == len(self.filesystem_layers) - 1
-                    else None,
+                    history=(
+                        config.synthesized_history
+                        if index == len(self.filesystem_layers) - 1
+                        else None
+                    ),
                     blob_layer=filesystem_layer,
                     blob_digest=str(filesystem_layer.digest),
                     v1_id=v1_layer_id,

@@ -59,12 +59,28 @@ def validate_sso_oauth_token(token):
         return ValidateResult(AuthKind.ssojwt, error_message="Unable to connect to auth server")
 
     try:
-        # for client side oauth, the audience will be the client side oauth client
-        options = {"verify_aud": False, "verify_nbf": False}
+        options = {"verify_nbf": False}
         if app.config.get("TESTING", False):
             options["verify_signature"] = False
 
         decoded_id_token = service.decode_user_jwt(token, options=options)
+
+        azp = decoded_id_token.get("azp")
+        allowed_clients = service.allowed_clients
+        if allowed_clients and azp and azp not in allowed_clients:
+            logger.warning("SSO JWT azp '%s' not in allowed clients: %s", azp, allowed_clients)
+            return ValidateResult(
+                AuthKind.ssojwt,
+                error_message=f"Client '{azp}' is not in the allowed clients list",
+            )
+
+        if azp:
+            logger.info(
+                "SSO JWT bearer token validated for issuer=%s with azp=%s",
+                issuer,
+                azp,
+            )
+
         sub, lusername, lemail, additional_info = get_sub_username_email_from_token(
             decoded_id_token, None, service, False
         )

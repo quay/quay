@@ -216,6 +216,14 @@ class InMemoryModel(ActionLogsDataInterface):
         repository_name=None,
         timestamp=None,
         is_free_namespace=False,
+        # Enhanced logging fields (accepted but not stored in inmemory model)
+        request_url=None,
+        http_method=None,
+        auth_type=None,
+        user_agent=None,
+        performer_kind=None,
+        request_id=None,
+        x_forwarded_for=None,
     ):
         timestamp = timestamp or datetime.today()
 

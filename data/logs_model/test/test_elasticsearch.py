@@ -132,8 +132,9 @@ def mock_db_model():
         ),
     )
 
-    with patch("data.logs_model.document_logs_model.model", model), patch(
-        "data.logs_model.datatypes.model", model
+    with (
+        patch("data.logs_model.document_logs_model.model", model),
+        patch("data.logs_model.datatypes.model", model),
     ):
         yield
 

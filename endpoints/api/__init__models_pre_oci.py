@@ -1,18 +1,9 @@
+from .__init__models_interface import InitDataInterface
 from data import model
 from data.logs_model import logs_model
 
-from .__init__models_interface import InitDataInterface
-
 
 class PreOCIModel(InitDataInterface):
-    def is_app_repository(self, namespace_name, repository_name):
-        return (
-            model.repository.get_repository(
-                namespace_name, repository_name, kind_filter="application"
-            )
-            is not None
-        )
-
     def repository_is_public(self, namespace_name, repository_name):
         return model.repository.repository_is_public(namespace_name, repository_name)
 

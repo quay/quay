@@ -81,7 +81,7 @@ export default function SelectOrganization(props: SelectOrganizationProps) {
               setPerPage={setPerPage}
             />
           </ToolbarItem>
-          <ToolbarItem align={{default: 'alignRight'}}>
+          <ToolbarItem align={{default: 'alignEnd'}}>
             <Button onClick={() => setGitNamespace(null)}>Clear</Button>
           </ToolbarItem>
         </ToolbarContent>

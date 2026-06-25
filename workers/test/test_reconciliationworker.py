@@ -33,7 +33,7 @@ def test_skip_free_user(initialized_db):
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
     # adding the free tier
-    mock.assert_called_with(23456, "MW04192")
+    mock.assert_called_with(23456, "MW04192", raise_exception=True)
 
 
 def test_reconcile_org_user(initialized_db):
@@ -379,7 +379,6 @@ def test_successful_reconciliation_run_metrics():
 
     # Get initial counts
     initial_success_count = reconciliation_runs_total.labels(status="success")._value.get()
-    initial_duration_sum = reconciliation_duration_seconds._sum.get()
 
     # Run reconciliation
     with patch.object(model.user, "get_active_users", return_value=[user]):
@@ -392,9 +391,9 @@ def test_successful_reconciliation_run_metrics():
     final_success_count = reconciliation_runs_total.labels(status="success")._value.get()
     assert final_success_count == initial_success_count + 1
 
-    # Check duration was recorded (sum will have increased)
-    final_duration_sum = reconciliation_duration_seconds._sum.get()
-    assert final_duration_sum > initial_duration_sum
+    # Check duration was recorded (gauge will have a value greater than 0)
+    final_duration = reconciliation_duration_seconds._value.get()
+    assert final_duration > 0
 
     # Check last success timestamp was set
     last_success = reconciliation_last_success_timestamp._value.get()
@@ -405,7 +404,6 @@ def test_failed_reconciliation_run_metrics():
     """Test that failed reconciliation increments failure metrics."""
     # Get initial counts
     initial_failed_count = reconciliation_runs_total.labels(status="failed")._value.get()
-    initial_duration_sum = reconciliation_duration_seconds._sum.get()
 
     # Force an exception during reconciliation
     with patch.object(model.user, "get_active_users", side_effect=Exception("Test failure")):
@@ -418,9 +416,9 @@ def test_failed_reconciliation_run_metrics():
     final_failed_count = reconciliation_runs_total.labels(status="failed")._value.get()
     assert final_failed_count == initial_failed_count + 1
 
-    # Check duration was still recorded (in finally block - sum will have increased)
-    final_duration_sum = reconciliation_duration_seconds._sum.get()
-    assert final_duration_sum > initial_duration_sum
+    # Check duration was still recorded (in finally block - gauge will have a value greater than 0)
+    final_duration = reconciliation_duration_seconds._value.get()
+    assert final_duration > 0
 
 
 def test_reconciliation_duration_recorded():
@@ -431,16 +429,13 @@ def test_reconciliation_duration_recorded():
     user.username = "test_user"
     user.stripe_id = None
 
-    # Get initial duration sum
-    initial_sum = reconciliation_duration_seconds._sum.get()
-
-    # Run reconciliation with a small sleep to ensure measurable duration
+    # Run reconciliation
     with patch.object(model.user, "get_active_users", return_value=[user]):
         with patch.object(marketplace_users, "lookup_customer_id", return_value=[23456]):
             with patch.object(marketplace_subscriptions, "lookup_subscription", return_value=None):
                 with patch.object(marketplace_subscriptions, "create_entitlement"):
                     worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
-    # Check that duration was recorded
-    final_sum = reconciliation_duration_seconds._sum.get()
-    assert final_sum > initial_sum
+    # Check that duration was recorded (gauge will have a value greater than 0)
+    final_duration = reconciliation_duration_seconds._value.get()
+    assert final_duration > 0

@@ -14,7 +14,6 @@ from data.secscan_model.datatypes import ScanLookupStatus
 from endpoints.api import (
     RepositoryParamResource,
     deprecated,
-    disallow_for_app_repositories,
     nickname,
     parse_args,
     path_param,
@@ -47,9 +46,9 @@ MAPPED_STATUSES[ScanLookupStatus.FAILED_TO_INDEX] = SecurityScanStatus.FAILED
 MAPPED_STATUSES[ScanLookupStatus.SUCCESS] = SecurityScanStatus.SCANNED
 MAPPED_STATUSES[ScanLookupStatus.NOT_YET_INDEXED] = SecurityScanStatus.QUEUED
 MAPPED_STATUSES[ScanLookupStatus.UNSUPPORTED_FOR_INDEXING] = SecurityScanStatus.UNSUPPORTED
-MAPPED_STATUSES[
-    ScanLookupStatus.MANIFEST_LAYER_TOO_LARGE
-] = SecurityScanStatus.MANIFEST_LAYER_TOO_LARGE
+MAPPED_STATUSES[ScanLookupStatus.MANIFEST_LAYER_TOO_LARGE] = (
+    SecurityScanStatus.MANIFEST_LAYER_TOO_LARGE
+)
 
 
 logger = logging.getLogger(__name__)
@@ -74,9 +73,11 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
     assert result.status in MAPPED_STATUSES
     return {
         "status": MAPPED_STATUSES[result.status].value,
-        "data": result.security_information.to_dict()
-        if result.security_information is not None
-        else None,
+        "data": (
+            result.security_information.to_dict()
+            if result.security_information is not None
+            else None
+        ),
     }
 
 
@@ -93,7 +94,6 @@ class RepositoryManifestSecurity(RepositoryParamResource):
     @anon_allowed
     @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoManifestSecurity")
-    @disallow_for_app_repositories
     @parse_args()
     @query_param(
         "vulnerabilities", "Include vulnerabilities informations", type=truthy_bool, default=False

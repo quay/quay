@@ -42,6 +42,7 @@ export default function PermissionsToolbar(props: PermissionsToolbarProps) {
         />
         <ToolbarItem>
           <Button
+            data-testid="add-permissions-btn"
             onClick={() =>
               props.setDrawerContent(DrawerContentType.AddPermission)
             }

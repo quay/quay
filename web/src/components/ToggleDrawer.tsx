@@ -23,9 +23,9 @@ export default function ToggleDrawer(props: ToggleDrawerProps) {
   const panelContent = (
     <DrawerPanelContent
       id="right-resize-panel"
-      colorVariant={DrawerColorVariant.light200}
+      colorVariant={DrawerColorVariant.secondary}
       className="drawer-styling"
-      minSize='920px'
+      minSize="920px"
     >
       <DrawerHead>
         <span tabIndex={props.isExpanded ? 0 : -1} ref={drawerRef}>
@@ -46,7 +46,7 @@ export default function ToggleDrawer(props: ToggleDrawerProps) {
         position="right"
       >
         <DrawerContent
-          colorVariant={DrawerColorVariant.default}
+          colorVariant="default"
           panelContent={panelContent}
         ></DrawerContent>
       </Drawer>

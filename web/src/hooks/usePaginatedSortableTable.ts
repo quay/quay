@@ -91,10 +91,21 @@ export function usePaginatedSortableTable<T>(
 
         let result = 0;
         if (typeof aValue === 'string' && typeof bValue === 'string') {
-          result = aValue.localeCompare(bValue, undefined, {
-            numeric: true,
-            sensitivity: 'base',
-          });
+          // Check if both values are hex strings or UUIDs (common for Build IDs)
+          // Match pure hex or UUID format (hex with hyphens)
+          const hexOrUuidPattern = /^[0-9a-fA-F-]+$/;
+          if (hexOrUuidPattern.test(aValue) && hexOrUuidPattern.test(bValue)) {
+            // Remove hyphens and parse the first segment as hex for comparison
+            // This handles UUIDs like "69ab0698-1234-5678-9abc-def012345678"
+            const aHex = aValue.replace(/-/g, '').substring(0, 8);
+            const bHex = bValue.replace(/-/g, '').substring(0, 8);
+            result = parseInt(aHex, 16) - parseInt(bHex, 16);
+          } else {
+            result = aValue.localeCompare(bValue, undefined, {
+              numeric: true,
+              sensitivity: 'base',
+            });
+          }
         } else if (typeof aValue === 'number' && typeof bValue === 'number') {
           result = aValue - bValue;
         }

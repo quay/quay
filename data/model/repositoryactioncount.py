@@ -40,6 +40,7 @@ def count_repository_actions(to_count, day):
 
     Returns the count or None on error.
     """
+
     # TODO: Clean this up a bit.
     def lookup_action_count(model):
         return (

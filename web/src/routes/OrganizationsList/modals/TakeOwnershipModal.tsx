@@ -1,0 +1,116 @@
+import {useState} from 'react';
+import {
+  Button,
+  Content,
+  Alert,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@patternfly/react-core';
+import {useTakeOwnership} from 'src/hooks/UseOrganizationActions';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {isFreshLoginError} from 'src/utils/freshLoginErrors';
+
+interface TakeOwnershipModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  organizationName: string;
+  isUser: boolean;
+}
+
+export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
+  const [error, setError] = useState<string | null>(null);
+  const {addAlert} = useUI();
+  const entityType = props.isUser ? 'user' : 'organization';
+
+  const {takeOwnership, isLoading} = useTakeOwnership({
+    onSuccess: () => {
+      addAlert({
+        variant: AlertVariant.Success,
+        title: `Successfully took ownership of ${entityType} ${props.organizationName}`,
+      });
+      handleClose();
+    },
+    onError: (err) => {
+      const errorMessage =
+        err?.response?.data?.error_message ||
+        err?.message ||
+        'Failed to take ownership';
+      // Filter out fresh login errors to prevent duplicate alerts
+      if (isFreshLoginError(errorMessage)) {
+        return;
+      }
+      setError(errorMessage);
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: `Failed to take ownership of ${entityType} ${props.organizationName}`,
+        message: errorMessage,
+      });
+    },
+  });
+
+  const handleClose = () => {
+    setError(null);
+    props.onClose();
+  };
+
+  const handleTakeOwnership = () => {
+    setError(null);
+    takeOwnership(props.organizationName);
+  };
+
+  return (
+    <Modal
+      isOpen={props.isOpen}
+      onClose={handleClose}
+      variant={ModalVariant.medium}
+    >
+      <ModalHeader title="Take Ownership" />
+      <ModalBody>
+        <Content component="p">
+          Are you sure you want to take ownership of {entityType}{' '}
+          <strong>{props.organizationName}</strong>?
+        </Content>
+        {props.isUser && (
+          <Alert
+            variant="warning"
+            title="Note"
+            isInline
+            style={{marginTop: 16}}
+          >
+            This will convert the user namespace into an organization.{' '}
+            <strong>
+              The user will no longer be able to login to this account.
+            </strong>
+          </Alert>
+        )}
+        {error && (
+          <Alert
+            variant="danger"
+            title="Error"
+            isInline
+            style={{marginTop: 16}}
+          >
+            {error}
+          </Alert>
+        )}
+      </ModalBody>
+      <ModalFooter>
+        <Button
+          key="confirm"
+          variant="primary"
+          onClick={handleTakeOwnership}
+          isLoading={isLoading}
+          isDisabled={isLoading}
+        >
+          Take Ownership
+        </Button>
+        <Button key="cancel" variant="link" onClick={handleClose}>
+          Cancel
+        </Button>
+      </ModalFooter>
+    </Modal>
+  );
+}

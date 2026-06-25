@@ -1,0 +1,1732 @@
+# -*- coding: utf-8 -*-
+"""
+Unit tests for organization mirroring registry adapters.
+"""
+
+from unittest.mock import patch
+
+import pytest
+import responses
+from requests.exceptions import ConnectionError, SSLError, Timeout
+
+from data.database import SourceRegistryType
+from util.orgmirror import get_registry_adapter
+from util.orgmirror.exceptions import (
+    HarborDiscoveryException,
+    QuayDiscoveryException,
+    RegistryDiscoveryException,
+)
+from util.orgmirror.harbor_adapter import HarborAdapter
+from util.orgmirror.quay_adapter import QuayAdapter
+
+
+@pytest.fixture(autouse=True)
+def _mock_ssrf_validation():
+    """Mock SSRF validation to avoid DNS resolution in unit tests.
+
+    SSRF validation calls socket.getaddrinfo() which fails in CI for fake
+    hostnames like harbor.example.com. SSRF validation is tested separately
+    in util/security/test/test_ssrf.py.
+    """
+    with patch("util.orgmirror.registry_adapter.validate_external_registry_url"):
+        yield
+
+
+@pytest.fixture()
+def _mock_quay_test_connection():
+    """Mock test_connection to return success for list_repositories tests.
+
+    list_repositories calls test_connection first to validate credentials
+    and namespace existence. Tests that specifically test connection validation
+    should NOT use this fixture.
+    """
+    with patch.object(QuayAdapter, "test_connection", return_value=(True, "Connection successful")):
+        yield
+
+
+class TestQuayAdapter:
+    """Tests for QuayAdapter."""
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_single_page(self):
+        """Test fetching repositories with a single page response."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={
+                "repositories": [
+                    {"name": "repo1"},
+                    {"name": "repo2"},
+                    {"name": "repo3"},
+                ]
+            },
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            username="user",
+            password="pass",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1", "repo2", "repo3"]
+        assert len(responses.calls) == 1
+        assert "namespace=testorg" in responses.calls[0].request.url
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_paginated(self):
+        """Test fetching repositories with multiple pages."""
+        # First page
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={
+                "repositories": [
+                    {"name": "repo1"},
+                    {"name": "repo2"},
+                ],
+                "next_page": "token123",
+            },
+            status=200,
+        )
+
+        # Second page
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={
+                "repositories": [
+                    {"name": "repo3"},
+                ]
+            },
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io/",  # Test trailing slash handling
+            namespace="testorg",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1", "repo2", "repo3"]
+        assert len(responses.calls) == 2
+        assert "next_page=token123" in responses.calls[1].request.url
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_empty(self):
+        """Test fetching when no repositories exist in a valid namespace."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": []},
+            status=200,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="emptyorg")
+
+        repos = adapter.list_repositories()
+
+        assert repos == []
+
+    @responses.activate
+    def test_test_connection_success(self):
+        """Test successful connection verification."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testorg",
+            json={"name": "testorg"},
+            status=200,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
+
+        success, message = adapter.test_connection()
+
+        assert success is True
+        assert message == "Connection successful"
+
+    @responses.activate
+    def test_test_connection_auth_failed(self):
+        """Test connection with authentication failure from /api/v1/user/ endpoint."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"error": "Unauthorized"},
+            status=401,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            username="baduser",
+            password="badpass",
+        )
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert "Authentication failed" in message
+
+    @responses.activate
+    def test_test_connection_invalid_creds_public_org(self):
+        """Test that invalid credentials are caught even when org endpoint is public.
+
+        Regression test: previously, test_connection only checked the org endpoint
+        which returns 200 for public orgs regardless of credentials. Now it validates
+        credentials via /api/v1/user/ first.
+        """
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"error": "Unauthorized"},
+            status=401,
+        )
+        # Org endpoint would return 200 (public org) but should never be reached
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testorg",
+            json={"name": "testorg"},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            password="invalid-token",
+        )
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert "Authentication failed" in message
+
+    @responses.activate
+    def test_test_connection_not_found(self):
+        """Test connection when namespace doesn't exist as org or user."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/nonexistent",
+            json={"error": "Not found"},
+            status=404,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/users/nonexistent",
+            json={"error": "Not found"},
+            status=404,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="nonexistent")
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert "not found" in message.lower()
+
+    @responses.activate
+    def test_test_connection_user_namespace_success(self):
+        """Test connection succeeds when namespace is a user account, not an org."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/lzha",
+            json={"error": "Not found"},
+            status=404,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/users/lzha",
+            json={"username": "lzha"},
+            status=200,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="lzha")
+
+        success, message = adapter.test_connection()
+
+        assert success is True
+        assert message == "Connection successful"
+
+    @responses.activate
+    def test_test_connection_user_endpoint_auth_failure(self):
+        """Test that a 401 from the user fallback endpoint reports auth failure, not not-found."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testuser",
+            json={"error": "Not found"},
+            status=404,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/users/testuser",
+            json={"error": "Unauthorized"},
+            status=401,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="testuser")
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert message == "Authentication failed"
+
+    @responses.activate
+    def test_test_connection_user_endpoint_server_error(self):
+        """Test that a 500 from the user fallback endpoint reports unexpected response, not not-found."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testuser",
+            json={"error": "Not found"},
+            status=404,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/users/testuser",
+            json={"error": "Internal Server Error"},
+            status=500,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="testuser")
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert "500" in message
+
+    def test_proxy_configuration(self):
+        """Test that proxy settings are passed to requests."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            config={
+                "proxy": {
+                    "http_proxy": "http://proxy:8080",
+                    "https_proxy": "https://proxy:8443",
+                }
+            },
+        )
+
+        proxies = adapter._build_proxies("https://quay.io/api/v1/repository")
+        assert proxies["http"] == "http://proxy:8080"
+        assert proxies["https"] == "https://proxy:8443"
+
+    def test_no_proxy_bypasses_proxy(self):
+        """Test that no_proxy returns empty proxies for matching hosts."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            config={
+                "proxy": {
+                    "http_proxy": "http://proxy:8080",
+                    "https_proxy": "https://proxy:8443",
+                    "no_proxy": "quay.io,.internal",
+                }
+            },
+        )
+
+        # Host in no_proxy list -> empty proxies (direct connection)
+        proxies = adapter._build_proxies("https://quay.io/api/v1/repository")
+        assert proxies == {}
+
+        # Suffix match
+        proxies = adapter._build_proxies("https://registry.internal/v2")
+        assert proxies == {}
+
+        # Host NOT in no_proxy list -> proxies returned
+        proxies = adapter._build_proxies("https://other-registry.com/v2")
+        assert proxies["http"] == "http://proxy:8080"
+        assert proxies["https"] == "https://proxy:8443"
+
+    def test_no_proxy_not_configured(self):
+        """Test that without no_proxy, all hosts use the proxy."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            config={
+                "proxy": {
+                    "http_proxy": "http://proxy:8080",
+                }
+            },
+        )
+
+        proxies = adapter._build_proxies("https://quay.io/api/v1/repository")
+        assert proxies["http"] == "http://proxy:8080"
+
+    def test_tls_verification_disabled(self):
+        """Test that TLS verification can be disabled."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            config={"verify_tls": False},
+        )
+
+        assert adapter.verify_tls is False
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_large_pagination(self):
+        """Test fetching 150+ repositories across multiple pages."""
+        # First page - 50 repos with next_page token
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={
+                "repositories": [{"name": f"repo{i}"} for i in range(50)],
+                "next_page": "token_page2",
+            },
+            status=200,
+        )
+
+        # Second page - 50 repos with next_page token
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={
+                "repositories": [{"name": f"repo{i}"} for i in range(50, 100)],
+                "next_page": "token_page3",
+            },
+            status=200,
+        )
+
+        # Third page - 55 repos, no next_page (final page)
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={
+                "repositories": [{"name": f"repo{i}"} for i in range(100, 155)],
+            },
+            status=200,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="largeorg")
+
+        repos = adapter.list_repositories()
+
+        assert len(repos) == 155
+        assert repos[0] == "repo0"
+        assert repos[49] == "repo49"
+        assert repos[100] == "repo100"
+        assert repos[-1] == "repo154"
+        assert len(responses.calls) == 3
+        # Verify pagination tokens were used
+        assert "next_page=token_page2" in responses.calls[1].request.url
+        assert "next_page=token_page3" in responses.calls[2].request.url
+
+    @responses.activate
+    def test_list_repositories_401_raises_exception(self):
+        """Test that 401 from credential check raises QuayDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"error": "Unauthorized"},
+            status=401,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            username="baduser",
+            password="badpass",
+        )
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "Authentication failed" in str(exc_info.value)
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_403_raises_exception(self):
+        """Test that 403 response raises QuayDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"error": "Forbidden"},
+            status=403,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="privateorg")
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "Access forbidden" in str(exc_info.value)
+        assert "privateorg" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_nonexistent_namespace_raises_exception(self):
+        """Test that a non-existent namespace raises QuayDiscoveryException.
+
+        Regression test: previously, the /api/v1/repository endpoint returned
+        200 with empty results for non-existent namespaces, causing sync to
+        report success with 0 repos. Now test_connection validates the namespace
+        exists before listing repositories.
+        """
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/nonexistent",
+            json={"error": "Not found"},
+            status=404,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/users/nonexistent",
+            json={"error": "Not found"},
+            status=404,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="nonexistent")
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "not found" in str(exc_info.value).lower()
+        assert "nonexistent" in str(exc_info.value)
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_404_raises_exception(self):
+        """Test that 404 from repository endpoint raises QuayDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"error": "Not found"},
+            status=404,
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="nonexistent")
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "not found" in str(exc_info.value)
+        assert "nonexistent" in str(exc_info.value)
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_redirect_raises_exception(self):
+        """Test that 3xx redirect raises QuayDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            status=301,
+            headers={"Location": "https://quay.io/v2/"},
+        )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "redirect" in str(exc_info.value).lower()
+        assert "301" in str(exc_info.value)
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_500_raises_exception(self):
+        """Test that 500 response raises QuayDiscoveryException after retries."""
+        # Add multiple 500 responses to exhaust retries
+        for _ in range(4):  # max_retries (3) + 1
+            responses.add(
+                responses.GET,
+                "https://quay.io/api/v1/repository",
+                json={"error": "Internal Server Error"},
+                status=500,
+            )
+
+        adapter = QuayAdapter(url="https://quay.io", namespace="testorg", max_retries=3)
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "500" in str(exc_info.value)
+
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_connection_error_raises_exception(self):
+        """Test that connection error raises QuayDiscoveryException."""
+        adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
+
+        with patch.object(adapter.session, "get") as mock_get:
+            mock_get.side_effect = ConnectionError("Connection refused")
+
+            with pytest.raises(QuayDiscoveryException) as exc_info:
+                adapter.list_repositories()
+
+            assert "Failed to connect" in str(exc_info.value)
+
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_timeout_raises_exception(self):
+        """Test that timeout raises QuayDiscoveryException."""
+        adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
+
+        with patch.object(adapter.session, "get") as mock_get:
+            mock_get.side_effect = Timeout("Connection timed out")
+
+            with pytest.raises(QuayDiscoveryException) as exc_info:
+                adapter.list_repositories()
+
+            assert "timed out" in str(exc_info.value)
+
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_ssl_error_raises_exception(self):
+        """Test that SSL error raises QuayDiscoveryException."""
+        adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
+
+        with patch.object(adapter.session, "get") as mock_get:
+            mock_get.side_effect = SSLError("SSL certificate verify failed")
+
+            with pytest.raises(QuayDiscoveryException) as exc_info:
+                adapter.list_repositories()
+
+            assert "SSL" in str(exc_info.value)
+
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_exception_includes_cause(self):
+        """Test that QuayDiscoveryException includes the original cause."""
+        adapter = QuayAdapter(url="https://quay.io", namespace="testorg")
+        original_error = ConnectionError("Original error message")
+
+        with patch.object(adapter.session, "get") as mock_get:
+            mock_get.side_effect = original_error
+
+            with pytest.raises(QuayDiscoveryException) as exc_info:
+                adapter.list_repositories()
+
+            assert exc_info.value.cause is original_error
+
+    def test_exception_hierarchy(self):
+        """Test that QuayDiscoveryException inherits from RegistryDiscoveryException."""
+        assert issubclass(QuayDiscoveryException, RegistryDiscoveryException)
+
+    def test_bearer_token_authentication_via_token_param(self):
+        """Test that token parameter sets Bearer authentication header."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="my-api-token",
+        )
+
+        assert "Authorization" in adapter.session.headers
+        assert adapter.session.headers["Authorization"] == "Bearer my-api-token"
+        # Basic auth should NOT be set
+        assert adapter.session.auth is None
+
+    def test_bearer_token_authentication_via_password(self):
+        """Test that password field is used as Bearer token when token param is not set."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            username="ignored-user",
+            password="my-api-token-from-password",
+        )
+
+        assert "Authorization" in adapter.session.headers
+        assert adapter.session.headers["Authorization"] == "Bearer my-api-token-from-password"
+        # Basic auth should NOT be set (password is used as Bearer token, not basic auth)
+        assert adapter.session.auth is None
+
+    def test_token_param_takes_precedence_over_password(self):
+        """Test that explicit token parameter takes precedence over password."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            username="user",
+            password="password-token",
+            token="explicit-token",
+        )
+
+        assert adapter.session.headers["Authorization"] == "Bearer explicit-token"
+
+    def test_no_auth_when_no_credentials(self):
+        """Test that no auth is set when no credentials are provided."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+        )
+
+        assert "Authorization" not in adapter.session.headers
+        assert adapter.session.auth is None
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_authenticated_excludes_public_param(self):
+        """Test that authenticated adapter does NOT send public=true in URL."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="my-api-token",
+        )
+
+        adapter.list_repositories()
+
+        assert len(responses.calls) == 1
+        assert "public=true" not in responses.calls[0].request.url
+        assert "namespace=testorg" in responses.calls[0].request.url
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_list_repositories_unauthenticated_includes_public_param(self):
+        """Test that unauthenticated adapter sends public=true in URL."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+        )
+
+        adapter.list_repositories()
+
+        assert len(responses.calls) == 1
+        assert "public=true" in responses.calls[0].request.url
+        assert "namespace=testorg" in responses.calls[0].request.url
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_bearer_token_sent_in_request(self):
+        """Test that Bearer token is actually sent in HTTP requests."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="test-bearer-token",
+        )
+
+        adapter.list_repositories()
+
+        assert len(responses.calls) == 1
+        auth_header = responses.calls[0].request.headers.get("Authorization")
+        assert auth_header == "Bearer test-bearer-token"
+
+    @responses.activate
+    def test_list_repositories_invalid_token_raises(self):
+        """Test that invalid token is caught by test_connection credential check."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"error": "Unauthorized"},
+            status=401,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="invalid-token",
+        )
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "Authentication failed" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_valid_token_proceeds(self):
+        """Test that valid token passes connection check and proceeds to discovery."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"username": "validuser"},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testorg",
+            json={"name": "testorg"},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={
+                "repositories": [
+                    {"name": "repo1"},
+                    {"name": "repo2"},
+                ]
+            },
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="valid-token",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1", "repo2"]
+        assert len(responses.calls) == 3
+        assert "/api/v1/user/" in responses.calls[0].request.url
+        assert "/api/v1/organization/" in responses.calls[1].request.url
+        assert "/api/v1/repository" in responses.calls[2].request.url
+
+    @responses.activate
+    def test_list_repositories_no_token_skips_auth_check(self):
+        """Test that no credential check is made when no token is provided."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/organization/testorg",
+            json={"name": "testorg"},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1"]
+        assert len(responses.calls) == 2
+        # First call is namespace check, not /api/v1/user/
+        assert "/api/v1/organization/" in responses.calls[0].request.url
+        assert "/api/v1/repository" in responses.calls[1].request.url
+
+    @responses.activate
+    def test_list_repositories_forbidden_token_raises(self):
+        """Test that 403 from credential check raises QuayDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            json={"error": "Forbidden"},
+            status=403,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="forbidden-token",
+        )
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "insufficient permissions" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_redirect_token_raises(self):
+        """Test that a redirect (3xx) from credential check raises QuayDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            status=302,
+            headers={"Location": "https://evil.example.com/"},
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="some-token",
+        )
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "redirect" in str(exc_info.value).lower()
+        assert "302" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_network_error_during_connection_check_fails(self):
+        """Test that a network error during connection check fails the sync."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            body=ConnectionError("Connection refused"),
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            token="some-token",
+        )
+
+        with pytest.raises(QuayDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "Connection error" in str(exc_info.value)
+
+    @responses.activate
+    def test_test_connection_redirect_credentials(self):
+        """Test that test_connection catches redirect when validating credentials."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/user/",
+            status=301,
+            headers={"Location": "https://other.example.com/"},
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            password="some-token",
+        )
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert "redirect" in message.lower()
+        assert "301" in message
+
+
+class TestHarborAdapter:
+    """Tests for HarborAdapter."""
+
+    @responses.activate
+    def test_list_repositories_single_page(self):
+        """Test fetching repositories with a single page response."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            json=[
+                {"name": "myproject/repo1"},
+                {"name": "myproject/repo2"},
+            ],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+            username="admin",
+            password="secret",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1", "repo2"]
+
+    @responses.activate
+    def test_list_repositories_paginated(self):
+        """Test fetching repositories with multiple pages."""
+        # First page - full page with Link header indicating next page
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            json=[{"name": f"myproject/repo{i}"} for i in range(100)],
+            status=200,
+            headers={"Link": '</api/v2.0/projects/myproject/repositories?page=2>; rel="next"'},
+        )
+
+        # Second page - partial page (no Link header, indicates end)
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            json=[{"name": "myproject/repo100"}],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com/",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert len(repos) == 101
+        assert repos[0] == "repo0"
+        assert repos[-1] == "repo100"
+
+    @responses.activate
+    def test_list_repositories_strips_project_prefix(self):
+        """Test that project prefix is correctly stripped from repo names."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/my-project/repositories",
+            json=[
+                {"name": "my-project/alpine"},
+                {"name": "my-project/nginx"},
+                {"name": "standalone"},  # No prefix (edge case)
+            ],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="my-project",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["alpine", "nginx", "standalone"]
+
+    @responses.activate
+    def test_list_repositories_empty(self):
+        """Test fetching when no repositories exist."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/emptyproject/repositories",
+            json=[],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="emptyproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == []
+
+    @responses.activate
+    def test_test_connection_success(self):
+        """Test successful connection verification."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject",
+            json={"name": "myproject"},
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        success, message = adapter.test_connection()
+
+        assert success is True
+        assert message == "Connection successful"
+
+    @responses.activate
+    def test_test_connection_forbidden(self):
+        """Test connection with insufficient permissions."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject",
+            json={"errors": [{"code": "FORBIDDEN"}]},
+            status=403,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+            username="user",
+            password="pass",
+        )
+
+        success, message = adapter.test_connection()
+
+        assert success is False
+        assert "forbidden" in message.lower()
+
+    @responses.activate
+    def test_list_repositories_large_pagination(self):
+        """Test fetching 250+ repositories across multiple pages."""
+        # First page - 100 repos with Link header
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/largeproject/repositories",
+            json=[{"name": f"largeproject/repo{i}"} for i in range(100)],
+            status=200,
+            headers={"Link": '</api/v2.0/projects/largeproject/repositories?page=2>; rel="next"'},
+        )
+
+        # Second page - 100 repos with Link header
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/largeproject/repositories",
+            json=[{"name": f"largeproject/repo{i}"} for i in range(100, 200)],
+            status=200,
+            headers={"Link": '</api/v2.0/projects/largeproject/repositories?page=3>; rel="next"'},
+        )
+
+        # Third page - 55 repos (final page, no Link header)
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/largeproject/repositories",
+            json=[{"name": f"largeproject/repo{i}"} for i in range(200, 255)],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="largeproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert len(repos) == 255
+        assert repos[0] == "repo0"
+        assert repos[99] == "repo99"
+        assert repos[200] == "repo200"
+        assert repos[-1] == "repo254"
+        assert len(responses.calls) == 3
+        # Verify page numbers were used
+        assert "page=1" in responses.calls[0].request.url
+        assert "page=2" in responses.calls[1].request.url
+        assert "page=3" in responses.calls[2].request.url
+
+    @responses.activate
+    def test_list_repositories_401_raises_exception(self):
+        """Test that 401 response raises HarborDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            json={"errors": [{"code": "UNAUTHORIZED"}]},
+            status=401,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+            username="baduser",
+            password="badpass",
+        )
+
+        with pytest.raises(HarborDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "Authentication failed" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_403_raises_exception(self):
+        """Test that 403 response raises HarborDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/privateproject/repositories",
+            json={"errors": [{"code": "FORBIDDEN"}]},
+            status=403,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="privateproject",
+        )
+
+        with pytest.raises(HarborDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "Access forbidden" in str(exc_info.value)
+        assert "privateproject" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_404_raises_exception(self):
+        """Test that 404 response raises HarborDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/nonexistent/repositories",
+            json={"errors": [{"code": "NOT_FOUND"}]},
+            status=404,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="nonexistent",
+        )
+
+        with pytest.raises(HarborDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "not found" in str(exc_info.value)
+        assert "nonexistent" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_redirect_raises_exception(self):
+        """Test that 3xx redirect raises HarborDiscoveryException."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            status=302,
+            headers={"Location": "https://harbor.example.com/v2/"},
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        with pytest.raises(HarborDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "redirect" in str(exc_info.value).lower()
+        assert "302" in str(exc_info.value)
+
+    @responses.activate
+    def test_list_repositories_500_raises_exception(self):
+        """Test that 500 response raises HarborDiscoveryException after retries."""
+        for _ in range(4):  # max_retries (3) + 1
+            responses.add(
+                responses.GET,
+                "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+                json={"error": "Internal Server Error"},
+                status=500,
+            )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+            max_retries=3,
+        )
+
+        with pytest.raises(HarborDiscoveryException) as exc_info:
+            adapter.list_repositories()
+
+        assert "500" in str(exc_info.value)
+
+    def test_list_repositories_connection_error_raises_exception(self):
+        """Test that connection error raises HarborDiscoveryException."""
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        with patch.object(adapter.session, "get") as mock_get:
+            mock_get.side_effect = ConnectionError("Connection refused")
+
+            with pytest.raises(HarborDiscoveryException) as exc_info:
+                adapter.list_repositories()
+
+            assert "Failed to connect" in str(exc_info.value)
+
+    def test_list_repositories_timeout_raises_exception(self):
+        """Test that timeout raises HarborDiscoveryException."""
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        with patch.object(adapter.session, "get") as mock_get:
+            mock_get.side_effect = Timeout("Connection timed out")
+
+            with pytest.raises(HarborDiscoveryException) as exc_info:
+                adapter.list_repositories()
+
+            assert "timed out" in str(exc_info.value)
+
+    def test_list_repositories_ssl_error_raises_exception(self):
+        """Test that SSL error raises HarborDiscoveryException."""
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        with patch.object(adapter.session, "get") as mock_get:
+            mock_get.side_effect = SSLError("SSL certificate verify failed")
+
+            with pytest.raises(HarborDiscoveryException) as exc_info:
+                adapter.list_repositories()
+
+            assert "SSL" in str(exc_info.value)
+
+    def test_exception_includes_cause(self):
+        """Test that HarborDiscoveryException includes the original cause."""
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+        original_error = ConnectionError("Original error message")
+
+        with patch.object(adapter.session, "get") as mock_get:
+            mock_get.side_effect = original_error
+
+            with pytest.raises(HarborDiscoveryException) as exc_info:
+                adapter.list_repositories()
+
+            assert exc_info.value.cause is original_error
+
+    def test_exception_hierarchy(self):
+        """Test that HarborDiscoveryException inherits from RegistryDiscoveryException."""
+        assert issubclass(HarborDiscoveryException, RegistryDiscoveryException)
+
+    @responses.activate
+    def test_list_repositories_link_header_pagination(self):
+        """Test that Link header drives pagination even when pages are full."""
+        url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
+
+        # Three full pages of exactly page_size items
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100)],
+            status=200,
+            headers={"Link": f'<{url}?page=2>; rel="next"'},
+        )
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100, 200)],
+            status=200,
+            headers={"Link": f'<{url}?page=3>; rel="next"'},
+        )
+        # Page 3: full page but no Link header — fallback continues
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(200, 300)],
+            status=200,
+        )
+        # Page 4: empty page — pagination stops
+        responses.add(
+            responses.GET,
+            url,
+            json=[],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert len(repos) == 300
+        assert repos[0] == "repo0"
+        assert repos[-1] == "repo299"
+        assert len(responses.calls) == 4
+
+    @responses.activate
+    def test_list_repositories_server_truncated_page_with_link(self):
+        """Test that pagination continues when server returns fewer than page_size
+        items but includes a Link header with rel="next"."""
+        url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
+
+        # Page 1: server returns only 16 items (fewer than page_size=100)
+        # but Link header says there's a next page
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(16)],
+            status=200,
+            headers={"Link": f'<{url}?page=2>; rel="next"'},
+        )
+        # Page 2: full page with next link
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(16, 116)],
+            status=200,
+            headers={"Link": f'<{url}?page=3>; rel="next"'},
+        )
+        # Page 3: final page, no Link header
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(116, 150)],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert len(repos) == 150
+        assert len(responses.calls) == 3
+
+    @responses.activate
+    def test_list_repositories_no_link_header_falls_back_to_page_size(self):
+        """Test that without Link headers, pagination falls back to page-size
+        heuristic: continues on full pages, stops on empty page."""
+        url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
+
+        # Page 1: full page (100 items), no Link header — fallback continues
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100)],
+            status=200,
+        )
+        # Page 2: partial page (50 items), no Link header — fallback stops
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100, 150)],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        # Without Link header, page-size fallback kicks in:
+        # page 1 has 100 items (== page_size) so continues,
+        # page 2 has 50 items (< page_size) so stops
+        assert len(repos) == 150
+        assert len(responses.calls) == 2
+
+    @responses.activate
+    def test_list_repositories_link_header_without_next_rel_falls_back(self):
+        """Test that a Link header present but without rel="next" triggers
+        the page-size fallback, not an early stop."""
+        url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
+
+        # Page 1: full page with a Link header that has no rel="next"
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100)],
+            status=200,
+            headers={"Link": '<https://harbor.example.com/other>; rel="prev"'},
+        )
+        # Page 2: partial page — fallback stops
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100, 130)],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        # Link header exists but has no rel="next", so fallback kicks in:
+        # page 1 has 100 items (== page_size) so continues,
+        # page 2 has 30 items (< page_size) so stops
+        assert len(repos) == 130
+        assert len(responses.calls) == 2
+
+    @responses.activate
+    def test_list_repositories_no_link_header_stops_on_empty_page(self):
+        """Test that without Link headers, pagination stops on an empty page
+        when all prior pages were full."""
+        url = "https://harbor.example.com/api/v2.0/projects/myproject/repositories"
+
+        # Page 1: full page, no Link header — fallback continues
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100)],
+            status=200,
+        )
+        # Page 2: full page, no Link header — fallback continues
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"name": f"myproject/repo{i}"} for i in range(100, 200)],
+            status=200,
+        )
+        # Page 3: empty page — stops
+        responses.add(
+            responses.GET,
+            url,
+            json=[],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+        )
+
+        repos = adapter.list_repositories()
+
+        assert len(repos) == 200
+        assert len(responses.calls) == 3
+
+
+class TestGetRegistryAdapter:
+    """Tests for the get_registry_adapter factory function."""
+
+    def test_get_quay_adapter(self):
+        """Test creating a Quay adapter."""
+        adapter = get_registry_adapter(
+            registry_type=SourceRegistryType.QUAY,
+            url="https://quay.io",
+            namespace="testorg",
+            username="user",
+            password="pass",
+        )
+
+        assert isinstance(adapter, QuayAdapter)
+        assert adapter.base_url == "https://quay.io"
+        assert adapter.namespace == "testorg"
+        # Quay uses Bearer token auth (password is used as token)
+        assert adapter.session.headers["Authorization"] == "Bearer pass"
+
+    def test_get_quay_adapter_with_token(self):
+        """Test creating a Quay adapter with explicit token parameter."""
+        adapter = get_registry_adapter(
+            registry_type=SourceRegistryType.QUAY,
+            url="https://quay.io",
+            namespace="testorg",
+            token="my-api-token",
+        )
+
+        assert isinstance(adapter, QuayAdapter)
+        assert adapter.session.headers["Authorization"] == "Bearer my-api-token"
+
+    def test_get_harbor_adapter(self):
+        """Test creating a Harbor adapter."""
+        adapter = get_registry_adapter(
+            registry_type=SourceRegistryType.HARBOR,
+            url="https://harbor.example.com",
+            namespace="myproject",
+            config={"verify_tls": False},
+        )
+
+        assert isinstance(adapter, HarborAdapter)
+        assert adapter.base_url == "https://harbor.example.com"
+        assert adapter.namespace == "myproject"
+        assert adapter.verify_tls is False
+
+    def test_unsupported_registry_type(self):
+        """Test that unsupported registry types raise ValueError."""
+        # Create a mock unsupported type by using an invalid value
+        with pytest.raises(ValueError) as exc_info:
+            get_registry_adapter(
+                registry_type=999,  # Invalid type
+                url="https://example.com",
+                namespace="test",
+            )
+
+        assert "Unsupported registry type" in str(exc_info.value)
+
+
+class TestRetryBehavior:
+    """Tests for retry behavior with transient failures."""
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_quay_retry_on_429_succeeds(self):
+        """Test that QuayAdapter retries on 429 and eventually succeeds."""
+        # First request: 429 rate limited
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"error": "Rate limited"},
+            status=429,
+        )
+
+        # Second request: 429 rate limited
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"error": "Rate limited"},
+            status=429,
+        )
+
+        # Third request: success
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            max_retries=3,
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1"]
+        # Should have made 3 requests (2 retries + 1 success)
+        assert len(responses.calls) == 3
+
+    @responses.activate
+    @pytest.mark.usefixtures("_mock_quay_test_connection")
+    def test_quay_retry_on_503_succeeds(self):
+        """Test that QuayAdapter retries on 503 Service Unavailable."""
+        # First request: 503
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"error": "Service Unavailable"},
+            status=503,
+        )
+
+        # Second request: success
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"repositories": [{"name": "repo1"}, {"name": "repo2"}]},
+            status=200,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            max_retries=3,
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1", "repo2"]
+        assert len(responses.calls) == 2
+
+    @responses.activate
+    def test_harbor_retry_on_502_succeeds(self):
+        """Test that HarborAdapter retries on 502 Bad Gateway."""
+        # First request: 502
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            json={"error": "Bad Gateway"},
+            status=502,
+        )
+
+        # Second request: success
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            json=[{"name": "myproject/repo1"}],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+            max_retries=3,
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1"]
+        assert len(responses.calls) == 2
+
+    @responses.activate
+    def test_harbor_retry_on_500_succeeds(self):
+        """Test that HarborAdapter retries on 500 Internal Server Error."""
+        # First request: 500
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            json={"error": "Internal Server Error"},
+            status=500,
+        )
+
+        # Second request: 500
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            json={"error": "Internal Server Error"},
+            status=500,
+        )
+
+        # Third request: success
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            json=[{"name": "myproject/repo1"}, {"name": "myproject/repo2"}],
+            status=200,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+            max_retries=3,
+        )
+
+        repos = adapter.list_repositories()
+
+        assert repos == ["repo1", "repo2"]
+        assert len(responses.calls) == 3
+
+    @responses.activate
+    def test_quay_no_retry_on_400(self):
+        """Test that QuayAdapter does not retry on 400 Bad Request."""
+        responses.add(
+            responses.GET,
+            "https://quay.io/api/v1/repository",
+            json={"error": "Bad Request"},
+            status=400,
+        )
+
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            max_retries=3,
+        )
+
+        with pytest.raises(QuayDiscoveryException):
+            adapter.list_repositories()
+
+        # Should only make 1 request (no retry for 400)
+        assert len(responses.calls) == 1
+
+    @responses.activate
+    def test_harbor_no_retry_on_401(self):
+        """Test that HarborAdapter does not retry on 401 Unauthorized."""
+        responses.add(
+            responses.GET,
+            "https://harbor.example.com/api/v2.0/projects/myproject/repositories",
+            json={"error": "Unauthorized"},
+            status=401,
+        )
+
+        adapter = HarborAdapter(
+            url="https://harbor.example.com",
+            namespace="myproject",
+            max_retries=3,
+        )
+
+        with pytest.raises(HarborDiscoveryException):
+            adapter.list_repositories()
+
+        # Should only make 1 request (no retry for 401)
+        assert len(responses.calls) == 1
+
+    def test_max_retries_parameter(self):
+        """Test that max_retries parameter is properly set."""
+        adapter_default = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+        )
+        assert adapter_default.max_retries == 3  # Default
+
+        adapter_custom = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+            max_retries=5,
+        )
+        assert adapter_custom.max_retries == 5
+
+    def test_session_has_retry_adapter(self):
+        """Test that session is configured with retry adapter."""
+        adapter = QuayAdapter(
+            url="https://quay.io",
+            namespace="testorg",
+        )
+
+        # Check that adapters are mounted for both http and https
+        assert "https://" in adapter.session.adapters
+        assert "http://" in adapter.session.adapters
+
+        # The adapter should be an HTTPAdapter
+        from requests.adapters import HTTPAdapter
+
+        assert isinstance(adapter.session.adapters["https://"], HTTPAdapter)
+        assert isinstance(adapter.session.adapters["http://"], HTTPAdapter)

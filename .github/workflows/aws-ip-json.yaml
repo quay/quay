@@ -11,15 +11,18 @@ on:
   # schedule:
   #   - cron: '0 0 * * *'
 
+permissions:
+  contents: write
+
 jobs:
   scheduled:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Fetch data
-        uses: githubocto/flat@v3
+        uses: githubocto/flat@fc34373cc20b987e89d75d96435a9fecd8fb0807 # v3
         with:
           http_url: https://ip-ranges.amazonaws.com/ip-ranges.json
           downloaded_filename: util/ipresolver/aws-ip-ranges.json

@@ -8,32 +8,24 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
-  LoginPage,
   TextInput,
   ValidatedOptions,
 } from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
-import logo from 'src/assets/quay.svg';
 import {Link} from 'react-router-dom';
-import axios from 'src/libs/axios';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import './CreateAccount.css';
 import {useCreateAccount} from 'src/hooks/UseCreateAccount';
+import {LoginPageLayout} from 'src/components/LoginPageLayout';
 
 export function CreateAccount() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [awaitingVerification, setAwaitingVerification] = useState(false);
 
   const {createAccountWithAutoLogin, isLoading, error, setError} =
     useCreateAccount();
-  const quayConfig = useQuayConfig();
-
-  let logoUrl = logo;
-  if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
-    logoUrl = `${axios.defaults.baseURL}${quayConfig.config.ENTERPRISE_DARK_LOGO_URL}`;
-  }
 
   const validateUsername = (username: string): ValidatedOptions => {
     if (!username) return ValidatedOptions.default;
@@ -84,7 +76,10 @@ export function CreateAccount() {
       return;
     }
 
-    await createAccountWithAutoLogin(username, password, email);
+    const result = await createAccountWithAutoLogin(username, password, email);
+    if (result.success && result.awaitingVerification) {
+      setAwaitingVerification(true);
+    }
   };
 
   const errMessage = (
@@ -98,189 +93,218 @@ export function CreateAccount() {
   );
 
   const createAccountForm = (
-    <Form>
-      <FormGroup
-        label="Username"
-        isRequired
-        fieldId="username"
-        validated={validateUsername(username)}
-      >
-        <TextInput
-          isRequired
-          type="text"
-          id="username"
-          name="username"
-          value={username}
-          onChange={(_event, v) => setUsername(v)}
-          validated={validateUsername(username)}
-        />
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem
-              variant={
-                validateUsername(username) === ValidatedOptions.error
-                  ? 'error'
-                  : 'default'
-              }
-              icon={
-                validateUsername(username) === ValidatedOptions.error ? (
-                  <ExclamationCircleIcon />
-                ) : undefined
-              }
-            >
-              Username must be at least 3 characters and contain only letters,
-              numbers, hyphens, underscores, and periods
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      <FormGroup
-        label="Email"
-        isRequired
-        fieldId="email"
-        validated={validateEmail(email)}
-      >
-        <TextInput
-          isRequired
-          type="email"
-          id="email"
-          name="email"
-          value={email}
-          onChange={(_event, v) => setEmail(v)}
-          validated={validateEmail(email)}
-        />
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem
-              variant={
-                validateEmail(email) === ValidatedOptions.error
-                  ? 'error'
-                  : 'default'
-              }
-              icon={
-                validateEmail(email) === ValidatedOptions.error ? (
-                  <ExclamationCircleIcon />
-                ) : undefined
-              }
-            >
-              Please enter a valid email address
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      <FormGroup
-        label="Password"
-        isRequired
-        fieldId="password"
-        validated={validatePassword(password)}
-      >
-        <TextInput
-          isRequired
-          type="password"
-          id="password"
-          name="password"
-          value={password}
-          onChange={(_event, v) => setPassword(v)}
-          validated={validatePassword(password)}
-        />
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem
-              variant={
-                validatePassword(password) === ValidatedOptions.error
-                  ? 'error'
-                  : 'default'
-              }
-              icon={
-                validatePassword(password) === ValidatedOptions.error ? (
-                  <ExclamationCircleIcon />
-                ) : undefined
-              }
-            >
-              Password must be at least 8 characters long
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      <FormGroup
-        label="Confirm Password"
-        isRequired
-        fieldId="confirm-password"
-        validated={validateConfirmPassword(confirmPassword)}
-      >
-        <TextInput
-          isRequired
-          type="password"
-          id="confirm-password"
-          name="confirm-password"
-          value={confirmPassword}
-          onChange={(_event, v) => setConfirmPassword(v)}
-          validated={validateConfirmPassword(confirmPassword)}
-        />
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem
-              variant={
-                validateConfirmPassword(confirmPassword) ===
-                ValidatedOptions.error
-                  ? 'error'
-                  : 'default'
-              }
-              icon={
-                validateConfirmPassword(confirmPassword) ===
-                ValidatedOptions.error ? (
-                  <ExclamationCircleIcon />
-                ) : undefined
-              }
-            >
-              Passwords must match
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      {error && errMessage}
-
-      <FormGroup>
-        <Button
-          variant="primary"
-          type="submit"
-          isBlock
-          isDisabled={!isFormValid() || isLoading}
-          isLoading={isLoading}
-          onClick={onCreateAccountClick}
+    <>
+      {awaitingVerification && (
+        <Alert
+          variant="info"
+          isInline
+          title=""
+          style={{marginBottom: '20px'}}
+          data-testid="awaiting-verification-alert"
         >
-          Create Account
-        </Button>
-      </FormGroup>
+          Thank you for registering! We have sent you an activation email. You
+          must <strong>verify your email address</strong> before you can
+          continue.
+        </Alert>
+      )}
 
-      <FormGroup>
+      <Form style={{display: awaitingVerification ? 'none' : 'block'}}>
+        <FormGroup
+          label="Username"
+          isRequired
+          fieldId="username"
+          validated={validateUsername(username)}
+        >
+          <TextInput
+            isRequired
+            type="text"
+            id="username"
+            name="username"
+            data-testid="create-account-username"
+            value={username}
+            onChange={(_event, v) => setUsername(v)}
+            validated={validateUsername(username)}
+          />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={
+                  validateUsername(username) === ValidatedOptions.error
+                    ? 'error'
+                    : 'default'
+                }
+                icon={
+                  validateUsername(username) === ValidatedOptions.error ? (
+                    <ExclamationCircleIcon />
+                  ) : undefined
+                }
+              >
+                Username must be at least 3 characters and contain only letters,
+                numbers, hyphens, underscores, and periods
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
+        <FormGroup
+          label="Email"
+          isRequired
+          fieldId="email"
+          validated={validateEmail(email)}
+        >
+          <TextInput
+            isRequired
+            type="email"
+            id="email"
+            name="email"
+            data-testid="create-account-email"
+            value={email}
+            onChange={(_event, v) => setEmail(v)}
+            validated={validateEmail(email)}
+          />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={
+                  validateEmail(email) === ValidatedOptions.error
+                    ? 'error'
+                    : 'default'
+                }
+                icon={
+                  validateEmail(email) === ValidatedOptions.error ? (
+                    <ExclamationCircleIcon />
+                  ) : undefined
+                }
+              >
+                Please enter a valid email address
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
+        <FormGroup
+          label="Password"
+          isRequired
+          fieldId="password"
+          validated={validatePassword(password)}
+        >
+          <TextInput
+            isRequired
+            type="password"
+            id="password"
+            name="password"
+            data-testid="create-account-password"
+            value={password}
+            onChange={(_event, v) => setPassword(v)}
+            validated={validatePassword(password)}
+          />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={
+                  validatePassword(password) === ValidatedOptions.error
+                    ? 'error'
+                    : 'default'
+                }
+                icon={
+                  validatePassword(password) === ValidatedOptions.error ? (
+                    <ExclamationCircleIcon />
+                  ) : undefined
+                }
+              >
+                Password must be at least 8 characters long
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
+        <FormGroup
+          label="Confirm Password"
+          isRequired
+          fieldId="confirm-password"
+          validated={validateConfirmPassword(confirmPassword)}
+        >
+          <TextInput
+            isRequired
+            type="password"
+            id="confirm-password"
+            name="confirm-password"
+            data-testid="create-account-confirm-password"
+            value={confirmPassword}
+            onChange={(_event, v) => setConfirmPassword(v)}
+            validated={validateConfirmPassword(confirmPassword)}
+          />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={
+                  validateConfirmPassword(confirmPassword) ===
+                  ValidatedOptions.error
+                    ? 'error'
+                    : 'default'
+                }
+                icon={
+                  validateConfirmPassword(confirmPassword) ===
+                  ValidatedOptions.error ? (
+                    <ExclamationCircleIcon />
+                  ) : undefined
+                }
+              >
+                Passwords must match
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
+        {error && errMessage}
+
+        <FormGroup>
+          <Button
+            variant="primary"
+            type="submit"
+            isBlock
+            isDisabled={!isFormValid() || isLoading}
+            isLoading={isLoading}
+            onClick={onCreateAccountClick}
+            data-testid="create-account-submit"
+          >
+            Create Account
+          </Button>
+        </FormGroup>
+
+        <FormGroup>
+          <div style={{textAlign: 'center', marginTop: '16px'}}>
+            Already have an account?{' '}
+            <Link
+              to="/signin"
+              style={{color: 'var(--pf-t--global--text--color--link--default)'}}
+            >
+              Sign in
+            </Link>
+          </div>
+        </FormGroup>
+      </Form>
+
+      {awaitingVerification && (
         <div style={{textAlign: 'center', marginTop: '16px'}}>
           Already have an account?{' '}
           <Link
             to="/signin"
-            style={{color: 'var(--pf-v5-global--link--Color)'}}
+            style={{color: 'var(--pf-t--global--text--color--link--default)'}}
           >
             Sign in
           </Link>
         </div>
-      </FormGroup>
-    </Form>
+      )}
+    </>
   );
 
   return (
-    <LoginPage
-      className={'pdf-u-background-color-100 pf-v5-u-text-align-left'}
-      brandImgSrc={logoUrl}
-      brandImgAlt="Red Hat Quay"
-      backgroundImgSrc="assets/images/rh_login.jpeg"
-      textContent="Create your Red Hat Quay account to start building, analyzing and distributing your container images with added security."
-      loginTitle="Create Account"
+    <LoginPageLayout
+      title="Create Account"
+      description="Create your Red Hat Quay account to start building, analyzing and distributing your container images with added security."
     >
       {createAccountForm}
-    </LoginPage>
+    </LoginPageLayout>
   );
 }

@@ -1,0 +1,8 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "test-referrer",
+  "documentNamespace": "https://example.com/test-spdx",
+  "packages": []
+}

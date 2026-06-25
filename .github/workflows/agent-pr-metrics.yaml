@@ -1,0 +1,117 @@
+name: Agent PR Metrics
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  cyclomatic-complexity:
+    name: Cyclomatic Complexity
+    if: github.event.pull_request.merged == true && github.event.pull_request.user.login == 'quay-devel'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Compute complexity and comment on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          ALL_FILES=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
+            --paginate --jq '.[].filename')
+
+          # Go: exclude tests, generated protobufs, vendor, config-tool
+          CHANGED_GO=$(echo "$ALL_FILES" \
+            | grep '\.go$' \
+            | grep -v '_test\.go' \
+            | grep -v '\.pb\.go' \
+            | grep -v '^vendor/' \
+            | grep -v '^config-tool/' \
+            | xargs -I{} sh -c 'test -f "{}" && echo "{}"' 2>/dev/null || true)
+
+          # Python: exclude test files (test_*.py and *_test.py) and vendor
+          CHANGED_PY=$(echo "$ALL_FILES" \
+            | grep '\.py$' \
+            | grep -v '_test\.py' \
+            | grep -v '/test_[^/]*\.py$' \
+            | grep -v '^test_[^/]*\.py$' \
+            | grep -v '^vendor/' \
+            | xargs -I{} sh -c 'test -f "{}" && echo "{}"' 2>/dev/null || true)
+
+          CHANGED=$(printf '%s\n%s' "$CHANGED_GO" "$CHANGED_PY" | grep -v '^$' || true)
+
+          if [ -z "$CHANGED" ]; then
+            echo "No Go/Python source files changed — skipping"
+            exit 0
+          fi
+
+          pip install lizard --quiet
+
+          # lizard --csv columns (no header): NLOC,CCN,token,PARAM,length,location
+          LIZARD_OUT=$(echo "$CHANGED" | xargs lizard --csv 2>/dev/null || true)
+
+          if [ -z "$LIZARD_OUT" ]; then
+            echo "lizard produced no output — skipping"
+            exit 0
+          fi
+
+          # Only process data lines (start with a digit)
+          MAX_COMPLEXITY=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{print $2}' | sort -n | tail -1)
+          TOTAL=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{s+=$2} END {print s+0}')
+          COUNT=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/{n++} END {print n+0}')
+          AVG_COMPLEXITY=$(awk -v total="$TOTAL" -v count="$COUNT" 'BEGIN {
+            if (count > 0) printf "%.2f", total / count;
+            else print "0"
+          }')
+          ABOVE_THRESHOLD=$(echo "$LIZARD_OUT" | awk -F',' '/^[0-9]/ && $2 > 15 {n++} END {print n+0}')
+
+          # Build the top-5 most complex functions table
+          TOP_FUNCTIONS=$(echo "$LIZARD_OUT" \
+            | awk -F',' '/^[0-9]/{print $2","$6}' \
+            | sort -t',' -k1 -nr \
+            | head -5 \
+            | awk -F',' '{printf "| %s | %s |\n", $2, $1}')
+
+          # Build embedded JSON for DevLake ingestion via GitHub connection
+          METRICS_JSON=$(jq -cn \
+            --argjson max "${MAX_COMPLEXITY:-0}" \
+            --argjson avg "${AVG_COMPLEXITY:-0}" \
+            --argjson above "$ABOVE_THRESHOLD" \
+            --argjson count "$COUNT" \
+            '{max_complexity: $max, avg_complexity: $avg, above_threshold: $above, functions_analyzed: $count}')
+
+          # Post as PR comment — DevLake GitHub connection ingests this into
+          # pull_request_comments.body; Grafana extracts the agent-metrics JSON.
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$(cat <<EOF
+          ## Cyclomatic Complexity Report
+
+          | Metric | Value |
+          |--------|-------|
+          | Functions analyzed | ${COUNT} |
+          | Max complexity | ${MAX_COMPLEXITY} |
+          | Avg complexity | ${AVG_COMPLEXITY} |
+          | Above threshold (>15) | ${ABOVE_THRESHOLD} |
+
+          <details>
+          <summary>Top 5 most complex functions</summary>
+
+          | Function | CCN |
+          |----------|-----|
+          ${TOP_FUNCTIONS}
+
+          </details>
+
+          <!-- agent-metrics:${METRICS_JSON} -->
+          EOF
+          )"
+
+          echo "Posted complexity comment on PR #${PR_NUMBER}: max=${MAX_COMPLEXITY}"

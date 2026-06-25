@@ -8,6 +8,9 @@ import {
   HelperText,
   HelperTextItem,
   Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
   ModalVariant,
   TextInput,
 } from '@patternfly/react-core';
@@ -118,73 +121,81 @@ export default function CreateEmailNotification(
     <>
       <Modal
         variant={ModalVariant.small}
-        title="Email Authorization"
         isOpen={isEmailAuthModalOpen}
         onClose={() => setIsEmailAuthModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Email Authorization" />
+        <ModalBody>
+          <Conditional if={errorSendingAuthorizedEmail}>
+            <Alert
+              isInline
+              actionClose={
+                <AlertActionCloseButton onClose={resetSendAuthorizationEmail} />
+              }
+              variant="danger"
+              title="Failure sending authorized email"
+            />
+          </Conditional>
+          The email address {email} has not been authorized to receive
+          notifications from this repository. Please click &lsquo;Send
+          Authorized Email&rsquo; to start the authorization process.
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="sendemail"
             variant="primary"
+            data-testid="send-authorized-email-btn"
             onClick={() => sendAuthorizedEmail(email)}
           >
             Send Authorized Email
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setIsEmailAuthModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        <Conditional if={errorSendingAuthorizedEmail}>
-          <Alert
-            isInline
-            actionClose={
-              <AlertActionCloseButton onClose={resetSendAuthorizationEmail} />
-            }
-            variant="danger"
-            title="Failure sending authorized email"
-          />
-        </Conditional>
-        The email address {email} has not been authorized to recieve
-        notifications from this repository. Please click &lsquo;Send Authorized
-        Email&lsquo; to start the authorization process.
+          </Button>
+        </ModalFooter>
       </Modal>
       <Modal
         variant={ModalVariant.small}
-        title="Email Authorization"
         isOpen={polling}
         onClose={stopPolling}
-        actions={[
+      >
+        <ModalHeader title="Email Authorization" />
+        <ModalBody>
+          An email has been sent to {email}. Please click the link contained in
+          the email.
+        </ModalBody>
+        <ModalFooter>
           <Button key="cancel" variant="primary" onClick={stopPolling}>
             Cancel
-          </Button>,
-        ]}
-      >
-        An email has been sent to {email}. Please click the link contained in
-        the email.
+          </Button>
+        </ModalFooter>
       </Modal>
       <Modal
         variant={ModalVariant.small}
-        title="Email Authorization"
         isOpen={errorPolling}
-        actions={[
-          <Button
-            key="cancel"
-            variant="primary"
-            onClick={() => startPolling(email)}
-          >
-            Retry
-          </Button>,
-        ]}
+        onClose={stopPolling}
       >
-        Unable to verify email confirmation. Please wait a moment and retry.
+        <ModalHeader title="Email Authorization" />
+        <ModalBody>
+          Unable to verify email confirmation. Please wait a moment and retry.
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="primary" onClick={() => startPolling(email)}>
+            Retry
+          </Button>
+          <Button variant="link" onClick={stopPolling}>
+            Cancel
+          </Button>
+        </ModalFooter>
       </Modal>
       <FormGroup fieldId="email" label="E-mail address" isRequired>
         <TextInput
           id="notification-email"
+          data-testid="notification-email"
           isRequired
           value={email}
           onChange={(_event, value) => setEmail(value)}
@@ -203,12 +214,14 @@ export default function CreateEmailNotification(
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
+          data-testid="notification-title"
           value={title}
           onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>
         <Button
+          data-testid="notification-submit-btn"
           isDisabled={!isFormComplete}
           onClick={createNotification}
           variant="primary"

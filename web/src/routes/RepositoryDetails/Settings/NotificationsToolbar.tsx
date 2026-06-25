@@ -41,6 +41,7 @@ export default function NotificationsToolbar(props: NotificationsToolbarProps) {
         </ToolbarGroup>
         <ToolbarItem>
           <Button
+            data-testid="create-notification-btn"
             onClick={() =>
               props.setDrawerContent(DrawerContentType.CreateNotification)
             }

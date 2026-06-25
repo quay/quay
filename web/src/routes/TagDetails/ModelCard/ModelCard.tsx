@@ -5,12 +5,13 @@ import {
   CodeBlockCode,
   ClipboardCopyButton,
 } from '@patternfly/react-core';
-import {PageSection, Divider, TextContent} from '@patternfly/react-core';
-import {Table, Caption, Th, Td} from '@patternfly/react-table';
+import {PageSection, Divider, Content} from '@patternfly/react-core';
+import {Table, Th, Td} from '@patternfly/react-table';
 
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import rehypeVideo from 'rehype-video';
 
 export const MarkdownCodeBlock: React.FunctionComponent = (props) => {
@@ -61,12 +62,13 @@ export function ModelCard(props: ModelCardProps) {
   return (
     <>
       <Divider />
-      <PageSection>
-        <TextContent>
+      <PageSection hasBodyWrapper={false}>
+        <Content>
           <Markdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[
               [rehypeRaw],
+              [rehypeSanitize],
               [
                 rehypeVideo,
                 {
@@ -77,8 +79,17 @@ export function ModelCard(props: ModelCardProps) {
               ],
             ]}
             components={{
-              code({node, inline, className, children, ...props}) {
-                return <MarkdownCodeBlock code={children} />;
+              code({children}) {
+                const childText =
+                  typeof children === 'string' ? children : String(children);
+                // Detect inline code by checking for newlines
+                // react-markdown v10.x doesn't reliably pass the inline prop
+                const isInline = !childText.includes('\n');
+                return isInline ? (
+                  <code className="inline-code">{children}</code>
+                ) : (
+                  <MarkdownCodeBlock code={childText} />
+                );
               },
               table: ({children}) => (
                 <Table borders={true} variant={'compact'}>
@@ -105,7 +116,7 @@ export function ModelCard(props: ModelCardProps) {
           >
             {modelcard}
           </Markdown>
-        </TextContent>
+        </Content>
       </PageSection>
     </>
   );

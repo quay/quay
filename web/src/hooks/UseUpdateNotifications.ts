@@ -46,7 +46,15 @@ export function useUpdateNotifications(org: string, repo: string) {
     isError: errorTestingNotification,
     isSuccess: successTestingNotification,
     reset: resetTestingNotification,
-  } = useMutation(async (uuid: string) => testNotification(org, repo, uuid));
+  } = useMutation(async (uuid: string) => testNotification(org, repo, uuid), {
+    onSuccess: () => {
+      // Test notifications are queued asynchronously on the backend
+      // Delay the refetch to give the backend time to create the notification
+      setTimeout(() => {
+        queryClient.invalidateQueries({queryKey: ['notifications']});
+      }, 2000);
+    },
+  });
 
   const {
     mutate: enable,

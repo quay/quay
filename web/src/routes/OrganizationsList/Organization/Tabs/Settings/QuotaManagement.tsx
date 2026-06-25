@@ -14,18 +14,21 @@ import {
   GridItem,
   Card,
   CardBody,
-  Text,
+  Content,
   FlexItem,
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {PlusIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import {useForm, Controller} from 'react-hook-form';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
-import {AlertVariant as AlertVariantState} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant as AlertVariantState, useUI} from 'src/contexts/UIContext';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {
   useFetchOrganizationQuota,
   useCreateOrganizationQuota,
@@ -45,6 +48,8 @@ import Alerts from 'src/routes/Alerts';
 type QuotaManagementProps = {
   organizationName: string;
   isUser: boolean;
+  view?: 'organization-view' | 'super-user'; // Add view parameter
+  onOperationSubmit?: () => void; // Callback to close modal when operation is submitted
 };
 
 const QUOTA_UNITS = ['KiB', 'MiB', 'GiB', 'TiB'];
@@ -61,13 +66,37 @@ const defaultFormValues: QuotaFormData = {
 };
 
 export const QuotaManagement = (props: QuotaManagementProps) => {
+  // Determine the correct viewMode based on context
+  // - If view is 'organization-view' and isUser is true: user viewing their own quota
+  // - If view is 'organization-view' and isUser is false: organization viewing org quota
+  // - If view is 'super-user': superuser managing quota (use 'superuser' for users, 'organization' for orgs)
+  const viewMode =
+    props.view === 'organization-view'
+      ? props.isUser
+        ? 'self'
+        : 'organization'
+      : props.isUser
+      ? 'superuser'
+      : 'organization';
+
   const {organizationQuota, isLoadingQuotas} = useFetchOrganizationQuota(
     props.organizationName,
+    viewMode,
   );
 
-  // Check if current user is superuser for readonly mode
+  // Determine read-only mode based on view context and permissions
   const {user} = useCurrentUser();
-  const isReadOnly = !user?.super_user;
+  const {canModify} = useSuperuserPermissions();
+
+  // In organization settings view, quota is read-only if:
+  // 1. Quota already exists (only superusers can modify via Organizations page)
+  // 2. User is not a superuser with modify permissions
+  const hasExistingQuota =
+    organizationQuota !== null && organizationQuota.limit_bytes > 0;
+  const isReadOnly =
+    props.view === 'organization-view'
+      ? true // ALWAYS read-only in organization view
+      : !canModify; // In super-user view, check canModify permission
 
   // Initialize react-hook-form
   const form = useForm<QuotaFormData>({
@@ -106,7 +135,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   }>({});
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const {addAlert, clearAllAlerts} = useAlerts();
+  const {addAlert, clearAllAlerts} = useUI();
 
   // Check if there's already a "Reject" limit to prevent adding duplicates
   const hasRejectLimit = limits.some((limit) => limit.type === 'Reject');
@@ -156,6 +185,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
+    viewMode,
   );
 
   const {updateQuotaMutation} = useUpdateOrganizationQuota(
@@ -174,6 +204,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
+    viewMode,
   );
 
   const {deleteQuotaMutation} = useDeleteOrganizationQuota(
@@ -195,58 +226,76 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
+    viewMode,
   );
 
-  const {createLimitMutation} = useCreateQuotaLimit(props.organizationName, {
-    onSuccess: () => {
-      addAlert({
-        variant: AlertVariantState.Success,
-        title: 'Successfully added quota limit',
-      });
-      // Reset new limit form to blank values
-      setNewLimit({type: '', limit_percent: ''});
+  const {createLimitMutation} = useCreateQuotaLimit(
+    props.organizationName,
+    {
+      onSuccess: () => {
+        addAlert({
+          variant: AlertVariantState.Success,
+          title: 'Successfully added quota limit',
+        });
+        // Reset new limit form to blank values
+        setNewLimit({type: '', limit_percent: ''});
+      },
+      onError: (err) => {
+        addAlert({
+          variant: AlertVariantState.Failure,
+          title: err,
+        });
+      },
     },
-    onError: (err) => {
-      addAlert({
-        variant: AlertVariantState.Failure,
-        title: err,
-      });
-    },
-  });
+    viewMode,
+  );
 
-  const {updateLimitMutation} = useUpdateQuotaLimit(props.organizationName, {
-    onSuccess: () => {
-      addAlert({
-        variant: AlertVariantState.Success,
-        title: 'Successfully updated quota limit',
-      });
-      setEditingLimits({});
+  const {updateLimitMutation} = useUpdateQuotaLimit(
+    props.organizationName,
+    {
+      onSuccess: () => {
+        addAlert({
+          variant: AlertVariantState.Success,
+          title: 'Successfully updated quota limit',
+        });
+        setEditingLimits({});
+      },
+      onError: (err) => {
+        addAlert({
+          variant: AlertVariantState.Failure,
+          title: err,
+        });
+      },
     },
-    onError: (err) => {
-      addAlert({
-        variant: AlertVariantState.Failure,
-        title: err,
-      });
-    },
-  });
+    viewMode,
+  );
 
-  const {deleteLimitMutation} = useDeleteQuotaLimit(props.organizationName, {
-    onSuccess: () => {
-      addAlert({
-        variant: AlertVariantState.Success,
-        title: 'Successfully deleted quota limit',
-      });
+  const {deleteLimitMutation} = useDeleteQuotaLimit(
+    props.organizationName,
+    {
+      onSuccess: () => {
+        addAlert({
+          variant: AlertVariantState.Success,
+          title: 'Successfully deleted quota limit',
+        });
+      },
+      onError: (err) => {
+        addAlert({
+          variant: AlertVariantState.Failure,
+          title: err,
+        });
+      },
     },
-    onError: (err) => {
-      addAlert({
-        variant: AlertVariantState.Failure,
-        title: err,
-      });
-    },
-  });
+    viewMode,
+  );
 
   // Validation functions
   const validateQuota = (value: string): string | boolean => {
+    // First check if value contains only numeric characters (with optional decimal)
+    if (!/^\d+\.?\d*$/.test(value)) {
+      return 'Please enter a valid number.';
+    }
+
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue <= 0) {
       return 'A quota greater than 0 must be defined.';
@@ -302,6 +351,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
     } else {
       createQuotaMutation({limit_bytes});
     }
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleDeleteQuota = () => {
@@ -312,6 +365,9 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
     if (organizationQuota) {
       deleteQuotaMutation(organizationQuota.id);
       setIsDeleteModalOpen(false);
+      // Close parent modal immediately after submitting the request
+      // If fresh login is required, the request will be queued and retried after verification
+      props.onOperationSubmit?.();
     }
   };
 
@@ -370,6 +426,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         threshold_percent: Number(newLimit.limit_percent),
       },
     });
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleUpdateLimit = (limitId: string, updatedLimit: IQuotaLimit) => {
@@ -392,6 +452,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         threshold_percent: updatedLimit.limit_percent,
       },
     });
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleDeleteLimit = (limitId: string) => {
@@ -401,6 +465,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
       quotaId: organizationQuota.id,
       limitId: limitId,
     });
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleLimitChange = (
@@ -432,26 +500,46 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
     return <Spinner size="md" />;
   }
 
+  // Early return for organization-view with no quota
+  if (props.view === 'organization-view' && !hasExistingQuota) {
+    return (
+      <div data-testid="quota-management">
+        {user?.super_user ? (
+          <Alert
+            variant="info"
+            title="No Quota Configured"
+            data-testid="no-quota-superuser-alert"
+          >
+            Use the &quot;Configure Quota&quot; option from the Organizations
+            list page to set up quota for this organization.
+          </Alert>
+        ) : (
+          <Alert
+            variant="info"
+            title="No Quota Configured"
+            data-testid="no-quota-alert"
+          >
+            Quota must be configured by a superuser.
+          </Alert>
+        )}
+      </div>
+    );
+  }
+
   const hasQuota = organizationQuota !== null;
 
   return (
     <Form id="quota-management-form" onSubmit={handleSubmit(onSubmit)}>
-      {!hasQuota && (
-        <Alert
-          variant="info"
-          title="No Quota Configured"
-          style={{marginBottom: '1em'}}
-          data-testid="no-quota-alert"
-        />
-      )}
-      {isReadOnly && (
+      {/* Show appropriate message based on view and user type */}
+      {isReadOnly && props.view === 'organization-view' && hasExistingQuota && (
         <Alert
           variant="info"
           title="View Only"
           style={{marginBottom: '1em'}}
           data-testid="readonly-quota-alert"
         >
-          Quota settings can only be modified by superusers.
+          Quota settings can only be modified by superusers from the
+          Organizations list page.
         </Alert>
       )}
 
@@ -466,7 +554,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                   control={control}
                   errors={errors}
                   label=""
-                  type="text"
+                  type="number"
                   inputMode="numeric"
                   required={true}
                   customValidation={validateQuota}
@@ -544,10 +632,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                   spaceItems={{default: 'spaceItemsSm'}}
                 >
                   <FlexItem style={{minWidth: '140px'}}>
-                    <Text component="h6">Action</Text>
+                    <Content component="h6">Action</Content>
                   </FlexItem>
                   <FlexItem style={{minWidth: '140px'}}>
-                    <Text component="h6">Quota Threshold</Text>
+                    <Content component="h6">Quota Threshold</Content>
                   </FlexItem>
                 </Flex>
               </FlexItem>
@@ -654,7 +742,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                               />
                             </FlexItem>
                             <FlexItem>
-                              <Text component="small">%</Text>
+                              <Content component="small">%</Content>
                             </FlexItem>
                           </Flex>
                         </FlexItem>
@@ -687,8 +775,8 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
               </Card>
             ))}
 
-            {/* Add new limit card */}
-            {
+            {/* Add new limit card - only show in editable mode */}
+            {!isReadOnly && (
               <Card
                 isCompact
                 isPlain
@@ -787,7 +875,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                               />
                             </FlexItem>
                             <FlexItem>
-                              <Text component="small">%</Text>
+                              <Content component="small">%</Content>
                             </FlexItem>
                           </Flex>
                         </FlexItem>
@@ -813,7 +901,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                   </Flex>
                 </CardBody>
               </Card>
-            }
+            )}
 
             {/* Note message when no limits exist - placed after Add Limit form */}
             {limits.length === 0 && (
@@ -828,44 +916,52 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         </FormGroup>
       )}
 
-      {/* Action Buttons */}
-      <ActionGroup>
-        <Button
-          id="save-quota"
-          variant="primary"
-          type="submit"
-          isDisabled={
-            isReadOnly ||
-            !isValid ||
-            parseFloat(formValues.quotaValue || '0') <= 0
-          }
-          data-testid="apply-quota-button"
-        >
-          Apply
-        </Button>
-
-        {hasQuota && (
+      {/* Only show action buttons in super-user view */}
+      {props.view !== 'organization-view' && (
+        <ActionGroup>
           <Button
-            id="delete-quota"
-            variant="danger"
-            onClick={handleDeleteQuota}
-            data-testid="remove-quota-button"
-            isDisabled={isReadOnly}
+            id="save-quota"
+            variant="primary"
+            type="submit"
+            isDisabled={
+              isReadOnly ||
+              !isValid ||
+              parseFloat(formValues.quotaValue || '0') <= 0
+            }
+            data-testid="apply-quota-button"
           >
-            Remove
+            Apply
           </Button>
-        )}
-      </ActionGroup>
+
+          {hasQuota && (
+            <Button
+              id="delete-quota"
+              variant="danger"
+              onClick={handleDeleteQuota}
+              data-testid="remove-quota-button"
+              isDisabled={isReadOnly}
+            >
+              Remove
+            </Button>
+          )}
+        </ActionGroup>
+      )}
 
       <Alerts />
 
       {/* Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete Quota"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        actions={[
+      >
+        <ModalHeader title="Delete Quota" />
+        <ModalBody>
+          Are you sure you want to delete quota for this organization? When you
+          remove the quota storage, users can consume arbitrary amount of
+          storage resources.
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="confirm"
             variant="danger"
@@ -873,19 +969,15 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
             data-testid="confirm-delete-quota"
           >
             OK
-          </Button>,
+          </Button>
           <Button
             key="cancel"
             variant="link"
             onClick={() => setIsDeleteModalOpen(false)}
           >
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to delete quota for this organization? When you
-        remove the quota storage, users can consume arbitrary amount of storage
-        resources.
+          </Button>
+        </ModalFooter>
       </Modal>
     </Form>
   );

@@ -1,8 +1,7 @@
 import {useState} from 'react';
 import {
-  TextContent,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
   TextInput,
   FormGroup,
   Form,
@@ -187,9 +186,9 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
 
   return (
     <>
-      <TextContent>
-        <Text component={TextVariants.h1}>Review and finish</Text>
-      </TextContent>
+      <Content>
+        <Content component={ContentVariants.h1}>Review and finish</Content>
+      </Content>
       <Form>
         <FormGroup
           label="Provide a name for your robot account:"

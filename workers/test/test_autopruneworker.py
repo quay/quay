@@ -10,6 +10,8 @@ import pytest
 from app import storage
 from data import model
 from data.database import AutoPruneTaskStatus, ImageStorageLocation, Tag
+from data.model import ImmutableTagException
+from data.model.autoprune import prune_tags
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.tag import (
     get_tag,
@@ -65,7 +67,7 @@ def create_manifest(namespace, repo):
     return get_or_create_manifest(repo, v2_manifest, storage)
 
 
-def create_tag(repo, manifest, start=None, name=None):
+def create_tag(repo, manifest, start=None, name=None, immutable=False):
     name = "tag-%s" % str(uuid.uuid4()) if name is None else name
     now_ms = int(time.time() * 1000) if start is None else start
     created = Tag.create(
@@ -76,6 +78,7 @@ def create_tag(repo, manifest, start=None, name=None):
         reversion=False,
         manifest=manifest,
         tag_kind=Tag.tag_kind.get_id("tag"),
+        immutable=immutable,
     )
     return created
 
@@ -1157,3 +1160,160 @@ def test_policy_order(tags, expected, plcy1, plcy2, initialized_db):
         expected.remove(tag.name)
 
     assert len(expected) == 0
+
+
+def test_prune_by_tag_count_excludes_immutable_tags(initialized_db):
+    """Test that immutable tags are excluded from auto-prune by tag count."""
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "immutable_test_repo1", None, repo_kind="image", visibility="public"
+    )
+
+    # Create auto-prune policy to keep only 3 tags
+    new_repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall",
+        "immutable_test_repo1",
+        {"method": "number_of_tags", "value": 3},
+        create_task=True,
+    )
+
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+
+    # Create 5 mutable tags and 2 immutable tags
+    now_ms = int(time.time() * 1000)
+    mutable_tags = []
+    for i in range(5):
+        creation_time = now_ms - (i * 1000)
+        tag = create_tag(
+            repo1,
+            manifest_repo1.manifest,
+            start=creation_time,
+            name=f"mutable-{i}",
+            immutable=False,
+        )
+        mutable_tags.append(tag)
+
+    immutable_tags = []
+    for i in range(2):
+        creation_time = now_ms - ((i + 5) * 1000)  # Older than mutable tags
+        tag = create_tag(
+            repo1,
+            manifest_repo1.manifest,
+            start=creation_time,
+            name=f"immutable-{i}",
+            immutable=True,
+        )
+        immutable_tags.append(tag)
+
+    # Total 7 tags: 5 mutable + 2 immutable
+    _assert_repo_tag_count(repo1, 7)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    # Should keep: 3 newest mutable tags + 2 immutable tags = 5 total
+    # The 2 oldest mutable tags should be pruned
+    _assert_repo_tag_count(repo1, 5)
+
+    # Verify immutable tags still exist
+    remaining_tags = list_alive_tags(repo1)
+    remaining_names = [t.name for t in remaining_tags]
+    assert "immutable-0" in remaining_names
+    assert "immutable-1" in remaining_names
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(new_repo1_policy.namespace_id)
+    assert task1.status == "success"
+
+
+def test_prune_by_creation_date_excludes_immutable_tags(initialized_db):
+    """Test that immutable tags are excluded from auto-prune by creation date."""
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "immutable_test_repo2", None, repo_kind="image", visibility="public"
+    )
+
+    # Create auto-prune policy to delete tags older than 5 days
+    new_repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall",
+        "immutable_test_repo2",
+        {"method": "creation_date", "value": "5d"},
+        create_task=True,
+    )
+
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+
+    # Create old mutable tags (will be pruned)
+    old_time = _past_timestamp_ms("7d")
+    for i in range(3):
+        create_tag(
+            repo1,
+            manifest_repo1.manifest,
+            start=old_time - (i * 1000),
+            name=f"old-mutable-{i}",
+            immutable=False,
+        )
+
+    # Create old immutable tags (should NOT be pruned)
+    for i in range(2):
+        create_tag(
+            repo1,
+            manifest_repo1.manifest,
+            start=old_time - ((i + 3) * 1000),
+            name=f"old-immutable-{i}",
+            immutable=True,
+        )
+
+    # Create recent tags (will not be pruned regardless)
+    for i in range(2):
+        create_tag(repo1, manifest_repo1.manifest, name=f"recent-{i}", immutable=False)
+
+    # Total 7 tags
+    _assert_repo_tag_count(repo1, 7)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    # Should keep: 2 recent mutable + 2 old immutable = 4 total
+    # The 3 old mutable tags should be pruned
+    _assert_repo_tag_count(repo1, 4)
+
+    # Verify immutable tags still exist
+    remaining_tags = list_alive_tags(repo1)
+    remaining_names = [t.name for t in remaining_tags]
+    assert "old-immutable-0" in remaining_names
+    assert "old-immutable-1" in remaining_names
+    assert "recent-0" in remaining_names
+    assert "recent-1" in remaining_names
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(new_repo1_policy.namespace_id)
+    assert task1.status == "success"
+
+
+def test_prune_tags_skips_immutable_tags(initialized_db):
+    """Test that prune_tags gracefully skips immutable tags instead of failing."""
+    repo = model.repository.create_repository(
+        "sellnsmall", "prune_tags_immutable_test", None, repo_kind="image", visibility="public"
+    )
+    namespace = model.organization.get_organization("sellnsmall")
+    manifest_result = create_manifest("sellnsmall", repo)
+
+    # Create 2 mutable and 1 immutable tag
+    mutable_tag_1 = create_tag(repo, manifest_result.manifest, name="mutable-1", immutable=False)
+    mutable_tag_2 = create_tag(repo, manifest_result.manifest, name="mutable-2", immutable=False)
+    immutable_tag = create_tag(repo, manifest_result.manifest, name="immutable-1", immutable=True)
+
+    _assert_repo_tag_count(repo, 3)
+
+    # Pass all tags including immutable to prune_tags - should not raise
+    tags_to_prune = [mutable_tag_1, mutable_tag_2, immutable_tag]
+    prune_tags(tags_to_prune, repo, namespace)
+
+    # Only immutable tag should remain
+    remaining_tags = list_alive_tags(repo)
+    remaining_names = [t.name for t in remaining_tags]
+    assert len(remaining_names) == 1
+    assert "immutable-1" in remaining_names

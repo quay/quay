@@ -5,7 +5,7 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
 
-from peewee import JOIN, fn
+from peewee import JOIN, IntegrityError, OperationalError, fn
 
 import features
 from data.cache import cache_key
@@ -38,6 +38,7 @@ from data.secscan_model.interface import (
     InvalidConfigurationException,
     SecurityScannerInterface,
 )
+from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from util.metrics.prometheus import secscan_result_duration
 from util.migrate.allocator import yield_random_entries
 from util.secscan import (
@@ -58,6 +59,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 86400  # 1 day
+STALE_IN_PROGRESS_HOURS = 6  # Hours before an IN_PROGRESS manifest is considered stale
 TAG_LIMIT = 100
 
 IndexReportState = namedtuple("IndexReportState", ["Index_Finished", "Index_Error"])(  # type: ignore[call-arg]
@@ -90,13 +92,6 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
     def perform_indexing_recent_manifests(self, batch_size=None):
         return None
 
-    def register_model_cleanup_callbacks(self, data_model_config):
-        pass
-
-    @property
-    def legacy_api_handler(self):
-        raise NotImplementedError("Unsupported for this security scanner version")
-
     def lookup_notification_page(self, notification_id, page_index=None):
         return None
 
@@ -108,6 +103,64 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
 
     def garbage_collect_manifest_report(self, manifest_digest):
         raise NotImplementedError("Unsupported for this security scanner version")
+
+
+def _has_container_layers(layers):
+    """
+    Checks if the layers are proper container image layers. For images that do not contain image layers, such as
+    Singularity containers, Helm charts, artifacts and similar, we skip the scanning process.
+    """
+    from image.docker.schema2 import DOCKER_SCHEMA2_LAYER_CONTENT_TYPE
+    from image.docker.schema2.manifest import DockerV2ManifestImageLayer
+    from image.oci import OCI_IMAGE_LAYER_CONTENT_TYPES
+    from image.oci.manifest import OCIManifestImageLayer
+
+    CONTAINER_LAYER_TYPES = set(OCI_IMAGE_LAYER_CONTENT_TYPES + [DOCKER_SCHEMA2_LAYER_CONTENT_TYPE])
+
+    if not layers:
+        return False
+
+    for layer in layers:
+        layer_info = getattr(layer, "layer_info", None)
+
+        if layer_info is None or not hasattr(layer_info, "internal_layer"):
+            return False
+
+        internal = layer_info.internal_layer
+
+        # Docker Schema2 layers don't have a mediatype attribute - they're always container images
+        if isinstance(internal, DockerV2ManifestImageLayer):
+            continue
+
+        # OCI image layers - check blob_layer.mediatype for artifact detection
+        if isinstance(internal, OCIManifestImageLayer):
+            # If blob_layer is None, it's a processed container image layer
+            if internal.blob_layer is None:
+                continue
+            # If blob_layer exists, check its mediatype
+            elif hasattr(internal.blob_layer, "mediatype"):
+                if internal.blob_layer.mediatype not in CONTAINER_LAYER_TYPES:
+                    return False
+                continue
+            else:
+                # Unknown OCI layer structure
+                return False
+
+        # OCI layers with explicit mediatype (alternative format)
+        if hasattr(internal, "mediatype"):
+            if internal.mediatype not in CONTAINER_LAYER_TYPES:
+                return False
+
+        # Other layer formats with blob_layer
+        elif hasattr(internal, "blob_layer") and hasattr(internal.blob_layer, "mediatype"):
+            if internal.blob_layer.mediatype not in CONTAINER_LAYER_TYPES:
+                return False
+
+        # Unknown layer structure
+        else:
+            return False
+
+    return True
 
 
 def maybe_urlencoded(fixed_in: str) -> str:
@@ -233,6 +286,17 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
+        def stale_in_progress_query():
+            stale_threshold = datetime.utcnow() - timedelta(hours=STALE_IN_PROGRESS_HOURS)
+            return (
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
+                .join(ManifestSecurityStatus)
+                .where(
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                    ManifestSecurityStatus.last_indexed < stale_threshold,
+                )
+            )
+
         def needs_reindexing_query(indexer_hash):
             return (
                 Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
@@ -260,6 +324,13 @@ class V4SecurityScanner(SecurityScannerInterface):
             ),
             yield_random_entries(
                 index_error_query,
+                Manifest.id,
+                batch_size,
+                max_id,
+                min_id,
+            ),
+            yield_random_entries(
+                stale_in_progress_query,
                 Manifest.id,
                 batch_size,
                 max_id,
@@ -371,23 +442,85 @@ class V4SecurityScanner(SecurityScannerInterface):
                     metadata_json={},
                 )
 
-        def should_skip_indexing(manifest_candidate):
-            """Check whether this manifest was preempted by another worker.
-            That would be the case if the manifest references a manifestsecuritystatus,
-            or if the reindex threshold is no longer valid.
+        def batch_preemption_check(candidate_ids):
             """
-            if getattr(manifest_candidate, "manifestsecuritystatus", None):
-                return manifest_candidate.manifestsecuritystatus.last_indexed >= reindex_threshold
+            Bulk check which manifest IDs have been recently indexed by another worker.
+            Returns a set of manifest IDs that should be skipped.
 
-            return len(manifest_candidate.manifestsecuritystatus_set) > 0
+            Uses different thresholds based on status:
+            - IN_PROGRESS: skip if indexed within last STALE_IN_PROGRESS_HOURS (stale threshold)
+            - Other statuses: skip if indexed within reindex_threshold
 
-        for candidate, abt, num_remaining in iterator:
+            This replaces individual should_skip_indexing() calls with a single bulk query,
+            reducing database round-trips by 50-100x per batch.
+            """
+            if not candidate_ids:
+                return set()
+
+            # Stale IN_PROGRESS threshold - aligned with stale_in_progress_query()
+            stale_in_progress_threshold = datetime.utcnow() - timedelta(
+                hours=STALE_IN_PROGRESS_HOURS
+            )
+
+            # Single query with status-specific thresholds:
+            # For IN_PROGRESS: only skip if still fresh (>= stale threshold)
+            # For others: skip if >= reindex threshold
+            preempted_query = ManifestSecurityStatus.select(
+                ManifestSecurityStatus.manifest_id
+            ).where(
+                ManifestSecurityStatus.manifest_id.in_(candidate_ids),
+                (
+                    (ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS)
+                    & (ManifestSecurityStatus.last_indexed >= stale_in_progress_threshold)
+                )
+                | (
+                    (ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS)
+                    & (ManifestSecurityStatus.last_indexed >= reindex_threshold)
+                ),
+            )
+
+            return {row.manifest_id for row in preempted_query}
+
+        def batched_iterator_with_preemption_check(iterator, batch_size=20):
+            """
+            Wrapper that collects candidates into batches and performs bulk preemption checks.
+            Yields (candidate, abt, num_remaining, should_skip) tuples.
+            """
+            batch = []
+            for item in iterator:
+                batch.append(item)
+
+                if len(batch) >= batch_size:
+                    # Bulk check for this batch
+                    candidate_ids = [c.id for c, _, _ in batch]
+                    preempted_ids = batch_preemption_check(candidate_ids)
+
+                    # Yield each item with preemption status
+                    for candidate, abt, num_remaining in batch:
+                        should_skip = candidate.id in preempted_ids
+                        yield candidate, abt, num_remaining, should_skip
+
+                    batch = []
+
+            # Process remaining items
+            if batch:
+                candidate_ids = [c.id for c, _, _ in batch]
+                preempted_ids = batch_preemption_check(candidate_ids)
+
+                for candidate, abt, num_remaining in batch:
+                    should_skip = candidate.id in preempted_ids
+                    yield candidate, abt, num_remaining, should_skip
+
+        for candidate, abt, num_remaining, should_skip in batched_iterator_with_preemption_check(
+            iterator
+        ):
             manifest = ManifestDataType.for_manifest(candidate, None)
             if manifest.is_manifest_list:
                 mark_manifest_unsupported(manifest)
                 continue
 
             layers = registry_model.list_manifest_layers(manifest, self.storage, True)
+
             if layers is None or len(layers) == 0:
                 logger.warning(
                     "Cannot index %s/%s@%s due to manifest being invalid (manifest has no layers)"
@@ -400,8 +533,24 @@ class V4SecurityScanner(SecurityScannerInterface):
                 mark_manifest_unsupported(manifest)
                 continue
 
-            if should_skip_indexing(candidate):
-                logger.debug("Another worker preempted this worker")
+            # We need to verify that the image layers are actual container images. Since Docker v2 schema 1 images
+            # cannot be anything other than container images, for them specifically we should skip the layer check.
+            if manifest.media_type not in DOCKER_SCHEMA1_CONTENT_TYPES:
+                if not _has_container_layers(layers):
+                    logger.info(
+                        "Cannot index %s/%s@%s due to manifest being invalid (manifest appears to be an artifact image)"
+                        % (
+                            candidate.repository.namespace_user,
+                            candidate.repository.name,
+                            manifest.digest,
+                        )
+                    )
+                    mark_manifest_unsupported(manifest)
+                    continue
+
+            # Check preemption status (computed via bulk query in batch)
+            if should_skip:
+                logger.debug("Manifest %d preempted by another worker (batch check)", candidate.id)
                 abt.set()
                 continue
 
@@ -415,6 +564,46 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
             )
 
+            # Atomically claim manifest for indexing by marking as IN_PROGRESS.
+            # Only claim if not already IN_PROGRESS to avoid concurrent workers indexing the same manifest.
+            # Also allow reclaiming manifests stuck IN_PROGRESS for longer than the stale threshold.
+            stale_in_progress_threshold = datetime.utcnow() - timedelta(
+                hours=STALE_IN_PROGRESS_HOURS
+            )
+            rows_updated = (
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.IN_PROGRESS,
+                    indexer_hash="in_progress",
+                    last_indexed=datetime.utcnow(),
+                )
+                .where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    (ManifestSecurityStatus.index_status != IndexStatus.IN_PROGRESS)
+                    | (ManifestSecurityStatus.last_indexed < stale_in_progress_threshold),
+                )
+                .execute()
+            )
+
+            if rows_updated == 0:
+                # UPDATE missed: either row doesn't exist, or another worker owns it.
+                # Try to create the row; if it already exists, another worker has it.
+                try:
+                    ManifestSecurityStatus.create(
+                        manifest=candidate,
+                        repository=candidate.repository,
+                        index_status=IndexStatus.IN_PROGRESS,
+                        indexer_hash="in_progress",
+                        indexer_version=IndexerVersion.V4,
+                        metadata_json={},
+                    )
+                except IntegrityError:
+                    logger.debug("Manifest %d already claimed by another worker", candidate.id)
+                    abt.set()
+                    continue
+                except OperationalError:
+                    logger.debug("Manifest %d skipped due to lock conflict", candidate.id)
+                    continue
+
             try:
                 (report, state) = self._secscan_api.index(manifest, layers)
             except InvalidContentSent as ex:
@@ -422,6 +611,16 @@ class V4SecurityScanner(SecurityScannerInterface):
                 logger.exception("Failed to perform indexing, invalid content sent")
                 continue
             except APIRequestFailure as ex:
+                # Mark as FAILED instead of deleting to preserve scan history
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.FAILED,
+                    indexer_hash="api_failure",
+                    error_json={"error": str(ex)},
+                    last_indexed=datetime.utcnow(),
+                ).where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                ).execute()
                 logger.exception("Failed to perform indexing, security scanner API error")
                 continue
             except LayerTooLargeException as ex:
@@ -519,7 +718,21 @@ class V4SecurityScanner(SecurityScannerInterface):
             elif report["state"] == IndexReportState.Index_Error:
                 index_status = IndexStatus.FAILED
             else:
-                # Unknown state don't save anything
+                # Unknown state - mark as FAILED instead of deleting to preserve scan history
+                ManifestSecurityStatus.update(
+                    index_status=IndexStatus.FAILED,
+                    indexer_hash="unknown_state",
+                    error_json={"error": "unknown_state", "state": report.get("state")},
+                    last_indexed=datetime.utcnow(),
+                ).where(
+                    ManifestSecurityStatus.manifest == candidate,
+                    ManifestSecurityStatus.index_status == IndexStatus.IN_PROGRESS,
+                ).execute()
+                logger.warning(
+                    "Unknown index state '%s' for manifest %d, marked as FAILED",
+                    report.get("state"),
+                    candidate.id,
+                )
                 continue
 
             with db_transaction():
@@ -585,13 +798,6 @@ class V4SecurityScanner(SecurityScannerInterface):
                     Metadata={},
                 ),
             )
-
-    def register_model_cleanup_callbacks(self, data_model_config):
-        pass
-
-    @property
-    def legacy_api_handler(self):
-        raise NotImplementedError("Unsupported for this security scanner version")
 
     def garbage_collect_manifest_report(self, manifest_digest):
         def manifest_digest_exists():

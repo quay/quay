@@ -460,3 +460,43 @@ export function uploadFile(url: string, dockerfileContent: string) {
     request.send(dockerfileContent);
   });
 }
+
+// Superuser build logs - system-wide access by UUID
+export interface ISuperuserBuildLog {
+  message: string;
+  timestamp?: string;
+  type?: string;
+}
+
+export interface ISuperuserBuild {
+  id: string;
+  uuid: string;
+  status: any;
+  started: string;
+  completed?: string;
+  logs: ISuperuserBuildLog[];
+  repository?: {
+    namespace: string;
+    name: string;
+  };
+  phase?: string;
+  error?: string;
+}
+
+// Fetch build by UUID (superuser only) - includes logs from separate endpoint
+export async function fetchBuildLogsSuperuser(
+  buildUuid: string,
+  signal?: AbortSignal,
+): Promise<ISuperuserBuild> {
+  // Fetch both build info and logs in parallel
+  const [buildResponse, logsResponse] = await Promise.all([
+    axios.get(`/api/v1/superuser/${buildUuid}/build`, {signal}),
+    axios.get(`/api/v1/superuser/${buildUuid}/logs`, {signal}),
+  ]);
+
+  // Merge logs into build object
+  return {
+    ...buildResponse.data,
+    logs: logsResponse.data.logs || [],
+  };
+}

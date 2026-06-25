@@ -1,7 +1,8 @@
-import {AxiosResponse} from 'axios';
+import {AxiosResponse, AxiosError} from 'axios';
 import axios from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
 import {IAvatar, IOrganization} from './OrganizationResource';
+import {IQuotaReport} from 'src/libs/quotaUtils';
 
 export interface IUserResource {
   anonymous: boolean;
@@ -26,6 +27,8 @@ export interface IUserResource {
   tag_expiration_s: number;
   prompts: [];
   super_user: boolean;
+  global_readonly_super_user?: boolean;
+  enabled?: boolean; // User enabled/disabled status (for superuser user management)
   company: string;
   family_name: string;
   given_name: string;
@@ -33,6 +36,7 @@ export interface IUserResource {
   is_free_account: boolean;
   has_password_set: boolean;
   organizations: IOrganization[];
+  quota_report?: IQuotaReport; // Quota report for the user's namespace
 }
 
 export async function fetchUser() {
@@ -120,11 +124,16 @@ export interface CreateUserRequest {
   email: string;
 }
 
+export interface CreateUserResponse {
+  awaiting_verification?: boolean;
+  [key: string]: any; // Allow other fields from the API response
+}
+
 export async function createUser(
   username: string,
   password: string,
   email: string,
-) {
+): Promise<CreateUserResponse> {
   const response = await axios.post('/api/v1/user/', {
     username,
     password,
@@ -132,6 +141,53 @@ export async function createUser(
   });
   assertHttpCode(response.status, 200);
   return response.data;
+}
+
+export interface CreateSuperuserUserRequest {
+  username: string;
+  email: string;
+}
+
+export interface CreateSuperuserUserResponse {
+  username: string;
+  email: string;
+  password: string;
+  enabled: boolean;
+}
+
+export async function createSuperuserUser(
+  data: CreateSuperuserUserRequest,
+): Promise<CreateSuperuserUserResponse> {
+  const response: AxiosResponse<CreateSuperuserUserResponse> = await axios.post(
+    '/api/v1/superuser/users/',
+    data,
+  );
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export interface UpdateSuperuserUserRequest {
+  email?: string;
+  password?: string;
+  enabled?: boolean;
+}
+
+export async function updateSuperuserUser(
+  username: string,
+  data: UpdateSuperuserUserRequest,
+): Promise<void> {
+  const response: AxiosResponse = await axios.put(
+    `/api/v1/superuser/users/${username}`,
+    data,
+  );
+  assertHttpCode(response.status, 200);
+}
+
+export async function deleteSuperuserUser(username: string): Promise<void> {
+  const response: AxiosResponse = await axios.delete(
+    `/api/v1/superuser/users/${username}`,
+  );
+  assertHttpCode(response.status, 204);
 }
 
 export interface UpdateUserRequest {
@@ -162,6 +218,32 @@ export async function createClientKey(password: string): Promise<string> {
   return response.data.key;
 }
 
+interface ApiErrorResponse {
+  detail?: string;
+  message?: string;
+}
+
+export class UserDeleteError extends Error {
+  public username: string;
+
+  constructor(message: string, username: string, error: AxiosError) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    super(`${message}: ${apiError?.detail || error.message}`);
+    this.username = username;
+
+    Object.setPrototypeOf(this, UserDeleteError.prototype);
+  }
+}
+
+export async function deleteUser(): Promise<void> {
+  try {
+    const response: AxiosResponse = await axios.delete('/api/v1/user/');
+    assertHttpCode(response.status, 204);
+  } catch (err) {
+    throw new UserDeleteError('Failed to delete user account', '', err);
+  }
+}
+
 export interface ConvertUserRequest {
   plan?: string;
   adminUser: string;
@@ -174,4 +256,120 @@ export async function convert(
   const updateUserUrl = `/api/v1/user/convert`;
   const response = await axios.post(updateUserUrl, convertUserRequest);
   assertHttpCode(response.status, 200);
+}
+
+// Application Token interfaces and functions
+export interface IApplicationToken {
+  uuid: string;
+  title: string;
+  last_accessed: string | null;
+  created: string;
+  expiration: string | null;
+  token_code?: string; // Only included when creating or getting specific token
+}
+
+export interface ApplicationTokensResponse {
+  tokens: IApplicationToken[];
+  only_expiring: boolean;
+}
+
+export interface CreateApplicationTokenRequest {
+  title: string;
+}
+
+export interface CreateApplicationTokenResponse {
+  token: IApplicationToken;
+}
+
+export class ApplicationTokenError extends Error {
+  public tokenId: string;
+
+  constructor(message: string, tokenId: string, error: AxiosError) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    super(`${message}: ${apiError?.detail || error.message}`);
+    this.tokenId = tokenId;
+
+    Object.setPrototypeOf(this, ApplicationTokenError.prototype);
+  }
+}
+
+export async function fetchApplicationTokens(): Promise<ApplicationTokensResponse> {
+  try {
+    const response: AxiosResponse<ApplicationTokensResponse> = await axios.get(
+      '/api/v1/user/apptoken',
+    );
+    assertHttpCode(response.status, 200);
+    return response.data;
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to fetch application tokens',
+      '',
+      err,
+    );
+  }
+}
+
+export async function createApplicationToken(
+  title: string,
+): Promise<CreateApplicationTokenResponse> {
+  try {
+    const request: CreateApplicationTokenRequest = {title};
+    const response: AxiosResponse<CreateApplicationTokenResponse> =
+      await axios.post('/api/v1/user/apptoken', request);
+    assertHttpCode(response.status, 200);
+    return response.data;
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to create application token',
+      '',
+      err,
+    );
+  }
+}
+
+export async function fetchApplicationToken(
+  tokenUuid: string,
+): Promise<IApplicationToken> {
+  try {
+    const response: AxiosResponse<{token: IApplicationToken}> = await axios.get(
+      `/api/v1/user/apptoken/${tokenUuid}`,
+    );
+    assertHttpCode(response.status, 200);
+    return response.data.token;
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to fetch application token',
+      tokenUuid,
+      err,
+    );
+  }
+}
+
+export async function revokeApplicationToken(tokenUuid: string): Promise<void> {
+  try {
+    const response: AxiosResponse = await axios.delete(
+      `/api/v1/user/apptoken/${tokenUuid}`,
+    );
+    assertHttpCode(response.status, 204);
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to revoke application token',
+      tokenUuid,
+      err,
+    );
+  }
+}
+
+export interface SendRecoveryEmailResponse {
+  email: string;
+}
+
+export async function sendRecoveryEmail(
+  username: string,
+): Promise<SendRecoveryEmailResponse> {
+  const response: AxiosResponse<SendRecoveryEmailResponse> = await axios.post(
+    `/api/v1/superusers/users/${username}/sendrecovery`,
+  );
+  assertHttpCode(response.status, 200);
+  return response.data;
 }

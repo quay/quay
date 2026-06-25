@@ -4,6 +4,7 @@ import random
 import string
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from unittest.mock import patch as mock_patch
 
 import pytest
 from freezegun import freeze_time
@@ -13,18 +14,24 @@ from playhouse.test_utils import assert_query_count
 from app import docker_v2_signing_key, model_cache, storage
 from data import database, model
 from data.database import (
-    ApprBlob,
     ExternalNotificationMethod,
     ImageStorage,
     ImageStorageLocation,
+    ImageStoragePlacement,
     Label,
     Manifest,
     ManifestBlob,
+    ManifestChild,
     ManifestLabel,
+    ManifestPullStatistics,
+    MediaType,
     Tag,
     TagNotificationSuccess,
+    TagPullStatistics,
     UploadedBlob,
 )
+from data.model import oci, pull_statistics
+from data.model import storage as storage_model
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
@@ -32,6 +39,7 @@ from digest.digest_tools import sha256_digest
 from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.oci.config import OCIConfig
+from image.oci.index import OCIIndexBuilder
 from image.oci.manifest import OCIManifestBuilder
 from image.shared.schemas import parse_manifest_from_bytes
 from test.fixtures import *
@@ -218,9 +226,6 @@ def assert_gc_integrity(expect_storage_removed=True):
         if storage_row.cas_path:
             existing_digests.add(storage_row.content_checksum)
 
-    for blob_row in ApprBlob.select():
-        existing_digests.add(blob_row.digest)
-
     # Store the number of dangling objects.
     existing_storage_count = _get_dangling_storage_count()
     existing_label_count = _get_dangling_label_count()
@@ -252,12 +257,6 @@ def assert_gc_integrity(expect_storage_removed=True):
         if storage_row.cas_path:
             storage.get_content({preferred}, storage.blob_path(storage_row.content_checksum))
 
-    for blob_row in ApprBlob.select():
-        if blob_row.digest in existing_digests:
-            continue
-
-        storage.get_content({preferred}, storage.blob_path(blob_row.digest))
-
     # Ensure all tags have valid manifests.
     for manifest in {t.manifest for t in Tag.select()}:
         # Ensure that the manifest's blobs all exist.
@@ -274,14 +273,10 @@ def assert_gc_integrity(expect_storage_removed=True):
 
 def test_has_garbage(default_tag_policy, initialized_db):
     """
-    Remove all existing repositories, then add one without garbage, check, then add one with
-    garbage, and check again.
+    Create a repo with a tag, delete the tag, and verify that garbage detection
+    respects the time machine setting and that GC cleans it up.
     """
-    # Delete all existing repos.
-    for repo in database.Repository.select().order_by(database.Repository.id):
-        assert model.gc.purge_repository(repo, force=True)
-
-    # Change the time machine expiration on the namespace.
+    # Set a very large time machine so no existing tags appear as garbage.
     (
         database.User.update(removed_tag_expiration_s=1000000000)
         .where(database.User.username == ADMIN_ACCESS_USER)
@@ -311,13 +306,14 @@ def test_has_garbage(default_tag_policy, initialized_db):
         .execute()
     )
 
-    # Now we should find the repository for GC.
+    # Now we should find a repository for GC.
     repository = model.oci.tag.find_repository_with_garbage(0)
     assert repository is not None
-    assert repository.name == "newrepo"
 
-    # GC the repository.
-    assert gc_now(repository)
+    # GC all repositories with garbage to reach a clean state.
+    while repository is not None:
+        gc_now(repository)
+        repository = model.oci.tag.find_repository_with_garbage(0)
 
     # There should now be no repositories with garbage.
     assert model.oci.tag.find_repository_with_garbage(0) is None
@@ -614,7 +610,7 @@ def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
                 has_dependent_uploadedblobs = (
                     UploadedBlob.select()
                     .where(
-                        UploadedBlob == uploadedblob,
+                        UploadedBlob.blob == uploadedblob.blob,
                         UploadedBlob.repository != repo,
                     )
                     .count()
@@ -712,6 +708,71 @@ def test_delete_manifests_with_subject(initialized_db):
     assert model.gc.purge_repository(repository, force=True)
 
 
+def test_check_manifest_used_scoped_to_repository(initialized_db):
+    """
+    A referrer in a different repository sharing the same digest should not
+    prevent garbage collection of a manifest.
+    """
+
+    def generate_random_data_for_layer():
+        charset = string.ascii_uppercase + string.ascii_lowercase + string.digits
+        return "".join(random.choice(charset) for _ in range(random.randrange(1, 20)))
+
+    repo1 = create_repository("devtable", "repo_scoped_1")
+    repo2 = create_repository("devtable", "repo_scoped_2")
+
+    # Create a manifest in repo1
+    config1_json = json.dumps(
+        {
+            "os": "linux",
+            "architecture": "amd64",
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
+    )
+    _, config1_digest = _populate_blob(repo1, config1_json.encode("ascii"))
+    random_data1 = generate_random_data_for_layer()
+    _, random_digest1 = _populate_blob(repo1, random_data1.encode("ascii"))
+
+    oci_builder1 = OCIManifestBuilder()
+    oci_builder1.set_config_digest(config1_digest, len(config1_json.encode("utf-8")))
+    oci_builder1.add_layer(random_digest1, len(random_data1.encode("utf-8")))
+    oci_manifest1 = oci_builder1.build()
+
+    manifest1_created = model.oci.manifest.get_or_create_manifest(repo1, oci_manifest1, storage)
+    assert manifest1_created
+
+    # Remove tags so GC check relies only on referrer logic
+    Tag.delete().where(Tag.manifest == manifest1_created.manifest.id).execute()
+
+    # Create a referrer in repo2 that points to the same digest as manifest1
+    config2_json = json.dumps(
+        {
+            "os": "linux",
+            "architecture": "amd64",
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
+    )
+    _, config2_digest = _populate_blob(repo2, config2_json.encode("ascii"))
+    random_data2 = generate_random_data_for_layer()
+    _, random_digest2 = _populate_blob(repo2, random_data2.encode("ascii"))
+
+    oci_builder2 = OCIManifestBuilder()
+    oci_builder2.set_config_digest(config2_digest, len(config2_json.encode("utf-8")))
+    oci_builder2.add_layer(random_digest2, len(random_data2.encode("utf-8")))
+    oci_builder2.set_subject(
+        oci_manifest1.digest, len(oci_manifest1.bytes.as_encoded_str()), oci_manifest1.media_type
+    )
+    oci_manifest2 = oci_builder2.build()
+
+    manifest2_created = model.oci.manifest.get_or_create_manifest(repo2, oci_manifest2, storage)
+    assert manifest2_created
+
+    # Cross-repo referrer should not prevent GC of manifest1 in repo1
+    assert not model.gc._check_manifest_used(manifest1_created.manifest.id)
+
+
 def test_tag_cleanup_with_autoprune_policy(default_tag_policy, initialized_db):
     repo1 = model.repository.create_repository("devtable", "newrepo", None)
     slack = ExternalNotificationMethod.get(ExternalNotificationMethod.name == "slack")
@@ -740,3 +801,962 @@ def test_tag_cleanup_with_autoprune_policy(default_tag_policy, initialized_db):
         TagNotificationSuccess.select().where(TagNotificationSuccess.tag == tag.id).count()
     )
     assert tag_notification_count == 0
+
+
+def test_gc_cleans_up_pull_statistics(default_tag_policy, initialized_db):
+    """
+    Verify that GC removes tag pull statistics when tags are deleted.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, built = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    # Create two tags pointing to the same manifest
+    model.oci.tag.retarget_tag("tag1", manifest)
+    model.oci.tag.retarget_tag("tag2", manifest)
+
+    # Create pull statistics for both tags
+    pull_statistics.bulk_upsert_tag_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag1",
+                "pull_count": 10,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag2",
+                "pull_count": 5,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+        ]
+    )
+
+    # Create pull statistics for the manifest
+    pull_statistics.bulk_upsert_manifest_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "manifest_digest": manifest.digest,
+                "pull_count": 15,
+                "last_pull_timestamp": datetime.utcnow(),
+            }
+        ]
+    )
+
+    # Verify stats exist for both tags
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag1")
+        .count()
+        == 1
+    )
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag2")
+        .count()
+        == 1
+    )
+
+    # Delete tag1 and run GC
+    with assert_gc_integrity(expect_storage_removed=False):
+        delete_tag(repo, "tag1", expect_gc=True)
+
+    # Verify tag1 stats are cleaned up
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag1")
+        .count()
+        == 0
+    )
+
+    # Verify tag2 stats still exist
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag2")
+        .count()
+        == 1
+    )
+
+    # Manifest stats should still exist since manifest is still referenced by tag2
+    assert (
+        ManifestPullStatistics.select()
+        .where(
+            ManifestPullStatistics.repository == repo,
+            ManifestPullStatistics.manifest_digest == manifest.digest,
+        )
+        .count()
+        == 1
+    )
+
+    # Delete tag2 and run GC
+    with assert_gc_integrity(expect_storage_removed=True):
+        delete_tag(repo, "tag2", expect_gc=True)
+
+    # Verify all tag pull statistics are cleaned up
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 0
+
+    # Check if manifest was GC'd
+    manifest_exists = Manifest.select().where(Manifest.id == manifest.id).count() > 0
+    manifest_stats_count = (
+        ManifestPullStatistics.select().where(ManifestPullStatistics.repository == repo).count()
+    )
+
+    # If manifest was GC'd, its stats should be gone too
+    if not manifest_exists:
+        assert manifest_stats_count == 0, "Manifest was GC'd, so its stats should be cleaned up"
+
+
+def test_gc_pull_statistics_with_shared_manifest(default_tag_policy, initialized_db):
+    """
+    Verify that tag pull statistics are deleted when tags are removed,
+    and manifest pull statistics persist while the manifest is still referenced.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, built = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    # Create two tags pointing to the same manifest
+    model.oci.tag.retarget_tag("tag1", manifest)
+    model.oci.tag.retarget_tag("tag2", manifest)
+
+    # Create pull statistics for both tags
+    pull_statistics.bulk_upsert_tag_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag1",
+                "pull_count": 10,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag2",
+                "pull_count": 5,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+        ]
+    )
+
+    # Create pull statistics for the manifest
+    pull_statistics.bulk_upsert_manifest_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "manifest_digest": manifest.digest,
+                "pull_count": 15,
+                "last_pull_timestamp": datetime.utcnow(),
+            }
+        ]
+    )
+
+    # Verify stats exist
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 2
+    assert (
+        ManifestPullStatistics.select().where(ManifestPullStatistics.repository == repo).count()
+        == 1
+    )
+
+    # Delete tag1 and run GC
+    with assert_gc_integrity(expect_storage_removed=False):
+        delete_tag(repo, "tag1", expect_gc=True)
+
+    # Verify tag1 stats are cleaned up but tag2 stats remain
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag1")
+        .count()
+        == 0
+    )
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag2")
+        .count()
+        == 1
+    )
+
+    # Verify manifest stats still exist (manifest still referenced by tag2)
+    assert (
+        ManifestPullStatistics.select()
+        .where(
+            ManifestPullStatistics.repository == repo,
+            ManifestPullStatistics.manifest_digest == manifest.digest,
+        )
+        .count()
+        == 1
+    )
+
+    # Delete tag2 and run GC
+    with assert_gc_integrity(expect_storage_removed=True):
+        delete_tag(repo, "tag2", expect_gc=True)
+
+    # Verify all tag pull statistics are cleaned up
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 0
+
+
+def test_gc_removes_manifest_stats_when_unreferenced(default_tag_policy, initialized_db):
+    """
+    Verify that manifest pull statistics are only deleted when the manifest is no longer
+    referenced by any tags and gets garbage collected.
+
+    This test uses the same manifest for both tags to explicitly test that manifest stats
+    persist while at least one tag references the manifest, and are only removed when
+    the last tag is deleted and the manifest is GC'd.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    # Create a single manifest
+    manifest, built = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    # Create two tags pointing to the SAME manifest
+    model.oci.tag.retarget_tag("tag1", manifest)
+    model.oci.tag.retarget_tag("tag2", manifest)
+
+    # Create pull statistics for both tags
+    pull_statistics.bulk_upsert_tag_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag1",
+                "pull_count": 10,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag2",
+                "pull_count": 5,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+        ]
+    )
+
+    # Create pull statistics for the manifest
+    pull_statistics.bulk_upsert_manifest_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "manifest_digest": manifest.digest,
+                "pull_count": 15,
+                "last_pull_timestamp": datetime.utcnow(),
+            }
+        ]
+    )
+
+    # Verify stats exist
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 2
+    assert (
+        ManifestPullStatistics.select()
+        .where(
+            ManifestPullStatistics.repository == repo,
+            ManifestPullStatistics.manifest_digest == manifest.digest,
+        )
+        .count()
+        == 1
+    )
+
+    # Delete tag1 and run GC - manifest should NOT be GC'd since tag2 still references it
+    with assert_gc_integrity(expect_storage_removed=False):
+        delete_tag(repo, "tag1", expect_gc=True)
+
+    # Verify tag1 stats are cleaned up
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag1")
+        .count()
+        == 0
+    )
+
+    # Verify tag2 stats still exist
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag2")
+        .count()
+        == 1
+    )
+
+    # CRITICAL CHECK: Manifest stats should STILL exist because tag2 still references the manifest
+    assert (
+        ManifestPullStatistics.select()
+        .where(
+            ManifestPullStatistics.repository == repo,
+            ManifestPullStatistics.manifest_digest == manifest.digest,
+        )
+        .count()
+        == 1
+    ), "Manifest stats should persist while tag2 still references the manifest"
+
+    # Verify the manifest itself still exists
+    assert Manifest.select().where(Manifest.id == manifest.id).count() == 1
+
+    # Delete tag2 (the LAST tag) and run GC - now the manifest should be GC'd
+    with assert_gc_integrity(expect_storage_removed=True):
+        delete_tag(repo, "tag2", expect_gc=True)
+
+    # Verify all tag stats are cleaned up
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 0
+
+    # Check if manifest was GC'd
+    manifest_exists = Manifest.select().where(Manifest.id == manifest.id).count() > 0
+
+    if not manifest_exists:
+        # If manifest was GC'd, its pull statistics should also be deleted
+        assert (
+            ManifestPullStatistics.select()
+            .where(
+                ManifestPullStatistics.repository == repo,
+                ManifestPullStatistics.manifest_digest == manifest.digest,
+            )
+            .count()
+            == 0
+        ), "Manifest was GC'd but its pull statistics were not cleaned up"
+
+
+def test_gc_skips_immutable_tags(default_tag_policy, initialized_db):
+    """
+    Verify that GC does not delete immutable tags even if they have lifetime_end_ms set,
+    when FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is False.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, built = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    # Create a tag with immutable=True and an expiration in the past
+    now_ms = database.get_epoch_timestamp_ms()
+    tag = Tag.create(
+        name="immutable-tag",
+        repository=repo.id,
+        manifest=manifest,
+        lifetime_start_ms=now_ms - 100000,
+        lifetime_end_ms=now_ms - 50000,  # expired
+        hidden=False,
+        immutable=True,
+        reversion=False,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+
+    # Set time machine to 0 so expired tags are immediately eligible for GC
+    _set_tag_expiration_policy(repo.namespace_user.username, 0)
+
+    with mock_patch("features.IMMUTABLE_TAGS", True):
+        with mock_patch.dict(
+            "data.model.oci.tag.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": False}
+        ):
+            # GC should skip the immutable tag
+            gc_now(repo)
+
+    # Tag should still exist
+    assert Tag.select().where(Tag.id == tag.id).count() == 1
+
+
+def test_gc_collects_immutable_tags_when_can_expire(default_tag_policy, initialized_db):
+    """
+    Verify that GC collects expired immutable tags when FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE is True.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, built = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    # Create a tag with immutable=True and an expiration in the past
+    now_ms = database.get_epoch_timestamp_ms()
+    tag = Tag.create(
+        name="immutable-expiring-tag",
+        repository=repo.id,
+        manifest=manifest,
+        lifetime_start_ms=now_ms - 100000,
+        lifetime_end_ms=now_ms - 50000,  # expired
+        hidden=False,
+        immutable=True,
+        reversion=False,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+
+    # Set time machine to 0 so expired tags are immediately eligible for GC
+    _set_tag_expiration_policy(repo.namespace_user.username, 0)
+
+    with mock_patch("features.IMMUTABLE_TAGS", True):
+        with mock_patch.dict(
+            "data.model.oci.tag.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": True}
+        ):
+            gc_now(repo)
+
+    # Tag should be deleted
+    assert Tag.select().where(Tag.id == tag.id).count() == 0
+
+
+def test_gc_purge_oci_tag_guard_skips_immutable(default_tag_policy, initialized_db):
+    """
+    Verify the defense-in-depth guard in _purge_oci_tag directly skips immutable tags
+    during GC, but allows them during repository deletion (allow_non_expired=True).
+    """
+    from data.model.gc import _GarbageCollectorContext, _purge_oci_tag
+
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    now_ms = database.get_epoch_timestamp_ms()
+    tag = Tag.create(
+        name="guarded-tag",
+        repository=repo.id,
+        manifest=manifest,
+        lifetime_start_ms=now_ms - 100000,
+        lifetime_end_ms=now_ms - 50000,
+        hidden=False,
+        immutable=True,
+        reversion=False,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+
+    context = _GarbageCollectorContext(repo)
+
+    with mock_patch("features.IMMUTABLE_TAGS", True):
+        with mock_patch.dict(
+            "data.model.gc.config.app_config", {"FEATURE_IMMUTABLE_TAGS_CAN_EXPIRE": False}
+        ):
+            # GC path (allow_non_expired=False) should skip the tag
+            result = _purge_oci_tag(tag, context, allow_non_expired=False)
+            assert result is False
+            assert Tag.select().where(Tag.id == tag.id).count() == 1
+
+            # Repository deletion path (allow_non_expired=True) should proceed
+            result = _purge_oci_tag(tag, context, allow_non_expired=True)
+            assert result is not False
+
+
+def _get_digest(content_bytes):
+    """
+    Helper function that creates blobs with proper digests
+    """
+    return sha256_digest(content_bytes)
+
+
+def test_gc_skips_placeholder_blobs(default_tag_policy, initialized_db):
+    """
+    Tests that GC skips placeholder blobs from being garbage collected. Deleting these could cause the database
+    to reference blobs that have been removed from backing storage, causing pull failures.
+    """
+    repo = model.repository.create_repository("devtable", "placeholder_test", None)
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    placeholder_blob = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+
+    assert (
+        not ImageStoragePlacement.select()
+        .where(ImageStoragePlacement.storage == placeholder_blob)
+        .exists()
+    )
+
+    orphaned_ids = storage_model.garbage_collect_storage([placeholder_blob.id])
+    assert placeholder_blob.id not in orphaned_ids
+    assert ImageStorage.select().where(ImageStorage.id == placeholder_blob.id).exists()
+
+
+def test_gc_collects_orphaned_blobs_with_placement(default_tag_policy, initialized_db):
+    """
+    Tests that GC DOES delete orphaned blobs that have placement set.
+    """
+    location = ImageStorageLocation.get(name="local_us")
+
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # We cannot use _populate_blob here because it would create an entry in UploadedBlob table which would
+    # protect it from GCing because of the _is_storage_orphaned check, so we have to create it manually.
+    normal_blob = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+    ImageStoragePlacement.create(storage=normal_blob, location=location)
+
+    storage.put_content(
+        ["local_us"],
+        storage.blob_path(normal_blob.content_checksum),
+        blob_content,
+    )
+
+    assert (
+        ImageStoragePlacement.select().where(ImageStoragePlacement.storage == normal_blob).exists()
+    )
+
+    # This blob is orphaned because no ManifestBlob or UploadedBlob entries exist so it should be picked
+    # by GC.
+    orphaned_ids = storage_model.garbage_collect_storage([normal_blob.id])
+    assert normal_blob.id in orphaned_ids
+
+    assert not ImageStorage.select().where(ImageStorage.id == normal_blob.id).exists()
+
+
+def test_gc_proxy_cache_expired_temp_tag(default_tag_policy, initialized_db):
+    """
+    Test the proxy cache race condition scenario:
+    1. Proxy cache creates manifest with placeholder blobs
+    2. Temp tag gets created
+    3. Tag expires and manifest is GCed
+    4. Placeholder blobs should NOT be deleted
+    """
+    repo = model.repository.create_repository("devtable", "proxy_test", None)
+    media_type, _ = MediaType.get_or_create(name="application/vnd.oci.image.manifest.v1+json")
+    manifest_bytes = (
+        '{"schemaVersion": 2, "mediaType": "application/vnd.oci.image.manifest.v1+json"}'
+    )
+    manifest = Manifest.create(
+        repository=repo,
+        digest=_get_digest(manifest_bytes.encode("utf-8")),
+        manifest_bytes=manifest_bytes,
+        media_type=media_type,
+    )
+
+    # Placeholder blobs
+    blob_list = []
+    for i in range(0, 3):
+        blob_content = random.randbytes(1024)
+        placeholder_blob = ImageStorage.create(
+            content_checksum=_get_digest(blob_content),
+            image_size=len(blob_content),
+            uncompressed_size=len(blob_content),
+        )
+        ManifestBlob.create(manifest=manifest, blob=placeholder_blob, repository=repo)
+        blob_list.append(placeholder_blob)
+
+    # Create a temporary tag that's already expired
+    past_time = datetime.utcnow() - timedelta(hours=1)
+    with freeze_time(past_time):
+        now_ms = oci.tag.get_epoch_timestamp_ms()
+        temp_tag = Tag.create(
+            name=f"$temp-{manifest.digest}",
+            repository=repo,
+            manifest=manifest,
+            lifetime_start_ms=now_ms,
+            lifetime_end_ms=now_ms + 300000,  # 5 minutes from frozen time
+            hidden=True,
+            reversion=False,
+            tag_kind=Tag.tag_kind.get_id("tag"),
+        )
+
+    # Run GC and check if entries in tables exist
+    model.gc.garbage_collect_repo(repo)
+    assert not Manifest.select().where(Manifest.id == manifest.id).exists()
+    assert not ManifestBlob.select().where(ManifestBlob.manifest == manifest.id).exists()
+    # Placeholder blobs should still exist
+    for blob in blob_list:
+        assert ImageStorage.select().where(ImageStorage.id == blob.id).exists()
+
+
+def test_is_storage_orphaned_returns_false_for_placeholders(default_tag_policy, initialized_db):
+    """
+    Tests whether _is_storage_orphaned returns a negative result (not orphaned) for each placeholder blob
+    even if these do not have a ManifestBlob in place.
+    """
+    blob_content = random.randbytes(1024)
+    placeholder_blob = ImageStorage.create(
+        content_checksum=_get_digest(blob_content),
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+
+    # Blob has no ManifestBlob, UploadedBlob or placement entry but should not be considered orphaned
+    assert not storage_model._is_storage_orphaned(placeholder_blob.id)
+
+    # Add placement, should be considered orphaned
+    location = ImageStorageLocation.get(name="local_us")
+    ImageStoragePlacement.create(storage=placeholder_blob, location=location)
+    assert storage_model._is_storage_orphaned(placeholder_blob.id)
+
+
+def test_gc_placeholder_blob_eventually_collected(default_tag_policy, initialized_db):
+    """
+    Tests if placeholder blobs are eventually collected once they get get a placement and their manifest
+    is deleted.
+    This ensures that placeholder blobs are not leaked indefinitely.
+    """
+    repo = model.repository.create_repository("devtable", "placeholder_cleanup", None)
+    media_type, _ = MediaType.get_or_create(name="application/vnd.oci.image.manifest.v1+json")
+
+    # Create placeholder blobs
+    media_type, _ = MediaType.get_or_create(name="application/vnd.oci.image.manifest.v1+json")
+    manifest_bytes = (
+        '{"schemaVersion": 2, "mediaType": "application/vnd.oci.image.manifest.v1+json"}'
+    )
+    manifest = Manifest.create(
+        repository=repo,
+        digest=_get_digest(manifest_bytes.encode("utf-8")),
+        manifest_bytes=manifest_bytes,
+        media_type=media_type,
+    )
+
+    blob_list = []
+    for i in range(0, 3):
+        blob_content = random.randbytes(1024)
+        placeholder_blob = ImageStorage.create(
+            content_checksum=_get_digest(blob_content),
+            image_size=len(blob_content),
+            uncompressed_size=len(blob_content),
+        )
+        ManifestBlob.create(manifest=manifest, blob=placeholder_blob, repository=repo)
+
+        # Download worker adds placement
+        location = ImageStorageLocation.get(name="local_us")
+        ImageStoragePlacement.create(storage=placeholder_blob, location=location)
+        storage.put_content(
+            ["local_us"],
+            storage.blob_path(placeholder_blob.content_checksum),
+            blob_content,
+        )
+        blob_list.append(placeholder_blob)
+
+    # Delete manifest simulating manifest GC
+    ManifestBlob.delete().where(ManifestBlob.manifest == manifest.id).execute()
+    manifest.delete_instance()
+
+    # Blob has placement but not references, should be GCed
+    orphaned_ids = storage_model.garbage_collect_storage([blob.id for blob in blob_list])
+    for blob in blob_list:
+        assert blob.id in orphaned_ids
+        assert not ImageStorage.select().where(ImageStorage.id == blob.id).exists()
+
+
+def test_get_or_create_blob_with_lock_gets_existing(default_tag_policy, initialized_db):
+    """
+    Tests that get_or_create_blob_with_lock returns an existing blob without creating a duplicate.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # create initial blob
+    existing_blob = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+
+    # call the function
+    result_blob = storage_model.get_or_create_blob_with_lock(
+        digest=blob_digest,
+        image_size=999,
+    )
+
+    assert result_blob.id == existing_blob.id
+    assert result_blob.image_size == len(blob_content)
+
+    assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).count() == 1
+
+
+def test_get_or_create_blob_with_lock_creates_new(default_tag_policy, initialized_db):
+    """
+    Verifies that the function creates a new blob if the blob doesn't exist.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # Verify blob doesn't exist in storage
+    assert not ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+
+    # create blob
+    result_blob = storage_model.get_or_create_blob_with_lock(
+        digest=blob_digest,
+        image_size=len(blob_content),
+        uncompressed_size=len(blob_content),
+    )
+
+    assert result_blob.content_checksum == blob_digest
+    assert result_blob.image_size == len(blob_content)
+
+    # verify that it was created in the database
+    assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+
+
+def test_get_or_create_blob_with_lock_fallback_gets_existing(default_tag_policy, initialized_db):
+    """
+    Verifies that when the lock cannot be acquired, the function falls back to
+    getting an existing blob after a short delay.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    # Create the blob first
+    existing_blob = ImageStorage.create(
+        content_checksum=blob_digest,
+        image_size=len(blob_content),
+    )
+
+    # Patch GlobalLock to always raise LockNotAcquiredException
+    from util.locking import LockNotAcquiredException
+
+    class FailingLock:
+        lock_factory = object()
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            raise LockNotAcquiredException()
+
+        def __exit__(self, *args):
+            pass
+
+    original_lock = storage_model.GlobalLock
+    storage_model.GlobalLock = FailingLock
+    try:
+        result_blob = storage_model.get_or_create_blob_with_lock(
+            digest=blob_digest,
+            image_size=999,
+        )
+        assert result_blob.id == existing_blob.id
+        assert (
+            ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).count() == 1
+        )
+    finally:
+        storage_model.GlobalLock = original_lock
+
+
+def test_get_or_create_blob_with_lock_fallback_creates_new(default_tag_policy, initialized_db):
+    """
+    Verifies that when the lock cannot be acquired and the blob doesn't exist,
+    the function falls back to creating the blob without the lock.
+    """
+    blob_content = random.randbytes(1024)
+    blob_digest = _get_digest(blob_content)
+
+    assert not ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+
+    from util.locking import LockNotAcquiredException
+
+    class FailingLock:
+        lock_factory = object()
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            raise LockNotAcquiredException()
+
+        def __exit__(self, *args):
+            pass
+
+    original_lock = storage_model.GlobalLock
+    storage_model.GlobalLock = FailingLock
+    try:
+        result_blob = storage_model.get_or_create_blob_with_lock(
+            digest=blob_digest,
+            image_size=len(blob_content),
+        )
+        assert result_blob.content_checksum == blob_digest
+        assert ImageStorage.select().where(ImageStorage.content_checksum == blob_digest).exists()
+    finally:
+        storage_model.GlobalLock = original_lock
+
+
+def test_gc_manifest_list_with_children(default_tag_policy, initialized_db):
+    """
+    Tests that purging of a repository with a manifest list correctly removes all
+    manifests and their children.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    # create three child manifests
+    _, build1 = create_manifest_for_testing(repo, differentiation_field="amd64")
+    _, build2 = create_manifest_for_testing(repo, differentiation_field="ppc64le")
+    _, build3 = create_manifest_for_testing(repo, differentiation_field="arm64")
+
+    # create index
+    index_builder = OCIIndexBuilder()
+    index_builder.add_manifest(build1, architecture="amd64", os="Linux")
+    index_builder.add_manifest(build2, architecture="ppc64le", os="Linux")
+    index_builder.add_manifest(build3, architecture="arm64", os="Linux")
+    manifest_list = index_builder.build()
+
+    created = model.oci.manifest.get_or_create_manifest(repo, manifest_list, storage)
+    assert created
+
+    # tag the manifest list
+    model.oci.tag.retarget_tag("latest", created.manifest)
+
+    # verify manifest child rows exist
+    assert ManifestChild.select().where(ManifestChild.repository == repo).count() == 3
+
+    # purge repo
+    assert model.gc.purge_repository(repo, force=True)
+
+    # verify eveything's cleaned up
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+    assert ManifestChild.select().where(ManifestChild.repository == repo).count() == 0
+    assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
+
+
+def test_gc_manifest_with_labels(default_tag_policy, initialized_db):
+    """
+    Tests that purging of a repository correctly GCs all labels associated with the manifests.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    assert repo
+    manifest, _ = create_manifest_for_testing(repo, differentiation_field="labeled")
+
+    # add labels to the manifest
+    model.oci.label.create_manifest_label(
+        manifest.id, "maintainer", "devtable@devtable.com", "manifest"
+    )
+    model.oci.label.create_manifest_label(manifest.id, "tester", "test@devtable.com", "manifest")
+    model.oci.label.create_manifest_label(manifest.id, "version", "0.0.1", "manifest")
+
+    assert ManifestLabel.select().where(ManifestLabel.repository == repo).count() == 3
+    pre_gc_label_count = Label.select().count()
+
+    # Purge repo
+    assert model.gc.purge_repository(repo, force=True)
+
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+    assert ManifestLabel.select().where(ManifestLabel.repository == repo).count() == 0
+    assert Label.select().count() < pre_gc_label_count
+
+
+def test_purge_manifest_list_no_infinite_loop(default_tag_policy, initialized_db):
+    """
+    Tests that purging a repository with manifest lists does not end in an infinite loop when
+    child manifests have lower ID than their parent.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    assert repo
+
+    built_manifests = []
+    child_manifests = []
+
+    # create a massive manifest list that contains 15 child image
+    # Quay's batching process uses up to 10 manifests in a batch
+    test_architectures = [
+        "amd64",
+        "386",
+        "arm64",
+        "arm",
+        "ppc64le",
+        "ppc64",
+        "s390x",
+        "mips64le",
+        "mips64",
+        "mipsle",
+        "mips",
+        "riscv64",
+        "loong64",
+        "sparc64",
+        "wasm",
+    ]
+    for arch in test_architectures:
+        child, build = create_manifest_for_testing(repo, differentiation_field=arch)
+        built_manifests.append(build)
+        child_manifests.append(child)
+
+    index_builder = OCIIndexBuilder()
+    for i, build in enumerate(built_manifests):
+        index_builder.add_manifest(build, architecture=test_architectures[i], os="Linux")
+
+    manifest_list = index_builder.build()
+
+    created = model.oci.manifest.get_or_create_manifest(repo, manifest_list, storage)
+    assert created
+    model.oci.tag.retarget_tag("latest", created.manifest)
+
+    # check if children have lower IDs than the parent
+    for child in child_manifests:
+        assert child.id < created.manifest.id
+
+    assert model.gc.purge_repository(repo, force=True)
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+
+
+def test_gc_shared_label_survives_partial_gc(default_tag_policy, initialized_db):
+    """
+    Tests that labels shared across multiple images survive the GC process and are not
+    deleted during garbage collection.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    manifest1, _ = create_manifest_for_testing(repo, differentiation_field="shared1")
+    manifest2, _ = create_manifest_for_testing(repo, differentiation_field="shared2")
+
+    model.oci.tag.retarget_tag("tag1", manifest1)
+    model.oci.tag.retarget_tag("tag2", manifest2)
+
+    # add same label to both manifests
+    label = Label.create(
+        key="shared-key",
+        value="shared-value",
+        source_type=Label.source_type.get_id("manifest"),
+        media_type=Label.media_type.get_id("text/plain"),
+    )
+    ManifestLabel.create(manifest=manifest1.id, label=label, repository=repo)
+    ManifestLabel.create(manifest=manifest2.id, label=label, repository=repo)
+
+    # delete tag1, GC manifest1
+    now = datetime.utcnow()
+    with freeze_time(now + timedelta(minutes=5)):
+        delete_tag(repo, "tag1", expect_gc=True)
+
+    # verify that label survived
+    assert Label.select().where(Label.id == label.id).exists()
+    assert not ManifestLabel.select().where(ManifestLabel.manifest == manifest1.id).exists()
+    assert ManifestLabel.select().where(ManifestLabel.manifest == manifest2.id).exists()
+
+
+def test_gc_manifest_list_partial_gc_child_in_use(default_tag_policy, initialized_db):
+    """
+    Tests that child images still in use by other manifests are not deleted when one of the
+    parent's manifest list gets GCed.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    # create child manifests
+    child_shared, build_shared = create_manifest_for_testing(repo, differentiation_field="shared")
+    child_only1, build_only1 = create_manifest_for_testing(repo, differentiation_field="only1")
+    child_only2, build_only2 = create_manifest_for_testing(repo, differentiation_field="only2")
+
+    # create two different manifest lists that share the child image
+    index_builder1 = OCIIndexBuilder()
+    index_builder1.add_manifest(build_shared, architecture="amd64", os="linux")
+    index_builder1.add_manifest(build_only1, architecture="arm64", os="linux")
+    list1 = index_builder1.build()
+
+    index_builder2 = OCIIndexBuilder()
+    index_builder2.add_manifest(build_shared, architecture="amd64", os="linux")
+    index_builder2.add_manifest(build_only2, architecture="s390x", os="linux")
+    list2 = index_builder2.build()
+
+    created1 = model.oci.manifest.get_or_create_manifest(repo, list1, storage)
+    created2 = model.oci.manifest.get_or_create_manifest(repo, list2, storage)
+    assert created1
+    assert created2
+
+    model.oci.tag.retarget_tag("tag1", created1.manifest)
+    model.oci.tag.retarget_tag("tag2", created2.manifest)
+
+    # delete tag 1, GC manifest 1
+    now = datetime.utcnow()
+    with freeze_time(now + timedelta(minutes=5)):
+        delete_tag(repo, "tag1", perform_gc=True, expect_gc=True)
+
+    # shared child must survive
+    assert Manifest.select().where(Manifest.id == child_shared.id).exists()
+
+    # child_only1 should be deleted
+    assert not Manifest.select().where(Manifest.id == child_only1.id).exists()
+
+    # child_only2 must survive
+    assert Manifest.select().where(Manifest.id == child_only2.id).exists()

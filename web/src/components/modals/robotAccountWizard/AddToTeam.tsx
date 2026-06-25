@@ -1,9 +1,8 @@
 import {useState} from 'react';
 import {
   Button,
-  Text,
-  TextVariants,
-  TextContent,
+  Content,
+  ContentVariants,
   DropdownItem,
 } from '@patternfly/react-core';
 import {DesktopIcon} from '@patternfly/react-icons';
@@ -12,14 +11,13 @@ import NameAndDescription from 'src/components/modals/robotAccountWizard/NameAnd
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import TeamView from './TeamView';
 import {useCreateTeam} from 'src/hooks/UseTeams';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 export default function AddToTeam(props: AddToTeamProps) {
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamDescription, setNewTeamDescription] = useState('');
   const [err, setErr] = useState<string>();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {createNewTeamHook} = useCreateTeam(props.orgName, {
     onSuccess: () => {
@@ -110,9 +108,9 @@ export default function AddToTeam(props: AddToTeamProps) {
 
   return (
     <>
-      <TextContent>
-        <Text component={TextVariants.h1}>Add to team (optional)</Text>
-      </TextContent>
+      <Content>
+        <Content component={ContentVariants.h1}>Add to team (optional)</Content>
+      </Content>
       <TeamView
         items={props.items}
         selectedTeams={props.selectedTeams}

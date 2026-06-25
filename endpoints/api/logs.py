@@ -1,6 +1,7 @@
 """
 Access usage logs for organizations or repositories.
 """
+
 from datetime import datetime, timedelta
 
 from flask import abort, request
@@ -11,14 +12,16 @@ from auth import scopes
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.permissions import AdministerOrganizationPermission
 from data.logs_model import logs_model
-from data.logs_model.shared import InvalidLogsDateRangeError
+from data.logs_model.shared import InvalidLogsDateRangeError, SearchNotConfiguredError
 from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
     InvalidRequest,
     RepositoryParamResource,
+    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     format_date,
     log_action,
     nickname,
@@ -35,6 +38,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.exception import NotFound, Unauthorized
+from util.security.ssrf import SSRFBlockedError, validate_external_registry_url
 
 LOGS_PER_PAGE = 20
 SERVICE_LEVEL_LOG_KINDS = set(
@@ -78,16 +82,28 @@ def _get_logs(
     (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
         abort(400)
-    log_entry_page = logs_model.lookup_logs(
-        start_time,
-        end_time,
-        performer_name,
-        repository_name,
-        namespace_name,
-        filter_kinds,
-        page_token,
-        app.config["ACTION_LOG_MAX_PAGE"],
-    )
+    try:
+        log_entry_page = logs_model.lookup_logs(
+            start_time,
+            end_time,
+            performer_name,
+            repository_name,
+            namespace_name,
+            filter_kinds,
+            page_token,
+            app.config["ACTION_LOG_MAX_PAGE"],
+        )
+    except SearchNotConfiguredError as e:
+        return (
+            {
+                "start_time": format_date(start_time),
+                "end_time": format_date(end_time),
+                "logs": [],
+                "search_unavailable": True,
+                "message": str(e),
+            },
+            None,
+        )
     include_namespace = namespace_name is None and repository_name is None
     return (
         {
@@ -114,6 +130,12 @@ def _get_aggregate_logs(
             namespace_name=namespace,
             filter_kinds=filter_kinds,
         )
+    except SearchNotConfiguredError as e:
+        return {
+            "aggregated": [],
+            "search_unavailable": True,
+            "message": str(e),
+        }
     except InvalidLogsDateRangeError:
         abort(400, "Invalid date range for logs")
 
@@ -203,7 +225,11 @@ class OrgLogs(ApiResource):
         List the logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or allow_if_superuser_with_full_access()
+        ):
             performer_name = parsed_args["performer"]
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
@@ -295,7 +321,11 @@ class OrgAggregateLogs(ApiResource):
         Gets the aggregated logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or allow_if_superuser_with_full_access()
+        ):
             performer_name = parsed_args["performer"]
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
@@ -323,11 +353,20 @@ EXPORT_LOGS_SCHEMA = {
 }
 
 
+def _validate_callback_url(url):
+    """Validate a callback URL and raise InvalidRequest on failure."""
+    try:
+        validate_external_registry_url(url, allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []))
+    except SSRFBlockedError:
+        raise InvalidRequest("Invalid callback URL")
+    except ValueError as e:
+        raise InvalidRequest(str(e))
+
+
 def _queue_logs_export(start_time, end_time, options, namespace_name, repository_name=None):
     callback_url = options.get("callback_url")
     if callback_url:
-        if not callback_url.startswith("https://") and not callback_url.startswith("http://"):
-            raise InvalidRequest("Invalid callback URL")
+        _validate_callback_url(callback_url)
 
     callback_email = options.get("callback_email")
     if callback_email:
@@ -376,7 +415,7 @@ def _log_export_failure(user_or_org_name, request, ex, repository=None):
 
     metadata = {
         "date/time": datetime.utcnow(),
-        "error": ex,
+        "error": str(ex),
         "url": request.get_json().get("callback_url") or None,
         "email": request.get_json().get("callback_email") or None,
     }
@@ -421,9 +460,12 @@ class ExportRepositoryLogs(RepositoryParamResource):
             export_id = _queue_logs_export(
                 start_time, end_time, request.get_json(), namespace, repository_name=repository
             )
-        except (InvalidRequest, InvalidLogsDateRangeError) as ex:
-            _log_export_failure(namespace, request, ex, repository)
-            abort(400, ex)
+        except InvalidLogsDateRangeError as ex:
+            _log_export_failure(namespace, request, str(ex), repository)
+            raise InvalidRequest(str(ex))
+        except InvalidRequest:
+            _log_export_failure(namespace, request, "invalid request", repository)
+            raise
 
         _log_export_success(namespace, export_id, request, repository)
 
@@ -458,9 +500,12 @@ class ExportUserLogs(ApiResource):
 
         try:
             export_id = _queue_logs_export(start_time, end_time, request.get_json(), user.username)
-        except (InvalidRequest, InvalidLogsDateRangeError) as ex:
-            _log_export_failure(user.username, request, ex, None)
-            abort(400, ex)
+        except InvalidLogsDateRangeError as ex:
+            _log_export_failure(user.username, request, str(ex), None)
+            raise InvalidRequest(str(ex))
+        except InvalidRequest:
+            _log_export_failure(user.username, request, "invalid request", None)
+            raise
 
         _log_export_success(user.username, export_id, request, None)
 
@@ -491,15 +536,22 @@ class ExportOrgLogs(ApiResource):
         Exports the logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or allow_if_superuser_with_full_access()
+        ):
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
 
             try:
                 export_id = _queue_logs_export(start_time, end_time, request.get_json(), orgname)
-            except (InvalidRequest, InvalidLogsDateRangeError) as ex:
-                _log_export_failure(orgname, request, ex, None)
-                abort(400, ex)
+            except InvalidLogsDateRangeError as ex:
+                _log_export_failure(orgname, request, str(ex), None)
+                raise InvalidRequest(str(ex))
+            except InvalidRequest:
+                _log_export_failure(orgname, request, "invalid request", None)
+                raise
 
             _log_export_success(orgname, export_id, request, None)
 

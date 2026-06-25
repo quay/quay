@@ -97,7 +97,7 @@ export default function HostedRepository(props: HostedRepositoryProps) {
               setPerPage={setPerPage}
             />
           </ToolbarItem>
-          <ToolbarItem align={{default: 'alignRight'}}>
+          <ToolbarItem align={{default: 'alignEnd'}}>
             <Checkbox
               id="hide-stale-checkbox"
               label="Hide stale repositories"
@@ -105,7 +105,7 @@ export default function HostedRepository(props: HostedRepositoryProps) {
               onChange={(_, checked) => setHideStale(checked)}
             />
           </ToolbarItem>
-          <ToolbarItem align={{default: 'alignRight'}}>
+          <ToolbarItem align={{default: 'alignEnd'}}>
             <Button onClick={() => setRepoUrl(null)}>Clear</Button>
           </ToolbarItem>
         </ToolbarContent>

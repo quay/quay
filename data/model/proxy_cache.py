@@ -1,5 +1,6 @@
+import features
 from data.database import DEFAULT_PROXY_CACHE_EXPIRATION, ProxyCacheConfig, User
-from data.model import InvalidProxyCacheConfigException
+from data.model import DataModelException, InvalidProxyCacheConfigException
 from data.model.organization import get_organization
 
 
@@ -22,6 +23,15 @@ def create_proxy_cache_config(
     """
     Creates proxy cache configuration for the given organization name
     """
+    if features.ORG_MIRROR:
+        from data.model.org_mirror import is_namespace_org_mirrored
+
+        if is_namespace_org_mirrored(org_name):
+            raise DataModelException(
+                "Cannot create proxy cache: the organization is managed by "
+                "organization-level mirroring. Remove the org mirror configuration first."
+            )
+
     org = get_organization(org_name)
 
     new_entry = ProxyCacheConfig.create(
