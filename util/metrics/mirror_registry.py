@@ -10,6 +10,7 @@ gateway is unavailable (tests, misconfiguration).
 
 import logging
 import os
+import time
 import urllib.error
 import urllib.request
 
@@ -19,6 +20,9 @@ from prometheus_client.parser import text_string_to_metric_families
 logger = logging.getLogger(__name__)
 
 _PUSHGATEWAY_FETCH_TIMEOUT_SECONDS = 2
+# Ignore PushGateway groupings not refreshed within this window (3x default 30s push interval).
+_WORKERS_ACTIVE_MAX_AGE_SECONDS = 90
+_PUSHGATEWAY_FAMILIES_CACHE_ATTR = "_mirror_registry_pushgateway_families"
 
 
 def _get_pushgateway_url():
@@ -36,26 +40,69 @@ def _should_read_pushgateway():
     return bool(_get_pushgateway_url())
 
 
+def _request_cache():
+    try:
+        from flask import g, has_request_context
+
+        if has_request_context():
+            return g
+    except Exception:
+        pass
+    return None
+
+
 def _fetch_pushgateway_metric_families():
+    cache = _request_cache()
+    if cache is not None:
+        cached = getattr(cache, _PUSHGATEWAY_FAMILIES_CACHE_ATTR, None)
+        if cached is not None:
+            return cached
+
     url = _get_pushgateway_url()
     if not url:
-        return []
+        families = []
+    else:
+        metrics_url = f"{url.rstrip('/')}/metrics"
+        try:
+            with urllib.request.urlopen(
+                metrics_url, timeout=_PUSHGATEWAY_FETCH_TIMEOUT_SECONDS
+            ) as resp:
+                body = resp.read().decode("utf-8")
+        except (urllib.error.URLError, TimeoutError, ValueError) as ex:
+            logger.debug("Unable to fetch metrics from PushGateway at %s: %s", metrics_url, ex)
+            families = []
+        else:
+            try:
+                families = list(text_string_to_metric_families(body))
+            except Exception as ex:
+                logger.debug("Unable to parse PushGateway metrics from %s: %s", metrics_url, ex)
+                families = []
 
-    metrics_url = f"{url.rstrip('/')}/metrics"
-    try:
-        with urllib.request.urlopen(
-            metrics_url, timeout=_PUSHGATEWAY_FETCH_TIMEOUT_SECONDS
-        ) as resp:
-            body = resp.read().decode("utf-8")
-    except (urllib.error.URLError, TimeoutError, ValueError) as ex:
-        logger.debug("Unable to fetch metrics from PushGateway at %s: %s", metrics_url, ex)
-        return []
+    if cache is not None:
+        setattr(cache, _PUSHGATEWAY_FAMILIES_CACHE_ATTR, families)
+    return families
 
-    try:
-        return list(text_string_to_metric_families(body))
-    except Exception as ex:
-        logger.debug("Unable to parse PushGateway metrics from %s: %s", metrics_url, ex)
-        return []
+
+def _grouping_labels_key(labels):
+    return frozenset(labels.items())
+
+
+def _pushgateway_push_times(metric_families):
+    push_times = {}
+    for family in metric_families:
+        if family.name != "push_time_seconds":
+            continue
+        for sample in family.samples:
+            if sample.name == "push_time_seconds":
+                push_times[_grouping_labels_key(sample.labels)] = float(sample.value)
+    return push_times
+
+
+def _is_fresh_pushgateway_grouping(labels, push_times, now):
+    pushed_at = push_times.get(_grouping_labels_key(labels))
+    if pushed_at is None:
+        return False
+    return (now - pushed_at) <= _WORKERS_ACTIVE_MAX_AGE_SECONDS
 
 
 def _iter_metric_samples(metric_name):
@@ -149,8 +196,25 @@ def get_mirror_workers_active_value():
     """
     Read quay_repository_mirror_workers_active from mirror metrics.
 
-    Sums samples across PushGateway targets so API pods see cluster worker count.
+    Sums fresh PushGateway groupings so API pods see cluster worker count without
+    counting stale series left after worker shutdown.
     """
+    if _should_read_pushgateway():
+        families = _fetch_pushgateway_metric_families()
+        if families:
+            now = time.time()
+            push_times = _pushgateway_push_times(families)
+            total = 0
+            for family in families:
+                if family.name != "quay_repository_mirror_workers_active":
+                    continue
+                for sample in family.samples:
+                    if sample.name != "quay_repository_mirror_workers_active":
+                        continue
+                    if _is_fresh_pushgateway_grouping(sample.labels, push_times, now):
+                        total += int(sample.value)
+            return total
+
     total = 0
     try:
         for sample in _iter_metric_samples("quay_repository_mirror_workers_active"):
