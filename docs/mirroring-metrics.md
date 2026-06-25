@@ -1,6 +1,6 @@
-# Repository Mirror Metrics and Health Endpoints
+# Mirror Metrics and Health Endpoints
 
-This document describes the comprehensive metrics and health endpoints available for monitoring Quay's repository mirroring functionality.
+This document describes the comprehensive metrics and health endpoints available for monitoring Quay's **repository** and **organization** mirroring functionality.
 
 ## Overview
 
@@ -412,6 +412,281 @@ curl -X GET "https://quay.example.com/v1/repository/mirror/health?detailed=true&
 
 ---
 
+## Organization Mirror Metrics
+
+Organization-level mirroring (`FEATURE_ORG_MIRROR`) discovers repositories from an external registry namespace and syncs tags into a target Quay organization. Per-repository and discovery metrics are defined in `workers/repomirrorworker/org_mirror_metrics.py` and updated by instrumented worker hooks installed from `workers/repomirrorworker/repomirrorworker.py`. Shared update helpers live in `workers/repomirrorworker/metrics.py`.
+
+Metrics are pushed to PushGateway on port **9091** from the **mirror worker process** (`repomirrorworker`), same as repository mirroring. Scrape mirror worker pods in production; API pods typically do not expose org mirror gauge samples.
+
+### Existing aggregate metrics (unchanged)
+
+- `quay_org_mirror_repo_sync_total{status}`
+- `quay_org_mirror_repo_sync_duration_seconds`
+- `quay_org_mirror_discovery_total{status}`
+- `quay_org_mirror_discovery_duration_seconds`
+- `quay_org_mirror_repos_discovered`
+- `quay_org_mirror_repos_created_total`
+- `quay_org_mirror_configs_pending_discovery`
+- `quay_org_mirror_repositories_unmirrored`
+
+### Per-repository sync gauges
+
+#### Tags pending synchronization
+
+```text
+quay_org_mirror_pending_tags{namespace="coreos",repository="etcd"} 3
+```
+
+**Type:** Gauge
+**Labels:** `namespace` (target Quay organization username), `repository` (discovered repo name)
+
+**Description:** Tags remaining in the current org mirror sync for each discovered repository.
+
+---
+
+#### Last synchronization status
+
+```text
+quay_org_mirror_last_sync_status{namespace="coreos",repository="etcd",last_error_reason=""} 1
+quay_org_mirror_last_sync_status{namespace="coreos",repository="etcd",last_error_reason="auth_failed"} 0
+```
+
+**Type:** Gauge
+**Labels:** `namespace`, `repository`, `last_error_reason`
+
+**Values:** `0` = failed, `1` = success, `2` = in progress
+
+The canonical series uses `last_error_reason=""`. On failure, a detail series may also be set with `last_error_reason=<category>`.
+
+**Repository sync failure categories (`last_error_reason`):**
+
+| Reason | Description |
+|--------|-------------|
+| `auth_failed` | Authentication failure (401/403, invalid credentials) |
+| `network_timeout` | Connection or skopeo timeout |
+| `not_found` | Image or tag not found (404) |
+| `registry_error` | Registry-side 5xx or unavailable |
+| `image_error` | Corrupted manifest or invalid layer |
+| `permission_denied` | Insufficient permissions on target namespace |
+| `config_error` | TLS, proxy, or credential decryption issues |
+| `unknown` | Unclassified error |
+
+---
+
+#### Complete synchronization status
+
+```text
+quay_org_mirror_sync_complete{namespace="coreos",repository="etcd"} 1
+```
+
+**Type:** Gauge
+**Values:** `0` = incomplete, `1` = all tags synced successfully in the last run
+
+---
+
+#### Synchronization failure counter
+
+```text
+quay_org_mirror_sync_failures_total{namespace="coreos",reason="network_timeout"} 2
+```
+
+**Type:** Counter
+**Labels:** `namespace`, `reason` only — **no `repository` label** (cardinality control when orgs discover 100+ repos)
+
+---
+
+#### Last synchronization timestamp
+
+```text
+quay_org_mirror_last_sync_timestamp{namespace="coreos",repository="etcd"} 1718712345
+```
+
+**Type:** Gauge
+**Labels:** `namespace`, `repository`
+
+Unix timestamp of the last sync attempt start.
+
+---
+
+### Discovery gauges (config-level)
+
+#### Last discovery status
+
+```text
+quay_org_mirror_last_discovery_status{namespace="coreos"} 1
+```
+
+**Type:** Gauge
+**Labels:** `namespace`
+
+**Values:** `0` = failed, `1` = success, `2` = in progress
+
+---
+
+#### Last discovery timestamp
+
+```text
+quay_org_mirror_last_discovery_timestamp{namespace="coreos"} 1718712000
+```
+
+**Type:** Gauge
+**Labels:** `namespace`
+
+Unix timestamp of the last discovery attempt.
+
+**Discovery failure categories** (used internally when mapping registry API errors; reflected in `last_discovery_status`):
+
+| Reason | Description |
+|--------|-------------|
+| `auth_failed` | Registry API authentication failure |
+| `network_timeout` | Timeout during API pagination |
+| `api_error` | 5xx or malformed JSON from registry API |
+| `rate_limited` | HTTP 429 |
+| `not_found` | External namespace/org not found |
+| `permission_denied` | Insufficient scope to list repositories |
+| `pagination_error` | Broken pagination token |
+| `config_error` | Invalid registry URL or reference format |
+| `unknown` | Unclassified error |
+
+---
+
+### Parity with repository mirror metrics
+
+| Repository mirror | Organization mirror | Label notes |
+|-------------------|---------------------|-------------|
+| `quay_repository_mirror_pending_tags` | `quay_org_mirror_pending_tags` | Same: `namespace`, `repository` |
+| `quay_repository_mirror_last_sync_status` | `quay_org_mirror_last_sync_status` | Same: `namespace`, `repository`, `last_error_reason` |
+| `quay_repository_mirror_sync_complete` | `quay_org_mirror_sync_complete` | Same |
+| `quay_repository_mirror_sync_failures_total` | `quay_org_mirror_sync_failures_total` | Org counter: `namespace`, `reason` only |
+| `quay_repository_mirror_last_sync_timestamp` | `quay_org_mirror_last_sync_timestamp` | Same |
+| — | `quay_org_mirror_last_discovery_status` | Org-only: `namespace` |
+| — | `quay_org_mirror_last_discovery_timestamp` | Org-only: `namespace` |
+
+Worker liveness uses shared `quay_repository_mirror_workers_active` (one worker process handles both repo and org mirror jobs).
+
+**Example PromQL (multi-org dashboards):**
+
+```promql
+# Per-org success count (canonical series)
+sum by (namespace) (quay_org_mirror_last_sync_status{last_error_reason=""} == 1)
+
+# Orgs with discovery failures
+quay_org_mirror_last_discovery_status == 0
+
+# Failure rate by namespace (counter)
+sum by (namespace) (rate(quay_org_mirror_sync_failures_total[5m]))
+```
+
+There is **no global org-mirror health API**; multi-org visibility is Prometheus/Grafana only.
+
+---
+
+## Organization Mirror Health Endpoint
+
+### Endpoint details
+
+**Path:** `/v1/organization/<orgname>/mirror/health`
+**Method:** GET
+**Feature gate:** `FEATURE_ORG_MIRROR`
+**Authentication:** Required (fresh login)
+
+### HTTP status codes
+
+- `200 OK`: `"healthy": true`
+- `503 Service Unavailable`: `"healthy": false`
+- `401 Unauthorized`: Not authenticated, not an org member, or stale session
+- `404 Not Found`: Organization does not exist, or org has no mirror configuration
+
+### Query parameters
+
+- `detailed` (optional, boolean): Include paginated per-discovered-repo rows (default: `false`)
+- `limit` (optional, integer): Page size when `detailed=true` (default: 100, max: 1000)
+- `offset` (optional, integer): Offset into sorted discovered-repo list (default: 0)
+
+No `namespace` filter — the organization is already in the path.
+
+### Response schema (summary)
+
+```json
+{
+  "healthy": true,
+  "workers": {
+    "active": 0,
+    "configured": 0,
+    "status": "healthy"
+  },
+  "organization": {
+    "syncing": 0,
+    "completed": 1,
+    "failed": 0,
+    "never_run": 0,
+    "last_discovery_status": 1,
+    "last_discovery_timestamp": "2026-06-18T10:34:59.935806Z",
+    "repositories": {
+      "total": 12,
+      "syncing": 0,
+      "completed": 11,
+      "failed": 1,
+      "never_run": 0,
+      "skipped": 0,
+      "tags_pending": 0
+    }
+  },
+  "last_check": "2026-06-18T11:10:24.403211Z",
+  "issues": []
+}
+```
+
+**Config-level indicators:** `syncing`, `completed`, `failed`, and `never_run` are always present as `0` or `1`; exactly one is `1` for the current `OrgMirrorConfig.sync_status`.
+
+**`last_discovery_status`:** integer `0` = failed, `1` = success, `2` = in progress (from `quay_org_mirror_last_discovery_status` when available in this process, else derived from config state).
+
+**`organization.repositories`:** aggregates over discovered repos (`SYNCING` + `SYNC_NOW` → `syncing`, `SKIP` → `skipped`). `tags_pending` sums `quay_org_mirror_pending_tags` from the in-process registry (often `0` on API pods).
+
+### Detailed response
+
+When `detailed=true`, `organization.repositories` includes `details[]` and `pagination`:
+
+```json
+{
+  "namespace": "coreos",
+  "repository": "etcd",
+  "sync_status": "SUCCESS",
+  "last_sync": "2026-06-18T11:08:12.000000Z",
+  "retries_remaining": 3,
+  "status_message": null
+}
+```
+
+`last_sync` prefers `quay_org_mirror_last_sync_timestamp` from the registry when present; otherwise falls back to `OrgMirrorRepository.last_sync_date`.
+
+### Health determination
+
+Same semantics as repository mirror health where applicable:
+
+- **Critical:** `failed / (total - never_run - skipped) > 0.2` when denominator &gt; 0
+- **Warning:** worker replica mismatch when `REPO_MIRROR_WORKER_REPLICAS` is set, org mirror enabled, and `workers.active < workers.configured`
+- **Warning:** discovered repos not synced in 24+ hours (from metric timestamps)
+- **Warning:** discovered repos still `NEVER_RUN` after discovery completed
+- **Error:** `FAIL` with `sync_retries_remaining == 0`
+- **Error:** `OrgMirrorConfig.sync_status == FAIL`
+
+### Example usage
+
+```bash
+# Org member or superuser (fresh session)
+curl -s -b "$COOKIES" -w "\nHTTP %{http_code}\n" \
+  "$QUAY_URL/api/v1/organization/coreos/mirror/health" | jq
+
+# Per-repo breakdown
+curl -s -b "$COOKIES" \
+  "$QUAY_URL/api/v1/organization/coreos/mirror/health?detailed=true&limit=50" | jq
+```
+
+Manual Podman/OpenShift validation steps: [mirror-health-test-podman.md](mirror-health-test-podman.md).
+
+---
+
 ## Example Prometheus Alert Rules
 
 ### Critical Alerts
@@ -480,6 +755,37 @@ groups:
           description: "Repository {{ $labels.namespace }}/{{ $labels.repository }} has had {{ $value }} authentication failures in the last hour"
 ```
 
+### Organization mirror alerts
+
+```yaml
+      - alert: QuayOrgMirrorDiscoveryFailed
+        expr: quay_org_mirror_last_discovery_status == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Org mirror discovery failed"
+          description: "Organization {{ $labels.namespace }} last discovery failed"
+
+      - alert: QuayOrgMirrorRepoSyncFailed
+        expr: quay_org_mirror_last_sync_status{last_error_reason=""} == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Org-mirrored repository sync failed"
+          description: "Repository {{ $labels.namespace }}/{{ $labels.repository }} last sync failed"
+
+      - alert: QuayOrgMirrorHighFailureRate
+        expr: sum by (namespace) (rate(quay_org_mirror_sync_failures_total[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated org mirror failure rate"
+          description: "Organization {{ $labels.namespace }} org mirror failures: {{ $value }}/s"
+```
+
 ---
 
 ## Example Grafana Dashboard Queries
@@ -494,6 +800,18 @@ sum by(namespace) (quay_repository_mirror_last_sync_status{last_error_reason=""}
 ```
 
 **Visualization:** Pie chart or time series
+
+---
+
+### Panel 1b: Organization mirror sync status (per org)
+
+```promql
+sum by (namespace) (quay_org_mirror_last_sync_status{last_error_reason=""} == 1)  # Success
+sum by (namespace) (quay_org_mirror_last_sync_status{last_error_reason=""} == 0)  # Failed
+sum by (namespace) (quay_org_mirror_last_discovery_status == 0)                   # Discovery failed
+```
+
+**Visualization:** Table or time series (multi-org deployments)
 
 ---
 
@@ -651,6 +969,7 @@ The mirror health service is automatically integrated into Quay's existing healt
 
 - Available via `/health/endtoend` endpoint (includes all services)
 - Can be monitored separately via the dedicated `/v1/repository/mirror/health` endpoint
+- Organization mirror health: `/v1/organization/<orgname>/mirror/health` (per-org only)
 - Follows the same patterns as other Quay health services
 
 ---
@@ -675,6 +994,7 @@ All existing metrics remain unchanged:
 
 ## Additional Resources
 
+- [Mirror health manual QA (Podman / OpenShift)](mirror-health-test-podman.md)
 - [Prometheus Best Practices](https://prometheus.io/docs/practices/naming/)
 - [Grafana Dashboard Examples](https://grafana.com/grafana/dashboards/)
 - [Quay Configuration Documentation](https://docs.projectquay.io/)

@@ -15,6 +15,11 @@ from workers.repomirrorworker import (
     process_org_mirrors,
     repo_mirror_workers_active,
 )
+from workers.repomirrorworker.org_mirror_metrics import (
+    install_hooks as install_org_mirror_metrics_hooks,
+)
+
+install_org_mirror_metrics_hooks()
 from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
