@@ -22,6 +22,22 @@ from data.model import (
 from util.validation import validate_email
 
 
+def _create_org_user(name, email, is_possible_abuser=False):
+    """Create a User record for an organization, handling partial index constraints.
+
+    Inserts with no email, sets organization=True, then applies the email.
+    This ordering avoids the partial unique index (WHERE organization = false).
+    """
+    new_org = user.create_user_noverify(
+        name, None, email_required=False, is_possible_abuser=is_possible_abuser
+    )
+    new_org.organization = True
+    if email:
+        new_org.email = email
+    new_org.save()
+    return new_org
+
+
 def create_organization(
     name, email, creating_user, email_required=True, is_possible_abuser=False, contact_email=None
 ):
@@ -34,17 +50,7 @@ def create_organization(
                         "Invalid email address: %s" % effective_email
                     )
 
-            # Insert with a placeholder email first, then set organization=True
-            # before applying the real email. This avoids hitting the partial
-            # unique index (WHERE organization = false) during INSERT when the
-            # desired email is already used by a non-org user.
-            new_org = user.create_user_noverify(
-                name, None, email_required=False, is_possible_abuser=is_possible_abuser
-            )
-            new_org.organization = True
-            if effective_email:
-                new_org.email = effective_email
-            new_org.save()
+            new_org = _create_org_user(name, effective_email, is_possible_abuser)
 
             owners_team = team.create_team("owners", new_org, "admin")
             team.add_user_to_team(creating_user, owners_team)

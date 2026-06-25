@@ -60,7 +60,7 @@ def send_email(recipient, subject, template_file, parameters, action=None):
     app_title = app.config["REGISTRY_TITLE_SHORT"]
     app_url = get_app_url()
     html, plain = render_email(
-        app_title, app_url, recipient, subject, template_file, parameters, action=action
+        app_title, app_url, recipient, subject, template_file, parameters, action=None
     )
     msg = Message("[%s] %s" % (app_title, subject), recipients=[recipient])
     msg.html = html

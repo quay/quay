@@ -79,6 +79,8 @@ def stripe_webhook():
                             for admin in get_admin_users(namespace):
                                 if validate_email(admin.email):
                                     send_invoice_email(admin.email, invoice_html)
+                    elif not recipient:
+                        recipient = namespace.email
                     if recipient:
                         send_invoice_email(recipient, invoice_html)
 

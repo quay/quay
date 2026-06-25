@@ -209,8 +209,8 @@ INSERT INTO mediatype VALUES(13,'application/vnd.docker.distribution.manifest.v1
 INSERT INTO mediatype VALUES(14,'application/vnd.docker.distribution.manifest.v1+prettyjws');
 INSERT INTO mediatype VALUES(15,'application/vnd.docker.distribution.manifest.v2+json');
 INSERT INTO mediatype VALUES(16,'application/vnd.docker.distribution.manifest.list.v2+json');
-INSERT INTO mediatype VALUES(17,'application/vnd.oci.image.index.v1+json');
-INSERT INTO mediatype VALUES(18,'application/vnd.oci.image.manifest.v1+json');
+INSERT INTO mediatype VALUES(17,'application/vnd.oci.image.manifest.v1+json');
+INSERT INTO mediatype VALUES(18,'application/vnd.oci.image.index.v1+json');
 INSERT INTO notificationkind VALUES(1,'build_failure');
 INSERT INTO notificationkind VALUES(2,'build_queued');
 INSERT INTO notificationkind VALUES(3,'build_start');

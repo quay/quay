@@ -1136,6 +1136,13 @@ class Recovery(ApiResource):
                     }
                 )
             send_combined_recovery_email(email, orgs_with_admins, reset_token=reset_token)
+
+            if not is_personal_user:
+                return {
+                    "status": "org",
+                    "orgemail": email,
+                    "orgname": redact(orgs[0].username),
+                }
         elif is_personal_user:
             send_recovery_email(email, reset_token)
 

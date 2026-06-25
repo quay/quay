@@ -115,6 +115,36 @@ class TestStripeWebhookContactEmail:
         assert resp.status_code == 200
         mock_send.assert_called_once_with("personal@example.com", "<html>invoice</html>")
 
+    @patch("endpoints.webhooks.stripe")
+    def test_charge_succeeded_personal_user_no_invoice_email_falls_back(
+        self, mock_stripe, app, client
+    ):
+        user = get_user("devtable")
+        user.invoice_email = True
+        user.invoice_email_address = None
+        user.stripe_id = "cust_personal2"
+        user.save()
+
+        mock_invoice = MagicMock()
+        mock_stripe.Invoice.retrieve.return_value = mock_invoice
+
+        with patch(
+            "endpoints.webhooks.model.user.get_user_or_org_by_customer_id", return_value=user
+        ):
+            with patch(
+                "endpoints.webhooks.renderInvoiceToHtml", return_value="<html>invoice</html>"
+            ):
+                with patch("endpoints.webhooks.send_invoice_email") as mock_send:
+                    resp = self._post_stripe_event(
+                        client,
+                        "charge.succeeded",
+                        {"invoice": "inv_fallback"},
+                        customer_id="cust_personal2",
+                    )
+
+        assert resp.status_code == 200
+        mock_send.assert_called_once_with(user.email, "<html>invoice</html>")
+
     def test_subscription_created_org_with_contact_email(self, app, client):
         admin = get_user("devtable")
         org = create_organization("suborg1", None, admin, contact_email="sub@example.com")

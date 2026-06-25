@@ -194,7 +194,9 @@ class TestRecoveryPost:
                         cl, Recovery, "POST", None, body={"email": "org@example.com"}
                     )
 
-        assert result.json["status"] == "sent"
+        assert result.json["status"] == "org"
+        assert result.json["orgemail"] == "org@example.com"
+        assert "orgname" in result.json
         mock_combined_email.assert_called_once_with(
             "org@example.com",
             [{"org_name": "myorg", "admin_usernames": ["orgadmin"]}],
@@ -317,7 +319,9 @@ class TestRecoveryPost:
                         cl, Recovery, "POST", None, body={"email": "shared@example.com"}
                     )
 
-        assert result.json["status"] == "sent"
+        assert result.json["status"] == "org"
+        assert result.json["orgemail"] == "shared@example.com"
+        assert "orgname" in result.json
         mock_combined_email.assert_called_once_with(
             "shared@example.com",
             [
