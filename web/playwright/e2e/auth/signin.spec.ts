@@ -330,9 +330,9 @@ test.describe(
         .fill(org.email);
       await unauthenticatedPage.getByTestId('signin-send-recovery').click();
 
-      // Unified recovery endpoint returns 'sent' for all cases
+      // Recovery endpoint returns 'org' status for org-only emails
       await expect(
-        unauthenticatedPage.getByText(/Recovery instructions have been sent/i),
+        unauthenticatedPage.getByText(/is assigned to organization/i),
       ).toBeVisible();
     });
   },
