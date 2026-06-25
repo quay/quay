@@ -21,6 +21,15 @@ func (q *Queries) CountRepositories(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const deleteStarsByRepository = `-- name: DeleteStarsByRepository :exec
+DELETE FROM star WHERE repository_id = ?
+`
+
+func (q *Queries) DeleteStarsByRepository(ctx context.Context, repositoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteStarsByRepository, repositoryID)
+	return err
+}
+
 const getOrCreateRepository = `-- name: GetOrCreateRepository :one
 INSERT INTO repository (namespace_user_id, name, visibility_id, kind_id, badge_token, state)
 VALUES (?, ?, ?, ?, ?, 0)
@@ -47,6 +56,44 @@ func (q *Queries) GetOrCreateRepository(ctx context.Context, arg GetOrCreateRepo
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const getRepositoryAccessByNamespaceName = `-- name: GetRepositoryAccessByNamespaceName :one
+SELECT r.id, u.id AS namespace_user_id, u.username AS namespace, r.name, r.visibility_id, v.name AS visibility, r.state
+FROM repository r
+JOIN "user" u ON r.namespace_user_id = u.id
+JOIN visibility v ON r.visibility_id = v.id
+WHERE u.username = ? AND r.name = ? AND r.state != 3
+`
+
+type GetRepositoryAccessByNamespaceNameParams struct {
+	Username string `json:"username"`
+	Name     string `json:"name"`
+}
+
+type GetRepositoryAccessByNamespaceNameRow struct {
+	ID              int64  `json:"id"`
+	NamespaceUserID int64  `json:"namespace_user_id"`
+	Namespace       string `json:"namespace"`
+	Name            string `json:"name"`
+	VisibilityID    int64  `json:"visibility_id"`
+	Visibility      string `json:"visibility"`
+	State           int64  `json:"state"`
+}
+
+func (q *Queries) GetRepositoryAccessByNamespaceName(ctx context.Context, arg GetRepositoryAccessByNamespaceNameParams) (GetRepositoryAccessByNamespaceNameRow, error) {
+	row := q.db.QueryRowContext(ctx, getRepositoryAccessByNamespaceName, arg.Username, arg.Name)
+	var i GetRepositoryAccessByNamespaceNameRow
+	err := row.Scan(
+		&i.ID,
+		&i.NamespaceUserID,
+		&i.Namespace,
+		&i.Name,
+		&i.VisibilityID,
+		&i.Visibility,
+		&i.State,
+	)
+	return i, err
 }
 
 const getRepositoryByName = `-- name: GetRepositoryByName :one
@@ -101,6 +148,24 @@ func (q *Queries) GetRepositoryByNamespaceName(ctx context.Context, arg GetRepos
 	return id, err
 }
 
+const insertDeletedRepository = `-- name: InsertDeletedRepository :one
+INSERT INTO deletedrepository (repository_id, marked, original_name)
+VALUES (?1, datetime('now'), ?2)
+RETURNING id
+`
+
+type InsertDeletedRepositoryParams struct {
+	RepositoryID int64  `json:"repository_id"`
+	OriginalName string `json:"original_name"`
+}
+
+func (q *Queries) InsertDeletedRepository(ctx context.Context, arg InsertDeletedRepositoryParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertDeletedRepository, arg.RepositoryID, arg.OriginalName)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const listAllRepositories = `-- name: ListAllRepositories :many
 SELECT u.username AS namespace, r.name
 FROM repository r
@@ -134,4 +199,61 @@ func (q *Queries) ListAllRepositories(ctx context.Context) ([]ListAllRepositorie
 		return nil, err
 	}
 	return items, nil
+}
+
+const markRepositoryDeleted = `-- name: MarkRepositoryDeleted :execresult
+UPDATE repository
+SET name = ?1, state = 3
+WHERE repository.id = ?2
+  AND state != 3
+`
+
+type MarkRepositoryDeletedParams struct {
+	DeletedName  string `json:"deleted_name"`
+	RepositoryID int64  `json:"repository_id"`
+}
+
+func (q *Queries) MarkRepositoryDeleted(ctx context.Context, arg MarkRepositoryDeletedParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, markRepositoryDeleted, arg.DeletedName, arg.RepositoryID)
+}
+
+const repositoryIsPublicByNamespaceName = `-- name: RepositoryIsPublicByNamespaceName :one
+SELECT EXISTS(
+  SELECT 1
+  FROM repository r
+  JOIN "user" u ON r.namespace_user_id = u.id
+  JOIN visibility v ON r.visibility_id = v.id
+  WHERE u.username = ?
+    AND r.name = ?
+    AND v.name = 'public'
+    AND r.state != 3
+)
+`
+
+type RepositoryIsPublicByNamespaceNameParams struct {
+	Username string `json:"username"`
+	Name     string `json:"name"`
+}
+
+func (q *Queries) RepositoryIsPublicByNamespaceName(ctx context.Context, arg RepositoryIsPublicByNamespaceNameParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, repositoryIsPublicByNamespaceName, arg.Username, arg.Name)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const updateRepositoryVisibility = `-- name: UpdateRepositoryVisibility :execresult
+UPDATE repository
+SET visibility_id = (SELECT id FROM visibility WHERE visibility.name = ?1)
+WHERE repository.id = ?2
+  AND state != 3
+`
+
+type UpdateRepositoryVisibilityParams struct {
+	Visibility   string `json:"visibility"`
+	RepositoryID int64  `json:"repository_id"`
+}
+
+func (q *Queries) UpdateRepositoryVisibility(ctx context.Context, arg UpdateRepositoryVisibilityParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateRepositoryVisibility, arg.Visibility, arg.RepositoryID)
 }
