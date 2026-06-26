@@ -9,7 +9,6 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from peewee import Case, fn
-from prometheus_client import REGISTRY
 
 import features
 from app import app
@@ -25,9 +24,8 @@ from data.database import (
 )
 from endpoints.api import (
     ApiResource,
-    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
-    allow_if_superuser_with_full_access,
+    allow_if_superuser,
     nickname,
     parse_args,
     query_param,
@@ -36,6 +34,11 @@ from endpoints.api import (
     show_if,
 )
 from endpoints.exception import NotFound, Unauthorized
+from util.metrics.mirror_registry import (
+    get_metric_timestamps,
+    get_mirror_workers_active_value,
+    get_pending_tags_total,
+)
 from util.parsing import truthy_bool
 
 logger = logging.getLogger(__name__)
@@ -52,78 +55,27 @@ def _utc_z_timestamp(when: datetime) -> str:
     return utc.isoformat().replace("+00:00", "Z")
 
 
-def _get_last_sync_timestamps():
+def _get_last_sync_timestamps(namespace=None):
     """
-    Retrieve last sync timestamps from the Prometheus registry in this process.
+    Retrieve last sync timestamps from mirror worker metrics via PushGateway.
 
-    Mirror timestamps are emitted by the repository mirror worker. API/gunicorn processes
-    typically do not run that worker, so REGISTRY often has no samples and this returns {}.
-    In that case stale-mirror warnings are skipped (not treated as errors).
-
-    Returns a dict keyed by (namespace, repository) with unix timestamps as values.
-    If the metric is not present in this process, returns an empty dict.
+    Falls back to the in-process REGISTRY when PushGateway is unavailable (tests).
     """
-    timestamps = {}
-    try:
-        for metric in REGISTRY.collect():
-            if metric.name != "quay_repository_mirror_last_sync_timestamp":
-                continue
-            for sample in metric.samples:
-                if sample.name != "quay_repository_mirror_last_sync_timestamp":
-                    continue
-                namespace = sample.labels.get("namespace")
-                repository = sample.labels.get("repository")
-                if namespace and repository:
-                    timestamps[(namespace, repository)] = sample.value
-            break
-    except Exception as ex:
-        logger.debug("Unable to read last sync timestamps from registry: %s", ex)
-    return timestamps
+    return get_metric_timestamps("quay_repository_mirror_last_sync_timestamp", namespace=namespace)
 
 
 def _get_pending_tags_total(namespace=None):
-    """
-    Sum quay_repository_mirror_pending_tags gauge values from this process's registry.
-
-    Same limitation as _get_last_sync_timestamps: values exist only if the mirror worker
-    registers metrics in this process; otherwise this returns 0.
-    """
-    total = 0.0
-    try:
-        for metric in REGISTRY.collect():
-            if metric.name != "quay_repository_mirror_pending_tags":
-                continue
-            for sample in metric.samples:
-                if sample.name != "quay_repository_mirror_pending_tags":
-                    continue
-                if namespace is not None and sample.labels.get("namespace") != namespace:
-                    continue
-                total += float(sample.value)
-            break
-    except Exception as ex:
-        logger.debug("Unable to read pending tags from registry: %s", ex)
-    return int(total) if total == int(total) else total
+    """Sum quay_repository_mirror_pending_tags from PushGateway or local REGISTRY."""
+    return get_pending_tags_total("quay_repository_mirror_pending_tags", namespace=namespace)
 
 
 def _get_mirror_workers_active_value():
     """
-    Read quay_repository_mirror_workers_active from this process's Prometheus registry.
+    Read quay_repository_mirror_workers_active from PushGateway or local REGISTRY.
 
-    The repository mirror worker sets this to 1 while RepoMirrorWorker is running; API
-    processes typically report 0 unless they embed the worker.
+    Sums fresh worker groupings from PushGateway so API pods see cluster worker count.
     """
-    try:
-        for metric in REGISTRY.collect():
-            if metric.name != "quay_repository_mirror_workers_active":
-                continue
-            for sample in metric.samples:
-                if sample.name != "quay_repository_mirror_workers_active":
-                    continue
-                return int(sample.value)
-            break
-    except Exception as ex:
-        logger.debug("Unable to read mirror workers active gauge from registry: %s", ex)
-    return 0
+    return get_mirror_workers_active_value()
 
 
 def _mirror_rows_query(namespace=None):
@@ -195,7 +147,6 @@ def get_mirror_health_data(
     detailed=False,
     detail_limit=100,
     detail_offset=0,
-    include_repository_details=True,
 ):
     """
     Gather health data for repository mirroring operations.
@@ -205,15 +156,11 @@ def get_mirror_health_data(
         detailed: If true, include paginated per-repository rows under repositories.details
         detail_limit: Max repositories in detailed view (clamped 1..1000)
         detail_offset: Pagination offset into the sorted mirror list (SQL LIMIT/OFFSET)
-        include_repository_details: If false, omit repository-identifying issue samples
-            and detailed rows. This is intended for global superuser summary views.
 
     Returns:
         Dictionary with health status information. Totals and `details` use enabled
         mirror configs only.
     """
-    detailed = detailed and include_repository_details
-
     counts = _mirror_status_counts(namespace)
     total_repos = counts["total"]
     syncing = counts["syncing"]
@@ -221,18 +168,17 @@ def get_mirror_health_data(
     failed = counts["failed"]
     never_run = counts["never_run"]
 
-    # From in-process Prometheus registry when mirror worker shares this process; else 0.
+    # From mirror worker metrics via PushGateway (or local REGISTRY in tests).
     tags_pending = _get_pending_tags_total(namespace)
 
     # Determine overall health status
     now = datetime.now(timezone.utc)
     issues = []
 
-    # Stale detection: last sync from quay_repository_mirror_last_sync_timestamp in REGISTRY—not
-    # mirror.sync_start_date (that field is the next scheduled run). Missing samples: skip stale
-    # (never-synced NEVER_RUN handled separately); enabled repos with no metric are not flagged stale.
+    # Stale detection: last sync from quay_repository_mirror_last_sync_timestamp via
+    # PushGateway—not mirror.sync_start_date (that field is the next scheduled run).
     stale_threshold = now - timedelta(hours=24)
-    last_sync_timestamps = _get_last_sync_timestamps() if include_repository_details else {}
+    last_sync_timestamps = _get_last_sync_timestamps(namespace)
     stale_repos = []
     never_synced_repos = []
     failing_repos = []
@@ -241,32 +187,31 @@ def get_mirror_health_data(
     lim = max(1, min(int(detail_limit), _MAX_DETAIL_PAGE)) if detailed else 0
     off = max(0, int(detail_offset)) if detailed else 0
 
-    if include_repository_details:
-        # Bounded queries: sample up to _ISSUE_SAMPLE_CAP of each issue type via SQL LIMIT.
-        failing_repos = list(
-            _mirror_rows_query(namespace)
-            .where(
-                RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL,
-                RepoMirrorConfig.sync_retries_remaining == 0,
-            )
-            .limit(_ISSUE_SAMPLE_CAP)
+    # Bounded queries: sample up to _ISSUE_SAMPLE_CAP of each issue type via SQL LIMIT.
+    failing_repos = list(
+        _mirror_rows_query(namespace)
+        .where(
+            RepoMirrorConfig.sync_status == RepoMirrorStatus.FAIL,
+            RepoMirrorConfig.sync_retries_remaining == 0,
         )
+        .limit(_ISSUE_SAMPLE_CAP)
+    )
 
-        never_synced_repos = list(
-            _mirror_rows_query(namespace)
-            .where(RepoMirrorConfig.sync_status == RepoMirrorStatus.NEVER_RUN)
-            .limit(_ISSUE_SAMPLE_CAP)
-        )
+    never_synced_repos = list(
+        _mirror_rows_query(namespace)
+        .where(RepoMirrorConfig.sync_status == RepoMirrorStatus.NEVER_RUN)
+        .limit(_ISSUE_SAMPLE_CAP)
+    )
 
-        # Stale detection uses in-process Prometheus timestamps (bounded by registry size).
-        for (ns, repo), ts in last_sync_timestamps.items():
-            if len(stale_repos) >= _ISSUE_SAMPLE_CAP:
-                break
-            if namespace and ns != namespace:
-                continue
-            last_sync_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-            if last_sync_dt < stale_threshold:
-                stale_repos.append({"namespace": ns, "repository": repo})
+    # Stale detection uses in-process Prometheus timestamps (bounded by registry size).
+    for (ns, repo), ts in last_sync_timestamps.items():
+        if len(stale_repos) >= _ISSUE_SAMPLE_CAP:
+            break
+        if namespace and ns != namespace:
+            continue
+        last_sync_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+        if last_sync_dt < stale_threshold:
+            stale_repos.append({"namespace": ns, "repository": repo})
 
     if detailed:
         page_query = _mirror_rows_query(namespace).limit(lim + 1).offset(off)
@@ -358,7 +303,14 @@ def get_mirror_health_data(
     active_workers = _get_mirror_workers_active_value()
     configured_workers = replicas if replicas is not None else active_workers
 
-    if replicas is not None and total_repos > 0 and active_workers < replicas:
+    # Replica mismatch uses PushGateway worker counts (fresh groupings only). Skip when
+    # no workers report in, avoiding false 503s when metrics are unavailable on API pods.
+    if (
+        replicas is not None
+        and total_repos > 0
+        and active_workers > 0
+        and active_workers < replicas
+    ):
         healthy = False
         issues.insert(
             0,
@@ -458,13 +410,13 @@ class RepositoryMirrorHealth(ApiResource):
 
         # Global access requires superuser or global readonly superuser
         if namespace is None:
-            if not (allow_if_superuser_with_full_access() or allow_if_global_readonly_superuser()):
+            if not (allow_if_superuser() or allow_if_global_readonly_superuser()):
                 raise Unauthorized()
         else:
             namespace_user = model.user.get_namespace_user(namespace)
             if not namespace_user:
                 raise NotFound()
-            if not (allow_if_superuser_with_full_access() or allow_if_global_readonly_superuser()):
+            if not (allow_if_superuser() or allow_if_global_readonly_superuser()):
                 if namespace_user.organization:
                     if not OrganizationMemberPermission(namespace).can():
                         raise Unauthorized()
@@ -483,37 +435,6 @@ class RepositoryMirrorHealth(ApiResource):
         )
 
         # Return 503 if unhealthy, 200 if healthy
-        status_code = 200 if health_data["healthy"] else 503
-
-        return (
-            health_data,
-            status_code,
-            {"Cache-Control": _CACHE_CONTROL_NO_STORE},
-        )
-
-
-@resource("/v1/superuser/mirror/health")
-@show_if(features.REPO_MIRROR)
-@show_if(features.SUPER_USERS)
-class SuperUserRepositoryMirrorHealth(ApiResource):
-    """
-    Resource for checking global repository mirror health from the superuser panel.
-    """
-
-    @require_fresh_login
-    @nickname("getSuperUserRepositoryMirrorHealth")
-    def get(self):
-        """
-        Get a global mirror health summary without repository-identifying samples.
-        """
-        if not allow_if_any_superuser():
-            raise Unauthorized()
-
-        health_data = get_mirror_health_data(
-            detailed=False,
-            include_repository_details=False,
-        )
-
         status_code = 200 if health_data["healthy"] else 503
 
         return (
