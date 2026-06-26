@@ -128,6 +128,35 @@ class TestContactEmail:
 
         assert not validate_email(org.email)
 
+    def test_clear_contact_email_with_null(self, app):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": "temp@example.com"},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        assert org.email == "temp@example.com"
+
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(
+                cl,
+                Organization,
+                "PUT",
+                {"orgname": "buynlarge"},
+                body={"contact_email": None},
+                expected_code=200,
+            )
+
+        org = model.organization.get_organization("buynlarge")
+        from util.validation import validate_email
+
+        assert not validate_email(org.email)
+
     def test_create_org_no_email_with_mailing(self, app):
         body = {"name": "mailingnoemailorg"}
         with toggle_feature("MAILING", True):

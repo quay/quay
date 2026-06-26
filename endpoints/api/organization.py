@@ -355,12 +355,13 @@ class Organization(ApiResource):
                     {"invoice_email_address": new_email, "namespace": orgname},
                 )
 
-            new_email = (
-                org_data.get("contact_email")
-                if "contact_email" in org_data
-                else org_data.get("email")
-            )
-            if new_email is not None:
+            if "contact_email" in org_data or "email" in org_data:
+                new_email = (
+                    org_data.get("contact_email")
+                    if "contact_email" in org_data
+                    else org_data.get("email")
+                )
+                new_email = new_email or ""
                 current_email = org.email if validate_email(org.email) else ""
                 if new_email != current_email:
                     if new_email and not validate_email(new_email):
