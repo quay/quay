@@ -249,6 +249,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     if not mirror:
         raise PreemptedException
 
+<<<<<<< HEAD
     # Track start time for duration metric
     sync_start_time = time.time()
     namespace = mirror.repository.namespace_user.username
@@ -262,6 +263,15 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     ).set(2)
 
     # Update timestamp
+=======
+    namespace = mirror.repository.namespace_user.username
+    repository_name = mirror.repository.name
+    sync_start_time = time.time()
+    repo_mirror_last_sync_status.labels(
+        namespace=namespace,
+        repository=repository_name,
+    ).set(RepoMirrorStatus.SYNCING.value)
+>>>>>>> 323277b22 (Accepting coderabbit suggestions.)
     repo_mirror_last_sync_timestamp.labels(
         namespace=namespace,
         repository=repository_name,
@@ -278,7 +288,10 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     # Fetch the tags to mirror, being careful to handle exceptions. The 'Exception' is safety net only, allowing
     # easy communication by user through bug report.
     tags = []
+<<<<<<< HEAD
     failure_reason = None
+=======
+>>>>>>> 323277b22 (Accepting coderabbit suggestions.)
 
     try:
         tags = tags_to_mirror(skopeo, mirror)
@@ -336,8 +349,16 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         repo_mirror_last_sync_status.labels(
             namespace=namespace,
             repository=repository_name,
+<<<<<<< HEAD
             last_error_reason="",
         ).set(1)
+=======
+        ).set(RepoMirrorStatus.SUCCESS.value)
+        repo_mirror_last_sync_timestamp.labels(
+            namespace=namespace,
+            repository=repository_name,
+        ).set(time.time())
+>>>>>>> 323277b22 (Accepting coderabbit suggestions.)
         repo_mirror_sync_complete.labels(
             namespace=namespace,
             repository=repository_name,
@@ -561,6 +582,23 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             )
 
         # Update mirroring metrics
+<<<<<<< HEAD
+=======
+        namespace = mirror.repository.namespace_user.username
+        repository_name = mirror.repository.name
+
+        # Set last sync status metric
+        repo_mirror_last_sync_status.labels(
+            namespace=namespace,
+            repository=repository_name,
+        ).set(overall_status.value)
+
+        repo_mirror_last_sync_timestamp.labels(
+            namespace=namespace,
+            repository=repository_name,
+        ).set(time.time())
+
+>>>>>>> 323277b22 (Accepting coderabbit suggestions.)
         # Set complete sync metric (1 if all tags synced successfully, 0 otherwise)
         is_complete = (
             1 if (overall_status == RepoMirrorStatus.SUCCESS and len(failed_tags) == 0) else 0
@@ -570,6 +608,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             repository=repository_name,
         ).set(is_complete)
 
+<<<<<<< HEAD
         # Set last sync status metric based on final status
         if overall_status == RepoMirrorStatus.SUCCESS:
             status_value = 1
@@ -599,6 +638,9 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         ).observe(sync_duration)
 
         # Increment failure counter on failures with reason
+=======
+        # Increment failure counter on failures
+>>>>>>> 323277b22 (Accepting coderabbit suggestions.)
         if overall_status == RepoMirrorStatus.FAIL:
             repo_mirror_sync_failures_total.labels(
                 namespace=namespace,
@@ -1111,6 +1153,7 @@ def _update_mirror_metrics_on_failure(namespace, repository_name, failure_reason
     repo_mirror_last_sync_status.labels(
         namespace=namespace,
         repository=repository_name,
+<<<<<<< HEAD
         last_error_reason="",
     ).set(0)
     repo_mirror_last_sync_status.labels(
@@ -1118,6 +1161,13 @@ def _update_mirror_metrics_on_failure(namespace, repository_name, failure_reason
         repository=repository_name,
         last_error_reason=reason,
     ).set(0)
+=======
+    ).set(RepoMirrorStatus.FAIL.value)
+    repo_mirror_last_sync_timestamp.labels(
+        namespace=namespace,
+        repository=repository_name,
+    ).set(time.time())
+>>>>>>> 323277b22 (Accepting coderabbit suggestions.)
 
     repo_mirror_sync_complete.labels(
         namespace=namespace,
@@ -1158,6 +1208,7 @@ def process_org_mirror_discovery(token=None):
     Returns:
         Next OrgMirrorConfigToken or None if done
     """
+<<<<<<< HEAD
     if not features.ORG_MIRROR:
         logger.debug("Organization mirror disabled; skipping process_org_mirror_discovery")
         return None
@@ -1222,6 +1273,21 @@ def perform_org_mirror_discovery(org_mirror_config: OrgMirrorConfig):
             "Processing cancel for org mirror: %s (config_id=%s)",
             org_name,
             claimed_config.id,
+=======
+    try:
+        repo_mirror_pending_tags.remove(namespace, repository_name)
+        repo_mirror_sync_complete.remove(namespace, repository_name)
+        repo_mirror_last_sync_status.remove(namespace, repository_name)
+        repo_mirror_last_sync_timestamp.remove(namespace, repository_name)
+        # Note: Counter metrics cannot be removed in prometheus_client,
+        # they will naturally expire when not updated
+    except (KeyError, AttributeError):
+        # Metrics may not exist or removal not supported
+        logger.debug(
+            "Could not remove metrics for %s/%s - may not exist",
+            namespace,
+            repository_name,
+>>>>>>> 323277b22 (Accepting coderabbit suggestions.)
         )
 
         # Propagate CANCEL to all repos
