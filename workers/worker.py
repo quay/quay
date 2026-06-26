@@ -201,6 +201,7 @@ class Worker(object):
 
         self._sched.start()
         for operation_func, operation_sec in self._operations:
+            # Allow time for app initialization before the first job run
             start_date = datetime.now() + timedelta(seconds=5)
             if app.config.get("STAGGER_WORKERS"):
                 start_date += timedelta(seconds=randint(1, operation_sec))

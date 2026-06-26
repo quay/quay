@@ -220,7 +220,8 @@ def test_start_schedules_job_with_5s_buffer():
         assert start_date is not None
         assert start_date >= before + timedelta(seconds=4)
         assert start_date <= after + timedelta(seconds=6)
-        assert call_kwargs.kwargs.get("seconds") or call_kwargs[1].get("seconds") == 86400
+        seconds = call_kwargs.kwargs.get("seconds") or call_kwargs[1].get("seconds")
+        assert seconds == 86400
 
 
 def test_start_stagger_workers_adds_random_delay():
