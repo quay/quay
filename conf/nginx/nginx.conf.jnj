@@ -51,8 +51,6 @@ http {
         listen [::]:8443 ssl http2 default;
         {% endif %}
 
-        ssl on;
-
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
@@ -80,8 +78,6 @@ http {
         listen [::]:7443 ssl http2 default proxy_protocol;
         {% endif %}
 
-        ssl on;
-
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
@@ -106,7 +102,6 @@ http {
         {% if use_ipv6 %}
         listen [::]:55443 ssl http2 default;
         {% endif %}
-        ssl on;
 
         # Required for gRPC streaming of long running builds
         client_header_timeout 2h;
@@ -145,8 +140,6 @@ http {
         listen [::]:8443 ssl;
         {% endif %}
 
-        ssl on;
-
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
@@ -167,8 +160,6 @@ http {
         {% if use_ipv6 %}
         listen [::]:7443 ssl proxy_protocol;
         {% endif %}
-        ssl on;
-
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
