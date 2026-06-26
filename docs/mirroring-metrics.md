@@ -17,7 +17,7 @@ All metrics are exposed via the standard Quay metrics endpoint (typically availa
 
 **Names in this document match the worker export:** the pending-tags gauge is exported as `quay_repository_mirror_pending_tags` (internal Python name `repo_mirror_tags_pending` in `workers/repomirrorworker`). There is no `quay_repository_mirror_tags_pending` symbol.
 
-**`quay_repository_mirror_last_sync_status`:** the implementation uses labels `namespace`, `repository`, and `last_error_reason` only—there is no `status` label and values are **0** (failed), **1** (success), and **2** (in progress), not a −2..3 range. The canonical series uses `last_error_reason=""`; failures may also set a second series with `last_error_reason=<category>` for the same value.
+**`quay_repository_mirror_last_sync_status`:** one gauge series per `(namespace, repository)`. The gauge **value** is the `RepoMirrorStatus` integer (`1` = SUCCESS, `-1` = FAIL, `2` = SYNCING, etc.).
 
 ### Core Mirroring Metrics
 
@@ -44,48 +44,44 @@ quay_repository_mirror_pending_tags{namespace="org1",repository="repo1"} 5
 #### 2. Last Synchronization Status
 
 ```text
-quay_repository_mirror_last_sync_status{namespace="org1",repository="repo1",last_error_reason=""} 1
-quay_repository_mirror_last_sync_status{namespace="org2",repository="repo2",last_error_reason="auth_failed"} 0
+quay_repository_mirror_last_sync_status{namespace="org1",repository="repo1"} 1
+quay_repository_mirror_last_sync_status{namespace="org2",repository="repo2"} -1
+quay_repository_mirror_last_sync_status{namespace="org3",repository="repo3"} 2
 ```
 
 **Type:** Gauge
 **Labels:**
 - `namespace`: Organization or user namespace
 - `repository`: Repository name
-- `last_error_reason`: Empty string (`""`) on the **canonical** time series for each repository (use this for counts and high-level alerts). When a sync fails, the worker also emits a **detail** time series with the same `namespace` / `repository` and `last_error_reason=<category>` for drill-down.
 
-**Values:**
-- `0` = Failed
-- `1` = Success
-- `2` = In Progress
+**Values** (gauge value = `RepoMirrorStatus` integer from `data.database.RepoMirrorStatus`):
 
-**Description:** Status of the last synchronization attempt. The canonical series (`last_error_reason=""`) always reflects the current status for that repo. On failure, a second series with a non-empty `last_error_reason` is set to the same value so you can attribute failures by category without double-counting repos—use the canonical label for `sum` / `count`, and the specific reason label for breakdowns.
+| Value | `RepoMirrorStatus` | Meaning |
+|-------|-------------------|---------|
+| `0` | `NEVER_RUN` | Never synchronized |
+| `1` | `SUCCESS` | Last sync succeeded |
+| `2` | `SYNCING` | Sync in progress |
+| `3` | `SYNC_NOW` | Queued for immediate sync |
+| `-1` | `FAIL` | Last sync failed |
+| `-2` | `CANCEL` | Last sync cancelled |
 
-**Error Reason Categories:**
-- `auth_failed`: Authentication or authorization failures
-- `network_timeout`: Network timeout errors
-- `connection_error`: General connection issues
-- `not_found`: Repository or resource not found (404)
-- `tls_error`: TLS/SSL certificate errors
-- `decryption_failed`: Failed to decrypt credentials
-- `preempted`: Mirror job was preempted by another worker
-- `unknown_error`: Other unclassified errors
+**Description:** Status of the last synchronization attempt. Each repository has a single time series; updates overwrite the gauge value on every transition.
 
 **Use Cases:**
-- Alert on failed synchronizations
-- Identify patterns in failure types
-- Quickly determine current sync state without checking multiple metrics
+- Alert on failed synchronizations (`== -1`)
+- Count repositories that last completed successfully (`== 1`)
+- Detect mirrors in `SYNCING` (`== 2`)
 
 **Example Queries:**
 ```promql
-# Failing repositories (canonical series only — one sample per repo)
-quay_repository_mirror_last_sync_status{last_error_reason=""} == 0
+# Repositories whose last sync failed
+quay_repository_mirror_last_sync_status == -1
 
 # Successful repositories by namespace
-sum by (namespace) (quay_repository_mirror_last_sync_status{last_error_reason=""} == 1)
+sum by (namespace) (quay_repository_mirror_last_sync_status == 1)
 
-# Failures attributed to auth (detail series)
-quay_repository_mirror_last_sync_status{last_error_reason="auth_failed"} == 0
+# Mirrors currently syncing
+quay_repository_mirror_last_sync_status == 2
 ```
 
 ---
@@ -118,32 +114,32 @@ quay_repository_mirror_sync_complete{namespace="org2",repository="repo2"} 0
 #### 4. Synchronization Failure Counter
 
 ```text
-quay_repository_mirror_sync_failures_total{namespace="org1",reason="network_timeout"} 3
-quay_repository_mirror_sync_failures_total{namespace="org2",reason="auth_failed"} 7
+quay_repository_mirror_sync_failures_total{namespace="org1",repository="repo1"} 3
+quay_repository_mirror_sync_failures_total{namespace="org2",repository="repo2"} 7
 ```
 
 **Type:** Counter
 **Labels:**
 - `namespace`: Organization or user namespace
-- `reason`: Categorized failure reason (see error reasons above)
+- `repository`: Repository name
 
-**Description:** Cumulative counter of synchronization failures aggregated by namespace. Increments on each failed sync attempt, with failures categorized by reason. Per-repository failure detail is available via the health endpoint.
+**Description:** Cumulative counter of synchronization failures per mirrored repository. Increments once on each failed sync attempt for that repository. Failure category (auth, timeout, etc.) is **not** a label on this metric—use repository logs or `quay_repository_mirror_last_sync_status == -1` for repo-level failure state.
 
 **Use Cases:**
-- Set up alerts based on failure thresholds
+- Set up alerts based on failure thresholds per repository
 - Track failure rates over time per namespace
-- Analyze failure patterns by type
+- Identify repositories with repeated sync failures
 
 **Example Queries:**
 ```promql
-# Failure rate per namespace over 5 minutes
+# Failure rate per repository over 5 minutes
 rate(quay_repository_mirror_sync_failures_total[5m])
 
-# Namespaces with more than 10 total failures
+# Namespaces with more than 10 total failures (summed across repos)
 sum by (namespace) (quay_repository_mirror_sync_failures_total) > 10
 
-# Most common failure types
-topk(5, sum by (reason) (quay_repository_mirror_sync_failures_total))
+# Repositories with the most failures
+topk(5, quay_repository_mirror_sync_failures_total)
 ```
 
 ---
@@ -450,7 +446,7 @@ groups:
           severity: warning
         annotations:
           summary: "Repository mirroring failures detected"
-          description: "Repository {{ $labels.namespace }}/{{ $labels.repository }} has {{ $value }} failures per second (reason: {{ $labels.reason }})"
+          description: "Repository {{ $labels.namespace }}/{{ $labels.repository }} has {{ $value }} failures per second"
 
       - alert: QuayMirrorSyncStale
         expr: time() - quay_repository_mirror_last_sync_timestamp > 3600
@@ -470,14 +466,14 @@ groups:
           summary: "High number of pending tags"
           description: "There are {{ $value }} tags pending synchronization across all repositories"
 
-      - alert: QuayMirrorAuthFailures
-        expr: increase(quay_repository_mirror_sync_failures_total{reason="auth_failed"}[1h]) > 3
+      - alert: QuayMirrorRepeatedFailures
+        expr: increase(quay_repository_mirror_sync_failures_total[1h]) > 3
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Mirror authentication failures"
-          description: "Repository {{ $labels.namespace }}/{{ $labels.repository }} has had {{ $value }} authentication failures in the last hour"
+          summary: "Repeated mirror synchronization failures"
+          description: "Repository {{ $labels.namespace }}/{{ $labels.repository }} has had {{ $value }} sync failures in the last hour"
 ```
 
 ---
@@ -487,10 +483,10 @@ groups:
 ### Panel 1: Synchronization Status Overview
 
 ```promql
-# Count of repositories by sync status (canonical series: last_error_reason="")
-sum by(namespace) (quay_repository_mirror_last_sync_status{last_error_reason=""} == 1)  # Success
-sum by(namespace) (quay_repository_mirror_last_sync_status{last_error_reason=""} == 0)  # Failed
-sum by(namespace) (quay_repository_mirror_last_sync_status{last_error_reason=""} == 2)  # In Progress
+# Count of repositories by last-recorded sync status label
+sum by(namespace) (quay_repository_mirror_last_sync_status == 1)  # Success
+sum by(namespace) (quay_repository_mirror_last_sync_status == -1)  # Failed
+sum by(namespace) (quay_repository_mirror_last_sync_status == 2)  # Syncing
 ```
 
 **Visualization:** Pie chart or time series
@@ -511,14 +507,14 @@ sum(rate(quay_repository_mirror_sync_failures_total[5m]))
 
 ---
 
-### Panel 3: Failures by Reason
+### Panel 3: Failures by Repository
 
 ```promql
-# Count failures by reason
-sum by (reason) (quay_repository_mirror_sync_failures_total)
+# Total failures per repository
+topk(10, quay_repository_mirror_sync_failures_total)
 
-# Failure rate by reason
-sum by (reason) (rate(quay_repository_mirror_sync_failures_total[5m]))
+# Failure rate by repository
+topk(10, rate(quay_repository_mirror_sync_failures_total[5m]))
 ```
 
 **Visualization:** Bar chart or table
@@ -617,10 +613,11 @@ quay_repository_mirror_sync_complete == 0
 
 ### High Failure Rate
 
-1. Check `quay_repository_mirror_sync_failures_total` broken down by `reason`
-2. For auth failures: Verify credentials, check token expiration
-3. For network timeouts: Check network connectivity, consider increasing `skopeo_timeout_interval`
-4. For TLS errors: Verify certificate validity, check `verify_tls` settings
+1. Check `quay_repository_mirror_sync_failures_total` by `namespace` and `repository`
+2. Inspect worker logs for the failing repository to determine failure type (auth, timeout, TLS, etc.)
+3. For suspected auth issues: verify credentials, check token expiration
+4. For network timeouts: check network connectivity, consider increasing `skopeo_timeout_interval`
+5. For TLS errors: verify certificate validity, check `verify_tls` settings
 
 ### Stale Synchronizations
 
@@ -640,7 +637,7 @@ quay_repository_mirror_sync_complete == 0
 
 1. Query `quay_repository_mirror_sync_complete == 0` to find affected repositories
 2. Check logs for specific tag failures
-3. Review `quay_repository_mirror_sync_failures_total` by reason
+3. Review `quay_repository_mirror_sync_failures_total` for the affected repository
 4. Verify tag patterns in mirror configuration are correct
 
 ---

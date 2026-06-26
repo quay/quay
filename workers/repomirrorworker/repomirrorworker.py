@@ -9,7 +9,7 @@ from util.log import logfile_path
 from util.repomirror.skopeomirror import SkopeoMirror
 from util.repomirror.validator import RepoMirrorConfigValidator
 from workers.gunicorn_worker import GunicornWorker
-from workers.repomirrorworker import process_mirrors
+from workers.repomirrorworker import process_mirrors, repo_mirror_workers_active
 from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,9 @@ class RepoMirrorWorker(Worker):
 
         interval = app.config.get("REPO_MIRROR_INTERVAL", DEFAULT_MIRROR_INTERVAL)
         self.add_operation(self._process_mirrors, interval)
+
+        if features.REPO_MIRROR:
+            repo_mirror_workers_active.set(1)
 
     def _process_mirrors(self):
         while True:
