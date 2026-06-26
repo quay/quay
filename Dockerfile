@@ -23,7 +23,7 @@ RUN set -ex\
 	; microdnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
 		memcached \
-		nginx \
+		nginx-1.24.0-7.module+el9.8.0+24289+833e4c02.1 \
 		libpq-devel \
 		libjpeg-turbo \
 		openldap \
