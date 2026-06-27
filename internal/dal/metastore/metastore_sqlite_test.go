@@ -367,6 +367,72 @@ func TestDeleteTag(t *testing.T) {
 	}
 }
 
+func TestPutTag_RapidReplace(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "pokemon", Name: "encounter-service"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dgst := digest.FromString("manifest-v1")
+	_, err = store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+		Digest:    dgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{}`),
+		Tag:       "v1.0.0",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Rapid sequential PutTag calls for the same tag can land in the same
+	// millisecond, causing ExpireActiveTag to collide with a previously-
+	// expired row's lifetime_end_ms. This must not fail.
+	for i := range 20 {
+		id, err := store.PutTag(ctx, repoID, metastore.TagRecord{
+			Name:   "v1.0.0",
+			Digest: dgst,
+		})
+		if err != nil {
+			t.Fatalf("iteration %d: %v", i, err)
+		}
+		if id == 0 {
+			t.Fatalf("iteration %d: expected non-zero tag ID", i)
+		}
+	}
+}
+
+func TestDeleteTag_RapidExpire(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "pokemon", Name: "encounter-service"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dgst := digest.FromString("manifest-v1")
+
+	// Rapidly create-then-delete the same tag. Expiration timestamps may
+	// collide with previously-expired rows.
+	for i := range 20 {
+		_, err := store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+			Digest:    dgst,
+			MediaType: "application/vnd.oci.image.manifest.v1+json",
+			Content:   []byte(`{}`),
+			Tag:       "latest",
+		})
+		if err != nil {
+			t.Fatalf("iteration %d put: %v", i, err)
+		}
+		if err := store.DeleteTag(ctx, repoID, "latest"); err != nil {
+			t.Fatalf("iteration %d delete: %v", i, err)
+		}
+	}
+}
+
 // --- test helpers ---
 
 func assertActiveTag(t *testing.T, s *metastore.SQLiteStore, repoID int64, tag string) {
