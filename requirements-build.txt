@@ -396,9 +396,9 @@ setuptools-rust==1.12.1 \
     # via
     #   maturin
     #   pyroscope-io
-setuptools-scm==10.0.5 \
-    --hash=sha256:bbba8fe754516cdefd017f4456721775e6ef9662bd7887fb52ae26813d4838c3 \
-    --hash=sha256:f611037d8aae618221503b8fa89319f073438252ae3420e01c9ceec249131a0a
+setuptools-scm==10.2.0 \
+    --hash=sha256:6cc5ac7da8e54d74e43503be2fa023eb7a1ca820d5c318e6ae20efc48110d6c7 \
+    --hash=sha256:ec8ea1738b92e42146a46e29a0e9de9ad462744c63cf9778677b95dfd605adde
     # via
     #   APScheduler
     #   hatch-vcs
