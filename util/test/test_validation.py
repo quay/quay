@@ -7,9 +7,35 @@ import pytest
 from util.validation import (
     generate_valid_usernames,
     is_json,
+    validate_email,
     validate_label_key,
     validate_username,
 )
+
+
+@pytest.mark.parametrize(
+    "email, is_valid",
+    [
+        ("user@example.com", True),
+        ("user@sub.example.com", True),
+        ("user+tag@example.co.uk", True),
+        ("a@b.c", True),
+        ("first.last@company.org", True),
+        ("user@localhost", False),
+        ("@example.com", False),
+        ("user@", False),
+        ("user@.com", False),
+        ("user@example.", False),
+        ("", False),
+        (None, False),
+        ("no-at-sign", False),
+        ("two@@ats.com", False),
+        ("user@a@b.com", False),
+        ("a" * 255 + "@example.com", False),
+    ],
+)
+def test_validate_email(email, is_valid):
+    assert validate_email(email) == is_valid
 
 
 @pytest.mark.parametrize(
