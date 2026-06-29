@@ -40,7 +40,6 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "red", "value": 0.995 },
               { "color": "green", "value": 0.995 }
             ]
           },
@@ -83,7 +82,6 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "red", "value": 0.999 },
               { "color": "green", "value": 0.999 }
             ]
           },
@@ -126,7 +124,6 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "red", "value": 0.999 },
               { "color": "green", "value": 0.999 }
             ]
           },
@@ -443,13 +440,13 @@
       "targets": [
         {
           "datasource": "$datasource",
-          "expr": "sum(rate(registry_operation_requests_total{operation=\"push\"}[$rate])) by (status)",
+          "expr": "sum(rate(quay_registry_image_pushes_total[$rate])) by (status)",
           "legendFormat": "push {{ status }}",
           "refId": "A"
         },
         {
           "datasource": "$datasource",
-          "expr": "sum(rate(registry_operation_requests_total{operation=\"pull\"}[$rate])) by (status)",
+          "expr": "sum(rate(quay_registry_image_pulls_total[$rate])) by (status)",
           "legendFormat": "pull {{ status }}",
           "refId": "B"
         }
@@ -819,7 +816,7 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "ALB Error Ratio" },
+            "matcher": { "id": "byName", "options": "ALB Total 5xx Ratio" },
             "properties": [{ "id": "color", "value": { "fixedColor": "dark-red", "mode": "fixed" } }]
           },
           {
@@ -837,8 +834,8 @@
       "targets": [
         {
           "datasource": "$datasource",
-          "expr": "sum(rate(aws_applicationelb_httpcode_elb_5xx_count_sum{job=\"quay-alb-metrics-exporter\"}[$rate])) / sum(rate(aws_applicationelb_request_count_sum{job=\"quay-alb-metrics-exporter\"}[$rate]))",
-          "legendFormat": "ALB Error Ratio",
+          "expr": "(sum(rate(aws_applicationelb_httpcode_elb_5xx_count_sum{job=\"quay-alb-metrics-exporter\"}[$rate])) + sum(rate(aws_applicationelb_httpcode_target_5xx_count_sum{job=\"quay-alb-metrics-exporter\"}[$rate]))) / sum(rate(aws_applicationelb_request_count_sum{job=\"quay-alb-metrics-exporter\"}[$rate]))",
+          "legendFormat": "ALB Total 5xx Ratio",
           "refId": "A"
         },
         {
