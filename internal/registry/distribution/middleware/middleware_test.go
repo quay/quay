@@ -10,7 +10,6 @@ import (
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"github.com/quay/quay/internal/dal/metastore"
 	"github.com/quay/quay/internal/oci"
 )
 
@@ -24,18 +23,18 @@ type mockStore struct {
 
 	putManifestID  int64
 	putManifestErr error
-	putManifestRec metastore.ManifestRecord
+	putManifestRec oci.ManifestRecord
 
 	deleteManifestErr  error
 	deleteManifestDgst digest.Digest
 
 	putBlobID  int64
 	putBlobErr error
-	putBlobRec metastore.BlobRecord
+	putBlobRec oci.BlobRecord
 
 	putTagID  int64
 	putTagErr error
-	putTagRec metastore.TagRecord
+	putTagRec oci.TagRecord
 
 	deleteTagErr  error
 	deleteTagName string
@@ -45,7 +44,7 @@ func (m *mockStore) EnsureRepository(_ context.Context, _ oci.RepositoryName) (i
 	return m.ensureRepoID, m.ensureRepoErr
 }
 
-func (m *mockStore) PutManifest(_ context.Context, repoID int64, r metastore.ManifestRecord) (int64, error) { //nolint:gocritic // interface compliance
+func (m *mockStore) PutManifest(_ context.Context, repoID int64, r oci.ManifestRecord) (int64, error) { //nolint:gocritic // interface compliance
 	m.lastRepoID = repoID
 	m.putManifestRec = r
 	return m.putManifestID, m.putManifestErr
@@ -57,12 +56,12 @@ func (m *mockStore) DeleteManifest(_ context.Context, repoID int64, dgst digest.
 	return m.deleteManifestErr
 }
 
-func (m *mockStore) PutBlob(_ context.Context, b metastore.BlobRecord) (int64, error) {
+func (m *mockStore) PutBlob(_ context.Context, b oci.BlobRecord) (int64, error) {
 	m.putBlobRec = b
 	return m.putBlobID, m.putBlobErr
 }
 
-func (m *mockStore) PutTag(_ context.Context, repoID int64, t metastore.TagRecord) (int64, error) {
+func (m *mockStore) PutTag(_ context.Context, repoID int64, t oci.TagRecord) (int64, error) {
 	m.lastRepoID = repoID
 	m.putTagRec = t
 	return m.putTagID, m.putTagErr
@@ -72,6 +71,46 @@ func (m *mockStore) DeleteTag(_ context.Context, repoID int64, tag string) error
 	m.lastRepoID = repoID
 	m.deleteTagName = tag
 	return m.deleteTagErr
+}
+
+func (m *mockStore) GetRepositoryID(_ context.Context, _ oci.RepositoryName) (int64, error) {
+	return 0, errNotImplemented
+}
+
+func (m *mockStore) GetTagDigest(_ context.Context, _ int64, _ string) (digest.Digest, error) {
+	return "", errNotImplemented
+}
+
+func (m *mockStore) GetManifestDigest(_ context.Context, _ int64, _ digest.Digest) (digest.Digest, error) {
+	return "", errNotImplemented
+}
+
+func (m *mockStore) GetManifestContent(_ context.Context, _ digest.Digest) ([]byte, error) {
+	return nil, errNotImplemented
+}
+
+func (m *mockStore) BlobExists(_ context.Context, _ digest.Digest) (bool, error) {
+	return false, errNotImplemented
+}
+
+func (m *mockStore) BlobLinkedToRepo(_ context.Context, _ int64, _ digest.Digest) (bool, error) {
+	return false, errNotImplemented
+}
+
+func (m *mockStore) ListTags(_ context.Context, _ int64) ([]string, error) {
+	return nil, errNotImplemented
+}
+
+func (m *mockStore) ListRepositories(_ context.Context) ([]oci.RepositoryName, error) {
+	return nil, errNotImplemented
+}
+
+func (m *mockStore) PutUploadedBlob(_ context.Context, _ int64, _ digest.Digest) error {
+	return nil
+}
+
+func (m *mockStore) CleanExpiredUploadedBlobs(_ context.Context) error {
+	return errNotImplemented
 }
 
 var errNotImplemented = errors.New("mock: not implemented")
@@ -430,6 +469,40 @@ func TestBlobCreate_MountRecordsMetadata(t *testing.T) {
 	}
 	if store.putBlobRec.Digest != desc.Digest {
 		t.Errorf("stored digest = %s, want %s", store.putBlobRec.Digest, desc.Digest)
+	}
+}
+
+func TestTagService_Get_InvalidDigestAsTag(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1}
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ts:   &mockTagService{},
+	}
+	repo := newRepository(innerRepo, store, "library")
+	ts := repo.Tags(t.Context())
+
+	_, err := ts.Get(t.Context(), "sha256:totallywrong")
+	var tagUnknown distribution.ErrTagUnknown
+	if !errors.As(err, &tagUnknown) {
+		t.Fatalf("expected ErrTagUnknown, got %T: %v", err, err)
+	}
+	if tagUnknown.Tag != "sha256:totallywrong" {
+		t.Errorf("tag = %q, want %q", tagUnknown.Tag, "sha256:totallywrong")
+	}
+}
+
+func TestTagService_Get_ValidTag(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1}
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ts:   &mockTagService{},
+	}
+	repo := newRepository(innerRepo, store, "library")
+	ts := repo.Tags(t.Context())
+
+	_, err := ts.Get(t.Context(), "latest")
+	if err != nil {
+		t.Fatalf("unexpected error for valid tag: %v", err)
 	}
 }
 

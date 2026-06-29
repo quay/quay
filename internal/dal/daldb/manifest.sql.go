@@ -102,6 +102,17 @@ func (q *Queries) GetManifestByDigest(ctx context.Context, arg GetManifestByDige
 	return i, err
 }
 
+const getManifestContentByDigest = `-- name: GetManifestContentByDigest :one
+SELECT manifest_bytes FROM manifest WHERE digest = ? LIMIT 1
+`
+
+func (q *Queries) GetManifestContentByDigest(ctx context.Context, digest string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getManifestContentByDigest, digest)
+	var manifest_bytes string
+	err := row.Scan(&manifest_bytes)
+	return manifest_bytes, err
+}
+
 const linkManifestBlob = `-- name: LinkManifestBlob :exec
 INSERT OR IGNORE INTO manifestblob (repository_id, manifest_id, blob_id)
 VALUES (?, ?, ?)
@@ -132,6 +143,22 @@ type LinkManifestChildParams struct {
 func (q *Queries) LinkManifestChild(ctx context.Context, arg LinkManifestChildParams) error {
 	_, err := q.db.ExecContext(ctx, linkManifestChild, arg.RepositoryID, arg.ManifestID, arg.ChildManifestID)
 	return err
+}
+
+const manifestExistsByDigest = `-- name: ManifestExistsByDigest :one
+SELECT digest FROM manifest WHERE repository_id = ? AND digest = ?
+`
+
+type ManifestExistsByDigestParams struct {
+	RepositoryID int64  `json:"repository_id"`
+	Digest       string `json:"digest"`
+}
+
+func (q *Queries) ManifestExistsByDigest(ctx context.Context, arg ManifestExistsByDigestParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, manifestExistsByDigest, arg.RepositoryID, arg.Digest)
+	var digest string
+	err := row.Scan(&digest)
+	return digest, err
 }
 
 const upsertManifest = `-- name: UpsertManifest :one

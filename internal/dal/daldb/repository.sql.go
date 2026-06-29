@@ -82,3 +82,56 @@ func (q *Queries) GetRepositoryByName(ctx context.Context, arg GetRepositoryByNa
 	)
 	return i, err
 }
+
+const getRepositoryByNamespaceName = `-- name: GetRepositoryByNamespaceName :one
+SELECT r.id FROM repository r
+JOIN "user" u ON r.namespace_user_id = u.id
+WHERE u.username = ? AND r.name = ?
+`
+
+type GetRepositoryByNamespaceNameParams struct {
+	Username string `json:"username"`
+	Name     string `json:"name"`
+}
+
+func (q *Queries) GetRepositoryByNamespaceName(ctx context.Context, arg GetRepositoryByNamespaceNameParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getRepositoryByNamespaceName, arg.Username, arg.Name)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const listAllRepositories = `-- name: ListAllRepositories :many
+SELECT u.username AS namespace, r.name
+FROM repository r
+JOIN "user" u ON r.namespace_user_id = u.id
+ORDER BY u.username, r.name
+`
+
+type ListAllRepositoriesRow struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+}
+
+func (q *Queries) ListAllRepositories(ctx context.Context) ([]ListAllRepositoriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAllRepositories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllRepositoriesRow
+	for rows.Next() {
+		var i ListAllRepositoriesRow
+		if err := rows.Scan(&i.Namespace, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

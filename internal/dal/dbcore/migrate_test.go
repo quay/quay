@@ -93,6 +93,27 @@ func TestSchemaVersion_EmptyDB(t *testing.T) {
 	}
 }
 
+func TestSplitStatements_DropsLineCommentsWithoutDroppingStatements(t *testing.T) {
+	sql := `-- migration metadata
+-- section comment
+CREATE TABLE first (id INTEGER);
+
+-- next section
+CREATE TABLE second (id INTEGER);
+`
+
+	stmts := splitStatements(sql)
+	if len(stmts) != 2 {
+		t.Fatalf("expected 2 statements, got %d: %#v", len(stmts), stmts)
+	}
+	if !strings.Contains(stmts[0], "CREATE TABLE first") {
+		t.Errorf("first statement was dropped: %#v", stmts)
+	}
+	if !strings.Contains(stmts[1], "CREATE TABLE second") {
+		t.Errorf("second statement was dropped: %#v", stmts)
+	}
+}
+
 func TestIntegrityCheck(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	db, err := OpenSQLite(dbPath)

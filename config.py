@@ -190,6 +190,7 @@ class DefaultConfig(ImmutableConfig):
 
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_TIMEOUT = "31d"
 
     LOGGING_LEVEL = "DEBUG"
     SEND_FILE_MAX_AGE_DEFAULT = 0

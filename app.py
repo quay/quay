@@ -66,12 +66,14 @@ from util.repomirror.api import RepoMirrorAPI
 from util.saas.analytics import Analytics
 from util.saas.exceptionlog import Sentry
 from util.security.instancekeys import InstanceKeys
+from util.timedeltastring import convert_to_timedelta
 from util.tufmetadata.api import TUFMetadataAPI
 
 OVERRIDE_CONFIG_YAML_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.yaml")
 OVERRIDE_CONFIG_PY_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.py")
 
 OVERRIDE_CONFIG_KEY = "QUAY_OVERRIDE_CONFIG"
+DEFAULT_SESSION_TIMEOUT = "31d"
 
 DOCKER_V2_SIGNINGKEY_FILENAME = "docker_v2.pem"
 INIT_SCRIPTS_LOCATION = "/conf/init/"
@@ -79,6 +81,12 @@ INIT_SCRIPTS_LOCATION = "/conf/init/"
 app = Flask(__name__)
 
 logger = logging.getLogger(__name__)
+
+
+def configure_app_session_lifetime(flask_app):
+    session_timeout = flask_app.config.get("SESSION_TIMEOUT", DEFAULT_SESSION_TIMEOUT)
+    flask_app.permanent_session_lifetime = convert_to_timedelta(session_timeout)
+
 
 # Instantiate the configuration.
 is_testing = IS_TESTING
@@ -112,6 +120,8 @@ if app.config.get("TESTING", False):
 # Update any configuration found in the override environment variable.
 environ_config = json.loads(os.environ.get(OVERRIDE_CONFIG_KEY, "{}"))
 app.config.update(environ_config)
+
+configure_app_session_lifetime(app)
 
 # Fix remote address handling for Flask.
 if app.config.get("PROXY_COUNT", 1):

@@ -11,3 +11,14 @@ RETURNING id;
 
 -- name: CountRepositories :one
 SELECT COUNT(*) FROM repository;
+
+-- name: GetRepositoryByNamespaceName :one
+SELECT r.id FROM repository r
+JOIN "user" u ON r.namespace_user_id = u.id
+WHERE u.username = ? AND r.name = ?;
+
+-- name: ListAllRepositories :many
+SELECT u.username AS namespace, r.name
+FROM repository r
+JOIN "user" u ON r.namespace_user_id = u.id
+ORDER BY u.username, r.name;

@@ -12,7 +12,7 @@ import (
 	"github.com/quay/quay/internal/oci"
 )
 
-func setupStore(t *testing.T) metastore.Store {
+func setupStore(t *testing.T) oci.MetadataStore {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "quay.db")
 	db, err := dbcore.Setup(t.Context(), dbPath)
@@ -96,7 +96,7 @@ func TestPutBlob(t *testing.T) {
 	ctx := t.Context()
 
 	dgst := digest.FromString("blob-content")
-	id1, err := store.PutBlob(ctx, metastore.BlobRecord{Digest: dgst, Size: 42})
+	id1, err := store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: 42})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestPutBlob(t *testing.T) {
 	}
 
 	// Idempotent: same digest returns same ID.
-	id2, err := store.PutBlob(ctx, metastore.BlobRecord{Digest: dgst, Size: 42})
+	id2, err := store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: 42})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,11 +127,11 @@ func TestPutManifest_Simple(t *testing.T) {
 	manifestDgst := digest.FromString("manifest-content")
 	content := []byte(`{"schemaVersion":2}`)
 
-	mid, err := store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+	mid, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:    manifestDgst,
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Content:   content,
-		BlobDigests: []metastore.BlobRef{
+		BlobDigests: []oci.BlobRef{
 			{Digest: blobDgst, Size: 100},
 		},
 	})
@@ -143,11 +143,11 @@ func TestPutManifest_Simple(t *testing.T) {
 	}
 
 	// Idempotent: re-push returns same ID.
-	mid2, err := store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+	mid2, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:    manifestDgst,
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Content:   content,
-		BlobDigests: []metastore.BlobRef{
+		BlobDigests: []oci.BlobRef{
 			{Digest: blobDgst, Size: 100},
 		},
 	})
@@ -169,7 +169,7 @@ func TestPutManifest_WithTag(t *testing.T) {
 	}
 
 	dgst := digest.FromString("manifest-v1")
-	_, err = store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:    dgst,
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Content:   []byte(`{"schemaVersion":2}`),
@@ -194,7 +194,7 @@ func TestPutManifest_TagReplace(t *testing.T) {
 
 	// Push v1 with tag "latest".
 	dgst1 := digest.FromString("manifest-v1")
-	_, err = store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:    dgst1,
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Content:   []byte(`{"v":1}`),
@@ -204,9 +204,9 @@ func TestPutManifest_TagReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Push v2 with same tag "latest" — must not create duplicate active tags.
+	// Push v2 with same tag "latest" --- must not create duplicate active tags.
 	dgst2 := digest.FromString("manifest-v2")
-	_, err = store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:    dgst2,
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Content:   []byte(`{"v":2}`),
@@ -233,7 +233,7 @@ func TestPutManifest_IndexWithChildren(t *testing.T) {
 	childDgst1 := digest.FromString("child-amd64")
 	childDgst2 := digest.FromString("child-arm64")
 	for _, dgst := range []digest.Digest{childDgst1, childDgst2} {
-		if _, err := store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+		if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
 			Digest:    dgst,
 			MediaType: "application/vnd.oci.image.manifest.v1+json",
 			Content:   []byte(`{}`),
@@ -244,7 +244,7 @@ func TestPutManifest_IndexWithChildren(t *testing.T) {
 
 	// Push the index referencing both children.
 	indexDgst := digest.FromString("index-manifest")
-	_, err = store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:       indexDgst,
 		MediaType:    "application/vnd.oci.image.index.v1+json",
 		Content:      []byte(`{"manifests":[...]}`),
@@ -266,7 +266,7 @@ func TestPutManifest_UnknownMediaType(t *testing.T) {
 	}
 
 	dgst := digest.FromString("custom-manifest")
-	_, err = store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:    dgst,
 		MediaType: "application/vnd.example.custom.v1+json",
 		Content:   []byte(`{}`),
@@ -286,7 +286,7 @@ func TestDeleteManifest(t *testing.T) {
 	}
 
 	dgst := digest.FromString("to-delete")
-	_, err = store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:    dgst,
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Content:   []byte(`{}`),
@@ -316,7 +316,7 @@ func TestPutTag(t *testing.T) {
 	}
 
 	dgst := digest.FromString("tagged-manifest")
-	_, err = store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:    dgst,
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Content:   []byte(`{}`),
@@ -325,7 +325,7 @@ func TestPutTag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tagID, err := store.PutTag(ctx, repoID, metastore.TagRecord{
+	tagID, err := store.PutTag(ctx, repoID, oci.TagRecord{
 		Name:   "stable",
 		Digest: dgst,
 	})
@@ -347,7 +347,7 @@ func TestDeleteTag(t *testing.T) {
 	}
 
 	dgst := digest.FromString("tagged-manifest")
-	_, err = store.PutManifest(ctx, repoID, metastore.ManifestRecord{
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
 		Digest:    dgst,
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Content:   []byte(`{}`),

@@ -20,3 +20,9 @@ DELETE FROM tag WHERE manifest_id = ?;
 SELECT id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id
 FROM tag
 WHERE repository_id = ? AND (lifetime_end_ms IS NULL OR lifetime_end_ms > ?) AND hidden = 0;
+
+-- name: GetActiveTagDigest :one
+SELECT m.digest
+FROM tag t
+JOIN manifest m ON t.manifest_id = m.id
+WHERE t.repository_id = ? AND t.name = ? AND t.lifetime_end_ms IS NULL;

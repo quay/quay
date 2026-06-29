@@ -3,7 +3,7 @@
 // pushes, blob uploads, and tag operations, writing metadata to the database
 // after the underlying storage operation succeeds.
 //
-// Registration is explicit—call Register from main, not from an init function.
+// Registration is explicit---call Register from main, not from an init function.
 package middleware
 
 import (
@@ -18,7 +18,6 @@ import (
 
 	repositorymiddleware "github.com/distribution/distribution/v3/registry/middleware/repository"
 
-	"github.com/quay/quay/internal/dal/metastore"
 	"github.com/quay/quay/internal/oci"
 )
 
@@ -28,8 +27,8 @@ const middlewareName = "quaydb"
 // repository middleware registry. It must be called before
 // handlers.NewApp so that the middleware config reference resolves.
 //
-// The store is captured by closure—no options map is needed at runtime.
-func Register(store metastore.Store, libraryNamespace string) error {
+// The store is captured by closure---no options map is needed at runtime.
+func Register(store oci.MetadataStore, libraryNamespace string) error {
 	return repositorymiddleware.Register(middlewareName, func(
 		ctx context.Context,
 		repo distribution.Repository,
@@ -49,7 +48,7 @@ func Name() string { return middlewareName }
 // per-request, so this is safe).
 type repository struct {
 	distribution.Repository
-	store            metastore.Store
+	store            oci.MetadataStore
 	libraryNamespace string
 
 	repoOnce sync.Once
@@ -57,7 +56,7 @@ type repository struct {
 	repoErr  error
 }
 
-func newRepository(inner distribution.Repository, store metastore.Store, libraryNamespace string) *repository {
+func newRepository(inner distribution.Repository, store oci.MetadataStore, libraryNamespace string) *repository {
 	return &repository{Repository: inner, store: store, libraryNamespace: libraryNamespace}
 }
 
@@ -89,8 +88,11 @@ func (r *repository) Tags(ctx context.Context) distribution.TagService {
 }
 
 // repoName converts this repository's distribution reference to an oci.RepositoryName.
+// Named().Name() returns the repo path without a hostname when distribution
+// creates the reference internally (e.g. "projectquay/clair"). reference.Path()
+// would incorrectly strip the first segment as a hostname.
 func (r *repository) repoName() oci.RepositoryName {
-	full := reference.Path(r.Named())
+	full := r.Named().Name()
 	if i := strings.IndexByte(full, '/'); i >= 0 {
 		return oci.RepositoryName{Namespace: full[:i], Name: full[i+1:]}
 	}
