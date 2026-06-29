@@ -105,7 +105,7 @@ jobs:
         run: make go-schema-check
 
   e2e-mirror:
-    name: E2E Mirror
+    name: E2E Mirror Install
     runs-on: ubuntu-latest
     needs: [build]
     timeout-minutes: 30
@@ -240,4 +240,456 @@ jobs:
         with:
           name: e2e-mirror-diagnostics
           path: /tmp/e2e-diagnostics/
+          retention-days: 7
+
+  e2e-migrate:
+    name: E2E Mirror Migrate
+    runs-on: ubuntu-latest
+    needs: [build]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Download quay binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: quay-binary
+          path: bin/
+
+      - name: Build container image
+        run: |
+          chmod +x bin/quay
+          podman build -f Dockerfile.mirror -t quay-mirror:test .
+
+      - name: Save image archive next to binary
+        run: podman save quay-mirror:test -o bin/quay-mirror.tar
+
+      - name: Install migration test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sqlite3
+
+      - name: Download and install old OMR
+        run: |
+          curl -fsSL -o /tmp/mirror-registry.tar.gz \
+            https://github.com/quay/mirror-registry/releases/download/v2.0.11/mirror-registry-offline.tar.gz
+          mkdir -p /tmp/omr && tar xzf /tmp/mirror-registry.tar.gz -C /tmp/omr
+          cd /tmp/omr
+          sudo ./mirror-registry install \
+            --initPassword testpassword123 \
+            --quayHostname localhost
+
+      - name: Wait for old OMR
+        run: |
+          set -euo pipefail
+
+          echo "Waiting for OMR health endpoint..."
+          curl -kfsS --retry 60 --retry-delay 2 --retry-all-errors \
+            https://localhost:8443/health/instance
+          echo "OMR is healthy"
+
+      - name: Push test content to old OMR
+        run: |
+          set -euo pipefail
+          sudo podman login localhost:8443 -u init -p testpassword123 --tls-verify=false
+          sudo podman pull registry.access.redhat.com/ubi9/ubi-micro:latest
+
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/test-image:v1
+          sudo podman push localhost:8443/init/test-image:v1 --tls-verify=false
+
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/test-image-2:latest
+          sudo podman push localhost:8443/init/test-image-2:latest --tls-verify=false
+
+          # Same manifest under two tags.
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/shared:v1
+          sudo podman push localhost:8443/init/shared:v1 --tls-verify=false
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/shared:v2
+          sudo podman push localhost:8443/init/shared:v2 --tls-verify=false
+
+          # Same blob set across repositories.
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/shared-a:v1
+          sudo podman push localhost:8443/init/shared-a:v1 --tls-verify=false
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/shared-b:v1
+          sudo podman push localhost:8443/init/shared-b:v1 --tls-verify=false
+
+          # Manifest-list/index coverage. A single-platform list still drives
+          # distribution through the manifest-list code path.
+          sudo podman manifest create localhost:8443/init/test-index:latest
+          sudo podman manifest add localhost:8443/init/test-index:latest registry.access.redhat.com/ubi9/ubi-micro:latest
+          sudo podman manifest push --all --tls-verify=false \
+            localhost:8443/init/test-index:latest docker://localhost:8443/init/test-index:latest
+
+      - name: Record source registry state
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/e2e-migrate-state
+          ACCEPT_HEADER='Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
+
+          auth_param() {
+            local challenge="$1"
+            local key="$2"
+            printf '%s\n' "$challenge" | sed -n "s/.*${key}=\"\\([^\"]*\\)\".*/\\1/p"
+          }
+
+          fetch_manifest() {
+            local repo="$1"
+            local ref="$2"
+            local headers="$3"
+            local body="$4"
+            local url="https://localhost:8443/v2/${repo}/manifests/${ref}"
+
+            # Go Quay accepts Basic auth directly. Python Quay returns a
+            # Bearer challenge, which podman follows automatically; reproduce
+            # that token flow here so curl can capture source manifests too.
+            if curl -skf -D "$headers" -o "$body" \
+              -u init:testpassword123 \
+              -H "$ACCEPT_HEADER" \
+              "$url"; then
+              return 0
+            fi
+
+            local challenge_headers="${headers%.headers}.challenge.headers"
+            local token_json="${headers%.headers}.token.json"
+            cp "$headers" "$challenge_headers" 2>/dev/null || true
+
+            local challenge
+            challenge=$(tr -d '\r' < "$challenge_headers" | awk -F': ' 'tolower($1) == "www-authenticate" {print $2; exit}')
+            if ! printf '%s' "$challenge" | grep -qi '^Bearer '; then
+              echo "FAIL: manifest request for ${repo}:${ref} did not return a Bearer challenge"
+              return 1
+            fi
+
+            local realm service scope token
+            realm=$(auth_param "$challenge" realm)
+            service=$(auth_param "$challenge" service)
+            scope=$(auth_param "$challenge" scope)
+            if [ -z "$scope" ]; then
+              scope="repository:${repo}:pull"
+            fi
+            if [ -z "$realm" ]; then
+              echo "FAIL: Bearer challenge for ${repo}:${ref} did not include realm"
+              return 1
+            fi
+
+            if [ -n "$service" ]; then
+              curl -skfsS -u init:testpassword123 -G \
+                --data-urlencode "service=${service}" \
+                --data-urlencode "scope=${scope}" \
+                -o "$token_json" \
+                "$realm"
+            else
+              curl -skfsS -u init:testpassword123 -G \
+                --data-urlencode "scope=${scope}" \
+                -o "$token_json" \
+                "$realm"
+            fi
+
+            token=$(jq -r '.token // .access_token // empty' "$token_json")
+            if [ -z "$token" ]; then
+              echo "FAIL: token response for ${repo}:${ref} did not include a token"
+              return 1
+            fi
+
+            curl -skfsS -D "$headers" -o "$body" \
+              -H "$ACCEPT_HEADER" \
+              -H "Authorization: Bearer ${token}" \
+              "$url"
+          }
+
+          manifest_digest() {
+            local repo="$1"
+            local ref="$2"
+            local safe_ref
+            safe_ref=$(echo "$repo-$ref" | tr '/:' '--')
+            local headers="/tmp/e2e-migrate-state/source-${safe_ref}.headers"
+            local body="/tmp/e2e-migrate-state/source-${safe_ref}.json"
+
+            fetch_manifest "$repo" "$ref" "$headers" "$body"
+            tr -d '\r' < "$headers" | awk -F': ' 'tolower($1) == "docker-content-digest" {print $2}' | tail -n1
+          }
+
+          record_digest() {
+            local name="$1"
+            local repo="$2"
+            local ref="$3"
+            local digest
+            digest=$(manifest_digest "$repo" "$ref")
+            if [ -z "$digest" ]; then
+              echo "FAIL: ${name} was not captured from ${repo}:${ref}"
+              return 1
+            fi
+            echo "${name}=${digest}" | tee -a /tmp/e2e-migrate-state/digests.env
+          }
+
+          : > /tmp/e2e-migrate-state/digests.env
+          record_digest TEST_IMAGE_DIGEST init/test-image v1
+          record_digest TEST_IMAGE_2_DIGEST init/test-image-2 latest
+          record_digest SHARED_V1_DIGEST init/shared v1
+          record_digest SHARED_V2_DIGEST init/shared v2
+          record_digest SHARED_A_DIGEST init/shared-a v1
+          record_digest SHARED_B_DIGEST init/shared-b v1
+          record_digest INDEX_DIGEST init/test-index latest
+
+          . /tmp/e2e-migrate-state/digests.env
+          for var in TEST_IMAGE_DIGEST TEST_IMAGE_2_DIGEST SHARED_V1_DIGEST SHARED_V2_DIGEST SHARED_A_DIGEST SHARED_B_DIGEST INDEX_DIGEST; do
+            if [ -z "${!var}" ]; then
+              echo "FAIL: ${var} was not captured"
+              exit 1
+            fi
+          done
+          if [ "$SHARED_V1_DIGEST" != "$SHARED_V2_DIGEST" ]; then
+            echo "FAIL: expected init/shared:v1 and init/shared:v2 to share a manifest digest"
+            exit 1
+          fi
+
+          SQLITE_DIR=$(sudo podman volume inspect sqlite-storage --format '{{.Mountpoint}}')
+          SOURCE_DB="${SQLITE_DIR}/quay_sqlite.db"
+          echo "$SOURCE_DB" | tee /tmp/e2e-migrate-state/source-db-path.txt
+          sudo test -f "$SOURCE_DB"
+
+          sudo sqlite3 "$SOURCE_DB" 'PRAGMA integrity_check;' | tee /tmp/e2e-migrate-state/source-integrity.txt
+          grep -qx ok /tmp/e2e-migrate-state/source-integrity.txt
+
+          : > /tmp/e2e-migrate-state/source-counts.env
+          for table in repository tag manifest manifestblob imagestorage; do
+            count=$(sudo sqlite3 "$SOURCE_DB" "SELECT COUNT(*) FROM ${table};")
+            echo "${table}=${count}" | tee -a /tmp/e2e-migrate-state/source-counts.env
+          done
+          version=$(sudo sqlite3 "$SOURCE_DB" "SELECT version_num FROM alembic_version;")
+          echo "alembic_version=${version}" | tee -a /tmp/e2e-migrate-state/source-counts.env
+
+          sudo podman volume inspect sqlite-storage quay-storage \
+            > /tmp/e2e-migrate-state/source-volumes.json
+          sudo systemctl status quay-app.service quay-redis.service quay-pod.service --no-pager \
+            > /tmp/e2e-migrate-state/source-services.txt || true
+          sudo cp /etc/systemd/system/quay-app.service /tmp/e2e-migrate-state/source-quay-app.service || true
+
+      - name: Run quay migrate
+        run: sudo bin/quay migrate
+
+      - name: Trust registry TLS certificate
+        run: |
+          sudo install -m 644 /var/lib/quay/ssl.cert /usr/local/share/ca-certificates/quay.crt
+          sudo update-ca-certificates
+          sudo mkdir -p /etc/containers/certs.d/localhost:8443
+          sudo install -m 644 /var/lib/quay/ssl.cert /etc/containers/certs.d/localhost:8443/ca.crt
+
+      - name: Verify migrated content
+        run: |
+          set -euo pipefail
+
+          curl -fs https://localhost:8443/healthz
+          echo "Health check passed"
+
+          sudo sqlite3 /var/lib/quay/quay.db 'PRAGMA integrity_check;' | tee /tmp/e2e-migrate-state/target-integrity.txt
+          grep -qx ok /tmp/e2e-migrate-state/target-integrity.txt
+
+          : > /tmp/e2e-migrate-state/target-counts.env
+          for table in repository tag manifest manifestblob imagestorage; do
+            expected=$(awk -F= -v key="$table" '$1 == key {print $2}' /tmp/e2e-migrate-state/source-counts.env)
+            actual=$(sudo sqlite3 /var/lib/quay/quay.db "SELECT COUNT(*) FROM ${table};")
+            echo "${table}=${actual}" | tee -a /tmp/e2e-migrate-state/target-counts.env
+            if [ "$actual" != "$expected" ]; then
+              echo "FAIL: ${table} count changed during migration: expected ${expected}, got ${actual}"
+              exit 1
+            fi
+          done
+
+          expected_version=$(sed -n 's/^const TargetVersion = "\(.*\)"/\1/p' internal/dal/dbcore/migrate.go)
+          actual_version=$(sudo sqlite3 /var/lib/quay/quay.db "SELECT version_num FROM alembic_version;")
+          echo "alembic_version=${actual_version}" | tee -a /tmp/e2e-migrate-state/target-counts.env
+          if [ "$actual_version" != "$expected_version" ]; then
+            echo "FAIL: expected alembic version ${expected_version}, got ${actual_version}"
+            exit 1
+          fi
+
+          . /tmp/e2e-migrate-state/digests.env
+          ACCEPT_HEADER='Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
+
+          auth_param() {
+            local challenge="$1"
+            local key="$2"
+            printf '%s\n' "$challenge" | sed -n "s/.*${key}=\"\\([^\"]*\\)\".*/\\1/p"
+          }
+
+          fetch_manifest() {
+            local repo="$1"
+            local ref="$2"
+            local headers="$3"
+            local body="$4"
+            local url="https://localhost:8443/v2/${repo}/manifests/${ref}"
+
+            if curl -skf -D "$headers" -o "$body" \
+              -u init:testpassword123 \
+              -H "$ACCEPT_HEADER" \
+              "$url"; then
+              return 0
+            fi
+
+            local challenge_headers="${headers%.headers}.challenge.headers"
+            local token_json="${headers%.headers}.token.json"
+            cp "$headers" "$challenge_headers" 2>/dev/null || true
+
+            local challenge
+            challenge=$(tr -d '\r' < "$challenge_headers" | awk -F': ' 'tolower($1) == "www-authenticate" {print $2; exit}')
+            if ! printf '%s' "$challenge" | grep -qi '^Bearer '; then
+              echo "FAIL: manifest request for ${repo}:${ref} did not return a Bearer challenge"
+              return 1
+            fi
+
+            local realm service scope token
+            realm=$(auth_param "$challenge" realm)
+            service=$(auth_param "$challenge" service)
+            scope=$(auth_param "$challenge" scope)
+            if [ -z "$scope" ]; then
+              scope="repository:${repo}:pull"
+            fi
+            if [ -z "$realm" ]; then
+              echo "FAIL: Bearer challenge for ${repo}:${ref} did not include realm"
+              return 1
+            fi
+
+            if [ -n "$service" ]; then
+              curl -skfsS -u init:testpassword123 -G \
+                --data-urlencode "service=${service}" \
+                --data-urlencode "scope=${scope}" \
+                -o "$token_json" \
+                "$realm"
+            else
+              curl -skfsS -u init:testpassword123 -G \
+                --data-urlencode "scope=${scope}" \
+                -o "$token_json" \
+                "$realm"
+            fi
+
+            token=$(jq -r '.token // .access_token // empty' "$token_json")
+            if [ -z "$token" ]; then
+              echo "FAIL: token response for ${repo}:${ref} did not include a token"
+              return 1
+            fi
+
+            curl -skfsS -D "$headers" -o "$body" \
+              -H "$ACCEPT_HEADER" \
+              -H "Authorization: Bearer ${token}" \
+              "$url"
+          }
+
+          verify_manifest_digest() {
+            local repo="$1"
+            local ref="$2"
+            local expected="$3"
+            local safe_ref
+            safe_ref=$(echo "$repo-$ref" | tr '/:' '--')
+            local headers="/tmp/e2e-migrate-state/target-${safe_ref}.headers"
+            local body="/tmp/e2e-migrate-state/target-${safe_ref}.json"
+            local actual
+
+            fetch_manifest "$repo" "$ref" "$headers" "$body"
+            actual=$(tr -d '\r' < "$headers" | awk -F': ' 'tolower($1) == "docker-content-digest" {print $2}' | tail -n1)
+            if [ "$actual" != "$expected" ]; then
+              echo "FAIL: ${repo}:${ref} digest changed: expected ${expected}, got ${actual}"
+              exit 1
+            fi
+            test -s "$body"
+          }
+
+          verify_manifest_digest init/test-image v1 "$TEST_IMAGE_DIGEST"
+          verify_manifest_digest init/test-image "$TEST_IMAGE_DIGEST" "$TEST_IMAGE_DIGEST"
+          verify_manifest_digest init/test-image-2 latest "$TEST_IMAGE_2_DIGEST"
+          verify_manifest_digest init/shared v1 "$SHARED_V1_DIGEST"
+          verify_manifest_digest init/shared v2 "$SHARED_V2_DIGEST"
+          verify_manifest_digest init/shared-a v1 "$SHARED_A_DIGEST"
+          verify_manifest_digest init/shared-b v1 "$SHARED_B_DIGEST"
+          verify_manifest_digest init/test-index latest "$INDEX_DIGEST"
+
+          curl -fsS -u init:testpassword123 \
+            https://localhost:8443/v2/init/shared/tags/list \
+            | tee /tmp/e2e-migrate-state/shared-tags.json
+          jq -e '.tags | index("v1") and index("v2")' /tmp/e2e-migrate-state/shared-tags.json
+
+          sudo podman pull "localhost:8443/init/test-image@${TEST_IMAGE_DIGEST}"
+          sudo podman pull localhost:8443/init/test-image:v1
+          sudo podman pull localhost:8443/init/test-image-2:latest
+          sudo podman pull localhost:8443/init/shared:v2
+          sudo podman pull localhost:8443/init/test-index:latest
+
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/post-migrate:latest
+          sudo podman push localhost:8443/init/post-migrate:latest
+          sudo podman pull localhost:8443/init/post-migrate:latest
+
+          echo "All migration verifications passed"
+
+      - name: Clean up old OMR
+        run: |
+          set -euo pipefail
+
+          sudo bin/quay migrate -cleanup
+          echo "Cleanup completed"
+
+          for unit in quay-app.service quay-redis.service quay-pod.service; do
+            if sudo test -e "/etc/systemd/system/${unit}"; then
+              echo "FAIL: old OMR unit still exists: ${unit}"
+              exit 1
+            fi
+          done
+
+          if sudo podman volume exists sqlite-storage; then
+            echo "FAIL: old sqlite-storage volume still exists"
+            exit 1
+          fi
+          if sudo podman volume exists quay-storage; then
+            echo "FAIL: old quay-storage volume still exists"
+            exit 1
+          fi
+          if sudo podman secret inspect redis_pass >/dev/null 2>&1; then
+            echo "FAIL: old redis_pass secret still exists"
+            exit 1
+          fi
+          if sudo test -e /var/lib/quay/.migration-in-progress; then
+            echo "FAIL: migration marker still exists"
+            exit 1
+          fi
+
+          curl -fs https://localhost:8443/healthz
+          echo "Cleanup assertions passed"
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-migrate-diagnostics
+          cp -a /tmp/e2e-migrate-state/. /tmp/e2e-migrate-diagnostics/ 2>/dev/null || true
+
+          sudo podman ps -a > /tmp/e2e-migrate-diagnostics/podman-ps.txt 2>&1 || true
+          sudo podman images > /tmp/e2e-migrate-diagnostics/podman-images.txt 2>&1 || true
+          sudo podman volume ls > /tmp/e2e-migrate-diagnostics/podman-volumes.txt 2>&1 || true
+          sudo podman volume inspect sqlite-storage quay-storage > /tmp/e2e-migrate-diagnostics/podman-volume-inspect.json 2>&1 || true
+          sudo podman secret ls > /tmp/e2e-migrate-diagnostics/podman-secrets.txt 2>&1 || true
+          podman ps -a >> /tmp/e2e-migrate-diagnostics/podman-ps.txt 2>&1 || true
+          sudo podman logs quay-app > /tmp/e2e-migrate-diagnostics/omr-quay-app.log 2>&1 || true
+          podman logs quay-app >> /tmp/e2e-migrate-diagnostics/omr-quay-app.log 2>&1 || true
+          sudo podman logs quay-redis > /tmp/e2e-migrate-diagnostics/omr-redis.log 2>&1 || true
+          sudo podman logs systemd-quay > /tmp/e2e-migrate-diagnostics/new-quay.log 2>&1 || true
+          sudo journalctl --no-pager -n 200 > /tmp/e2e-migrate-diagnostics/journal.log 2>&1 || true
+          sudo journalctl -u quay-app.service -u quay-redis.service -u quay-pod.service -u quay.service --no-pager > /tmp/e2e-migrate-diagnostics/quay-units-journal.log 2>&1 || true
+          sudo systemctl list-units 'quay*' --all --no-pager > /tmp/e2e-migrate-diagnostics/systemd-quay-units.txt 2>&1 || true
+          sudo systemctl list-unit-files 'quay*' --no-pager > /tmp/e2e-migrate-diagnostics/systemd-quay-unit-files.txt 2>&1 || true
+          sudo systemctl status quay.service > /tmp/e2e-migrate-diagnostics/service-status.txt 2>&1 || true
+          sudo ls -laR /var/lib/quay/ > /tmp/e2e-migrate-diagnostics/data-dir.txt 2>&1 || true
+          sudo find /var/lib/quay -maxdepth 4 -type f -printf '%p %s bytes\n' > /tmp/e2e-migrate-diagnostics/data-files.txt 2>&1 || true
+          sudo sqlite3 /var/lib/quay/quay.db 'PRAGMA integrity_check;' > /tmp/e2e-migrate-diagnostics/target-integrity-latest.txt 2>&1 || true
+          sudo sqlite3 /var/lib/quay/quay.db "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'index') ORDER BY type, name;" > /tmp/e2e-migrate-diagnostics/target-schema-objects.txt 2>&1 || true
+          curl -kfsS -u init:testpassword123 https://localhost:8443/v2/init/shared/tags/list > /tmp/e2e-migrate-diagnostics/shared-tags-latest.json 2>&1 || true
+          curl -kfsS https://localhost:8443/healthz > /tmp/e2e-migrate-diagnostics/healthz.txt 2>&1 || true
+          ss -tlnp > /tmp/e2e-migrate-diagnostics/ports.txt 2>&1 || true
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-migrate-diagnostics
+          path: /tmp/e2e-migrate-diagnostics/
           retention-days: 7

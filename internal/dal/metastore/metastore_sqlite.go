@@ -398,6 +398,19 @@ func (s *SQLiteStore) GetManifestDigest(ctx context.Context, repoID int64, dgst 
 	return digest.Parse(d)
 }
 
+// GetManifestContent returns manifest JSON stored in the database.
+func (s *SQLiteStore) GetManifestContent(ctx context.Context, dgst digest.Digest) ([]byte, error) {
+	q := daldb.New(s.db)
+	content, err := q.GetManifestContentByDigest(ctx, dgst.String())
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("get manifest content %s: %w", dgst, oci.ErrNotExist)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get manifest content %s: %w", dgst, err)
+	}
+	return []byte(content), nil
+}
+
 // BlobLinkedToRepo checks if a blob is linked to a specific repository via
 // manifestblob or uploadedblob (matching Python's get_repository_blob_by_digest).
 func (s *SQLiteStore) BlobLinkedToRepo(ctx context.Context, repoID int64, dgst digest.Digest) (bool, error) {

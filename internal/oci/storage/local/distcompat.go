@@ -1,6 +1,7 @@
 package local
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -39,15 +40,7 @@ func (d *DistDriver) Name() string { return "quay" }
 func (d *DistDriver) GetContent(ctx context.Context, path string) ([]byte, error) {
 	switch classify(path) {
 	case pathBlob:
-		dgst, err := digestFromBlobPath(path)
-		if err != nil {
-			return nil, err
-		}
-		data, err := d.blobs.GetContent(ctx, dgst)
-		if errors.Is(err, storage.ErrNotExist) {
-			return nil, storagedriver.PathNotFoundError{Path: path}
-		}
-		return data, err
+		return d.getBlobContent(ctx, path)
 
 	case pathUpload:
 		id := uploadIDFromPath(path)
@@ -64,6 +57,29 @@ func (d *DistDriver) GetContent(ctx context.Context, path string) ([]byte, error
 	default:
 		return d.getMetadataContent(ctx, path)
 	}
+}
+
+func (d *DistDriver) getBlobContent(ctx context.Context, path string) ([]byte, error) {
+	dgst, err := digestFromBlobPath(path)
+	if err != nil {
+		return nil, err
+	}
+	data, err := d.blobs.GetContent(ctx, dgst)
+	if errors.Is(err, storage.ErrNotExist) {
+		return d.getManifestBlobContent(ctx, path, dgst)
+	}
+	return data, err
+}
+
+func (d *DistDriver) getManifestBlobContent(ctx context.Context, path string, dgst digest.Digest) ([]byte, error) {
+	data, err := d.meta.GetManifestContent(ctx, dgst)
+	if err == nil {
+		return data, nil
+	}
+	if errors.Is(err, oci.ErrNotExist) {
+		return nil, storagedriver.PathNotFoundError{Path: path}
+	}
+	return nil, err
 }
 
 func (d *DistDriver) getMetadataContent(ctx context.Context, path string) ([]byte, error) {
@@ -156,15 +172,7 @@ func (d *DistDriver) PutContent(ctx context.Context, path string, content []byte
 func (d *DistDriver) Reader(ctx context.Context, path string, offset int64) (io.ReadCloser, error) {
 	switch classify(path) {
 	case pathBlob:
-		dgst, err := digestFromBlobPath(path)
-		if err != nil {
-			return nil, err
-		}
-		rc, err := d.blobs.Reader(ctx, dgst, offset)
-		if errors.Is(err, storage.ErrNotExist) {
-			return nil, storagedriver.PathNotFoundError{Path: path}
-		}
-		return rc, err
+		return d.readerBlob(ctx, path, offset)
 
 	case pathUpload:
 		id := uploadIDFromPath(path)
@@ -177,6 +185,32 @@ func (d *DistDriver) Reader(ctx context.Context, path string, offset int64) (io.
 	default:
 		return nil, storagedriver.PathNotFoundError{Path: path}
 	}
+}
+
+func (d *DistDriver) readerBlob(ctx context.Context, path string, offset int64) (io.ReadCloser, error) {
+	dgst, err := digestFromBlobPath(path)
+	if err != nil {
+		return nil, err
+	}
+	rc, err := d.blobs.Reader(ctx, dgst, offset)
+	if errors.Is(err, storage.ErrNotExist) {
+		return d.readerManifestBlob(ctx, path, dgst, offset)
+	}
+	return rc, err
+}
+
+func (d *DistDriver) readerManifestBlob(ctx context.Context, path string, dgst digest.Digest, offset int64) (io.ReadCloser, error) {
+	data, err := d.getManifestBlobContent(ctx, path, dgst)
+	if err != nil {
+		return nil, err
+	}
+	if offset < 0 {
+		return nil, fmt.Errorf("negative offset %d", offset)
+	}
+	if offset > int64(len(data)) {
+		return nil, fmt.Errorf("offset %d beyond manifest content size %d", offset, len(data))
+	}
+	return io.NopCloser(bytes.NewReader(data[offset:])), nil
 }
 
 // Writer returns a FileWriter for upload data. Distribution uses this
@@ -211,20 +245,7 @@ func (fw *distFileWriter) Cancel(ctx context.Context) error { return fw.w.Cancel
 func (d *DistDriver) Stat(ctx context.Context, path string) (storagedriver.FileInfo, error) {
 	switch classify(path) {
 	case pathBlob:
-		dgst, err := digestFromBlobPath(path)
-		if err != nil {
-			return nil, err
-		}
-		info, err := d.blobs.Stat(ctx, dgst)
-		if errors.Is(err, storage.ErrNotExist) {
-			return nil, storagedriver.PathNotFoundError{Path: path}
-		}
-		if err != nil {
-			return nil, err
-		}
-		return storagedriver.FileInfoInternal{FileInfoFields: storagedriver.FileInfoFields{
-			Path: path, Size: info.Size, IsDir: false,
-		}}, nil
+		return d.statBlob(ctx, path)
 
 	case pathUpload:
 		id := uploadIDFromPath(path)
@@ -264,6 +285,29 @@ func (d *DistDriver) Stat(ctx context.Context, path string) (storagedriver.FileI
 	default:
 		return d.statMetadata(ctx, path)
 	}
+}
+
+func (d *DistDriver) statBlob(ctx context.Context, path string) (storagedriver.FileInfo, error) {
+	dgst, err := digestFromBlobPath(path)
+	if err != nil {
+		return nil, err
+	}
+	info, err := d.blobs.Stat(ctx, dgst)
+	if errors.Is(err, storage.ErrNotExist) {
+		data, err := d.getManifestBlobContent(ctx, path, dgst)
+		if err != nil {
+			return nil, err
+		}
+		return storagedriver.FileInfoInternal{FileInfoFields: storagedriver.FileInfoFields{
+			Path: path, Size: int64(len(data)), IsDir: false,
+		}}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return storagedriver.FileInfoInternal{FileInfoFields: storagedriver.FileInfoFields{
+		Path: path, Size: info.Size, IsDir: false,
+	}}, nil
 }
 
 // statMetadata resolves metadata paths for distribution's Walk tree traversal.

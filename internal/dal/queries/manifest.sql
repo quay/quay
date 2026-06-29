@@ -37,3 +37,6 @@ SELECT COUNT(*) FROM manifest;
 
 -- name: ManifestExistsByDigest :one
 SELECT digest FROM manifest WHERE repository_id = ? AND digest = ?;
+
+-- name: GetManifestContentByDigest :one
+SELECT manifest_bytes FROM manifest WHERE digest = ? LIMIT 1;
