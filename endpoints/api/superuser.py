@@ -1357,9 +1357,7 @@ class SuperUserRepositoryBuildLogsArchive(ApiResource):
 
             try:
                 path = log_archive.get_file_id_path(build_uuid)
-                data_stream = log_archive._storage.stream_read_file(
-                    log_archive._locations, path
-                )
+                data_stream = log_archive._storage.stream_read_file(log_archive._locations, path)
                 return send_file(GzipInputStream(data_stream), mimetype="application/json")
             except IOError:
                 logger.exception("Could not read archived build logs")
