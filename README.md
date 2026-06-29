@@ -76,3 +76,65 @@ High-level features include:
 
 Project Quay is under the Apache 2.0 license.
 See the LICENSE file for details.
+
+## Contextification Addendum
+
+### Repository Map
+
+```mermaid
+flowchart LR
+    clients[Docker, Podman, UI, API clients]
+    app[Flask application]
+    api[endpoints/api]
+    registry[endpoints/v2]
+    data[data/model and data/registry_model]
+    db[(PostgreSQL)]
+    redis[(Redis)]
+    storage[storage backends]
+    workers[workers]
+    ui[web/ and static/]
+
+    clients --> app
+    app --> api
+    app --> registry
+    app --> ui
+    api --> data
+    registry --> data
+    data --> db
+    data --> redis
+    registry --> storage
+    workers --> data
+    workers --> storage
+```
+
+Key paths: `data/database.py` is the schema source of truth, `endpoints/v2/` serves registry protocol traffic, `workers/` runs async jobs, `web/` is the React UI, and `config-tool/` validates config.
+
+### Development Shortcuts
+
+```bash
+make local-dev-up
+make local-dev-up-with-clair
+TEST=true PYTHONPATH="." pytest path/to/test.py -v
+make unit-test
+make registry-test
+make types-test
+```
+
+Local UI notes:
+
+- Legacy Angular UI (`static/`) is started by `make local-dev-up` and is available at `http://localhost:8080`.
+- New React UI (`web/`) runs separately at `http://localhost:9000`; after `make local-dev-up`, run:
+
+  ```bash
+  cd web
+  npm install
+  npm start
+  ```
+
+- If backend code changes are not reflected in the local stack, restart the Quay container:
+
+  ```bash
+  podman restart quay-quay
+  ```
+
+Related repos: [quay-operator](https://github.com/quay/quay-operator), [quay-builder](https://github.com/quay/quay-builder), [quay-tests](https://github.com/quay/quay-tests), [quay-fbcs](https://github.com/quay/quay-fbcs), and [quay-konflux-components](https://github.com/quay/quay-konflux-components).

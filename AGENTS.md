@@ -115,3 +115,16 @@ ln -sf "$(git -C /path/to/main/repo rev-parse --show-toplevel)/web/node_modules"
 - PostgreSQL: localhost:5432
 - Redis: localhost:6379
 - Clair: localhost:6000 (from Quay container, when enabled)
+
+## Contextification Addendum
+
+Use this low-token routing map before opening broader docs:
+
+- API: `endpoints/api/`, `agent_docs/api.md`
+- Registry protocol: `endpoints/v2/`, `data/registry_model/`
+- Schema/migrations: `data/database.py`, `data/migrations/`, `agent_docs/database.md`
+- Workers: `workers/`
+- Storage: `storage/`
+- React UI: `web/AGENTS.md`
+
+Guardrails: add tests for behavior changes, generate Alembic revisions instead of hand-writing IDs, and keep secrets out of config and fixtures.

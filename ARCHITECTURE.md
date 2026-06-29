@@ -8,3 +8,29 @@ See the [agent_docs/](agent_docs/) directory for detailed architecture documenta
 - [development.md](agent_docs/development.md) — Local development setup
 - [testing.md](agent_docs/testing.md) — Testing patterns and fixtures
 - [workflow.md](agent_docs/workflow.md) — Dev workflow, JIRA, PRs, CI
+
+## Contextification Addendum
+
+```mermaid
+flowchart LR
+    client[Client]
+    flask[Flask app]
+    api[REST API]
+    v2[OCI registry API]
+    model[Data model]
+    db[(Database)]
+    storage[Object storage]
+    workers[Workers]
+
+    client --> flask
+    flask --> api
+    flask --> v2
+    api --> model
+    v2 --> model
+    model --> db
+    v2 --> storage
+    workers --> model
+    workers --> storage
+```
+
+Quay state is split between database metadata, Redis coordination/cache data, and object storage blobs. Use `data/model/` and `data/registry_model/` rather than direct endpoint-to-database shortcuts.
