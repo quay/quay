@@ -495,7 +495,16 @@ export async function fetchBuildLogsSuperuser(
 
   let logs = logsResponse.data.logs || [];
   if (!isNullOrUndefined(logsResponse.data.logs_url)) {
-    const archived = await fetchArchivedBuildLogs(logsResponse.data.logs_url);
+    const logsUrl = logsResponse.data.logs_url;
+    // Same-origin fallback URLs (e.g. /logarchive/<uuid>) check repository
+    // permissions, not superuser permissions. Route through the superuser
+    // archive endpoint instead to preserve the permission boundary.
+    const isSameOrigin =
+      logsUrl.startsWith('/') || logsUrl.startsWith(window.location.origin);
+    const archiveUrl = isSameOrigin
+      ? `/api/v1/superuser/${buildUuid}/logs/archive`
+      : logsUrl;
+    const archived = await fetchArchivedBuildLogs(archiveUrl);
     logs = archived.logs || [];
   }
 
