@@ -209,14 +209,6 @@ test.describe(
       }
       test.skip(!hasLogsUrl, 'Archiver did not archive logs within timeout');
 
-      // Re-sign in to refresh the readonly session after the long wait
-      const users = {username: 'readonly', password: 'password'};
-      const signInResp = await readonlyRequest.post(
-        `${API_URL}/api/v1/signin`,
-        {data: {username: users.username, password: users.password}},
-      );
-      expect(signInResp.ok()).toBeTruthy();
-
       // Load Build Logs page as the readonly superuser — should render
       // archived logs via the superuser archive endpoint, not 403 from /logarchive/
       await readonlyPage.goto('/build-logs');
