@@ -432,7 +432,7 @@ def test_create_oauth_api_token_populates_fields(initialized_db):
     before = datetime.utcnow()
     token_record, access_token = create_oauth_api_token(
         application=app,
-        user=user,
+        user_obj=user,
         scope="repo:read",
         expiration_seconds=3600,
     )
@@ -452,7 +452,7 @@ def test_create_oauth_api_token_returns_valid_token(initialized_db):
 
     token_record, access_token = create_oauth_api_token(
         application=app,
-        user=user,
+        user_obj=user,
         scope="repo:read",
     )
 
@@ -467,7 +467,7 @@ def test_create_oauth_api_token_default_expiration(initialized_db):
 
     token_record, _ = create_oauth_api_token(
         application=app,
-        user=user,
+        user_obj=user,
         scope="repo:read",
     )
 

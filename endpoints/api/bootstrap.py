@@ -106,7 +106,7 @@ class BootstrapTokenRenew(ApiResource):
 
                 new_record, new_access_token = create_oauth_api_token(
                     application=current_token.application,
-                    user=current_token.authorized_user,
+                    user_obj=current_token.authorized_user,
                     scope=scope,
                     expiration_seconds=expiration,
                 )

@@ -414,42 +414,28 @@ def get_or_create_bootstrap_application(name, org):
 
 
 def create_oauth_api_token(
-    application, user, scope, expiration_seconds=DEFAULT_TOKEN_EXPIRATION_SECONDS
+    application, user_obj, scope, expiration_seconds=DEFAULT_TOKEN_EXPIRATION_SECONDS
 ):
     """
     Creates an OAuth access token with bootstrap metadata fields populated.
 
     Args:
         application: OAuthApplication instance
-        user: User instance used as the authorized_user
+        user_obj: User instance used as the authorized_user
         scope: Space-separated scope string
         expiration_seconds: Token lifetime in seconds (default: 10 years)
 
     Returns:
         Tuple of (OAuthAccessToken, access_token_string)
     """
-    access_token = utils.random_ascii_string(40)
-    token_name = access_token[:ACCESS_TOKEN_PREFIX_LENGTH]
-    token_code = access_token[ACCESS_TOKEN_PREFIX_LENGTH:]
-
-    assert len(token_name) == ACCESS_TOKEN_PREFIX_LENGTH
-    assert len(token_code) >= ACCESS_TOKEN_MINIMUM_CODE_LENGTH
-
-    expires_at = datetime.utcnow() + timedelta(seconds=expiration_seconds)
-
-    created = OAuthAccessToken.create(
-        application=application,
-        authorized_user=user,
-        scope=scope,
-        token_name=token_name,
-        token_code=Credential.from_string(token_code),
-        access_token="",
-        token_type="Bearer",
-        expires_at=expires_at,
-        data=json.dumps({"username": user.username}),
-        created=datetime.utcnow(),
+    return create_user_access_token_for_application(
+        user_obj,
+        application,
+        scope,
+        "Bearer",
+        expiration_seconds,
+        access_token=utils.random_ascii_string(40),
     )
-    return created, access_token
 
 
 def count_active_tokens(application):
@@ -481,7 +467,7 @@ def create_oauth_api_token_under_limit(
 
         return create_oauth_api_token(
             application=locked_application,
-            user=user,
+            user_obj=user,
             scope=scope,
             expiration_seconds=expiration_seconds,
         )
@@ -725,6 +711,20 @@ def get_oauth_application_for_client_id(client_id):
 
 
 def create_user_access_token(user_obj, client_id, scope, access_token=None, expires_in=9000):
+    application = get_application_for_client_id(client_id)
+    return create_user_access_token_for_application(
+        user_obj,
+        application,
+        scope,
+        "token",
+        expires_in,
+        access_token=access_token,
+    )
+
+
+def create_user_access_token_for_application(
+    user_obj, application, scope, token_type, expires_in, access_token=None
+):
     access_token = access_token or random_string_generator(length=40)()
     token_name = access_token[:ACCESS_TOKEN_PREFIX_LENGTH]
     token_code = access_token[ACCESS_TOKEN_PREFIX_LENGTH:]
@@ -733,12 +733,11 @@ def create_user_access_token(user_obj, client_id, scope, access_token=None, expi
     assert len(token_code) >= ACCESS_TOKEN_MINIMUM_CODE_LENGTH
 
     expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
-    application = get_application_for_client_id(client_id)
     created = OAuthAccessToken.create(
         application=application,
         authorized_user=user_obj,
         scope=scope,
-        token_type="token",
+        token_type=token_type,
         access_token="",
         token_code=Credential.from_string(token_code),
         token_name=token_name,
