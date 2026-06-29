@@ -25,6 +25,19 @@ def render_server_base_conf(**kwargs):
     return template.render(**defaults)
 
 
+def render_http_base_conf(**kwargs):
+    template_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "../../nginx/http-base.conf.jnj",
+    )
+    with open(template_path) as f:
+        template = jinja2.Template(f.read())
+
+    defaults = dict(trusted_proxy_cidr=None)
+    defaults.update(kwargs)
+    return template.render(**defaults)
+
+
 class TestErrorPageDirective:
     def test_error_page_502_uses_uri_not_absolute_path(self):
         rendered = render_server_base_conf()
@@ -77,3 +90,17 @@ class TestErrorPageDirective:
         assert "patternfly" not in re.search(
             r"location = /502\.html \{([^}]*)}", rendered, re.DOTALL
         ).group(1)
+
+    def test_original_remote_addr_header_is_forwarded(self):
+        rendered = render_server_base_conf()
+        assert (
+            "proxy_set_header X-Quay-Original-Remote-Addr " "$quay_original_remote_addr;"
+        ) in rendered
+
+
+class TestOriginalRemoteAddrDirective:
+    def test_original_remote_addr_map_is_defined(self):
+        rendered = render_http_base_conf()
+        assert "map $realip_remote_addr $quay_original_remote_addr" in rendered
+        assert '""      $remote_addr;' in rendered
+        assert "default $realip_remote_addr;" in rendered

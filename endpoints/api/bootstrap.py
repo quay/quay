@@ -24,6 +24,7 @@ from util.bootstrap_token import write_bootstrap_token
 logger = logging.getLogger(__name__)
 
 _INVALID_BOOTSTRAP_TOKEN_MESSAGE = "Requires valid bootstrap bearer token"
+_QUAY_NGINX_ORIGINAL_REMOTE_ADDR_HEADER = "X-Quay-Original-Remote-Addr"
 
 
 def _raise_invalid_bootstrap_token():
@@ -55,13 +56,30 @@ def _unproxied_remote_addr(req):
     return proxy_fix_orig.get("REMOTE_ADDR") or req.environ.get("REMOTE_ADDR")
 
 
-def _is_unproxied_loopback_request(req):
-    if (
+def _has_forwarding_headers(req):
+    return bool(
         req.headers.get("X-Forwarded-For")
         or req.headers.get("X-Real-IP")
         or req.headers.get("Forwarded")
-    ):
-        return False
+    )
+
+
+def _has_internal_or_unset_direct_peer(req):
+    direct_peer = _unproxied_remote_addr(req)
+    return not direct_peer or _is_loopback_remote_addr(direct_peer)
+
+
+def _is_loopback_bootstrap_renewal_request(req):
+    if _has_forwarding_headers(req):
+        # Standard Quay deployments route /api/ requests through the bundled
+        # nginx, which always adds X-Forwarded-For before proxying to gunicorn.
+        # Do not trust request.remote_addr here: ProxyFix derives it from
+        # X-Forwarded-For. Instead, trust only the original TCP peer address
+        # overwritten by Quay's own nginx configuration, and require the direct
+        # peer to be unset (Unix socket) or loopback (local TCP proxy).
+        return _is_loopback_remote_addr(
+            req.headers.get(_QUAY_NGINX_ORIGINAL_REMOTE_ADDR_HEADER)
+        ) and _has_internal_or_unset_direct_peer(req)
 
     return _is_loopback_remote_addr(_unproxied_remote_addr(req))
 
@@ -98,7 +116,9 @@ class BootstrapTokenRenew(ApiResource):
                 if current_token is None:
                     _raise_invalid_bootstrap_token()
 
-                if _is_expired(current_token) and not _is_unproxied_loopback_request(request):
+                if _is_expired(current_token) and not _is_loopback_bootstrap_renewal_request(
+                    request
+                ):
                     _raise_invalid_bootstrap_token()
 
                 scope = app.config["PROGRAMMATIC_TOKEN_SCOPE"]

@@ -11,6 +11,7 @@ add_header X-Frame-Options DENY;
 
 # Proxy Headers
 proxy_set_header X-Forwarded-For $proper_forwarded_for;
+proxy_set_header X-Quay-Original-Remote-Addr $quay_original_remote_addr;
 
 # Pass trusted protocol to Werkzeug
 proxy_set_header X-Forwarded-Proto $final_proto;

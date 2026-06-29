@@ -365,6 +365,103 @@ def test_renew_expired_token_rejects_proxy_derived_loopback(app, initialized_db,
     assert resp.get_json()["error_type"] == "invalid_token"
 
 
+def test_renew_expired_token_accepted_from_quay_nginx_loopback_unix_socket(
+    app, initialized_db, tmp_path
+):
+    _, _, token_record, access_token = _create_bootstrap_token(initialized_db)
+    token_record.expires_at = datetime.utcnow() - timedelta(days=1)
+    token_record.save()
+
+    token_path = str(tmp_path / "token.json")
+    with patch.dict(
+        real_app.config,
+        {
+            "PROGRAMMATIC_TOKEN_PATH": token_path,
+            "PROGRAMMATIC_TOKEN_EXPIRATION": 3600,
+            "PROGRAMMATIC_TOKEN_SCOPE": "repo:read",
+            "SUPER_USERS": ["devtable"],
+            "BOOTSTRAP_TOKEN_OWNER": "devtable",
+        },
+    ):
+        with app.test_client() as cl:
+            resp = cl.post(
+                "/api/v1/bootstrap/renew",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "X-Forwarded-For": "127.0.0.1",
+                    "X-Quay-Original-Remote-Addr": "127.0.0.1",
+                },
+                environ_base={"REMOTE_ADDR": ""},
+            )
+
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "rotated"
+
+
+def test_renew_expired_token_rejects_spoofed_forwarded_loopback(app, initialized_db, tmp_path):
+    _, _, token_record, access_token = _create_bootstrap_token(initialized_db)
+    token_record.expires_at = datetime.utcnow() - timedelta(days=1)
+    token_record.save()
+
+    token_path = str(tmp_path / "token.json")
+    with patch.dict(
+        real_app.config,
+        {
+            "PROGRAMMATIC_TOKEN_PATH": token_path,
+            "PROGRAMMATIC_TOKEN_EXPIRATION": 3600,
+            "PROGRAMMATIC_TOKEN_SCOPE": "repo:read",
+            "SUPER_USERS": ["devtable"],
+            "BOOTSTRAP_TOKEN_OWNER": "devtable",
+        },
+    ):
+        with app.test_client() as cl:
+            resp = cl.post(
+                "/api/v1/bootstrap/renew",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "X-Forwarded-For": "127.0.0.1",
+                    "X-Quay-Original-Remote-Addr": "203.0.113.50",
+                },
+                environ_base={"REMOTE_ADDR": "203.0.113.50"},
+            )
+
+    assert resp.status_code == 401
+    assert resp.get_json()["error_type"] == "invalid_token"
+
+
+def test_renew_expired_token_rejects_direct_peer_spoofed_nginx_header(
+    app, initialized_db, tmp_path
+):
+    _, _, token_record, access_token = _create_bootstrap_token(initialized_db)
+    token_record.expires_at = datetime.utcnow() - timedelta(days=1)
+    token_record.save()
+
+    token_path = str(tmp_path / "token.json")
+    with patch.dict(
+        real_app.config,
+        {
+            "PROGRAMMATIC_TOKEN_PATH": token_path,
+            "PROGRAMMATIC_TOKEN_EXPIRATION": 3600,
+            "PROGRAMMATIC_TOKEN_SCOPE": "repo:read",
+            "SUPER_USERS": ["devtable"],
+            "BOOTSTRAP_TOKEN_OWNER": "devtable",
+        },
+    ):
+        with app.test_client() as cl:
+            resp = cl.post(
+                "/api/v1/bootstrap/renew",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "X-Forwarded-For": "127.0.0.1",
+                    "X-Quay-Original-Remote-Addr": "127.0.0.1",
+                },
+                environ_base={"REMOTE_ADDR": "203.0.113.50"},
+            )
+
+    assert resp.status_code == 401
+    assert resp.get_json()["error_type"] == "invalid_token"
+
+
 def test_renew_expired_token_accepted_from_ipv6_localhost(app, initialized_db, tmp_path):
     _, _, token_record, access_token = _create_bootstrap_token(initialized_db)
     token_record.expires_at = datetime.utcnow() - timedelta(days=1)
