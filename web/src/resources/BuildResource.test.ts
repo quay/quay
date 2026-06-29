@@ -200,7 +200,7 @@ describe('BuildResource', () => {
       expect(result.logs).toEqual([]);
     });
 
-    it('fetches archived logs when logs_url is present', async () => {
+    it('routes same-origin logs_url through superuser archive endpoint', async () => {
       const buildData = {id: 'b1', uuid: 'uuid1', status: 'complete'};
       const archivedLogs = {
         logs: [{message: 'pulling'}, {message: 'complete'}],
@@ -211,17 +211,34 @@ describe('BuildResource', () => {
       vi.mocked(axios.get)
         .mockResolvedValueOnce(mockResponse(buildData))
         .mockResolvedValueOnce(
+          mockResponse({logs_url: '/logarchive/uuid1'}),
+        )
+        .mockResolvedValueOnce(mockResponse(archivedLogs));
+
+      const result = await fetchBuildLogsSuperuser('uuid1');
+      expect(result.logs).toEqual(archivedLogs.logs);
+      expect(vi.mocked(axios.get).mock.calls[2][0]).toBe(
+        '/api/v1/superuser/uuid1/logs/archive',
+      );
+    });
+
+    it('follows external logs_url directly for cloud storage', async () => {
+      const buildData = {id: 'b1', uuid: 'uuid1', status: 'complete'};
+      const archivedLogs = {logs: [{message: 'done'}]};
+
+      vi.mocked(axios.get)
+        .mockResolvedValueOnce(mockResponse(buildData))
+        .mockResolvedValueOnce(
           mockResponse({
-            logs_url: 'https://archive.example.com/buildlogs/uuid1',
+            logs_url: 'https://s3.amazonaws.com/quay-buildlogs/uuid1',
           }),
         )
         .mockResolvedValueOnce(mockResponse(archivedLogs));
 
       const result = await fetchBuildLogsSuperuser('uuid1');
-      expect(result.id).toBe('b1');
       expect(result.logs).toEqual(archivedLogs.logs);
       expect(vi.mocked(axios.get).mock.calls[2][0]).toBe(
-        'https://archive.example.com/buildlogs/uuid1',
+        'https://s3.amazonaws.com/quay-buildlogs/uuid1',
       );
     });
 
