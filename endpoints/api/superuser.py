@@ -51,7 +51,6 @@ from endpoints.api import (
     verify_not_prod,
 )
 from endpoints.api.build import get_logs_or_log_url
-from util.registry.gzipinputstream import GzipInputStream
 from endpoints.api.logs import _validate_logs_arguments
 from endpoints.api.namespacequota import get_quota, limit_view, quota_view
 from endpoints.api.superuser_models_pre_oci import (
@@ -62,6 +61,7 @@ from endpoints.api.superuser_models_pre_oci import (
 )
 from util.config.schema import CONFIG_SCHEMA
 from util.parsing import truthy_bool
+from util.registry.gzipinputstream import GzipInputStream
 from util.request import get_request_ip
 from util.useremails import send_confirmation_email, send_recovery_email
 from util.validation import validate_service_key_name

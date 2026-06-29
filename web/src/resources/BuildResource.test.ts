@@ -210,9 +210,7 @@ describe('BuildResource', () => {
 
       vi.mocked(axios.get)
         .mockResolvedValueOnce(mockResponse(buildData))
-        .mockResolvedValueOnce(
-          mockResponse({logs_url: '/logarchive/uuid1'}),
-        )
+        .mockResolvedValueOnce(mockResponse({logs_url: '/logarchive/uuid1'}))
         .mockResolvedValueOnce(mockResponse(archivedLogs));
 
       const result = await fetchBuildLogsSuperuser('uuid1');
