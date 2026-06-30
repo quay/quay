@@ -1,6 +1,7 @@
 import {expect, test} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {
+  isCraneAvailable,
   pushUniqueImage,
   pushMultiArchImage,
   pullImage,
@@ -92,6 +93,7 @@ test.describe(
       authenticatedRequest,
     }) => {
       test.setTimeout(120_000);
+      test.skip(!(await isCraneAvailable()), 'crane CLI required');
 
       const org = await api.organization();
       const repo = await api.repository(org.name);

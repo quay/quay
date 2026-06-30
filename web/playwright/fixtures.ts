@@ -1042,7 +1042,7 @@ type TestFixtures = {
   // Auto-fixture: skips tests based on @auth: tags (runs automatically)
   _autoSkipByAuth: void;
 
-  // Container runtime availability (cached per worker)
+  // Registry image tooling availability (cached per worker)
   containerAvailable: boolean;
 
   // Auto-fixture: skips tests based on @container tag (runs automatically)
@@ -1068,7 +1068,7 @@ type WorkerFixtures = {
   // Cached Quay config (fetched once per worker)
   cachedQuayConfig: QuayConfig;
 
-  // Cached container runtime availability (checked once per worker)
+  // Cached registry image tooling availability (checked once per worker)
   cachedContainerAvailable: boolean;
 };
 
@@ -1363,7 +1363,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   // =========================================================================
-  // Container runtime availability
+  // Registry image tooling availability
   // =========================================================================
 
   containerAvailable: async ({cachedContainerAvailable}, use) => {
@@ -1375,14 +1375,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // =========================================================================
 
   /**
-   * Automatically skip tests that have @container tag when no
-   * container runtime (podman/docker) is available.
+   * Automatically skip tests that have @container tag when registry
+   * image tooling (skopeo) is not available.
    *
    * @example
    * ```typescript
    * test.describe('Push Tests', {tag: ['@container']}, () => {
    *   test('pushes image', async ({authenticatedPage}) => {
-   *     // Auto-skipped if no container runtime available!
+   *     // Auto-skipped if registry image tooling is unavailable!
    *   });
    * });
    * ```
@@ -1391,7 +1391,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     async ({containerAvailable}, use, testInfo) => {
       const hasContainerTag = testInfo.tags.includes('@container');
       if (hasContainerTag && !containerAvailable) {
-        testInfo.skip(true, 'Container runtime (podman/docker) required');
+        testInfo.skip(true, 'Registry image tooling (skopeo) required');
       }
       await use();
     },
