@@ -6,8 +6,7 @@
   "osvVulnerabilityAlerts": false,
   "dependencyDashboard": true,
   "extends": [
-    "github>konflux-ci/mintmaker-presets:cve-automerge-all",
-    "github>quay/quay-konflux-configs"
+    "github>konflux-ci/mintmaker-presets:cve-automerge-all"
   ],
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
   "postUpdateOptions": ["gomodTidy"],
