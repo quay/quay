@@ -132,6 +132,7 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_OTEL_TRACING":                          true,
 	"FEATURE_PARTIAL_USER_AUTOCOMPLETE":             true,
 	"FEATURE_PERMANENT_SESSIONS":                    true,
+	"FEATURE_PROGRAMMATIC_BOOTSTRAP":                true,
 	"FEATURE_PUBLIC_CATALOG":                        true,
 	"FEATURE_QUOTA_MANAGEMENT":                      true,
 	"FEATURE_QUOTA_SUPPRESS_FAILURES":               true,
@@ -162,6 +163,13 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_USER_RENAME":                           true,
 	"FEATURE_USERNAME_CONFIRMATION":                 true,
 	"FEATURE_VERIFY_QUOTA":                          true,
+
+	// Programmatic bootstrap token config
+	"BOOTSTRAP_APP_NAME":         true,
+	"BOOTSTRAP_TOKEN_OWNER":      true,
+	"BOOTSTRAP_TOKEN_EXPIRATION": true,
+	"BOOTSTRAP_TOKEN_PATH":       true,
+	"BOOTSTRAP_TOKEN_SCOPE":      true,
 
 	// Triggers & entitlements
 	"SUCCESSIVE_TRIGGER_FAILURE_DISABLE_THRESHOLD":        true,
