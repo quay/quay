@@ -12,8 +12,18 @@ repos:
     hooks:
     -   id: isort
         args: ["--settings-path", "pyproject.toml"]
+-   repo: https://github.com/pycqa/flake8
+    rev: 7.3.0
+    hooks:
+    -   id: flake8
 -   repo: local
     hooks:
+    -   id: requirements-pinned
+        name: Check requirements.txt is pinned
+        entry: bash -euo pipefail -c 'while IFS= read -r i; do case "$i" in ""|\\#*|-r*|--*) continue;; esac; if [[ "$i" != *"=="* && "$i" != *"@"* ]]; then echo "$i is not pinned"; exit 1; fi; done < requirements.txt'
+        language: system
+        files: requirements.txt
+        pass_filenames: false
     -   id: config-files-check
         name: Checking Config file changes
         entry: .github/hooks/pre-commit.sh
