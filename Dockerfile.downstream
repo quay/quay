@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7 AS base
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7@sha256:907b68736aa798b2d38255b7aa070b2a70acb90803864a40f05d0ec47556ddd0 AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 USER root
@@ -102,7 +102,7 @@ RUN set -ex\
 RUN python3.12 -m pip install --no-cache-dir --progress-bar off --prefix=/opt/app-root dumb-init
 
 # Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal AS build-static
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal@sha256:fe289fffb6afcb931bbc3012bd793dd54d5775fd8c19202219a0a13654a4cdc9 AS build-static
 WORKDIR /opt/app-root/src
 # This below line is a workaround because in UBI 9, the OpenSSL version does not support MD4 anymore which is required by the combination of webpack and terser-webpack-plugin.
 ENV NODE_OPTIONS=--openssl-legacy-provider
@@ -113,7 +113,7 @@ COPY --chown=1001:0 *.json *.js  ./
 RUN npm run --quiet build
 
 # Build React UI
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest AS build-ui
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest@sha256:fe289fffb6afcb931bbc3012bd793dd54d5775fd8c19202219a0a13654a4cdc9 AS build-ui
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/package-lock.json ./
 # web/.npmrc is intentionally excluded: it contains pnpm-specific options (node-linker=hoisted)
@@ -126,7 +126,7 @@ COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS pushgateway
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:463cae32c6f6f5594b11a5c22de275016bd8545ce58a6373388e8b24f13fc15c AS pushgateway
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.11.1
 RUN set -ex\
@@ -141,12 +141,12 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.access.redhat.com/ubi9/go-toolset AS config-tool
+FROM registry.access.redhat.com/ubi9/go-toolset@sha256:83cfd595f20e494cea9dc6526f217441e60bb9c5da85b33157c761e5f6a3d852 AS config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 RUN GOPATH=/opt/app-root/src/go go install -tags=fips ./cmd/config-tool
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal AS build-quaydir
+FROM registry.access.redhat.com/ubi9/ubi-minimal@sha256:463cae32c6f6f5594b11a5c22de275016bd8545ce58a6373388e8b24f13fc15c AS build-quaydir
 WORKDIR /quaydir
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly

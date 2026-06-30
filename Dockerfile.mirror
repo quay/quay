@@ -1,11 +1,11 @@
-FROM golang:1.25 AS builder
+FROM golang:1.25@sha256:f188e8c16ea47a8b22d2bdcf6d9bcd07b63ea7876c199749c07bf31e0ab33bad AS builder
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -o /quay ./cmd/quay
 
-FROM registry.access.redhat.com/ubi9/ubi-micro:latest
+FROM registry.access.redhat.com/ubi9/ubi-micro:latest@sha256:fdf68a4f5f88cca14ae906bbec6e0fbbffe92b5b91e73e0862c961234d63b986
 COPY --from=builder /quay /quay
 EXPOSE 8443
 ENTRYPOINT ["/quay"]

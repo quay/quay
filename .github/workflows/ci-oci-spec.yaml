@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-22.04
     services:
       postgres:
-        image: postgres:16.4
+        image: postgres:16.4@sha256:e62fbf9d3e2b49816a32c400ed2dba83e3b361e6833e624024309c35d334b412
         env:
           POSTGRES_USER: postgres_user
           POSTGRES_PASSWORD: postgres_password
@@ -23,7 +23,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       redis:
-        image: redis:7.4
+        image: redis:7.4@sha256:b2b95679e3b46fb51864949ed25ea976fc3a6bcc00a40a1bc00d568cb2822e50
         ports:
           - 6379:6379
         options: >-

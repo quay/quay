@@ -16,7 +16,7 @@
 #     -e REACT_QUAY_APP_API_URL=https://quay.example.com \
 #     quay-playwright --grep "signin"
 
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest@sha256:fe289fffb6afcb931bbc3012bd793dd54d5775fd8c19202219a0a13654a4cdc9
 
 # Install Chromium system dependencies
 USER root

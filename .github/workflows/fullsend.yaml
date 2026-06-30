@@ -45,7 +45,7 @@ jobs:
     if: >-
       github.event_name != 'issue_comment'
       || github.event.comment.user.type != 'Bot'
-    uses: quay/.fullsend/.github/workflows/dispatch.yml@main
+    uses: quay/.fullsend/.github/workflows/dispatch.yml@b2296539c8a8d86f1550c3ef9aabdc3b2bfe8a93 # main
     with:
       event_action: ${{ github.event.action }}
 
