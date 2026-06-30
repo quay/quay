@@ -889,25 +889,6 @@ CREATE UNIQUE INDEX appspecificauthtoken_token_name ON appspecificauthtoken (tok
 CREATE INDEX appspecificauthtoken_user_id ON appspecificauthtoken (user_id);
 CREATE INDEX appspecificauthtoken_uuid ON appspecificauthtoken (uuid);
 CREATE INDEX appspecificauthtoken_user_id_expiration ON appspecificauthtoken (user_id, expiration);
-CREATE TABLE IF NOT EXISTS "oauthaccesstoken" (
-	id INTEGER NOT NULL,
-	uuid VARCHAR(255) NOT NULL,
-	application_id INTEGER NOT NULL,
-	authorized_user_id INTEGER NOT NULL,
-	scope VARCHAR(255) NOT NULL,
-	token_type VARCHAR(255) NOT NULL,
-	expires_at DATETIME NOT NULL,
-	data TEXT NOT NULL,
-	token_code VARCHAR(255) NOT NULL,
-	token_name VARCHAR(255) NOT NULL,
-	CONSTRAINT pk_oauthaccesstoken PRIMARY KEY (id),
-	CONSTRAINT fk_oauthaccesstoken_authorized_user_id_user FOREIGN KEY(authorized_user_id) REFERENCES user (id),
-	CONSTRAINT fk_oauthaccesstoken_application_id_oauthapplication FOREIGN KEY(application_id) REFERENCES oauthapplication (id)
-);
-CREATE INDEX oauthaccesstoken_application_id ON oauthaccesstoken (application_id);
-CREATE UNIQUE INDEX oauthaccesstoken_token_name ON oauthaccesstoken (token_name);
-CREATE INDEX oauthaccesstoken_uuid ON oauthaccesstoken (uuid);
-CREATE INDEX oauthaccesstoken_authorized_user_id ON oauthaccesstoken (authorized_user_id);
 CREATE TABLE IF NOT EXISTS "oauthapplication" (
 	id INTEGER NOT NULL,
 	client_id VARCHAR(255) NOT NULL,
@@ -1337,3 +1318,24 @@ CREATE TABLE organizationcontactemail (
 );
 CREATE UNIQUE INDEX organizationcontactemail_organization_id ON organizationcontactemail (organization_id);
 CREATE INDEX organizationcontactemail_contact_email ON organizationcontactemail (contact_email);
+CREATE TABLE IF NOT EXISTS "oauthaccesstoken" (
+	id INTEGER NOT NULL,
+	uuid VARCHAR(255) NOT NULL,
+	application_id INTEGER NOT NULL,
+	authorized_user_id INTEGER NOT NULL,
+	scope VARCHAR(255) NOT NULL,
+	token_type VARCHAR(255) NOT NULL,
+	expires_at DATETIME NOT NULL,
+	data TEXT NOT NULL,
+	token_code VARCHAR(255) NOT NULL,
+	token_name VARCHAR(255) NOT NULL,
+	last_accessed DATETIME,
+	created DATETIME,
+	CONSTRAINT pk_oauthaccesstoken PRIMARY KEY (id),
+	CONSTRAINT fk_oauthaccesstoken_authorized_user_id_user FOREIGN KEY(authorized_user_id) REFERENCES user (id),
+	CONSTRAINT fk_oauthaccesstoken_application_id_oauthapplication FOREIGN KEY(application_id) REFERENCES oauthapplication (id)
+);
+CREATE INDEX oauthaccesstoken_application_id ON oauthaccesstoken (application_id);
+CREATE UNIQUE INDEX oauthaccesstoken_token_name ON oauthaccesstoken (token_name);
+CREATE INDEX oauthaccesstoken_uuid ON oauthaccesstoken (uuid);
+CREATE INDEX oauthaccesstoken_authorized_user_id ON oauthaccesstoken (authorized_user_id);

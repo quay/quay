@@ -1610,6 +1610,9 @@ class OAuthAccessToken(BaseModel):
     expires_at = DateTimeField()
     data = TextField()  # This is context for which this token was generated, such as the user
 
+    last_accessed = DateTimeField(null=True)
+    created = DateTimeField(null=True, default=datetime.utcnow)
+
 
 class NotificationKind(BaseModel):
     name = CharField(index=True, unique=True)

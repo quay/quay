@@ -9,6 +9,7 @@ from auth.log import log_action
 from auth.scopes import scopes_from_scope_string
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from data.model._basequery import update_last_accessed
 from oauth.login import OAuthLoginException
 from oauth.login_utils import (
     _conduct_oauth_login,
@@ -187,6 +188,8 @@ def validate_app_oauth_token(token):
         )
 
     # We have a valid token
+    update_last_accessed(validated)
+
     scope_set = scopes_from_scope_string(validated.scope)
     logger.debug("Successfully validated oauth access token with scope: %s", scope_set)
     return ValidateResult(AuthKind.oauth, oauthtoken=validated)

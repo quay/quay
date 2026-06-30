@@ -1,5 +1,15 @@
 import {test, expect} from '../../fixtures';
 
+type OAuthApiToken = {
+  uuid: string;
+  scope: string;
+  expires_at: string | null;
+  created: string | null;
+  created_by: string | null;
+  last_accessed: string | null;
+  token?: string;
+};
+
 test.describe('OAuth Applications', {tag: ['@organization']}, () => {
   test('OAuth app lifecycle: create, view, update, delete', async ({
     authenticatedPage: page,
@@ -180,4 +190,49 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
       expect(updatedApp?.client_secret).not.toBe(secretBefore);
     }
   });
+
+  test(
+    'OAuth API token lifecycle via organization application endpoints',
+    {tag: ['@api', '@PROJQUAY-9856']},
+    async ({api, userClient}) => {
+      const org = await api.organization('oauthtoken');
+      const app = await api.oauthApplication(org.name, 'tokenapp');
+      const tokenPath = `/api/v1/organization/${org.name}/applications/${app.clientId}/tokens`;
+
+      const createResp = await userClient.post(tokenPath, {
+        scope: 'repo:read',
+        expiration: 3600,
+      });
+      expect(createResp.status()).toBe(200);
+      const created = (await createResp.json()) as OAuthApiToken;
+      expect(created.uuid).toBeTruthy();
+      expect(created.token).toBeTruthy();
+      expect(created.scope).toBe('repo:read');
+      expect(created.expires_at).toBeTruthy();
+      expect(created.created).toBeTruthy();
+      expect(created.created_by).toBeTruthy();
+      expect(created.last_accessed).toBeNull();
+
+      const listResp = await userClient.get(tokenPath);
+      expect(listResp.status()).toBe(200);
+      const listed = (await listResp.json()) as {tokens: OAuthApiToken[]};
+      const tokenFromList = listed.tokens.find((t) => t.uuid === created.uuid);
+      expect(tokenFromList).toBeDefined();
+      expect(tokenFromList?.token).toBeUndefined();
+
+      const deleteResp = await userClient.delete(
+        `${tokenPath}/${created.uuid}`,
+      );
+      expect(deleteResp.status()).toBe(204);
+
+      const listAfterDeleteResp = await userClient.get(tokenPath);
+      expect(listAfterDeleteResp.status()).toBe(200);
+      const afterDelete = (await listAfterDeleteResp.json()) as {
+        tokens: OAuthApiToken[];
+      };
+      expect(afterDelete.tokens.some((t) => t.uuid === created.uuid)).toBe(
+        false,
+      );
+    },
+  );
 });

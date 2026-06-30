@@ -835,6 +835,7 @@ def deprecated():
 
 import endpoints.api.appspecifictokens
 import endpoints.api.billing
+import endpoints.api.bootstrap
 import endpoints.api.build
 import endpoints.api.capabilities
 import endpoints.api.discovery
@@ -848,6 +849,7 @@ import endpoints.api.mirrorhealth
 import endpoints.api.namespacequota
 import endpoints.api.org_mirror
 import endpoints.api.organization
+import endpoints.api.organization_application_tokens
 import endpoints.api.permission
 import endpoints.api.policy
 import endpoints.api.prototype

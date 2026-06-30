@@ -17,6 +17,11 @@ def test_app_specific_tokens(app):
         token_uuid = resp["token"]["uuid"]
         assert "token_code" in resp["token"]
 
+        created_token = model.appspecifictoken.AppSpecificAuthToken.get(
+            model.appspecifictoken.AppSpecificAuthToken.uuid == token_uuid
+        )
+        assert created_token.user.username == "devtable"
+
         # List the tokens and ensure we have the one added.
         resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
         assert len(resp["tokens"])
@@ -41,6 +46,7 @@ def test_app_specific_tokens(app):
         assert token_uuid not in set([token["uuid"] for token in resp["tokens"]])
 
         conduct_api_call(cl, AppToken, "GET", {"token_uuid": token_uuid}, None, 404)
+        conduct_api_call(cl, AppToken, "DELETE", {"token_uuid": token_uuid}, None, 404)
 
 
 def test_delete_expired_app_token(app):

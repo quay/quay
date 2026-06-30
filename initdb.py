@@ -604,6 +604,9 @@ def initialize_database():
     LogEntryKind.create(name="org_change_quota_limit")
     LogEntryKind.create(name="org_delete_quota_limit")
 
+    LogEntryKind.create(name="create_oauth_api_token")
+    LogEntryKind.create(name="revoke_oauth_api_token")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
