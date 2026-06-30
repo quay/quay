@@ -24,6 +24,9 @@ jobs:
     outputs:
       go: ${{ steps.filter.outputs.go }}
       config-tool: ${{ steps.filter.outputs.config-tool }}
+      python: ${{ steps.filter.outputs.python }}
+      web: ${{ steps.filter.outputs.web }}
+      oci: ${{ steps.filter.outputs.oci }}
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -52,6 +55,66 @@ jobs:
               - '!config-tool/**'
             config-tool:
               - 'config-tool/**'
+            python:
+              - '**/*.py'
+              - 'requirements*.txt'
+              - 'constraints.txt'
+              - 'tox.ini'
+              - 'setup.py'
+              - 'setup.cfg'
+              - 'pyproject.toml'
+              - '.flake8'
+              - '.pre-commit-config.yaml'
+              - 'mypy.ini'
+              - 'mypy_stubs/**'
+              - 'alembic.ini'
+              - 'Makefile'
+              - 'data/migrations/versions/**'
+              - '.github/workflows/ci-python.yaml'
+              - 'local-dev/**'
+              - 'docker-compose.yaml'
+              - 'docker-compose.static'
+              - '.github/actions/**'
+              - '.github/scripts/**'
+              - '.github/workflows/sentinel.yaml'
+              - '!config-tool/**'
+              - '!web/**'
+              - '!internal/**'
+              - '!cmd/**'
+            web:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!agent_docs/**'
+              - '!deploy/**'
+              - '!.chglog/**'
+              - '!LICENSE'
+              - '!OWNERS'
+              - '!internal/**'
+              - '!cmd/**'
+            oci:
+              - '**/*.py'
+              - '**/*.go'
+              - 'Dockerfile'
+              - 'go.mod'
+              - 'go.sum'
+              - 'requirements*.txt'
+              - 'Makefile'
+              - '.github/workflows/ci-oci-spec.yaml'
+              - 'local-dev/**'
+              - 'docker-compose.yaml'
+              - 'docker-compose.static'
+              - '.github/actions/**'
+              - '.github/scripts/**'
+              - '.github/workflows/sentinel.yaml'
+              - '!config-tool/**'
+              - '!web/**'
+              - '!docs/**'
+              - '!agent_docs/**'
+              - '!deploy/**'
+              - '!.chglog/**'
+              - '!internal/**'
+              - '!cmd/**'
 
   pr-lint:
     name: conventional commit check
@@ -71,6 +134,8 @@ jobs:
 
   python-ci:
     name: Python
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.python == 'true' }}
     uses: ./.github/workflows/ci-python.yaml
     with:
       is-pr: ${{ github.event_name == 'pull_request' }}
@@ -91,6 +156,8 @@ jobs:
 
   web-ci:
     name: Web
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.web == 'true' }}
     uses: ./.github/workflows/ci-web.yaml
     with:
       is-pr: ${{ github.event_name == 'pull_request' }}
@@ -99,6 +166,8 @@ jobs:
 
   oci-spec:
     name: OCI
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.oci == 'true' }}
     uses: ./.github/workflows/ci-oci-spec.yaml
 
   all-green:
@@ -117,5 +186,11 @@ jobs:
               needs.go-ci.result == 'skipped' && 'go-ci,' || ''
             }}${{
               needs.config-tool-ci.result == 'skipped' && 'config-tool-ci,' || ''
+            }}${{
+              needs.python-ci.result == 'skipped' && 'python-ci,' || ''
+            }}${{
+              needs.web-ci.result == 'skipped' && 'web-ci,' || ''
+            }}${{
+              needs.oci-spec.result == 'skipped' && 'oci-spec,' || ''
             }}
           jobs: ${{ toJSON(needs) }}
