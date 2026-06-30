@@ -875,6 +875,16 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: If set to true, the first User account may be created via API /api/v1/user/initialize
     FEATURE_USER_INITIALIZE = False
 
+    # Feature Flag: Controls programmatic bootstrap token provisioning.
+    FEATURE_PROGRAMMATIC_BOOTSTRAP = False
+    BOOTSTRAP_APP_NAME = "__quay_bootstrap_app"
+    BOOTSTRAP_TOKEN_OWNER = None
+    BOOTSTRAP_TOKEN_PATH = "/var/lib/quay/quay-machine-token.json"
+    BOOTSTRAP_TOKEN_EXPIRATION = 3600  # 60 minutes in seconds
+    BOOTSTRAP_TOKEN_SCOPE = (
+        "org:admin repo:admin repo:create repo:read repo:write super:user user:admin user:read"
+    )
+
     # Allows "/" in repository names
     FEATURE_EXTENDED_REPOSITORY_NAMES = True
 
