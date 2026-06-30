@@ -45,7 +45,7 @@ test.describe(
     test('skopeo list-tags returns pushed tags (OCP-81035)', async ({
       containerAvailable,
     }) => {
-      test.skip(!containerAvailable, 'container runtime required');
+      test.skip(!containerAvailable, 'registry image tooling required');
       const available = await isSkopeoAvailable();
       test.skip(!available, 'skopeo CLI required');
 
@@ -56,7 +56,7 @@ test.describe(
     test('regctl tag ls returns tags (OCP-81036)', async ({
       containerAvailable,
     }) => {
-      test.skip(!containerAvailable, 'container runtime required');
+      test.skip(!containerAvailable, 'registry image tooling required');
       const available = await isRegctlAvailable();
       test.skip(!available, 'regctl CLI required');
 
