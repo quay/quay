@@ -76,6 +76,8 @@ jobs:
               - '.github/workflows/sentinel.yaml'
               - '!config-tool/**'
               - '!web/**'
+              - '!internal/**'
+              - '!cmd/**'
             web:
               - '**'
               - '!**/*.md'
@@ -85,6 +87,8 @@ jobs:
               - '!.chglog/**'
               - '!LICENSE'
               - '!OWNERS'
+              - '!internal/**'
+              - '!cmd/**'
             oci:
               - '**/*.py'
               - '**/*.go'
@@ -106,6 +110,8 @@ jobs:
               - '!agent_docs/**'
               - '!deploy/**'
               - '!.chglog/**'
+              - '!internal/**'
+              - '!cmd/**'
 
   pr-lint:
     name: conventional commit check
