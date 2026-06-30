@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-312-minimal:latest@sha256:c570170ec76987bb669de93a620f2f3b55b98e4121822c28140ec80da590c64d AS base
+FROM registry.access.redhat.com/ubi9/python-312-minimal:9.8@sha256:2eef57a47c201792a5c6188800c88660a4dcc57b2d60f8874f618e694067d4f9 AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 USER root
@@ -95,7 +95,7 @@ RUN set -ex\
 	;
 
 # Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal@sha256:449f3e1b0a9c1ef766777ca84ea89bcc040a96d5f6d456c3a9acdd558dfc2b4f AS build-static
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.8@sha256:fe289fffb6afcb931bbc3012bd793dd54d5775fd8c19202219a0a13654a4cdc9 AS build-static
 ARG BUILD_ANGULAR=true
 WORKDIR /opt/app-root/src
 # This below line is a workaround because in UBI 9, the OpenSSL version does not support MD4 anymore which is required by the combination of webpack and terser-webpack-plugin.
@@ -107,7 +107,7 @@ COPY --chown=1001:0 *.json *.js  ./
 RUN if [ "$BUILD_ANGULAR" = "true" ]; then npm run --quiet build; fi
 
 # Build React UI
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest@sha256:449f3e1b0a9c1ef766777ca84ea89bcc040a96d5f6d456c3a9acdd558dfc2b4f AS build-ui
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.8@sha256:fe289fffb6afcb931bbc3012bd793dd54d5775fd8c19202219a0a13654a4cdc9 AS build-ui
 RUN npm install -g pnpm@10
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/pnpm-lock.yaml web/.npmrc  ./
@@ -116,7 +116,7 @@ COPY --chown=1001:0 web .
 RUN pnpm run --silent build
 
 # Pushgateway grabs pushgateway.
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:bb08f2300cb8d12a7eb91dddf28ea63692b3ec99e7f0fa71a1b300f2756ea829 AS pushgateway
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8@sha256:463cae32c6f6f5594b11a5c22de275016bd8545ce58a6373388e8b24f13fc15c AS pushgateway
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.11.1
 RUN set -ex\
@@ -132,13 +132,13 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.access.redhat.com/ubi9/go-toolset@sha256:82b82ecf4aedf67c4369849047c2680dba755fe57547bbb05eca211b22038e29 AS config-tool
+FROM registry.access.redhat.com/ubi9/go-toolset:9.8@sha256:83cfd595f20e494cea9dc6526f217441e60bb9c5da85b33157c761e5f6a3d852 AS config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 ENV GOTOOLCHAIN=auto
 RUN GOPATH=/opt/app-root/src/go GOFIPS140=latest go install -tags=fips ./cmd/config-tool
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal@sha256:bb08f2300cb8d12a7eb91dddf28ea63692b3ec99e7f0fa71a1b300f2756ea829 AS build-quaydir
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8@sha256:463cae32c6f6f5594b11a5c22de275016bd8545ce58a6373388e8b24f13fc15c AS build-quaydir
 WORKDIR /quaydir
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
