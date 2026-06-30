@@ -318,6 +318,152 @@ class OIDCAuthTests(unittest.TestCase):
         assert self.oidc_instance.has_password_set("another_user") is False
 
 
+class OIDCSuperuserSyncTests(unittest.TestCase):
+    def setUp(self):
+        setup_database_for_testing(self)
+
+    def tearDown(self):
+        finished_database_for_testing(self)
+
+    def _make_oidc(self, superuser_group=None, global_readonly_group=None):
+        return OIDCUsers(
+            client_id="quay-test",
+            client_secret="secret",
+            oidc_server="http://test-server/realms/myrealm",
+            service_name="test",
+            login_scopes=["openid"],
+            preferred_group_claim_name="groups",
+            oidc_superuser_group=superuser_group,
+            oidc_global_readonly_superuser_group=global_readonly_group,
+        )
+
+    def test_sync_superuser_grants_when_in_group(self):
+        oidc = self._make_oidc(superuser_group="quay-superusers")
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(["quay-superusers", "other-group"], user_obj)
+            mock_um.register_superuser.assert_called_once_with("devtable")
+            mock_um.deregister_superuser.assert_not_called()
+
+    def test_sync_superuser_revokes_when_not_in_group(self):
+        oidc = self._make_oidc(superuser_group="quay-superusers")
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(["other-group"], user_obj)
+            mock_um.deregister_superuser.assert_called_once_with("devtable")
+            mock_um.register_superuser.assert_not_called()
+
+    def test_sync_superuser_revokes_when_groups_empty(self):
+        oidc = self._make_oidc(superuser_group="quay-superusers")
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status([], user_obj)
+            mock_um.deregister_superuser.assert_called_once_with("devtable")
+
+    def test_sync_superuser_noop_when_groups_none(self):
+        oidc = self._make_oidc(superuser_group="quay-superusers")
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(None, user_obj)
+            mock_um.register_superuser.assert_not_called()
+            mock_um.deregister_superuser.assert_not_called()
+
+    def test_sync_superuser_noop_when_no_group_configured(self):
+        oidc = self._make_oidc()
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(["quay-superusers"], user_obj)
+            mock_um.register_superuser.assert_not_called()
+            mock_um.deregister_superuser.assert_not_called()
+
+    def test_sync_superuser_noop_when_user_obj_none(self):
+        oidc = self._make_oidc(superuser_group="quay-superusers")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(["quay-superusers"], None)
+            mock_um.register_superuser.assert_not_called()
+            mock_um.deregister_superuser.assert_not_called()
+
+    def test_sync_global_readonly_grants_when_in_group(self):
+        oidc = self._make_oidc(global_readonly_group="quay-readonly")
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(["quay-readonly"], user_obj)
+            mock_um.register_global_readonly_superuser.assert_called_once_with("devtable")
+            mock_um.deregister_global_readonly_superuser.assert_not_called()
+
+    def test_sync_global_readonly_revokes_when_not_in_group(self):
+        oidc = self._make_oidc(global_readonly_group="quay-readonly")
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(["other-group"], user_obj)
+            mock_um.deregister_global_readonly_superuser.assert_called_once_with("devtable")
+            mock_um.register_global_readonly_superuser.assert_not_called()
+
+    def test_sync_global_readonly_revokes_when_groups_empty(self):
+        oidc = self._make_oidc(global_readonly_group="quay-readonly")
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status([], user_obj)
+            mock_um.deregister_global_readonly_superuser.assert_called_once_with("devtable")
+            mock_um.register_global_readonly_superuser.assert_not_called()
+
+    def test_sync_global_readonly_noop_when_groups_none(self):
+        oidc = self._make_oidc(global_readonly_group="quay-readonly")
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(None, user_obj)
+            mock_um.register_global_readonly_superuser.assert_not_called()
+            mock_um.deregister_global_readonly_superuser.assert_not_called()
+
+    def test_sync_global_readonly_noop_when_no_group_configured(self):
+        oidc = self._make_oidc()
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(["quay-readonly"], user_obj)
+            mock_um.register_global_readonly_superuser.assert_not_called()
+            mock_um.deregister_global_readonly_superuser.assert_not_called()
+
+    def test_sync_global_readonly_noop_when_user_obj_none(self):
+        oidc = self._make_oidc(global_readonly_group="quay-readonly")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(["quay-readonly"], None)
+            mock_um.register_global_readonly_superuser.assert_not_called()
+            mock_um.deregister_global_readonly_superuser.assert_not_called()
+
+    def test_sync_both_superuser_and_global_readonly(self):
+        oidc = self._make_oidc(
+            superuser_group="quay-superusers",
+            global_readonly_group="quay-readonly",
+        )
+        user_obj = model.user.get_user("devtable")
+
+        with patch("app.usermanager") as mock_um:
+            oidc.sync_superuser_status(["quay-superusers", "quay-readonly"], user_obj)
+            mock_um.register_superuser.assert_called_once_with("devtable")
+            mock_um.register_global_readonly_superuser.assert_called_once_with("devtable")
+
+    def test_sync_user_groups_does_not_call_sync_superuser_status(self):
+        oidc = self._make_oidc(superuser_group="quay-superusers")
+        user_obj = model.user.get_user("devtable")
+
+        with patch.object(oidc, "sync_superuser_status") as mock_sync:
+            groups = ["quay-superusers"]
+            oidc.sync_user_groups(groups, user_obj, None)
+            mock_sync.assert_not_called()
+
+
 def test_has_password_set_returns_false_standalone():
     # Standalone (no DB) variant so codecov/patch sees the method covered.
     oidc_instance = OIDCAuthTests().fake_oidc()

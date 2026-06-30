@@ -170,6 +170,10 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
                 service_name = config.get("SERVICE_NAME", None)
                 login_scopes = config.get("LOGIN_SCOPES", None)
                 preferred_group_claim_name = config.get("PREFERRED_GROUP_CLAIM_NAME", None)
+                oidc_superuser_group = config.get("SUPERUSER_GROUP", None)
+                oidc_global_readonly_superuser_group = config.get(
+                    "GLOBAL_READONLY_SUPERUSER_GROUP", None
+                )
 
                 return OIDCUsers(
                     client_id,
@@ -178,6 +182,8 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
                     service_name,
                     login_scopes,
                     preferred_group_claim_name,
+                    oidc_superuser_group=oidc_superuser_group,
+                    oidc_global_readonly_superuser_group=oidc_global_readonly_superuser_group,
                 )
 
     raise RuntimeError("Unknown authentication type: %s" % authentication_type)

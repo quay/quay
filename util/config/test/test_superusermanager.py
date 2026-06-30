@@ -64,6 +64,120 @@ def test_global_readonly_superuser_list(config, username, expected):
         assert configusermanager.has_global_readonly_superusers()
 
 
+def test_register_superuser():
+    app.config = {"SUPER_USERS": []}
+
+    manager = ConfigUserManager(app)
+    assert manager.is_superuser("newuser") is False
+
+    manager.register_superuser("newuser")
+    assert manager.is_superuser("newuser") is True
+    assert manager.has_superusers() is True
+
+
+def test_register_superuser_idempotent():
+    app.config = {"SUPER_USERS": ["existing"]}
+
+    manager = ConfigUserManager(app)
+    manager.register_superuser("existing")
+    assert manager.is_superuser("existing") is True
+
+    usernames = manager._superusers_array.value.decode("utf8").split(",")
+    assert usernames.count("existing") == 1
+
+
+def test_deregister_superuser():
+    app.config = {"SUPER_USERS": []}
+
+    manager = ConfigUserManager(app)
+    manager.register_superuser("dynamic_user")
+    assert manager.is_superuser("dynamic_user") is True
+
+    manager.deregister_superuser("dynamic_user")
+    assert manager.is_superuser("dynamic_user") is False
+
+
+def test_deregister_superuser_preserves_static():
+    app.config = {"SUPER_USERS": ["static_admin"]}
+
+    manager = ConfigUserManager(app)
+    assert manager.is_superuser("static_admin") is True
+
+    manager.deregister_superuser("static_admin")
+    assert manager.is_superuser("static_admin") is True
+
+
+def test_deregister_superuser_noop_for_absent():
+    app.config = {"SUPER_USERS": ["admin"]}
+
+    manager = ConfigUserManager(app)
+    manager.deregister_superuser("nonexistent")
+    assert manager.is_superuser("admin") is True
+
+
+def test_register_deregister_cycle():
+    app.config = {"SUPER_USERS": ["static"]}
+
+    manager = ConfigUserManager(app)
+    manager.register_superuser("dynamic")
+    assert manager.is_superuser("dynamic") is True
+    assert manager.is_superuser("static") is True
+
+    manager.deregister_superuser("dynamic")
+    assert manager.is_superuser("dynamic") is False
+    assert manager.is_superuser("static") is True
+
+
+def test_register_global_readonly_superuser():
+    app.config = {"GLOBAL_READONLY_SUPER_USERS": []}
+
+    manager = ConfigUserManager(app)
+    assert manager.is_global_readonly_superuser("reader") is False
+
+    manager.register_global_readonly_superuser("reader")
+    assert manager.is_global_readonly_superuser("reader") is True
+    assert manager.has_global_readonly_superusers() is True
+
+
+def test_register_global_readonly_superuser_idempotent():
+    app.config = {"GLOBAL_READONLY_SUPER_USERS": ["existing"]}
+
+    manager = ConfigUserManager(app)
+    manager.register_global_readonly_superuser("existing")
+
+    usernames = manager._global_readonly_array.value.decode("utf8").split(",")
+    assert usernames.count("existing") == 1
+
+
+def test_deregister_global_readonly_superuser():
+    app.config = {"GLOBAL_READONLY_SUPER_USERS": []}
+
+    manager = ConfigUserManager(app)
+    manager.register_global_readonly_superuser("dynamic_reader")
+    assert manager.is_global_readonly_superuser("dynamic_reader") is True
+
+    manager.deregister_global_readonly_superuser("dynamic_reader")
+    assert manager.is_global_readonly_superuser("dynamic_reader") is False
+
+
+def test_deregister_global_readonly_superuser_noop_for_absent():
+    app.config = {"GLOBAL_READONLY_SUPER_USERS": ["reader"]}
+
+    manager = ConfigUserManager(app)
+    manager.deregister_global_readonly_superuser("nonexistent")
+    assert manager.is_global_readonly_superuser("reader") is True
+
+
+def test_deregister_global_readonly_superuser_preserves_static():
+    app.config = {"GLOBAL_READONLY_SUPER_USERS": ["static_reader"]}
+
+    manager = ConfigUserManager(app)
+    assert manager.is_global_readonly_superuser("static_reader") is True
+
+    manager.deregister_global_readonly_superuser("static_reader")
+    assert manager.is_global_readonly_superuser("static_reader") is True
+
+
 @pytest.mark.parametrize(
     "config, ldap_restricted, expected",
     [
