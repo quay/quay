@@ -72,6 +72,7 @@ test.describe('API Smoke', {tag: ['@api', '@smoke', '@auth:Database']}, () => {
     const body = await response.json();
     expect(body.features).toHaveProperty('PROGRAMMATIC_BOOTSTRAP');
     expect(typeof body.features.PROGRAMMATIC_BOOTSTRAP).toBe('boolean');
+    expect(body.config).not.toHaveProperty('BOOTSTRAP_APP_NAME');
     expect(body.config).not.toHaveProperty('BOOTSTRAP_TOKEN_OWNER');
     expect(body.config).not.toHaveProperty('BOOTSTRAP_TOKEN_PATH');
     expect(body.config).not.toHaveProperty('BOOTSTRAP_TOKEN_SCOPE');
