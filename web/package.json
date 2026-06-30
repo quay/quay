@@ -19,7 +19,7 @@
     "@types/react": "^18.2.0",
     "axios": "^1.16.1",
     "https-proxy-agent": "^5.0.1",
-    "js-sha1": "^0.6.0",
+    "js-sha1": "^0.7.0",
     "mini-css-extract-plugin": "^2.7.6",
     "null-loader": "^4.0.1",
     "pretty-bytes": "5.6.0",
