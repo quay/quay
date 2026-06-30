@@ -11,6 +11,9 @@ SOMEOIDC_LOGIN_CONFIG:
     - "openid"
     - "profile"
     - "email"
+  PREFERRED_GROUP_CLAIM_NAME: "groups"
+  SUPERUSER_GROUP: "quay-superusers"
+  GLOBAL_READONLY_SUPERUSER_GROUP: "quay-readonly"
   DEBUGGING: true
   USE_PKCE: true
   PKCE_METHOD: "S256"
