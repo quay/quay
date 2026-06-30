@@ -23,6 +23,7 @@ type Config struct {
 	DB               *sql.DB
 	Store            oci.MetadataStore
 	LibraryNamespace string
+	AnonymousAccess  *bool
 }
 
 // Registry wraps the distribution registry handler.
@@ -45,7 +46,7 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 
 	libraryNamespace := cfg.LibraryNamespace
 	if libraryNamespace == "" {
-		libraryNamespace = "library"
+		libraryNamespace = defaultLibraryNamespace
 	}
 
 	local.RegisterMetadataStore(cfg.Store)
@@ -66,13 +67,15 @@ func NewRegistry(ctx context.Context, cfg *Config) (*Registry, error) {
 		},
 		Auth: configuration.Auth{
 			"quaydb": configuration.Parameters{
-				"realm": cfg.Hostname,
-				"db":    cfg.DB,
+				"realm":            cfg.Hostname,
+				"db":               cfg.DB,
+				"libraryNamespace": libraryNamespace,
+				"anonymousAccess":  anonymousAccessEnabled(cfg.AnonymousAccess),
 			},
 		},
 	}
 	distCfg.Middleware = map[string][]configuration.Middleware{
-		"repository": {{Name: registrymw.Name()}},
+		repositoryResourceType: {{Name: registrymw.Name()}},
 	}
 
 	distCfg.HTTP.Addr = cfg.ListenAddr
@@ -90,4 +93,11 @@ func (a *Registry) Handler() http.Handler {
 // Close releases resources held by the registry.
 func (a *Registry) Close() error {
 	return nil
+}
+
+func anonymousAccessEnabled(configured *bool) bool {
+	if configured == nil {
+		return true
+	}
+	return *configured
 }
