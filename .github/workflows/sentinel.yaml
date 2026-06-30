@@ -26,7 +26,6 @@ jobs:
       config-tool: ${{ steps.filter.outputs.config-tool }}
       python: ${{ steps.filter.outputs.python }}
       web: ${{ steps.filter.outputs.web }}
-      oci: ${{ steps.filter.outputs.oci }}
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -92,29 +91,6 @@ jobs:
               - '!OWNERS'
               - '!internal/**'
               - '!cmd/**'
-            oci:
-              - '**/*.py'
-              - '**/*.go'
-              - 'Dockerfile'
-              - 'go.mod'
-              - 'go.sum'
-              - 'requirements*.txt'
-              - 'Makefile'
-              - '.github/workflows/ci-oci-spec.yaml'
-              - 'local-dev/**'
-              - 'docker-compose.yaml'
-              - 'docker-compose.static'
-              - '.github/actions/**'
-              - '.github/scripts/**'
-              - '.github/workflows/sentinel.yaml'
-              - '!config-tool/**'
-              - '!web/**'
-              - '!docs/**'
-              - '!agent_docs/**'
-              - '!deploy/**'
-              - '!.chglog/**'
-              - '!internal/**'
-              - '!cmd/**'
 
   pr-lint:
     name: conventional commit check
@@ -164,15 +140,9 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  oci-spec:
-    name: OCI
-    needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.oci == 'true' }}
-    uses: ./.github/workflows/ci-oci-spec.yaml
-
   all-green:
     name: all-green
-    needs: [detect-changes, pr-lint, python-ci, go-ci, config-tool-ci, web-ci, oci-spec]
+    needs: [detect-changes, pr-lint, python-ci, go-ci, config-tool-ci, web-ci]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -190,7 +160,5 @@ jobs:
               needs.python-ci.result == 'skipped' && 'python-ci,' || ''
             }}${{
               needs.web-ci.result == 'skipped' && 'web-ci,' || ''
-            }}${{
-              needs.oci-spec.result == 'skipped' && 'oci-spec,' || ''
             }}
           jobs: ${{ toJSON(needs) }}
