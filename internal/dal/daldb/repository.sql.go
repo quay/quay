@@ -135,3 +135,28 @@ func (q *Queries) ListAllRepositories(ctx context.Context) ([]ListAllRepositorie
 	}
 	return items, nil
 }
+
+const repositoryIsPublicByNamespaceName = `-- name: RepositoryIsPublicByNamespaceName :one
+SELECT EXISTS(
+  SELECT 1
+  FROM repository r
+  JOIN "user" u ON r.namespace_user_id = u.id
+  JOIN visibility v ON r.visibility_id = v.id
+  WHERE u.username = ?
+    AND r.name = ?
+    AND v.name = 'public'
+    AND r.state != 3
+)
+`
+
+type RepositoryIsPublicByNamespaceNameParams struct {
+	Username string `json:"username"`
+	Name     string `json:"name"`
+}
+
+func (q *Queries) RepositoryIsPublicByNamespaceName(ctx context.Context, arg RepositoryIsPublicByNamespaceNameParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, repositoryIsPublicByNamespaceName, arg.Username, arg.Name)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}

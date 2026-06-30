@@ -71,6 +71,7 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		DB:               db,
 		Store:            store,
 		LibraryNamespace: resolved.Config.LibraryNamespace,
+		AnonymousAccess:  resolved.Config.FeatureAnonymousAccess,
 	})
 	if err != nil {
 		slog.Error("registry setup error", "err", err)
