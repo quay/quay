@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       go: ${{ steps.filter.outputs.go }}
+      config-tool: ${{ steps.filter.outputs.config-tool }}
       python: ${{ steps.filter.outputs.python }}
       web: ${{ steps.filter.outputs.web }}
     steps:
@@ -51,6 +52,9 @@ jobs:
               - 'Makefile'
               - 'requirements.txt'
               - '!config-tool/**'
+            config-tool:
+              - 'config-tool/**'
+              - '.github/workflows/ci-config-tool.yaml'
             python:
               - '**/*.py'
               - 'requirements*.txt'
@@ -88,6 +92,8 @@ jobs:
               - '!OWNERS'
               - '!internal/**'
               - '!cmd/**'
+              - '!config-tool/**'
+              - '!.github/workflows/ci-config-tool.yaml'
 
   pr-lint:
     name: conventional commit check
@@ -121,6 +127,12 @@ jobs:
     if: ${{ needs.detect-changes.outputs.go == 'true' }}
     uses: ./.github/workflows/ci-go.yaml
 
+  config-tool-ci:
+    name: Config Tool
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.config-tool == 'true' }}
+    uses: ./.github/workflows/ci-config-tool.yaml
+
   web-ci:
     name: Web
     needs: detect-changes
@@ -133,7 +145,7 @@ jobs:
 
   all-green:
     name: all-green
-    needs: [detect-changes, pr-lint, python-ci, go-ci, web-ci]
+    needs: [detect-changes, pr-lint, python-ci, go-ci, config-tool-ci, web-ci]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -145,6 +157,8 @@ jobs:
               github.event_name != 'pull_request' && 'pr-lint,' || ''
             }}${{
               needs.go-ci.result == 'skipped' && 'go-ci,' || ''
+            }}${{
+              needs.config-tool-ci.result == 'skipped' && 'config-tool-ci,' || ''
             }}${{
               needs.python-ci.result == 'skipped' && 'python-ci,' || ''
             }}${{
