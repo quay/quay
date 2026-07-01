@@ -26,6 +26,7 @@ func Run(args []string) int {
 			newInstallCmd(),
 			newConfigCmd(),
 			newServeCmd(),
+			newGCCmd(),
 			newMigrateCmd(),
 			newVersionCmd(),
 		},

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/opencontainers/go-digest"
@@ -233,6 +234,78 @@ func (d *Driver) ListUploadState(ctx context.Context, uploadID, keyPrefix string
 	}
 	sort.Strings(result)
 	return result, nil
+}
+
+// CleanStaleUploads walks the uploads directory and removes any upload
+// whose startedat timestamp is older than threshold. If startedat is
+// missing or unreadable, falls back to the data file's modification time.
+func (d *Driver) CleanStaleUploads(ctx context.Context, threshold time.Duration) (oci.StaleUploadResult, error) {
+	uploadsRoot := d.absPath("uploads")
+	entries, err := os.ReadDir(uploadsRoot)
+	if os.IsNotExist(err) {
+		return oci.StaleUploadResult{}, nil
+	}
+	if err != nil {
+		return oci.StaleUploadResult{}, err
+	}
+
+	cutoff := time.Now().Add(-threshold)
+	var result oci.StaleUploadResult
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		id := entry.Name()
+		if !uuidRegexp.MatchString(id) {
+			continue
+		}
+
+		dir := filepath.Join(uploadsRoot, id)
+		startedAt, err := d.readStartedAt(dir)
+		if err != nil {
+			fi, statErr := os.Stat(filepath.Join(dir, "data"))
+			if statErr != nil {
+				continue
+			}
+			startedAt = fi.ModTime()
+		}
+
+		if startedAt.Before(cutoff) {
+			bytes, _ := dirSize(dir)
+			if err := os.RemoveAll(dir); err != nil {
+				continue
+			}
+			result.Removed++
+			result.BytesFreed += bytes
+		}
+	}
+
+	return result, nil
+}
+
+func (d *Driver) readStartedAt(dir string) (time.Time, error) {
+	data, err := os.ReadFile(filepath.Join(dir, "startedat"))
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Parse(time.RFC3339, strings.TrimSpace(string(data)))
+}
+
+func dirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.WalkDir(path, func(_ string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		size += info.Size()
+		return nil
+	})
+	return size, err
 }
 
 // fileWriter implements oci.UploadWriter backed by a local file.
