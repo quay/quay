@@ -862,7 +862,10 @@ class User(BaseModel):
     uuid = CharField(default=uuid_generator, max_length=36, null=True, index=True)
     username = CharField(unique=True, index=True)
     password_hash = CharField(null=True)
-    email = CharField(unique=True, index=True, default=random_string_generator(length=64))
+    # Uniqueness is enforced at the DB level via a partial unique index
+    # (user_email_unique_non_org) that only applies to non-org users.
+    # Peewee cannot express partial indexes, so unique=True is omitted here.
+    email = CharField(index=True, default=random_string_generator(length=64))
     verified = BooleanField(default=False)
     stripe_id = CharField(index=True, null=True)
     organization = BooleanField(default=False, index=True)

@@ -349,9 +349,7 @@ test.describe(
       await unauthenticatedPage.getByTestId('signin-send-recovery').click();
 
       await expect(
-        unauthenticatedPage.getByText(
-          /Instructions on how to reset your password/i,
-        ),
+        unauthenticatedPage.getByText(/Recovery instructions have been sent/i),
       ).toBeVisible();
     });
 
@@ -371,13 +369,9 @@ test.describe(
         .fill(org.email);
       await unauthenticatedPage.getByTestId('signin-send-recovery').click();
 
-      // Real API returns org response with admin info
+      // Recovery endpoint returns 'org' status for org-only emails
       await expect(
-        unauthenticatedPage.getByText(/assigned to organization/i),
-      ).toBeVisible();
-      // Org name appears in email (twice), verify at least one is visible
-      await expect(
-        unauthenticatedPage.getByText(org.name).first(),
+        unauthenticatedPage.getByText(/is assigned to organization/i),
       ).toBeVisible();
     });
   },

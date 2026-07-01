@@ -278,6 +278,10 @@ export class ApiClient {
     email?: string,
   ): Promise<{name: string}> {
     const token = await this.fetchToken();
+    const body: Record<string, string> = {name};
+    if (email) {
+      body.email = email;
+    }
     const response = await this.request.post(
       `${API_URL}/api/v1/organization/`,
       {
@@ -285,10 +289,7 @@ export class ApiClient {
         headers: {
           'X-CSRF-Token': token,
         },
-        data: {
-          name,
-          email: email || `${name}@example.com`,
-        },
+        data: body,
       },
     );
 
@@ -296,6 +297,24 @@ export class ApiClient {
       const body = await response.text();
       throw new Error(
         `Failed to create organization ${name}: ${response.status()} - ${body}`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async getOrganization(name: string): Promise<Record<string, unknown>> {
+    const response = await this.request.get(
+      `${API_URL}/api/v1/organization/${name}`,
+      {
+        timeout: 5000,
+      },
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to get organization ${name}: ${response.status()} - ${body}`,
       );
     }
 
