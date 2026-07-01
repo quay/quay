@@ -3,9 +3,16 @@ package oci
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/opencontainers/go-digest"
 )
+
+// StaleUploadResult holds the outcome of a stale upload cleanup.
+type StaleUploadResult struct {
+	Removed    int
+	BytesFreed int64
+}
 
 // BlobStore defines content-addressable blob storage operations.
 // Implementations must be safe for concurrent use.
@@ -30,6 +37,10 @@ type BlobStore interface {
 	PutUploadState(ctx context.Context, uploadID string, key string, data []byte) error
 	GetUploadState(ctx context.Context, uploadID string, key string) ([]byte, error)
 	ListUploadState(ctx context.Context, uploadID string, keyPrefix string) ([]string, error)
+
+	// CleanStaleUploads removes upload directories whose startedat timestamp
+	// is older than the given threshold. Returns the count and bytes freed.
+	CleanStaleUploads(ctx context.Context, threshold time.Duration) (StaleUploadResult, error)
 }
 
 // UploadWriter supports write, commit, cancel, and size tracking for uploads.

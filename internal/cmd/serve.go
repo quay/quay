@@ -16,6 +16,8 @@ import (
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
+	"github.com/quay/quay/internal/gc"
+	"github.com/quay/quay/internal/oci/storage/local"
 	"github.com/quay/quay/internal/registry/distribution"
 	"github.com/quay/quay/internal/server"
 )
@@ -93,6 +95,15 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		slog.Error("server build error", "err", err)
 		return 1
 	}
+
+	blobs, err := local.New(resolved.StoragePath)
+	if err != nil {
+		slog.Error("blob store setup error", "err", err)
+		return 1
+	}
+	collector := gc.NewSQLiteCollector(db, store, blobs, slog.Default())
+	gcWorker := gc.NewWorker(collector, gc.DefaultConfig(), slog.Default())
+	go func() { _ = gcWorker.Run(ctx) }()
 
 	slog.Info("registry listening",
 		"scheme", srv.Scheme(),
