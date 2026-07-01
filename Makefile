@@ -39,7 +39,7 @@ integration-test:
 registry-test:
 	TEST=true PYTHONPATH="." py.test  \
 	--cov="." --cov-report=html --cov-report=term-missing \
-	-m 'not e2e' --timeout=3600 --verbose -x \
+	-n auto -m 'not e2e' --timeout=3600 --verbose -x \
 	test/registry/registry_tests.py
 
 buildman-test:
