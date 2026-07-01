@@ -496,11 +496,9 @@ export async function fetchBuildLogsSuperuser(
   let logs = logsResponse.data.logs || [];
   if (!isNullOrUndefined(logsResponse.data.logs_url)) {
     const logsUrl = logsResponse.data.logs_url;
-    // Same-origin fallback URLs (e.g. /logarchive/<uuid>) check repository
-    // permissions, not superuser permissions. Route through the superuser
-    // archive endpoint instead to preserve the permission boundary.
+    const apiOrigin = axios.defaults.baseURL || window.location.origin;
     const isSameOrigin =
-      logsUrl.startsWith('/') || logsUrl.startsWith(window.location.origin);
+      logsUrl.startsWith('/') || logsUrl.startsWith(apiOrigin);
     const archiveUrl = isSameOrigin
       ? `/api/v1/superuser/${buildUuid}/logs/archive`
       : logsUrl;
