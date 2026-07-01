@@ -57,6 +57,7 @@ type CleanupAction = () => Promise<void>;
 export interface CreatedOrg {
   name: string;
   email: string;
+  contactEmail?: string;
 }
 
 /**
@@ -188,9 +189,12 @@ export class TestApi {
    * Create a unique organization.
    * Automatically deleted after test.
    */
-  async organization(namePrefix = 'org'): Promise<CreatedOrg> {
+  async organization(
+    namePrefix = 'org',
+    contactEmail?: string,
+  ): Promise<CreatedOrg> {
     const name = uniqueName(namePrefix);
-    const email = `${name}@example.com`;
+    const email = contactEmail || `${name}@example.com`;
 
     await this.client.createOrganization(name, email);
 
@@ -202,7 +206,7 @@ export class TestApi {
       }
     });
 
-    return {name, email};
+    return {name, email, contactEmail: email};
   }
 
   /**
