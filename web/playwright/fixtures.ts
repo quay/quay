@@ -57,6 +57,7 @@ type CleanupAction = () => Promise<void>;
 export interface CreatedOrg {
   name: string;
   email: string;
+  contactEmail?: string;
 }
 
 /**
@@ -188,9 +189,12 @@ export class TestApi {
    * Create a unique organization.
    * Automatically deleted after test.
    */
-  async organization(namePrefix = 'org'): Promise<CreatedOrg> {
+  async organization(
+    namePrefix = 'org',
+    contactEmail?: string,
+  ): Promise<CreatedOrg> {
     const name = uniqueName(namePrefix);
-    const email = `${name}@example.com`;
+    const email = contactEmail || `${name}@example.com`;
 
     await this.client.createOrganization(name, email);
 
@@ -202,7 +206,7 @@ export class TestApi {
       }
     });
 
-    return {name, email};
+    return {name, email, contactEmail: email};
   }
 
   /**
@@ -469,6 +473,68 @@ export class TestApi {
     });
 
     return {uuid: result.uuid, namespace, repoName};
+  }
+
+  /**
+   * Create a namespace notification for an organization.
+   * Automatically deleted after test.
+   */
+  async namespaceNotification(
+    orgName: string,
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string; orgName: string}> {
+    const result = await this.client.createNamespaceNotification(
+      orgName,
+      event,
+      method,
+      config,
+      eventConfig,
+      title,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteNamespaceNotification(orgName, result.uuid);
+      } catch {
+        /* ignore cleanup errors - notification may already be deleted */
+      }
+    });
+
+    return {uuid: result.uuid, orgName};
+  }
+
+  /**
+   * Create a namespace notification for the authenticated user.
+   * Automatically deleted after test.
+   */
+  async userNamespaceNotification(
+    event: string,
+    method: string,
+    config: Record<string, unknown>,
+    eventConfig: Record<string, unknown> = {},
+    title?: string,
+  ): Promise<{uuid: string}> {
+    const result = await this.client.createUserNamespaceNotification(
+      event,
+      method,
+      config,
+      eventConfig,
+      title,
+    );
+
+    this.cleanupStack.push(async () => {
+      try {
+        await this.client.deleteUserNamespaceNotification(result.uuid);
+      } catch {
+        /* ignore cleanup errors - notification may already be deleted */
+      }
+    });
+
+    return {uuid: result.uuid};
   }
 
   /**

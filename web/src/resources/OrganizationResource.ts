@@ -22,6 +22,7 @@ export interface IOrganization {
   is_member?: boolean;
   preferred_namespace?: boolean;
   teams?: string[];
+  contact_email?: string;
   tag_expiration_s: number;
   email: string;
   quota_report?: IQuotaReport;
@@ -102,14 +103,14 @@ export async function bulkDeleteOrganizations(
 
 interface CreateOrgRequest {
   name: string;
-  email?: string;
+  contact_email?: string;
 }
 
-export async function createOrg(name: string, email?: string) {
+export async function createOrg(name: string, contactEmail?: string) {
   const createOrgUrl = `/api/v1/organization/`;
-  const reqBody: CreateOrgRequest = {name: name};
-  if (email) {
-    reqBody.email = email;
+  const reqBody: CreateOrgRequest = {name};
+  if (contactEmail) {
+    reqBody.contact_email = contactEmail;
   }
   const response = await axios.post(createOrgUrl, reqBody);
   assertHttpCode(response.status, 201);
@@ -119,6 +120,7 @@ export async function createOrg(name: string, email?: string) {
 export interface updateOrgSettingsParams {
   tag_expiration_s: number;
   email: string;
+  contact_email?: string;
   isUser: boolean;
   invoice_email_address: string;
   invoice_email: boolean;

@@ -8,6 +8,22 @@ from data import model
 DEFAULT_BATCH_SIZE = 1000
 
 
+def build_namespace_event_data(namespace_name, extra_data=None):
+    homepage = "%s://%s/organization/%s" % (
+        app.config["PREFERRED_URL_SCHEME"],
+        app.config["SERVER_HOSTNAME"],
+        namespace_name,
+    )
+
+    event_data = {
+        "namespace": namespace_name,
+        "homepage": homepage,
+    }
+
+    event_data.update(extra_data or {})
+    return event_data
+
+
 def build_repository_event_data(namespace_name, repo_name, extra_data=None, subpage=None):
     """
     Builds the basic repository data for an event, including the repository's name, Docker URL and
@@ -102,3 +118,41 @@ def spawn_notification(
 ):
     with notification_batch(1) as batch_spawn:
         batch_spawn(repo, event_name, extra_data, subpage, pathargs, performer_data)
+
+
+def build_namespace_notification_data(notification, event_data, performer_data=None):
+    if not performer_data:
+        performer_data = {}
+
+        oauth_token = get_validated_oauth_token()
+        if oauth_token:
+            performer_data["oauth_token_id"] = oauth_token.id
+            performer_data["oauth_token_application_id"] = oauth_token.application.client_id
+            performer_data["oauth_token_application"] = oauth_token.application.name
+
+        performer_user = get_authenticated_user()
+        if performer_user:
+            performer_data["entity_id"] = performer_user.id
+            performer_data["entity_name"] = performer_user.username
+
+    return {
+        "notification_uuid": notification.uuid,
+        "event_data": event_data,
+        "performer_data": performer_data,
+        "notification_type": "namespace",
+    }
+
+
+def spawn_namespace_notification(namespace_name, event_name, extra_data=None, performer_data=None):
+    event_data = build_namespace_event_data(namespace_name, extra_data=extra_data)
+
+    notifications = model.notification.list_namespace_notifications(
+        namespace_name, event_name=event_name
+    )
+
+    for notification in list(notifications):
+        notification_data = build_namespace_notification_data(
+            notification, event_data, performer_data
+        )
+        path = [namespace_name, event_name]
+        notification_queue.put(path, json.dumps(notification_data))

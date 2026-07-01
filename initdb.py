@@ -515,6 +515,10 @@ def initialize_database():
     LogEntryKind.create(name="delete_repo_notification")
     LogEntryKind.create(name="reset_repo_notification")
 
+    LogEntryKind.create(name="create_namespace_notification")
+    LogEntryKind.create(name="delete_namespace_notification")
+    LogEntryKind.create(name="reset_namespace_notification")
+
     LogEntryKind.create(name="regenerate_robot_token")
 
     LogEntryKind.create(name="repo_verb")
@@ -626,6 +630,9 @@ def initialize_database():
     ExternalNotificationEvent.create(name="repo_mirror_sync_success")
     ExternalNotificationEvent.create(name="repo_mirror_sync_failed")
     ExternalNotificationEvent.create(name="repo_image_expiry")
+
+    ExternalNotificationEvent.create(name="quota_warning")
+    ExternalNotificationEvent.create(name="quota_error")
 
     ExternalNotificationMethod.create(name="quay_notification")
     ExternalNotificationMethod.create(name="email")

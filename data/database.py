@@ -1645,6 +1645,30 @@ class RepositoryNotification(BaseModel):
     last_ran_ms = BigIntegerField(null=True, index=True)
 
 
+class NamespaceNotification(BaseModel):
+    uuid = CharField(default=uuid_generator, index=True)
+    namespace = QuayUserField(index=True)
+    event = EnumField(ExternalNotificationEvent)
+    method = EnumField(ExternalNotificationMethod)
+    title = CharField(null=True)
+    config_json = TextField()
+    event_config_json = TextField(default="{}")
+    number_of_failures = IntegerField(default=0)
+    last_ran_ms = BigIntegerField(null=True, index=True)
+
+
+class QuotaNotificationState(BaseModel):
+    namespace = QuayUserField(index=True)
+    threshold_percent = IntegerField()
+    last_notified_at = DateTimeField(null=True)
+    cleared = BooleanField(default=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = ((("namespace", "threshold_percent"), True),)
+
+
 class RepositoryAuthorizedEmail(BaseModel):
     repository = ForeignKeyField(Repository)
     email = CharField()

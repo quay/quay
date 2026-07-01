@@ -171,7 +171,7 @@ describe('OrganizationResource', () => {
       await createOrg('neworg', 'org@test.com');
       expect(axios.post).toHaveBeenCalledWith('/api/v1/organization/', {
         name: 'neworg',
-        email: 'org@test.com',
+        contact_email: 'org@test.com',
       });
     });
   });
