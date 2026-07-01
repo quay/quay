@@ -693,6 +693,11 @@ class ApplicationInformation(ApiResource):
         }
 
 
+def _ensure_oauth_app_name_is_not_reserved(name):
+    if model.oauth.is_bootstrap_app_name(name, app.config):
+        request_error(message="Application name is reserved for bootstrap token provisioning")
+
+
 def app_view(application):
     is_admin = AdministerOrganizationPermission(application.organization.username).can()
     client_secret = None
@@ -788,6 +793,7 @@ class OrganizationApplications(ApiResource):
                 raise NotFound()
 
             app_data = request.get_json()
+            _ensure_oauth_app_name_is_not_reserved(app_data["name"])
             application = model.oauth.create_application(
                 org,
                 app_data["name"],
@@ -889,6 +895,7 @@ class OrganizationApplicationResource(ApiResource):
                 raise NotFound()
 
             app_data = request.get_json()
+            _ensure_oauth_app_name_is_not_reserved(app_data["name"])
             application.name = app_data["name"]
             application.application_uri = app_data["application_uri"]
             application.redirect_uri = app_data["redirect_uri"]

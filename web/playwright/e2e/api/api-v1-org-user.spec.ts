@@ -563,6 +563,65 @@ test.describe(
         await adminClient.delete(`/api/v1/organization/${orgName}`);
       }
     });
+
+    test('admin cannot use the reserved bootstrap app name', async ({
+      adminClient,
+    }) => {
+      const orgName = uniqueName('org');
+      const reservedAppName = '__quay_bootstrap_app';
+      let clientId = '';
+
+      try {
+        await adminClient.post('/api/v1/organization/', {
+          name: orgName,
+          email: `${orgName}@example.com`,
+        });
+
+        const createReservedResp = await adminClient.post(
+          `/api/v1/organization/${orgName}/applications`,
+          {name: reservedAppName},
+        );
+        expect(createReservedResp.status()).toBe(400);
+        const createReservedBody = await createReservedResp.json();
+        expect(createReservedBody.detail).toBe(
+          'Application name is reserved for bootstrap token provisioning',
+        );
+
+        const appName = uniqueName('app');
+        const createResp = await adminClient.post(
+          `/api/v1/organization/${orgName}/applications`,
+          {name: appName},
+        );
+        expect(createResp.status()).toBe(200);
+        const createBody = await createResp.json();
+        clientId = createBody.client_id;
+
+        const updateReservedResp = await adminClient.put(
+          `/api/v1/organization/${orgName}/applications/${clientId}`,
+          {
+            name: reservedAppName,
+            description: 'reserved app description',
+            application_uri: 'https://quay.io',
+            client_id: clientId,
+            client_secret: createBody.client_secret,
+            redirect_uri: 'https://quay.io',
+            avatar_email: 'apptest@redhat.com',
+          },
+        );
+        expect(updateReservedResp.status()).toBe(400);
+        const updateReservedBody = await updateReservedResp.json();
+        expect(updateReservedBody.detail).toBe(
+          'Application name is reserved for bootstrap token provisioning',
+        );
+      } finally {
+        if (clientId) {
+          await adminClient.delete(
+            `/api/v1/organization/${orgName}/applications/${clientId}`,
+          );
+        }
+        await adminClient.delete(`/api/v1/organization/${orgName}`);
+      }
+    });
   },
 );
 
