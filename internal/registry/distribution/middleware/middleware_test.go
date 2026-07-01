@@ -109,6 +109,10 @@ func (m *mockStore) PutUploadedBlob(_ context.Context, _ int64, _ digest.Digest)
 	return nil
 }
 
+func (m *mockStore) DeleteUploadedBlob(_ context.Context, _ int64, _ digest.Digest) (int64, error) {
+	return 0, nil
+}
+
 func (m *mockStore) CleanExpiredUploadedBlobs(_ context.Context) error {
 	return errNotImplemented
 }

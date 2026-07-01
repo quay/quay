@@ -51,6 +51,27 @@ func (q *Queries) DeleteImageStorage(ctx context.Context, id int64) error {
 	return err
 }
 
+const deleteUploadedBlob = `-- name: DeleteUploadedBlob :execrows
+DELETE FROM uploadedblob
+WHERE repository_id = ?
+  AND blob_id IN (
+    SELECT id FROM imagestorage WHERE content_checksum = ?
+  )
+`
+
+type DeleteUploadedBlobParams struct {
+	RepositoryID    int64          `json:"repository_id"`
+	ContentChecksum sql.NullString `json:"content_checksum"`
+}
+
+func (q *Queries) DeleteUploadedBlob(ctx context.Context, arg DeleteUploadedBlobParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteUploadedBlob, arg.RepositoryID, arg.ContentChecksum)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const findOrphanedBlobs = `-- name: FindOrphanedBlobs :many
 SELECT s.id, s.content_checksum, s.uuid, s.image_size
 FROM imagestorage s

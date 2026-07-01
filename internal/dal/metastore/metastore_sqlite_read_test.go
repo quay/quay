@@ -262,6 +262,63 @@ func TestPutUploadedBlob(t *testing.T) {
 	}
 }
 
+func TestDeleteUploadedBlobRemovesOnlyRepoScopedUploadLink(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	repoOne, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "ns", Name: "one"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repoTwo, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "ns", Name: "two"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dgst := digest.FromString("uploaded-blob")
+	if _, err := store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: 100}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutUploadedBlob(ctx, repoOne, dgst); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutUploadedBlob(ctx, repoTwo, dgst); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := store.DeleteUploadedBlob(ctx, repoOne, dgst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rows != 1 {
+		t.Fatalf("DeleteUploadedBlob rows = %d, want 1", rows)
+	}
+
+	linked, err := store.BlobLinkedToRepo(ctx, repoOne, dgst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if linked {
+		t.Fatal("BlobLinkedToRepo = true for deleted repo upload link")
+	}
+
+	linked, err = store.BlobLinkedToRepo(ctx, repoTwo, dgst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !linked {
+		t.Fatal("BlobLinkedToRepo = false for untouched repo upload link")
+	}
+
+	exists, err := store.BlobExists(ctx, dgst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists {
+		t.Fatal("BlobExists = false after deleting one repo upload link")
+	}
+}
+
 func TestCleanExpiredUploadedBlobs(t *testing.T) {
 	store, cleanup := testStore(t)
 	defer cleanup()

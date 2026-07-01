@@ -40,6 +40,18 @@ func setupDistTest(t *testing.T) (*DistDriver, oci.BlobStore, oci.MetadataStore)
 	return dd, blobs, store
 }
 
+func layerLinkPath(dgst digest.Digest) string {
+	return "/docker/registry/v2/repositories/lib/test/_layers/sha256/" + dgst.Encoded() + "/link"
+}
+
+func requirePathNotFound(t *testing.T, err error) {
+	t.Helper()
+	var pnf storagedriver.PathNotFoundError
+	if !errors.As(err, &pnf) {
+		t.Fatalf("expected PathNotFoundError, got %v", err)
+	}
+}
+
 func TestDistDriver_Name(t *testing.T) {
 	dd, _, _ := setupDistTest(t)
 	if dd.Name() != "quay" {
@@ -125,10 +137,7 @@ func TestDistDriver_UploadLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = dd.Stat(ctx, dataPath)
-	var pnf storagedriver.PathNotFoundError
-	if !errors.As(err, &pnf) {
-		t.Errorf("expected PathNotFoundError after delete, got %v", err)
-	}
+	requirePathNotFound(t, err)
 }
 
 func TestDistDriver_Move_UploadToBlob(t *testing.T) {
@@ -201,13 +210,117 @@ func TestDistDriver_MetadataLink_GetContent(t *testing.T) {
 	}
 
 	// Read layer link (repo-scoped via manifestblob)
-	layerPath := "/docker/registry/v2/repositories/lib/test/_layers/sha256/" + layerDgst.Encoded() + "/link"
+	layerPath := layerLinkPath(layerDgst)
 	got, err = dd.GetContent(ctx, layerPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(got) != layerDgst.String() {
 		t.Errorf("layer link = %q, want %q", got, layerDgst.String())
+	}
+}
+
+func TestDistDriver_LayerLinkRequiresRepoAssociation(t *testing.T) {
+	dd, _, store := setupDistTest(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	layerDgst := digest.FromString("global-only-layer")
+	if _, err := store.PutBlob(ctx, oci.BlobRecord{Digest: layerDgst, Size: 100}); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = dd.GetContent(ctx, layerLinkPath(layerDgst))
+	requirePathNotFound(t, err)
+
+	linked, err := store.BlobLinkedToRepo(ctx, repoID, layerDgst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if linked {
+		t.Fatal("BlobLinkedToRepo = true for global-only blob")
+	}
+}
+
+func TestDistDriver_DeleteLayerLinkRemovesUploadedAssociation(t *testing.T) {
+	dd, _, store := setupDistTest(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	layerDgst := digest.FromString("uploaded-layer")
+	if _, err := store.PutBlob(ctx, oci.BlobRecord{Digest: layerDgst, Size: 100}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutUploadedBlob(ctx, repoID, layerDgst); err != nil {
+		t.Fatal(err)
+	}
+
+	layerPath := layerLinkPath(layerDgst)
+	got, err := dd.GetContent(ctx, layerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != layerDgst.String() {
+		t.Errorf("layer link = %q, want %q", got, layerDgst.String())
+	}
+
+	if err := dd.Delete(ctx, layerPath); err != nil {
+		t.Fatal(err)
+	}
+	_, err = dd.GetContent(ctx, layerPath)
+	requirePathNotFound(t, err)
+
+	exists, err := store.BlobExists(ctx, layerDgst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists {
+		t.Fatal("BlobExists = false after deleting repo-scoped layer link")
+	}
+}
+
+func TestDistDriver_DeleteLayerLinkKeepsManifestAssociation(t *testing.T) {
+	dd, _, store := setupDistTest(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "lib", Name: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	layerDgst := digest.FromString("manifest-layer")
+	if _, err := store.PutBlob(ctx, oci.BlobRecord{Digest: layerDgst, Size: 100}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutUploadedBlob(ctx, repoID, layerDgst); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:      digest.FromString("manifest-for-layer-delete"),
+		MediaType:   "application/vnd.oci.image.manifest.v1+json",
+		Content:     []byte(`{}`),
+		BlobDigests: []oci.BlobRef{{Digest: layerDgst, Size: 100}},
+		Tag:         "latest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	layerPath := layerLinkPath(layerDgst)
+	if err := dd.Delete(ctx, layerPath); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := dd.GetContent(ctx, layerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != layerDgst.String() {
+		t.Errorf("layer link after delete = %q, want %q", got, layerDgst.String())
 	}
 }
 
