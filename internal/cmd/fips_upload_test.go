@@ -63,7 +63,11 @@ func TestChunkedUploadOffsetMismatch(t *testing.T) {
 
 	// Step 1: POST to start a new upload
 	postURL := fmt.Sprintf("%s/v2/%s/blobs/uploads/", ts.URL, repo)
-	resp, err := http.Post(postURL, "", nil)
+	postReq, err := http.NewRequestWithContext(t.Context(), http.MethodPost, postURL, http.NoBody)
+	if err != nil {
+		t.Fatalf("POST request creation failed: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(postReq)
 	if err != nil {
 		t.Fatalf("POST failed: %v", err)
 	}
@@ -89,7 +93,7 @@ func TestChunkedUploadOffsetMismatch(t *testing.T) {
 	// Close() skips the flush, leaving the buffered bytes on disk.
 	chunkData := bytes.Repeat([]byte("A"), 8192)
 
-	patchReq, err := http.NewRequest(http.MethodPatch, uploadURL, bytes.NewReader(chunkData))
+	patchReq, err := http.NewRequestWithContext(t.Context(), http.MethodPatch, uploadURL, bytes.NewReader(chunkData))
 	if err != nil {
 		t.Fatalf("PATCH request creation failed: %v", err)
 	}
@@ -137,7 +141,7 @@ func TestChunkedUploadOffsetMismatch(t *testing.T) {
 	q.Set("digest", digest)
 	putURL.RawQuery = q.Encode()
 
-	putReq, err := http.NewRequest(http.MethodPut, putURL.String(), nil)
+	putReq, err := http.NewRequestWithContext(t.Context(), http.MethodPut, putURL.String(), http.NoBody)
 	if err != nil {
 		t.Fatalf("PUT request creation failed: %v", err)
 	}
