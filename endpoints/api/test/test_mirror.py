@@ -269,3 +269,22 @@ def test_change_credentials(request_body, expected_status, app):
     with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, expected_status)
+
+
+def test_create_mirror_with_skopeo_timeout_interval(app):
+    """
+    Verify that sending skopeo_timeout_interval (as the React UI does) does not
+    cause a 500 error. The field should pass validation and be stripped before
+    reaching the model layer.
+    """
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        request_body = {
+            "external_reference": "quay.io/foobar/barbaz",
+            "sync_interval": 100,
+            "sync_start_date": "2019-08-20T17:51:00Z",
+            "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest"]},
+            "robot_username": "devtable+dtrobot",
+            "skopeo_timeout_interval": 300,
+        }
+        conduct_api_call(cl, RepoMirrorResource, "POST", params, request_body, 201)
