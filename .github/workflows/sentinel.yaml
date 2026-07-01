@@ -54,6 +54,7 @@ jobs:
               - '!config-tool/**'
             config-tool:
               - 'config-tool/**'
+              - '.github/workflows/ci-config-tool.yaml'
             python:
               - '**/*.py'
               - 'requirements*.txt'
@@ -91,6 +92,8 @@ jobs:
               - '!OWNERS'
               - '!internal/**'
               - '!cmd/**'
+              - '!config-tool/**'
+              - '!.github/workflows/ci-config-tool.yaml'
 
   pr-lint:
     name: conventional commit check
