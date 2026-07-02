@@ -1158,12 +1158,15 @@ class OCIModel(RegistryDataInterface):
 
     def lookup_blob_upload(self, repository_ref, blob_upload_id):
         """
-        Looks up the blob upload withn the given ID under the specified repository and returns it or
+        Looks up the blob upload with the given ID under the specified repository and returns it or
         None if none.
         """
         with db_disallow_replica_use():
             upload_record = model.blob.get_blob_upload_by_uuid(blob_upload_id)
             if upload_record is None:
+                return None
+
+            if upload_record.repository_id != repository_ref._db_id:
                 return None
 
             return BlobUpload.for_upload(upload_record)
