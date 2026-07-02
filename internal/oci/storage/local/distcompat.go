@@ -89,7 +89,10 @@ func (d *DistDriver) getMetadataContent(ctx context.Context, path string) ([]byt
 	}
 	repoID, err := d.meta.GetRepositoryID(ctx, repoNameFromString(repo))
 	if err != nil {
-		return nil, storagedriver.PathNotFoundError{Path: path}
+		if errors.Is(err, oci.ErrNotExist) {
+			return nil, storagedriver.PathNotFoundError{Path: path}
+		}
+		return nil, err
 	}
 	dgst, err := d.resolveLink(ctx, repoID, path)
 	if err != nil {
@@ -390,7 +393,10 @@ func (d *DistDriver) listTags(ctx context.Context, path string) ([]string, error
 	name := repoNameFromString(repo)
 	repoID, err := d.meta.GetRepositoryID(ctx, name)
 	if err != nil {
-		return nil, storagedriver.PathNotFoundError{Path: path}
+		if errors.Is(err, oci.ErrNotExist) {
+			return nil, storagedriver.PathNotFoundError{Path: path}
+		}
+		return nil, err
 	}
 	tags, err := d.meta.ListTags(ctx, repoID)
 	if err != nil {
@@ -550,7 +556,10 @@ func (d *DistDriver) deleteLayerLink(ctx context.Context, path string) error {
 	}
 	repoID, err := d.meta.GetRepositoryID(ctx, repoNameFromString(repo))
 	if err != nil {
-		return storagedriver.PathNotFoundError{Path: path}
+		if errors.Is(err, oci.ErrNotExist) {
+			return storagedriver.PathNotFoundError{Path: path}
+		}
+		return err
 	}
 	dgst, err := digestFromLinkPath(path, "/_layers/")
 	if err != nil {
