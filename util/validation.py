@@ -28,10 +28,19 @@ def validate_label_key(label_key):
 
 
 def validate_email(email_address):
-    if not email_address:
+    if not email_address or len(email_address) > 254:
         return False
 
-    return bool(re.match(r"[^@]+@[^@]+\.[^@]+", email_address))
+    parts = email_address.split("@")
+    if len(parts) != 2:
+        return False
+
+    local, domain = parts
+    if not local or not domain:
+        return False
+
+    domain_labels = domain.split(".")
+    return len(domain_labels) >= 2 and all(domain_labels)
 
 
 def validate_username(username):

@@ -11,11 +11,11 @@ from random import SystemRandom
 
 import bitmath
 from cryptography.hazmat.primitives import serialization
-from flask import jsonify, make_response, request
+from flask import jsonify, make_response, request, send_file
 
 import features
 from _init import ROOT_DIR
-from app import app, authentication, avatar, config_provider, usermanager
+from app import app, authentication, avatar, config_provider, log_archive, usermanager
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import SuperUserPermission
@@ -61,6 +61,7 @@ from endpoints.api.superuser_models_pre_oci import (
 )
 from util.config.schema import CONFIG_SCHEMA
 from util.parsing import truthy_bool
+from util.registry.gzipinputstream import GzipInputStream
 from util.request import get_request_ip
 from util.useremails import send_confirmation_email, send_recovery_email
 from util.validation import validate_service_key_name
@@ -1325,6 +1326,42 @@ class SuperUserRepositoryBuildLogs(ApiResource):
                 return get_logs_or_log_url(repo_build)
             except InvalidRepositoryBuildException as e:
                 raise InvalidResponse(str(e))
+
+        raise Unauthorized()
+
+
+@resource("/v1/superuser/<build_uuid>/logs/archive")
+@path_param("build_uuid", "The UUID of the build")
+@show_if(features.SUPER_USERS)
+class SuperUserRepositoryBuildLogsArchive(ApiResource):
+    """
+    Resource for serving archived build log content for the superuser.
+    The /logarchive/ route checks repository-level permissions, which fails for
+    superusers who are not repo members. This endpoint bypasses that by streaming
+    the archive directly from object storage under superuser authorization.
+    """
+
+    @require_fresh_login
+    @verify_not_prod
+    @nickname("getRepoBuildLogsArchiveSuperUser")
+    @require_scope(scopes.SUPERUSER)
+    def get(self, build_uuid):
+        """
+        Return the archived build log content for the build specified by the build uuid.
+        """
+        if allow_if_any_superuser():
+            try:
+                pre_oci_model.get_repository_build(build_uuid)
+            except InvalidRepositoryBuildException as e:
+                raise InvalidResponse(str(e))
+
+            try:
+                path = log_archive.get_file_id_path(build_uuid)
+                data_stream = log_archive._storage.stream_read_file(log_archive._locations, path)
+                return send_file(GzipInputStream(data_stream), mimetype="application/json")
+            except IOError:
+                logger.exception("Could not read archived build logs")
+                raise InvalidResponse("Archived logs not available")
 
         raise Unauthorized()
 
