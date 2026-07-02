@@ -19,19 +19,18 @@ func (q *Queries) DeleteTagsByManifest(ctx context.Context, manifestID sql.NullI
 	return err
 }
 
-const expireActiveTag = `-- name: ExpireActiveTag :execresult
+const expireTagByID = `-- name: ExpireTagByID :execresult
 UPDATE tag SET lifetime_end_ms = ?
-WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL
+WHERE id = ? AND lifetime_end_ms IS NULL
 `
 
-type ExpireActiveTagParams struct {
+type ExpireTagByIDParams struct {
 	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
-	RepositoryID  int64         `json:"repository_id"`
-	Name          string        `json:"name"`
+	ID            int64         `json:"id"`
 }
 
-func (q *Queries) ExpireActiveTag(ctx context.Context, arg ExpireActiveTagParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, expireActiveTag, arg.LifetimeEndMs, arg.RepositoryID, arg.Name)
+func (q *Queries) ExpireTagByID(ctx context.Context, arg ExpireTagByIDParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, expireTagByID, arg.LifetimeEndMs, arg.ID)
 }
 
 const getActiveTagDigest = `-- name: GetActiveTagDigest :one
@@ -51,6 +50,46 @@ func (q *Queries) GetActiveTagDigest(ctx context.Context, arg GetActiveTagDigest
 	var digest string
 	err := row.Scan(&digest)
 	return digest, err
+}
+
+const getActiveTags = `-- name: GetActiveTags :many
+SELECT id, manifest_id
+FROM tag
+WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL
+ORDER BY id
+`
+
+type GetActiveTagsParams struct {
+	RepositoryID int64  `json:"repository_id"`
+	Name         string `json:"name"`
+}
+
+type GetActiveTagsRow struct {
+	ID         int64         `json:"id"`
+	ManifestID sql.NullInt64 `json:"manifest_id"`
+}
+
+func (q *Queries) GetActiveTags(ctx context.Context, arg GetActiveTagsParams) ([]GetActiveTagsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getActiveTags, arg.RepositoryID, arg.Name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetActiveTagsRow
+	for rows.Next() {
+		var i GetActiveTagsRow
+		if err := rows.Scan(&i.ID, &i.ManifestID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getTagsByRepository = `-- name: GetTagsByRepository :many
@@ -105,14 +144,13 @@ func (q *Queries) GetTagsByRepository(ctx context.Context, arg GetTagsByReposito
 	return items, nil
 }
 
-const upsertTag = `-- name: UpsertTag :one
+const insertTag = `-- name: InsertTag :one
 INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id)
 VALUES (?, ?, ?, ?, ?)
-ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
 RETURNING id
 `
 
-type UpsertTagParams struct {
+type InsertTagParams struct {
 	Name            string        `json:"name"`
 	RepositoryID    int64         `json:"repository_id"`
 	ManifestID      sql.NullInt64 `json:"manifest_id"`
@@ -120,13 +158,8 @@ type UpsertTagParams struct {
 	TagKindID       int64         `json:"tag_kind_id"`
 }
 
-// KNOWN LIMITATION: ON CONFLICT uses lifetime_end_ms which is nullable.
-// NULL != NULL in SQL, so active tags (lifetime_end_ms IS NULL) never conflict.
-// This inserts duplicates instead of updating. Proper fix requires a partial
-// unique index: CREATE UNIQUE INDEX ON tag (repository_id, name) WHERE lifetime_end_ms IS NULL.
-// Until then, callers should expire the old tag before inserting a new one.
-func (q *Queries) UpsertTag(ctx context.Context, arg UpsertTagParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, upsertTag,
+func (q *Queries) InsertTag(ctx context.Context, arg InsertTagParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertTag,
 		arg.Name,
 		arg.RepositoryID,
 		arg.ManifestID,
@@ -136,4 +169,24 @@ func (q *Queries) UpsertTag(ctx context.Context, arg UpsertTagParams) (int64, er
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const tagLifetimeEndExists = `-- name: TagLifetimeEndExists :one
+SELECT EXISTS(
+  SELECT 1 FROM tag
+  WHERE repository_id = ? AND name = ? AND lifetime_end_ms = ?
+)
+`
+
+type TagLifetimeEndExistsParams struct {
+	RepositoryID  int64         `json:"repository_id"`
+	Name          string        `json:"name"`
+	LifetimeEndMs sql.NullInt64 `json:"lifetime_end_ms"`
+}
+
+func (q *Queries) TagLifetimeEndExists(ctx context.Context, arg TagLifetimeEndExistsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, tagLifetimeEndExists, arg.RepositoryID, arg.Name, arg.LifetimeEndMs)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }

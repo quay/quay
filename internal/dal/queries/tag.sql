@@ -1,17 +1,23 @@
--- name: UpsertTag :one
--- KNOWN LIMITATION: ON CONFLICT uses lifetime_end_ms which is nullable.
--- NULL != NULL in SQL, so active tags (lifetime_end_ms IS NULL) never conflict.
--- This inserts duplicates instead of updating. Proper fix requires a partial
--- unique index: CREATE UNIQUE INDEX ON tag (repository_id, name) WHERE lifetime_end_ms IS NULL.
--- Until then, callers should expire the old tag before inserting a new one.
+-- name: InsertTag :one
 INSERT INTO tag (name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id)
 VALUES (?, ?, ?, ?, ?)
-ON CONFLICT (repository_id, name, lifetime_end_ms) DO UPDATE SET manifest_id = excluded.manifest_id
 RETURNING id;
 
--- name: ExpireActiveTag :execresult
+-- name: GetActiveTags :many
+SELECT id, manifest_id
+FROM tag
+WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL
+ORDER BY id;
+
+-- name: ExpireTagByID :execresult
 UPDATE tag SET lifetime_end_ms = ?
-WHERE repository_id = ? AND name = ? AND lifetime_end_ms IS NULL;
+WHERE id = ? AND lifetime_end_ms IS NULL;
+
+-- name: TagLifetimeEndExists :one
+SELECT EXISTS(
+  SELECT 1 FROM tag
+  WHERE repository_id = ? AND name = ? AND lifetime_end_ms = ?
+);
 
 -- name: DeleteTagsByManifest :exec
 DELETE FROM tag WHERE manifest_id = ?;

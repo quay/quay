@@ -27,6 +27,7 @@ type SQLiteStore struct {
 
 	mediaTypesMu sync.RWMutex
 	mediaTypes   map[string]int64
+	nowMs        func() int64
 }
 
 // compile-time check
@@ -35,10 +36,29 @@ var _ oci.MetadataStore = (*SQLiteStore)(nil)
 // DB returns the underlying database handle, primarily for use in tests.
 func (s *SQLiteStore) DB() *sql.DB { return s.db }
 
+// SQLiteStoreOption configures a SQLiteStore during construction.
+type SQLiteStoreOption func(*SQLiteStore)
+
+// WithNowFunc overrides the store clock. It is primarily useful for deterministic tests.
+func WithNowFunc(nowMs func() int64) SQLiteStoreOption {
+	return func(s *SQLiteStore) {
+		if nowMs != nil {
+			s.nowMs = nowMs
+		}
+	}
+}
+
 // NewSQLiteStore creates a Store backed by the given SQLite database. It
 // caches frequently-used enum IDs at construction time.
-func NewSQLiteStore(ctx context.Context, db *sql.DB) (*SQLiteStore, error) {
-	s := &SQLiteStore{db: db, mediaTypes: make(map[string]int64)}
+func NewSQLiteStore(ctx context.Context, db *sql.DB, opts ...SQLiteStoreOption) (*SQLiteStore, error) {
+	s := &SQLiteStore{
+		db:         db,
+		mediaTypes: make(map[string]int64),
+		nowMs:      func() int64 { return time.Now().UnixMilli() },
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
 	if err := s.cacheEnums(ctx); err != nil {
 		return nil, fmt.Errorf("metastore: cache enums: %w", err)
 	}
@@ -308,20 +328,28 @@ func (s *SQLiteStore) PutTag(ctx context.Context, repoID int64, t oci.TagRecord)
 }
 
 // putTag expires any active tag with the same name, then inserts a new one.
-// This avoids the NULL != NULL issue on the
-// (repository_id, name, lifetime_end_ms) unique index.
+// Re-pushing the same manifest digest is idempotent and preserves tag history.
 func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, manifestID int64, tag string) (int64, error) {
-	now := time.Now().UnixMilli()
+	now := s.nowMs()
 
-	if _, err := q.ExpireActiveTag(ctx, daldb.ExpireActiveTagParams{
-		LifetimeEndMs: sql.NullInt64{Int64: now, Valid: true},
-		RepositoryID:  repoID,
-		Name:          tag,
-	}); err != nil {
+	activeTags, err := q.GetActiveTags(ctx, daldb.GetActiveTagsParams{
+		RepositoryID: repoID,
+		Name:         tag,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("lookup active tag %q: %w", tag, err)
+	}
+	if len(activeTags) == 1 &&
+		activeTags[0].ManifestID.Valid &&
+		activeTags[0].ManifestID.Int64 == manifestID {
+		return activeTags[0].ID, nil
+	}
+
+	if err := s.expireActiveTags(ctx, q, repoID, tag, activeTags, now); err != nil {
 		return 0, fmt.Errorf("expire tag %q: %w", tag, err)
 	}
 
-	id, err := q.UpsertTag(ctx, daldb.UpsertTagParams{
+	id, err := q.InsertTag(ctx, daldb.InsertTagParams{
 		Name:            tag,
 		RepositoryID:    repoID,
 		ManifestID:      sql.NullInt64{Int64: manifestID, Valid: true},
@@ -334,18 +362,67 @@ func (s *SQLiteStore) putTag(ctx context.Context, q *daldb.Queries, repoID, mani
 	return id, nil
 }
 
+func (s *SQLiteStore) expireActiveTags(ctx context.Context, q *daldb.Queries, repoID int64, tag string, activeTags []daldb.GetActiveTagsRow, now int64) error {
+	endMs := now
+	for _, activeTag := range activeTags {
+		for {
+			exists, err := q.TagLifetimeEndExists(ctx, daldb.TagLifetimeEndExistsParams{
+				RepositoryID:  repoID,
+				Name:          tag,
+				LifetimeEndMs: sql.NullInt64{Int64: endMs, Valid: true},
+			})
+			if err != nil {
+				return fmt.Errorf("check lifetime_end_ms %d: %w", endMs, err)
+			}
+			if exists == 0 {
+				break
+			}
+			endMs--
+		}
+
+		result, err := q.ExpireTagByID(ctx, daldb.ExpireTagByIDParams{
+			LifetimeEndMs: sql.NullInt64{Int64: endMs, Valid: true},
+			ID:            activeTag.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("expire active tag row %d: %w", activeTag.ID, err)
+		}
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("expire active tag row %d rows affected: %w", activeTag.ID, err)
+		}
+		if rows != 1 {
+			return fmt.Errorf("expire active tag row %d: updated %d rows", activeTag.ID, rows)
+		}
+
+		endMs--
+	}
+	return nil
+}
+
 // DeleteTag expires the active tag by setting lifetime_end_ms.
 func (s *SQLiteStore) DeleteTag(ctx context.Context, repoID int64, tag string) error {
-	q := daldb.New(s.db)
-	now := time.Now().UnixMilli()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
+	q := daldb.New(tx)
 
-	_, err := q.ExpireActiveTag(ctx, daldb.ExpireActiveTagParams{
-		LifetimeEndMs: sql.NullInt64{Int64: now, Valid: true},
-		RepositoryID:  repoID,
-		Name:          tag,
+	activeTags, err := q.GetActiveTags(ctx, daldb.GetActiveTagsParams{
+		RepositoryID: repoID,
+		Name:         tag,
 	})
 	if err != nil {
+		return fmt.Errorf("lookup active tag %q: %w", tag, err)
+	}
+
+	if err := s.expireActiveTags(ctx, q, repoID, tag, activeTags, s.nowMs()); err != nil {
 		return fmt.Errorf("expire tag %q: %w", tag, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
 	}
 	return nil
 }
@@ -447,7 +524,7 @@ func (s *SQLiteStore) BlobExists(ctx context.Context, dgst digest.Digest) (bool,
 // ListTags returns all active tags for a repository.
 func (s *SQLiteStore) ListTags(ctx context.Context, repoID int64) ([]string, error) {
 	q := daldb.New(s.db)
-	now := time.Now().UnixMilli()
+	now := s.nowMs()
 	rows, err := q.GetTagsByRepository(ctx, daldb.GetTagsByRepositoryParams{
 		RepositoryID:  repoID,
 		LifetimeEndMs: sql.NullInt64{Int64: now, Valid: true},
