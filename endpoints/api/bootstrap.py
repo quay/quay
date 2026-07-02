@@ -17,7 +17,7 @@ from data.model.oauth import (
 )
 from endpoints.api import ApiResource, nickname, resource, show_if
 from endpoints.decorators import anon_allowed
-from endpoints.exception import InvalidToken, Unauthorized
+from endpoints.exception import InvalidToken, TokenRotationError, Unauthorized
 from util.bootstrap_token import write_bootstrap_token
 
 logger = logging.getLogger(__name__)
@@ -146,9 +146,9 @@ class BootstrapTokenRenew(ApiResource):
                 write_bootstrap_token(app.config, new_access_token)
         except BootstrapTokenCleanupError:
             logger.exception("Bootstrap token renewal failed while deleting stale tokens")
-            return {"message": "Token rotation failed: could not clean up tokens"}, 500
+            raise TokenRotationError("Token rotation failed: could not clean up tokens")
         except OSError:
             logger.exception("Bootstrap token renewal failed while writing token")
-            return {"message": "Token rotation failed: could not write token"}, 500
+            raise TokenRotationError("Token rotation failed: could not write token")
 
         return {"status": "rotated"}, 200
