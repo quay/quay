@@ -9,14 +9,14 @@ from app import app
 from app import billing as stripe
 from app import marketplace_subscriptions, marketplace_users
 from data import model
-from data.billing import RH_SKUS, get_plan
+from data.billing import get_plan
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.marketplace import MarketplaceApiException
 from workers.gunicorn_worker import GunicornWorker
-from workers.namespacegcworker import LOCK_TIMEOUT_PADDING
 from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
+
 
 RECONCILIATION_TIMEOUT = 5 * 60  # 5min
 RECONCILIATION_FREQUENCY = 5 * 60  # run reconciliation every 5 min
@@ -141,9 +141,7 @@ class ReconciliationWorker(Worker):
         else:
             try:
                 with GlobalLock(
-                    "RECONCILIATION_WORKER",
-                    lock_ttl=app.config.get("RECONCILIATION_FREQUENCY", RECONCILIATION_FREQUENCY)
-                    + LOCK_TIMEOUT_PADDING,
+                    "RECONCILIATION_WORKER", lock_ttl=RECONCILIATION_TIMEOUT, auto_renewal=True
                 ):
                     self._perform_reconciliation(
                         user_api=marketplace_users, marketplace_api=marketplace_subscriptions
