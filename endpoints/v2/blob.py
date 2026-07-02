@@ -153,7 +153,7 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
 def _is_cdn_specific(namespace):
     # Checks if blob belongs to namespace that should have cdn url returned
     logger.debug("Checking for namespace %s", namespace)
-    namespaces = app.config.get("CDN_SPECIFIC_NAMESPACES")
+    namespaces = app.config.get("CDN_SPECIFIC_NAMESPACES", [])
     return namespace in namespaces
 
 
