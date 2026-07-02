@@ -2,12 +2,14 @@ import json
 import os
 from unittest.mock import patch
 
+import pytest
+
 from data import model
 from data.database import db
 from test.fixtures import *
 
 
-def _app_config(tmp_path, feature_enabled=True, superusers=None, owner="devtable", app_name=None):
+def _app_config(tmp_path, feature_enabled=True, superusers=None, owner="devtable"):
     if superusers is None:
         superusers = [owner] if owner is not None else []
 
@@ -21,8 +23,6 @@ def _app_config(tmp_path, feature_enabled=True, superusers=None, owner="devtable
     }
     if owner is not None:
         config["BOOTSTRAP_TOKEN_OWNER"] = owner
-    if app_name is not None:
-        config["BOOTSTRAP_APP_NAME"] = app_name
     return config
 
 
@@ -82,7 +82,7 @@ def test_provision_creates_bootstrap_token_and_file(initialized_db, tmp_path):
     owner = model.user.get_user("devtable")
     application = model.oauth.lookup_application_by_name(
         owner,
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
     )
     tokens = model.oauth.get_bootstrap_tokens(application)
     assert len(tokens) == 1
@@ -109,7 +109,7 @@ def test_provision_reuses_valid_stored_token(initialized_db, tmp_path):
     owner = model.user.get_user("devtable")
     application = model.oauth.lookup_application_by_name(
         owner,
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
     )
     assert len(model.oauth.get_bootstrap_tokens(application)) == 1
 
@@ -117,15 +117,17 @@ def test_provision_reuses_valid_stored_token(initialized_db, tmp_path):
 def test_provision_selects_most_recent_duplicate_bootstrap_app(initialized_db, tmp_path):
     from boot import setup_bootstrap_token
 
-    config = _app_config(tmp_path, app_name="custom-bootstrap")
+    config = _app_config(tmp_path)
     owner = model.user.get_user("devtable")
-    default_application = model.oauth.create_application(
+    ignored_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
+    older_application = model.oauth.create_application(
         owner, model.oauth.BOOTSTRAP_APP_NAME, "", ""
     )
-    older_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
-    newer_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
-    default_token, _ = model.oauth.create_bootstrap_oauth_api_token(
-        default_application,
+    newer_application = model.oauth.create_application(
+        owner, model.oauth.BOOTSTRAP_APP_NAME, "", ""
+    )
+    ignored_token, _ = model.oauth.create_bootstrap_oauth_api_token(
+        ignored_application,
         owner,
         "repo:read",
     )
@@ -147,12 +149,12 @@ def test_provision_selects_most_recent_duplicate_bootstrap_app(initialized_db, t
         setup_bootstrap_token()
 
     newer_tokens = model.oauth.get_bootstrap_tokens(newer_application)
-    assert [token.uuid for token in model.oauth.get_bootstrap_tokens(default_application)] == [
-        default_token.uuid
+    assert [token.uuid for token in model.oauth.get_bootstrap_tokens(ignored_application)] == [
+        ignored_token.uuid
     ]
     assert model.oauth.get_bootstrap_tokens(older_application) == []
     assert [token.uuid for token in newer_tokens] == [keep_token.uuid]
-    assert model.oauth.lookup_access_token_by_uuid(default_token.uuid) is not None
+    assert model.oauth.lookup_access_token_by_uuid(ignored_token.uuid) is not None
     assert model.oauth.lookup_access_token_by_uuid(old_token.uuid) is None
     assert model.oauth.lookup_access_token_by_uuid(keep_token.uuid) is not None
     with open(config["BOOTSTRAP_TOKEN_PATH"]) as f:
@@ -162,11 +164,13 @@ def test_provision_selects_most_recent_duplicate_bootstrap_app(initialized_db, t
 def test_validate_bootstrap_token_accepts_only_canonical_bootstrap_application(
     initialized_db, tmp_path
 ):
-    config = _app_config(tmp_path, app_name="custom-bootstrap")
+    config = _app_config(tmp_path)
     owner = model.user.get_user("devtable")
     other_owner = model.user.get_user("freshuser")
 
-    older_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
+    older_application = model.oauth.create_application(
+        owner, model.oauth.BOOTSTRAP_APP_NAME, "", ""
+    )
     older_token, older_access_token = model.oauth.create_bootstrap_oauth_api_token(
         older_application,
         owner,
@@ -175,7 +179,7 @@ def test_validate_bootstrap_token_accepts_only_canonical_bootstrap_application(
 
     other_owner_application = model.oauth.create_application(
         other_owner,
-        "custom-bootstrap",
+        model.oauth.BOOTSTRAP_APP_NAME,
         "",
         "",
     )
@@ -185,7 +189,9 @@ def test_validate_bootstrap_token_accepts_only_canonical_bootstrap_application(
         "repo:read",
     )
 
-    newer_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
+    newer_application = model.oauth.create_application(
+        owner, model.oauth.BOOTSTRAP_APP_NAME, "", ""
+    )
     newer_token, newer_access_token = model.oauth.create_bootstrap_oauth_api_token(
         newer_application,
         owner,
@@ -207,10 +213,14 @@ def test_provision_deletes_older_duplicate_bootstrap_apps_without_rewriting_file
 ):
     from boot import setup_bootstrap_token
 
-    config = _app_config(tmp_path, app_name="custom-bootstrap")
+    config = _app_config(tmp_path)
     owner = model.user.get_user("devtable")
-    older_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
-    newer_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
+    older_application = model.oauth.create_application(
+        owner, model.oauth.BOOTSTRAP_APP_NAME, "", ""
+    )
+    newer_application = model.oauth.create_application(
+        owner, model.oauth.BOOTSTRAP_APP_NAME, "", ""
+    )
     old_token, old_access_token = model.oauth.create_bootstrap_oauth_api_token(
         older_application,
         owner,
@@ -240,10 +250,12 @@ def test_provision_deletes_older_duplicate_bootstrap_apps_without_rewriting_file
 def test_provision_ignores_duplicate_app_with_non_bootstrap_tokens(initialized_db, tmp_path):
     from boot import setup_bootstrap_token
 
-    config = _app_config(tmp_path, app_name="custom-bootstrap")
+    config = _app_config(tmp_path)
     owner = model.user.get_user("devtable")
-    safe_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
-    unsafe_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
+    safe_application = model.oauth.create_application(owner, model.oauth.BOOTSTRAP_APP_NAME, "", "")
+    unsafe_application = model.oauth.create_application(
+        owner, model.oauth.BOOTSTRAP_APP_NAME, "", ""
+    )
     old_token, _ = model.oauth.create_bootstrap_oauth_api_token(
         safe_application,
         owner,
@@ -279,9 +291,11 @@ def test_provision_creates_new_bootstrap_app_when_named_apps_have_no_bootstrap_t
 ):
     from boot import setup_bootstrap_token
 
-    config = _app_config(tmp_path, app_name="custom-bootstrap")
+    config = _app_config(tmp_path)
     owner = model.user.get_user("devtable")
-    existing_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
+    existing_application = model.oauth.create_application(
+        owner, model.oauth.BOOTSTRAP_APP_NAME, "", ""
+    )
     unmarked_token, _ = model.oauth.create_user_access_token_for_application(
         owner,
         existing_application,
@@ -294,7 +308,7 @@ def test_provision_creates_new_bootstrap_app_when_named_apps_have_no_bootstrap_t
         mock_app.config = config
         setup_bootstrap_token()
 
-    applications = model.oauth.lookup_applications_by_name(owner, "custom-bootstrap")
+    applications = model.oauth.lookup_applications_by_name(owner, model.oauth.BOOTSTRAP_APP_NAME)
     bootstrap_applications = [
         application for application in applications if model.oauth.get_bootstrap_tokens(application)
     ]
@@ -313,7 +327,7 @@ def test_provision_skips_file_write_when_bootstrap_token_exists(initialized_db, 
     config = _app_config(tmp_path)
     owner = model.user.get_user("devtable")
     application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
         owner,
     )
     old_token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
@@ -332,6 +346,118 @@ def test_provision_skips_file_write_when_bootstrap_token_exists(initialized_db, 
         assert f.read() == "not-json"
 
 
+def test_provision_deletes_previous_owner_bootstrap_application(initialized_db, tmp_path):
+    from boot import setup_bootstrap_token
+
+    config = _app_config(tmp_path)
+    owner = model.user.get_user("devtable")
+    previous_owner = model.user.get_user("freshuser")
+    application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        owner,
+    )
+    previous_application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        previous_owner,
+    )
+    token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
+    previous_token, _ = model.oauth.create_bootstrap_oauth_api_token(
+        previous_application,
+        previous_owner,
+        "repo:read",
+    )
+    with open(config["BOOTSTRAP_TOKEN_PATH"], "w") as f:
+        f.write("not-json")
+
+    with patch("boot.app") as mock_app:
+        mock_app.config = config
+        setup_bootstrap_token()
+
+    assert model.oauth.lookup_access_token_by_uuid(token.uuid) is not None
+    assert model.oauth.lookup_access_token_by_uuid(previous_token.uuid) is None
+    assert (
+        model.oauth.lookup_applications_by_name(
+            previous_owner,
+            model.oauth.get_bootstrap_app_name(),
+        )
+        == []
+    )
+    with open(config["BOOTSTRAP_TOKEN_PATH"]) as f:
+        assert f.read() == "not-json"
+
+
+def test_singleton_candidates_fetch_bootstrap_tokens_once_per_named_application(initialized_db):
+    owner = model.user.get_user("devtable")
+    previous_owner = model.user.get_user("freshuser")
+    canonical_application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        owner,
+    )
+    stale_application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        previous_owner,
+    )
+    unmanaged_application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        owner,
+    )
+    model.oauth.create_bootstrap_oauth_api_token(canonical_application, owner, "repo:read")
+    model.oauth.create_bootstrap_oauth_api_token(stale_application, previous_owner, "repo:read")
+
+    named_applications = model.oauth.lookup_bootstrap_named_applications()
+    named_application_ids = {application.id for application in named_applications}
+
+    with patch(
+        "data.model.oauth.get_bootstrap_tokens",
+        wraps=model.oauth.get_bootstrap_tokens,
+    ) as mock_get_bootstrap_tokens:
+        found_canonical, stale_applications = (
+            model.oauth.get_singleton_bootstrap_application_candidates(owner)
+        )
+
+    assert found_canonical.id == canonical_application.id
+    assert {application.id for application in stale_applications} == {stale_application.id}
+    assert unmanaged_application.id not in {application.id for application in stale_applications}
+    assert mock_get_bootstrap_tokens.call_count == len(named_applications)
+    assert {
+        call.args[0].id for call in mock_get_bootstrap_tokens.call_args_list
+    } == named_application_ids
+    assert all(call.kwargs == {} for call in mock_get_bootstrap_tokens.call_args_list)
+
+
+def test_provision_creates_new_owner_token_before_deleting_previous_owner(initialized_db, tmp_path):
+    from boot import setup_bootstrap_token
+
+    config = _app_config(tmp_path)
+    owner = model.user.get_user("devtable")
+    previous_owner = model.user.get_user("freshuser")
+    previous_application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        previous_owner,
+    )
+    previous_token, _ = model.oauth.create_bootstrap_oauth_api_token(
+        previous_application,
+        previous_owner,
+        "repo:read",
+    )
+
+    with patch("boot.app") as mock_app:
+        mock_app.config = config
+        setup_bootstrap_token()
+
+    assert model.oauth.lookup_access_token_by_uuid(previous_token.uuid) is None
+    assert (
+        model.oauth.lookup_applications_by_name(
+            previous_owner,
+            model.oauth.get_bootstrap_app_name(),
+        )
+        == []
+    )
+    new_token = model.oauth.validate_bootstrap_token(_stored_access_token(config), config)
+    assert new_token is not None
+    assert new_token.authorized_user_id == owner.id
+
+
 def test_provision_skips_file_write_when_existing_bootstrap_token_is_expired(
     initialized_db, tmp_path
 ):
@@ -340,7 +466,7 @@ def test_provision_skips_file_write_when_existing_bootstrap_token_is_expired(
     config = _app_config(tmp_path)
     owner = model.user.get_user("devtable")
     application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
         owner,
     )
     expired_token, expired_access_token = model.oauth.create_bootstrap_oauth_api_token(
@@ -367,9 +493,19 @@ def test_provision_file_write_failure_rolls_back_new_db_token(initialized_db, tm
 
     config = _app_config(tmp_path)
     owner = model.user.get_user("devtable")
+    previous_owner = model.user.get_user("freshuser")
     application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
         owner,
+    )
+    previous_application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        previous_owner,
+    )
+    previous_token, _ = model.oauth.create_bootstrap_oauth_api_token(
+        previous_application,
+        previous_owner,
+        "repo:read",
     )
 
     with (
@@ -385,11 +521,63 @@ def test_provision_file_write_failure_rolls_back_new_db_token(initialized_db, tm
 
     applications = model.oauth.lookup_applications_by_name(
         owner,
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
+    )
+    previous_owner_applications = model.oauth.lookup_applications_by_name(
+        previous_owner,
+        model.oauth.get_bootstrap_app_name(),
     )
     assert [existing_application.id for existing_application in applications] == [application.id]
+    assert [existing_application.id for existing_application in previous_owner_applications] == [
+        previous_application.id
+    ]
     assert model.oauth.get_bootstrap_tokens(application) == []
+    assert model.oauth.lookup_access_token_by_uuid(previous_token.uuid) is not None
     assert not os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
+
+
+def test_provision_stale_cleanup_failure_skips_token_file_write(initialized_db, tmp_path):
+    from boot import setup_bootstrap_token
+
+    config = _app_config(tmp_path)
+    owner = model.user.get_user("devtable")
+    previous_owner = model.user.get_user("freshuser")
+    previous_application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        previous_owner,
+    )
+    previous_token, _ = model.oauth.create_bootstrap_oauth_api_token(
+        previous_application,
+        previous_owner,
+        "repo:read",
+    )
+
+    with (
+        patch("boot.app") as mock_app,
+        # The PostgreSQL test fixture already runs each test inside a transaction.
+        # Use atomic() so this rollback is scoped to the provisioning operation
+        # without rolling back this test's setup rows.
+        patch("boot.db_transaction", db.obj.atomic),
+        patch("boot.delete_applications", side_effect=RuntimeError("boom")),
+        patch("boot.write_bootstrap_token") as mock_write_bootstrap_token,
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        mock_app.config = config
+        setup_bootstrap_token()
+
+    assert mock_write_bootstrap_token.call_count == 0
+    assert not os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
+    assert (
+        model.oauth.lookup_applications_by_name(owner, model.oauth.get_bootstrap_app_name()) == []
+    )
+    assert [
+        application.id
+        for application in model.oauth.lookup_applications_by_name(
+            previous_owner,
+            model.oauth.get_bootstrap_app_name(),
+        )
+    ] == [previous_application.id]
+    assert model.oauth.lookup_access_token_by_uuid(previous_token.uuid) is not None
 
 
 def test_provision_missing_owner_user_skips_provisioning(initialized_db, tmp_path):
@@ -429,7 +617,7 @@ def test_feature_disabled_revokes_owner_bootstrap_applications(initialized_db, t
     owner = model.user.get_user("devtable")
     other_user = model.user.get_user("freshuser")
     application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
         owner,
     )
     owner_token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
@@ -446,7 +634,7 @@ def test_feature_disabled_revokes_owner_bootstrap_applications(initialized_db, t
     assert (
         model.oauth.lookup_applications_by_name(
             owner,
-            model.oauth.get_bootstrap_app_name(config),
+            model.oauth.get_bootstrap_app_name(),
         )
         == []
     )
@@ -477,7 +665,7 @@ def test_feature_disabled_ignores_missing_local_token_file(initialized_db, tmp_p
     config = _app_config(tmp_path, feature_enabled=False)
     owner = model.user.get_user("devtable")
     application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
         owner,
     )
     token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
@@ -498,7 +686,7 @@ def test_feature_disabled_revokes_database_tokens_when_local_file_delete_fails(
     config = _app_config(tmp_path, feature_enabled=False)
     owner = model.user.get_user("devtable")
     application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
         owner,
     )
     token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
@@ -520,7 +708,7 @@ def test_feature_disabled_deletes_bootstrap_application_with_mixed_tokens(initia
     config = _app_config(tmp_path, feature_enabled=False)
     owner = model.user.get_user("devtable")
     application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
         owner,
     )
     bootstrap_token, _ = model.oauth.create_bootstrap_oauth_api_token(
@@ -543,7 +731,7 @@ def test_feature_disabled_deletes_bootstrap_application_with_mixed_tokens(initia
     assert (
         model.oauth.lookup_applications_by_name(
             owner,
-            model.oauth.get_bootstrap_app_name(config),
+            model.oauth.get_bootstrap_app_name(),
         )
         == []
     )
@@ -558,7 +746,7 @@ def test_feature_disabled_ignores_application_without_bootstrap_tokens(initializ
     owner = model.user.get_user("devtable")
     application = model.oauth.create_application(
         owner,
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
         "",
         "",
     )
@@ -577,7 +765,7 @@ def test_feature_disabled_ignores_application_without_bootstrap_tokens(initializ
     existing_application_ids = []
     existing_applications = model.oauth.lookup_applications_by_name(
         owner,
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
     )
     for existing_application in existing_applications:
         existing_application_ids.append(existing_application.id)
@@ -596,7 +784,7 @@ def test_feature_disabled_revokes_when_configured_owner_is_not_superuser(initial
     config = _app_config(tmp_path, feature_enabled=False, superusers=[])
     owner = model.user.get_user("devtable")
     application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
         owner,
     )
     token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
@@ -611,7 +799,7 @@ def test_feature_disabled_revokes_when_configured_owner_is_not_superuser(initial
     assert (
         model.oauth.lookup_applications_by_name(
             owner,
-            model.oauth.get_bootstrap_app_name(config),
+            model.oauth.get_bootstrap_app_name(),
         )
         == []
     )
@@ -619,33 +807,35 @@ def test_feature_disabled_revokes_when_configured_owner_is_not_superuser(initial
     mock_lock.assert_called_once_with()
 
 
-def test_feature_disabled_uses_configured_owner_when_present(initialized_db, tmp_path):
+def test_feature_disabled_revokes_all_bootstrap_applications_when_owner_changed(
+    initialized_db, tmp_path
+):
     from boot import setup_bootstrap_token
 
     config = _app_config(
         tmp_path,
         feature_enabled=False,
-        superusers=["devtable", "freshuser"],
+        superusers=["devtable"],
         owner="devtable",
     )
     owner = model.user.get_user("devtable")
-    other_super_user = model.user.get_user("freshuser")
+    previous_owner = model.user.get_user("freshuser")
     owner_application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
+        model.oauth.get_bootstrap_app_name(),
         owner,
     )
-    other_application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
-        other_super_user,
+    previous_owner_application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        previous_owner,
     )
     owner_token, _ = model.oauth.create_bootstrap_oauth_api_token(
         owner_application,
         owner,
         "repo:read",
     )
-    other_token, _ = model.oauth.create_bootstrap_oauth_api_token(
-        other_application,
-        other_super_user,
+    previous_owner_token, _ = model.oauth.create_bootstrap_oauth_api_token(
+        previous_owner_application,
+        previous_owner,
         "repo:read",
     )
 
@@ -656,50 +846,50 @@ def test_feature_disabled_uses_configured_owner_when_present(initialized_db, tmp
     assert (
         model.oauth.lookup_applications_by_name(
             owner,
-            model.oauth.get_bootstrap_app_name(config),
+            model.oauth.get_bootstrap_app_name(),
         )
         == []
     )
-    other_super_user_application_ids = []
-    other_super_user_applications = model.oauth.lookup_applications_by_name(
-        other_super_user,
-        model.oauth.get_bootstrap_app_name(config),
+    assert (
+        model.oauth.lookup_applications_by_name(
+            previous_owner,
+            model.oauth.get_bootstrap_app_name(),
+        )
+        == []
     )
-    for existing_application in other_super_user_applications:
-        other_super_user_application_ids.append(existing_application.id)
-
-    assert other_super_user_application_ids == [other_application.id]
     assert model.oauth.lookup_access_token_by_uuid(owner_token.uuid) is None
-    assert model.oauth.lookup_access_token_by_uuid(other_token.uuid) is not None
+    assert model.oauth.lookup_access_token_by_uuid(previous_owner_token.uuid) is None
 
 
-def test_feature_disabled_falls_back_to_superusers_when_owner_is_missing(initialized_db, tmp_path):
+def test_feature_disabled_revokes_all_bootstrap_applications_when_owner_is_missing(
+    initialized_db, tmp_path
+):
     from boot import setup_bootstrap_token
 
     config = _app_config(
         tmp_path,
         feature_enabled=False,
-        superusers=["devtable", "freshuser", "missingowner"],
+        superusers=["devtable", "missingowner"],
         owner="missingowner",
     )
-    first_super_user = model.user.get_user("devtable")
-    second_super_user = model.user.get_user("freshuser")
+    first_user = model.user.get_user("devtable")
+    second_user = model.user.get_user("freshuser")
     first_application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
-        first_super_user,
+        model.oauth.get_bootstrap_app_name(),
+        first_user,
     )
     second_application = model.oauth.create_bootstrap_application(
-        model.oauth.get_bootstrap_app_name(config),
-        second_super_user,
+        model.oauth.get_bootstrap_app_name(),
+        second_user,
     )
     first_token, _ = model.oauth.create_bootstrap_oauth_api_token(
         first_application,
-        first_super_user,
+        first_user,
         "repo:read",
     )
     second_token, _ = model.oauth.create_bootstrap_oauth_api_token(
         second_application,
-        second_super_user,
+        second_user,
         "repo:read",
     )
 
@@ -709,15 +899,15 @@ def test_feature_disabled_falls_back_to_superusers_when_owner_is_missing(initial
 
     assert (
         model.oauth.lookup_applications_by_name(
-            first_super_user,
-            model.oauth.get_bootstrap_app_name(config),
+            first_user,
+            model.oauth.get_bootstrap_app_name(),
         )
         == []
     )
     assert (
         model.oauth.lookup_applications_by_name(
-            second_super_user,
-            model.oauth.get_bootstrap_app_name(config),
+            second_user,
+            model.oauth.get_bootstrap_app_name(),
         )
         == []
     )
@@ -728,19 +918,17 @@ def test_feature_disabled_falls_back_to_superusers_when_owner_is_missing(initial
 def test_feature_disabled_revokes_duplicate_bootstrap_applications(initialized_db, tmp_path):
     from boot import setup_bootstrap_token
 
-    config = _app_config(
-        tmp_path,
-        feature_enabled=False,
-        app_name="custom-bootstrap",
-    )
+    config = _app_config(tmp_path, feature_enabled=False)
     owner = model.user.get_user("devtable")
-    default_application = model.oauth.create_application(
+    ignored_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
+    older_application = model.oauth.create_application(
         owner, model.oauth.BOOTSTRAP_APP_NAME, "", ""
     )
-    older_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
-    newer_application = model.oauth.create_application(owner, "custom-bootstrap", "", "")
-    default_token, _ = model.oauth.create_bootstrap_oauth_api_token(
-        default_application,
+    newer_application = model.oauth.create_application(
+        owner, model.oauth.BOOTSTRAP_APP_NAME, "", ""
+    )
+    ignored_token, _ = model.oauth.create_bootstrap_oauth_api_token(
+        ignored_application,
         owner,
         "repo:read",
     )
@@ -759,12 +947,12 @@ def test_feature_disabled_revokes_duplicate_bootstrap_applications(initialized_d
         mock_app.config = config
         setup_bootstrap_token()
 
-    default_bootstrap_token_uuids = []
-    for token in model.oauth.get_bootstrap_tokens(default_application):
-        default_bootstrap_token_uuids.append(token.uuid)
+    ignored_bootstrap_token_uuids = []
+    for token in model.oauth.get_bootstrap_tokens(ignored_application):
+        ignored_bootstrap_token_uuids.append(token.uuid)
 
-    assert default_bootstrap_token_uuids == [default_token.uuid]
-    assert model.oauth.lookup_applications_by_name(owner, "custom-bootstrap") == []
-    assert model.oauth.lookup_access_token_by_uuid(default_token.uuid) is not None
+    assert ignored_bootstrap_token_uuids == [ignored_token.uuid]
+    assert model.oauth.lookup_applications_by_name(owner, model.oauth.BOOTSTRAP_APP_NAME) == []
+    assert model.oauth.lookup_access_token_by_uuid(ignored_token.uuid) is not None
     assert model.oauth.lookup_access_token_by_uuid(older_token.uuid) is None
     assert model.oauth.lookup_access_token_by_uuid(newer_token.uuid) is None

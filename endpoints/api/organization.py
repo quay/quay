@@ -718,7 +718,7 @@ class ApplicationInformation(ApiResource):
 
 
 def _ensure_oauth_app_name_is_not_reserved(name):
-    if model.oauth.is_bootstrap_app_name(name, app.config):
+    if model.oauth.is_bootstrap_app_name(name):
         request_error(message="Application name is reserved for bootstrap token provisioning")
 
 

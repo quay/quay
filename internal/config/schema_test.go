@@ -165,7 +165,6 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_VERIFY_QUOTA":                          true,
 
 	// Programmatic bootstrap token config
-	"BOOTSTRAP_APP_NAME":         true,
 	"BOOTSTRAP_TOKEN_OWNER":      true,
 	"BOOTSTRAP_TOKEN_EXPIRATION": true,
 	"BOOTSTRAP_TOKEN_PATH":       true,

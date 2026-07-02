@@ -18,10 +18,9 @@ from data.model.oauth import (
     create_bootstrap_oauth_api_token,
     delete_applications,
     get_bootstrap_app_name,
-    get_bootstrap_application_candidates,
-    get_bootstrap_tokens,
+    get_bootstrap_managed_applications,
+    get_singleton_bootstrap_application_candidates,
     lock_bootstrap_token_operation,
-    lookup_applications_by_name,
 )
 from data.model.release import set_region_release
 from data.model.service_keys import get_service_key
@@ -157,22 +156,20 @@ def _provision_bootstrap_token():
 
     scope = app.config["BOOTSTRAP_TOKEN_SCOPE"]
     expiration = app.config["BOOTSTRAP_TOKEN_EXPIRATION"]
-    bootstrap_application_name = get_bootstrap_app_name(app.config)
 
     try:
         with db_transaction():
             lock_bootstrap_token_operation()
 
-            bootstrap_application, duplicate_applications = get_bootstrap_application_candidates(
-                owner,
-                app_config=app.config,
+            bootstrap_application, stale_applications = (
+                get_singleton_bootstrap_application_candidates(owner)
             )
             if bootstrap_application is not None:
-                if duplicate_applications:
-                    delete_applications(duplicate_applications)
+                if stale_applications:
+                    delete_applications(stale_applications)
                     logger.info(
-                        "Deleted %s duplicate bootstrap applications",
-                        len(duplicate_applications),
+                        "Deleted %s stale bootstrap applications",
+                        len(stale_applications),
                     )
 
                 # Treat the database as the startup source of truth for Phase 1 local
@@ -184,13 +181,19 @@ def _provision_bootstrap_token():
                 logger.info("Bootstrap token already provisioned, skipping")
                 return
 
-            bootstrap_application = create_bootstrap_application(bootstrap_application_name, owner)
+            bootstrap_application = create_bootstrap_application(get_bootstrap_app_name(), owner)
             _, access_token = create_bootstrap_oauth_api_token(
                 bootstrap_application,
                 owner,
                 scope,
                 expiration_seconds=expiration,
             )
+            if stale_applications:
+                delete_applications(stale_applications)
+                logger.info(
+                    "Deleted %s stale bootstrap applications",
+                    len(stale_applications),
+                )
             write_bootstrap_token(app.config, access_token)
             logger.info("Bootstrap token provisioned")
             return
@@ -199,37 +202,13 @@ def _provision_bootstrap_token():
         return
 
 
-def _get_bootstrap_revocation_owners():
-    owner_name = app.config.get("BOOTSTRAP_TOKEN_OWNER")
-    owner = get_user(owner_name) if owner_name else None
-    if owner is not None:
-        return [owner]
-
-    revocation_owners = []
-    seen_usernames = set()
-    for username in app.config.get("SUPER_USERS") or []:
-        if username in seen_usernames:
-            continue
-
-        seen_usernames.add(username)
-        super_user = get_user(username)
-        if super_user is not None:
-            revocation_owners.append(super_user)
-
-    return revocation_owners
-
-
 def _revoke_bootstrap_tokens():
-    bootstrap_application_name = get_bootstrap_app_name(app.config)
     with db_transaction():
         lock_bootstrap_token_operation()
 
-        bootstrap_applications = []
-        for owner in _get_bootstrap_revocation_owners():
-            applications = lookup_applications_by_name(owner, bootstrap_application_name)
-            for application in applications:
-                if get_bootstrap_tokens(application):
-                    bootstrap_applications.append(application)
+        # Cleanup intentionally ignores the current owner config. Bootstrap credentials
+        # created under a previous owner remain valid until deleted or expired.
+        bootstrap_applications = get_bootstrap_managed_applications()
 
         delete_applications(bootstrap_applications)
 
