@@ -65,12 +65,17 @@ export function QuayBreadcrumb() {
     //  Eg: /organization/<orgname>/<reponame> or /organization/<orgname>/teams/quay?tab=Teamsandmembership
     else if (existingBreadcrumbs.length == 2) {
       switch (routerBreadcrumb.match.route.path) {
-        case NavigationPath.repositoryDetail:
+        case NavigationPath.repositoryDetail: {
           nextBreadcrumb['title'] = parseRepoNameFromUrl(location.pathname);
-          nextBreadcrumb['pathname'] =
-            lastOccurrenceOfSubstring(nextBreadcrumb['title']) +
-            nextBreadcrumb['title'];
+          // Reconstruct from parsed components to avoid substring-search
+          // issues when the repo name appears elsewhere in the URL (e.g.
+          // tag==repo). Preserve any URL prefix (e.g. OpenShift plugin mode).
+          const prefix = location.pathname.split(/repository|organization/)[0];
+          const org = parseOrgNameFromUrl(location.pathname);
+          const repo = nextBreadcrumb['title'];
+          nextBreadcrumb['pathname'] = `${prefix}repository/${org}/${repo}`;
           break;
+        }
         case NavigationPath.teamMember:
           nextBreadcrumb['title'] = parseTeamNameFromUrl(location.pathname);
           nextBreadcrumb['pathname'] =
