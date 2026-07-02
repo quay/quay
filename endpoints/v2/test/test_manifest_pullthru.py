@@ -36,6 +36,7 @@ from image.oci import (
     OCI_IMAGE_MANIFEST_CONTENT_TYPE,
 )
 from image.shared.schemas import parse_manifest_from_bytes
+from proxy import UpstreamRegistryError
 from proxy.fixtures import *  # noqa: F401, F403
 from test.fixtures import *  # noqa: F401, F403
 from util.bytes import Bytes
@@ -869,6 +870,104 @@ class TestManifestPullThroughStorage:
             # a placeholder blob, not yet downloaded from the upstream registry.
             placements = ImageStoragePlacement.filter(ImageStoragePlacement.storage == blob)
             assert placements.count() == 0
+
+
+class TestManifestPullThroughUpstreamDown:
+    """Tests that cached images can be served when the upstream registry is unavailable."""
+
+    orgname = "cache-library-offline"
+    registry = "docker.io/library"
+    config = None
+    org = None
+
+    @pytest.fixture(autouse=True)
+    def setup(self, client, app):
+        model_cache.empty_for_testing()
+
+        self.client = client
+
+        self.user = model.user.get_user("devtable")
+        context, subject = build_context_and_subject(ValidatedAuthContext(user=self.user))
+        self.ctx = context
+        self.sub = subject
+
+        if self.org is None:
+            self.org = model.organization.create_organization(
+                self.orgname, f"{self.orgname}@devtable.com", self.user
+            )
+            self.org.save()
+            self.config = model.proxy_cache.create_proxy_cache_config(
+                org_name=self.orgname,
+                upstream_registry=self.registry,
+                expiration_s=3600,
+            )
+
+    def test_returns_cached_tag_when_upstream_is_down(self, proxy_manifest_response):
+        """
+        When a manifest is already cached and the upstream registry is unreachable,
+        the cached manifest should be returned instead of an error.
+        This is the core fix for PROJQUAY-8440.
+        """
+        image_name = "hello-world"
+        tag_name = "latest"
+        manifest_json = HELLO_WORLD_SCHEMA2_MANIFEST_JSON
+        manifest_type = DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        repo = f"{self.orgname}/{image_name}"
+        params = {
+            "repository": repo,
+            "manifest_ref": tag_name,
+        }
+
+        # Step 1: First pull - cache the manifest (upstream available)
+        proxy_mock = proxy_manifest_response(tag_name, manifest_json, manifest_type)
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+            headers = _get_auth_headers(self.sub, self.ctx, repo)
+            headers["Accept"] = ", ".join(
+                DOCKER_SCHEMA2_CONTENT_TYPES.union(OCI_CONTENT_TYPES).union(
+                    DOCKER_SCHEMA1_CONTENT_TYPES
+                )
+            )
+            conduct_call(
+                self.client,
+                "v2.fetch_manifest_by_tagname",
+                url_for,
+                "GET",
+                params,
+                expected_code=200,
+                headers=headers,
+            )
+
+        # Verify the manifest was cached
+        repository_ref = registry_model.lookup_repository(self.orgname, image_name)
+        assert repository_ref is not None
+
+        # Step 2: Second pull - upstream is down, should return cached manifest
+        upstream_down_mock = MagicMock()
+        upstream_down_mock.manifest_exists.side_effect = UpstreamRegistryError("Connection refused")
+        upstream_down_mock.get_manifest.side_effect = UpstreamRegistryError("Connection refused")
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy",
+            MagicMock(return_value=upstream_down_mock),
+        ):
+            headers = _get_auth_headers(self.sub, self.ctx, repo)
+            headers["Accept"] = ", ".join(
+                DOCKER_SCHEMA2_CONTENT_TYPES.union(OCI_CONTENT_TYPES).union(
+                    DOCKER_SCHEMA1_CONTENT_TYPES
+                )
+            )
+            resp = conduct_call(
+                self.client,
+                "v2.fetch_manifest_by_tagname",
+                url_for,
+                "GET",
+                params,
+                expected_code=200,
+                headers=headers,
+            )
+
+        assert resp.status_code == 200
 
 
 @pytest.mark.e2e
