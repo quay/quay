@@ -10,12 +10,50 @@ import (
 	"database/sql"
 )
 
+const countBlobsByChecksum = `-- name: CountBlobsByChecksum :one
+SELECT COUNT(*) FROM imagestorage WHERE content_checksum = ?
+`
+
+func (q *Queries) CountBlobsByChecksum(ctx context.Context, contentChecksum sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countBlobsByChecksum, contentChecksum)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteExpiredTag = `-- name: DeleteExpiredTag :exec
 DELETE FROM tag WHERE id = ?
 `
 
 func (q *Queries) DeleteExpiredTag(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, deleteExpiredTag, id)
+	return err
+}
+
+const deleteImageStoragePlacements = `-- name: DeleteImageStoragePlacements :exec
+DELETE FROM imagestorageplacement WHERE storage_id = ?
+`
+
+func (q *Queries) DeleteImageStoragePlacements(ctx context.Context, storageID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteImageStoragePlacements, storageID)
+	return err
+}
+
+const deleteImageStorageSignatures = `-- name: DeleteImageStorageSignatures :exec
+DELETE FROM imagestoragesignature WHERE storage_id = ?
+`
+
+func (q *Queries) DeleteImageStorageSignatures(ctx context.Context, storageID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteImageStorageSignatures, storageID)
+	return err
+}
+
+const deleteTagNotifications = `-- name: DeleteTagNotifications :exec
+DELETE FROM tagnotificationsuccess WHERE tag_id = ?
+`
+
+func (q *Queries) DeleteTagNotifications(ctx context.Context, tagID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteTagNotifications, tagID)
 	return err
 }
 
@@ -94,8 +132,11 @@ type FindOrphanedManifestsRow struct {
 // Returns manifests with no tags at all (neither live nor within grace period),
 // not referenced as a child by any manifest list (globally, not repo-scoped),
 // and not a subject target of any other manifest (OCI referrers, globally).
-// Phase 1 deletes expired-past-grace tags first, so any remaining tag protects
-// the manifest.
+// IMPORTANT: This checks for ANY tag, including expired-but-within-grace-period
+// tags. This is intentional. Phase 1 runs first and deletes only tags past their
+// grace period. Any tag still present here (live or within grace) must protect
+// the manifest. Do NOT add "AND lifetime_end_ms IS NULL" as that would allow
+// manifests to be deleted while their tags are still recoverable.
 func (q *Queries) FindOrphanedManifests(ctx context.Context) ([]FindOrphanedManifestsRow, error) {
 	rows, err := q.db.QueryContext(ctx, findOrphanedManifests)
 	if err != nil {

@@ -101,7 +101,8 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		slog.Error("blob store setup error", "err", err)
 		return 1
 	}
-	collector := gc.NewSQLiteCollector(db, store, blobs, slog.Default())
+	gcStore := gc.NewSQLiteStore(db)
+	collector := gc.NewCollector(gcStore, blobs, slog.Default())
 	gcWorker := gc.NewWorker(collector, gc.DefaultConfig(), slog.Default())
 	go func() { _ = gcWorker.Run(ctx) }()
 

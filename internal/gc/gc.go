@@ -1,3 +1,4 @@
+// Package gc implements garbage collection for the registry.
 package gc
 
 import (
@@ -14,12 +15,9 @@ type Collector interface {
 	// tags past their grace period, collect orphaned manifests, then
 	// collect orphaned blobs and delete their storage files.
 	Collect(ctx context.Context) (Stats, error)
-
-	// CollectDryRun reports what would be deleted without modifying anything.
-	CollectDryRun(ctx context.Context) (Stats, error)
 }
 
-// Stats summarises a single GC cycle.
+// Stats summarizes a single GC cycle.
 type Stats struct {
 	TagsExpired         int
 	ManifestsDeleted    int
@@ -28,13 +26,10 @@ type Stats struct {
 	BytesReclaimed      int64
 }
 
-// Config tunes the GC worker behaviour.
+// Config tunes the GC worker behavior.
 type Config struct {
 	// Interval between GC cycles. Default: 30s.
 	Interval time.Duration
-
-	// DryRun, when true, reports what would be collected without deleting.
-	DryRun bool
 }
 
 // DefaultConfig returns production defaults.

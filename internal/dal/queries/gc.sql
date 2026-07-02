@@ -15,8 +15,11 @@ WHERE t.lifetime_end_ms IS NOT NULL
 -- Returns manifests with no tags at all (neither live nor within grace period),
 -- not referenced as a child by any manifest list (globally, not repo-scoped),
 -- and not a subject target of any other manifest (OCI referrers, globally).
--- Phase 1 deletes expired-past-grace tags first, so any remaining tag protects
--- the manifest.
+-- IMPORTANT: This checks for ANY tag, including expired-but-within-grace-period
+-- tags. This is intentional. Phase 1 runs first and deletes only tags past their
+-- grace period. Any tag still present here (live or within grace) must protect
+-- the manifest. Do NOT add "AND lifetime_end_ms IS NULL" as that would allow
+-- manifests to be deleted while their tags are still recoverable.
 SELECT m.id, m.repository_id, m.digest
 FROM manifest m
 WHERE NOT EXISTS (
@@ -55,3 +58,15 @@ WHERE m.repository_id = ?
 
 -- name: ListRepositoryIDs :many
 SELECT id FROM repository WHERE state != 3;
+
+-- name: DeleteTagNotifications :exec
+DELETE FROM tagnotificationsuccess WHERE tag_id = ?;
+
+-- name: DeleteImageStoragePlacements :exec
+DELETE FROM imagestorageplacement WHERE storage_id = ?;
+
+-- name: DeleteImageStorageSignatures :exec
+DELETE FROM imagestoragesignature WHERE storage_id = ?;
+
+-- name: CountBlobsByChecksum :one
+SELECT COUNT(*) FROM imagestorage WHERE content_checksum = ?;
