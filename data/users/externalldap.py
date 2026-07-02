@@ -966,6 +966,10 @@ class LDAPUsers(FederatedUsers):
         )
 
     def is_restricted_user(self, username_or_email: str) -> bool:
+        # do not restrict superusers
+        if self.is_superuser(username_or_email):
+            return False
+
         if not username_or_email:
             return False
 
