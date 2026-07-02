@@ -1,8 +1,6 @@
 module github.com/quay/quay/config-tool
 
-go 1.24.0
-
-toolchain go1.24.8
+go 1.25.0
 
 require (
 	cuelang.org/go v0.2.1
@@ -29,7 +27,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/swaggo/http-swagger v1.3.3
 	github.com/swaggo/swag v1.8.1
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.51.0
 	golang.org/x/oauth2 v0.28.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -69,10 +67,10 @@ require (
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	go.opentelemetry.io/otel v0.13.0 // indirect
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
-	golang.org/x/net v0.37.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/tools v0.44.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
