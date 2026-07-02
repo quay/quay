@@ -90,8 +90,11 @@ class OrganizationQuotaList(ApiResource):
                     "properties": {
                         "limit": {
                             "type": "string",
-                            "description": "Human readable storage capacity of the organization",
-                            "pattern": r"^(\d+\s?(B|KiB|MiB|GiB|TiB|PiB|EiB|ZiB|YiB|Ki|Mi|Gi|Ti|Pi|Ei|Zi|Yi|KB|MB|GB|TB|PB|EB|ZB|YB|K|M|G|T|P|E|Z|Y)?)$",
+                            "description": "Human readable storage capacity of the organization"
+                            + "Maximum supported limit is less than 8 EiB",
+                            "pattern": r"^(\d+(|\.\d+)\s?("
+                            + "|".join(bitmath.ALL_UNIT_TYPES)
+                            + ")?)$",
                         },
                     },
                 },
@@ -141,9 +144,10 @@ class OrganizationQuotaList(ApiResource):
             try:
                 limit_bytes = bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
             except ValueError:
-                raise request_error(
-                    message="Invalid limit format, use a number followed by a unit (e.g. 1GiB)"
-                )
+                units = "|".join(bitmath.ALL_UNIT_TYPES)
+                ex = f"supported units ^(\d+(|\.\d+)\s?({units})?)$"  # noqa: W605
+                raise request_error(message="Invalid limit format", error_description=ex)
+
         else:
             limit_bytes = quota_data["limit_bytes"]
 
@@ -156,6 +160,14 @@ class OrganizationQuotaList(ApiResource):
         quotas = model.namespacequota.get_namespace_quota_list(orgname)
         if quotas:
             raise request_error(message="Organization quota for '%s' already exists" % orgname)
+
+        if not limit_bytes <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1:
+            # the Postgres maximum of an BigInteger is 9223372036854775807
+            raise request_error(
+                message="Invalid limit format",
+                error_description="Maximum supported Quota is less than 8 EiB",
+                error_detail="Postgres maximum is 9223372036854775807",
+            )
 
         try:
             model.namespacequota.create_namespace_quota(org, limit_bytes)
@@ -196,8 +208,11 @@ class OrganizationQuota(ApiResource):
                     "properties": {
                         "limit": {
                             "type": "string",
-                            "description": "Human readable storage capacity of the organization",
-                            "pattern": r"^(\d+\s?(B|KiB|MiB|GiB|TiB|PiB|EiB|ZiB|YiB|Ki|Mi|Gi|Ti|Pi|Ei|Zi|Yi|KB|MB|GB|TB|PB|EB|ZB|YB|K|M|G|T|P|E|Z|Y)?)$",
+                            "description": "Human readable storage capacity of the organization"
+                            + "Maximum supported limit is less than 8 EiB",
+                            "pattern": r"^(\d+(|\.\d+)\s?("
+                            + "|".join(bitmath.ALL_UNIT_TYPES)
+                            + ")?)$",
                         },
                     },
                     "required": ["limit"],
@@ -247,13 +262,22 @@ class OrganizationQuota(ApiResource):
                 try:
                     limit_bytes = bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
                 except ValueError:
-                    raise request_error(
-                        message="Invalid limit format, use a number followed by a unit (e.g. 1GiB)"
-                    )
+                    units = "|".join(bitmath.ALL_UNIT_TYPES)
+                    ex = f"supported units ^(\d+(|\.\d+)\s?({units})?)$"  # noqa: W605
+                    raise request_error(message="Invalid limit format", error_description=ex)
+
             elif "limit_bytes" in quota_data:
                 limit_bytes = quota_data["limit_bytes"]
 
             if limit_bytes:
+                if not limit_bytes <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1:
+                    # the Postgres maximum of an BigInteger is 9223372036854775807
+                    raise request_error(
+                        message="Invalid limit format",
+                        error_description="Maximum supported Quota is less than 8 EiB",
+                        error_detail="Postgres maximum is 9223372036854775807",
+                    )
+
                 model.namespacequota.update_namespace_quota_size(quota, limit_bytes)
                 log_action(
                     "org_change_quota",
