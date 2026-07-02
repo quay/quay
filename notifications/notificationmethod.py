@@ -160,6 +160,10 @@ class EmailMethod(NotificationMethod):
         if not email:
             raise CannotValidateNotificationMethodException("Missing e-mail address")
 
+        # When FEATURE_SKIP_EMAIL_CONFIRMATION is enabled, skip the confirmation check
+        if features.SKIP_EMAIL_CONFIRMATION:
+            return
+
         record = model.repository.get_email_authorized_for_repo(namespace_name, repo_name, email)
         if not record or not record.confirmed:
             raise CannotValidateNotificationMethodException(
