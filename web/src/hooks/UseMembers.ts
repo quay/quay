@@ -6,9 +6,11 @@ import {
   addMemberToTeamForOrg,
   deleteCollaboratorForOrg,
   deleteTeamMemberForOrg,
+  deleteTeamMemberEmailInviteForOrg,
   fetchCollaboratorsForOrg,
   fetchMembersForOrg,
   fetchTeamMembersForOrg,
+  inviteTeamMemberByEmailForOrg,
 } from 'src/resources/MembersResource';
 import {IAvatar} from 'src/resources/OrganizationResource';
 import {collaboratorViewColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/CollaboratorsView/CollaboratorsViewList';
@@ -93,9 +95,10 @@ export function useFetchMembers(orgName: string) {
 }
 
 export interface ITeamMember {
-  name: string;
+  name?: string;
+  email?: string;
   kind: string;
-  is_robot: false;
+  is_robot: boolean;
   avatar?: IAvatar;
   invited?: boolean;
 }
@@ -158,7 +161,11 @@ export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
 
   const filteredAllMembers =
     search.query !== ''
-      ? allMembers?.filter((member) => member.name.includes(search.query))
+      ? allMembers?.filter(
+          (member) =>
+            member.name?.includes(search.query) ||
+            member.email?.includes(search.query),
+        )
       : allMembers;
   const paginatedAllMembers = filteredAllMembers?.slice(
     page * perPage - perPage,
@@ -171,7 +178,11 @@ export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
   );
   const filteredTeamMembers =
     search.query !== ''
-      ? teamMembers?.filter((member) => member.name.includes(search.query))
+      ? teamMembers?.filter(
+          (member) =>
+            member.name?.includes(search.query) ||
+            member.email?.includes(search.query),
+        )
       : teamMembers;
   const paginatedTeamMembers = filteredTeamMembers?.slice(
     page * perPage - perPage,
@@ -182,7 +193,11 @@ export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
   const robotAccounts = allMembers?.filter((team) => team.is_robot);
   const filteredRobotAccounts =
     search.query !== ''
-      ? robotAccounts?.filter((member) => member.name.includes(search.query))
+      ? robotAccounts?.filter(
+          (member) =>
+            member.name?.includes(search.query) ||
+            member.email?.includes(search.query),
+        )
       : robotAccounts;
   const paginatedRobotAccounts = filteredRobotAccounts?.slice(
     page * perPage - perPage,
@@ -193,7 +208,11 @@ export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
   const invited = allMembers?.filter((team) => team.invited);
   const filteredInvited =
     search.query !== ''
-      ? invited?.filter((member) => member.name.includes(search.query))
+      ? invited?.filter(
+          (member) =>
+            member.name?.includes(search.query) ||
+            member.email?.includes(search.query),
+        )
       : invited;
   const paginatedInvited = filteredInvited?.slice(
     page * perPage - perPage,
@@ -292,6 +311,58 @@ export function useDeleteTeamMember(orgName: string) {
     errorDeleteTeamMember,
     successDeleteTeamMember,
     resetDeleteTeamMember,
+  };
+}
+
+export function useInviteTeamMemberByEmail(org: string) {
+  const queryClient = useQueryClient();
+  const {
+    mutate: inviteMemberByEmail,
+    isError: errorInvitingMember,
+    isSuccess: successInvitingMember,
+    reset: resetInvitingMember,
+  } = useMutation(
+    async ({team, email}: {team: string; email: string}) => {
+      return inviteTeamMemberByEmailForOrg(org, team, email);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['teams']);
+        queryClient.invalidateQueries(['members']);
+        queryClient.invalidateQueries(['teamMembers']);
+      },
+    },
+  );
+  return {
+    inviteMemberByEmail,
+    errorInvitingMember,
+    successInvitingMember,
+    resetInvitingMember,
+  };
+}
+
+export function useDeleteEmailInvite(orgName: string) {
+  const queryClient = useQueryClient();
+  const {
+    mutate: removeEmailInvite,
+    isError: errorDeleteEmailInvite,
+    isSuccess: successDeleteEmailInvite,
+    reset: resetDeleteEmailInvite,
+  } = useMutation(
+    async ({teamName, email}: {teamName: string; email: string}) => {
+      return deleteTeamMemberEmailInviteForOrg(orgName, teamName, email);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['teamMembers']);
+      },
+    },
+  );
+  return {
+    removeEmailInvite,
+    errorDeleteEmailInvite,
+    successDeleteEmailInvite,
+    resetDeleteEmailInvite,
   };
 }
 

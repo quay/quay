@@ -103,6 +103,7 @@ axiosIns.interceptors.response.use(
           const isOnAuthPage =
             currentPath === '/signin' ||
             currentPath === '/createaccount' ||
+            currentPath === '/confirminvite' ||
             currentPath.startsWith('/oauth');
           if (!isOnAuthPage) {
             window.location.href = '/signin';

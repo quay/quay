@@ -17,11 +17,19 @@ export const GlobalAuthState: AuthResource = {
   bearerToken: null,
 };
 
-export async function loginUser(username: string, password: string) {
-  const response = await axios.post(signinApiUrl, {
+export async function loginUser(
+  username: string,
+  password: string,
+  inviteCode?: string,
+) {
+  const body: Record<string, string> = {
     username: username,
     password: password,
-  });
+  };
+  if (inviteCode) {
+    body.invite_code = inviteCode;
+  }
+  const response = await axios.post(signinApiUrl, body);
   if (response.data.success === true) {
     GlobalAuthState.isLoggedIn = true;
     GlobalAuthState.csrfToken = undefined;

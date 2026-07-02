@@ -137,3 +137,18 @@ export async function bulkDeleteTeams(orgName: string, teams: ITeams[]) {
   );
   throwIfError(responses, 'Error deleting teams');
 }
+
+export interface AcceptTeamInviteResponse {
+  org: string;
+  team: string;
+}
+
+export async function acceptTeamInvite(
+  code: string,
+): Promise<AcceptTeamInviteResponse> {
+  const response: AxiosResponse = await axios.put(
+    `/api/v1/teaminvite/${encodeURIComponent(code)}`,
+  );
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
