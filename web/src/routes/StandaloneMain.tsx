@@ -25,7 +25,7 @@ import {NavigationPath} from './NavigationPath';
 
 import {useEffect, useState, lazy, Suspense} from 'react';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useQuayConfigWithLoading} from 'src/hooks/UseQuayConfig';
 import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
 import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
@@ -40,7 +40,6 @@ import {GlobalMessages} from 'src/components/GlobalMessages';
 import {LoadingPage} from 'src/components/LoadingPage';
 import {useUI} from 'src/contexts/UIContext';
 import {useExternalScripts} from 'src/hooks/UseExternalScripts';
-import {AxiosError} from 'axios';
 
 // Lazy load route components for better performance
 const OrganizationsList = lazy(
@@ -52,7 +51,7 @@ const Organization = lazy(
 const RepositoriesList = lazy(
   () => import('./RepositoriesList/RepositoriesList'),
 );
-const RepositoryTagRouter = lazy(() => import('./RepositoryTagRouter'));
+import ProtectedRepositoryRoute from './ProtectedRepositoryRoute';
 const OverviewList = lazy(() => import('./OverviewList/OverviewList'));
 const SetupBuildTriggerRedirect = lazy(
   () => import('./SetupBuildtrigger/SetupBuildTriggerRedirect'),
@@ -183,7 +182,7 @@ const NavigationRoutes = [
   },
   {
     path: NavigationPath.repositoryDetail,
-    Component: <RepositoryTagRouter />,
+    Component: <ProtectedRepositoryRoute />,
   },
   // Static pages
   {
@@ -218,8 +217,12 @@ const NavigationRoutes = [
 ];
 
 export function StandaloneMain() {
-  const quayConfig = useQuayConfig();
-  const {loading, error} = useCurrentUser();
+  const {
+    config: quayConfig,
+    isLoading: configLoading,
+    error: configError,
+  } = useQuayConfigWithLoading();
+  const {user, loading: userLoading, error: userError} = useCurrentUser();
   const location = useLocation();
   const {clearAllAlerts} = useUI();
 
@@ -252,17 +255,28 @@ export function StandaloneMain() {
     }
   }, [quayConfig]);
 
-  // Don't render anything while loading, or if there's a 401 error
-  // (401 errors trigger a redirect to /signin via axios interceptor, so we shouldn't
-  // flash the SiteUnavailableError during the redirect - fixes PROJQUAY-10089)
-  const is401Error = error && (error as AxiosError)?.response?.status === 401;
-  if (loading || is401Error) {
+  // Wait for both user data and config to load before rendering
+  if (userLoading || configLoading) {
     return null;
   }
 
-  // Only show SiteUnavailableError for non-401 errors (real server errors)
+  // If user is anonymous and ANONYMOUS_ACCESS is not enabled, redirect to
+  // signin (preserves existing behavior when anonymous access is disabled).
+  // When ANONYMOUS_ACCESS is enabled, let anonymous users browse public repos
+  if (user?.anonymous && quayConfig?.features?.ANONYMOUS_ACCESS !== true) {
+    window.location.href = '/signin';
+    return null;
+  }
+
+  const isRepositoryRoute = location.pathname.startsWith('/repository/');
+  if (user?.anonymous && isRepositoryRoute) {
+    return <ProtectedRepositoryRoute />;
+  }
+
+  // Surface config or user fetch errors via the ErrorBoundary
+  const hasError = !!configError || !!userError;
   return (
-    <ErrorBoundary hasError={!!error} fallback={<SiteUnavailableError />}>
+    <ErrorBoundary hasError={hasError} fallback={<SiteUnavailableError />}>
       <Page
         masthead={<QuayHeader toggleDrawer={toggleDrawer} />}
         sidebar={<QuaySidebar />}
