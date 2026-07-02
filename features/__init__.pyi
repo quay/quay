@@ -72,6 +72,9 @@ ADVERTISE_V2: FeatureNameValue
 # Feature Flag: Whether to restrict V1 pushes to the whitelist.
 RESTRICTED_V1_PUSH: FeatureNameValue
 
+# Feature Flag: Whether to restrict schema1 manifest pushes via V2 API to the whitelist.
+RESTRICTED_V2_SCHEMA1_PUSH: FeatureNameValue
+
 # Feature Flag: Whether or not to rotate old action logs to storage.
 ACTION_LOG_ROTATION: FeatureNameValue
 
