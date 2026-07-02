@@ -1529,13 +1529,6 @@ CONFIG_SCHEMA = {
             "description": "Feature flag for programmatic bootstrap token provisioning. Defaults to False.",
             "x-example": False,
         },
-        "BOOTSTRAP_APP_NAME": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 255,
-            "description": "OAuth application name used for programmatic bootstrap tokens. Defaults to '__quay_bootstrap_app'.",
-            "x-example": "__quay_bootstrap_app",
-        },
         "BOOTSTRAP_TOKEN_OWNER": {
             "type": ["string", "null"],
             "minLength": 1,

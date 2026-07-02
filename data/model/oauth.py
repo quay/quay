@@ -340,22 +340,19 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         )
 
 
-def get_bootstrap_app_name(app_config=None):
-    """Return the configured bootstrap OAuth application name."""
-    if app_config is None:
-        app_config = config.app_config or {}
-
-    return app_config.get("BOOTSTRAP_APP_NAME", BOOTSTRAP_APP_NAME)
+def get_bootstrap_app_name():
+    """Return the reserved bootstrap OAuth application name."""
+    return BOOTSTRAP_APP_NAME
 
 
-def get_bootstrap_app_names(app_config=None):
-    """Return reserved bootstrap OAuth application names for the current config."""
-    return {BOOTSTRAP_APP_NAME, get_bootstrap_app_name(app_config)}
+def get_bootstrap_app_names():
+    """Return reserved bootstrap OAuth application names."""
+    return {BOOTSTRAP_APP_NAME}
 
 
-def is_bootstrap_app_name(name, app_config=None):
+def is_bootstrap_app_name(name):
     """Return whether name is reserved for bootstrap OAuth applications."""
-    return name in get_bootstrap_app_names(app_config)
+    return name in get_bootstrap_app_names()
 
 
 def create_bootstrap_application(name, org):
@@ -436,17 +433,27 @@ def get_bootstrap_tokens(application, authorized_user=None):
     return bootstrap_tokens
 
 
-def get_bootstrap_application_candidates(owner, app_config=None):
+def get_bootstrap_managed_applications():
+    """Return all fixed-name OAuth applications with bootstrap token metadata."""
+    bootstrap_applications = []
+    for application in lookup_bootstrap_named_applications():
+        if get_bootstrap_tokens(application):
+            bootstrap_applications.append(application)
+
+    return bootstrap_applications
+
+
+def get_bootstrap_application_candidates(owner):
     """Return the canonical and duplicate bootstrap-managed apps for an owner.
 
     Applications are considered bootstrap-managed only when they are owned by the
-    configured bootstrap owner, have the configured bootstrap app name, and carry
+    configured bootstrap owner, have the reserved bootstrap app name, and carry
     at least one bootstrap-marked token for that owner. Results are ordered by
     application ID descending through lookup_applications_by_name, so the first
     token-bearing app is the canonical app and the remaining token-bearing apps
     are duplicates.
     """
-    bootstrap_application_name = get_bootstrap_app_name(app_config)
+    bootstrap_application_name = get_bootstrap_app_name()
     applications = lookup_applications_by_name(owner, bootstrap_application_name)
 
     canonical_application = None
@@ -465,12 +472,43 @@ def get_bootstrap_application_candidates(owner, app_config=None):
     return canonical_application, duplicate_applications
 
 
-def get_canonical_bootstrap_application(owner, app_config=None):
+def get_singleton_bootstrap_application_candidates(owner):
+    """Return the current owner's canonical app and all stale global bootstrap apps.
+
+    Programmatic bootstrap is a deployment-wide singleton. The configured owner
+    can have one canonical fixed-name bootstrap-managed application; every other
+    fixed-name application with bootstrap token metadata is stale.
+    """
+    canonical_application = None
+    stale_applications = []
+    for application in lookup_bootstrap_named_applications():
+        bootstrap_tokens = get_bootstrap_tokens(application)
+        if not bootstrap_tokens:
+            continue
+
+        owner_bootstrap_tokens = [
+            token
+            for token in bootstrap_tokens
+            if token.authorized_user_id == owner.id
+            and is_bootstrap_oauth_token(token, user_obj=owner)
+        ]
+        if (
+            canonical_application is None
+            and application.organization_id == owner.id
+            and owner_bootstrap_tokens
+        ):
+            canonical_application = application
+            continue
+
+        stale_applications.append(application)
+
+    return canonical_application, stale_applications
+
+
+def get_canonical_bootstrap_application(owner):
     """Return the canonical bootstrap-managed app for an owner, if one exists."""
-    canonical_application, _ = get_bootstrap_application_candidates(
-        owner,
-        app_config=app_config,
-    )
+    # Assumes boot.py provisioning has already enforced singleton bootstrap app cleanup.
+    canonical_application, _ = get_bootstrap_application_candidates(owner)
     return canonical_application
 
 
@@ -499,7 +537,7 @@ def validate_bootstrap_token(access_token, app_config=None):
     if owner is None:
         return None
 
-    canonical_application = get_canonical_bootstrap_application(owner, app_config=app_config)
+    canonical_application = get_canonical_bootstrap_application(owner)
     if canonical_application is None:
         return None
 
@@ -523,6 +561,15 @@ def lookup_applications_by_name(org, name):
             OAuthApplication.organization == org,
             OAuthApplication.name == name,
         )
+        .order_by(OAuthApplication.id.desc())
+    )
+
+
+def lookup_bootstrap_named_applications():
+    """Look up all OAuthApplications with the reserved bootstrap name newest-first."""
+    return list(
+        OAuthApplication.select()
+        .where(OAuthApplication.name == BOOTSTRAP_APP_NAME)
         .order_by(OAuthApplication.id.desc())
     )
 

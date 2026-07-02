@@ -877,7 +877,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Controls programmatic bootstrap token provisioning.
     FEATURE_PROGRAMMATIC_BOOTSTRAP = False
-    BOOTSTRAP_APP_NAME = "__quay_bootstrap_app"
     BOOTSTRAP_TOKEN_OWNER = None
     BOOTSTRAP_TOKEN_PATH = "/var/lib/quay/quay-machine-token.json"
     BOOTSTRAP_TOKEN_EXPIRATION = 3600  # 60 minutes in seconds
