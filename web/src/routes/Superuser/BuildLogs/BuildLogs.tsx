@@ -134,7 +134,13 @@ export default function BuildLogs() {
               <dt style={{marginTop: '0.5em'}}>
                 <strong>Error:</strong>
               </dt>
-              <dd style={{color: 'var(--pf-t--global--color--status--danger--default)'}}>{build.error}</dd>
+              <dd
+                style={{
+                  color: 'var(--pf-t--global--color--status--danger--default)',
+                }}
+              >
+                {build.error}
+              </dd>
             </>
           )}
         </dl>
