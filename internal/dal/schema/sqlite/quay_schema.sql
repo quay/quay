@@ -802,7 +802,8 @@ CREATE INDEX tag_manifest_id ON tag (manifest_id);
 CREATE INDEX tag_repository_id ON tag (repository_id);
 CREATE INDEX tag_repository_id_name ON tag (repository_id, name);
 CREATE INDEX tag_repository_id_name_hidden ON tag (repository_id, name, hidden);
-CREATE UNIQUE INDEX tag_repository_id_name_lifetime_end_ms ON tag (repository_id, name, lifetime_end_ms);
+CREATE INDEX tag_repository_id_name_lifetime_end_ms ON tag (repository_id, name, lifetime_end_ms);
+CREATE UNIQUE INDEX tag_repository_id_name_active ON tag (repository_id, name) WHERE lifetime_end_ms IS NULL;
 CREATE INDEX tag_repository_id_name_tag_kind_id ON tag (repository_id, name, tag_kind_id);
 CREATE INDEX tag_tag_kind_id ON tag (tag_kind_id);
 CREATE TABLE logentry3 (

@@ -15,9 +15,12 @@ import (
 	"github.com/quay/quay/internal/dal/schema"
 )
 
-// TargetVersion is the alembic HEAD revision this binary was built against.
-// Updated by make go-schema when schema changes.
-const TargetVersion = "b1a79fa8e630"
+// BridgeTargetVersion is the Alembic HEAD revision produced by the OMR bridge
+// before Go-only SQLite migrations are applied.
+const BridgeTargetVersion = "b1a79fa8e630"
+
+// TargetVersion is the SQLite schema revision this binary expects.
+const TargetVersion = "sqlite_tagidx_0002"
 
 // InitDatabase creates a fresh SQLite database by executing the embedded DDL
 // and seed data. It returns an error if the database file already contains
@@ -221,64 +224,68 @@ func ListMigrations(w io.Writer) {
 	}
 }
 
-// ApplyMigrations reads embedded SQL migration files and applies them in
-// filename order to bring the database from currentVersion to targetVersion.
-// Each migration runs in its own transaction and must contain a
-// "-- revision: <id>" comment identifying the alembic version it produces.
+type migrationInfo struct {
+	filename     string
+	sql          string
+	revision     string
+	downRevision string
+}
+
+// ApplyMigrations reads embedded SQL migration files and applies the revision
+// chain needed to bring the database from currentVersion to targetVersion.
+// Each non-bridge migration must contain "-- revision: <id>" and
+// "-- down_revision: <id>" comments.
 func ApplyMigrations(ctx context.Context, db *sql.DB, currentVersion, targetVersion string, w io.Writer) error {
 	entries, err := schema.MigrationFiles.ReadDir("sqlite/migrations")
 	if err != nil {
 		return fmt.Errorf("read migrations directory: %w", err)
 	}
 
-	var migrationFiles []string
+	migrationsByDownRevision := map[string]migrationInfo{}
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
 			continue
 		}
-		migrationFiles = append(migrationFiles, e.Name())
-	}
-
-	if len(migrationFiles) == 0 {
-		return fmt.Errorf("no migration files found")
-	}
-
-	fmt.Fprintf(w, "Found %d migration file(s)\n", len(migrationFiles))
-
-	applied := 0
-	for _, filename := range migrationFiles {
+		filename := e.Name()
 		sqlBytes, err := schema.MigrationFiles.ReadFile("sqlite/migrations/" + filename)
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", filename, err)
 		}
 
 		migrationSQL := string(sqlBytes)
-		revisionID, err := extractRevisionID(migrationSQL)
+		info, err := extractMigrationInfo(filename, migrationSQL)
 		if err != nil {
 			return fmt.Errorf("migration %s: %w", filename, err)
 		}
-
-		if revisionID == currentVersion {
+		if info.downRevision == "" {
 			continue
 		}
-
-		fmt.Fprintf(w, "Applying: %s (revision %s)\n", filename, revisionID)
-
-		if err := applyMigrationTx(ctx, db, migrationSQL, revisionID); err != nil {
-			return fmt.Errorf("apply migration %s: %w", filename, err)
+		if _, ok := migrationsByDownRevision[info.downRevision]; ok {
+			return fmt.Errorf("multiple migrations found for down_revision %s", info.downRevision)
 		}
-
-		applied++
-		currentVersion = revisionID
-		fmt.Fprintf(w, "Applied: %s\n", filename)
-
-		if currentVersion == targetVersion {
-			break
-		}
+		migrationsByDownRevision[info.downRevision] = info
 	}
 
-	if currentVersion != targetVersion {
-		return fmt.Errorf("migrations completed but version mismatch: current=%s target=%s", currentVersion, targetVersion)
+	if len(migrationsByDownRevision) == 0 {
+		return fmt.Errorf("no migration files found")
+	}
+
+	fmt.Fprintf(w, "Found %d migration file(s)\n", len(migrationsByDownRevision))
+
+	applied := 0
+	for currentVersion != targetVersion {
+		info, ok := migrationsByDownRevision[currentVersion]
+		if !ok {
+			return fmt.Errorf("no migration found from %s to %s", currentVersion, targetVersion)
+		}
+		fmt.Fprintf(w, "Applying: %s (revision %s)\n", info.filename, info.revision)
+
+		if err := applyMigrationTx(ctx, db, info.sql, info.revision); err != nil {
+			return fmt.Errorf("apply migration %s: %w", info.filename, err)
+		}
+		applied++
+		currentVersion = info.revision
+		fmt.Fprintf(w, "Applied: %s\n", info.filename)
 	}
 
 	fmt.Fprintf(w, "Migration complete: %d migration(s) applied\n", applied)
@@ -309,22 +316,36 @@ func applyMigrationTx(ctx context.Context, db *sql.DB, migrationSQL, revisionID 
 	return tx.Commit()
 }
 
-func extractRevisionID(migrationSQL string) (string, error) {
+func extractMigrationInfo(filename, migrationSQL string) (migrationInfo, error) {
+	info := migrationInfo{
+		filename: filename,
+		sql:      migrationSQL,
+	}
 	for _, line := range strings.Split(migrationSQL, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "-- revision:") {
 			parts := strings.SplitN(line, ":", 2)
 			if len(parts) != 2 {
-				return "", fmt.Errorf("malformed revision comment: %s", line)
+				return migrationInfo{}, fmt.Errorf("malformed revision comment: %s", line)
 			}
 			id := strings.TrimSpace(parts[1])
 			if id == "" {
-				return "", fmt.Errorf("empty revision ID in comment: %s", line)
+				return migrationInfo{}, fmt.Errorf("empty revision ID in comment: %s", line)
 			}
-			return id, nil
+			info.revision = id
+		}
+		if strings.HasPrefix(line, "-- down_revision:") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) != 2 {
+				return migrationInfo{}, fmt.Errorf("malformed down_revision comment: %s", line)
+			}
+			info.downRevision = strings.TrimSpace(parts[1])
 		}
 	}
-	return "", fmt.Errorf("missing '-- revision: <id>' comment")
+	if info.revision == "" {
+		return migrationInfo{}, fmt.Errorf("missing '-- revision: <id>' comment")
+	}
+	return info, nil
 }
 
 // splitStatements splits a SQL script on semicolons, trimming whitespace and

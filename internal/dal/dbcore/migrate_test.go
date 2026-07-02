@@ -2,6 +2,7 @@ package dbcore
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -49,6 +50,96 @@ func TestInitDatabase(t *testing.T) {
 	if ver == "" {
 		t.Error("expected non-empty alembic version after init")
 	}
+	if ver != TargetVersion {
+		t.Errorf("version = %q, want %q", ver, TargetVersion)
+	}
+	assertTagIndexes(t, db, true)
+}
+
+func TestApplyMigrations_TagIndexesRepairDuplicateActiveRows(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+
+	ctx := t.Context()
+	if err := InitDatabase(ctx, db, &bytes.Buffer{}); err != nil {
+		t.Fatalf("InitDatabase: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `DROP INDEX tag_repository_id_name_active`); err != nil {
+		t.Fatalf("drop active index: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `DROP INDEX tag_repository_id_name_lifetime_end_ms`); err != nil {
+		t.Fatalf("drop history index: %v", err)
+	}
+	if _, err := db.ExecContext(ctx,
+		`CREATE UNIQUE INDEX tag_repository_id_name_lifetime_end_ms ON tag (repository_id, name, lifetime_end_ms)`,
+	); err != nil {
+		t.Fatalf("create old unique history index: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE alembic_version SET version_num = ?`, BridgeTargetVersion); err != nil {
+		t.Fatalf("stamp bridge version: %v", err)
+	}
+
+	insertTagMigrationFixture(t, db)
+
+	var buf bytes.Buffer
+	if err := ApplyMigrations(ctx, db, BridgeTargetVersion, TargetVersion, &buf); err != nil {
+		t.Fatalf("ApplyMigrations: %v\n%s", err, buf.String())
+	}
+
+	ver, err := SchemaVersion(ctx, db)
+	if err != nil {
+		t.Fatalf("SchemaVersion: %v", err)
+	}
+	if ver != TargetVersion {
+		t.Errorf("version = %q, want %q", ver, TargetVersion)
+	}
+	assertTagIndexes(t, db, true)
+
+	var activeCount int
+	if err := db.QueryRowContext(ctx,
+		`SELECT count(*) FROM tag WHERE repository_id = 1 AND name = 'latest' AND lifetime_end_ms IS NULL`,
+	).Scan(&activeCount); err != nil {
+		t.Fatalf("count active tags: %v", err)
+	}
+	if activeCount != 1 {
+		t.Fatalf("active tag count = %d, want 1", activeCount)
+	}
+
+	var activeManifestID int64
+	if err := db.QueryRowContext(ctx,
+		`SELECT manifest_id FROM tag WHERE repository_id = 1 AND name = 'latest' AND lifetime_end_ms IS NULL`,
+	).Scan(&activeManifestID); err != nil {
+		t.Fatalf("active manifest: %v", err)
+	}
+	if activeManifestID != 2 {
+		t.Errorf("active manifest_id = %d, want 2", activeManifestID)
+	}
+
+	var expiredEnd, expiredStart int64
+	if err := db.QueryRowContext(ctx,
+		`SELECT lifetime_start_ms, lifetime_end_ms FROM tag WHERE id = 1`,
+	).Scan(&expiredStart, &expiredEnd); err != nil {
+		t.Fatalf("expired duplicate active row: %v", err)
+	}
+	if expiredEnd < expiredStart {
+		t.Fatalf("expired row has invalid interval: start=%d end=%d", expiredStart, expiredEnd)
+	}
+
+	if _, err := db.ExecContext(ctx,
+		`INSERT INTO tag (id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, tag_kind_id)
+		 VALUES (3, 'latest', 1, 1, 250, 300, 1),
+		        (4, 'latest', 1, 2, 260, 300, 1)`,
+	); err != nil {
+		t.Fatalf("insert duplicate expired history: %v", err)
+	}
+
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO tag (id, name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id)
+		 VALUES (5, 'latest', 1, 1, 400, 1)`,
+	)
+	if err == nil {
+		t.Fatal("expected duplicate active tag insert to fail")
+	}
 }
 
 func TestInitDatabase_RejectsExisting(t *testing.T) {
@@ -94,7 +185,7 @@ func TestSchemaVersion_EmptyDB(t *testing.T) {
 }
 
 func TestSplitStatements_DropsLineCommentsWithoutDroppingStatements(t *testing.T) {
-	sql := `-- migration metadata
+	migrationSQL := `-- migration metadata
 -- section comment
 CREATE TABLE first (id INTEGER);
 
@@ -102,7 +193,7 @@ CREATE TABLE first (id INTEGER);
 CREATE TABLE second (id INTEGER);
 `
 
-	stmts := splitStatements(sql)
+	stmts := splitStatements(migrationSQL)
 	if len(stmts) != 2 {
 		t.Fatalf("expected 2 statements, got %d: %#v", len(stmts), stmts)
 	}
@@ -167,5 +258,63 @@ func TestBackupAndClean(t *testing.T) {
 		if _, err := os.Stat(p); err != nil {
 			t.Errorf("expected %s to exist: %v", p, err)
 		}
+	}
+}
+
+func insertTagMigrationFixture(t *testing.T, db *sql.DB) {
+	t.Helper()
+	ctx := t.Context()
+	statements := []string{
+		`INSERT INTO "user" (
+			id, username, email, verified, organization, robot, invoice_email,
+			invalid_login_attempts, last_invalid_login, removed_tag_expiration_s, enabled
+		) VALUES (1, 'library', 'library@example.com', 1, 0, 0, 0, 0, '2026-01-01 00:00:00', 1209600, 1)`,
+		`INSERT INTO repository (
+			id, namespace_user_id, name, visibility_id, description, badge_token, kind_id
+		) VALUES (1, 1, 'nginx', 2, '', '', 1)`,
+		`INSERT INTO manifest (id, repository_id, digest, media_type_id, manifest_bytes)
+		 VALUES (1, 1, 'sha256:111', 17, '{}'),
+		        (2, 1, 'sha256:222', 17, '{}')`,
+		`INSERT INTO tag (id, name, repository_id, manifest_id, lifetime_start_ms, tag_kind_id)
+		 VALUES (1, 'latest', 1, 1, 100, 1),
+		        (2, 'latest', 1, 2, 200, 1)`,
+	}
+	for _, stmt := range statements {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("insert fixture: %v\nstatement: %s", err, stmt)
+		}
+	}
+}
+
+func assertTagIndexes(t *testing.T, db *sql.DB, wantActiveUnique bool) {
+	t.Helper()
+	ctx := t.Context()
+
+	var historySQL string
+	if err := db.QueryRowContext(ctx,
+		`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'tag_repository_id_name_lifetime_end_ms'`,
+	).Scan(&historySQL); err != nil {
+		t.Fatalf("query history tag index: %v", err)
+	}
+	if strings.Contains(strings.ToUpper(historySQL), "UNIQUE") {
+		t.Fatalf("history tag index should be non-unique: %s", historySQL)
+	}
+
+	var activeSQL string
+	err := db.QueryRowContext(ctx,
+		`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'tag_repository_id_name_active'`,
+	).Scan(&activeSQL)
+	if !wantActiveUnique {
+		if err != sql.ErrNoRows {
+			t.Fatalf("active tag index should be absent, got sql=%q err=%v", activeSQL, err)
+		}
+		return
+	}
+	if err != nil {
+		t.Fatalf("query active tag index: %v", err)
+	}
+	activeSQLUpper := strings.ToUpper(activeSQL)
+	if !strings.Contains(activeSQLUpper, "UNIQUE") || !strings.Contains(activeSQLUpper, "WHERE LIFETIME_END_MS IS NULL") {
+		t.Fatalf("active tag index should be unique and partial: %s", activeSQL)
 	}
 }
