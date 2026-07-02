@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     name: Deploy Playwright Report to Surge
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     # Only run on pull request events
     if: github.event.workflow_run.event == 'pull_request'
 

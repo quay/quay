@@ -25,7 +25,7 @@ jobs:
 
   pre-commit:
     name: Pre-commit checks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: ${{ inputs.is-pr }}
     steps:
 
