@@ -835,6 +835,7 @@ def deprecated():
 
 import endpoints.api.appspecifictokens
 import endpoints.api.billing
+import endpoints.api.bootstrap
 import endpoints.api.build
 import endpoints.api.capabilities
 import endpoints.api.discovery
