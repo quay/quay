@@ -309,3 +309,41 @@ def test_validate_redirect_uri_blocks_path_prefix_mismatch(initialized_db):
         # Path that doesn't match configured prefix
         malicious_uri_2 = "http://foo/ba"
         assert not db_auth_provider.validate_redirect_uri(application.client_id, malicious_uri_2)
+
+
+def test_delete_bootstrap_tokens_keeps_requested_token_and_unmarked_tokens(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_bootstrap_application("cleanup-bootstrap", owner)
+    keep_token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
+    stale_token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:write")
+    unmarked_token, _ = model.oauth.create_user_access_token_for_application(
+        owner,
+        application,
+        "repo:read",
+        "Bearer",
+        3600,
+    )
+
+    model.oauth.delete_bootstrap_tokens(application, keep_token_id=keep_token.id)
+
+    assert model.oauth.lookup_access_token_by_uuid(keep_token.uuid) is not None
+    assert model.oauth.lookup_access_token_by_uuid(stale_token.uuid) is None
+    assert model.oauth.lookup_access_token_by_uuid(unmarked_token.uuid) is not None
+
+
+def test_delete_bootstrap_tokens_noops_when_only_kept_token_exists(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_bootstrap_application("cleanup-bootstrap", owner)
+    keep_token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
+    unmarked_token, _ = model.oauth.create_user_access_token_for_application(
+        owner,
+        application,
+        "repo:read",
+        "Bearer",
+        3600,
+    )
+
+    model.oauth.delete_bootstrap_tokens(application, keep_token_id=keep_token.id)
+
+    assert model.oauth.lookup_access_token_by_uuid(keep_token.uuid) is not None
+    assert model.oauth.lookup_access_token_by_uuid(unmarked_token.uuid) is not None

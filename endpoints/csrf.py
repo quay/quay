@@ -8,7 +8,11 @@ from flask import Response, request, session
 
 import features
 from app import app
-from auth.auth_context import get_sso_token, get_validated_oauth_token
+from auth.auth_context import (
+    get_authenticated_user,
+    get_sso_token,
+    get_validated_oauth_token,
+)
 from util.http import abort
 
 logger = logging.getLogger(__name__)
@@ -53,6 +57,23 @@ def verify_csrf(
         abort(403, message="CSRF token was invalid or missing.")
 
 
+def _has_bootstrap_auth() -> bool:
+    if not features.PROGRAMMATIC_BOOTSTRAP:
+        return False
+    if request.path != "/api/v1/bootstrap/renew":
+        return False
+    if get_authenticated_user() is not None:
+        return False
+
+    session_user = session.get("_user_id") or session.get("user_id")
+    if session_user and session_user != "anonymous":
+        return False
+
+    auth_header = request.headers.get("Authorization", "")
+    scheme = auth_header.lower().split(" ", 1)[0] if auth_header else ""
+    return scheme == "bearer"
+
+
 def csrf_protect(
     session_token_name=_QUAY_CSRF_TOKEN_NAME,
     request_token_name=_QUAY_CSRF_TOKEN_NAME,
@@ -65,7 +86,8 @@ def csrf_protect(
             # Verify the CSRF token.
             if get_validated_oauth_token() is None and get_sso_token() is None:
                 if all_methods or (request.method != "GET" and request.method != "HEAD"):
-                    verify_csrf(session_token_name, request_token_name, check_header)
+                    if not _has_bootstrap_auth():
+                        verify_csrf(session_token_name, request_token_name, check_header)
 
             # Invoke the handler.
             resp = func(*args, **kwargs)

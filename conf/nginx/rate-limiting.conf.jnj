@@ -36,6 +36,13 @@ map $uri:$http_user_agent $miner_tag_block {
     default 0;
 }
 
+# Prefer Quay's original client address for bootstrap renewal limits. Fall back
+# to the direct nginx peer address when no original address was derived.
+map $quay_original_remote_addr $bootstrap_renew_bucket {
+  ""      $binary_remote_addr;
+  default $quay_original_remote_addr;
+}
+
 
 # Define two additional buckets that fall to $request_id (thus no effective rate limiting) if
 # a specific set of namespaces is matched. This allows us to turn off rate limiting selectively
@@ -64,6 +71,7 @@ map $namespace $namespaced_http2_bucket {
 
 {% if enable_rate_limits %}
 limit_req_zone $auth_namespace_bucket zone=namespace_auth:10m rate=120r/s;
+limit_req_zone $bootstrap_renew_bucket zone=bootstrap_renew:10m rate=10r/m;
 {% else %}
 limit_req_zone $request_id zone=namespace_auth:10m rate=300r/s;
 {% endif %}
