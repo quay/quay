@@ -12,11 +12,16 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	apiv1 "github.com/quay/quay/internal/api/v1"
+	repositoryapi "github.com/quay/quay/internal/api/v1/repository"
+	"github.com/quay/quay/internal/auth"
 	"github.com/quay/quay/internal/bootstrap"
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
 	"github.com/quay/quay/internal/registry/distribution"
+	"github.com/quay/quay/internal/repository"
+	repositorydal "github.com/quay/quay/internal/repository/dal"
 	"github.com/quay/quay/internal/server"
 )
 
@@ -79,9 +84,33 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 	}
 	defer func() { _ = reg.Close() }()
 
+	repositoryService, err := repository.NewService(
+		repositorydal.NewStore(db),
+		repositorydal.NewAuthorizer(db, repositorydal.AuthorizerConfig{
+			SuperUsers:           resolved.Config.SuperUsers,
+			SuperUsersFullAccess: featureEnabled(resolved.Config.FeatureSuperUsers) && featureEnabled(resolved.Config.FeatureSuperUsersFullAccess),
+		}),
+	)
+	if err != nil {
+		slog.Error("repository service setup error", "err", err)
+		return 1
+	}
+
+	api, err := apiv1.New(apiv1.Config{
+		Authenticator: auth.NewBasicAuthenticator(db),
+		Realm:         resolved.Config.ServerHostname,
+	},
+		repositoryapi.NewModule(repositoryService),
+	)
+	if err != nil {
+		slog.Error("api setup error", "err", err)
+		return 1
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", healthHandler(db))
 	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/api/", api)
 	mux.Handle("/", reg.Handler())
 
 	srv, err := server.New(ctx, mux, &server.Config{
@@ -125,4 +154,8 @@ func healthHandler(db *sql.DB) http.Handler {
 		w.WriteHeader(code)
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": status})
 	})
+}
+
+func featureEnabled(configured *bool) bool {
+	return configured != nil && *configured
 }
