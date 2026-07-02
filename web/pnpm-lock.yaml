@@ -32,7 +32,7 @@ importers:
         version: 8.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(victory-area@37.3.6(react@18.3.1))(victory-axis@37.3.6(react@18.3.1))(victory-bar@37.3.6(react@18.3.1))(victory-box-plot@37.3.6(react@18.3.1))(victory-chart@37.3.6(react@18.3.1))(victory-core@37.3.6(react@18.3.1))(victory-create-container@37.3.6(react@18.3.1))(victory-cursor-container@37.3.6(react@18.3.1))(victory-group@37.3.6(react@18.3.1))(victory-legend@37.3.6(react@18.3.1))(victory-line@37.3.6(react@18.3.1))(victory-pie@37.3.6(react@18.3.1))(victory-scatter@37.3.6(react@18.3.1))(victory-stack@37.3.6(react@18.3.1))(victory-tooltip@37.3.6(react@18.3.1))(victory-voronoi-container@37.3.6(react@18.3.1))(victory-zoom-container@37.3.6(react@18.3.1))
       '@patternfly/react-core':
         specifier: ^6.0.0
-        version: 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-icons':
         specifier: ^6.0.0
         version: 6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -41,7 +41,7 @@ importers:
         version: 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@redhat-cloud-services/frontend-components':
         specifier: ^6.0.9
-        version: 6.1.1(@patternfly/react-core@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-icons@6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-tokens@6.5.1)(lodash@4.18.1)(prop-types@15.8.1)(react-content-loader@6.2.1(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1))(react-router-dom@7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 6.1.1(@patternfly/react-core@6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-icons@6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-tokens@6.6.0)(lodash@4.18.1)(prop-types@15.8.1)(react-content-loader@6.2.1(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1))(react-router-dom@7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@redhat-cloud-services/frontend-components-config-utilities':
         specifier: ^4.4.1
         version: 4.10.0(webpack@5.106.2)
@@ -1251,14 +1251,14 @@ packages:
       react: ^18.2.0
       react-dom: ^18.2.0
 
-  '@patternfly/react-core@6.4.3':
-    resolution: {integrity: sha512-CYf+DFmcV5LCTQh7ZNBhHgqaEbDKwKOxBB/3Si6xFn8fIH8h/Wj3ZHSm6rYslQS7dJUusqyv5gJ2dR9LixT3TA==}
+  '@patternfly/react-core@6.5.1':
+    resolution: {integrity: sha512-fFZ0hcIyHJO27hxbf53W3m2R11l0O9WxR7CusJXuCEaNMP31ULrhf5Pv6ROdTrrs39Kl/yPv+2QuxQfe/4e72g==}
     peerDependencies:
       react: ^18.2.0
       react-dom: ^18.2.0
 
-  '@patternfly/react-core@6.5.1':
-    resolution: {integrity: sha512-fFZ0hcIyHJO27hxbf53W3m2R11l0O9WxR7CusJXuCEaNMP31ULrhf5Pv6ROdTrrs39Kl/yPv+2QuxQfe/4e72g==}
+  '@patternfly/react-core@6.6.0':
+    resolution: {integrity: sha512-MLYPcJvdDWHZqWcvEH2QhKtCg6APRfrDJ4o192/wc2LUaf4ViGVsVLKDMbaKCamhbGauv7KpffNCSy3fjRy4Bw==}
     peerDependencies:
       react: ^18.2.0
       react-dom: ^18.2.0
@@ -1275,8 +1275,8 @@ packages:
       react: ^18.2.0
       react-dom: ^18.2.0
 
-  '@patternfly/react-icons@6.5.1':
-    resolution: {integrity: sha512-CnuPvTTs4MMWx8CAUkmnY690ouN1bbHjunsyXu3QxvGOmzbztP+wS4BdiLS8TIXOIH80Yb7KPhnF8VkA+CduOA==}
+  '@patternfly/react-icons@6.6.0':
+    resolution: {integrity: sha512-cDDUm4PFxqeBo4PS08xO1eFd6CMTOppn5RS4fs2hAgu/vRFkPXuL0zZCkxgRg5asd/W4olEN7WrIAbvjKbHKiQ==}
     peerDependencies:
       react: ^18.2.0
       react-dom: ^18.2.0
@@ -1284,8 +1284,8 @@ packages:
   '@patternfly/react-styles@6.4.0':
     resolution: {integrity: sha512-EXmHA67s5sy+Wy/0uxWoUQ52jr9lsH2wV3QcgtvVc5zxpyBX89gShpqv4jfVqaowznHGDoL6fVBBrSe9BYOliQ==}
 
-  '@patternfly/react-styles@6.5.1':
-    resolution: {integrity: sha512-yQMzUbbf6qYM/v3JbPvaCJTgxRbOKoEw229XZmnnM8gDvp8ECiI7LqihrAOK/NA6T6M3DDgsRMd2JurUBhPDEw==}
+  '@patternfly/react-styles@6.6.0':
+    resolution: {integrity: sha512-u/HzJ48Cg6Nb12dIVbj4g31lMDVHPHVKRXkRuPBcuK6MQyAsxSfcyWVivW7Lga8TsNhFW26JWB5ay+IW5xpZ8A==}
 
   '@patternfly/react-table@6.4.3':
     resolution: {integrity: sha512-lPHjVOEkJpCtXMtE48pLGwMmLsCgYJvoiZpuW2/Vlg0y0pmg0nfYUVDBBTXfQ3dgskn/zb5SAgZr158VQQoBtw==}
@@ -1296,8 +1296,8 @@ packages:
   '@patternfly/react-tokens@6.4.0':
     resolution: {integrity: sha512-iZthBoXSGQ/+PfGTdPFJVulaJZI3rwE+7A/whOXPGp3Jyq3k6X52pr1+5nlO6WHasbZ9FyeZGqXf4fazUZNjbw==}
 
-  '@patternfly/react-tokens@6.5.1':
-    resolution: {integrity: sha512-zwepLsIQTL0Lf4R2/PIBOk1m+pm0hYVT3lktf2H4+Y87eRIifwMRb19c+pr4hj4ckGvHs+WxwjTfTj2Qqwn5rw==}
+  '@patternfly/react-tokens@6.6.0':
+    resolution: {integrity: sha512-oRUFYJAM9LKYTM9YRnd7rz3wB6ZoaBWit/Eu+EK22J4o5AhZRjLt0+ewXQ7I99dBP4c8BbnPEUFnxQYAroqNLg==}
 
   '@pkgr/core@0.2.9':
     resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
@@ -3148,9 +3148,6 @@ packages:
   flatted@3.4.2:
     resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
 
-  focus-trap@7.6.4:
-    resolution: {integrity: sha512-xx560wGBk7seZ6y933idtjJQc1l+ck+pI3sKvhKozdBV1dRZoKhkW5xoCaFv9tQiX5RH1xfSxjuNu6g+lmN/gw==}
-
   focus-trap@7.6.6:
     resolution: {integrity: sha512-v/Z8bvMCajtx4mEXmOo7QEsIzlIOqRXTIwgUfsFOF9gEsespdbD0AkPIka1bSXZ8Y8oZ+2IVDQZePkTfEHZl7Q==}
 
@@ -4437,6 +4434,10 @@ packages:
     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
     engines: {node: '>=12'}
 
+  picomatch@4.0.5:
+    resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
+    engines: {node: '>=12'}
+
   pkg-dir@4.2.0:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
@@ -4656,8 +4657,8 @@ packages:
     resolution: {integrity: sha512-SoSL4+OSEtR99LHFZQiJLkT59C5B1amGO1NzTwj7TT1qCUgUO6hxOvzkOYxD+vMrXBM3XJIKzokoERdqQq/Zmg==}
     engines: {node: ^10 || ^12 || >=14}
 
-  postcss@8.5.15:
-    resolution: {integrity: sha512-FfR8sjd4em2T6fb3I2MwAJU7HWVMr9zba+enmQeeWFfCbm+UOC/0X4DS8XtpUTMwWMGbjKYP7xjfNekzyGmB3A==}
+  postcss@8.5.16:
+    resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
     engines: {node: ^10 || ^12 || >=14}
 
   prelude-ls@1.2.1:
@@ -5317,9 +5318,6 @@ packages:
   synckit@0.11.12:
     resolution: {integrity: sha512-Bh7QjT8/SuKUIfObSXNHNSK6WHo6J1tHCqJsuaFDP7gP0fkzSfTxI8y85JrppZ0h8l0maIgc2tfuZQ6/t3GtnQ==}
     engines: {node: ^14.18.0 || >=16.0.0}
-
-  tabbable@6.4.0:
-    resolution: {integrity: sha512-05PUHKSNE8ou2dwIxTngl4EzcnsCDZGJ/iCLtDflR/SHB/ny14rXc+qU5P4mG9JkusiV7EivzY9Mhm55AzAvCg==}
 
   tabbable@6.5.0:
     resolution: {integrity: sha512-wieBHXygIm7OyQOu5hQlkk62/WyCFYGlWg7L6/ZCUZwx0o398Zkn4pVmMyfYhfMG8kGrj/Krt8eIk6UKC6VzwA==}
@@ -7170,7 +7168,7 @@ snapshots:
 
   '@patternfly/react-component-groups@6.4.0(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@patternfly/react-core': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-core': 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-drag-drop': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-icons': 6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-styles': 6.4.0
@@ -7179,22 +7177,22 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
       react-jss: 10.10.0(react@18.3.1)
 
-  '@patternfly/react-core@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@patternfly/react-core@6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@patternfly/react-icons': 6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-styles': 6.4.0
-      '@patternfly/react-tokens': 6.4.0
-      focus-trap: 7.6.4
+      '@patternfly/react-styles': 6.6.0
+      '@patternfly/react-tokens': 6.6.0
+      focus-trap: 7.6.6
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       react-dropzone: 14.4.1(react@18.3.1)
       tslib: 2.8.1
 
-  '@patternfly/react-core@6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@patternfly/react-core@6.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@patternfly/react-icons': 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-styles': 6.5.1
-      '@patternfly/react-tokens': 6.5.1
+      '@patternfly/react-icons': 6.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-styles': 6.6.0
+      '@patternfly/react-tokens': 6.6.0
       focus-trap: 7.6.6
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
@@ -7206,9 +7204,9 @@ snapshots:
       '@dnd-kit/core': 6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@dnd-kit/modifiers': 9.0.0(@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@dnd-kit/sortable': 10.0.0(@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-core': 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-icons': 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-styles': 6.5.1
+      '@patternfly/react-core': 6.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-icons': 6.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-styles': 6.6.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       resize-observer-polyfill: 1.5.1
@@ -7218,18 +7216,19 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@patternfly/react-icons@6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@patternfly/react-icons@6.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
+      tslib: 2.8.1
 
   '@patternfly/react-styles@6.4.0': {}
 
-  '@patternfly/react-styles@6.5.1': {}
+  '@patternfly/react-styles@6.6.0': {}
 
   '@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@patternfly/react-core': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-core': 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-icons': 6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-styles': 6.4.0
       '@patternfly/react-tokens': 6.4.0
@@ -7240,7 +7239,7 @@ snapshots:
 
   '@patternfly/react-tokens@6.4.0': {}
 
-  '@patternfly/react-tokens@6.5.1': {}
+  '@patternfly/react-tokens@6.6.0': {}
 
   '@pkgr/core@0.2.9': {}
 
@@ -7260,9 +7259,9 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@redhat-cloud-services/frontend-components-utilities@6.1.1(@patternfly/react-core@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1))(react-router-dom@7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
+  '@redhat-cloud-services/frontend-components-utilities@6.1.1(@patternfly/react-core@6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1))(react-router-dom@7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@patternfly/react-core': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-core': 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-table': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@redhat-cloud-services/rbac-client': 2.2.11
       '@redhat-cloud-services/types': 2.0.3
@@ -7281,14 +7280,14 @@ snapshots:
       - debug
       - supports-color
 
-  '@redhat-cloud-services/frontend-components@6.1.1(@patternfly/react-core@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-icons@6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-tokens@6.5.1)(lodash@4.18.1)(prop-types@15.8.1)(react-content-loader@6.2.1(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1))(react-router-dom@7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
+  '@redhat-cloud-services/frontend-components@6.1.1(@patternfly/react-core@6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-icons@6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-tokens@6.6.0)(lodash@4.18.1)(prop-types@15.8.1)(react-content-loader@6.2.1(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1))(react-router-dom@7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@patternfly/react-component-groups': 6.4.0(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-core': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-core': 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-icons': 6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-table': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-tokens': 6.5.1
-      '@redhat-cloud-services/frontend-components-utilities': 6.1.1(@patternfly/react-core@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1))(react-router-dom@7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-tokens': 6.6.0
+      '@redhat-cloud-services/frontend-components-utilities': 6.1.1(@patternfly/react-core@6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1))(react-router-dom@7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@redhat-cloud-services/types': 2.0.3
       '@scalprum/core': 0.8.3(react@18.3.1)
       '@scalprum/react-core': 0.9.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -9361,6 +9360,10 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.4
 
+  fdir@6.5.0(picomatch@4.0.5):
+    optionalDependencies:
+      picomatch: 4.0.5
+
   file-entry-cache@6.0.1:
     dependencies:
       flat-cache: 3.2.0
@@ -9410,10 +9413,6 @@ snapshots:
   flat@5.0.2: {}
 
   flatted@3.4.2: {}
-
-  focus-trap@7.6.4:
-    dependencies:
-      tabbable: 6.4.0
 
   focus-trap@7.6.6:
     dependencies:
@@ -10954,6 +10953,8 @@ snapshots:
 
   picomatch@4.0.4: {}
 
+  picomatch@4.0.5: {}
+
   pkg-dir@4.2.0:
     dependencies:
       find-up: 4.1.0
@@ -11154,7 +11155,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postcss@8.5.15:
+  postcss@8.5.16:
     dependencies:
       nanoid: 3.3.15
       picocolors: 1.1.1
@@ -11970,8 +11971,6 @@ snapshots:
     dependencies:
       '@pkgr/core': 0.2.9
 
-  tabbable@6.4.0: {}
-
   tabbable@6.5.0: {}
 
   tapable@2.3.3: {}
@@ -12018,8 +12017,8 @@ snapshots:
 
   tinyglobby@0.2.17:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
+      fdir: 6.5.0(picomatch@4.0.5)
+      picomatch: 4.0.5
 
   tinyrainbow@3.1.0: {}
 
@@ -12501,8 +12500,8 @@ snapshots:
   vite@8.0.12(@types/node@20.19.41)(sass@1.99.0)(terser@5.47.1):
     dependencies:
       lightningcss: 1.32.0
-      picomatch: 4.0.4
-      postcss: 8.5.15
+      picomatch: 4.0.5
+      postcss: 8.5.16
       rolldown: 1.0.0
       tinyglobby: 0.2.17
     optionalDependencies:
