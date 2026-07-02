@@ -34,60 +34,15 @@ def scanner(set_secscan_config):
     return s
 
 
-class TestClaimUnindexedManifests:
-    def test_claims_manifests_without_mss(self, initialized_db, scanner):
-        manifest_count = Manifest.select().count()
-        assert manifest_count > 0
-
-        claimed = scanner._claim_unindexed_manifests(manifest_count)
-        assert len(claimed) == manifest_count
-
-        for mss in ManifestSecurityStatus.select():
-            assert mss.index_status == IndexStatus.IN_PROGRESS
-            assert mss.indexer_hash == "in_progress_v2"
-
-    def test_skips_manifests_with_existing_mss(self, initialized_db, scanner):
-        manifests = list(Manifest.select().limit(3))
-        for m in manifests:
-            ManifestSecurityStatus.create(
-                manifest=m,
-                repository=m.repository,
-                error_json={},
-                index_status=IndexStatus.COMPLETED,
-                indexer_hash="abc",
-                indexer_version=IndexerVersion.V4,
-                metadata_json={},
-            )
-
-        total = Manifest.select().count()
-        claimed = scanner._claim_unindexed_manifests(total)
-
-        assert len(claimed) == total - 3
-
-    def test_respects_batch_size(self, initialized_db, scanner):
-        claimed = scanner._claim_unindexed_manifests(2)
-        assert len(claimed) == 2
-
-    def test_returns_empty_when_all_indexed(self, initialized_db, scanner):
-        for m in Manifest.select():
-            ManifestSecurityStatus.create(
-                manifest=m,
-                repository=m.repository,
-                error_json={},
-                index_status=IndexStatus.COMPLETED,
-                indexer_hash="abc",
-                indexer_version=IndexerVersion.V4,
-                metadata_json={},
-            )
-
-        claimed = scanner._claim_unindexed_manifests(10)
-        assert len(claimed) == 0
-
-
 class TestFindAndClaimBatch:
-    def _create_mss_for_all(self, status, indexer_hash="abc", last_indexed=None):
+    def _create_mss_for_all(
+        self, status, indexer_hash="abc", last_indexed=None, metadata_json=None
+    ):
         if last_indexed is None:
             last_indexed = datetime.utcnow() - timedelta(days=2)
+        if metadata_json is None:
+            metadata_json = {}
+        ManifestSecurityStatus.delete().execute()
         for m in Manifest.select():
             ManifestSecurityStatus.create(
                 manifest=m,
@@ -97,7 +52,7 @@ class TestFindAndClaimBatch:
                 indexer_hash=indexer_hash,
                 indexer_version=IndexerVersion.V4,
                 last_indexed=last_indexed,
-                metadata_json={},
+                metadata_json=metadata_json,
             )
 
     def test_claims_pending(self, initialized_db, scanner):
@@ -232,6 +187,52 @@ class TestFindAndClaimBatch:
         claimed = scanner._find_and_claim_batch(2, reindex_threshold, stale_threshold, "abc")
         assert len(claimed) == 2
 
+    def test_skips_failed_exceeding_max_retries(self, initialized_db, scanner):
+        application.config["SECURITY_SCANNER_V2_MAX_SCAN_RETRIES"] = 3
+        reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
+        stale_threshold = datetime.utcnow() - timedelta(hours=6)
+
+        self._create_mss_for_all(
+            IndexStatus.FAILED,
+            last_indexed=datetime.utcnow() - timedelta(seconds=600),
+            metadata_json={"error_count": 3},
+        )
+
+        claimed = scanner._find_and_claim_batch(50, reindex_threshold, stale_threshold, "abc")
+        assert len(claimed) == 0
+
+    def test_claims_failed_under_max_retries(self, initialized_db, scanner):
+        application.config["SECURITY_SCANNER_V2_MAX_SCAN_RETRIES"] = 3
+        reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
+        stale_threshold = datetime.utcnow() - timedelta(hours=6)
+
+        self._create_mss_for_all(
+            IndexStatus.FAILED,
+            last_indexed=datetime.utcnow() - timedelta(seconds=600),
+            metadata_json={"error_count": 2},
+        )
+
+        manifest_count = Manifest.select().count()
+        claimed = scanner._find_and_claim_batch(
+            manifest_count, reindex_threshold, stale_threshold, "abc"
+        )
+        assert len(claimed) == manifest_count
+
+    def test_claims_failed_with_no_error_count(self, initialized_db, scanner):
+        reindex_threshold = datetime.utcnow() - timedelta(seconds=300)
+        stale_threshold = datetime.utcnow() - timedelta(hours=6)
+
+        self._create_mss_for_all(
+            IndexStatus.FAILED,
+            last_indexed=datetime.utcnow() - timedelta(seconds=600),
+        )
+
+        manifest_count = Manifest.select().count()
+        claimed = scanner._find_and_claim_batch(
+            manifest_count, reindex_threshold, stale_threshold, "abc"
+        )
+        assert len(claimed) == manifest_count
+
 
 class TestPerformIndexingCycle:
     def test_indexes_unindexed_manifests(self, initialized_db, scanner):
@@ -248,6 +249,7 @@ class TestPerformIndexingCycle:
     def test_reindexes_failed_manifests(self, initialized_db, scanner):
         application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 300
 
+        ManifestSecurityStatus.delete().execute()
         for m in Manifest.select():
             ManifestSecurityStatus.create(
                 manifest=m,
@@ -271,6 +273,7 @@ class TestPerformIndexingCycle:
     def test_skips_failed_within_threshold(self, initialized_db, scanner):
         application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 300
 
+        ManifestSecurityStatus.delete().execute()
         for m in Manifest.select():
             ManifestSecurityStatus.create(
                 manifest=m,
@@ -298,9 +301,10 @@ class TestPerformIndexingCycle:
 
         scanner._secscan_api.state.side_effect = APIRequestFailure("connection refused")
 
+        mss_count_before = ManifestSecurityStatus.select().count()
         scanner.perform_indexing(batch_size=10)
 
-        assert ManifestSecurityStatus.select().count() == 0
+        assert ManifestSecurityStatus.select().count() == mss_count_before
 
     def test_handles_index_error_response(self, initialized_db, scanner):
         scanner._secscan_api.index.return_value = (
@@ -316,7 +320,73 @@ class TestPerformIndexingCycle:
                 IndexStatus.MANIFEST_UNSUPPORTED,
             )
 
+    def test_mark_failed_increments_error_count(self, initialized_db, scanner):
+        scanner._secscan_api.index.return_value = (
+            {"err": "something went wrong", "state": IndexReportState.Index_Error},
+            "abc",
+        )
+
+        scanner.perform_indexing(batch_size=100)
+
+        for mss in ManifestSecurityStatus.select().where(
+            ManifestSecurityStatus.index_status == IndexStatus.FAILED
+        ):
+            assert mss.metadata_json.get("error_count") == 1
+
+        application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0
+        scanner.perform_indexing(batch_size=100)
+
+        for mss in ManifestSecurityStatus.select().where(
+            ManifestSecurityStatus.index_status == IndexStatus.FAILED
+        ):
+            assert mss.metadata_json.get("error_count") == 2
+
+    def test_error_count_resets_on_success(self, initialized_db, scanner):
+        application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0
+
+        scanner._secscan_api.index.return_value = (
+            {"err": "something went wrong", "state": IndexReportState.Index_Error},
+            "abc",
+        )
+        scanner.perform_indexing(batch_size=100)
+
+        failed_count = (
+            ManifestSecurityStatus.select()
+            .where(ManifestSecurityStatus.index_status == IndexStatus.FAILED)
+            .count()
+        )
+        assert failed_count > 0
+
+        scanner._secscan_api.index.return_value = (
+            {"err": None, "state": IndexReportState.Index_Finished},
+            "abc",
+        )
+        scanner.perform_indexing(batch_size=100)
+
+        for mss in ManifestSecurityStatus.select().where(
+            ManifestSecurityStatus.index_status == IndexStatus.COMPLETED
+        ):
+            assert mss.metadata_json == {} or mss.metadata_json.get("error_count", 0) == 0
+
+    def test_stops_retrying_after_max_failures(self, initialized_db, scanner):
+        application.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0
+        application.config["SECURITY_SCANNER_V2_MAX_SCAN_RETRIES"] = 2
+
+        scanner._secscan_api.index.return_value = (
+            {"err": "something went wrong", "state": IndexReportState.Index_Error},
+            "abc",
+        )
+
+        scanner.perform_indexing(batch_size=100)
+        scanner.perform_indexing(batch_size=100)
+
+        scanner._secscan_api.index.reset_mock()
+        scanner.perform_indexing(batch_size=100)
+
+        scanner._secscan_api.index.assert_not_called()
+
     def test_noop_when_nothing_to_do(self, initialized_db, scanner):
+        ManifestSecurityStatus.delete().execute()
         for m in Manifest.select():
             ManifestSecurityStatus.create(
                 manifest=m,

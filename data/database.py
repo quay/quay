@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import json
 import logging
 import os
 import string
@@ -221,6 +222,66 @@ SCHEME_SPECIALIZED_FOR_UPDATE = {
 }
 
 
+class _PgJsonOps:
+    @staticmethod
+    def field_lt(field, key, value):
+        return SQL("COALESCE((%s->>'%s')::int, 0) < %s" % (field.column_name, key, int(value)))
+
+    @staticmethod
+    def increment(field, key):
+        col = field.column_name
+        return SQL(
+            "jsonb_set(COALESCE(%s, '{}'), '{%s}', to_jsonb(COALESCE((%s->>'%s')::int, 0) + 1))"
+            % (col, key, col, key)
+        )
+
+    @staticmethod
+    def increment_and_set(field, increment_key, attrs):
+        col = field.column_name
+        return SQL(
+            "jsonb_set("
+            "COALESCE(%s, '{}') || %%s::jsonb, "
+            "'{%s}', "
+            "to_jsonb(COALESCE((%s->>'%s')::int, 0) + 1))"
+            % (col, increment_key, col, increment_key),
+            params=[json.dumps(attrs)],
+        )
+
+
+class _SqliteJsonOps:
+    @staticmethod
+    def field_lt(field, key, value):
+        return SQL(
+            "COALESCE(json_extract(%s, '$.%s'), 0) < %s" % (field.column_name, key, int(value))
+        )
+
+    @staticmethod
+    def increment(field, key):
+        col = field.column_name
+        return SQL(
+            "json_set(COALESCE(%s, '{}'), '$.%s', COALESCE(json_extract(%s, '$.%s'), 0) + 1)"
+            % (col, key, col, key)
+        )
+
+    @staticmethod
+    def increment_and_set(field, increment_key, attrs):
+        col = field.column_name
+        return SQL(
+            "json_set("
+            "json_patch(COALESCE(%s, '{}'), ?), "
+            "'$.%s', "
+            "COALESCE(json_extract(%s, '$.%s'), 0) + 1)" % (col, increment_key, col, increment_key),
+            params=[json.dumps(attrs)],
+        )
+
+
+SCHEME_SPECIALIZED_JSON_OPS = {
+    "sqlite": _SqliteJsonOps(),
+}
+
+_pg_json_ops = _PgJsonOps()
+
+
 def real_advisory_xact_lock(lock_id):
     """Acquire a PostgreSQL transaction-scoped advisory lock.
 
@@ -422,6 +483,7 @@ db_concat_func = CallableProxy()
 db_encrypter = Proxy()
 db_count_estimator = CallableProxy()
 db_advisory_xact_lock = CallableProxy()
+db_json_ops = Proxy()
 ensure_under_transaction = CallableProxy()
 
 
@@ -697,6 +759,9 @@ def configure(config_object, testing=False):
     db_encrypter.initialize(FieldEncrypter(config_object.get("DATABASE_SECRET_KEY")))
     db_count_estimator.initialize(SCHEME_ESTIMATOR_FUNCTION[parsed_write_uri.drivername])
     db_regex_search.initialize(SCHEME_REGEX_FUNCTION.get(parsed_write_uri.drivername, regex_search))
+    db_json_ops.initialize(
+        SCHEME_SPECIALIZED_JSON_OPS.get(parsed_write_uri.drivername, _pg_json_ops)
+    )
 
     read_replicas = config_object.get("DB_READ_REPLICAS", None)
     is_read_only = config_object.get("REGISTRY_STATE", "normal") == "readonly"

@@ -76,6 +76,8 @@ class JSONField(TextField):
     def python_value(self, value):
         if value is None or value == "":
             return {}
+        if isinstance(value, (dict, list)):
+            return value
         return json.loads(value)
 
 

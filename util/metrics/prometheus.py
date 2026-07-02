@@ -156,6 +156,23 @@ secscan_v2_cycle_duration = Histogram(
     buckets=(1, 5, 10, 30, 60, 120, 300, 600, INF),
 )
 
+secscan_v2_claim_source = Counter(
+    "quay_secscan_v2_claim_source_total",
+    "manifests claimed by source (unindexed_sweep vs mss_batch)",
+    labelnames=["source"],
+)
+
+secscan_v2_claim_status = Counter(
+    "quay_secscan_v2_claim_status_total",
+    "manifests claimed from MSS batch by original index status",
+    labelnames=["status"],
+)
+
+secscan_v2_pending_creation_failures = Counter(
+    "quay_secscan_v2_pending_creation_failures_total",
+    "failures creating PENDING ManifestSecurityStatus at push time",
+)
+
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
