@@ -29,6 +29,7 @@ type MetadataStore interface {
 
 	// Upload tracking (prevents GC of unreferenced blobs during push)
 	PutUploadedBlob(ctx context.Context, repoID int64, dgst digest.Digest) error
+	DeleteUploadedBlob(ctx context.Context, repoID int64, dgst digest.Digest) (int64, error)
 	CleanExpiredUploadedBlobs(ctx context.Context) error
 }
 

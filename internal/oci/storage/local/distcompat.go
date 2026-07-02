@@ -122,20 +122,14 @@ func (d *DistDriver) resolveLink(ctx context.Context, repoID int64, path string)
 	return "", fmt.Errorf("unknown metadata path")
 }
 
-// resolveLayerLink checks if a blob is linked to the repo (via manifestblob or
-// uploadedblob), falling back to global existence for blobs uploaded but not
-// yet referenced by a manifest.
+// resolveLayerLink checks if a blob is linked to the repo via manifestblob or
+// uploadedblob, matching Python's repository-scoped blob lookup.
 func (d *DistDriver) resolveLayerLink(ctx context.Context, repoID int64, path string) (digest.Digest, error) {
 	dgst, err := digestFromLinkPath(path, "/_layers/")
 	if err != nil {
 		return "", err
 	}
 	if ok, err := d.meta.BlobLinkedToRepo(ctx, repoID, dgst); err != nil {
-		return "", err
-	} else if ok {
-		return dgst, nil
-	}
-	if ok, err := d.meta.BlobExists(ctx, dgst); err != nil {
 		return "", err
 	} else if ok {
 		return dgst, nil
@@ -518,8 +512,8 @@ func (d *DistDriver) Move(ctx context.Context, src, dst string) error {
 	return d.blobs.CommitUpload(ctx, id, dgst)
 }
 
-// Delete removes blobs by digest, upload directories by canceling the
-// upload, and is a no-op for metadata (handled by the middleware).
+// Delete removes blobs by digest, upload directories by canceling the upload,
+// and repo-scoped layer upload links by unlinking uploadedblob metadata.
 func (d *DistDriver) Delete(ctx context.Context, path string) error {
 	switch classify(path) {
 	case pathBlob:
@@ -542,8 +536,35 @@ func (d *DistDriver) Delete(ctx context.Context, path string) error {
 		return err
 
 	default:
+		if strings.Contains(path, "/_layers/") && strings.HasSuffix(path, "/link") {
+			return d.deleteLayerLink(ctx, path)
+		}
 		return nil // metadata deletion handled by middleware
 	}
+}
+
+func (d *DistDriver) deleteLayerLink(ctx context.Context, path string) error {
+	repo := repoFromPath(path)
+	if repo == "" {
+		return storagedriver.PathNotFoundError{Path: path}
+	}
+	repoID, err := d.meta.GetRepositoryID(ctx, repoNameFromString(repo))
+	if err != nil {
+		return storagedriver.PathNotFoundError{Path: path}
+	}
+	dgst, err := digestFromLinkPath(path, "/_layers/")
+	if err != nil {
+		return err
+	}
+	linked, err := d.meta.BlobLinkedToRepo(ctx, repoID, dgst)
+	if err != nil {
+		return err
+	}
+	if !linked {
+		return storagedriver.PathNotFoundError{Path: path}
+	}
+	_, err = d.meta.DeleteUploadedBlob(ctx, repoID, dgst)
+	return err
 }
 
 // RedirectURL returns empty — local storage serves content directly.

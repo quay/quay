@@ -26,6 +26,13 @@ SELECT COALESCE(SUM(image_size), 0) FROM imagestorage WHERE uploading = 0;
 INSERT OR IGNORE INTO uploadedblob (repository_id, blob_id, uploaded_at, expires_at)
 VALUES (?, ?, datetime('now'), datetime('now', '+1 hour'));
 
+-- name: DeleteUploadedBlob :execrows
+DELETE FROM uploadedblob
+WHERE repository_id = ?
+  AND blob_id IN (
+    SELECT id FROM imagestorage WHERE content_checksum = ?
+  );
+
 -- name: CleanExpiredUploadedBlobs :exec
 DELETE FROM uploadedblob WHERE expires_at < datetime('now');
 

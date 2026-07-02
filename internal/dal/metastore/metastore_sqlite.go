@@ -501,6 +501,21 @@ func (s *SQLiteStore) PutUploadedBlob(ctx context.Context, repoID int64, dgst di
 	return tx.Commit()
 }
 
+// DeleteUploadedBlob removes a repository-scoped upload marker for a blob.
+func (s *SQLiteStore) DeleteUploadedBlob(ctx context.Context, repoID int64, dgst digest.Digest) (int64, error) {
+	q := daldb.New(s.db)
+	checksum := sql.NullString{String: dgst.String(), Valid: true}
+
+	rows, err := q.DeleteUploadedBlob(ctx, daldb.DeleteUploadedBlobParams{
+		RepositoryID:    repoID,
+		ContentChecksum: checksum,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("delete uploaded blob %s from repo %d: %w", dgst, repoID, err)
+	}
+	return rows, nil
+}
+
 // CleanExpiredUploadedBlobs removes uploaded blob markers that have expired.
 func (s *SQLiteStore) CleanExpiredUploadedBlobs(ctx context.Context) error {
 	q := daldb.New(s.db)
