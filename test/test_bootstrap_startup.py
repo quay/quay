@@ -436,6 +436,8 @@ def test_feature_disabled_revokes_owner_bootstrap_applications(initialized_db, t
     other_token, _ = model.oauth.create_bootstrap_oauth_api_token(
         application, other_user, "repo:write"
     )
+    with open(config["BOOTSTRAP_TOKEN_PATH"], "w") as f:
+        f.write("stale-token")
 
     with patch("boot.app") as mock_app:
         mock_app.config = config
@@ -450,6 +452,66 @@ def test_feature_disabled_revokes_owner_bootstrap_applications(initialized_db, t
     )
     assert model.oauth.lookup_access_token_by_uuid(owner_token.uuid) is None
     assert model.oauth.lookup_access_token_by_uuid(other_token.uuid) is None
+    assert not os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
+
+
+def test_feature_disabled_deletes_stale_token_file_without_bootstrap_application(
+    initialized_db, tmp_path
+):
+    from boot import setup_bootstrap_token
+
+    config = _app_config(tmp_path, feature_enabled=False)
+    with open(config["BOOTSTRAP_TOKEN_PATH"], "w") as f:
+        f.write("stale-token")
+
+    with patch("boot.app") as mock_app:
+        mock_app.config = config
+        setup_bootstrap_token()
+
+    assert not os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
+
+
+def test_feature_disabled_ignores_missing_local_token_file(initialized_db, tmp_path):
+    from boot import setup_bootstrap_token
+
+    config = _app_config(tmp_path, feature_enabled=False)
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(config),
+        owner,
+    )
+    token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
+
+    with patch("boot.app") as mock_app:
+        mock_app.config = config
+        setup_bootstrap_token()
+
+    assert not os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
+    assert model.oauth.lookup_access_token_by_uuid(token.uuid) is None
+
+
+def test_feature_disabled_revokes_database_tokens_when_local_file_delete_fails(
+    initialized_db, tmp_path
+):
+    from boot import setup_bootstrap_token
+
+    config = _app_config(tmp_path, feature_enabled=False)
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(config),
+        owner,
+    )
+    token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
+
+    with (
+        patch("boot.app") as mock_app,
+        patch("boot.delete_bootstrap_token", side_effect=OSError("boom")) as mock_delete,
+    ):
+        mock_app.config = config
+        setup_bootstrap_token()
+
+    mock_delete.assert_called_once_with(config)
+    assert model.oauth.lookup_access_token_by_uuid(token.uuid) is None
 
 
 def test_feature_disabled_deletes_bootstrap_application_with_mixed_tokens(initialized_db, tmp_path):

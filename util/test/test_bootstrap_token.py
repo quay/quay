@@ -8,6 +8,8 @@ from config import DefaultConfig
 from util.bootstrap_token import (
     DEFAULT_BOOTSTRAP_TOKEN_PATH,
     MAX_BOOTSTRAP_TOKEN_FILE_BYTES,
+    delete_bootstrap_token,
+    delete_token_file,
     read_bootstrap_token,
     read_token_file,
     write_bootstrap_token,
@@ -63,6 +65,20 @@ def test_read_token_file_returns_token(tmp_path):
     assert read_token_file(path) == "mytoken123"
 
 
+def test_delete_token_file_removes_existing_file(tmp_path):
+    path = str(tmp_path / "token.json")
+    write_token_file(path, "mytoken123")
+
+    assert delete_token_file(path) is True
+    assert not os.path.exists(path)
+
+
+def test_delete_token_file_missing_file_returns_false(tmp_path):
+    path = str(tmp_path / "token.json")
+
+    assert delete_token_file(path) is False
+
+
 @pytest.mark.parametrize(
     "content",
     [
@@ -109,3 +125,17 @@ def test_write_and_read_bootstrap_token_uses_configured_path(tmp_path):
     write_bootstrap_token(config, "mytoken")
 
     assert read_bootstrap_token(config) == "mytoken"
+
+
+def test_delete_bootstrap_token_uses_configured_path(tmp_path):
+    config = {"BOOTSTRAP_TOKEN_PATH": str(tmp_path / "token.json")}
+    write_bootstrap_token(config, "mytoken")
+
+    assert delete_bootstrap_token(config) is True
+    assert not os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
+
+
+def test_delete_bootstrap_token_missing_file_returns_false(tmp_path):
+    config = {"BOOTSTRAP_TOKEN_PATH": str(tmp_path / "token.json")}
+
+    assert delete_bootstrap_token(config) is False

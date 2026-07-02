@@ -26,7 +26,7 @@ from data.model.oauth import (
 from data.model.release import set_region_release
 from data.model.service_keys import get_service_key
 from data.model.user import get_user
-from util.bootstrap_token import write_bootstrap_token
+from util.bootstrap_token import delete_bootstrap_token, write_bootstrap_token
 from util.config.database import sync_database_with_config
 from util.generatepresharedkey import generate_key
 
@@ -232,6 +232,16 @@ def _revoke_bootstrap_tokens():
                     bootstrap_applications.append(application)
 
         delete_applications(bootstrap_applications)
+
+    try:
+        deleted_token_file = delete_bootstrap_token(app.config)
+    except OSError:
+        logger.exception("Failed to delete local bootstrap token file")
+    else:
+        if deleted_token_file:
+            logger.info("Deleted local bootstrap token file")
+        else:
+            logger.debug("Local bootstrap token file did not exist, skipping deletion")
 
     logger.info(
         "Deleted %s bootstrap applications (feature disabled)",

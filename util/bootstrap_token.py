@@ -30,6 +30,20 @@ def read_token_file(path):
     return _access_token_from_json(token_json)
 
 
+def delete_token_file(path):
+    """Delete path if present, returning whether a file was removed.
+
+    Missing files are expected in multi-node installations where bootstrap token
+    files are node-local. Raises OSError for failures other than absence.
+    """
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        return False
+
+    return True
+
+
 def write_token_file(path, access_token):
     """Write {"access_token": "..."} to path with 0600 permissions.
 
@@ -71,3 +85,13 @@ def write_bootstrap_token(app_config, access_token):
     """
     token_path = app_config.get("BOOTSTRAP_TOKEN_PATH", DEFAULT_BOOTSTRAP_TOKEN_PATH)
     write_token_file(token_path, access_token)
+
+
+def delete_bootstrap_token(app_config):
+    """Delete the configured local bootstrap token if present.
+
+    Returns whether a file was removed. Missing files are not an error because
+    token files are node-local in multi-node installations.
+    """
+    token_path = app_config.get("BOOTSTRAP_TOKEN_PATH", DEFAULT_BOOTSTRAP_TOKEN_PATH)
+    return delete_token_file(token_path)
