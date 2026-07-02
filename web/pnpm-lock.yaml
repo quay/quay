@@ -40,7 +40,7 @@ importers:
         specifier: ^6.0.0
         version: 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@redhat-cloud-services/frontend-components':
-        specifier: ^6.0.9
+        specifier: ^6.1.1
         version: 6.1.1(@patternfly/react-core@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-icons@6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-tokens@6.5.1)(lodash@4.18.1)(prop-types@15.8.1)(react-content-loader@6.2.1(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1))(react-router-dom@7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@redhat-cloud-services/frontend-components-config-utilities':
         specifier: ^4.4.1
@@ -920,6 +920,10 @@ packages:
     resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
     engines: {node: '>=6.9.0'}
 
+  '@babel/runtime@7.29.7':
+    resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/template@7.28.6':
     resolution: {integrity: sha512-YA6Ma2KsCdGb+WC6UpBVFJGXL58MDA6oyONbjyF/+5sBgxY/dwkhLogbMT2GXXyU84/IhRw/2D1Os1B/giz+BQ==}
     engines: {node: '>=6.9.0'}
@@ -1244,8 +1248,8 @@ packages:
       victory-zoom-container:
         optional: true
 
-  '@patternfly/react-component-groups@6.4.0':
-    resolution: {integrity: sha512-vg0761nQ/7hfggbp6+XowRcQQSd9oIToh77+4lmsyrs41MkA5ppQIPBCZ4lUZW87kmEPhkHqglpJcVfsrrIM/g==}
+  '@patternfly/react-component-groups@6.5.0':
+    resolution: {integrity: sha512-uvrAuUixZW618gsQY06nOcQWZclsCtOa5mixi6KQKOyrpH9GgtrihJ/fVJsA1a5HcZzC4SKIdd3wkXArs/vxEg==}
     peerDependencies:
       '@patternfly/react-drag-drop': ^6.0.0
       react: ^18.2.0
@@ -1257,8 +1261,8 @@ packages:
       react: ^18.2.0
       react-dom: ^18.2.0
 
-  '@patternfly/react-core@6.5.1':
-    resolution: {integrity: sha512-fFZ0hcIyHJO27hxbf53W3m2R11l0O9WxR7CusJXuCEaNMP31ULrhf5Pv6ROdTrrs39Kl/yPv+2QuxQfe/4e72g==}
+  '@patternfly/react-core@6.6.0':
+    resolution: {integrity: sha512-MLYPcJvdDWHZqWcvEH2QhKtCg6APRfrDJ4o192/wc2LUaf4ViGVsVLKDMbaKCamhbGauv7KpffNCSy3fjRy4Bw==}
     peerDependencies:
       react: ^18.2.0
       react-dom: ^18.2.0
@@ -1275,8 +1279,8 @@ packages:
       react: ^18.2.0
       react-dom: ^18.2.0
 
-  '@patternfly/react-icons@6.5.1':
-    resolution: {integrity: sha512-CnuPvTTs4MMWx8CAUkmnY690ouN1bbHjunsyXu3QxvGOmzbztP+wS4BdiLS8TIXOIH80Yb7KPhnF8VkA+CduOA==}
+  '@patternfly/react-icons@6.6.0':
+    resolution: {integrity: sha512-cDDUm4PFxqeBo4PS08xO1eFd6CMTOppn5RS4fs2hAgu/vRFkPXuL0zZCkxgRg5asd/W4olEN7WrIAbvjKbHKiQ==}
     peerDependencies:
       react: ^18.2.0
       react-dom: ^18.2.0
@@ -1284,8 +1288,8 @@ packages:
   '@patternfly/react-styles@6.4.0':
     resolution: {integrity: sha512-EXmHA67s5sy+Wy/0uxWoUQ52jr9lsH2wV3QcgtvVc5zxpyBX89gShpqv4jfVqaowznHGDoL6fVBBrSe9BYOliQ==}
 
-  '@patternfly/react-styles@6.5.1':
-    resolution: {integrity: sha512-yQMzUbbf6qYM/v3JbPvaCJTgxRbOKoEw229XZmnnM8gDvp8ECiI7LqihrAOK/NA6T6M3DDgsRMd2JurUBhPDEw==}
+  '@patternfly/react-styles@6.6.0':
+    resolution: {integrity: sha512-u/HzJ48Cg6Nb12dIVbj4g31lMDVHPHVKRXkRuPBcuK6MQyAsxSfcyWVivW7Lga8TsNhFW26JWB5ay+IW5xpZ8A==}
 
   '@patternfly/react-table@6.4.3':
     resolution: {integrity: sha512-lPHjVOEkJpCtXMtE48pLGwMmLsCgYJvoiZpuW2/Vlg0y0pmg0nfYUVDBBTXfQ3dgskn/zb5SAgZr158VQQoBtw==}
@@ -1298,6 +1302,9 @@ packages:
 
   '@patternfly/react-tokens@6.5.1':
     resolution: {integrity: sha512-zwepLsIQTL0Lf4R2/PIBOk1m+pm0hYVT3lktf2H4+Y87eRIifwMRb19c+pr4hj4ckGvHs+WxwjTfTj2Qqwn5rw==}
+
+  '@patternfly/react-tokens@6.6.0':
+    resolution: {integrity: sha512-oRUFYJAM9LKYTM9YRnd7rz3wB6ZoaBWit/Eu+EK22J4o5AhZRjLt0+ewXQ7I99dBP4c8BbnPEUFnxQYAroqNLg==}
 
   '@pkgr/core@0.2.9':
     resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
@@ -2588,6 +2595,9 @@ packages:
     resolution: {integrity: sha512-BS8PfmtDGnrgYdOonGZQdLZslWIeCGFP9tpan0hi1Co2Zr2NKADsvGYA8XxuG/4UWgJ6Cjtv+YJnB6MM69QGlQ==}
     engines: {node: '>= 0.4'}
 
+  dayjs@1.11.21:
+    resolution: {integrity: sha512-98IT+HOahAisibz/yjKbzuOBwYcjJ7BCLPzARyHiyEBmRz4fatF+KPJszEHXsGYjUG234aH/cOjW1wwTbKUZlA==}
+
   debounce-promise@3.1.2:
     resolution: {integrity: sha512-rZHcgBkbYavBeD9ej6sP56XfG53d51CD4dnaw989YX/nZ/ZJfgRx/9ePKmTNiUiyQvh4mtrMoS3OAWW+yoYtpg==}
 
@@ -3813,6 +3823,9 @@ packages:
   launch-editor@2.13.2:
     resolution: {integrity: sha512-4VVDnbOpLXy/s8rdRCSXb+zfMeFR0WlJWpET1iA9CQdlZDfwyLjUuGQzXU4VeOoey6AicSAluWan7Etga6Kcmg==}
 
+  launder@1.7.1:
+    resolution: {integrity: sha512-mU6WRz5EusL9ZZuiZ5SO4Y6C0P9PAUR9iwdb6bzj4KDihm28DiHFw+/yk9DBH4f+Pv1wuzQ4e2jV3oQ7mkIqvw==}
+
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
@@ -4356,8 +4369,8 @@ packages:
     resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
     engines: {node: '>=10'}
 
-  p-map@7.0.4:
-    resolution: {integrity: sha512-tkAQEw8ysMzmkhgw8k+1U/iPhWNhykKnSk4Rd5zLoPJCuJaGRPo6YposrZgaxHKzDHdDWWZvE/Sk7hsL2X/CpQ==}
+  p-map@7.0.5:
+    resolution: {integrity: sha512-e8vJF4XdVkzqqSHguEMz41mQO1wKwxKm5ENrUJQUu9kLDCtn83cxbyHZcszr4QC5zEA7WffRRC4gsTecC7J9oA==}
     engines: {node: '>=18'}
 
   p-retry@4.6.2:
@@ -4435,6 +4448,10 @@ packages:
 
   picomatch@4.0.4:
     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
+    engines: {node: '>=12'}
+
+  picomatch@4.0.5:
+    resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
     engines: {node: '>=12'}
 
   pkg-dir@4.2.0:
@@ -4656,8 +4673,8 @@ packages:
     resolution: {integrity: sha512-SoSL4+OSEtR99LHFZQiJLkT59C5B1amGO1NzTwj7TT1qCUgUO6hxOvzkOYxD+vMrXBM3XJIKzokoERdqQq/Zmg==}
     engines: {node: ^10 || ^12 || >=14}
 
-  postcss@8.5.15:
-    resolution: {integrity: sha512-FfR8sjd4em2T6fb3I2MwAJU7HWVMr9zba+enmQeeWFfCbm+UOC/0X4DS8XtpUTMwWMGbjKYP7xjfNekzyGmB3A==}
+  postcss@8.5.16:
+    resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
     engines: {node: ^10 || ^12 || >=14}
 
   prelude-ls@1.2.1:
@@ -5002,8 +5019,8 @@ packages:
   safer-buffer@2.1.2:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
 
-  sanitize-html@2.17.3:
-    resolution: {integrity: sha512-Kn4srCAo2+wZyvCNKCSyB2g8RQ8IkX/gQs2uqoSRNu5t9I2qvUyAVvRDiFUVAiX3N3PNuwStY0eNr+ooBHVWEg==}
+  sanitize-html@2.17.5:
+    resolution: {integrity: sha512-ZmU1joGRrvoyctKIiuwUxqR6moLoU2Wk+2bMccN6f7UwhAmwYDvWziqPxRDDN2Qip62NqnIrVrT9akbL6Wretg==}
 
   sass-loader@16.0.8:
     resolution: {integrity: sha512-hcov4ZwZJIGbEuyNr9EmiTmZueyrxSToE6GOzoZnq5JM7ecRO7ttyvilPn+VmRsqiP16+VYZzVnGZj/hzZgKBA==}
@@ -5059,6 +5076,11 @@ packages:
 
   semver@7.8.0:
     resolution: {integrity: sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
+  semver@7.8.5:
+    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -6867,6 +6889,8 @@ snapshots:
 
   '@babel/runtime@7.29.2': {}
 
+  '@babel/runtime@7.29.7': {}
+
   '@babel/template@7.28.6':
     dependencies:
       '@babel/code-frame': 7.29.0
@@ -7071,7 +7095,7 @@ snapshots:
     dependencies:
       lodash: 4.18.1
       react: 18.3.1
-      semver: 7.8.0
+      semver: 7.8.5
       uuid: 8.3.2
       yup: 0.32.11
 
@@ -7168,12 +7192,12 @@ snapshots:
       victory-voronoi-container: 37.3.6(react@18.3.1)
       victory-zoom-container: 37.3.6(react@18.3.1)
 
-  '@patternfly/react-component-groups@6.4.0(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@patternfly/react-component-groups@6.5.0(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@patternfly/react-core': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-drag-drop': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-icons': 6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-styles': 6.4.0
+      '@patternfly/react-styles': 6.6.0
       '@patternfly/react-table': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
@@ -7190,11 +7214,11 @@ snapshots:
       react-dropzone: 14.4.1(react@18.3.1)
       tslib: 2.8.1
 
-  '@patternfly/react-core@6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@patternfly/react-core@6.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@patternfly/react-icons': 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-styles': 6.5.1
-      '@patternfly/react-tokens': 6.5.1
+      '@patternfly/react-icons': 6.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-styles': 6.6.0
+      '@patternfly/react-tokens': 6.6.0
       focus-trap: 7.6.6
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
@@ -7206,9 +7230,9 @@ snapshots:
       '@dnd-kit/core': 6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@dnd-kit/modifiers': 9.0.0(@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@dnd-kit/sortable': 10.0.0(@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-core': 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-icons': 6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@patternfly/react-styles': 6.5.1
+      '@patternfly/react-core': 6.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-icons': 6.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-styles': 6.6.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       resize-observer-polyfill: 1.5.1
@@ -7218,14 +7242,15 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@patternfly/react-icons@6.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@patternfly/react-icons@6.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
+      tslib: 2.8.1
 
   '@patternfly/react-styles@6.4.0': {}
 
-  '@patternfly/react-styles@6.5.1': {}
+  '@patternfly/react-styles@6.6.0': {}
 
   '@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
@@ -7241,6 +7266,8 @@ snapshots:
   '@patternfly/react-tokens@6.4.0': {}
 
   '@patternfly/react-tokens@6.5.1': {}
+
+  '@patternfly/react-tokens@6.6.0': {}
 
   '@pkgr/core@0.2.9': {}
 
@@ -7271,7 +7298,7 @@ snapshots:
       axios: 1.16.1
       commander: 2.20.3
       mkdirp: 1.0.4
-      p-map: 7.0.4
+      p-map: 7.0.5
       react: 18.3.1
       react-content-loader: 6.2.1(react@18.3.1)
       react-dom: 18.3.1(react@18.3.1)
@@ -7283,7 +7310,7 @@ snapshots:
 
   '@redhat-cloud-services/frontend-components@6.1.1(@patternfly/react-core@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-icons@6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-table@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@patternfly/react-tokens@6.5.1)(lodash@4.18.1)(prop-types@15.8.1)(react-content-loader@6.2.1(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-redux@9.2.0(@types/react@18.3.28)(react@18.3.1))(react-router-dom@7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@patternfly/react-component-groups': 6.4.0(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@patternfly/react-component-groups': 6.5.0(@patternfly/react-drag-drop@6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-core': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-icons': 6.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@patternfly/react-table': 6.4.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -7300,7 +7327,7 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
       react-redux: 9.2.0(@types/react@18.3.28)(react@18.3.1)
       react-router-dom: 7.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      sanitize-html: 2.17.3
+      sanitize-html: 2.17.5
     transitivePeerDependencies:
       - '@patternfly/react-drag-drop'
       - debug
@@ -8526,7 +8553,7 @@ snapshots:
 
   css-jss@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
       jss-preset-default: 10.10.0
 
@@ -8581,7 +8608,7 @@ snapshots:
 
   css-vendor@2.0.8:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       is-in-browser: 1.1.3
 
   css-what@6.2.2: {}
@@ -8699,6 +8726,8 @@ snapshots:
       call-bound: 1.0.4
       es-errors: 1.3.0
       is-data-view: 1.0.2
+
+  dayjs@1.11.21: {}
 
   debounce-promise@3.1.2: {}
 
@@ -9360,6 +9389,10 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.4):
     optionalDependencies:
       picomatch: 4.0.4
+
+  fdir@6.5.0(picomatch@4.0.5):
+    optionalDependencies:
+      picomatch: 4.0.5
 
   file-entry-cache@6.0.1:
     dependencies:
@@ -10061,75 +10094,75 @@ snapshots:
 
   jss-plugin-camel-case@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       hyphenate-style-name: 1.1.0
       jss: 10.10.0
 
   jss-plugin-compose@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
       tiny-warning: 1.0.3
 
   jss-plugin-default-unit@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
 
   jss-plugin-expand@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
 
   jss-plugin-extend@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
       tiny-warning: 1.0.3
 
   jss-plugin-global@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
 
   jss-plugin-nested@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
       tiny-warning: 1.0.3
 
   jss-plugin-props-sort@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
 
   jss-plugin-rule-value-function@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
       tiny-warning: 1.0.3
 
   jss-plugin-rule-value-observable@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
       symbol-observable: 1.2.0
 
   jss-plugin-template@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
       tiny-warning: 1.0.3
 
   jss-plugin-vendor-prefixer@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       css-vendor: 2.0.8
       jss: 10.10.0
 
   jss-preset-default@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       jss: 10.10.0
       jss-plugin-camel-case: 10.10.0
       jss-plugin-compose: 10.10.0
@@ -10146,7 +10179,7 @@ snapshots:
 
   jss@10.10.0:
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       csstype: 3.2.3
       is-in-browser: 1.1.3
       tiny-warning: 1.0.3
@@ -10185,6 +10218,10 @@ snapshots:
     dependencies:
       picocolors: 1.1.1
       shell-quote: 1.8.4
+
+  launder@1.7.1:
+    dependencies:
+      dayjs: 1.11.21
 
   levn@0.4.1:
     dependencies:
@@ -10882,7 +10919,7 @@ snapshots:
     dependencies:
       p-limit: 3.1.0
 
-  p-map@7.0.4: {}
+  p-map@7.0.5: {}
 
   p-retry@4.6.2:
     dependencies:
@@ -10953,6 +10990,8 @@ snapshots:
   picomatch@2.3.2: {}
 
   picomatch@4.0.4: {}
+
+  picomatch@4.0.5: {}
 
   pkg-dir@4.2.0:
     dependencies:
@@ -11154,7 +11193,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postcss@8.5.15:
+  postcss@8.5.16:
     dependencies:
       nanoid: 3.3.15
       picocolors: 1.1.1
@@ -11269,7 +11308,7 @@ snapshots:
 
   react-jss@10.10.0(react@18.3.1):
     dependencies:
-      '@babel/runtime': 7.29.2
+      '@babel/runtime': 7.29.7
       '@emotion/is-prop-valid': 0.7.3
       css-jss: 10.10.0
       hoist-non-react-statics: 3.3.2
@@ -11572,14 +11611,15 @@ snapshots:
 
   safer-buffer@2.1.2: {}
 
-  sanitize-html@2.17.3:
+  sanitize-html@2.17.5:
     dependencies:
       deepmerge: 4.3.1
       escape-string-regexp: 4.0.0
       htmlparser2: 10.1.0
       is-plain-object: 5.0.0
+      launder: 1.7.1
       parse-srcset: 1.0.2
-      postcss: 8.5.14
+      postcss: 8.5.16
 
   sass-loader@16.0.8(sass@1.99.0)(webpack@5.106.2):
     dependencies:
@@ -11625,6 +11665,8 @@ snapshots:
   semver@6.3.1: {}
 
   semver@7.8.0: {}
+
+  semver@7.8.5: {}
 
   send@0.19.2:
     dependencies:
@@ -12018,8 +12060,8 @@ snapshots:
 
   tinyglobby@0.2.17:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
+      fdir: 6.5.0(picomatch@4.0.5)
+      picomatch: 4.0.5
 
   tinyrainbow@3.1.0: {}
 
@@ -12501,8 +12543,8 @@ snapshots:
   vite@8.0.12(@types/node@20.19.41)(sass@1.99.0)(terser@5.47.1):
     dependencies:
       lightningcss: 1.32.0
-      picomatch: 4.0.4
-      postcss: 8.5.15
+      picomatch: 4.0.5
+      postcss: 8.5.16
       rolldown: 1.0.0
       tinyglobby: 0.2.17
     optionalDependencies:
