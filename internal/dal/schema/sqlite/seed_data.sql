@@ -1,6 +1,6 @@
 INSERT INTO accesstokenkind VALUES(1,'build-worker');
 INSERT INTO accesstokenkind VALUES(2,'pushpull-token');
-INSERT INTO alembic_version VALUES('b1a79fa8e630');
+INSERT INTO alembic_version VALUES('sqlite_tagidx_0002');
 INSERT INTO apprblobplacementlocation VALUES(1,'local_eu');
 INSERT INTO apprblobplacementlocation VALUES(2,'local_us');
 INSERT INTO apprtagkind VALUES(1,'tag');

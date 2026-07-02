@@ -15,9 +15,9 @@ var QuaySchemaSQL string
 //go:embed sqlite/seed_data.sql
 var SeedDataSQL string
 
-// MigrationFiles contains SQL migration files ordered by filename.
-// Each file must include a "-- revision: <id>" comment identifying
-// the alembic version it transitions to.
+// MigrationFiles contains SQLite migration files.
+// Bridge migrations include a "-- revision: <id>" comment. Chainable
+// SQLite migrations also include "-- down_revision: <id>".
 //
 //go:embed sqlite/migrations
 var MigrationFiles embed.FS
