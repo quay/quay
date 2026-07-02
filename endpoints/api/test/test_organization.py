@@ -7,6 +7,8 @@ from data.database import Tag, get_epoch_timestamp_ms
 from endpoints.api import api
 from endpoints.api.organization import (
     Organization,
+    OrganizationApplicationResource,
+    OrganizationApplications,
     OrganizationCollaboratorList,
     OrganizationList,
     OrganizationProxyCacheConfig,
@@ -470,3 +472,79 @@ class TestProxyCacheConfigWithImmutableTags:
         has_immutable = namespace_has_immutable_tags(org.id)
         # Initially there should be no immutable tags
         assert isinstance(has_immutable, bool)
+
+
+def test_create_application_rejects_reserved_bootstrap_name(app):
+    with client_with_identity("devtable", app) as cl:
+        response = conduct_api_call(
+            cl,
+            OrganizationApplications,
+            "POST",
+            {"orgname": "buynlarge"},
+            {"name": model.oauth.BOOTSTRAP_APP_NAME},
+            400,
+        )
+
+    assert "reserved" in response.json["error_message"]
+
+
+def test_create_application_rejects_configured_bootstrap_name(app):
+    with patch.dict(realapp.config, {"BOOTSTRAP_APP_NAME": "custom-bootstrap-api"}):
+        with client_with_identity("devtable", app) as cl:
+            response = conduct_api_call(
+                cl,
+                OrganizationApplications,
+                "POST",
+                {"orgname": "buynlarge"},
+                {"name": "custom-bootstrap-api"},
+                400,
+            )
+
+    assert "reserved" in response.json["error_message"]
+
+
+def test_update_application_rejects_reserved_bootstrap_name(app):
+    org = model.organization.get_organization("buynlarge")
+    application = model.oauth.create_application(org, "legit-bootstrap-api-test", "", "")
+
+    with client_with_identity("devtable", app) as cl:
+        response = conduct_api_call(
+            cl,
+            OrganizationApplicationResource,
+            "PUT",
+            {"orgname": "buynlarge", "client_id": application.client_id},
+            {
+                "name": model.oauth.BOOTSTRAP_APP_NAME,
+                "redirect_uri": "",
+                "application_uri": "",
+            },
+            400,
+        )
+
+    application = model.oauth.lookup_application(org, application.client_id)
+    assert "reserved" in response.json["error_message"]
+    assert application.name == "legit-bootstrap-api-test"
+
+
+def test_update_application_rejects_configured_bootstrap_name(app):
+    org = model.organization.get_organization("buynlarge")
+    application = model.oauth.create_application(org, "legit-custom-bootstrap-api-test", "", "")
+
+    with patch.dict(realapp.config, {"BOOTSTRAP_APP_NAME": "custom-bootstrap-api"}):
+        with client_with_identity("devtable", app) as cl:
+            response = conduct_api_call(
+                cl,
+                OrganizationApplicationResource,
+                "PUT",
+                {"orgname": "buynlarge", "client_id": application.client_id},
+                {
+                    "name": "custom-bootstrap-api",
+                    "redirect_uri": "",
+                    "application_uri": "",
+                },
+                400,
+            )
+
+    application = model.oauth.lookup_application(org, application.client_id)
+    assert "reserved" in response.json["error_message"]
+    assert application.name == "legit-custom-bootstrap-api-test"

@@ -13,6 +13,8 @@ from data.database import (
     OauthAssignedToken,
     OAuthAuthorizationCode,
     User,
+    compute_advisory_lock_id,
+    db_advisory_xact_lock,
     random_string_generator,
 )
 from data.fields import Credential, DecryptedValue
@@ -27,6 +29,11 @@ logger = logging.getLogger(__name__)
 ACCESS_TOKEN_PREFIX_LENGTH = 20
 ACCESS_TOKEN_MINIMUM_CODE_LENGTH = 20
 AUTHORIZATION_CODE_PREFIX_LENGTH = 20
+DEFAULT_TOKEN_EXPIRATION_SECONDS = int(60 * 60 * 24 * 365.25 * 10)  # 10 years
+BOOTSTRAP_APP_NAME = "__quay_bootstrap_app"
+BOOTSTRAP_APP_DESCRIPTION = "Auto-created by bootstrap token provisioning"
+BOOTSTRAP_TOKEN_DATA_KIND = "bootstrap"
+BOOTSTRAP_TOKEN_LOCK_ID = compute_advisory_lock_id("bootstrap_token", 0)
 
 
 class DatabaseAuthorizationProvider(AuthorizationProvider):
@@ -41,7 +48,7 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         """
         Property method to get the token expiration time in seconds.
         """
-        return int(60 * 60 * 24 * 365.25 * 10)  # 10 Years
+        return DEFAULT_TOKEN_EXPIRATION_SECONDS
 
     def validate_client_id(self, client_id):
         return self.get_application_for_client_id(client_id) is not None
@@ -333,6 +340,211 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         )
 
 
+def get_bootstrap_app_name(app_config=None):
+    """Return the configured bootstrap OAuth application name."""
+    if app_config is None:
+        app_config = config.app_config or {}
+
+    return app_config.get("BOOTSTRAP_APP_NAME", BOOTSTRAP_APP_NAME)
+
+
+def get_bootstrap_app_names(app_config=None):
+    """Return reserved bootstrap OAuth application names for the current config."""
+    return {BOOTSTRAP_APP_NAME, get_bootstrap_app_name(app_config)}
+
+
+def is_bootstrap_app_name(name, app_config=None):
+    """Return whether name is reserved for bootstrap OAuth applications."""
+    return name in get_bootstrap_app_names(app_config)
+
+
+def create_bootstrap_application(name, org):
+    """Create a bootstrap OAuth application for the owner."""
+    return create_application(
+        org,
+        name,
+        application_uri="",
+        redirect_uri="",
+        description=BOOTSTRAP_APP_DESCRIPTION,
+    )
+
+
+def _bootstrap_token_data(user_obj, application):
+    """Return metadata stored with bootstrap-created OAuth access tokens."""
+    return json.dumps(
+        {
+            "kind": BOOTSTRAP_TOKEN_DATA_KIND,
+            "owner": user_obj.username,
+            "application_name": application.name,
+        }
+    )
+
+
+def create_bootstrap_oauth_api_token(
+    application, user_obj, scope, expiration_seconds=DEFAULT_TOKEN_EXPIRATION_SECONDS
+):
+    """Create a bootstrap OAuth API access token for an application/user pair."""
+    return create_user_access_token_for_application(
+        user_obj,
+        application,
+        scope,
+        "Bearer",
+        expiration_seconds,
+        data=_bootstrap_token_data(user_obj, application),
+    )
+
+
+def _bootstrap_token_data_json(token):
+    try:
+        return json.loads(token.data or "{}")
+    except (TypeError, ValueError):
+        return {}
+
+
+def is_bootstrap_oauth_token(token, user_obj=None, application=None):
+    """Return whether an OAuth access token has bootstrap token metadata."""
+    token_data = _bootstrap_token_data_json(token)
+    if token_data.get("kind") != BOOTSTRAP_TOKEN_DATA_KIND:
+        return False
+
+    if user_obj is not None and token_data.get("owner") != user_obj.username:
+        return False
+
+    if application is not None and token_data.get("application_name") != application.name:
+        return False
+
+    return True
+
+
+def get_application_tokens(application, authorized_user=None):
+    """Return all OAuth access tokens for the given application."""
+    query = OAuthAccessToken.select().where(OAuthAccessToken.application == application)
+    if authorized_user is not None:
+        query = query.where(OAuthAccessToken.authorized_user == authorized_user)
+
+    return list(query)
+
+
+def get_bootstrap_tokens(application, authorized_user=None):
+    """Return bootstrap-marked OAuth access tokens for the given application."""
+    bootstrap_tokens = []
+    application_tokens = get_application_tokens(application, authorized_user=authorized_user)
+    for token in application_tokens:
+        if is_bootstrap_oauth_token(token, user_obj=authorized_user, application=application):
+            bootstrap_tokens.append(token)
+
+    return bootstrap_tokens
+
+
+def get_bootstrap_application_candidates(owner, app_config=None):
+    """Return the canonical and duplicate bootstrap-managed apps for an owner.
+
+    Applications are considered bootstrap-managed only when they are owned by the
+    configured bootstrap owner, have the configured bootstrap app name, and carry
+    at least one bootstrap-marked token for that owner. Results are ordered by
+    application ID descending through lookup_applications_by_name, so the first
+    token-bearing app is the canonical app and the remaining token-bearing apps
+    are duplicates.
+    """
+    bootstrap_application_name = get_bootstrap_app_name(app_config)
+    applications = lookup_applications_by_name(owner, bootstrap_application_name)
+
+    canonical_application = None
+    duplicate_applications = []
+    for application in applications:
+        bootstrap_tokens = get_bootstrap_tokens(application, authorized_user=owner)
+        if not bootstrap_tokens:
+            continue
+
+        if canonical_application is None:
+            canonical_application = application
+            continue
+
+        duplicate_applications.append(application)
+
+    return canonical_application, duplicate_applications
+
+
+def get_canonical_bootstrap_application(owner, app_config=None):
+    """Return the canonical bootstrap-managed app for an owner, if one exists."""
+    canonical_application, _ = get_bootstrap_application_candidates(
+        owner,
+        app_config=app_config,
+    )
+    return canonical_application
+
+
+def _get_bootstrap_owner_for_validation(app_config):
+    owner_name = app_config.get("BOOTSTRAP_TOKEN_OWNER")
+    if not owner_name:
+        return None
+
+    superusers = app_config.get("SUPER_USERS") or []
+    if owner_name not in superusers:
+        return None
+
+    return user.get_user(owner_name)
+
+
+def validate_bootstrap_token(access_token, app_config=None):
+    """Validate a token belongs to the configured canonical bootstrap app."""
+    if app_config is None:
+        app_config = config.app_config or {}
+
+    found = validate_access_token(access_token)
+    if found is None:
+        return None
+
+    owner = _get_bootstrap_owner_for_validation(app_config)
+    if owner is None:
+        return None
+
+    canonical_application = get_canonical_bootstrap_application(owner, app_config=app_config)
+    if canonical_application is None:
+        return None
+
+    if found.application_id != canonical_application.id:
+        return None
+
+    if found.authorized_user_id != owner.id:
+        return None
+
+    if not is_bootstrap_oauth_token(found, user_obj=owner, application=canonical_application):
+        return None
+
+    return found
+
+
+def lookup_applications_by_name(org, name):
+    """Look up OAuthApplications by organization and name in newest-first order."""
+    return list(
+        OAuthApplication.select()
+        .where(
+            OAuthApplication.organization == org,
+            OAuthApplication.name == name,
+        )
+        .order_by(OAuthApplication.id.desc())
+    )
+
+
+def lookup_application_by_name(org, name):
+    """Look up the newest OAuthApplication by organization and name."""
+    applications = lookup_applications_by_name(org, name)
+    return applications[0] if applications else None
+
+
+def delete_applications(applications):
+    """Delete OAuth applications and their dependent OAuth rows."""
+    for application in applications:
+        OauthAssignedToken.delete().where(OauthAssignedToken.application == application).execute()
+        application.delete_instance(recursive=True, delete_nullable=True)
+
+
+def lock_bootstrap_token_operation():
+    """Serialize bootstrap token mutations with a transaction-scoped DB lock."""
+    db_advisory_xact_lock(BOOTSTRAP_TOKEN_LOCK_ID)
+
+
 def create_application(org, name, application_uri, redirect_uri, **kwargs):
     client_secret = kwargs.pop("client_secret", random_string_generator(length=40)())
     return OAuthApplication.create(
@@ -481,6 +693,21 @@ def get_oauth_application_for_client_id(client_id):
 
 
 def create_user_access_token(user_obj, client_id, scope, access_token=None, expires_in=9000):
+    application = get_application_for_client_id(client_id)
+    return create_user_access_token_for_application(
+        user_obj,
+        application,
+        scope,
+        "token",
+        expires_in,
+        access_token=access_token,
+        data="",
+    )
+
+
+def create_user_access_token_for_application(
+    user_obj, application, scope, token_type, expires_in, access_token=None, data=""
+):
     access_token = access_token or random_string_generator(length=40)()
     token_name = access_token[:ACCESS_TOKEN_PREFIX_LENGTH]
     token_code = access_token[ACCESS_TOKEN_PREFIX_LENGTH:]
@@ -489,17 +716,16 @@ def create_user_access_token(user_obj, client_id, scope, access_token=None, expi
     assert len(token_code) >= ACCESS_TOKEN_MINIMUM_CODE_LENGTH
 
     expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
-    application = get_application_for_client_id(client_id)
     created = OAuthAccessToken.create(
         application=application,
         authorized_user=user_obj,
         scope=scope,
-        token_type="token",
+        token_type=token_type,
         access_token="",
         token_code=Credential.from_string(token_code),
         token_name=token_name,
         expires_at=expires_at,
-        data="",
+        data=data,
     )
     return created, access_token
 
