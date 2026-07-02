@@ -84,13 +84,28 @@ func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
 		fmt.Fprintf(w, "Schema is current (version %s)\n", ver)
 		return nil
 	}
-	if !knownOMRVersions[ver] {
-		return fmt.Errorf(
-			"unknown schema version %q — this tool supports OMR v2.0.x (SQLite) databases; "+
-				"if you are on OMR v1.3.x, upgrade to OMR v2.0 first", ver)
+
+	if ver != BridgeTargetVersion {
+		if !knownOMRVersions[ver] {
+			return fmt.Errorf(
+				"unknown schema version %q — this tool supports OMR v2.0.x (SQLite) databases; "+
+					"if you are on OMR v1.3.x, upgrade to OMR v2.0 first", ver)
+		}
+		if err := bridgeToTargetVersion(ctx, db, ver, w); err != nil {
+			return err
+		}
+		ver = BridgeTargetVersion
 	}
 
-	fmt.Fprintf(w, "Bridging schema from %s to %s\n", ver, TargetVersion)
+	fmt.Fprintf(w, "Migrating SQLite schema from %s to %s\n", ver, TargetVersion)
+	if err := ApplyMigrations(ctx, db, ver, TargetVersion, w); err != nil {
+		return fmt.Errorf("apply SQLite migrations: %w", err)
+	}
+	return nil
+}
+
+func bridgeToTargetVersion(ctx context.Context, db *sql.DB, currentVersion string, w io.Writer) error {
+	fmt.Fprintf(w, "Bridging schema from %s to %s\n", currentVersion, BridgeTargetVersion)
 
 	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
 		return fmt.Errorf("disable foreign keys: %w", err)
@@ -107,7 +122,7 @@ func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
 		return err
 	}
 
-	if _, err := tx.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", TargetVersion); err != nil {
+	if _, err := tx.ExecContext(ctx, "UPDATE alembic_version SET version_num = ?", BridgeTargetVersion); err != nil {
 		return fmt.Errorf("stamp version: %w", err)
 	}
 
@@ -115,7 +130,7 @@ func RunBridge(ctx context.Context, db *sql.DB, w io.Writer) error {
 		return fmt.Errorf("commit bridge: %w", err)
 	}
 
-	fmt.Fprintf(w, "Schema bridged to %s\n", TargetVersion)
+	fmt.Fprintf(w, "Schema bridged to %s\n", BridgeTargetVersion)
 	return nil
 }
 

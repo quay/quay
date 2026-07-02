@@ -156,10 +156,16 @@ func linkBlobToManifest(t *testing.T, env *testEnv, repoID, manifestID, blobID i
 // expireTag sets lifetime_end_ms on a tag.
 func expireTag(t *testing.T, env *testEnv, repoID int64, name string, endMs int64) {
 	t.Helper()
-	res, err := env.q.ExpireActiveTag(t.Context(), daldb.ExpireActiveTagParams{
+	activeTag, err := env.q.GetActiveTag(t.Context(), daldb.GetActiveTagParams{
+		RepositoryID: repoID,
+		Name:         name,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := env.q.ExpireTagByID(t.Context(), daldb.ExpireTagByIDParams{
 		LifetimeEndMs: sql.NullInt64{Int64: endMs, Valid: true},
-		RepositoryID:  repoID,
-		Name:          name,
+		ID:            activeTag.ID,
 	})
 	if err != nil {
 		t.Fatal(err)
