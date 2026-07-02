@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -274,6 +275,7 @@ func (d *Driver) CleanStaleUploads(ctx context.Context, threshold time.Duration)
 		if startedAt.Before(cutoff) {
 			bytes, _ := dirSize(dir)
 			if err := os.RemoveAll(dir); err != nil {
+				slog.Warn("gc: failed to remove stale upload", "dir", id, "err", err)
 				continue
 			}
 			result.Removed++
@@ -285,7 +287,7 @@ func (d *Driver) CleanStaleUploads(ctx context.Context, threshold time.Duration)
 }
 
 func (d *Driver) readStartedAt(dir string) (time.Time, error) {
-	data, err := os.ReadFile(filepath.Join(dir, "startedat"))
+	data, err := os.ReadFile(filepath.Join(dir, "startedat")) //nolint:gosec // dir validated by uuidRegexp
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -300,7 +302,7 @@ func dirSize(path string) (int64, error) {
 		}
 		info, err := d.Info()
 		if err != nil {
-			return nil
+			return err
 		}
 		size += info.Size()
 		return nil

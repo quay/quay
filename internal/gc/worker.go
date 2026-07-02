@@ -2,6 +2,7 @@ package gc
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 )
@@ -39,7 +40,7 @@ func (w *Worker) Run(ctx context.Context) error {
 			w.log.Info("gc worker stopped")
 			return ctx.Err()
 		case <-ticker.C:
-			stats, err := w.collector.Collect(ctx)
+			stats, err := w.safeCollect(ctx)
 			if err != nil {
 				w.log.Error("gc cycle failed", "err", err)
 				continue
@@ -55,4 +56,13 @@ func (w *Worker) Run(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+func (w *Worker) safeCollect(ctx context.Context) (stats Stats, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("gc cycle panicked: %v", r)
+		}
+	}()
+	return w.collector.Collect(ctx)
 }

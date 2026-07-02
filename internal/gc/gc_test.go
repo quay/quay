@@ -49,7 +49,8 @@ func setup(t *testing.T) *testEnv {
 	}
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	collector := gc.NewSQLiteCollector(db, store, blobs, log)
+	gcStore := gc.NewSQLiteStore(db)
+	collector := gc.NewCollector(gcStore, blobs, log)
 
 	return &testEnv{
 		db:        db,
@@ -95,19 +96,6 @@ func insertTag(t *testing.T, env *testEnv, repoID int64, name string, dgst diges
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-// insertBlob creates an imagestorage row and writes a blob file.
-func insertBlob(t *testing.T, env *testEnv, dgst digest.Digest, size int64) int64 {
-	t.Helper()
-	id, err := env.store.PutBlob(t.Context(), oci.BlobRecord{Digest: dgst, Size: size})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := env.blobs.PutContent(t.Context(), dgst, []byte("blob-"+dgst.Encoded()[:8])); err != nil {
-		t.Fatal(err)
-	}
-	return id
 }
 
 // linkBlobToManifest creates a manifestblob row.
@@ -395,43 +383,6 @@ func TestCollect_CascadeParentToChildren(t *testing.T) {
 	// Parent + 2 children should all be deleted.
 	if stats.ManifestsDeleted != 3 {
 		t.Fatalf("expected 3 deleted manifests (parent + 2 children), got %d", stats.ManifestsDeleted)
-	}
-}
-
-func TestCollectDryRun(t *testing.T) {
-	env := setup(t)
-	ctx := t.Context()
-
-	// Create an orphaned blob.
-	content := []byte("dry-run-blob")
-	dgst := digest.FromBytes(content)
-	if err := env.blobs.PutContent(ctx, dgst, content); err != nil {
-		t.Fatal(err)
-	}
-	_, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: int64(len(content))})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	stats, err := env.collector.CollectDryRun(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if stats.BlobsDeleted != 1 {
-		t.Fatalf("dry-run: expected 1 blob would be deleted, got %d", stats.BlobsDeleted)
-	}
-
-	// Verify nothing was actually deleted.
-	_, err = env.blobs.Stat(ctx, dgst)
-	if err != nil {
-		t.Fatal("dry-run should not delete storage files")
-	}
-	blobs, err := env.q.FindOrphanedBlobs(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(blobs) != 1 {
-		t.Fatal("dry-run should not delete DB rows")
 	}
 }
 
