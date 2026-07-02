@@ -14,6 +14,7 @@ from endpoints.api import (
     nickname,
     path_param,
     request_error,
+    require_fresh_login,
     require_repo_admin,
     resource,
     validate_json_request,
@@ -126,6 +127,7 @@ class RepositoryUserPermission(RepositoryParamResource):
         return perm.to_dict()
 
     @require_repo_admin(allow_for_superuser=True)
+    @require_fresh_login
     @nickname("changeUserPermissions")
     @validate_json_request("UserPermission")
     def put(self, namespace_name, repository_name, username):  # Also needs to respond to post
@@ -159,6 +161,7 @@ class RepositoryUserPermission(RepositoryParamResource):
         return resp, 200
 
     @require_repo_admin(allow_for_superuser=True)
+    @require_fresh_login
     @nickname("deleteUserPermissions")
     def delete(self, namespace_name, repository_name, username):
         """
@@ -221,6 +224,7 @@ class RepositoryTeamPermission(RepositoryParamResource):
         return role.to_dict()
 
     @require_repo_admin(allow_for_superuser=True)
+    @require_fresh_login
     @nickname("changeTeamPermissions")
     @validate_json_request("TeamPermission")
     def put(self, namespace_name, repository_name, teamname):
@@ -248,6 +252,7 @@ class RepositoryTeamPermission(RepositoryParamResource):
         return resp, 200
 
     @require_repo_admin(allow_for_superuser=True)
+    @require_fresh_login
     @nickname("deleteTeamPermissions")
     def delete(self, namespace_name, repository_name, teamname):
         """
