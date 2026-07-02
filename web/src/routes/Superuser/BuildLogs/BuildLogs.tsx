@@ -9,6 +9,8 @@ import {
   Alert,
   Spinner,
   Checkbox,
+  CodeBlock,
+  CodeBlockCode,
 } from '@patternfly/react-core';
 import {useFetchBuildLogsSuperuser} from 'src/hooks/UseBuildLogs';
 import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
@@ -132,7 +134,7 @@ export default function BuildLogs() {
               <dt style={{marginTop: '0.5em'}}>
                 <strong>Error:</strong>
               </dt>
-              <dd style={{color: '#c9190b'}}>{build.error}</dd>
+              <dd style={{color: 'var(--pf-t--global--color--status--danger--default)'}}>{build.error}</dd>
             </>
           )}
         </dl>
@@ -158,33 +160,29 @@ export default function BuildLogs() {
         <Title headingLevel="h3" size="lg">
           Build Logs
         </Title>
-        <pre
-          style={{
-            marginTop: '1em',
-            backgroundColor: '#f5f5f5',
-            padding: '1em',
-            borderRadius: '4px',
-            overflow: 'auto',
-            maxHeight: '600px',
-            fontSize: '0.875rem',
-            fontFamily: 'monospace',
-            lineHeight: '1.5',
-          }}
-          data-testid="build-logs-display"
-        >
-          {build.logs.map((log, index) => (
-            <div key={index}>
-              {showTimestamps && log.timestamp && (
-                <span style={{color: '#666', marginRight: '0.5em'}}>
-                  [{log.timestamp}]
-                </span>
-              )}
-              {typeof log.message === 'string'
-                ? log.message
-                : JSON.stringify(log.message)}
-            </div>
-          ))}
-        </pre>
+        <div style={{marginTop: '1em', maxHeight: '600px', overflow: 'auto'}}>
+          <CodeBlock data-testid="build-logs-display">
+            <CodeBlockCode>
+              {build.logs.map((log, index) => (
+                <div key={index}>
+                  {showTimestamps && log.timestamp && (
+                    <span
+                      style={{
+                        opacity: 0.6,
+                        marginRight: '0.5em',
+                      }}
+                    >
+                      [{log.timestamp}]
+                    </span>
+                  )}
+                  {typeof log.message === 'string'
+                    ? log.message
+                    : JSON.stringify(log.message)}
+                </div>
+              ))}
+            </CodeBlockCode>
+          </CodeBlock>
+        </div>
       </div>
     );
   };
