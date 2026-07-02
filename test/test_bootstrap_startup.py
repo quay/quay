@@ -374,7 +374,10 @@ def test_provision_file_write_failure_rolls_back_new_db_token(initialized_db, tm
 
     with (
         patch("boot.app") as mock_app,
-        patch("boot.db_transaction", db.obj.transaction),
+        # The PostgreSQL test fixture already runs each test inside a transaction.
+        # Use atomic() so this rollback is scoped to the provisioning operation
+        # without rolling back this test's setup rows.
+        patch("boot.db_transaction", db.obj.atomic),
         patch("boot.write_bootstrap_token", side_effect=OSError("boom")),
     ):
         mock_app.config = config
