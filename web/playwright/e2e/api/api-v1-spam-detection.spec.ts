@@ -1,9 +1,36 @@
+import fs from 'fs';
+import path from 'path';
+
 import {expect, test, uniqueName} from '../../fixtures';
+
+const repoRoot = path.resolve(__dirname, '../../../..');
 
 test.describe(
   'Repository spam detection ingress',
   {tag: ['@api', '@auth:Database']},
   () => {
+    test('image build context carries the baked classifier artifact path', async () => {
+      const configPy = fs.readFileSync(
+        path.join(repoRoot, 'config.py'),
+        'utf8',
+      );
+      const dockerfile = fs.readFileSync(
+        path.join(repoRoot, 'Dockerfile'),
+        'utf8',
+      );
+      const dockerignore = fs.readFileSync(
+        path.join(repoRoot, '.dockerignore'),
+        'utf8',
+      );
+
+      expect(configPy).toContain(
+        'SPAM_DETECTION_CLASSIFIER_PATH = "/conf/spam-detection/classifier.json"',
+      );
+      expect(dockerfile).toContain('COPY --chown=0:0 . .');
+      expect(dockerfile).toContain('ln -s $QUAYCONF /conf');
+      expect(dockerignore).not.toMatch(/^conf\/spam-detection(?:\/\*\*)?$/m);
+    });
+
     test('allows repository description create and update when disabled', async ({
       adminClient,
       superuserApi,
@@ -54,6 +81,7 @@ test.describe(
           quayConfig.config?.SPAM_DETECTION_CLASSIFIER_VERSION !== 'e2e-v1',
         'Requires FEATURE_SPAM_DETECTION=true, SPAM_DETECTION_DRY_RUN=false, and the e2e-v1 classifier artifact',
       );
+      expect(quayConfig.config?.SPAM_DETECTION_CLASSIFIER_PATH).toBeTruthy();
 
       const org = await superuserApi.organization('spamingress');
       const spamRepoName = uniqueName('spamrepo');

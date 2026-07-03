@@ -127,3 +127,10 @@ DEFAULT_UI: "angular"
 # - Quay and Pyroscope on same Docker network: http://pyroscope:4040
 # PROFILING_TYPE: Pyroscope
 # PYROSCOPE_SERVER_ADDRESS: http://localhost:4040
+
+FEATURE_SPAM_DETECTION: true
+SPAM_DETECTION_DRY_RUN: false
+SPAM_DETECTION_FAIL_OPEN: false
+SPAM_DETECTION_CLASSIFIER_PATH: /quay-registry/conf/stack/spam-classifier-e2e-v1.json
+SPAM_DETECTION_CLASSIFIER_VERSION: e2e-v1
+SPAM_DETECTION_CLASSIFIER_SHA256: 2d0b878630442903b33d363c2ffa0af2225e1fbb2143650908cab79cbc57cb97
