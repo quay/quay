@@ -386,7 +386,7 @@ def test_provision_deletes_previous_owner_bootstrap_application(initialized_db, 
         assert f.read() == "not-json"
 
 
-def test_singleton_candidates_fetch_bootstrap_tokens_once_per_named_application(initialized_db):
+def test_singleton_candidates_batch_token_lookup(initialized_db):
     owner = model.user.get_user("devtable")
     previous_owner = model.user.get_user("freshuser")
     canonical_application = model.oauth.create_bootstrap_application(
@@ -404,13 +404,10 @@ def test_singleton_candidates_fetch_bootstrap_tokens_once_per_named_application(
     model.oauth.create_bootstrap_oauth_api_token(canonical_application, owner, "repo:read")
     model.oauth.create_bootstrap_oauth_api_token(stale_application, previous_owner, "repo:read")
 
-    named_applications = model.oauth.lookup_bootstrap_named_applications()
-    named_application_ids = {application.id for application in named_applications}
-
     with patch(
-        "data.model.oauth.get_bootstrap_tokens",
-        wraps=model.oauth.get_bootstrap_tokens,
-    ) as mock_get_bootstrap_tokens:
+        "data.model.oauth._get_bootstrap_tokens_for_applications",
+        wraps=model.oauth._get_bootstrap_tokens_for_applications,
+    ) as mock_batch_tokens:
         found_canonical, stale_applications = (
             model.oauth.get_singleton_bootstrap_application_candidates(owner)
         )
@@ -418,11 +415,8 @@ def test_singleton_candidates_fetch_bootstrap_tokens_once_per_named_application(
     assert found_canonical.id == canonical_application.id
     assert {application.id for application in stale_applications} == {stale_application.id}
     assert unmanaged_application.id not in {application.id for application in stale_applications}
-    assert mock_get_bootstrap_tokens.call_count == len(named_applications)
-    assert {
-        call.args[0].id for call in mock_get_bootstrap_tokens.call_args_list
-    } == named_application_ids
-    assert all(call.kwargs == {} for call in mock_get_bootstrap_tokens.call_args_list)
+    # Single batched call instead of N per-application calls
+    assert mock_batch_tokens.call_count == 1
 
 
 def test_provision_creates_new_owner_token_before_deleting_previous_owner(initialized_db, tmp_path):
@@ -913,6 +907,42 @@ def test_feature_disabled_revokes_all_bootstrap_applications_when_owner_is_missi
     )
     assert model.oauth.lookup_access_token_by_uuid(first_token.uuid) is None
     assert model.oauth.lookup_access_token_by_uuid(second_token.uuid) is None
+
+
+def test_get_bootstrap_managed_applications_returns_all_with_batched_query(initialized_db):
+    owner = model.user.get_user("devtable")
+    other_owner = model.user.get_user("freshuser")
+    app_with_tokens = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        owner,
+    )
+    app_without_tokens = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        owner,
+    )
+    app_other_owner = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        other_owner,
+    )
+    model.oauth.create_bootstrap_oauth_api_token(app_with_tokens, owner, "repo:read")
+    model.oauth.create_bootstrap_oauth_api_token(app_other_owner, other_owner, "repo:read")
+    # app_without_tokens has no bootstrap tokens — only an unmarked token
+    model.oauth.create_user_access_token_for_application(
+        owner, app_without_tokens, "repo:write", "Bearer", 3600
+    )
+
+    with patch(
+        "data.model.oauth._get_bootstrap_tokens_for_applications",
+        wraps=model.oauth._get_bootstrap_tokens_for_applications,
+    ) as mock_batch_tokens:
+        managed_apps = model.oauth.get_bootstrap_managed_applications()
+
+    managed_app_ids = {app.id for app in managed_apps}
+    assert app_with_tokens.id in managed_app_ids
+    assert app_other_owner.id in managed_app_ids
+    assert app_without_tokens.id not in managed_app_ids
+    # Single batched call instead of N per-application calls
+    assert mock_batch_tokens.call_count == 1
 
 
 def test_feature_disabled_revokes_duplicate_bootstrap_applications(initialized_db, tmp_path):

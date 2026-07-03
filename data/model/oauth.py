@@ -433,14 +433,38 @@ def get_bootstrap_tokens(application, authorized_user=None):
     return bootstrap_tokens
 
 
+def _get_bootstrap_tokens_for_applications(applications, authorized_user=None):
+    """Fetch bootstrap tokens for multiple applications in a single query.
+
+    Returns a dict mapping application ID to a list of bootstrap tokens.
+    This avoids the N+1 query pattern of calling get_bootstrap_tokens()
+    per application — the token count is bounded by bootstrap cardinality
+    (single digits) but batching is cleaner regardless.
+    """
+    if not applications:
+        return {}
+
+    app_ids = [app.id for app in applications]
+    app_by_id = {app.id: app for app in applications}
+
+    query = OAuthAccessToken.select().where(OAuthAccessToken.application << app_ids)
+    if authorized_user is not None:
+        query = query.where(OAuthAccessToken.authorized_user == authorized_user)
+
+    result = {app_id: [] for app_id in app_ids}
+    for token in query:
+        app = app_by_id.get(token.application_id)
+        if app and is_bootstrap_oauth_token(token, user_obj=authorized_user, application=app):
+            result[token.application_id].append(token)
+
+    return result
+
+
 def get_bootstrap_managed_applications():
     """Return all fixed-name OAuth applications with bootstrap token metadata."""
-    bootstrap_applications = []
-    for application in lookup_bootstrap_named_applications():
-        if get_bootstrap_tokens(application):
-            bootstrap_applications.append(application)
-
-    return bootstrap_applications
+    applications = lookup_bootstrap_named_applications()
+    tokens_by_app = _get_bootstrap_tokens_for_applications(applications)
+    return [app for app in applications if tokens_by_app.get(app.id)]
 
 
 def get_bootstrap_application_candidates(owner):
@@ -455,12 +479,12 @@ def get_bootstrap_application_candidates(owner):
     """
     bootstrap_application_name = get_bootstrap_app_name()
     applications = lookup_applications_by_name(owner, bootstrap_application_name)
+    tokens_by_app = _get_bootstrap_tokens_for_applications(applications, authorized_user=owner)
 
     canonical_application = None
     duplicate_applications = []
     for application in applications:
-        bootstrap_tokens = get_bootstrap_tokens(application, authorized_user=owner)
-        if not bootstrap_tokens:
+        if not tokens_by_app.get(application.id):
             continue
 
         if canonical_application is None:
@@ -479,10 +503,13 @@ def get_singleton_bootstrap_application_candidates(owner):
     can have one canonical fixed-name bootstrap-managed application; every other
     fixed-name application with bootstrap token metadata is stale.
     """
+    applications = lookup_bootstrap_named_applications()
+    tokens_by_app = _get_bootstrap_tokens_for_applications(applications)
+
     canonical_application = None
     stale_applications = []
-    for application in lookup_bootstrap_named_applications():
-        bootstrap_tokens = get_bootstrap_tokens(application)
+    for application in applications:
+        bootstrap_tokens = tokens_by_app.get(application.id, [])
         if not bootstrap_tokens:
             continue
 
