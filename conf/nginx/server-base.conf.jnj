@@ -11,6 +11,7 @@ add_header X-Frame-Options DENY;
 
 # Proxy Headers
 proxy_set_header X-Forwarded-For $proper_forwarded_for;
+proxy_set_header X-Quay-Original-Remote-Addr $quay_original_remote_addr;
 
 # Pass trusted protocol to Werkzeug
 proxy_set_header X-Forwarded-Proto $final_proto;
@@ -142,6 +143,16 @@ location ~ ^/v2/(.+)/_trust/tuf/(.*)$ {
   proxy_set_header Host "{{ tuf_host }}";
 }
 {% endif %}
+
+location = /api/v1/bootstrap/renew {
+    proxy_pass   http://web_app_server;
+
+    {% if enable_rate_limits %}
+    limit_req zone=bootstrap_renew burst=5 nodelay;
+    {% endif %}
+
+    keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
+}
 
 location /api/ {
     proxy_pass   http://web_app_server;

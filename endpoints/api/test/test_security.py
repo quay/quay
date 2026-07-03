@@ -14,6 +14,7 @@ from data.model.user import get_user
 from endpoints.api import api
 from endpoints.api.appspecifictokens import *
 from endpoints.api.billing import *
+from endpoints.api.bootstrap import BootstrapTokenRenew
 from endpoints.api.build import *
 from endpoints.api.capabilities import *
 from endpoints.api.discovery import *
@@ -83,6 +84,8 @@ SECURITY_TESTS: List[
         int,  # Expected HTTP status code
     ]
 ] = [
+    (BootstrapTokenRenew, "POST", {}, {}, None, 401),
+    (BootstrapTokenRenew, "POST", {}, {}, "devtable", 401),
     (AppTokens, "GET", {}, {}, None, 401),
     (AppTokens, "GET", {}, {}, "freshuser", 200),
     (AppTokens, "GET", {}, {}, "reader", 200),

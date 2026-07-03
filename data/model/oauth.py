@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import json
 import logging
 import posixpath
 from datetime import datetime, timedelta
+from typing import Any
 from urllib.parse import unquote, urlparse
 
 from flask import url_for
@@ -340,22 +343,22 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         )
 
 
-def get_bootstrap_app_name():
+def get_bootstrap_app_name() -> str:
     """Return the reserved bootstrap OAuth application name."""
     return BOOTSTRAP_APP_NAME
 
 
-def get_bootstrap_app_names():
+def get_bootstrap_app_names() -> set[str]:
     """Return reserved bootstrap OAuth application names."""
     return {BOOTSTRAP_APP_NAME}
 
 
-def is_bootstrap_app_name(name):
+def is_bootstrap_app_name(name: str) -> bool:
     """Return whether name is reserved for bootstrap OAuth applications."""
     return name in get_bootstrap_app_names()
 
 
-def create_bootstrap_application(name, org):
+def create_bootstrap_application(name: str, org: User) -> OAuthApplication:
     """Create a bootstrap OAuth application for the owner."""
     return create_application(
         org,
@@ -366,7 +369,7 @@ def create_bootstrap_application(name, org):
     )
 
 
-def _bootstrap_token_data(user_obj, application):
+def _bootstrap_token_data(user_obj: User, application: OAuthApplication) -> str:
     """Return metadata stored with bootstrap-created OAuth access tokens."""
     return json.dumps(
         {
@@ -378,8 +381,11 @@ def _bootstrap_token_data(user_obj, application):
 
 
 def create_bootstrap_oauth_api_token(
-    application, user_obj, scope, expiration_seconds=DEFAULT_TOKEN_EXPIRATION_SECONDS
-):
+    application: OAuthApplication,
+    user_obj: User,
+    scope: str,
+    expiration_seconds: int = DEFAULT_TOKEN_EXPIRATION_SECONDS,
+) -> tuple[OAuthAccessToken, str]:
     """Create a bootstrap OAuth API access token for an application/user pair."""
     return create_user_access_token_for_application(
         user_obj,
@@ -391,14 +397,18 @@ def create_bootstrap_oauth_api_token(
     )
 
 
-def _bootstrap_token_data_json(token):
+def _bootstrap_token_data_json(token: OAuthAccessToken) -> dict[str, Any]:
     try:
         return json.loads(token.data or "{}")
     except (TypeError, ValueError):
         return {}
 
 
-def is_bootstrap_oauth_token(token, user_obj=None, application=None):
+def is_bootstrap_oauth_token(
+    token: OAuthAccessToken,
+    user_obj: User | None = None,
+    application: OAuthApplication | None = None,
+) -> bool:
     """Return whether an OAuth access token has bootstrap token metadata."""
     token_data = _bootstrap_token_data_json(token)
     if token_data.get("kind") != BOOTSTRAP_TOKEN_DATA_KIND:
@@ -413,7 +423,9 @@ def is_bootstrap_oauth_token(token, user_obj=None, application=None):
     return True
 
 
-def get_application_tokens(application, authorized_user=None):
+def get_application_tokens(
+    application: OAuthApplication, authorized_user: User | None = None
+) -> list[OAuthAccessToken]:
     """Return all OAuth access tokens for the given application."""
     query = OAuthAccessToken.select().where(OAuthAccessToken.application == application)
     if authorized_user is not None:
@@ -422,7 +434,9 @@ def get_application_tokens(application, authorized_user=None):
     return list(query)
 
 
-def get_bootstrap_tokens(application, authorized_user=None):
+def get_bootstrap_tokens(
+    application: OAuthApplication, authorized_user: User | None = None
+) -> list[OAuthAccessToken]:
     """Return bootstrap-marked OAuth access tokens for the given application."""
     bootstrap_tokens = []
     application_tokens = get_application_tokens(application, authorized_user=authorized_user)
@@ -433,7 +447,7 @@ def get_bootstrap_tokens(application, authorized_user=None):
     return bootstrap_tokens
 
 
-def get_bootstrap_managed_applications():
+def get_bootstrap_managed_applications() -> list[OAuthApplication]:
     """Return all fixed-name OAuth applications with bootstrap token metadata."""
     bootstrap_applications = []
     for application in lookup_bootstrap_named_applications():
@@ -443,7 +457,20 @@ def get_bootstrap_managed_applications():
     return bootstrap_applications
 
 
-def get_bootstrap_application_candidates(owner):
+def delete_bootstrap_tokens(
+    application: OAuthApplication, keep_token_id: int | None = None
+) -> None:
+    """Delete bootstrap-marked tokens for the application except the ID to keep."""
+    ids_to_delete = [
+        token.id for token in get_bootstrap_tokens(application) if token.id != keep_token_id
+    ]
+    if ids_to_delete:
+        OAuthAccessToken.delete().where(OAuthAccessToken.id << ids_to_delete).execute()
+
+
+def get_bootstrap_application_candidates(
+    owner: User,
+) -> tuple[OAuthApplication | None, list[OAuthApplication]]:
     """Return the canonical and duplicate bootstrap-managed apps for an owner.
 
     Applications are considered bootstrap-managed only when they are owned by the
@@ -456,8 +483,8 @@ def get_bootstrap_application_candidates(owner):
     bootstrap_application_name = get_bootstrap_app_name()
     applications = lookup_applications_by_name(owner, bootstrap_application_name)
 
-    canonical_application = None
-    duplicate_applications = []
+    canonical_application: OAuthApplication | None = None
+    duplicate_applications: list[OAuthApplication] = []
     for application in applications:
         bootstrap_tokens = get_bootstrap_tokens(application, authorized_user=owner)
         if not bootstrap_tokens:
@@ -472,7 +499,9 @@ def get_bootstrap_application_candidates(owner):
     return canonical_application, duplicate_applications
 
 
-def get_singleton_bootstrap_application_candidates(owner):
+def get_singleton_bootstrap_application_candidates(
+    owner: User,
+) -> tuple[OAuthApplication | None, list[OAuthApplication]]:
     """Return the current owner's canonical app and all stale global bootstrap apps.
 
     Programmatic bootstrap is a deployment-wide singleton. The configured owner
@@ -505,14 +534,14 @@ def get_singleton_bootstrap_application_candidates(owner):
     return canonical_application, stale_applications
 
 
-def get_canonical_bootstrap_application(owner):
+def get_canonical_bootstrap_application(owner: User) -> OAuthApplication | None:
     """Return the canonical bootstrap-managed app for an owner, if one exists."""
     # Assumes boot.py provisioning has already enforced singleton bootstrap app cleanup.
     canonical_application, _ = get_bootstrap_application_candidates(owner)
     return canonical_application
 
 
-def _get_bootstrap_owner_for_validation(app_config):
+def _get_bootstrap_owner_for_validation(app_config: dict[str, Any]) -> User | None:
     owner_name = app_config.get("BOOTSTRAP_TOKEN_OWNER")
     if not owner_name:
         return None
@@ -524,7 +553,9 @@ def _get_bootstrap_owner_for_validation(app_config):
     return user.get_user(owner_name)
 
 
-def validate_bootstrap_token(access_token, app_config=None):
+def validate_bootstrap_token(
+    access_token: str, app_config: dict[str, Any] | None = None
+) -> OAuthAccessToken | None:
     """Validate a token belongs to the configured canonical bootstrap app."""
     if app_config is None:
         app_config = config.app_config or {}
@@ -587,7 +618,7 @@ def delete_applications(applications):
         application.delete_instance(recursive=True, delete_nullable=True)
 
 
-def lock_bootstrap_token_operation():
+def lock_bootstrap_token_operation() -> None:
     """Serialize bootstrap token mutations with a transaction-scoped DB lock."""
     db_advisory_xact_lock(BOOTSTRAP_TOKEN_LOCK_ID)
 

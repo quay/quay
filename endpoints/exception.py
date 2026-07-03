@@ -18,6 +18,7 @@ class ApiErrorType(Enum):
     not_found = "not_found"
     downstream_issue = "downstream_issue"
     tag_immutable = "tag_immutable"
+    token_rotation_failed = "token_rotation_failed"
 
 
 ERROR_DESCRIPTION = {
@@ -32,6 +33,7 @@ ERROR_DESCRIPTION = {
     ApiErrorType.not_found.value: "The resource was not found.",
     ApiErrorType.downstream_issue.value: "An error occurred in a downstream service.",
     ApiErrorType.tag_immutable.value: "The tag is immutable and cannot be modified or deleted.",
+    ApiErrorType.token_rotation_failed.value: "Token rotation failed.",
 }
 
 
@@ -143,6 +145,13 @@ class NotFound(ApiException):
 class DownstreamIssue(ApiException):
     def __init__(self, error_description, payload=None):
         ApiException.__init__(self, ApiErrorType.downstream_issue, 520, error_description, payload)
+
+
+class TokenRotationError(ApiException):
+    def __init__(self, error_description, payload=None):
+        ApiException.__init__(
+            self, ApiErrorType.token_rotation_failed, 500, error_description, payload
+        )
 
 
 class TagImmutable(ApiException):

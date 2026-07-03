@@ -47,6 +47,9 @@ class TestConfig(DefaultConfig):
 
     FEATURE_SUPER_USERS = True
     FEATURE_SUPERUSERS_FULL_ACCESS = True
+    FEATURE_PROGRAMMATIC_BOOTSTRAP = True
+    BOOTSTRAP_TOKEN_OWNER = "devtable"
+    BOOTSTRAP_TOKEN_PATH = f"{TEST_DB_FILE.name}-bootstrap-token.json"
     FEATURE_BILLING = True
     FEATURE_MAILING = True
     SUPER_USERS = ["devtable"]
