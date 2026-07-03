@@ -1911,7 +1911,7 @@ CONFIG_SCHEMA = {
         },
         "SPAM_DETECTION_CLASSIFIER_PATH": {
             "type": ["string", "null"],
-            "description": "Path to the local Bayesian spam classifier artifact used for repository-description ingress evaluation.",
+            "description": "Path to the in-image Bayesian spam classifier JSON artifact used for repository-description ingress evaluation. Defaults to /conf/spam-detection/classifier.json.",
             "x-example": "/conf/spam-detection/classifier.json",
         },
         "SPAM_DETECTION_CLASSIFIER_VERSION": {
