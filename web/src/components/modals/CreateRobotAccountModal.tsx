@@ -281,7 +281,9 @@ interface CreateRobotAccountModalProps {
   isModalOpen: boolean;
   handleModalToggle?: () => void;
   orgName: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   teams: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   RepoPermissionDropdownItems: any[];
   setEntity?: React.Dispatch<SetStateAction<Entity>>;
   showSuccessAlert: (msg: string) => void;

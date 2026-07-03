@@ -562,6 +562,56 @@ test.describe('Default Permissions', {tag: ['@organization']}, () => {
     await expect(defaultPermPanel.getByText(robot.fullName)).toBeVisible();
   });
 
+  test(
+    'Create Team wizard fits within modal without overflow (PROJQUAY-12151)',
+    {tag: '@PROJQUAY-12151'},
+    async ({authenticatedPage, api}) => {
+      const org = await api.organization('teamoverflow');
+      const newTeamName = uniqueName('overflow').substring(0, 20);
+
+      await authenticatedPage.goto(
+        `/organization/${org.name}?tab=Defaultpermissions`,
+      );
+
+      await authenticatedPage
+        .getByTestId('create-default-permissions-btn')
+        .click();
+
+      await authenticatedPage.getByTestId('Anyone').click();
+
+      await authenticatedPage.locator('#applied-to-dropdown').click();
+      await authenticatedPage.getByTestId('create-new-team-btn').click();
+
+      await authenticatedPage
+        .getByTestId('new-team-name-input')
+        .fill(newTeamName);
+      await authenticatedPage.getByTestId('create-team-confirm').click();
+
+      await expect(
+        authenticatedPage.locator('.pf-v6-c-alert.pf-m-success').last(),
+      ).toContainText(`Successfully created new team: ${newTeamName}`);
+
+      const modal = authenticatedPage.locator('#create-team-modal');
+      await expect(modal).toBeVisible();
+
+      const wizard = modal.locator('.pf-v6-c-wizard');
+      await expect(wizard).toBeVisible();
+
+      const modalBox = await modal.boundingBox();
+      const wizardBox = await wizard.boundingBox();
+
+      expect(modalBox).not.toBeNull();
+      expect(wizardBox).not.toBeNull();
+      if (modalBox && wizardBox) {
+        expect(wizardBox.width).toBeLessThanOrEqual(modalBox.width);
+        expect(wizardBox.x).toBeGreaterThanOrEqual(modalBox.x);
+        expect(wizardBox.x + wizardBox.width).toBeLessThanOrEqual(
+          modalBox.x + modalBox.width + 1,
+        );
+      }
+    },
+  );
+
   test('can bulk delete default permissions', async ({
     authenticatedPage,
     api,
