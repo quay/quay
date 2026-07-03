@@ -95,4 +95,45 @@ test.describe('Delete organization', {tag: ['@organization']}, () => {
     // Should redirect to root/organization list, not stay on deleted org page
     await expect(authenticatedPage).toHaveURL(/\/organization$/);
   });
+
+  test.describe(
+    'with organization mirroring',
+    {tag: ['@feature:ORG_MIRROR']},
+    () => {
+      test('successful deletion redirects when org mirror is configured', async ({
+        authenticatedPage,
+        api,
+      }) => {
+        const org = await api.organization('delorgmirr');
+        const robot = await api.robot(org.name, 'mirrorbot');
+        const syncStartDate = new Date();
+        syncStartDate.setMinutes(syncStartDate.getMinutes() + 5);
+
+        await api.raw.createOrgMirrorConfig(org.name, {
+          external_registry_type: 'quay',
+          external_registry_url: 'https://quay.io',
+          external_namespace: 'projectquay',
+          robot_username: robot.fullName,
+          visibility: 'private',
+          sync_interval: 3600,
+          sync_start_date: syncStartDate
+            .toISOString()
+            .replace(/\.\d{3}Z$/, 'Z'),
+        });
+
+        await authenticatedPage.goto(`/organization/${org.name}?tab=Settings`);
+
+        await authenticatedPage
+          .getByRole('button', {name: 'Delete organization'})
+          .click();
+
+        await authenticatedPage
+          .locator('#delete-confirmation-input')
+          .fill(org.name);
+        await authenticatedPage.getByTestId('delete-account-confirm').click();
+
+        await expect(authenticatedPage).toHaveURL(/\/organization$/);
+      });
+    },
+  );
 });
