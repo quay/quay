@@ -256,7 +256,6 @@ export default function CreateRobotAccountModal(
       <Wizard
         onClose={handleModalToggle}
         height={600}
-        width={1170}
         header={
           <WizardHeader
             onClose={handleModalToggle}

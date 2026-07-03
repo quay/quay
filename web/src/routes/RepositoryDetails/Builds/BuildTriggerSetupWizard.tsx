@@ -154,7 +154,6 @@ export default function BuildTriggerSetupWizard(
   return (
     <Wizard
       height={600}
-      width={1170}
       isVisitRequired
       header={
         <WizardHeader

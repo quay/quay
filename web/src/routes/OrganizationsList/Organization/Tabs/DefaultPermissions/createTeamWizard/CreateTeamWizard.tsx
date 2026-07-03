@@ -158,7 +158,6 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
             setSelectedRepoPerms([]);
           }}
           height={600}
-          width={1170}
           header={
             <WizardHeader
               onClose={() => {
