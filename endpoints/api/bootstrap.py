@@ -1,8 +1,7 @@
 import logging
 from datetime import UTC, datetime
-from ipaddress import ip_address
 
-from flask import Request, request
+from flask import request
 
 import features
 from app import app
@@ -23,7 +22,6 @@ from util.bootstrap_token import write_bootstrap_token
 logger = logging.getLogger(__name__)
 
 _INVALID_BOOTSTRAP_TOKEN_MESSAGE = "Requires valid bootstrap bearer token"
-_QUAY_NGINX_ORIGINAL_REMOTE_ADDR_HEADER = "X-Quay-Original-Remote-Addr"
 
 
 class BootstrapTokenCleanupError(Exception):
@@ -40,55 +38,6 @@ def _utcnow_naive() -> datetime:
 
 def _is_expired(token: OAuthAccessToken) -> bool:
     return token.expires_at <= _utcnow_naive()
-
-
-def _is_loopback_remote_addr(remote_addr: str | None) -> bool:
-    if not remote_addr:
-        return False
-
-    try:
-        remote_ip = ip_address(remote_addr)
-    except ValueError:
-        return False
-
-    if remote_ip.is_loopback:
-        return True
-
-    ipv4_mapped = getattr(remote_ip, "ipv4_mapped", None)
-    return ipv4_mapped is not None and ipv4_mapped.is_loopback
-
-
-def _unproxied_remote_addr(req: Request) -> str | None:
-    proxy_fix_orig = req.environ.get("werkzeug.proxy_fix.orig") or {}
-    return proxy_fix_orig.get("REMOTE_ADDR") or req.environ.get("REMOTE_ADDR")
-
-
-def _has_forwarding_headers(req: Request) -> bool:
-    return bool(
-        req.headers.get("X-Forwarded-For")
-        or req.headers.get("X-Real-IP")
-        or req.headers.get("Forwarded")
-    )
-
-
-def _has_internal_or_unset_direct_peer(req: Request) -> bool:
-    direct_peer = _unproxied_remote_addr(req)
-    return not direct_peer or _is_loopback_remote_addr(direct_peer)
-
-
-def _is_loopback_bootstrap_renewal_request(req: Request) -> bool:
-    if _has_forwarding_headers(req):
-        # Standard Quay deployments route /api/ requests through the bundled
-        # nginx, which always adds X-Forwarded-For before proxying to gunicorn.
-        # Do not trust request.remote_addr here: ProxyFix derives it from
-        # X-Forwarded-For. Instead, trust only the original TCP peer address
-        # overwritten by Quay's own nginx configuration, and require the direct
-        # peer to be unset (Unix socket) or loopback (local TCP proxy).
-        return _is_loopback_remote_addr(
-            req.headers.get(_QUAY_NGINX_ORIGINAL_REMOTE_ADDR_HEADER)
-        ) and _has_internal_or_unset_direct_peer(req)
-
-    return _is_loopback_remote_addr(_unproxied_remote_addr(req))
 
 
 @resource("/v1/bootstrap/renew")
@@ -115,6 +64,9 @@ class BootstrapTokenRenew(ApiResource):
 
             _raise_invalid_bootstrap_token()
 
+        if _is_expired(current_token):
+            _raise_invalid_bootstrap_token()
+
         try:
             with db_transaction():
                 lock_bootstrap_token_operation()
@@ -123,9 +75,7 @@ class BootstrapTokenRenew(ApiResource):
                 if current_token is None:
                     _raise_invalid_bootstrap_token()
 
-                if _is_expired(current_token) and not _is_loopback_bootstrap_renewal_request(
-                    request
-                ):
+                if _is_expired(current_token):
                     _raise_invalid_bootstrap_token()
 
                 scope = app.config["BOOTSTRAP_TOKEN_SCOPE"]

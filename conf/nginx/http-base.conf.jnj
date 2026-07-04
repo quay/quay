@@ -46,11 +46,6 @@ map $proxy_protocol_addr $proper_forwarded_for {
   default $proxy_protocol_addr;
 }
 
-map $realip_remote_addr $quay_original_remote_addr {
-  ""      $remote_addr;
-  default $realip_remote_addr;
-}
-
 map $http_x_forwarded_proto $proper_scheme {
   default $scheme;
   https   https;
