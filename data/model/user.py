@@ -1512,6 +1512,16 @@ def _delete_user_linked_data(user):
         for quota in quotas:
             namespacequota.delete_namespace_quota(quota)
 
+    if user.organization:
+        from data.model.org_mirror import (
+            delete_org_mirror_config,
+            get_org_mirror_config,
+        )
+
+        org_mirror_config = get_org_mirror_config(user)
+        if org_mirror_config is not None:
+            delete_org_mirror_config(org_mirror_config)
+
     # Delete any mirrors with robots owned by this user.
     with db_transaction():
         robots = list(list_namespace_robots(user.username))

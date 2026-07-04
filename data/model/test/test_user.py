@@ -11,9 +11,14 @@ from data.database import (
     DeletedNamespace,
     EmailConfirmation,
     FederatedLogin,
+    OrgMirrorConfig,
+    OrgMirrorRepository,
+    OrgMirrorStatus,
     Repository,
     RepositoryState,
+    SourceRegistryType,
     User,
+    Visibility,
 )
 from data.fields import Credential
 from data.model.notification import create_notification
@@ -253,6 +258,46 @@ def test_mark_organization_for_deletion(initialized_db):
 
     # Ensure the older org is still in the DB.
     assert User.get(id=org.id).username != "foobar"
+
+
+def test_mark_organization_for_deletion_with_org_mirror(initialized_db):
+    def create_transaction(db):
+        return db.transaction()
+
+    user = get_user("devtable")
+    org = create_organization("foobar", "foobar@devtable.com", user)
+    robot, _ = create_robot("mirrorbot", org)
+    repo = create_repository("foobar", "mirrored", user)
+    repo.state = RepositoryState.ORG_MIRROR
+    repo.save()
+
+    config = OrgMirrorConfig.create(
+        organization=org,
+        external_registry_type=SourceRegistryType.HARBOR,
+        external_registry_url="https://harbor.example.com",
+        external_namespace="my-project",
+        internal_robot=robot,
+        visibility=Visibility.get(name="private"),
+        sync_interval=3600,
+        sync_start_date=datetime.utcnow(),
+        sync_status=OrgMirrorStatus.NEVER_RUN,
+    )
+    OrgMirrorRepository.create(
+        org_mirror_config=config,
+        repository_name="mirrored",
+        repository=repo,
+    )
+
+    queue = WorkQueue("testgcnamespace", create_transaction)
+    mark_namespace_for_deletion(org, [], queue)
+
+    assert (
+        not OrgMirrorRepository.select()
+        .where(OrgMirrorRepository.org_mirror_config == config)
+        .exists()
+    )
+    assert not OrgMirrorConfig.select().where(OrgMirrorConfig.id == config.id).exists()
+    assert Repository.get_by_id(repo.id).state == RepositoryState.NORMAL
 
 
 def test_delete_namespace_via_marker(initialized_db):
