@@ -395,15 +395,19 @@ jobs:
           kind: ImageSetConfiguration
           mirror:
             additionalImages:
+            # Multi-arch OCI indexes — no format conversion in diskToMirror.
+            # Docker-format manifest lists are excluded because oc-mirror's
+            # PreserveDigests=true conflicts with OCI layout format conversion
+            # during diskToMirror (see https://github.com/containers/skopeo/issues/2778).
             - name: quay.io/projectquay/quay:3.13.2
             - name: quay.io/projectquay/quay-builder:3.13.0
             - name: quay.io/projectquay/clair:4.7.4
+            - name: quay.io/fedora/fedora:41
+            - name: quay.io/fedora/fedora-minimal:41
+            - name: quay.io/centos/centos:stream9
+            - name: quay.io/keycloak/keycloak:26.0
+            # Single-arch image
             - name: quay.io/quay/quay-operator:latest
-            - name: quay.io/prometheus/prometheus:latest
-            - name: quay.io/prometheus/alertmanager:latest
-            - name: quay.io/prometheus/node-exporter:latest
-            - name: quay.io/prometheus/pushgateway:latest
-            - name: quay.io/coreos/etcd:v3.5.0
           EOF
 
       - name: Mirror to disk
@@ -434,12 +438,11 @@ jobs:
             projectquay/quay
             projectquay/quay-builder
             projectquay/clair
+            fedora/fedora
+            fedora/fedora-minimal
+            centos/centos
+            keycloak/keycloak
             quay/quay-operator
-            prometheus/prometheus
-            prometheus/alertmanager
-            prometheus/node-exporter
-            prometheus/pushgateway
-            coreos/etcd
           )
 
           for repo in "${expected_repos[@]}"; do

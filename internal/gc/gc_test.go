@@ -3,9 +3,11 @@ package gc_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -610,6 +612,424 @@ func TestCollect_RecentUploadSurvives(t *testing.T) {
 	_, err = env.blobs.UploadStat(ctx, uploadID)
 	if err != nil {
 		t.Fatalf("recent upload should survive GC: %v", err)
+	}
+}
+
+func TestCollect_TwoTagsSharedManifest_PartialExpiry(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+	dgst := mustDigest("shared-manifest")
+	insertManifest(t, env, repoID, dgst)
+	insertTag(t, env, repoID, "latest", dgst)
+	insertTag(t, env, repoID, "v1.0", dgst)
+
+	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+	expireTag(t, env, repoID, "v1.0", pastMs)
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.TagsExpired != 1 {
+		t.Fatalf("expected 1 expired tag, got %d", stats.TagsExpired)
+	}
+	if stats.ManifestsDeleted != 0 {
+		t.Fatalf("expected 0 deleted manifests (latest still live), got %d", stats.ManifestsDeleted)
+	}
+	_, err = env.q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+		RepositoryID: repoID, Digest: dgst.String(),
+	})
+	if err != nil {
+		t.Fatal("manifest should still exist")
+	}
+}
+
+func TestCollect_AllTagsExpired_ManifestCollected(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+	dgst := mustDigest("both-tags-expire")
+	insertManifest(t, env, repoID, dgst)
+	insertTag(t, env, repoID, "v1.0", dgst)
+	insertTag(t, env, repoID, "v2.0", dgst)
+
+	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+	expireTag(t, env, repoID, "v1.0", pastMs)
+	expireTag(t, env, repoID, "v2.0", pastMs)
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.TagsExpired != 2 {
+		t.Fatalf("expected 2 expired tags, got %d", stats.TagsExpired)
+	}
+	if stats.ManifestsDeleted != 1 {
+		t.Fatalf("expected 1 deleted manifest, got %d", stats.ManifestsDeleted)
+	}
+}
+
+func TestCollect_CrossRepoManifestChildProtection(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoA := ensureRepo(t, env, "org", "parent-repo")
+	repoB := ensureRepo(t, env, "org", "child-repo")
+
+	parentDgst := mustDigest("cross-repo-parent")
+	insertManifest(t, env, repoA, parentDgst)
+	insertTag(t, env, repoA, "latest", parentDgst)
+
+	childDgst := mustDigest("cross-repo-child")
+	childID := insertManifest(t, env, repoB, childDgst)
+
+	parentID := getManifestID(t, env, repoA, parentDgst)
+	if err := env.q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
+		RepositoryID:    repoA,
+		ManifestID:      parentID,
+		ChildManifestID: childID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ManifestsDeleted != 0 {
+		t.Fatalf("expected 0 deleted manifests (cross-repo child protected), got %d", stats.ManifestsDeleted)
+	}
+}
+
+func TestCollect_CrossRepoSubjectReferrerProtection(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoA := ensureRepo(t, env, "org", "base-repo")
+	repoB := ensureRepo(t, env, "org", "referrer-repo")
+
+	baseDgst := mustDigest("cross-repo-base")
+	insertManifest(t, env, repoA, baseDgst)
+
+	referrerDgst := mustDigest("cross-repo-referrer")
+	_, err := env.q.UpsertManifest(ctx, daldb.UpsertManifestParams{
+		RepositoryID:  repoB,
+		Digest:        referrerDgst.String(),
+		MediaTypeID:   1,
+		ManifestBytes: `{"schemaVersion":2}`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = env.db.ExecContext(ctx,
+		"UPDATE manifest SET subject = ? WHERE repository_id = ? AND digest = ?",
+		baseDgst.String(), repoB, referrerDgst.String(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	insertTag(t, env, repoB, "sig", referrerDgst)
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ManifestsDeleted != 0 {
+		t.Fatalf("expected 0 deleted manifests (cross-repo subject protection), got %d", stats.ManifestsDeleted)
+	}
+}
+
+func TestCollect_ChildSharedByTwoParents(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+
+	childDgst := mustDigest("shared-child")
+	childID := insertManifest(t, env, repoID, childDgst)
+
+	parentADgst := mustDigest("parent-a")
+	insertManifest(t, env, repoID, parentADgst)
+	insertTag(t, env, repoID, "v1", parentADgst)
+	parentAID := getManifestID(t, env, repoID, parentADgst)
+
+	parentBDgst := mustDigest("parent-b")
+	insertManifest(t, env, repoID, parentBDgst)
+	insertTag(t, env, repoID, "v2", parentBDgst)
+	parentBID := getManifestID(t, env, repoID, parentBDgst)
+
+	for _, parentID := range []int64{parentAID, parentBID} {
+		if err := env.q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
+			RepositoryID: repoID, ManifestID: parentID, ChildManifestID: childID,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+	expireTag(t, env, repoID, "v1", pastMs)
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.TagsExpired != 1 {
+		t.Fatalf("expected 1 expired tag, got %d", stats.TagsExpired)
+	}
+	if stats.ManifestsDeleted != 1 {
+		t.Fatalf("expected 1 deleted manifest (parent A only), got %d", stats.ManifestsDeleted)
+	}
+	_, err = env.q.GetManifestByDigest(ctx, daldb.GetManifestByDigestParams{
+		RepositoryID: repoID, Digest: childDgst.String(),
+	})
+	if err != nil {
+		t.Fatal("shared child should survive")
+	}
+}
+
+func TestCollect_DeepCascade_ThreeLevels(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+
+	grandchildDgst := mustDigest("grandchild")
+	grandchildID := insertManifest(t, env, repoID, grandchildDgst)
+
+	childDgst := mustDigest("child-mid")
+	childID := insertManifest(t, env, repoID, childDgst)
+
+	parentDgst := mustDigest("parent-top")
+	insertManifest(t, env, repoID, parentDgst)
+	insertTag(t, env, repoID, "latest", parentDgst)
+	parentID := getManifestID(t, env, repoID, parentDgst)
+
+	if err := env.q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
+		RepositoryID: repoID, ManifestID: parentID, ChildManifestID: childID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := env.q.LinkManifestChild(ctx, daldb.LinkManifestChildParams{
+		RepositoryID: repoID, ManifestID: childID, ChildManifestID: grandchildID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+	expireTag(t, env, repoID, "latest", pastMs)
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.TagsExpired != 1 {
+		t.Fatalf("expected 1 expired tag, got %d", stats.TagsExpired)
+	}
+	if stats.ManifestsDeleted != 3 {
+		t.Fatalf("expected 3 deleted manifests (parent+child+grandchild), got %d", stats.ManifestsDeleted)
+	}
+}
+
+func TestCollect_SharedChecksumBlobDedup(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+
+	content := []byte("shared-checksum-blob")
+	dgst := digest.FromBytes(content)
+	if err := env.blobs.PutContent(ctx, dgst, content); err != nil {
+		t.Fatal(err)
+	}
+
+	liveBlobID, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: int64(len(content))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestDgst := mustDigest("live-manifest-with-shared-blob")
+	manifestID := insertManifest(t, env, repoID, manifestDgst)
+	insertTag(t, env, repoID, "latest", manifestDgst)
+	linkBlobToManifest(t, env, repoID, manifestID, liveBlobID)
+
+	res, err := env.db.ExecContext(ctx,
+		`INSERT INTO imagestorage (uuid, image_size, uploading, cas_path, content_checksum)
+		 VALUES (?, ?, 0, 1, ?)`,
+		"uuid-orphan-duplicate", int64(len(content)), dgst.String(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	orphanID, _ := res.LastInsertId()
+	_ = orphanID
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.BlobsDeleted != 1 {
+		t.Fatalf("expected 1 deleted blob (orphan duplicate), got %d", stats.BlobsDeleted)
+	}
+	_, err = env.blobs.Stat(ctx, dgst)
+	if err != nil {
+		t.Fatal("storage file should survive (another imagestorage row shares the checksum)")
+	}
+}
+
+func TestCollect_ExpiredUploadedBlobStopsProtecting(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+
+	content := []byte("soon-unprotected-blob")
+	dgst := digest.FromBytes(content)
+	if err := env.blobs.PutContent(ctx, dgst, content); err != nil {
+		t.Fatal(err)
+	}
+	_, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: dgst, Size: int64(len(content))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := env.store.PutUploadedBlob(ctx, repoID, dgst); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = env.db.ExecContext(ctx,
+		"UPDATE uploadedblob SET expires_at = datetime('now', '-2 hours')")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.BlobsDeleted != 1 {
+		t.Fatalf("expected 1 deleted blob (expired uploadedblob), got %d", stats.BlobsDeleted)
+	}
+	_, err = env.blobs.Stat(ctx, dgst)
+	if err == nil {
+		t.Fatal("storage file should be deleted")
+	}
+}
+
+func TestCollect_Idempotent(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+	dgst := mustDigest("idempotent-manifest")
+	insertManifest(t, env, repoID, dgst)
+	insertTag(t, env, repoID, "old", dgst)
+	pastMs := time.Now().Add(-30 * 24 * time.Hour).UnixMilli()
+	expireTag(t, env, repoID, "old", pastMs)
+
+	stats1, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats1.TagsExpired != 1 || stats1.ManifestsDeleted != 1 {
+		t.Fatalf("first cycle: expected 1 tag + 1 manifest, got %+v", stats1)
+	}
+
+	stats2, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats2.TagsExpired != 0 || stats2.ManifestsDeleted != 0 || stats2.BlobsDeleted != 0 {
+		t.Fatalf("second cycle: expected all zeros, got %+v", stats2)
+	}
+}
+
+func TestCollect_ConcurrentPushDuringGC(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+
+	orphanContent := []byte("orphan-for-concurrent-test")
+	orphanDgst := digest.FromBytes(orphanContent)
+	if err := env.blobs.PutContent(ctx, orphanDgst, orphanContent); err != nil {
+		t.Fatal(err)
+	}
+	_, err := env.store.PutBlob(ctx, oci.BlobRecord{Digest: orphanDgst, Size: int64(len(orphanContent))})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pushContent := []byte("pushed-during-gc")
+	pushDgst := digest.FromBytes(pushContent)
+
+	var wg sync.WaitGroup
+	var gcErr error
+	var gcStats gc.Stats
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		gcStats, gcErr = env.collector.Collect(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		if err := env.blobs.PutContent(ctx, pushDgst, pushContent); err != nil {
+			return
+		}
+		_, _ = env.store.PutBlob(ctx, oci.BlobRecord{Digest: pushDgst, Size: int64(len(pushContent))})
+		_ = env.store.PutUploadedBlob(ctx, repoID, pushDgst)
+	}()
+	wg.Wait()
+
+	if gcErr != nil {
+		t.Fatalf("GC should complete without error: %v", gcErr)
+	}
+	_ = gcStats
+
+	_, err = env.blobs.Stat(ctx, pushDgst)
+	if err != nil {
+		t.Fatal("pushed blob should survive GC")
+	}
+}
+
+func TestCollect_NeverTaggedManifest(t *testing.T) {
+	env := setup(t)
+	ctx := t.Context()
+
+	repoID := ensureRepo(t, env, "library", "nginx")
+	dgst := mustDigest("never-tagged")
+	insertManifest(t, env, repoID, dgst)
+
+	stats, err := env.collector.Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ManifestsDeleted != 1 {
+		t.Fatalf("expected 1 deleted manifest (never tagged), got %d", stats.ManifestsDeleted)
+	}
+}
+
+func TestWorker_StopsOnContextCancel(t *testing.T) {
+	env := setup(t)
+
+	worker := gc.NewWorker(env.collector, gc.Config{Interval: 50 * time.Millisecond},
+		slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})))
+
+	ctx, cancel := context.WithCancel(t.Context())
+	errCh := make(chan error, 1)
+	go func() { errCh <- worker.Run(ctx) }()
+
+	time.Sleep(150 * time.Millisecond)
+	cancel()
+
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected context.Canceled, got %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("worker did not stop within 5 seconds")
 	}
 }
 
