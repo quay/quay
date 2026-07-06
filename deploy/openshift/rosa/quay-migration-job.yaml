@@ -4,25 +4,6 @@ kind: Template
 metadata:
   name: quay-migration-job
 objects:
-- apiVersion: rbac.authorization.k8s.io/v1
-  kind: Role
-  metadata:
-    name: ${{NAME}}
-  rules:
-  - apiGroups:
-    - ""
-    resources:
-    - secrets
-    verbs:
-    - get
-    - patch
-    - update
-  - apiGroups:
-    - ""
-    resources:
-    - namespaces
-    verbs:
-    - get
 - apiVersion: v1
   kind: ServiceAccount
   metadata:
@@ -30,17 +11,6 @@ objects:
     annotations: ${{SERVICE_ACCOUNT_ANNOTATIONS}}
   imagePullSecrets:
   - name: ${{SERVICE_ACCOUNT_IMAGE_PULL_SECRETS}}
-- apiVersion: rbac.authorization.k8s.io/v1
-  kind: RoleBinding
-  metadata:
-    name: ${{NAME}}
-  roleRef:
-    apiGroup: rbac.authorization.k8s.io
-    kind: Role
-    name: ${{NAME}}
-  subjects:
-  - kind: ServiceAccount
-    name: ${{NAME}}
 - apiVersion: batch/v1
   kind: Job
   metadata:
@@ -96,7 +66,7 @@ parameters:
   - name: NAME
     value: "quay-migration"
     displayName: name
-    description: Base name for RBAC and Job resources
+    description: Base name for ServiceAccount and Job resources
   - name: IMAGE
     value: ""
     displayName: quay image
