@@ -4,7 +4,7 @@
     "enabled": true
   },
   "osvVulnerabilityAlerts": false,
-  "dependencyDashboard": true,
+  "dependencyDashboard": false,
   "extends": [
     "github>konflux-ci/mintmaker-presets:cve-automerge-all"
   ],
