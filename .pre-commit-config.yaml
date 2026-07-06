@@ -44,7 +44,7 @@ repos:
         name: ESLint
         entry: web/node_modules/.bin/eslint --fix
         language: system
-        files: ^web/
+        files: ^web/.*\.(js|jsx|ts|tsx)$
         exclude: ^web/Containerfile|^web/Dockerfile|^web/pnpm-lock\.yaml|^web/package-lock\.json
 -   repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.10.0.1
