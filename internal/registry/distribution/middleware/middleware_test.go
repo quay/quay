@@ -117,6 +117,10 @@ func (m *mockStore) CleanExpiredUploadedBlobs(_ context.Context) error {
 	return errNotImplemented
 }
 
+func (m *mockStore) ListReferrers(_ context.Context, _ int64, _ digest.Digest, _ string) ([]oci.ReferrerRecord, error) {
+	return nil, errNotImplemented
+}
+
 var errNotImplemented = errors.New("mock: not implemented")
 
 // --- mock distribution types ---
@@ -553,6 +557,77 @@ func TestTagService_Untag(t *testing.T) {
 	}
 	if store.lastRepoID != 1 {
 		t.Errorf("repoID = %d, want 1", store.lastRepoID)
+	}
+}
+
+func TestManifestPut_ParsesSubjectAndArtifactType(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("referrer-manifest")
+	subjectDgst := digest.FromString("subject-manifest")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+	}
+	repo := newRepository(innerRepo, store, "library")
+	ms, err := repo.Manifests(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload := []byte(`{
+		"schemaVersion": 2,
+		"subject": {"digest": "` + subjectDgst.String() + `"},
+		"artifactType": "application/vnd.example.sbom.v1"
+	}`)
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   payload,
+	}
+
+	_, err = ms.Put(context.Background(), manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if store.putManifestRec.Subject != subjectDgst {
+		t.Errorf("subject = %s, want %s", store.putManifestRec.Subject, subjectDgst)
+	}
+	if store.putManifestRec.ArtifactType != "application/vnd.example.sbom.v1" {
+		t.Errorf("artifactType = %q, want %q", store.putManifestRec.ArtifactType, "application/vnd.example.sbom.v1")
+	}
+}
+
+func TestManifestPut_NoSubject(t *testing.T) {
+	store := &mockStore{ensureRepoID: 1, putManifestID: 10}
+	dgst := digest.FromString("normal-manifest")
+
+	innerRepo := &fakeDistRepo{
+		name: namedRef(t),
+		ms:   &mockManifestService{putDigest: dgst},
+	}
+	repo := newRepository(innerRepo, store, "library")
+	ms, err := repo.Manifests(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifest := &mockManifest{
+		mediaType: "application/vnd.oci.image.manifest.v1+json",
+		payload:   []byte(`{"schemaVersion": 2}`),
+	}
+
+	_, err = ms.Put(context.Background(), manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if store.putManifestRec.Subject != "" {
+		t.Errorf("subject = %q, want empty", store.putManifestRec.Subject)
+	}
+	if store.putManifestRec.ArtifactType != "" {
+		t.Errorf("artifactType = %q, want empty", store.putManifestRec.ArtifactType)
 	}
 }
 

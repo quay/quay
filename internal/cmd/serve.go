@@ -19,6 +19,7 @@ import (
 	"github.com/quay/quay/internal/config"
 	"github.com/quay/quay/internal/dal/dbcore"
 	"github.com/quay/quay/internal/dal/metastore"
+	"github.com/quay/quay/internal/registry"
 	"github.com/quay/quay/internal/registry/distribution"
 	"github.com/quay/quay/internal/repository"
 	repositorydal "github.com/quay/quay/internal/repository/dal"
@@ -107,11 +108,16 @@ func runServe(ctx context.Context, configPath, dataDir, hostname, addr, adminUse
 		return 1
 	}
 
+	referrersHandler := registry.NewReferrersHandler(db, store, registry.ReferrersConfig{
+		LibraryNamespace: resolved.Config.LibraryNamespace,
+		AnonymousAccess:  featureEnabled(resolved.Config.FeatureAnonymousAccess),
+	})
+
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", healthHandler(db))
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/api/", api)
-	mux.Handle("/", reg.Handler())
+	mux.Handle("/", registry.WrapWithReferrers(referrersHandler, reg.Handler()))
 
 	srv, err := server.New(ctx, mux, &server.Config{
 		ListenAddr:      addr,

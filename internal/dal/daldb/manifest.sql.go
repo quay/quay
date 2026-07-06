@@ -7,6 +7,7 @@ package daldb
 
 import (
 	"context"
+	"database/sql"
 )
 
 const countManifests = `-- name: CountManifests :one
@@ -145,6 +146,101 @@ func (q *Queries) LinkManifestChild(ctx context.Context, arg LinkManifestChildPa
 	return err
 }
 
+const listReferrers = `-- name: ListReferrers :many
+SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size
+FROM manifest m
+JOIN mediatype mt ON mt.id = m.media_type_id
+WHERE m.repository_id = ? AND m.subject = ?
+`
+
+type ListReferrersParams struct {
+	RepositoryID int64          `json:"repository_id"`
+	Subject      sql.NullString `json:"subject"`
+}
+
+type ListReferrersRow struct {
+	Digest       string         `json:"digest"`
+	MediaType    string         `json:"media_type"`
+	ArtifactType sql.NullString `json:"artifact_type"`
+	Size         sql.NullInt64  `json:"size"`
+}
+
+func (q *Queries) ListReferrers(ctx context.Context, arg ListReferrersParams) ([]ListReferrersRow, error) {
+	rows, err := q.db.QueryContext(ctx, listReferrers, arg.RepositoryID, arg.Subject)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReferrersRow
+	for rows.Next() {
+		var i ListReferrersRow
+		if err := rows.Scan(
+			&i.Digest,
+			&i.MediaType,
+			&i.ArtifactType,
+			&i.Size,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReferrersByArtifactType = `-- name: ListReferrersByArtifactType :many
+SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size
+FROM manifest m
+JOIN mediatype mt ON mt.id = m.media_type_id
+WHERE m.repository_id = ? AND m.subject = ? AND m.artifact_type = ?
+`
+
+type ListReferrersByArtifactTypeParams struct {
+	RepositoryID int64          `json:"repository_id"`
+	Subject      sql.NullString `json:"subject"`
+	ArtifactType sql.NullString `json:"artifact_type"`
+}
+
+type ListReferrersByArtifactTypeRow struct {
+	Digest       string         `json:"digest"`
+	MediaType    string         `json:"media_type"`
+	ArtifactType sql.NullString `json:"artifact_type"`
+	Size         sql.NullInt64  `json:"size"`
+}
+
+func (q *Queries) ListReferrersByArtifactType(ctx context.Context, arg ListReferrersByArtifactTypeParams) ([]ListReferrersByArtifactTypeRow, error) {
+	rows, err := q.db.QueryContext(ctx, listReferrersByArtifactType, arg.RepositoryID, arg.Subject, arg.ArtifactType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReferrersByArtifactTypeRow
+	for rows.Next() {
+		var i ListReferrersByArtifactTypeRow
+		if err := rows.Scan(
+			&i.Digest,
+			&i.MediaType,
+			&i.ArtifactType,
+			&i.Size,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const manifestExistsByDigest = `-- name: ManifestExistsByDigest :one
 SELECT digest FROM manifest WHERE repository_id = ? AND digest = ?
 `
@@ -162,17 +258,22 @@ func (q *Queries) ManifestExistsByDigest(ctx context.Context, arg ManifestExists
 }
 
 const upsertManifest = `-- name: UpsertManifest :one
-INSERT INTO manifest (repository_id, digest, media_type_id, manifest_bytes)
-VALUES (?, ?, ?, ?)
-ON CONFLICT (repository_id, digest) DO UPDATE SET manifest_bytes = excluded.manifest_bytes
+INSERT INTO manifest (repository_id, digest, media_type_id, manifest_bytes, subject, artifact_type)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT (repository_id, digest) DO UPDATE
+  SET manifest_bytes = excluded.manifest_bytes,
+      subject = excluded.subject,
+      artifact_type = excluded.artifact_type
 RETURNING id
 `
 
 type UpsertManifestParams struct {
-	RepositoryID  int64  `json:"repository_id"`
-	Digest        string `json:"digest"`
-	MediaTypeID   int64  `json:"media_type_id"`
-	ManifestBytes string `json:"manifest_bytes"`
+	RepositoryID  int64          `json:"repository_id"`
+	Digest        string         `json:"digest"`
+	MediaTypeID   int64          `json:"media_type_id"`
+	ManifestBytes string         `json:"manifest_bytes"`
+	Subject       sql.NullString `json:"subject"`
+	ArtifactType  sql.NullString `json:"artifact_type"`
 }
 
 func (q *Queries) UpsertManifest(ctx context.Context, arg UpsertManifestParams) (int64, error) {
@@ -181,6 +282,8 @@ func (q *Queries) UpsertManifest(ctx context.Context, arg UpsertManifestParams) 
 		arg.Digest,
 		arg.MediaTypeID,
 		arg.ManifestBytes,
+		arg.Subject,
+		arg.ArtifactType,
 	)
 	var id int64
 	err := row.Scan(&id)

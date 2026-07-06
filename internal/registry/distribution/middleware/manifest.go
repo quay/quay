@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/distribution/distribution/v3"
@@ -49,6 +50,22 @@ func (ms *manifestService) Put(ctx context.Context, manifest distribution.Manife
 			record.Tag = withTag.Tag
 			break
 		}
+	}
+
+	// Extract subject and artifactType from the manifest JSON if present.
+	var subj struct {
+		Subject *struct {
+			Digest string `json:"digest"`
+		} `json:"subject"`
+		ArtifactType string `json:"artifactType"`
+	}
+	if json.Unmarshal(payload, &subj) == nil {
+		if subj.Subject != nil && subj.Subject.Digest != "" {
+			if d, err := digest.Parse(subj.Subject.Digest); err == nil {
+				record.Subject = d
+			}
+		}
+		record.ArtifactType = subj.ArtifactType
 	}
 
 	// Classify references as blobs or child manifests based on parent media type.

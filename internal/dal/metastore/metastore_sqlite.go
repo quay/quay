@@ -132,6 +132,8 @@ func (s *SQLiteStore) PutManifest(ctx context.Context, repoID int64, m oci.Manif
 		Digest:        m.Digest.String(),
 		MediaTypeID:   mtID,
 		ManifestBytes: string(m.Content),
+		Subject:       sql.NullString{String: m.Subject.String(), Valid: m.Subject != ""},
+		ArtifactType:  sql.NullString{String: m.ArtifactType, Valid: m.ArtifactType != ""},
 	})
 	if err != nil {
 		return 0, fmt.Errorf("upsert manifest %s: %w", m.Digest, err)
@@ -474,6 +476,51 @@ func (s *SQLiteStore) ListRepositories(ctx context.Context) ([]oci.RepositoryNam
 		repos[i] = oci.RepositoryName{Namespace: r.Namespace, Name: r.Name}
 	}
 	return repos, nil
+}
+
+// ListReferrers returns manifests that reference the given subject digest.
+func (s *SQLiteStore) ListReferrers(ctx context.Context, repoID int64, subject digest.Digest, artifactType string) ([]oci.ReferrerRecord, error) {
+	q := daldb.New(s.db)
+	subjectStr := sql.NullString{String: subject.String(), Valid: true}
+
+	if artifactType != "" {
+		rows, err := q.ListReferrersByArtifactType(ctx, daldb.ListReferrersByArtifactTypeParams{
+			RepositoryID: repoID,
+			Subject:      subjectStr,
+			ArtifactType: sql.NullString{String: artifactType, Valid: true},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("list referrers by artifact type: %w", err)
+		}
+		out := make([]oci.ReferrerRecord, len(rows))
+		for i, r := range rows {
+			out[i] = oci.ReferrerRecord{
+				Digest:       r.Digest,
+				MediaType:    r.MediaType,
+				ArtifactType: r.ArtifactType.String,
+				Size:         r.Size.Int64,
+			}
+		}
+		return out, nil
+	}
+
+	rows, err := q.ListReferrers(ctx, daldb.ListReferrersParams{
+		RepositoryID: repoID,
+		Subject:      subjectStr,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list referrers: %w", err)
+	}
+	out := make([]oci.ReferrerRecord, len(rows))
+	for i, r := range rows {
+		out[i] = oci.ReferrerRecord{
+			Digest:       r.Digest,
+			MediaType:    r.MediaType,
+			ArtifactType: r.ArtifactType.String,
+			Size:         r.Size.Int64,
+		}
+	}
+	return out, nil
 }
 
 // PutUploadedBlob marks a blob as recently uploaded to protect it from GC.

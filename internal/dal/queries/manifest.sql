@@ -4,9 +4,12 @@ FROM manifest
 WHERE repository_id = ? AND digest = ?;
 
 -- name: UpsertManifest :one
-INSERT INTO manifest (repository_id, digest, media_type_id, manifest_bytes)
-VALUES (?, ?, ?, ?)
-ON CONFLICT (repository_id, digest) DO UPDATE SET manifest_bytes = excluded.manifest_bytes
+INSERT INTO manifest (repository_id, digest, media_type_id, manifest_bytes, subject, artifact_type)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT (repository_id, digest) DO UPDATE
+  SET manifest_bytes = excluded.manifest_bytes,
+      subject = excluded.subject,
+      artifact_type = excluded.artifact_type
 RETURNING id;
 
 -- name: DeleteManifest :exec
@@ -40,3 +43,15 @@ SELECT digest FROM manifest WHERE repository_id = ? AND digest = ?;
 
 -- name: GetManifestContentByDigest :one
 SELECT manifest_bytes FROM manifest WHERE digest = ? LIMIT 1;
+
+-- name: ListReferrers :many
+SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size
+FROM manifest m
+JOIN mediatype mt ON mt.id = m.media_type_id
+WHERE m.repository_id = ? AND m.subject = ?;
+
+-- name: ListReferrersByArtifactType :many
+SELECT m.digest, mt.name AS media_type, m.artifact_type, length(m.manifest_bytes) AS size
+FROM manifest m
+JOIN mediatype mt ON mt.id = m.media_type_id
+WHERE m.repository_id = ? AND m.subject = ? AND m.artifact_type = ?;

@@ -26,6 +26,7 @@ type MetadataStore interface {
 	BlobLinkedToRepo(ctx context.Context, repoID int64, dgst digest.Digest) (bool, error)
 	ListTags(ctx context.Context, repoID int64) ([]string, error)
 	ListRepositories(ctx context.Context) ([]RepositoryName, error)
+	ListReferrers(ctx context.Context, repoID int64, subject digest.Digest, artifactType string) ([]ReferrerRecord, error)
 
 	// Upload tracking (prevents GC of unreferenced blobs during push)
 	PutUploadedBlob(ctx context.Context, repoID int64, dgst digest.Digest) error
@@ -41,6 +42,16 @@ type ManifestRecord struct {
 	BlobDigests  []BlobRef
 	ChildDigests []digest.Digest
 	Tag          string
+	Subject      digest.Digest
+	ArtifactType string
+}
+
+// ReferrerRecord holds the metadata for a single referrer manifest.
+type ReferrerRecord struct {
+	Digest       string
+	MediaType    string
+	ArtifactType string
+	Size         int64
 }
 
 // BlobRecord holds the data needed to persist blob metadata.
