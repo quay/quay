@@ -1,8 +1,9 @@
+import uuid
+
 import pytest
 from mock import Mock, patch
 
 from data import model
-from data.model.organization import delete_contact_email, get_contact_email, set_contact_email
 from notifications.models_interface import Notification, Repository
 from notifications.notificationevent import NotificationEvent, QuotaWarningEvent
 from notifications.notificationmethod import (
@@ -53,8 +54,9 @@ class TestEmailNamespaceNotifications:
         return msg_cls
 
     def test_org_with_contact_email(self, initialized_db):
-        """Org namespace with contact_email set sends to that address."""
-        set_contact_email(self.org, "ops-team@buynlarge.com")
+        """Org namespace with a valid email sends to that address."""
+        self.org.email = "ops-team@buynlarge.com"
+        self.org.save()
 
         notification = self._make_namespace_notification("buynlarge")
         msg_cls = self._perform_with_mock_mail(notification)
@@ -64,9 +66,9 @@ class TestEmailNamespaceNotifications:
         assert call_args[1]["recipients"] == ["ops-team@buynlarge.com"]
 
     def test_org_without_contact_email_falls_back_to_admins(self, initialized_db):
-        """Org namespace without contact_email sends to all org admin emails."""
-        delete_contact_email(self.org)
-        assert get_contact_email(self.org) is None
+        """Org namespace without a valid email sends to all org admin emails."""
+        self.org.email = str(uuid.uuid4())
+        self.org.save()
 
         notification = self._make_namespace_notification("buynlarge")
         msg_cls = self._perform_with_mock_mail(notification)

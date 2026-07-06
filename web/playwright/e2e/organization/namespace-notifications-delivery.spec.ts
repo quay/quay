@@ -218,7 +218,7 @@ test.describe(
     );
 
     test(
-      'email notification falls back to org admin emails when no contact_email',
+      'email notification falls back to org admin emails when no valid org email',
       {
         tag: [
           '@feature:QUOTA_MANAGEMENT',
@@ -230,7 +230,7 @@ test.describe(
       async ({api, superuserApi}) => {
         test.setTimeout(120_000);
 
-        // Create org WITHOUT explicit contact_email (default email used)
+        // Create org WITHOUT explicit email (UUID placeholder used)
         const org = await api.organization('nsdelivfb');
 
         // Set up quota (3 MiB) with warning limit at 80%

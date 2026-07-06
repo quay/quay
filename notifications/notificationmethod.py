@@ -13,6 +13,7 @@ import features
 from app import OVERRIDE_CONFIG_DIRECTORY, app, mail
 from data import model
 from util.fips import login_fips_safe
+from util.validation import validate_email
 from util.jsontemplate import JSONTemplate, JSONTemplateParseException
 from workers.queueworker import JobException
 
@@ -177,12 +178,11 @@ class EmailMethod(NotificationMethod):
             return []
 
         if namespace_user.organization:
-            contact_email = model.organization.get_contact_email(namespace_user)
-            if contact_email:
-                return [contact_email]
+            if validate_email(namespace_user.email):
+                return [namespace_user.email]
 
             admins = model.organization.get_admin_users(namespace_user)
-            return [admin.email for admin in admins if admin.email]
+            return [admin.email for admin in admins if validate_email(admin.email)]
 
         if namespace_user.email:
             return [namespace_user.email]
