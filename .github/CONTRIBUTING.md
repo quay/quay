@@ -228,7 +228,7 @@ only the older maintained branches.
 - Mailing list: [quay-sig@googlegroups.com](https://groups.google.com/forum/#!forum/quay-sig)
 - IRC: #quay on [libera.chat](https://web.libera.chat/?channel=#quay)
 - Bug tracking: [Red Hat JIRA](https://issues.redhat.com/projects/PROJQUAY)
-- Security issues: [security@redhat.com](mailto:security@redhat.com)
+- Security issues: See [SECURITY.md](../SECURITY.md)
 - Community meetings: first Wednesday of every month, 11:00 AM EST
 
 ## License
