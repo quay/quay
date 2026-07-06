@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from app import app as real_app
 from data import model
+from endpoints.api.bootstrap import _QUAY_BOOTSTRAP_RENEWAL_LOCATION_HEADER
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
 
@@ -361,7 +362,37 @@ def test_renew_non_bootstrap_bearer_token(app, initialized_db, tmp_path):
     assert resp.get_json()["error_type"] == "insufficient_scope"
 
 
-def test_renew_expired_token_rejected_from_loopback(app, initialized_db, tmp_path):
+def test_renew_expired_token_accepted_with_nginx_local_header(app, initialized_db, tmp_path):
+    config = _bootstrap_config(tmp_path)
+    _, application, token_record, access_token = _create_bootstrap_token(config)
+    token_record.expires_at = _expired_time()
+    token_record.save()
+
+    with patch.dict(real_app.config, config):
+        with app.test_client() as cl:
+            resp = cl.post(
+                "/api/v1/bootstrap/renew",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    _QUAY_BOOTSTRAP_RENEWAL_LOCATION_HEADER: "local",
+                },
+                environ_base={"REMOTE_ADDR": "203.0.113.50"},
+            )
+
+    assert resp.status_code == 200
+    assert resp.get_json() == {"status": "rotated"}
+    assert os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
+
+    new_access_token = _stored_access_token(config)
+    assert new_access_token != access_token
+    assert model.oauth.validate_bootstrap_token(new_access_token, config) is not None
+    assert model.oauth.validate_bootstrap_token(access_token, config) is None
+    assert len(model.oauth.get_bootstrap_tokens(application)) == 1
+
+
+def test_renew_expired_token_rejected_from_loopback_without_nginx_header(
+    app, initialized_db, tmp_path
+):
     config = _bootstrap_config(tmp_path)
     _, application, token_record, access_token = _create_bootstrap_token(config)
     token_record.expires_at = _expired_time()
@@ -407,6 +438,26 @@ def test_renew_expired_token_rejected_from_remote_addr(app, initialized_db, tmp_
                 "/api/v1/bootstrap/renew",
                 headers={"Authorization": f"Bearer {access_token}"},
                 environ_base={"REMOTE_ADDR": "203.0.113.50"},
+            )
+
+    _assert_expired_renew_rejected_without_rotation(resp, config, application, access_token)
+
+
+def test_renew_expired_token_rejected_with_nginx_remote_header(app, initialized_db, tmp_path):
+    config = _bootstrap_config(tmp_path)
+    _, application, token_record, access_token = _create_bootstrap_token(config)
+    token_record.expires_at = _expired_time()
+    token_record.save()
+
+    with patch.dict(real_app.config, config):
+        with app.test_client() as cl:
+            resp = cl.post(
+                "/api/v1/bootstrap/renew",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    _QUAY_BOOTSTRAP_RENEWAL_LOCATION_HEADER: "remote",
+                },
+                environ_base={"REMOTE_ADDR": "127.0.0.1"},
             )
 
     _assert_expired_renew_rejected_without_rotation(resp, config, application, access_token)

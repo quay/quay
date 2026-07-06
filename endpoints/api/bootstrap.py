@@ -1,7 +1,7 @@
 import logging
 from datetime import UTC, datetime
 
-from flask import request
+from flask import Request, request
 
 import features
 from app import app
@@ -22,6 +22,8 @@ from util.bootstrap_token import write_bootstrap_token
 logger = logging.getLogger(__name__)
 
 _INVALID_BOOTSTRAP_TOKEN_MESSAGE = "Requires valid bootstrap bearer token"
+_QUAY_BOOTSTRAP_RENEWAL_LOCATION_HEADER = "X-Quay-Bootstrap-Renewal-Location"
+_QUAY_BOOTSTRAP_RENEWAL_LOCATION_LOCAL = "local"
 
 
 class BootstrapTokenCleanupError(Exception):
@@ -38,6 +40,13 @@ def _utcnow_naive() -> datetime:
 
 def _is_expired(token: OAuthAccessToken) -> bool:
     return token.expires_at <= _utcnow_naive()
+
+
+def _is_local_bootstrap_renewal_request(req: Request) -> bool:
+    return (
+        req.headers.get(_QUAY_BOOTSTRAP_RENEWAL_LOCATION_HEADER)
+        == _QUAY_BOOTSTRAP_RENEWAL_LOCATION_LOCAL
+    )
 
 
 @resource("/v1/bootstrap/renew")
@@ -64,7 +73,7 @@ class BootstrapTokenRenew(ApiResource):
 
             _raise_invalid_bootstrap_token()
 
-        if _is_expired(current_token):
+        if _is_expired(current_token) and not _is_local_bootstrap_renewal_request(request):
             _raise_invalid_bootstrap_token()
 
         try:
@@ -75,7 +84,7 @@ class BootstrapTokenRenew(ApiResource):
                 if current_token is None:
                     _raise_invalid_bootstrap_token()
 
-                if _is_expired(current_token):
+                if _is_expired(current_token) and not _is_local_bootstrap_renewal_request(request):
                     _raise_invalid_bootstrap_token()
 
                 scope = app.config["BOOTSTRAP_TOKEN_SCOPE"]

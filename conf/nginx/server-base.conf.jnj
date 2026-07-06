@@ -143,6 +143,24 @@ location ~ ^/v2/(.+)/_trust/tuf/(.*)$ {
 }
 {% endif %}
 
+location = /api/v1/bootstrap/renew {
+    proxy_pass   http://web_app_server;
+
+    proxy_set_header X-Forwarded-For $proper_forwarded_for;
+    proxy_set_header X-Quay-Bootstrap-Renewal-Location $quay_bootstrap_renewal_location;
+    proxy_set_header X-Forwarded-Proto $final_proto;
+    proxy_set_header Transfer-Encoding $http_transfer_encoding;
+    proxy_set_header Host $safe_host;
+    proxy_set_header X-Forwarded-Host $safe_host;
+
+    {% if enable_rate_limits %}
+    limit_req zone=dynamicauth_heavy_http1 burst=25 nodelay;
+    limit_req zone=dynamicauth_heavy_http2 burst=100 nodelay;
+    {% endif %}
+
+    keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
+}
+
 location /api/ {
     proxy_pass   http://web_app_server;
 
