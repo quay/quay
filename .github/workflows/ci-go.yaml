@@ -180,9 +180,7 @@ jobs:
 
           export OCI_TEST_PULL=1
           export OCI_TEST_PUSH=1
-          # Content discovery currently fails because the Go registry does not
-          # implement the OCI 1.1 referrers API yet.
-          export OCI_TEST_CONTENT_DISCOVERY=0
+          export OCI_TEST_CONTENT_DISCOVERY=1
           export OCI_TEST_CONTENT_MANAGEMENT=1
 
           export OCI_HIDE_SKIPPED_WORKFLOWS=0

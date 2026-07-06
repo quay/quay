@@ -367,6 +367,149 @@ func TestDeleteTag(t *testing.T) {
 	}
 }
 
+func TestListReferrers_Empty(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	subjectDgst := digest.FromString("subject-manifest")
+	refs, err := store.ListReferrers(ctx, repoID, subjectDgst, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refs) != 0 {
+		t.Errorf("referrers = %d, want 0", len(refs))
+	}
+}
+
+func TestListReferrers_WithSubject(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	subjectDgst := digest.FromString("subject-manifest")
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    subjectDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{"schemaVersion":2}`),
+		Tag:       "latest",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	referrerDgst := digest.FromString("sbom-referrer")
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       referrerDgst,
+		MediaType:    "application/vnd.oci.image.manifest.v1+json",
+		Content:      []byte(`{"schemaVersion":2,"subject":{"digest":"` + subjectDgst.String() + `"}}`),
+		Subject:      subjectDgst,
+		ArtifactType: "application/vnd.example.sbom.v1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	refs, err := store.ListReferrers(ctx, repoID, subjectDgst, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refs) != 1 {
+		t.Fatalf("referrers = %d, want 1", len(refs))
+	}
+	if refs[0].Digest != referrerDgst.String() {
+		t.Errorf("digest = %s, want %s", refs[0].Digest, referrerDgst)
+	}
+	if refs[0].ArtifactType != "application/vnd.example.sbom.v1" {
+		t.Errorf("artifactType = %q, want sbom", refs[0].ArtifactType)
+	}
+	if refs[0].Size <= 0 {
+		t.Errorf("size = %d, want > 0", refs[0].Size)
+	}
+}
+
+func TestListReferrers_FilterByArtifactType(t *testing.T) {
+	store := setupStore(t)
+	ctx := t.Context()
+
+	repoID, err := store.EnsureRepository(ctx, oci.RepositoryName{Namespace: "library", Name: "nginx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	subjectDgst := digest.FromString("subject")
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:    subjectDgst,
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Content:   []byte(`{}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sbomDgst := digest.FromString("sbom")
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       sbomDgst,
+		MediaType:    "application/vnd.oci.image.manifest.v1+json",
+		Content:      []byte(`{"subject":{}}`),
+		Subject:      subjectDgst,
+		ArtifactType: "application/vnd.example.sbom.v1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sigDgst := digest.FromString("signature")
+	_, err = store.PutManifest(ctx, repoID, oci.ManifestRecord{
+		Digest:       sigDgst,
+		MediaType:    "application/vnd.oci.image.manifest.v1+json",
+		Content:      []byte(`{"subject":{}}`),
+		Subject:      subjectDgst,
+		ArtifactType: "application/vnd.example.signature.v1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// All referrers
+	all, err := store.ListReferrers(ctx, repoID, subjectDgst, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 2 {
+		t.Fatalf("all referrers = %d, want 2", len(all))
+	}
+
+	// Filter by SBOM
+	sboms, err := store.ListReferrers(ctx, repoID, subjectDgst, "application/vnd.example.sbom.v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sboms) != 1 {
+		t.Fatalf("sbom referrers = %d, want 1", len(sboms))
+	}
+	if sboms[0].Digest != sbomDgst.String() {
+		t.Errorf("digest = %s, want %s", sboms[0].Digest, sbomDgst)
+	}
+
+	// Filter by non-existent type
+	none, err := store.ListReferrers(ctx, repoID, subjectDgst, "application/vnd.nonexistent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(none) != 0 {
+		t.Errorf("nonexistent referrers = %d, want 0", len(none))
+	}
+}
+
 // --- test helpers ---
 
 func assertActiveTag(t *testing.T, s *metastore.SQLiteStore, repoID int64, tag string) {
