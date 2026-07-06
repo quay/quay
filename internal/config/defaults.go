@@ -32,6 +32,7 @@ func newDefaultConfig() Config {
 			FeatureAnonymousAccess:     boolPtr(true),
 			FeatureChangeTagExpiration: boolPtr(true),
 			FeatureAppSpecificTokens:   boolPtr(true),
+			FeatureSuperUsers:          boolPtr(true),
 		},
 	}
 }
