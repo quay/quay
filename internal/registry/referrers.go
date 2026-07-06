@@ -16,7 +16,10 @@ import (
 	"github.com/quay/quay/internal/oci"
 )
 
-const ociImageIndexMediaType = "application/vnd.oci.image.index.v1+json"
+const (
+	ociImageIndexMediaType  = "application/vnd.oci.image.index.v1+json"
+	defaultLibraryNamespace = "library"
+)
 
 var referrersPathRe = regexp.MustCompile(`^/v2/(.+)/referrers/(` + digest.DigestRegexp.String() + `)$`)
 
@@ -37,7 +40,7 @@ type ReferrersHandler struct {
 // NewReferrersHandler creates a handler for GET /v2/{name}/referrers/{digest}.
 func NewReferrersHandler(db *sql.DB, store oci.MetadataStore, cfg ReferrersConfig) *ReferrersHandler {
 	if cfg.LibraryNamespace == "" {
-		cfg.LibraryNamespace = "library"
+		cfg.LibraryNamespace = defaultLibraryNamespace
 	}
 	return &ReferrersHandler{
 		store:         store,

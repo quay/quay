@@ -80,7 +80,7 @@ func TestReferrers_EmptyList(t *testing.T) {
 	handler := newTestHandler(store)
 
 	subjectDgst := digest.FromString("subject-manifest")
-	req := httptest.NewRequest(http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -123,7 +123,7 @@ func TestReferrers_WithResults(t *testing.T) {
 	handler := newTestHandler(store)
 
 	subjectDgst := digest.FromString("subject-manifest")
-	req := httptest.NewRequest(http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -159,7 +159,7 @@ func TestReferrers_ArtifactTypeFilter(t *testing.T) {
 	handler := newTestHandler(store)
 
 	subjectDgst := digest.FromString("subject")
-	req := httptest.NewRequest(http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String()+"?artifactType=application/vnd.example.sbom.v1", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String()+"?artifactType=application/vnd.example.sbom.v1", http.NoBody)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -180,7 +180,7 @@ func TestReferrers_NoFilterHeader_WhenNoFilter(t *testing.T) {
 	handler := newTestHandler(store)
 
 	subjectDgst := digest.FromString("subject")
-	req := httptest.NewRequest(http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -194,7 +194,7 @@ func TestReferrers_InvalidDigest(t *testing.T) {
 	store := &mockStore{repoID: 1}
 	handler := newTestHandler(store)
 
-	req := httptest.NewRequest(http.MethodGet, "/v2/ns/repo/referrers/notadigest", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/notadigest", http.NoBody)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -211,7 +211,7 @@ func TestReferrers_RepoNotFound(t *testing.T) {
 	handler := newTestHandler(store)
 
 	subjectDgst := digest.FromString("subject")
-	req := httptest.NewRequest(http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -238,7 +238,7 @@ func TestReferrers_Matches(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		r := httptest.NewRequest(tt.method, tt.path, http.NoBody)
+		r := httptest.NewRequestWithContext(t.Context(), tt.method, tt.path, http.NoBody)
 		if got := handler.Matches(r); got != tt.want {
 			t.Errorf("Matches(%s %s) = %v, want %v", tt.method, tt.path, got, tt.want)
 		}
@@ -268,7 +268,7 @@ func TestReferrers_MultipleReferrers(t *testing.T) {
 	handler := newTestHandler(store)
 
 	subjectDgst := digest.FromString("subject")
-	req := httptest.NewRequest(http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v2/ns/repo/referrers/"+subjectDgst.String(), http.NoBody)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
