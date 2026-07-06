@@ -1190,7 +1190,7 @@ class ProxyCacheConfigValidation(ApiResource):
 
         try:
             model.proxy_cache.get_proxy_cache_config_for_org(orgname)
-            request_error("Proxy Cache Configuration already exists")
+            raise request_error("Proxy Cache Configuration already exists")
         except model.InvalidProxyCacheConfigException:
             pass
 
