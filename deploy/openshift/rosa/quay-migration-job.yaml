@@ -95,7 +95,7 @@ parameters:
 
   # Job attributes
   - name: BACKOFF_LIMIT
-    value: "6"
+    value: "0"
     displayName: job backoff limit
     description: Number of retries before marking the Job as failed
   - name: ACTIVE_DEADLINE_SECONDS
