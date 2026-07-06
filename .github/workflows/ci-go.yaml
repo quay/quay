@@ -107,6 +107,234 @@ jobs:
       - name: Check schema drift
         run: make go-schema-check
 
+  oci-conformance:
+    name: OCI Conformance
+    runs-on: ubuntu-latest
+    needs: [test]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Download quay binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: quay-binary
+          path: bin/
+
+      - name: Checkout distribution-spec
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: opencontainers/distribution-spec
+          ref: v1.1.1
+          path: dist-spec
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: dist-spec/conformance/go.mod
+          cache: false
+
+      - name: Build conformance test binary
+        run: |
+          cd dist-spec/conformance
+          CGO_ENABLED=0 go test -c -o conformance.test
+
+      - name: Build registry image
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/oci-conformance-logs
+          chmod +x bin/quay
+          podman build -f Dockerfile.mirror -t quay-mirror:test . \
+            2>&1 | tee /tmp/oci-conformance-logs/image-build.log
+          podman save quay-mirror:test -o /tmp/quay-mirror.tar \
+            2>&1 | tee /tmp/oci-conformance-logs/image-save.log
+
+      - name: Install registry
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/oci-conformance-logs
+          sudo bin/quay install \
+            -hostname=localhost \
+            -data-dir=/var/lib/quay \
+            -image-archive=/tmp/quay-mirror.tar \
+            2>&1 | tee /tmp/oci-conformance-logs/install.log
+
+      - name: Run conformance tests
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/oci-conformance-logs
+          PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
+
+          export OCI_ROOT_URL="https://localhost:8443"
+          export OCI_NAMESPACE="admin/conformance"
+          export OCI_CROSSMOUNT_NAMESPACE="admin/crossmount"
+          export OCI_USERNAME="admin"
+          export OCI_PASSWORD="$PASSWORD"
+
+          export OCI_TEST_PULL=1
+          export OCI_TEST_PUSH=1
+          # Content discovery currently fails because the Go registry does not
+          # implement the OCI 1.1 referrers API yet.
+          export OCI_TEST_CONTENT_DISCOVERY=0
+          export OCI_TEST_CONTENT_MANAGEMENT=1
+
+          export OCI_HIDE_SKIPPED_WORKFLOWS=0
+          export OCI_DEBUG=0
+          export OCI_DELETE_MANIFEST_BEFORE_BLOBS=0
+
+          ./dist-spec/conformance/conformance.test \
+            2>&1 | tee /tmp/oci-conformance-logs/conformance-output.log
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/oci-conformance-results /tmp/oci-conformance-logs
+          mv report.html junit.xml /tmp/oci-conformance-results/ 2>/dev/null || true
+          sudo podman ps -a > /tmp/oci-conformance-logs/podman-ps.txt 2>&1 || true
+          sudo podman images > /tmp/oci-conformance-logs/podman-images.txt 2>&1 || true
+          sudo podman system info > /tmp/oci-conformance-logs/podman-system-info.txt 2>&1 || true
+          sudo podman inspect systemd-quay > /tmp/oci-conformance-logs/container-inspect.json 2>&1 || true
+          sudo podman logs systemd-quay > /tmp/oci-conformance-logs/container.log 2>&1 || true
+          sudo journalctl -u quay.service --no-pager > /tmp/oci-conformance-logs/systemd.log 2>&1 || true
+          sudo systemctl status quay.service --no-pager > /tmp/oci-conformance-logs/service-status.txt 2>&1 || true
+          sudo systemctl cat quay.service > /tmp/oci-conformance-logs/service-unit.txt 2>&1 || true
+          sudo ls -laR /var/lib/quay/ > /tmp/oci-conformance-logs/data-dir.txt 2>&1 || true
+          sudo find /var/lib/quay -maxdepth 5 -type f -printf '%p %s bytes\n' > /tmp/oci-conformance-logs/data-files.txt 2>&1 || true
+          sudo cat /etc/containers/systemd/quay.container > /tmp/oci-conformance-logs/quadlet.txt 2>&1 || true
+          curl -kfsS https://localhost:8443/healthz > /tmp/oci-conformance-logs/healthz.json 2>&1 || true
+          if sudo test -f /var/lib/quay/auth/admin-password; then
+            PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
+            curl -kfsS -u "admin:${PASSWORD}" \
+              https://localhost:8443/v2/_catalog > /tmp/oci-conformance-logs/catalog.json 2>&1 || true
+          fi
+          ss -tlnp > /tmp/oci-conformance-logs/ports.txt 2>&1 || true
+
+      - name: Summarize conformance results
+        if: always()
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import os
+          import textwrap
+          import xml.etree.ElementTree as ET
+
+          summary_path = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          results_dir = Path("/tmp/oci-conformance-results")
+          logs_dir = Path("/tmp/oci-conformance-logs")
+          junit_path = results_dir / "junit.xml"
+          report_path = results_dir / "report.html"
+
+          lines = ["## OCI Distribution Spec Conformance", ""]
+
+          if not junit_path.exists():
+              lines.extend([
+                  "No `junit.xml` was produced. Check the uploaded `oci-conformance-logs` artifact for install, registry, and conformance output.",
+                  "",
+              ])
+          else:
+              tree = ET.parse(junit_path)
+              root = tree.getroot()
+              suites = root.findall("testsuite") if root.tag == "testsuites" else [root]
+              tests = sum(int(s.get("tests", 0)) for s in suites)
+              failures = sum(int(s.get("failures", 0)) for s in suites)
+              errors = sum(int(s.get("errors", 0)) for s in suites)
+              skipped = sum(int(s.get("skipped", 0)) for s in suites)
+              passed = tests - failures - errors - skipped
+              lines.extend([
+                  "| Total | Passed | Failed | Errors | Skipped |",
+                  "| ---: | ---: | ---: | ---: | ---: |",
+                  f"| {tests} | {passed} | {failures} | {errors} | {skipped} |",
+                  "",
+              ])
+
+              failed_cases = []
+              for case in root.iter("testcase"):
+                  problems = list(case.findall("failure")) + list(case.findall("error"))
+                  if problems:
+                      failed_cases.append((case, problems[0]))
+
+              if failed_cases:
+                  print(f"::error title=OCI conformance failures::{failures} failures, {errors} errors")
+                  lines.append("### Failed Tests")
+                  for case, problem in failed_cases[:20]:
+                      name = case.get("name", "unknown")
+                      classname = case.get("classname", "")
+                      message = problem.get("message") or (problem.text or "")
+                      message = " ".join(message.split())
+                      message = textwrap.shorten(message, width=240, placeholder="...")
+                      label = f"{classname} - {name}" if classname else name
+                      lines.append(f"- `{label}`")
+                      if message:
+                          lines.append(f"  {message}")
+                  if len(failed_cases) > 20:
+                      lines.append(f"- ...and {len(failed_cases) - 20} more failures. See `junit.xml` in the uploaded results artifact.")
+                  lines.append("")
+              else:
+                  lines.append("All reported conformance tests passed.")
+                  lines.append("")
+
+          lines.extend([
+              "### Artifacts",
+              "- `oci-conformance-results`: `junit.xml` and `report.html` when produced.",
+              "- `oci-conformance-logs`: conformance stdout, install logs, registry logs, systemd status, Podman state, health check, catalog, and data directory listings.",
+              "",
+          ])
+
+          for log_name in ("conformance-output.log", "install.log", "container.log"):
+              log_path = logs_dir / log_name
+              if not log_path.exists():
+                  continue
+              content = log_path.read_text(errors="replace").splitlines()
+              tail = "\n".join(content[-80:])
+              if tail:
+                  lines.extend([
+                      f"<details><summary>Last lines from {log_name}</summary>",
+                      "",
+                      "```text",
+                      tail,
+                      "```",
+                      "</details>",
+                      "",
+                  ])
+
+          if report_path.exists():
+              lines.append("The HTML conformance report is available in the `oci-conformance-results` artifact.")
+              lines.append("")
+
+          summary_path.write_text("\n".join(lines))
+          PY
+
+      - name: Stop registry
+        if: always()
+        run: |
+          sudo systemctl stop quay.service || true
+          sudo podman rm --force systemd-quay quay || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oci-conformance-results
+          path: /tmp/oci-conformance-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload registry logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oci-conformance-logs
+          path: /tmp/oci-conformance-logs/
+          if-no-files-found: warn
+          retention-days: 7
+
   e2e-mirror:
     name: E2E Mirror Install
     runs-on: ubuntu-latest

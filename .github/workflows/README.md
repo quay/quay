@@ -17,9 +17,8 @@ If every expected job passes (or is legitimately skipped), `all-green` passes. I
 |------|------|
 | `sentinel.yaml` | Orchestrator + gate (the only required check) |
 | `ci-python.yaml` | Format, Pre-commit, Unit, SQLite, PostgreSQL, Types, E2E, Registry |
-| `ci-go.yaml` | Go Lint, Build, Test, Schema Drift, E2E Mirror |
+| `ci-go.yaml` | Go Lint, Build, Test, Schema Drift, OCI Conformance, E2E Mirror |
 | `ci-web.yaml` | Build Plugin, Vitest, e2e-test-check, Playwright E2E |
-| `ci-oci-spec.yaml` | OCI Distribution Spec conformance |
 
 ## Adding a new always-run job
 
