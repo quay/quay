@@ -6049,7 +6049,7 @@ SECURITY_TESTS: List[
         OrganizationProxyCacheConfig,
         "POST",
         {"orgname": "library"},
-        {"upstream_registry": "some-upstream-registry"},
+        {"upstream_registry": "docker.io"},
         "devtable",
         201,
     ),
@@ -7184,7 +7184,11 @@ def _filter_security_tests():
 
 @pytest.mark.parametrize("resource,method,params,body,identity,expected", _filter_security_tests())
 def test_api_security(resource, method, params, body, identity, expected, app):
-    with client_with_identity(identity, app) as cl:
+    mock_dns = patch(
+        "util.security.ssrf._getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
+    )
+    with mock_dns, client_with_identity(identity, app) as cl:
         conduct_api_call(cl, resource, method, params, body, expected)
 
 
