@@ -8,6 +8,8 @@ Enterprise container registry supporting Docker Registry Protocol v2, OCI spec v
 
 **Stack:** Python 3.12, Flask, Peewee ORM, PostgreSQL, Redis, Alembic migrations (via SQLAlchemy bridge)
 
+**Go stack:** Go 1.25, sqlc, SQLite, golangci-lint — standalone registry services in `internal/`
+
 **Frontend:** Legacy Angular (`static/js/`) + New React/PatternFly (`web/`) - see `web/AGENTS.md` for React details
 
 **Config:** YAML at `local-dev/stack/config.yaml` (host) / `conf/stack/config.yaml` (container), validated via JSON Schema
@@ -29,6 +31,13 @@ make registry-test                   # Registry protocol tests
 
 # Code Quality
 make types-test                      # Type checking (mypy)
+
+# Go (internal/)
+go test ./internal/...               # All Go tests
+go test ./internal/repository/... -v # Single Go package
+go vet ./internal/...                # Go vet checks
+golangci-lint run ./internal/...     # Go linting (20+ linters)
+sqlc generate                        # Regenerate DAL from SQL queries
 ```
 
 ## Key Directories
@@ -41,6 +50,7 @@ make types-test                      # Type checking (mypy)
 - `workers/` - Background job processors
 - `auth/` - Authentication & authorization
 - `storage/` - Storage backends (S3, Azure, Swift, local)
+- `internal/` - Go codebase for standalone registry services (see `agent_docs/go.md`)
 - `web/` - React frontend (see `web/AGENTS.md`)
 
 ## Documentation by Task
@@ -55,6 +65,7 @@ make types-test                      # Type checking (mypy)
 | Architecture, key files | `agent_docs/architecture.md` |
 | Global readonly superuser feature | `agent_docs/global_readonly_superuser.md` |
 | Local development setup | `agent_docs/development.md` |
+| Go codebase, sqlc, `internal/` | `agent_docs/go.md` |
 | React frontend | `web/AGENTS.md` |
 | Frontend E2E tests, Playwright fixtures | `web/playwright/MIGRATION.md` |
 | Dev workflow, JIRA, PRs, CI | `agent_docs/workflow.md` |
@@ -125,6 +136,7 @@ Use this low-token routing map before opening broader docs:
 - Schema/migrations: `data/database.py`, `data/migrations/`, `agent_docs/database.md`
 - Workers: `workers/`
 - Storage: `storage/`
+- Go services: `internal/`, `agent_docs/go.md`
 - React UI: `web/AGENTS.md`
 
 Guardrails: add tests for behavior changes, generate Alembic revisions instead of hand-writing IDs, and keep secrets out of config and fixtures.
