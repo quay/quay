@@ -85,7 +85,10 @@ fi
 WORK_DIR=$(mktemp -d)
 echo "Downloading artifacts to $WORK_DIR ..." >&2
 
-ARTIFACTS_JSON=$(gh api "repos/${DEFAULT_REPO}/actions/runs/${RUN_ID}/artifacts" --jq '[.artifacts[] | {name, size_in_bytes, expired}]' 2>/dev/null)
+ARTIFACTS_JSON=$(gh api "repos/${DEFAULT_REPO}/actions/runs/${RUN_ID}/artifacts" --jq '[.artifacts[] | {name, size_in_bytes, expired}]') || {
+  echo "ERROR: Could not list artifacts for run ${RUN_ID} in ${DEFAULT_REPO}" >&2
+  exit 1
+}
 
 HAS_TEST_RESULTS=false
 HAS_CONTAINER_LOGS=false
