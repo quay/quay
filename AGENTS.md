@@ -62,6 +62,7 @@ make types-test                      # Type checking (mypy)
 ## Universal Conventions
 
 1. **Testing:** Every code change must include tests. For frontend: use **Playwright** for all E2E and full-flow testing (add to existing spec files in `web/playwright/e2e/`); use vitest only for pure unit logic with no UI interaction (utilities, data transformers). For backend: add pytest tests in the appropriate `test/` directory. Always run relevant tests before committing.
+   - **Database-specific features:** If your change relies on PostgreSQL-specific behavior (e.g., `SELECT FOR UPDATE SKIP LOCKED`, advisory locks, specific index usage, or transaction isolation semantics), SQLite-based unit tests alone are insufficient — these features silently degrade on SQLite (e.g., `SKIP LOCKED` becomes a no-op via `null_for_update` in `data/database.py`). You must either add integration tests that run against PostgreSQL (`make test_postgres`, `E2E Postgres Test` CI job) or explicitly mark SQLite-only tests as structural and document the PostgreSQL testing gap in the PR description. See `agent_docs/testing.md` for details.
 2. **Formatting:** Rely on pre-commit hook to format code on commit
 3. **No secrets:** Never commit credentials, API keys, or sensitive config
 4. **Imports:** Follow existing import ordering patterns in each file
