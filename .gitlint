@@ -5,6 +5,12 @@
 # from the commit subject, validating the subject here catches format
 # errors before they reach CI.
 #
+# Usage:
+#   - fullsend agents: gitlint is installed in the sandbox image and agents
+#     run `gitlint --commit HEAD` to validate each commit before pushing.
+#   - Human contributors: run `gitlint` locally to catch format errors
+#     before pushing.
+#
 # Accepted subject formats:
 #   PROJQUAY-12345: fix(scope): description
 #   QUAYIO-12345: feat: description
