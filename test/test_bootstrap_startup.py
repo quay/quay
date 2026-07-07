@@ -1,12 +1,15 @@
+import base64
 import json
 import os
 from unittest.mock import patch
 
 import pytest
+from httmock import HTTMock, urlmatch
 
 from data import model
 from data.database import db
 from test.fixtures import *
+from util.bootstrap_token import KubernetesTokenProvider
 
 
 def _app_config(tmp_path, feature_enabled=True, superusers=None, owner="devtable"):
@@ -29,6 +32,63 @@ def _app_config(tmp_path, feature_enabled=True, superusers=None, owner="devtable
 def _stored_access_token(config):
     with open(config["BOOTSTRAP_TOKEN_PATH"]) as f:
         return json.load(f)["access_token"]
+
+
+def _k8s_app_config(tmp_path, feature_enabled=True):
+    config = _app_config(tmp_path, feature_enabled=feature_enabled)
+    config.update(
+        {
+            "PROGRAMMATIC_TOKEN_K8S_SECRET": "bootstrap-token",
+            "PROGRAMMATIC_TOKEN_K8S_KEY": "token.json",
+        }
+    )
+    return config
+
+
+def _patch_k8s_service_account(tmp_path, monkeypatch):
+    service_account_dir = tmp_path / "serviceaccount"
+    service_account_dir.mkdir()
+    token_path = service_account_dir / "token"
+    namespace_path = service_account_dir / "namespace"
+    ca_path = service_account_dir / "ca.crt"
+
+    token_path.write_text("service-account-token\n")
+    namespace_path.write_text("quay-enterprise\n")
+    ca_path.write_text("ca")
+
+    monkeypatch.setattr(KubernetesTokenProvider, "SA_TOKEN_PATH", str(token_path))
+    monkeypatch.setattr(KubernetesTokenProvider, "SA_NAMESPACE_PATH", str(namespace_path))
+    monkeypatch.setattr(KubernetesTokenProvider, "SA_CA_CERT_PATH", str(ca_path))
+    monkeypatch.setattr("util.bootstrap_token.IS_KUBERNETES", True)
+    monkeypatch.setattr("util.bootstrap_token.KUBERNETES_API_HOST", "kubernetes.default.svc:443")
+
+
+def _k8s_secret_handlers(secret):
+    @urlmatch(
+        netloc="kubernetes.default.svc:443",
+        path="/api/v1/namespaces/quay-enterprise/secrets/bootstrap-token$",
+        method="get",
+    )
+    def get_secret(_, __):
+        return {"status_code": 200, "content": json.dumps(secret)}
+
+    @urlmatch(
+        netloc="kubernetes.default.svc:443",
+        path="/api/v1/namespaces/quay-enterprise/secrets/bootstrap-token$",
+        method="put",
+    )
+    def put_secret(_, request):
+        body = request.body.decode("utf-8") if isinstance(request.body, bytes) else request.body
+        secret.clear()
+        secret.update(json.loads(body))
+        return {"status_code": 200, "content": json.dumps(secret)}
+
+    return get_secret, put_secret
+
+
+def _k8s_secret_access_token(secret, key="token.json"):
+    token_json = base64.b64decode(secret["data"][key]).decode("utf-8")
+    return json.loads(token_json)["access_token"]
 
 
 def test_readonly_registry_skips_bootstrap_token_setup(initialized_db, tmp_path):
@@ -88,6 +148,37 @@ def test_provision_creates_bootstrap_token_and_file(initialized_db, tmp_path):
     assert len(tokens) == 1
 
     access_token = _stored_access_token(config)
+    assert model.oauth.validate_bootstrap_token(access_token, config).id == tokens[0].id
+
+
+def test_provision_creates_bootstrap_token_in_kubernetes_secret(
+    initialized_db, tmp_path, monkeypatch
+):
+    from boot import setup_bootstrap_token
+
+    _patch_k8s_service_account(tmp_path, monkeypatch)
+    config = _k8s_app_config(tmp_path)
+    secret = {"data": {}}
+    get_secret, put_secret = _k8s_secret_handlers(secret)
+
+    with (
+        HTTMock(get_secret, put_secret),
+        patch("boot.app") as mock_app,
+        patch("boot.lock_bootstrap_token_operation") as mock_lock,
+    ):
+        mock_app.config = config
+        setup_bootstrap_token()
+
+    mock_lock.assert_called_once_with()
+    assert not os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
+
+    owner = model.user.get_user("devtable")
+    application = model.oauth.lookup_application_by_name(
+        owner, model.oauth.get_bootstrap_app_name()
+    )
+    tokens = model.oauth.get_bootstrap_tokens(application)
+    access_token = _k8s_secret_access_token(secret)
+    assert len(tokens) == 1
     assert model.oauth.validate_bootstrap_token(access_token, config).id == tokens[0].id
 
 
@@ -608,6 +699,30 @@ def test_provision_non_superuser_owner_skips_provisioning(initialized_db, tmp_pa
 
     assert not os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
     mock_lock.assert_not_called()
+
+
+def test_feature_disabled_deletes_kubernetes_secret_key(initialized_db, tmp_path, monkeypatch):
+    from boot import setup_bootstrap_token
+
+    _patch_k8s_service_account(tmp_path, monkeypatch)
+    config = _k8s_app_config(tmp_path, feature_enabled=False)
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_bootstrap_application(
+        model.oauth.get_bootstrap_app_name(),
+        owner,
+    )
+    token, _ = model.oauth.create_bootstrap_oauth_api_token(application, owner, "repo:read")
+    secret = {"data": {"token.json": "e30=", "other.json": "dmFsdWU="}}
+    get_secret, put_secret = _k8s_secret_handlers(secret)
+
+    with HTTMock(get_secret, put_secret), patch("boot.app") as mock_app:
+        mock_app.config = config
+        setup_bootstrap_token()
+
+    assert model.oauth.lookup_access_token_by_uuid(token.uuid) is None
+    assert "token.json" not in secret["data"]
+    assert secret["data"] == {"other.json": "dmFsdWU="}
+    assert not os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
 
 
 def test_feature_disabled_revokes_owner_bootstrap_applications(initialized_db, tmp_path):

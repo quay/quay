@@ -1,13 +1,17 @@
+import base64
 import json
 import os
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
+
+from httmock import HTTMock, urlmatch
 
 from app import app as real_app
 from data import model
 from endpoints.api.bootstrap import _QUAY_BOOTSTRAP_RENEWAL_LOCATION_HEADER
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
+from util.bootstrap_token import KubernetesTokenProvider
 
 
 def _bootstrap_config(tmp_path, owner="devtable"):
@@ -19,6 +23,17 @@ def _bootstrap_config(tmp_path, owner="devtable"):
         "BOOTSTRAP_TOKEN_EXPIRATION": 3600,
         "BOOTSTRAP_TOKEN_SCOPE": "repo:read",
     }
+
+
+def _k8s_bootstrap_config(tmp_path, owner="devtable"):
+    config = _bootstrap_config(tmp_path, owner=owner)
+    config.update(
+        {
+            "PROGRAMMATIC_TOKEN_K8S_SECRET": "bootstrap-token",
+            "PROGRAMMATIC_TOKEN_K8S_KEY": "token.json",
+        }
+    )
+    return config
 
 
 def _create_bootstrap_token(config):
@@ -38,6 +53,52 @@ def _create_bootstrap_token(config):
 def _stored_access_token(config):
     with open(config["BOOTSTRAP_TOKEN_PATH"]) as f:
         return json.load(f)["access_token"]
+
+
+def _patch_k8s_service_account(tmp_path, monkeypatch):
+    service_account_dir = tmp_path / "serviceaccount"
+    service_account_dir.mkdir()
+    token_path = service_account_dir / "token"
+    namespace_path = service_account_dir / "namespace"
+    ca_path = service_account_dir / "ca.crt"
+
+    token_path.write_text("service-account-token\n")
+    namespace_path.write_text("quay-enterprise\n")
+    ca_path.write_text("ca")
+
+    monkeypatch.setattr(KubernetesTokenProvider, "SA_TOKEN_PATH", str(token_path))
+    monkeypatch.setattr(KubernetesTokenProvider, "SA_NAMESPACE_PATH", str(namespace_path))
+    monkeypatch.setattr(KubernetesTokenProvider, "SA_CA_CERT_PATH", str(ca_path))
+    monkeypatch.setattr("util.bootstrap_token.IS_KUBERNETES", True)
+    monkeypatch.setattr("util.bootstrap_token.KUBERNETES_API_HOST", "kubernetes.default.svc:443")
+
+
+def _k8s_secret_handlers(secret):
+    @urlmatch(
+        netloc="kubernetes.default.svc:443",
+        path="/api/v1/namespaces/quay-enterprise/secrets/bootstrap-token$",
+        method="get",
+    )
+    def get_secret(_, __):
+        return {"status_code": 200, "content": json.dumps(secret)}
+
+    @urlmatch(
+        netloc="kubernetes.default.svc:443",
+        path="/api/v1/namespaces/quay-enterprise/secrets/bootstrap-token$",
+        method="put",
+    )
+    def put_secret(_, request):
+        body = request.body.decode("utf-8") if isinstance(request.body, bytes) else request.body
+        secret.clear()
+        secret.update(json.loads(body))
+        return {"status_code": 200, "content": json.dumps(secret)}
+
+    return get_secret, put_secret
+
+
+def _k8s_secret_access_token(secret, key="token.json"):
+    token_json = base64.b64decode(secret["data"][key]).decode("utf-8")
+    return json.loads(token_json)["access_token"]
 
 
 def _expired_time():
@@ -70,6 +131,32 @@ def test_renew_valid_token(app, initialized_db, tmp_path):
     new_access_token = _stored_access_token(config)
     assert new_access_token != access_token
     assert model.oauth.validate_bootstrap_token(new_access_token, config) is not None
+    assert model.oauth.validate_bootstrap_token(access_token, config) is None
+
+
+def test_renew_valid_token_writes_kubernetes_secret(app, initialized_db, tmp_path, monkeypatch):
+    _patch_k8s_service_account(tmp_path, monkeypatch)
+    config = _k8s_bootstrap_config(tmp_path)
+    _, application, _, access_token = _create_bootstrap_token(config)
+    secret = {"data": {}}
+    get_secret, put_secret = _k8s_secret_handlers(secret)
+
+    with HTTMock(get_secret, put_secret), patch.dict(real_app.config, config):
+        with app.test_client() as cl:
+            resp = cl.post(
+                "/api/v1/bootstrap/renew",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+
+    assert resp.status_code == 200
+    assert resp.get_json() == {"status": "rotated"}
+    assert not os.path.exists(config["BOOTSTRAP_TOKEN_PATH"])
+
+    new_access_token = _k8s_secret_access_token(secret)
+    tokens = model.oauth.get_bootstrap_tokens(application)
+    assert len(tokens) == 1
+    assert new_access_token != access_token
+    assert model.oauth.validate_bootstrap_token(new_access_token, config).id == tokens[0].id
     assert model.oauth.validate_bootstrap_token(access_token, config) is None
 
 

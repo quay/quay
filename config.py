@@ -882,6 +882,9 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_PROGRAMMATIC_BOOTSTRAP = False
     BOOTSTRAP_TOKEN_OWNER: Optional[str] = None
     BOOTSTRAP_TOKEN_PATH = "/var/lib/quay/quay-machine-token.json"
+    PROGRAMMATIC_TOKEN_K8S_SECRET: Optional[str] = None
+    PROGRAMMATIC_TOKEN_K8S_KEY = "token.json"
+    PROGRAMMATIC_TOKEN_K8S_NAMESPACE: Optional[str] = None
     BOOTSTRAP_TOKEN_EXPIRATION = 3600  # 60 minutes in seconds
     BOOTSTRAP_TOKEN_SCOPE = (
         "org:admin repo:admin repo:create repo:read repo:write super:user user:admin user:read"
