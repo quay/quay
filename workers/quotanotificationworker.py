@@ -35,9 +35,7 @@ class QuotaNotificationWorker(Worker):
             return
 
         namespace_ids = (
-            NamespaceNotification.select(NamespaceNotification.namespace)
-            .distinct()
-            .tuples()
+            NamespaceNotification.select(NamespaceNotification.namespace).distinct().tuples()
         )
         namespace_id_set = {row[0] for row in namespace_ids}
 
@@ -63,17 +61,12 @@ class QuotaNotificationWorker(Worker):
             return
 
         try:
-            size_row = QuotaNamespaceSize.get(
-                QuotaNamespaceSize.namespace_user == namespace_user
-            )
+            size_row = QuotaNamespaceSize.get(QuotaNamespaceSize.namespace_user == namespace_user)
             usage_bytes = size_row.size_bytes if size_row.size_bytes is not None else 0
         except QuotaNamespaceSize.DoesNotExist:
             usage_bytes = 0
 
-        limits = list(
-            QuotaLimits.select()
-            .where(QuotaLimits.quota == quota)
-        )
+        limits = list(QuotaLimits.select().where(QuotaLimits.quota == quota))
         if not limits:
             return
 
@@ -107,9 +100,7 @@ class QuotaNotificationWorker(Worker):
 
 
 def create_gunicorn_worker():
-    worker = GunicornWorker(
-        __name__, app, QuotaNotificationWorker(), features.QUOTA_NOTIFICATIONS
-    )
+    worker = GunicornWorker(__name__, app, QuotaNotificationWorker(), features.QUOTA_NOTIFICATIONS)
     return worker
 
 

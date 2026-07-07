@@ -1,14 +1,15 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from data import model
 from data.database import (
+    ExternalNotificationEvent,
+    ExternalNotificationMethod,
     NamespaceNotification,
     QuotaLimits,
     QuotaNamespaceSize,
     QuotaNotificationState,
-    ExternalNotificationEvent,
-    ExternalNotificationMethod,
     UserOrganizationQuota,
 )
 from data.model.namespacequota import (
@@ -16,9 +17,8 @@ from data.model.namespacequota import (
     create_namespace_quota_limit,
     get_namespace_quota_list,
 )
-from data.model.user import get_user
 from data.model.quota_notification_state import record_notification
-
+from data.model.user import get_user
 from test.fixtures import *
 from workers.quotanotificationworker import QuotaNotificationWorker
 
