@@ -1264,6 +1264,23 @@ class TestCreateOrganization(ApiTestCase):
 
         self.assertEqual("A user or organization with this name already exists", json["detail"])
 
+    def test_createorg_duplicate_email(self):
+        self.login(ADMIN_ACCESS_USER)
+
+        self.postResponse(
+            OrganizationList,
+            data=dict(name="dupemailorg1", email="shared@example.com"),
+            expected_code=201,
+        )
+
+        json = self.postJsonResponse(
+            OrganizationList,
+            data=dict(name="dupemailorg2", email="shared@example.com"),
+            expected_code=400,
+        )
+
+        self.assertIn("already associated", json["detail"])
+
     def test_createorg(self):
         self.login(ADMIN_ACCESS_USER)
 
