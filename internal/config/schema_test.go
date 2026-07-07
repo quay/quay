@@ -163,10 +163,14 @@ var knownUnmapped = map[string]bool{
 	"FEATURE_VERIFY_QUOTA":                          true,
 
 	// Programmatic bootstrap token config
-	"BOOTSTRAP_TOKEN_OWNER":      true,
-	"BOOTSTRAP_TOKEN_EXPIRATION": true,
-	"BOOTSTRAP_TOKEN_PATH":       true,
-	"BOOTSTRAP_TOKEN_SCOPE":      true,
+	"BOOTSTRAP_TOKEN_OWNER":            true,
+	"BOOTSTRAP_TOKEN_EXPIRATION":       true,
+	"BOOTSTRAP_TOKEN_PATH":             true,
+	"BOOTSTRAP_TOKEN_SCOPE":            true,
+	"PROGRAMMATIC_TOKEN_PATH":          true,
+	"PROGRAMMATIC_TOKEN_K8S_SECRET":    true,
+	"PROGRAMMATIC_TOKEN_K8S_KEY":       true,
+	"PROGRAMMATIC_TOKEN_K8S_NAMESPACE": true,
 
 	// Triggers & entitlements
 	"SUCCESSIVE_TRIGGER_FAILURE_DISABLE_THRESHOLD":        true,

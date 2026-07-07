@@ -84,3 +84,101 @@ def test_default_bootstrap_token_scope_uses_valid_oauth_scopes():
     for value in ["", "a" * 1025]:
         with pytest.raises(ValidationError):
             validate(value, schema)
+
+
+def test_programmatic_token_k8s_defaults_validate():
+    validate(
+        DefaultConfig.PROGRAMMATIC_TOKEN_K8S_SECRET,
+        CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_SECRET"],
+    )
+    validate(
+        DefaultConfig.PROGRAMMATIC_TOKEN_K8S_KEY,
+        CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_KEY"],
+    )
+    validate(
+        DefaultConfig.PROGRAMMATIC_TOKEN_K8S_NAMESPACE,
+        CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_NAMESPACE"],
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [None, "/var/lib/quay/bootstrap-token/token.json", "/tmp/token.json"],
+)
+def test_programmatic_token_path_accepts_null_and_absolute_paths(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_PATH"]
+
+    validate(value, schema)
+
+
+@pytest.mark.parametrize(
+    "value", ["", "../token.json", "var/lib/quay/token.json", "/tmp/token\x00.json"]
+)
+def test_programmatic_token_path_rejects_unsafe_paths(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_PATH"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [None, "bootstrap-token", "q", "q1-token", "registry.example-bootstrap-token"],
+)
+def test_programmatic_token_k8s_secret_accepts_valid_dns_subdomains(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_SECRET"]
+
+    validate(value, schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "Bootstrap",
+        "bootstrap_token",
+        "-bootstrap",
+        "bootstrap-",
+        "bootstrap..token",
+        "a" * 64,
+        "a" * 254,
+    ],
+)
+def test_programmatic_token_k8s_secret_rejects_invalid_dns_subdomains(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_SECRET"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
+
+
+@pytest.mark.parametrize("value", ["token.json", "custom-token_json.1", "TOKEN.JSON"])
+def test_programmatic_token_k8s_key_accepts_valid_secret_data_keys(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_KEY"]
+
+    validate(value, schema)
+
+
+@pytest.mark.parametrize("value", ["", "token/json", "../token.json", "token json"])
+def test_programmatic_token_k8s_key_rejects_invalid_secret_data_keys(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_KEY"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
+
+
+@pytest.mark.parametrize("value", [None, "quay-enterprise", "q", "q1-token"])
+def test_programmatic_token_k8s_namespace_accepts_valid_dns_labels(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_NAMESPACE"]
+
+    validate(value, schema)
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["", "Quay", "quay_enterprise", "-quay", "quay-", "a" * 64],
+)
+def test_programmatic_token_k8s_namespace_rejects_invalid_dns_labels(value):
+    schema = CONFIG_SCHEMA["properties"]["PROGRAMMATIC_TOKEN_K8S_NAMESPACE"]
+
+    with pytest.raises(ValidationError):
+        validate(value, schema)
