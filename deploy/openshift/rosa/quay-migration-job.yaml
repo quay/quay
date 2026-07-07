@@ -1,0 +1,127 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: quay-migration-job
+objects:
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: ${{NAME}}
+    annotations: ${{SERVICE_ACCOUNT_ANNOTATIONS}}
+  imagePullSecrets:
+  - name: ${{SERVICE_ACCOUNT_IMAGE_PULL_SECRETS}}
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: ${NAME}
+    labels:
+      app.kubernetes.io/component: ${{QUAY_COMPONENT}}
+    annotations:
+      ignore-check.kube-linter.io/unset-cpu-requirements: "no cpu limits"
+  spec:
+    backoffLimit: ${{BACKOFF_LIMIT}}
+    activeDeadlineSeconds: ${{ACTIVE_DEADLINE_SECONDS}}
+    template:
+      metadata:
+        labels:
+          app.kubernetes.io/component: ${{QUAY_COMPONENT}}
+      spec:
+        restartPolicy: Never
+        volumes:
+        - name: configvolume
+          secret:
+            secretName: ${{QUAY_CONFIG_SECRET}}
+        serviceAccountName: ${{NAME}}
+        nodeSelector:
+          part-of: quay
+        containers:
+        - name: quay-migration
+          image: ${IMAGE}:${IMAGE_TAG}
+          imagePullPolicy: ${{IMAGE_PULL_POLICY}}
+          command:
+          - /quay-registry/quay-entrypoint.sh
+          - migrate
+          - ${MIGRATION_VERSION}
+          volumeMounts:
+          - name: configvolume
+            mountPath: /conf/stack
+          resources:
+            limits:
+              memory: ${{MEMORY_LIMIT}}
+            requests:
+              cpu: ${{CPU_REQUEST}}
+              memory: ${{MEMORY_REQUEST}}
+          env:
+          - name: QE_K8S_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: QE_K8S_CONFIG_SECRET
+            value: ${{QUAY_CONFIG_SECRET}}
+          - name: DEBUGLOG
+            value: ${DEBUGLOG}
+parameters:
+  # Template
+  - name: NAME
+    value: "quay-migration"
+    displayName: name
+    description: Base name for ServiceAccount and Job resources
+  - name: IMAGE
+    value: ""
+    displayName: quay image
+    description: quay docker image
+  - name: IMAGE_TAG
+    value: ""
+    displayName: quay version
+    description: quay version which defaults to latest
+
+  # Service Account
+  - name: SERVICE_ACCOUNT_ANNOTATIONS
+    value: "{}"
+    description: Optional annotations to add the service account like for IRSA/ROSA (JSON format)
+  - name: SERVICE_ACCOUNT_IMAGE_PULL_SECRETS
+    value: "quayio-backup-image-pull-secret"
+    description: "Secret name for service account imagePullSecrets"
+
+  # Migration
+  - name: MIGRATION_VERSION
+    value: "head"
+    displayName: migration version
+    description: Target Alembic revision to migrate to (e.g. head, or a specific revision hash)
+  - name: QUAY_COMPONENT
+    value: "db-migration"
+    displayName: quay component selector value
+
+  # Job attributes
+  - name: BACKOFF_LIMIT
+    value: "0"
+    displayName: job backoff limit
+    description: Number of retries before marking the Job as failed
+  - name: ACTIVE_DEADLINE_SECONDS
+    value: "3600"
+    displayName: job active deadline seconds
+    description: Maximum time in seconds the Job can run before being terminated
+  - name: IMAGE_PULL_POLICY
+    value: "IfNotPresent"
+    displayName: image pull policy
+
+  # Pod Spec
+  ## Resources
+  - name: CPU_REQUEST
+    value: "500m"
+    displayName: "container CPU request"
+  - name: MEMORY_REQUEST
+    value: "1024Mi"
+    displayName: "container memory request"
+  - name: MEMORY_LIMIT
+    value: "1024Mi"
+    displayName: "container memory limit"
+
+  ## Quay Configuration
+  - name: QUAY_CONFIG_SECRET
+    value: ""
+    displayName: quay configuration secret
+  - name: DEBUGLOG
+    value: "false"
+    displayName: debug log
