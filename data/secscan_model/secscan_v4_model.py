@@ -587,15 +587,19 @@ class V4SecurityScanner(SecurityScannerInterface):
             if rows_updated == 0:
                 # UPDATE missed: either row doesn't exist, or another worker owns it.
                 # Try to create the row; if it already exists, another worker has it.
+                # Wrapped in db_transaction() to create a savepoint — without it,
+                # PostgreSQL aborts the entire transaction on IntegrityError and all
+                # subsequent queries fail with "current transaction is aborted".
                 try:
-                    ManifestSecurityStatus.create(
-                        manifest=candidate,
-                        repository=candidate.repository,
-                        index_status=IndexStatus.IN_PROGRESS,
-                        indexer_hash="in_progress",
-                        indexer_version=IndexerVersion.V4,
-                        metadata_json={},
-                    )
+                    with db_transaction():
+                        ManifestSecurityStatus.create(
+                            manifest=candidate,
+                            repository=candidate.repository,
+                            index_status=IndexStatus.IN_PROGRESS,
+                            indexer_hash="in_progress",
+                            indexer_version=IndexerVersion.V4,
+                            metadata_json={},
+                        )
                 except IntegrityError:
                     logger.debug("Manifest %d already claimed by another worker", candidate.id)
                     abt.set()

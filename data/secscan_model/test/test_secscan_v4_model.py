@@ -1485,3 +1485,71 @@ def test_batch_preemption_reduces_queries(initialized_db, set_secscan_config):
 
     # Most of the 25 recently indexed should still have "test" hash (they were skipped)
     assert still_test_hash >= 20, f"Expected at least 20 skipped manifests, got {still_test_hash}"
+
+
+def test_speculative_create_integrity_error_does_not_poison_transaction(
+    initialized_db, set_secscan_config
+):
+    """
+    Verify that when ManifestSecurityStatus.create() raises IntegrityError
+    (because another worker already claimed the manifest), the outer transaction
+    is not poisoned and subsequent manifests continue to be indexed.
+
+    This is a regression test for a bug where PostgreSQL would abort the entire
+    transaction on IntegrityError unless a savepoint was active. The fix wraps
+    the speculative create() in db_transaction() to create a savepoint.
+    """
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "test"}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "test",
+    )
+
+    # Pick two manifests to index
+    manifests = list(Manifest.select().limit(2))
+    if len(manifests) < 2:
+        pytest.skip("Not enough manifests for this test")
+
+    first_manifest = manifests[0]
+    second_manifest = manifests[1]
+
+    # Clean up any existing ManifestSecurityStatus rows for these manifests
+    ManifestSecurityStatus.delete().where(
+        ManifestSecurityStatus.manifest << [first_manifest, second_manifest]
+    ).execute()
+
+    # Pre-create a ManifestSecurityStatus for the first manifest to simulate
+    # a race condition: another worker already claimed it.
+    # When _index tries update() it will return 0 rows (conditions won't match),
+    # then the speculative create() will raise IntegrityError.
+    ManifestSecurityStatus.create(
+        manifest=first_manifest,
+        repository=first_manifest.repository,
+        index_status=IndexStatus.IN_PROGRESS,
+        indexer_hash="in_progress",
+        indexer_version=IndexerVersion.V4,
+        last_indexed=datetime.utcnow(),
+        metadata_json={},
+    )
+
+    from threading import Event
+
+    def test_iterator():
+        for m in [first_manifest, second_manifest]:
+            yield m, Event(), 2
+
+    reindex_threshold = datetime.utcnow() - timedelta(
+        seconds=application.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD", 300)
+    )
+
+    secscan._index(test_iterator(), reindex_threshold)
+
+    # The key assertion: the second manifest should have been indexed successfully.
+    # If the IntegrityError on the first manifest poisoned the transaction,
+    # the second manifest's UPDATE/CREATE would fail and it would not be indexed.
+    assert (
+        secscan._secscan_api.index.call_count >= 1
+    ), "Expected at least one manifest to be indexed after IntegrityError on the first"
