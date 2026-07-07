@@ -20,14 +20,18 @@ set -euo pipefail
 INPUT="${1:?Usage: playwright-debug.sh <PR_NUMBER_OR_RUN_URL>}"
 
 # --- Input Resolution ---
-if [[ "$INPUT" =~ ^https://github\.com/.+/actions/runs/([0-9]+) ]]; then
-  RUN_ID="${BASH_REMATCH[1]}"
-  echo "Using run ID from URL: $RUN_ID" >&2
+if [[ "$INPUT" =~ ^https://github\.com/([^/]+/[^/]+)/actions/runs/([0-9]+) ]]; then
+  DEFAULT_REPO="${BASH_REMATCH[1]}"
+  RUN_ID="${BASH_REMATCH[2]}"
+  echo "Using run ID from URL: $RUN_ID (repo: $DEFAULT_REPO)" >&2
 elif [[ "$INPUT" =~ ^[0-9]+$ ]]; then
   PR_NUMBER="$INPUT"
   echo "Resolving PR #${PR_NUMBER} to latest Playwright run..." >&2
 
-  HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$DEFAULT_REPO" --json headRefOid --jq '.headRefOid' 2>/dev/null)
+  HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$DEFAULT_REPO" --json headRefOid --jq '.headRefOid') || {
+    echo "ERROR: gh pr view failed for PR #${PR_NUMBER} in ${DEFAULT_REPO}" >&2
+    exit 1
+  }
   if [ -z "$HEAD_SHA" ]; then
     echo "ERROR: Could not resolve PR #${PR_NUMBER}" >&2
     exit 1
@@ -38,8 +42,10 @@ elif [[ "$INPUT" =~ ^[0-9]+$ ]]; then
     --workflow "web-playwright-ci.yaml" \
     --commit "$HEAD_SHA" \
     --json databaseId,conclusion \
-    --jq '.[0].databaseId' \
-    2>/dev/null)
+    --jq '.[0].databaseId') || {
+    echo "ERROR: gh run list failed for commit ${HEAD_SHA} in ${DEFAULT_REPO}" >&2
+    exit 1
+  }
 
   if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
     echo "ERROR: No Playwright CI run found for PR #${PR_NUMBER} (HEAD: ${HEAD_SHA})" >&2
