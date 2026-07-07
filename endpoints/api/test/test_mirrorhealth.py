@@ -8,6 +8,7 @@ from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 from app import app as quay_app
 from endpoints.api.mirrorhealth import (
     RepositoryMirrorHealth,
+    SuperUserRepositoryMirrorHealth,
     _get_last_sync_timestamps,
     _get_mirror_workers_active_value,
     _get_pending_tags_total,
@@ -15,7 +16,7 @@ from endpoints.api.mirrorhealth import (
     get_mirror_health_data,
 )
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.test.shared import client_with_identity
+from endpoints.test.shared import client_with_identity, toggle_feature
 from test.fixtures import *
 
 # =============================================================================
@@ -475,10 +476,56 @@ class TestGetMirrorHealthData:
 
         assert result["repositories"]["pagination"]["limit"] == 1000
 
+    @mock.patch("endpoints.api.mirrorhealth._get_mirror_workers_active_value", return_value=0)
+    @mock.patch("endpoints.api.mirrorhealth._get_last_sync_timestamps")
+    @mock.patch("endpoints.api.mirrorhealth._get_pending_tags_total", return_value=0)
+    @mock.patch("endpoints.api.mirrorhealth._mirror_rows_query")
+    @mock.patch("endpoints.api.mirrorhealth._mirror_status_counts")
+    def test_summary_mode_omits_repository_details(
+        self, mock_counts, mock_rows, mock_pending, mock_ts, mock_wk
+    ):
+        mock_counts.return_value = {
+            "total": 10,
+            "syncing": 0,
+            "completed": 4,
+            "failed": 5,
+            "never_run": 1,
+        }
+
+        result = get_mirror_health_data(
+            detailed=True,
+            include_repository_details=False,
+        )
+
+        mock_rows.assert_not_called()
+        mock_ts.assert_not_called()
+        assert result["healthy"] is False
+        assert "details" not in result["repositories"]
+        assert "pagination" not in result["repositories"]
+        assert result["issues"][0]["severity"] == "critical"
+        assert "repositories are failing" in result["issues"][0]["message"]
+
 
 # =============================================================================
 # API endpoint integration tests
 # =============================================================================
+
+
+def _set_healthy_mirror_health(mock_health):
+    mock_health.return_value = {
+        "healthy": True,
+        "workers": {"active": 0, "configured": 0, "status": "healthy"},
+        "repositories": {
+            "total": 0,
+            "syncing": 0,
+            "completed": 0,
+            "failed": 0,
+            "never_run": 0,
+        },
+        "tags_pending": 0,
+        "last_check": "2024-01-01T00:00:00Z",
+        "issues": [],
+    }
 
 
 class TestMirrorHealthEndpoint:
@@ -600,3 +647,144 @@ class TestMirrorHealthEndpoint:
         }
         with client_with_identity("globalreadonlysuperuser", app) as cl:
             conduct_api_call(cl, RepositoryMirrorHealth, "GET", None, None, 200)
+
+
+class TestMirrorHealthFullAccessPermissions:
+    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    def test_regular_superuser_global_access_requires_full_access(
+        self, mock_health, app, initialized_db
+    ):
+        _set_healthy_mirror_health(mock_health)
+
+        with toggle_feature("SUPERUSERS_FULL_ACCESS", False):
+            with client_with_identity("devtable", app) as cl:
+                conduct_api_call(cl, RepositoryMirrorHealth, "GET", None, None, 403)
+
+        mock_health.assert_not_called()
+
+    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    def test_regular_superuser_other_namespace_requires_full_access(
+        self, mock_health, app, initialized_db
+    ):
+        _set_healthy_mirror_health(mock_health)
+
+        with toggle_feature("SUPERUSERS_FULL_ACCESS", False):
+            with client_with_identity("devtable", app) as cl:
+                conduct_api_call(
+                    cl,
+                    RepositoryMirrorHealth,
+                    "GET",
+                    {"namespace": "randomuser"},
+                    None,
+                    403,
+                )
+
+        mock_health.assert_not_called()
+
+    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    def test_regular_superuser_own_namespace_uses_normal_access_without_full_access(
+        self, mock_health, app, initialized_db
+    ):
+        _set_healthy_mirror_health(mock_health)
+
+        with toggle_feature("SUPERUSERS_FULL_ACCESS", False):
+            with client_with_identity("devtable", app) as cl:
+                conduct_api_call(
+                    cl,
+                    RepositoryMirrorHealth,
+                    "GET",
+                    {"namespace": "devtable"},
+                    None,
+                    200,
+                )
+
+        mock_health.assert_called_once()
+
+    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    def test_global_readonly_superuser_global_access_without_full_access(
+        self, mock_health, app, initialized_db
+    ):
+        _set_healthy_mirror_health(mock_health)
+
+        with toggle_feature("SUPERUSERS_FULL_ACCESS", False):
+            with client_with_identity("globalreadonlysuperuser", app) as cl:
+                conduct_api_call(cl, RepositoryMirrorHealth, "GET", None, None, 200)
+
+        mock_health.assert_called_once()
+
+
+class TestSuperUserMirrorHealthEndpoint:
+    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    def test_regular_superuser_access_without_full_access(self, mock_health, app, initialized_db):
+        _set_healthy_mirror_health(mock_health)
+
+        with toggle_feature("SUPERUSERS_FULL_ACCESS", False):
+            with client_with_identity("devtable", app) as cl:
+                resp = conduct_api_call(
+                    cl,
+                    SuperUserRepositoryMirrorHealth,
+                    "GET",
+                    None,
+                    None,
+                    200,
+                )
+                assert resp.json["healthy"] is True
+
+        mock_health.assert_called_once_with(
+            detailed=False,
+            include_repository_details=False,
+        )
+
+    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    def test_global_readonly_superuser_access_without_full_access(
+        self, mock_health, app, initialized_db
+    ):
+        _set_healthy_mirror_health(mock_health)
+
+        with toggle_feature("SUPERUSERS_FULL_ACCESS", False):
+            with client_with_identity("globalreadonlysuperuser", app) as cl:
+                conduct_api_call(
+                    cl,
+                    SuperUserRepositoryMirrorHealth,
+                    "GET",
+                    None,
+                    None,
+                    200,
+                )
+
+        mock_health.assert_called_once_with(
+            detailed=False,
+            include_repository_details=False,
+        )
+
+    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    def test_non_superuser_denied(self, mock_health, app, initialized_db):
+        _set_healthy_mirror_health(mock_health)
+
+        with client_with_identity("freshuser", app) as cl:
+            conduct_api_call(
+                cl,
+                SuperUserRepositoryMirrorHealth,
+                "GET",
+                None,
+                None,
+                403,
+            )
+
+        mock_health.assert_not_called()
+
+    @mock.patch("endpoints.api.mirrorhealth.get_mirror_health_data")
+    def test_anonymous_returns_401(self, mock_health, app, initialized_db):
+        _set_healthy_mirror_health(mock_health)
+
+        with client_with_identity(None, app) as cl:
+            conduct_api_call(
+                cl,
+                SuperUserRepositoryMirrorHealth,
+                "GET",
+                None,
+                None,
+                401,
+            )
+
+        mock_health.assert_not_called()
