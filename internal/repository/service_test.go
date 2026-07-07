@@ -35,9 +35,9 @@ func (s *fakeStore) SetVisibility(_ context.Context, id int64, visibility Visibi
 	return s.setErr
 }
 
-func (s *fakeStore) MarkDeleted(_ context.Context, repo Repository, deletedName string) error {
+func (s *fakeStore) MarkDeleted(_ context.Context, repo *Repository, deletedName string) error {
 	s.deleteCalled = true
-	s.deletedRepo = repo
+	s.deletedRepo = *repo
 	s.deletedName = deletedName
 	return s.deleteErr
 }
@@ -47,7 +47,7 @@ type fakeAuthorizer struct {
 	err     error
 }
 
-func (a fakeAuthorizer) CanAdminRepository(context.Context, *auth.Principal, Repository) (bool, error) {
+func (a fakeAuthorizer) CanAdminRepository(context.Context, *auth.Principal, *Repository) (bool, error) {
 	return a.allowed, a.err
 }
 

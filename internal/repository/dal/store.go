@@ -52,7 +52,10 @@ func (s *Store) Get(ctx context.Context, ref repository.Ref) (repository.Reposit
 			Namespace: row.Namespace,
 			Name:      row.Name,
 		},
-		Visibility: repository.Visibility(row.Visibility),
+		Visibility:       repository.Visibility(row.Visibility),
+		State:            row.State,
+		KindID:           row.KindID,
+		NamespaceEnabled: row.NamespaceEnabled,
 	}, nil
 }
 
@@ -72,7 +75,11 @@ func (s *Store) SetVisibility(ctx context.Context, id int64, visibility reposito
 }
 
 // MarkDeleted renames and marks a repository deleted with its deletedrepository marker.
-func (s *Store) MarkDeleted(ctx context.Context, repo repository.Repository, deletedName string) (retErr error) {
+func (s *Store) MarkDeleted(ctx context.Context, repo *repository.Repository, deletedName string) (retErr error) {
+	if repo == nil {
+		return repository.ErrNotFound
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -136,7 +143,7 @@ func (s *Store) MarkDeleted(ctx context.Context, repo repository.Repository, del
 	return tx.Commit()
 }
 
-func repositoryGCQueueItemName(repo repository.Repository) string {
+func repositoryGCQueueItemName(repo *repository.Repository) string {
 	return fmt.Sprintf("%s/%s/%d/", repositoryGCQueueName, repo.Ref.Namespace, repo.ID)
 }
 

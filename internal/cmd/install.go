@@ -44,7 +44,7 @@ func runInstall(ctx context.Context, hostname, dataDir, imageArchive, image stri
 		return 1
 	}
 
-	if err := inst.Run(ctx, installer.Config{
+	if err := inst.Run(ctx, &installer.Config{
 		Hostname:     hostname,
 		DataDir:      dataDir,
 		ImageArchive: imageArchive,

@@ -4,6 +4,8 @@ package config
 type Auth struct {
 	AuthenticationType string   `yaml:"AUTHENTICATION_TYPE"`
 	SuperUsers         []string `yaml:"SUPER_USERS"`
+	RobotsDisallow     bool     `yaml:"ROBOTS_DISALLOW"`
+	RobotsWhitelist    []string `yaml:"ROBOTS_WHITELIST"`
 }
 
 // validateAuth checks authentication enum values.

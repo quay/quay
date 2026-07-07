@@ -429,28 +429,34 @@ jobs:
       - name: Verify mirrored repositories
         run: |
           PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
-          curl -fs -u "admin:$PASSWORD" \
-            https://localhost:8443/v2/_catalog | tee /tmp/catalog.json
 
-          COUNT=$(jq '.repositories | length' /tmp/catalog.json)
-          echo "Found $COUNT repositories:"
-          jq -r '.repositories[]' /tmp/catalog.json
+          expected_repos=(
+            projectquay/quay
+            projectquay/quay-builder
+            projectquay/clair
+            quay/quay-operator
+            prometheus/prometheus
+            prometheus/alertmanager
+            prometheus/node-exporter
+            prometheus/pushgateway
+            coreos/etcd
+          )
 
-          if [ "$COUNT" -lt 9 ]; then
-            echo "FAIL: expected at least 9 repositories, got $COUNT"
-            exit 1
-          fi
+          for repo in "${expected_repos[@]}"; do
+            safe_repo="${repo//\//-}"
+            curl -fs -u "admin:$PASSWORD" \
+              "https://localhost:8443/v2/${repo}/tags/list" \
+              | tee "/tmp/tags-${safe_repo}.json"
+            jq -e --arg repo "$repo" \
+              '.name == $repo and (.tags | type == "array") and (.tags | length > 0)' \
+              "/tmp/tags-${safe_repo}.json"
+          done
           echo "All repositories verified"
 
       - name: Pull mirrored image
         run: |
-          PASSWORD=$(sudo cat /var/lib/quay/auth/admin-password)
-          REPO=$(curl -fs -u "admin:$PASSWORD" \
-            https://localhost:8443/v2/_catalog | jq -r '.repositories[0]')
-          TAG=$(curl -fs -u "admin:$PASSWORD" \
-            "https://localhost:8443/v2/$REPO/tags/list" | jq -r '.tags[0]')
-          echo "Pulling localhost:8443/$REPO:$TAG"
-          podman pull "localhost:8443/$REPO:$TAG"
+          echo "Pulling localhost:8443/projectquay/quay:3.13.2"
+          podman pull "localhost:8443/projectquay/quay:3.13.2"
           echo "Successfully pulled mirrored image"
 
       - name: Collect diagnostics
@@ -550,6 +556,96 @@ jobs:
           sudo podman manifest add localhost:8443/init/test-index:latest registry.access.redhat.com/ubi9/ubi-micro:latest
           sudo podman manifest push --all --tls-verify=false \
             localhost:8443/init/test-index:latest docker://localhost:8443/init/test-index:latest
+
+      - name: Create and verify old OMR robot token
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/e2e-migrate-state
+          secret_dir="/tmp/e2e-migrate-secrets"
+          mkdir -p "$secret_dir"
+          chmod 700 "$secret_dir"
+
+          cookie_jar="${secret_dir}/omr-api.cookies"
+          signin_json="${secret_dir}/omr-signin.json"
+          robot_json="${secret_dir}/omr-robot.json"
+          permission_json="/tmp/e2e-migrate-state/omr-robot-permission.json"
+          robot_env="${secret_dir}/robot.env"
+          robot_authfile="${secret_dir}/robot-source-auth.json"
+
+          get_csrf_token() {
+            curl -kfsS -b "$cookie_jar" -c "$cookie_jar" \
+              https://localhost:8443/csrf_token \
+              | jq -r '.csrf_token // empty'
+          }
+
+          csrf_token=$(get_csrf_token)
+          if [ -z "$csrf_token" ]; then
+            echo "FAIL: old OMR did not return an initial CSRF token"
+            exit 1
+          fi
+
+          curl -kfsS -b "$cookie_jar" -c "$cookie_jar" \
+            -H "X-CSRF-Token: ${csrf_token}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d '{"username":"init","password":"testpassword123"}' \
+            -o "$signin_json" \
+            https://localhost:8443/api/v1/signin
+
+          csrf_token=$(get_csrf_token)
+          if [ -z "$csrf_token" ]; then
+            echo "FAIL: old OMR did not return a post-login CSRF token"
+            exit 1
+          fi
+
+          curl -kfsS -b "$cookie_jar" -c "$cookie_jar" \
+            -H "X-CSRF-Token: ${csrf_token}" \
+            -H "Content-Type: application/json" \
+            -X PUT \
+            -d '{"description":"migration e2e robot token compatibility"}' \
+            -o "$robot_json" \
+            https://localhost:8443/api/v1/user/robots/migratebot
+
+          robot_username=$(jq -r '.name // empty' "$robot_json")
+          robot_token=$(jq -r '.token // empty' "$robot_json")
+          if [ "$robot_username" != "init+migratebot" ]; then
+            echo "FAIL: expected old OMR robot username init+migratebot, got ${robot_username}"
+            exit 1
+          fi
+          if [ -z "$robot_token" ]; then
+            echo "FAIL: old OMR robot create response did not include a token"
+            exit 1
+          fi
+          echo "::add-mask::${robot_token}"
+
+          curl -kfsS -b "$cookie_jar" -c "$cookie_jar" \
+            -H "X-CSRF-Token: ${csrf_token}" \
+            -H "Content-Type: application/json" \
+            -X PUT \
+            -d '{"role":"write"}' \
+            -o "$permission_json" \
+            https://localhost:8443/api/v1/repository/init/test-image/permissions/user/init%2Bmigratebot
+          jq -e '.role == "write"' "$permission_json"
+
+          {
+            printf 'ROBOT_USERNAME=%s\n' "$robot_username"
+            printf 'ROBOT_TOKEN=%s\n' "$robot_token"
+          } > "$robot_env"
+          chmod 600 "$robot_env"
+
+          printf '%s\n' "$robot_token" | sudo podman login localhost:8443 \
+            -u "$robot_username" \
+            --password-stdin \
+            --authfile "$robot_authfile" \
+            --tls-verify=false
+
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest \
+            localhost:8443/init/test-image:robot-source
+          sudo podman push --authfile "$robot_authfile" --tls-verify=false \
+            localhost:8443/init/test-image:robot-source
+          sudo podman pull --authfile "$robot_authfile" --tls-verify=false \
+            localhost:8443/init/test-image:robot-source
 
       - name: Record source registry state
         run: |
@@ -662,9 +758,10 @@ jobs:
           record_digest SHARED_A_DIGEST init/shared-a v1
           record_digest SHARED_B_DIGEST init/shared-b v1
           record_digest INDEX_DIGEST init/test-index latest
+          record_digest ROBOT_SOURCE_DIGEST init/test-image robot-source
 
           . /tmp/e2e-migrate-state/digests.env
-          for var in TEST_IMAGE_DIGEST TEST_IMAGE_2_DIGEST SHARED_V1_DIGEST SHARED_V2_DIGEST SHARED_A_DIGEST SHARED_B_DIGEST INDEX_DIGEST; do
+          for var in TEST_IMAGE_DIGEST TEST_IMAGE_2_DIGEST SHARED_V1_DIGEST SHARED_V2_DIGEST SHARED_A_DIGEST SHARED_B_DIGEST INDEX_DIGEST ROBOT_SOURCE_DIGEST; do
             if [ -z "${!var}" ]; then
               echo "FAIL: ${var} was not captured"
               exit 1
@@ -834,6 +931,7 @@ jobs:
           verify_manifest_digest init/shared-a v1 "$SHARED_A_DIGEST"
           verify_manifest_digest init/shared-b v1 "$SHARED_B_DIGEST"
           verify_manifest_digest init/test-index latest "$INDEX_DIGEST"
+          verify_manifest_digest init/test-image robot-source "$ROBOT_SOURCE_DIGEST"
 
           curl -fsS -u init:testpassword123 \
             https://localhost:8443/v2/init/shared/tags/list \
@@ -846,6 +944,24 @@ jobs:
           sudo podman pull localhost:8443/init/shared:v2
           sudo podman pull localhost:8443/init/test-index:latest
 
+          . /tmp/e2e-migrate-secrets/robot.env
+          echo "::add-mask::${ROBOT_TOKEN}"
+          robot_authfile="/tmp/e2e-migrate-secrets/robot-target-auth.json"
+          printf '%s\n' "$ROBOT_TOKEN" | sudo podman login localhost:8443 \
+            -u "$ROBOT_USERNAME" \
+            --password-stdin \
+            --authfile "$robot_authfile"
+
+          sudo podman pull --authfile "$robot_authfile" \
+            localhost:8443/init/test-image:robot-source
+          sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest \
+            localhost:8443/init/test-image:robot-target
+          sudo podman push --authfile "$robot_authfile" \
+            localhost:8443/init/test-image:robot-target
+          sudo podman pull --authfile "$robot_authfile" \
+            localhost:8443/init/test-image:robot-target
+
+          sudo podman login localhost:8443 -u init -p testpassword123
           sudo podman tag registry.access.redhat.com/ubi9/ubi-micro:latest localhost:8443/init/post-migrate:latest
           sudo podman push localhost:8443/init/post-migrate:latest
           sudo podman pull localhost:8443/init/post-migrate:latest
