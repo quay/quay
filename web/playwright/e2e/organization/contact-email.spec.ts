@@ -687,5 +687,62 @@ test.describe(
         ).toBeVisible();
       });
     });
+
+    // =========================================================================
+    // Group 6: Feature Flag — FEATURE_ORG_SHARED_EMAIL
+    // =========================================================================
+
+    test.describe('FEATURE_ORG_SHARED_EMAIL flag', () => {
+      test('two orgs can always share the same email (flag-independent)', async ({
+        api,
+      }) => {
+        const shared = `shared-${Date.now()}@example.com`;
+        const org1 = await api.organization('flagtest1', shared);
+        const org2 = await api.organization('flagtest2', shared);
+
+        const data1 = await api.raw.getOrganization(org1.name);
+        const data2 = await api.raw.getOrganization(org2.name);
+        expect(data1.email).toBe(shared);
+        expect(data2.email).toBe(shared);
+      });
+
+      test('org cannot share email with a user when flag is off (default)', async ({
+        authenticatedRequest,
+      }) => {
+        // FEATURE_ORG_SHARED_EMAIL defaults to false.
+        // The authenticated user's email is already in use — creating an org
+        // with that same email should be rejected.
+        const token = await (async () => {
+          const resp = await authenticatedRequest.get(`${API_URL}/csrf_token`);
+          const data = await resp.json();
+          return data.csrf_token;
+        })();
+
+        // Get the current user's email
+        const userResp = await authenticatedRequest.get(
+          `${API_URL}/api/v1/user/`,
+        );
+        const userEmail = (await userResp.json()).email;
+        expect(userEmail).toBeTruthy();
+
+        // Try to create an org with the user's email — should fail
+        const orgName = uniqueName('flagblocked');
+        const createResp = await authenticatedRequest.post(
+          `${API_URL}/api/v1/organization/`,
+          {
+            headers: {'X-CSRF-Token': token},
+            data: {name: orgName, email: userEmail},
+          },
+        );
+
+        expect(createResp.status()).toBe(400);
+
+        // Verify the org was NOT created
+        const getResp = await authenticatedRequest.get(
+          `${API_URL}/api/v1/organization/${orgName}`,
+        );
+        expect(getResp.status()).toBe(404);
+      });
+    });
   },
 );
