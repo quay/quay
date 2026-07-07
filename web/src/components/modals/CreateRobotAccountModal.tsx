@@ -251,7 +251,6 @@ export default function CreateRobotAccountModal(
       aria-label="CreateRobotAccount"
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}
-      onClose={handleModalToggle}
     >
       <Wizard
         onClose={handleModalToggle}
