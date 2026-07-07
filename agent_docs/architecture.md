@@ -150,6 +150,17 @@ if features.QUOTA_MANAGEMENT:
     # enforce quotas
 ```
 
+#### Adding a New Feature Flag
+
+When adding a new feature flag, update all of the following files:
+
+1. **`config.py`** — Add the Python default value (e.g., `FEATURE_MY_FLAG = False`)
+2. **`features/__init__.pyi`** — Add the type stub entry so editors and type checkers recognise the attribute
+3. **`util/config/schema.py`** — Add a JSON schema property in `CONFIG_SCHEMA['properties']` (required by the Go Schema Drift Check — see step 4)
+4. **`internal/config/features.go`** — Add a Go struct field with the corresponding `yaml` tag. If the flag is not consumed by Go code yet, add the key to `knownUnmapped` in `internal/config/schema_test.go` instead. The `TestSchemaFieldCoverage` test enforces bidirectional consistency between this file and `util/config/schema.py`; missing either side fails CI.
+5. **Business logic module** — Add the `features.FLAG_NAME` guard in the relevant module (e.g., `data/model/organization.py`, `endpoints/api/organization.py`)
+6. **Tests** — Add unit tests covering both flag-on and flag-off behaviour; add a Playwright e2e test if the flag affects user-facing behaviour
+
 ### Configuration Access
 
 ```python

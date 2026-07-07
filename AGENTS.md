@@ -53,6 +53,7 @@ make types-test                      # Type checking (mypy)
 | Database models, migrations | `agent_docs/database.md` |
 | Testing patterns, fixtures | `agent_docs/testing.md` |
 | Architecture, key files | `agent_docs/architecture.md` |
+| Feature flags | `agent_docs/architecture.md` (Adding a New Feature Flag section) |
 | Global readonly superuser feature | `agent_docs/global_readonly_superuser.md` |
 | Local development setup | `agent_docs/development.md` |
 | React frontend | `web/AGENTS.md` |
