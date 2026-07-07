@@ -53,6 +53,8 @@ jobs:
               - '**'
               - '!**/*.md'
               - '!docs/**'
+              - '!.agent/**'
+              - '!.claude/**'
               - '!agent_docs/**'
               - '!deploy/**'
               - '!.chglog/**'
