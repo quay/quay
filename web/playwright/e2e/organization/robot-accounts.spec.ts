@@ -229,13 +229,6 @@ test.describe(
         'Robot for Docker config test',
       );
 
-      // Get server hostname from config
-      const configResponse = await authenticatedRequest.get(
-        `${API_URL}/config`,
-      );
-      const config = await configResponse.json();
-      const serverHostname = config.config.SERVER_HOSTNAME;
-
       // Get robot token from API
       const robotResponse = await authenticatedRequest.get(
         `${API_URL}/api/v1/organization/${org.name}/robots/${robot.shortname}`,
@@ -1018,6 +1011,41 @@ test.describe(
         expect(robotData.token).toBe(robot.token);
       });
     });
+
+    test(
+      'robot wizard fits within modal without overflow (PROJQUAY-12151)',
+      {tag: '@PROJQUAY-12151'},
+      async ({authenticatedPage, api}) => {
+        const org = await api.organization('wizoverflow');
+
+        await authenticatedPage.goto(
+          `/organization/${org.name}?tab=Robotaccounts`,
+        );
+
+        await authenticatedPage
+          .getByRole('button', {name: 'Create robot account'})
+          .click();
+
+        const modal = authenticatedPage.locator('#create-robot-account-modal');
+        await expect(modal).toBeVisible();
+
+        const wizard = modal.locator('.pf-v6-c-wizard');
+        await expect(wizard).toBeVisible();
+
+        const modalBox = await modal.boundingBox();
+        const wizardBox = await wizard.boundingBox();
+
+        expect(modalBox).not.toBeNull();
+        expect(wizardBox).not.toBeNull();
+        if (modalBox && wizardBox) {
+          expect(wizardBox.width).toBeLessThanOrEqual(modalBox.width);
+          expect(wizardBox.x).toBeGreaterThanOrEqual(modalBox.x);
+          expect(wizardBox.x + wizardBox.width).toBeLessThanOrEqual(
+            modalBox.x + modalBox.width + 1,
+          );
+        }
+      },
+    );
 
     test.describe(
       'with ROBOTS_DISALLOW enabled',

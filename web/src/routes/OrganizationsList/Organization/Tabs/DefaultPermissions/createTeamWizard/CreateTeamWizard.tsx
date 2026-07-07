@@ -147,10 +147,6 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
         aria-label="CreateTeam"
         variant={ModalVariant.large}
         isOpen={props.isTeamWizardOpen}
-        onClose={() => {
-          props.handleWizardToggle();
-          setSelectedRepoPerms([]);
-        }}
       >
         <Wizard
           onClose={() => {
@@ -158,7 +154,6 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
             setSelectedRepoPerms([]);
           }}
           height={600}
-          width={1170}
           header={
             <WizardHeader
               onClose={() => {

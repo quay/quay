@@ -251,12 +251,10 @@ export default function CreateRobotAccountModal(
       aria-label="CreateRobotAccount"
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}
-      onClose={handleModalToggle}
     >
       <Wizard
         onClose={handleModalToggle}
         height={600}
-        width={1170}
         header={
           <WizardHeader
             onClose={handleModalToggle}
@@ -282,7 +280,9 @@ interface CreateRobotAccountModalProps {
   isModalOpen: boolean;
   handleModalToggle?: () => void;
   orgName: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   teams: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   RepoPermissionDropdownItems: any[];
   setEntity?: React.Dispatch<SetStateAction<Entity>>;
   showSuccessAlert: (msg: string) => void;
