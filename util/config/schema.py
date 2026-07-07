@@ -227,6 +227,11 @@ CONFIG_SCHEMA = {
             "description": "Whether emails are enabled. Defaults to True",
             "x-example": True,
         },
+        "FEATURE_ORG_SHARED_EMAIL": {
+            "type": "boolean",
+            "description": "Whether organizations can share email addresses with existing user accounts. Defaults to False",
+            "x-example": False,
+        },
         "MAIL_SERVER": {
             "type": "string",
             "description": "The SMTP server to use for sending e-mails. Only required if FEATURE_MAILING is set to true.",

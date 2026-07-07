@@ -361,6 +361,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether emails are enabled.
     FEATURE_MAILING = True
 
+    # Feature Flag: Whether organizations can share email addresses with other users/orgs.
+    FEATURE_ORG_SHARED_EMAIL = False
+
     # Feature Flag: Whether users can be created (by non-super users).
     FEATURE_USER_CREATION = True
 
