@@ -3,36 +3,45 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_nginx_maps_original_remote_addr_for_quay_header():
+def test_nginx_maps_bootstrap_renewal_location_from_original_remote_addr():
     http_base = (ROOT / "conf/nginx/http-base.conf.jnj").read_text()
 
     assert "map $realip_remote_addr $quay_original_remote_addr" in http_base
     assert '""      $remote_addr;' in http_base
     assert "default $realip_remote_addr;" in http_base
+    assert "map $quay_original_remote_addr $quay_bootstrap_renewal_location" in http_base
+    assert "default remote;" in http_base
+    assert "127.0.0.1 local;" in http_base
+    assert "::1 local;" in http_base
+    assert r"~*^::ffff:127\.0\.0\.1$ local;" in http_base
 
 
-def test_nginx_forwards_original_remote_addr_to_web_app():
-    server_base = (ROOT / "conf/nginx/server-base.conf.jnj").read_text()
-
-    assert "proxy_set_header X-Quay-Original-Remote-Addr $quay_original_remote_addr;" in server_base
-
-
-def test_nginx_defines_bootstrap_renew_rate_limit_bucket():
-    rate_limiting = (ROOT / "conf/nginx/rate-limiting.conf.jnj").read_text()
-
-    assert "map $quay_original_remote_addr $bootstrap_renew_bucket" in rate_limiting
-    assert '""      $binary_remote_addr;' in rate_limiting
-    assert (
-        "limit_req_zone $bootstrap_renew_bucket zone=bootstrap_renew:10m rate=10r/m;"
-        in rate_limiting
-    )
-
-
-def test_nginx_rate_limits_bootstrap_renew_endpoint():
+def test_nginx_passes_bootstrap_renewal_location_only_to_renew_endpoint():
     server_base = (ROOT / "conf/nginx/server-base.conf.jnj").read_text()
 
     assert "location = /api/v1/bootstrap/renew" in server_base
-    assert "limit_req zone=bootstrap_renew burst=5 nodelay;" in server_base
     assert server_base.index("location = /api/v1/bootstrap/renew") < server_base.index(
         "location /api/"
     )
+    assert server_base.count("proxy_set_header X-Quay-Bootstrap-Renewal-Location") == 1
+    assert (
+        "proxy_set_header X-Quay-Bootstrap-Renewal-Location " "$quay_bootstrap_renewal_location;"
+    ) in server_base
+
+    common_proxy_block = server_base.split("location /angular", 1)[0]
+    assert "X-Quay-Bootstrap-Renewal-Location" not in common_proxy_block
+
+
+def test_nginx_renew_location_repeats_common_proxy_headers():
+    server_base = (ROOT / "conf/nginx/server-base.conf.jnj").read_text()
+    renew_block = server_base.split("location = /api/v1/bootstrap/renew", 1)[1].split(
+        "location /api/", 1
+    )[0]
+
+    assert "proxy_set_header X-Forwarded-For $proper_forwarded_for;" in renew_block
+    assert "proxy_set_header X-Forwarded-Proto $final_proto;" in renew_block
+    assert "proxy_set_header Transfer-Encoding $http_transfer_encoding;" in renew_block
+    assert "proxy_set_header Host $safe_host;" in renew_block
+    assert "proxy_set_header X-Forwarded-Host $safe_host;" in renew_block
+    assert "limit_req zone=dynamicauth_heavy_http1 burst=25 nodelay;" in renew_block
+    assert "limit_req zone=dynamicauth_heavy_http2 burst=100 nodelay;" in renew_block
