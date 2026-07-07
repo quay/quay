@@ -52,8 +52,27 @@ from data.billing import get_plan
 from util.names import parse_robot_username
 from util.request import get_request_ip
 from proxy import Proxy, UpstreamRegistryError
+from util.security.ssrf import SSRFBlockedError, validate_external_registry_url
 
 logger = logging.getLogger(__name__)
+
+SSRF_GENERIC_ERROR = "The provided registry URL is not allowed"
+
+
+def _get_ssrf_allowed_hosts():
+    return app.config.get("SSRF_ALLOWED_HOSTS", [])
+
+
+def _validate_upstream_registry(upstream_registry, insecure=False):
+    hostname = upstream_registry.split("/", 1)[0]
+    scheme = "http" if insecure else "https"
+    url = f"{scheme}://{hostname}"
+    try:
+        validate_external_registry_url(url, allowed_hosts=_get_ssrf_allowed_hosts())
+    except SSRFBlockedError:
+        raise request_error(SSRF_GENERIC_ERROR)
+    except ValueError as e:
+        raise request_error(str(e))
 
 
 def quota_view(quota):
@@ -946,8 +965,21 @@ class OrganizationProxyCacheConfig(ApiResource):
         # filter None values
         data = {k: v for k, v in data.items() if (v is not None or not "")}
 
+        _validate_upstream_registry(
+            data.get("upstream_registry", ""),
+            insecure=data.get("insecure", False),
+        )
+
         try:
-            config = model.proxy_cache.create_proxy_cache_config(**data)
+            config = model.proxy_cache.create_proxy_cache_config(
+                org_name=orgname,
+                upstream_registry=data.get("upstream_registry"),
+                upstream_registry_username=data.get("upstream_registry_username"),
+                upstream_registry_password=data.get("upstream_registry_password"),
+                expiration_s=data.get("expiration_s", 86400),
+                insecure=data.get("insecure", False),
+                allowed_hosts=_get_ssrf_allowed_hosts(),
+            )
             if config is not None:
                 log_action(
                     "create_proxy_cache_config",
@@ -1018,7 +1050,7 @@ class ProxyCacheConfigValidation(ApiResource):
 
         try:
             model.proxy_cache.get_proxy_cache_config_for_org(orgname)
-            request_error("Proxy Cache Configuration already exists")
+            raise request_error("Proxy Cache Configuration already exists")
         except model.InvalidProxyCacheConfigException:
             pass
 
@@ -1026,6 +1058,11 @@ class ProxyCacheConfigValidation(ApiResource):
 
         # filter None values
         data = {k: v for k, v in data.items() if v is not None}
+
+        _validate_upstream_registry(
+            data.get("upstream_registry", ""),
+            insecure=data.get("insecure", False),
+        )
 
         try:
             config = ProxyCacheConfig(**data)
@@ -1038,6 +1075,8 @@ class ProxyCacheConfigValidation(ApiResource):
                 return "Valid", 202
             if response.status_code == 401:
                 return "Anonymous", 202
+        except SSRFBlockedError:
+            raise request_error(SSRF_GENERIC_ERROR)
         except UpstreamRegistryError as e:
             raise request_error(
                 message="Failed login to remote registry. Please verify entered details and try again."
