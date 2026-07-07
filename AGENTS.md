@@ -67,6 +67,7 @@ make types-test                      # Type checking (mypy)
 4. **Imports:** Follow existing import ordering patterns in each file
 5. **Error handling:** Use appropriate exception types from `endpoints/exception.py`
 6. **Alembic migrations:** Never write migration files from scratch or fabricate revision IDs. Always run `alembic revision -m "description"` to scaffold the file first, then edit the generated file to add `upgrade()` and `downgrade()` logic. Hand-crafted revision IDs cause conflicts when multiple contributors independently generate migrations.
+7. **JavaScript dependencies:** Never manually edit lockfiles (`pnpm-lock.yaml`, `package-lock.json`). Always use the package manager (`pnpm update`, `npm update`). See `web/AGENTS.md` § Dependency Updates for detailed workflow including backport procedures.
 
 ## Contributing
 

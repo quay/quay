@@ -240,3 +240,31 @@ import type { Repository } from 'src/types/Repository';
 - Use `useCallback` for event handlers passed as props
 - Debounce search inputs (300-500ms)
 - Clean up effects to prevent memory leaks
+
+## Dependency Updates
+
+**Never manually edit lockfiles** (`pnpm-lock.yaml`, `package-lock.json`). Manual version/integrity edits miss transitive dependency changes and can leave vulnerabilities unpatched or produce lockfiles that break `pnpm install` / `npm ci`.
+
+### Updating on master
+
+`pnpm` is the primary package manager. Always run the package manager to update dependencies:
+
+```bash
+cd web
+pnpm update <package-name>          # Update a specific package
+pnpm install                        # Regenerate lockfile after editing package.json
+```
+
+A pre-commit hook (`npm-lockfile-sync`) automatically regenerates `package-lock.json` from pnpm changes, so you only need to manage `pnpm-lock.yaml`.
+
+### Backporting to release branches
+
+Do **not** cherry-pick or hand-edit lockfile entries from the master PR. Instead:
+
+1. Check out the target release branch
+2. Run the package manager update on that branch:
+   ```bash
+   cd web && pnpm update <package-name>   # If the branch uses pnpm
+   cd web && npm update <package-name>    # If the branch uses npm
+   ```
+3. Commit the full regenerated diff (lockfile + any transitive changes)
