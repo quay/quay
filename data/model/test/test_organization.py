@@ -220,20 +220,35 @@ class TestCreateOrganizationEmail:
         assert org1.id != org2.id
 
     def test_org_can_share_email_with_user(self, initialized_db):
-        """Test that an org can be created with the same email as an existing user.
+        """Test that an org can be created with the same email as an existing user
+        when FEATURE_ORG_SHARED_EMAIL is enabled.
 
         Regression test: create_user_noverify INSERTs with organization=false,
         so the partial unique index fires during INSERT. The fix is to insert
         with a placeholder email, set organization=true, then apply the real email.
         """
+        from unittest.mock import patch
+
+        from features import FeatureNameValue
+
         admin = get_user("devtable")
         user_email = admin.email  # devtable's email
-        org = create_organization("overlaporg", user_email, admin)
+        with patch("features.ORG_SHARED_EMAIL", FeatureNameValue("ORG_SHARED_EMAIL", True)):
+            org = create_organization("overlaporg", user_email, admin)
         assert org.email == user_email
         assert org.organization is True
         # The original user still has their email
         admin_refreshed = get_user("devtable")
         assert admin_refreshed.email == user_email
+
+    def test_org_shared_email_blocked_when_flag_off(self, initialized_db):
+        """Test that creating an org with a user's email is blocked when
+        FEATURE_ORG_SHARED_EMAIL is disabled (the default)."""
+        from data.model import InvalidEmailAddressException
+
+        admin = get_user("devtable")
+        with pytest.raises(InvalidEmailAddressException):
+            create_organization("blockedorg", admin.email, admin)
 
     def test_find_organizations_by_email_single_match(self, initialized_db):
         """Test find_organizations_by_email returns a single matching org."""
@@ -268,11 +283,16 @@ class TestCreateOrganizationEmail:
         Regression test for the combined recovery email flow where a single
         email may now match a personal user AND multiple organizations.
         """
+        from unittest.mock import patch
+
+        from features import FeatureNameValue
+
         admin = get_user("devtable")
         shared = admin.email  # e.g. devtable@devtable.com
 
-        org1 = create_organization("recoveryorg1", shared, admin)
-        org2 = create_organization("recoveryorg2", shared, admin)
+        with patch("features.ORG_SHARED_EMAIL", FeatureNameValue("ORG_SHARED_EMAIL", True)):
+            org1 = create_organization("recoveryorg1", shared, admin)
+            org2 = create_organization("recoveryorg2", shared, admin)
 
         # find_user_by_email should return ONLY the non-org user
         found_user = find_user_by_email(shared)

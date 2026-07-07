@@ -15,4 +15,5 @@ type Features struct {
 	FeatureAppSpecificTokens    *bool `yaml:"FEATURE_APP_SPECIFIC_TOKENS"`
 	FeatureSuperUsers           *bool `yaml:"FEATURE_SUPER_USERS"`
 	FeatureSuperUsersFullAccess *bool `yaml:"FEATURE_SUPERUSERS_FULL_ACCESS"`
+	FeatureOrgSharedEmail       *bool `yaml:"FEATURE_ORG_SHARED_EMAIL"`
 }

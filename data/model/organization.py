@@ -1,3 +1,4 @@
+import features
 from data.database import (
     DeletedNamespace,
     FederatedLogin,
@@ -49,6 +50,15 @@ def create_organization(
                     raise InvalidEmailAddressException(
                         "Invalid email address: %s" % effective_email
                     )
+
+            if (
+                effective_email
+                and not features.ORG_SHARED_EMAIL
+                and user.find_user_by_email(effective_email)
+            ):
+                raise InvalidEmailAddressException(
+                    "Email has already been used: %s" % effective_email
+                )
 
             new_org = _create_org_user(name, effective_email, is_possible_abuser)
 
