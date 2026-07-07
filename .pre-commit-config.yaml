@@ -40,6 +40,12 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-commit]
+    -   id: lockfile-resolved-check
+        name: Check lockfile has resolved URLs
+        entry: .github/hooks/check-lockfile-resolved.sh
+        language: script
+        files: ^web/package-lock\.json$
+        stages: [pre-commit]
     -   id: eslint
         name: ESLint
         entry: web/node_modules/.bin/eslint --fix
