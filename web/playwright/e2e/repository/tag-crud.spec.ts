@@ -139,10 +139,8 @@ test.describe(
       const popover = authenticatedPage.getByTestId('pull-popover');
       await expect(popover).toBeVisible({timeout: 10000});
       await expect(popover).toContainText('Fetch Tag');
-      await expect(popover).toContainText('Podman Pull (By Tag)');
-      await expect(popover).toContainText('Docker Pull (By Tag)');
-      await expect(popover).toContainText('Podman Pull (By Digest)');
-      await expect(popover).toContainText('Docker Pull (By Digest)');
+      await expect(popover).toContainText('Image (By Tag)');
+      await expect(popover).toContainText('Image (By Digest)');
 
       const inputs = popover.locator('input');
       await expect(inputs.first()).toHaveValue(
