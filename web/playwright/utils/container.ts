@@ -205,6 +205,36 @@ export async function pushUniqueImage(
 }
 
 /**
+ * Pull an image from the registry. Removes it afterwards to avoid
+ * polluting the local image store during tests.
+ */
+export async function pullImage(
+  namespace: string,
+  repo: string,
+  tag: string,
+  username: string,
+  password: string,
+): Promise<void> {
+  const runtime = await detectContainerRuntime();
+  if (!runtime) {
+    throw new Error('No container runtime available (podman or docker)');
+  }
+
+  const image = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
+  const tlsFlag = runtime === 'podman' ? '--tls-verify=false' : '';
+
+  await ensureLogin(runtime, username, password, tlsFlag);
+
+  const creds = credsFlag(runtime, username, password);
+  const authCfg = authFileFlag(runtime, username);
+
+  await execAsync(
+    `${runtime} ${authCfg} pull ${image} ${creds} ${tlsFlag}`.trim(),
+  );
+  await execAsync(`${runtime} rmi ${image}`).catch(() => undefined);
+}
+
+/**
  * Check if a container runtime (podman or docker) is available
  *
  * @returns true if podman or docker is available
@@ -282,6 +312,15 @@ export function orasAttach(
 
 /**
  * Push an image in OCI manifest format to the registry using skopeo.
+ *
+ * Uses `--format=oci` to guarantee the manifest uses the OCI content type,
+ * which exercises a different code path in the security scanner than
+ * Docker v2 schema 2 manifests.
+ *
+ * @example
+ * ```typescript
+ * await pushOCIImage('myorg', 'myrepo', 'latest', 'testuser', 'password');
+ * ```
  */
 export async function pushOCIImage(
   namespace: string,
@@ -292,38 +331,10 @@ export async function pushOCIImage(
 ): Promise<void> {
   const targetImage = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
   const sourceImage = 'quay.io/prometheus/busybox:latest';
+
   await retryPush(
     `skopeo copy --format=oci --override-os=linux --override-arch=amd64 docker://${sourceImage} docker://${targetImage} --dest-tls-verify=false --dest-creds=${username}:${password}`,
   );
-}
-
-/**
- * Pull an image from the registry using podman or docker.
- */
-export async function pullImage(
-  namespace: string,
-  repo: string,
-  tag: string,
-  username: string,
-  password: string,
-): Promise<void> {
-  const runtime = await detectContainerRuntime();
-  if (!runtime) {
-    throw new Error('No container runtime available (podman or docker)');
-  }
-
-  const image = `${REGISTRY_HOST}/${namespace}/${repo}:${tag}`;
-  const tlsFlag = runtime === 'podman' ? '--tls-verify=false' : '';
-
-  await ensureLogin(runtime, username, password, tlsFlag);
-
-  const creds = credsFlag(runtime, username, password);
-  const authCfg = authFileFlag(runtime, username);
-
-  await execAsync(
-    `${runtime} ${authCfg} pull ${image} ${creds} ${tlsFlag}`.trim(),
-  );
-  await execAsync(`${runtime} rmi ${image}`).catch(() => undefined);
 }
 
 /**
