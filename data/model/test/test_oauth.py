@@ -1,7 +1,9 @@
+from datetime import datetime
 from unittest.mock import patch
 
 from auth.scopes import READ_REPO
 from data import model
+from data.database import LogEntryKind, OAuthAccessToken
 from data.model.oauth import DatabaseAuthorizationProvider
 from test.fixtures import *
 
@@ -21,6 +23,42 @@ def setup(num_assignments=0):
         application, user, REDIRECT_URI, READ_REPO.scope, "token"
     )
     return (application, token_assignment, user, org)
+
+
+def test_oauth_access_token_metadata_fields_are_nullable():
+    assert OAuthAccessToken._meta.fields["created"].null is True
+    assert OAuthAccessToken._meta.fields["created"].default == datetime.now
+    assert OAuthAccessToken._meta.fields["last_accessed"].null is True
+
+
+def test_oauth_access_token_last_accessed_indexed_by_application():
+    assert (("application", "last_accessed"), False) in OAuthAccessToken._meta.indexes
+
+
+def test_oauth_api_token_log_kinds_seeded(initialized_db):
+    expected_log_kinds = {"create_oauth_api_token", "revoke_oauth_api_token"}
+    found_log_kinds = {
+        kind.name for kind in LogEntryKind.select().where(LogEntryKind.name << expected_log_kinds)
+    }
+    assert found_log_kinds == expected_log_kinds
+
+
+def test_oauth_access_token_created_defaults_to_now(initialized_db):
+    owner = model.user.get_user("devtable")
+    application = model.oauth.create_application(owner, "metadata-defaults", "", "")
+
+    before = datetime.now()
+    token, _ = model.oauth.create_user_access_token_for_application(
+        owner,
+        application,
+        READ_REPO.scope,
+        "Bearer",
+        3600,
+    )
+    after = datetime.now()
+
+    assert token.last_accessed is None
+    assert before <= token.created <= after
 
 
 def test_get_token_response_with_assignment_id(initialized_db):

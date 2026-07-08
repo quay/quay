@@ -385,16 +385,18 @@ type Notificationkind struct {
 }
 
 type Oauthaccesstoken struct {
-	ID               int64     `json:"id"`
-	Uuid             string    `json:"uuid"`
-	ApplicationID    int64     `json:"application_id"`
-	AuthorizedUserID int64     `json:"authorized_user_id"`
-	Scope            string    `json:"scope"`
-	TokenType        string    `json:"token_type"`
-	ExpiresAt        time.Time `json:"expires_at"`
-	Data             string    `json:"data"`
-	TokenCode        string    `json:"token_code"`
-	TokenName        string    `json:"token_name"`
+	ID               int64        `json:"id"`
+	Uuid             string       `json:"uuid"`
+	ApplicationID    int64        `json:"application_id"`
+	AuthorizedUserID int64        `json:"authorized_user_id"`
+	Scope            string       `json:"scope"`
+	TokenType        string       `json:"token_type"`
+	ExpiresAt        time.Time    `json:"expires_at"`
+	Data             string       `json:"data"`
+	TokenCode        string       `json:"token_code"`
+	TokenName        string       `json:"token_name"`
+	LastAccessed     sql.NullTime `json:"last_accessed"`
+	Created          sql.NullTime `json:"created"`
 }
 
 type Oauthapplication struct {
